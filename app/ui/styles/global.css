@@ -21,7 +21,7 @@
 
 html,
 body {
-  max-width: 100vw;
+  width: 100vw;
   overflow-x: hidden;
 }
 
@@ -37,6 +37,7 @@ body {
     var(--mainColorHex),
     var(--altColorHex)
   );
+  background-attachment: fixed;
 }
 
 * {
@@ -51,10 +52,8 @@ body {
   top: 150px;
   left: 8px;
   right: 8px;
-  bottom: 70px;
-  overflow-y: auto;
   padding: 20px;
-  border-radius: 8px;
+  padding-bottom: 80px;
 }
 
 .header {
@@ -80,12 +79,19 @@ body {
 
 .menu {
   position: fixed;
-  top: 8px;
+  top: 0;
   left: 0;
   right: 0;
+  padding-top: 8px;
   height: 150px;
   text-align: center;
-  z-index: 0;
+  z-index: 50;
+  background-image: linear-gradient(
+    120deg,
+    var(--mainColorHex),
+    var(--altColorHex)
+  );
+  background-attachment: fixed;
 }
 
 .logo {
@@ -144,7 +150,13 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 20px;
+  padding: 8px;
+  background-image: linear-gradient(
+    120deg,
+    var(--mainColorHex),
+    var(--altColorHex)
+  );
+  background-attachment: fixed;
 }
 
 .user-container .user-name {
@@ -161,12 +173,18 @@ body {
 
 @media (min-width: 800px) {
 
+  body {
+    overflow: hidden;
+  }
+
   .container {
     top: 8px;
     left: 200px;
     right: 8px;
     bottom: 8px;
     padding: 30px;
+    border-radius: 8px;
+    overflow-y: auto;
   }
 
   .menu {

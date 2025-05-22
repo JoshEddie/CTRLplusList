@@ -49,7 +49,7 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
   const [itemForm, setItemForm] = useState<ItemDetails>({
     id: item?.id || 0,
     name: item?.name || '',
-    image_url: item?.image_url || '/',
+    image_url: item?.image_url || '',
     quantity_limit: item?.quantity_limit || 1,
     stores: item?.stores || [
       {

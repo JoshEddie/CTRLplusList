@@ -3,7 +3,7 @@
 const ItemPhoto: React.FC<{ name: string; url: string }> = ({ name, url }) => {
   return (
     <div className="item-image-container">
-      <img className="item-image" src={url} alt={name} />
+      {url && <img className="item-image" src={url} alt={name} />}
     </div>
   );
 };
