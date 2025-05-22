@@ -1,11 +1,9 @@
 'use client';
 
 import { ItemStoreTable } from '@/lib/types';
-import { useRouter } from 'next/navigation';
 import './StoreLinks.css';
 
 export default function StoreLinks({ stores }: { stores: ItemStoreTable[] }) {
-  const router = useRouter();
 
   return (
     <div className="storeLinks">
@@ -13,14 +11,15 @@ export default function StoreLinks({ stores }: { stores: ItemStoreTable[] }) {
         const price = Number(store.price);
         return (
           store.name && (
-            <button
+            <a
               key={store.name}
               className="btn primary"
-              onClick={() => router.push(store.link)}
+              href={store.link}
+              target="_blank"
             >
               ${price.toFixed(2)}
               <span className="store-name">{store.name}</span>
-            </button>
+            </a>
           )
         );
       })}

@@ -10,7 +10,7 @@ const EditItem = async ({ params }: { params: Promise<{ id: string }> }) => {
     redirect('/');
   }
 
-  const item = await getItemById(Number(id));
+  const item = await getItemById(id);
 
   if (!item) {
     redirect('/items');
@@ -29,7 +29,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const item = await getItemById(Number(id));
+  const item = await getItemById(id);
   return {
     title: item?.name ? `Edit ${item.name}` : 'Edit Item',
   };

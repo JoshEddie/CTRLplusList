@@ -58,7 +58,7 @@ export default function StoreModal({
     if (!item.id || !item.user_id) return;
 
     const result = await createPurchase({
-      item_id: Number(item.id),
+      item_id: item.id,
       user_id: item.user_id,
     });
 

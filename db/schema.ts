@@ -3,13 +3,12 @@ import {
   integer,
   pgTable,
   primaryKey,
-  serial,
   text,
   timestamp,
 } from 'drizzle-orm/pg-core';
 
 export const lists = pgTable('lists', {
-  id: serial('id').primaryKey(),
+  id: text('id').primaryKey(),
   name: text('name').notNull(),
   occasion: text('occasion').notNull(),
   date: timestamp('date').defaultNow().notNull(),
@@ -28,7 +27,7 @@ export const users = pgTable('users', {
 });
 
 export const items = pgTable('items', {
-  id: serial('id').primaryKey(),
+  id: text('id').primaryKey(),
   name: text('name').notNull(),
   image_url: text('image_url').notNull(),
   created_at: timestamp('created_at').defaultNow().notNull(),
@@ -42,10 +41,10 @@ export const items = pgTable('items', {
 export const list_items = pgTable(
   'list_items',
   {
-    list_id: integer('list_id')
+    list_id: text('list_id')
       .references(() => lists.id, { onDelete: 'cascade' })
       .notNull(),
-    item_id: integer('item_id')
+    item_id: text('item_id')
       .references(() => items.id)
       .notNull(),
     position: integer('position').notNull(),
@@ -56,8 +55,8 @@ export const list_items = pgTable(
 );
 
 export const item_stores = pgTable('item_stores', {
-  id: serial('id').primaryKey(),
-  item_id: integer('item_id')
+  id: text('id').primaryKey(),
+  item_id: text('item_id')
     .references(() => items.id)
     .notNull(),
   name: text('name').notNull(),
@@ -66,8 +65,8 @@ export const item_stores = pgTable('item_stores', {
 });
 
 export const purchases = pgTable('purchases', {
-  id: serial('id').primaryKey(),
-  item_id: integer('item_id')
+  id: text('id').primaryKey(),
+  item_id: text('item_id')
     .references(() => items.id)
     .notNull(),
   user_id: text('user_id').references(() => users.id), // Made optional

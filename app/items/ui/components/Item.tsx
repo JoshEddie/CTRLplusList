@@ -15,12 +15,10 @@ export default function Item({
   showEditButton?: boolean;
 }) {
   return (
-    <div className={'item ' + className} title={item.name}>
+    <div className={`item ${className || ''}`} title={item.name}>
       <ItemPhoto name={item.name} url={item.image_url} />
-      <div className="item-info">
-        <h1 className="itemName">{item.name}</h1>
-        <StoreLinks stores={item.stores} />
-      </div>
+      <h1 className="itemName">{item.name}</h1>
+      <StoreLinks stores={item.stores} />
 
       {showEditButton && (
         <Link href={`/items/${item.id}`} className="edit-button">

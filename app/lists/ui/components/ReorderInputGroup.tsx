@@ -2,9 +2,9 @@ import { BsArrowDownShort, BsArrowUpShort } from 'react-icons/bs';
 
 interface ReorderInputGroupProps {
   index: number;
-  itemId: number | string;
+  itemId: string;
   totalItems: number;
-  onReorder: (itemId: number, newPosition: number) => void;
+  onReorder: (itemId: string, newPosition: number) => void;
 }
 
 export default function ReorderInputGroup({
@@ -15,7 +15,7 @@ export default function ReorderInputGroup({
 }: ReorderInputGroupProps) {
   const handlePositionChange = (newPosition: number) => {
     try {
-      onReorder(Number(itemId), newPosition);
+      onReorder(itemId, newPosition);
     } catch (error) {
       console.error('Error updating position:', error);
     }

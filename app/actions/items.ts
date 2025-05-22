@@ -5,6 +5,7 @@ import { item_stores, items, list_items, purchases } from '@/db/schema';
 import { getCurrentUser } from '@/lib/dal';
 import { ItemDetails } from '@/lib/types';
 import { and, asc, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
 
@@ -73,7 +74,7 @@ export type ActionResponse = {
 };
 
 export async function createPurchase(data: {
-  item_id: number;
+  item_id: string;
   user_id: string;
 }): Promise<ActionResponse> {
   try {
@@ -89,6 +90,7 @@ export async function createPurchase(data: {
 
     // Create purchase record
     await db.insert(purchases).values({
+      id: nanoid(),
       item_id: data.item_id,
       user_id: data.user_id,
       purchased_at: new Date(),
@@ -131,28 +133,30 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       };
     }
 
+    const id = nanoid();
+
     // Create item with validated data
     const validatedData = validationResult.data;
-    const item = await db
+    await db
       .insert(items)
       .values({
+        id,
         name: validatedData.name,
         image_url: validatedData.image_url,
         created_at: new Date(),
         updated_at: new Date(),
         user_id: validatedData.user_id,
         quantity_limit: validatedData.quantity_limit,
-      })
-      .returning();
+      });
 
     // Get the lists from the form data and ensure they exist
     const lists = validatedData.lists || [];
     if (lists.length > 0) {
       // Extract just the IDs from the NameId objects
-      const listIds: number[] = lists.map((list) => Number(list.value));
+      const listIds: string[] = lists.map((list) => list.value);
       // Only proceed if we have valid list IDs
       if (listIds.length > 0) {
-        await updateItemLists(listIds, item[0].id);
+        await updateItemLists(listIds, id);
       }
     }
     await updateItemStores(
@@ -161,7 +165,7 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
         link: store.link || '',
         price: store.price || '',
       })),
-      item[0].id
+      id
     );
 
     revalidateTag('items');
@@ -177,7 +181,7 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
   }
 }
 
-async function checkListBalance(listId: number): Promise<boolean> {
+async function checkListBalance(listId: string): Promise<boolean> {
   try {
     const result = await db
       .select()
@@ -197,7 +201,7 @@ async function checkListBalance(listId: number): Promise<boolean> {
   }
 }
 
-async function rebalanceList(listId: number): Promise<void> {
+async function rebalanceList(listId: string): Promise<void> {
   try {
     const items = await db
       .select()
@@ -205,7 +209,7 @@ async function rebalanceList(listId: number): Promise<void> {
       .where(eq(list_items.list_id, listId))
       .orderBy(asc(list_items.position));
 
-    const updates = items.map((item: { item_id: number }, index: number) => {
+    const updates = items.map((item: { item_id: string }, index: number) => {
       const newPosition = (index + 1) * 65536;
       return db
         .update(list_items)
@@ -226,9 +230,9 @@ async function rebalanceList(listId: number): Promise<void> {
 }
 
 export async function updatePriority(
-  item_id: number,
+  item_id: string,
   targetPosition: number,
-  listId: number
+  listId: string
 ): Promise<ActionResponse> {
   try {
     // Get the positions before and after target position
@@ -310,7 +314,7 @@ function emptyStore(store: { name: string; link: string; price: string }) {
 
 async function updateItemStores(
   stores: { name: string; link: string; price: string }[],
-  itemId: number
+  itemId: string
 ): Promise<void> {
   try {
     // First, get all current store associations for this item
@@ -345,6 +349,7 @@ async function updateItemStores(
         stores.slice(count).map(async (store) => {
           if (emptyStore(store)) return;
           await db.insert(item_stores).values({
+            id: nanoid(),
             item_id: itemId,
             name: store.name,
             link: store.link,
@@ -370,8 +375,8 @@ async function updateItemStores(
 }
 
 export async function updateItemLists(
-  listIds: number[],
-  itemId: number
+  listIds: string[],
+  itemId: string
 ): Promise<void> {
   try {
     // First, get all current list associations for this item
@@ -474,7 +479,7 @@ export async function updateItem(
     // Get the lists from the form data and ensure they exist
     const lists = validatedData.lists || [];
     if (lists.length > 0) {
-      const listIds = lists.map((list) => Number(list.value));
+      const listIds = lists.map((list) => list.value);
       await updateItemLists(listIds, data.id);
     }
 
@@ -500,7 +505,7 @@ export async function updateItem(
   }
 }
 
-export async function deleteItem(id: number) {
+export async function deleteItem(id: string) {
   try {
     // Security check - ensure user is authenticated
     const user = await getCurrentUser();
