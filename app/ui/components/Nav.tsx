@@ -6,25 +6,22 @@ import { MdListAlt } from 'react-icons/md';
 export default function Nav() {
   return (
     <nav className="nav-container">
-      <div className="nav-content">
-        <div className="nav-section">
-          <div className="nav-items">
-            <Link href="/lists" className="btn nav">
-              <MdListAlt />
-              Lists
-            </Link>
-            <Link href="/items" className="btn nav">
-              <BsBoxFill /> Items
-            </Link>
-            <Link href="/items/purchased" className="btn nav">
-              <FaShoppingCart /> Purchased
-            </Link>
-            <Link href="/lists/shared" className="btn nav">
-              <FaShare /> Shared With Me
-            </Link>
-          </div>
-        </div>
-      </div>
+        <Link href="/lists" className="btn nav">
+          <MdListAlt />
+          <span className="label mobile-hide">Lists</span>
+        </Link>
+        <Link href="/items" className="btn nav">
+          <BsBoxFill />
+          <span className="label mobile-hide">Items</span>
+        </Link>
+        <Link href="/items/purchased" className="btn nav">
+          <FaShoppingCart />
+          <span className="label mobile-hide">Purchased</span>
+        </Link>
+        <Link href="/lists/shared" className="btn nav">
+          <FaShare />
+          <span className="label mobile-hide">Shared</span>
+        </Link>
     </nav>
   );
 }

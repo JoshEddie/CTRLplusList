@@ -1,11 +1,8 @@
 import '@/app/ui/styles/button.css';
 import type { Metadata } from 'next';
 import { Crimson_Pro, Roboto, Roboto_Condensed } from 'next/font/google';
-import Link from 'next/link';
-import { Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
 import Menu from './ui/components/Menu';
-import User from './ui/components/User';
 import './ui/styles/global.css';
 
 const roboto = Roboto({
@@ -75,9 +72,6 @@ export default function RootLayout({
       >
         <Toaster position="top-right" />
         <Menu />
-        <Suspense fallback={<Link href="/signin">Sign In</Link>}>
-          <User />
-        </Suspense>
         <main className="container">{children}</main>
       </body>
     </html>

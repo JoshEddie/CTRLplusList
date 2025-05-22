@@ -14,7 +14,7 @@ export default function SignOutButton() {
   };
 
   return (
-    <button onClick={handleSignOut} disabled={isPending} className="btn nav">
+    <button onClick={handleSignOut} disabled={isPending} className="btn nav mobile-small">
       <LuLogOut size={20} />
       <span>{isPending ? 'Signing out...' : 'Sign Out'}</span>
     </button>

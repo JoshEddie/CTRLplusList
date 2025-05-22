@@ -1,10 +1,10 @@
 .storeLinks {
   display: grid;
-  grid-template-columns: auto;
   gap: 10px;
   text-align: center;
   width: 100%;
-  align-content: start;
+  max-width: 300px;
+  margin: 0 auto;
 }
 
 .storeLinks .store-name {

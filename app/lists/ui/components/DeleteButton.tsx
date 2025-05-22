@@ -23,7 +23,7 @@ export default function DeleteButton({ id }: { id: string | number }) {
     <>
       <button className="btn danger" onClick={() => setShowConfirm(true)}>
         <MdDeleteForever />
-        Delete List
+        <span className="label mobile-hide">Delete List</span>
       </button>
       <ConfirmDialog
         isOpen={showConfirm}

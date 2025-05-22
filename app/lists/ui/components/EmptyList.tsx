@@ -5,7 +5,7 @@ export default function EmptyList() {
   return (
     <div className="empty-list">
       <h3>No lists found</h3>
-      <p>Get started by creating your first list.</p>
+      <p>Create your first list below.</p>
       <Link className="btn primary" href="/lists/new">
         <FaPlus size={14} />
         Create List

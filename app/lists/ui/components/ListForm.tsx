@@ -14,7 +14,7 @@ import SelectWrapper from '@/app/ui/components/SelectWrapper';
 import '@/app/ui/styles/select.css';
 import { ListTable, OptionType } from '@/lib/types';
 import { useRouter } from 'next/navigation';
-import { useActionState, useState } from 'react';
+import { ChangeEvent, useActionState, useState } from 'react';
 
 interface ListFormProps {
   list?: ListTable;
@@ -48,15 +48,43 @@ export default function ListForm({
   );
 
   // Use useActionState hook for the form submission action
+  const [dateError, setDateError] = useState<string | null>(null);
+
+  const validateDate = (dateString: string): boolean => {
+    const date = new Date(dateString);
+    // Check if the date is valid and the year is reasonable
+    if (isNaN(date.getTime())) {
+      setDateError('Please enter a valid date');
+      return false;
+    }
+    if (date.getFullYear() < 1000) {
+      setDateError('Please enter a year of 1900 or later');
+      return false;
+    }
+    setDateError(null);
+    return true;
+  };
+
   const [state, formAction, isPending] = useActionState<
     ActionResponse,
     FormData
   >(async (prevState: ActionResponse, formData: FormData) => {
+    const dateString = formData.get('date') as string;
+    
+    // Client-side validation
+    if (!validateDate(dateString)) {
+      return {
+        success: false,
+        message: 'Please correct the errors below',
+        errors: { date: ['Invalid date'] },
+      };
+    }
+
     // Extract data from form
     const data = {
       name: formData.get('name') as string,
       occasion: selectedOccasion,
-      date: new Date(formData.get('date') as string),
+      date: new Date(dateString),
       user_id,
     };
 
@@ -143,7 +171,18 @@ export default function ListForm({
             }
             required
             disabled={isPending}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => validateDate(e.target.value)}
+            min="1900-01-01"
+            max="9999-12-31"
           />
+          {dateError && (
+            <p className="error-message">{dateError}</p>
+          )}
+          {state?.errors?.date && (
+            <p className="error-message">
+              {state.errors.date.join(', ')}
+            </p>
+          )}
         </FormGroup>
         <CancelSubmitButtons
           isPending={isPending}

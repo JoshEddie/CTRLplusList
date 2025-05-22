@@ -25,11 +25,11 @@ export default async function ListPage({
         <DeleteButton id={list.id} />
         <Link className="btn primary" href={`/lists/${id}/edit`}>
           <MdModeEdit />
-          Edit List
+          <span className="label mobile-hide">Edit List</span>
         </Link>
         <Link className="btn primary" href={`/lists/${id}/shared`}>
           <MdOutlineIosShare />
-          Share List
+          <span className="label mobile-hide">Share List</span>
         </Link>
       </Header>
       <ItemsContainer listId={parseInt(id)} showEditButton={true} />

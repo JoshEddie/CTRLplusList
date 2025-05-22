@@ -20,7 +20,7 @@ export default async function ListSelect() {
         <>
           <div className="list-grid">
             {/* Header Row */}
-            <div className="list-header">
+            <div className="list-header mobile-hide">
               <div className="list-cell">Name</div>
               <div className="list-cell">Occasion</div>
               <div className="list-cell">Date</div>
@@ -31,12 +31,12 @@ export default async function ListSelect() {
               <div className="list-row" key={list.id}>
                 <Link className="list" href={`/lists/${list.id}`}>
                   <div className="list-cell list-name">{list.name}</div>
-                  <div className="list-cell">{list.occasion}</div>
-                  <div className="list-cell">
+                  <div className="list-cell list-occasion">{list.occasion}</div>
+                  <div className="list-cell list-date">
                     {list.date.toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'short',
-                      day: 'numeric',
+                      day: '2-digit',
                       timeZone: 'UTC',
                     })}
                   </div>

@@ -4,8 +4,8 @@
 
 .list-grid {
   display: grid;
-  grid-template-columns: 2fr 1.5fr 1.5fr;
-  border: 1px solid var(--mainColorHex);
+  grid-template-columns: 1fr;
+  gap: 12px;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -13,33 +13,58 @@
 .list-header,
 .list,
 .list-row {
-  display: contents;
   width: 100%;
   position: relative;
 }
 
-.list-cell {
-  padding: 15px;
+.list-row {
+  border: 1px solid var(--mainColorHex);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.list {
+  text-decoration: none;
   display: grid;
+  gap: 8px;
+  background-color: #111111;
+  padding: 16px;
+}
+
+.list:hover {
+  background-color: var(--altColorHex);
+}
+
+.list-cell {
   align-items: center;
   color: #ffffff;
-  font-size: 1rem;
-  background-color: #111111;
+  font-size: 16px;
+  text-decoration: none;
 }
 
-.list-row:nth-child(odd) .list-cell {
-  background-color: #222222;
+.list-name {
+  font-size: 24px;
+  font-weight: 100;
+  font-family: var(--font-crimson-pro);
 }
 
-.list-row:hover .list:hover .list-cell {
-  background-color: var(--altColorHex);
+.list-cell::before {
+  font-weight: 100;
+}
+
+.list-occasion::before {
+  content: 'Occasion: ';
+}
+
+.list-date::before {
+  content: 'Date: ';
 }
 
 .list-header .list-cell {
   background-color: var(--mainColorHex);
   color: #ffffff;
   font-family: var(--font-crimson-pro);
-  font-size: 1.2rem;
+  font-size: 18px;
   letter-spacing: 0.5px;
   display: grid;
   align-items: center;
@@ -71,6 +96,13 @@
   gap: 20px;
 }
 
+.error-message {
+  color: #ff4d4f;
+  font-size: 14px;
+  margin-top: 4px;
+  padding: 4px 0;
+}
+
 .empty-list h3 {
   font-size: 40px;
   font-family: var(--font-crimson-pro);
@@ -80,3 +112,42 @@
 .empty-list p {
   font-size: 18px;
 }
+
+@media (min-width: 600px) {
+  .list-grid {
+    grid-template-columns: 1fr 200px 150px;
+    border: 1px solid var(--mainColorHex);
+    gap: 0;
+  }
+
+  .list-header,
+  .list,
+  .list-row {
+    border: none;
+    display: contents;
+  }
+
+  .list-cell::before {
+    content: none;
+  }
+
+  .list-cell {
+    padding: 15px;
+    background-color: #111111;
+  }
+
+  .list-row:nth-child(odd) .list-cell {
+    background-color: #222222;
+  }
+
+  .list-row:hover .list:hover .list-cell {
+    background-color: var(--altColorHex);
+  }
+
+  .list-name {
+    font-size: 16px;
+    font-weight: 400;
+    font-family: var(--font-roboto-condensed);
+  }
+}
+  
