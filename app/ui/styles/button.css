@@ -1,0 +1,57 @@
+.btn {
+  border-radius: 8px;
+  padding: 15px 25px;
+  border-style: solid;
+  border-width: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-family: var(--font-roboto-condensed);
+  font-weight: 500;
+}
+
+.primary {
+  background-color: var(--mainColorHex);
+  border-color: var(--mainColorHex);
+  color: #ffffff;
+}
+
+.primary:hover {
+  background-color: var(--altColorHex);
+  border-color: var(--altColorHex);
+}
+
+.danger {
+  background-color: transparent;
+  border-color: #dc2626;
+  color: #ffffff;
+}
+
+.danger:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+.outline {
+  background-color: transparent;
+}
+
+.outline:hover {
+  background-color: var(--mainColorHex);
+  border-color: var(--mainColorHex);
+}
+
+.nav {
+  background-color: var(--darkColorHex);
+  border-color: var(--darkColorHex);
+  color: #ffffff;
+}
+
+.nav:hover {
+  background-color: transparent;
+}

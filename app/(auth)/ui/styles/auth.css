@@ -1,0 +1,24 @@
+/* Auth Page Styles */
+.auth-container {
+  width: 100%;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 300px;
+  gap: 10px;
+  margin: 0 auto;
+}
+
+.auth-link {
+  display: block;
+  text-align: center;
+  color: var(--altColorHex);
+  text-decoration: none;
+}
+
+.auth-link:hover {
+  color: #ffffff;
+}

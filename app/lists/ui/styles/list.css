@@ -1,0 +1,82 @@
+.list-container {
+  width: 100%;
+}
+
+.list-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.5fr 1.5fr;
+  border: 1px solid var(--mainColorHex);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.list-header,
+.list,
+.list-row {
+  display: contents;
+  width: 100%;
+  position: relative;
+}
+
+.list-cell {
+  padding: 15px;
+  display: grid;
+  align-items: center;
+  color: #ffffff;
+  font-size: 1rem;
+  background-color: #111111;
+}
+
+.list-row:nth-child(odd) .list-cell {
+  background-color: #222222;
+}
+
+.list-row:hover .list:hover .list-cell {
+  background-color: var(--altColorHex);
+}
+
+.list-header .list-cell {
+  background-color: var(--mainColorHex);
+  color: #ffffff;
+  font-family: var(--font-crimson-pro);
+  font-size: 1.2rem;
+  letter-spacing: 0.5px;
+  display: grid;
+  align-items: center;
+  padding: 5px 15px;
+}
+
+.delete-list-button {
+  border: none;
+  outline: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.delete-list-button:hover {
+  background-color: #ff0000;
+  color: #ffffff;
+}
+
+.empty-list {
+  padding: 40px 20px;
+  border: 1px solid var(--mainColorHex);
+  background-color: #111111;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 20px;
+}
+
+.empty-list h3 {
+  font-size: 40px;
+  font-family: var(--font-crimson-pro);
+  font-weight: 100;
+}
+
+.empty-list p {
+  font-size: 18px;
+}

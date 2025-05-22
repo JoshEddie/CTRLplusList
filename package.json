@@ -6,20 +6,44 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write .",
+    "check-format": "prettier --check .",
+    "validate": "npm run check-format && npm run lint",
+    "seed": "npx tsx scripts/seed.ts",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:reset": "npx tsx db/reset-db.ts"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.0",
+    "@types/bcrypt": "^5.0.2",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^16.5.0",
+    "drizzle-orm": "^0.43.1",
+    "jose": "^6.0.11",
+    "next": "15.4.0-canary.35",
+    "pg": "^8.13.3",
+    "postgres": "^3.4.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.4.0-canary.35"
+    "react-hot-toast": "^2.5.2",
+    "react-icons": "^5.5.0",
+    "react-select": "^5.10.1",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.1",
     "eslint": "^9",
     "eslint-config-next": "15.4.0-canary.35",
-    "@eslint/eslintrc": "^3"
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.4",
+    "typescript": "^5"
   }
 }
