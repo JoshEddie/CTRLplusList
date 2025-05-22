@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { lists } from '@/db/schema';
 import { getCurrentUser } from '@/lib/dal';
 import { eq, sql } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
 // Define Zod schema for list validation
@@ -27,7 +28,7 @@ export type ActionResponse = {
   message: string;
   errors?: Record<string, string[]>;
   error?: string;
-  id?: number;
+  id?: string;
 };
 
 export async function createList(data: ListData): Promise<ActionResponse> {
@@ -52,24 +53,26 @@ export async function createList(data: ListData): Promise<ActionResponse> {
       };
     }
 
+    const id = nanoid();
+
     // Create list with validated data
     const validatedData = validationResult.data;
-    const result = await db
+    await db
       .insert(lists)
       .values({
+        id,
         name: sql`${validatedData.name}`,
         occasion: sql`${validatedData.occasion}`,
         date: sql`${validatedData.date}`,
         user_id: sql`${validatedData.user_id}`,
-      })
-      .returning();
+      });
 
     revalidateTag('lists');
 
     return {
       success: true,
       message: 'List created successfully',
-      id: result[0].id,
+      id: id,
     };
   } catch (error) {
     console.error('Error creating list:', error);
@@ -82,7 +85,7 @@ export async function createList(data: ListData): Promise<ActionResponse> {
 }
 
 export async function updateList(
-  id: number,
+  id: string,
   data: Partial<ListData>
 ): Promise<ActionResponse> {
   try {
@@ -141,7 +144,7 @@ export async function updateList(
   }
 }
 
-export async function deleteList(id: number): Promise<ActionResponse> {
+export async function deleteList(id: string): Promise<ActionResponse> {
   try {
     // Security check - ensure user is authenticated
     const user = await getCurrentUser();

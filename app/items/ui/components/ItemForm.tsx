@@ -47,7 +47,7 @@ const initialState: ActionResponse = {
 export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
   const router = useRouter();
   const [itemForm, setItemForm] = useState<ItemDetails>({
-    id: item?.id || 0,
+    id: item?.id || '',
     name: item?.name || '',
     image_url: item?.image_url || '',
     quantity_limit: item?.quantity_limit || 1,
