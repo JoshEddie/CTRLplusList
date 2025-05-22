@@ -15,13 +15,13 @@ export default async function ListPage({
     redirect('/');
   }
 
-  const list = await getList(parseInt(id));
-  const items = await getItemsByListId(parseInt(id));
+  const list = await getList(id);
+  const items = await getItemsByListId(id);
 
   return (
     <div className="list-container">
       <Header title={list?.name || ''} />
-      {items.length > 0 && <Items listId={parseInt(id)} />}
+      {items.length > 0 && <Items listId={id} />}
     </div>
   );
 }

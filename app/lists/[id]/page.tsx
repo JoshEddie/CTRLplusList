@@ -13,7 +13,7 @@ export default async function ListPage({
 }) {
   const { id } = await params;
 
-  const list = await getList(parseInt(id));
+  const list = await getList(id);
 
   if (!list) {
     redirect('/lists');
@@ -32,7 +32,7 @@ export default async function ListPage({
           <span className="label mobile-hide">Share List</span>
         </Link>
       </Header>
-      <ItemsContainer listId={parseInt(id)} showEditButton={true} />
+      <ItemsContainer listId={id} showEditButton={true} />
     </div>
   );
 }

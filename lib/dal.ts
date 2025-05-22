@@ -54,7 +54,7 @@ export const getUserByEmail: (email: string) => Promise<UserTable | null> =
   });
 
 // Fetcher functions for React Query
-export async function getList(id: number) {
+export async function getList(id: string) {
   'use cache';
   cacheTag('lists');
   try {
@@ -142,7 +142,7 @@ export async function getItemsByUser(
   }
 }
 
-export async function getItemById(id: number): Promise<
+export async function getItemById(id: string): Promise<
   ItemTable & {
     stores: ItemStoreTable[];
     lists: (ListTable & { position: number })[];
@@ -202,7 +202,7 @@ export async function getItemById(id: number): Promise<
   }
 }
 
-export async function getItemsByListId(listId: number): Promise<
+export async function getItemsByListId(listId: string): Promise<
   (ItemTable & { stores: ItemStoreTable[] })[]
 > {
   'use cache';

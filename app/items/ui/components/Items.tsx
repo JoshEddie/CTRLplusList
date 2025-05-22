@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import Item from './Item';
 
 interface ItemsProps {
-  listId?: number;
+  listId?: string;
   showEditButton?: boolean;
 }
 

@@ -7,11 +7,11 @@ import toast from 'react-hot-toast';
 import { MdDeleteForever } from 'react-icons/md';
 import ConfirmDialog from './ConfirmDialog';
 
-export default function DeleteButton({ id }: { id: string | number }) {
+export default function DeleteButton({ id }: { id: string }) {
   const router = useRouter();
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const handleDeleteListClick = async (id: number) => {
+  const handleDeleteListClick = async (id: string) => {
     const result = await deleteList(id);
     if (result.success) {
       toast.success('List deleted successfully');
@@ -28,7 +28,7 @@ export default function DeleteButton({ id }: { id: string | number }) {
       <ConfirmDialog
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}
-        onConfirm={() => handleDeleteListClick(Number(id))}
+        onConfirm={() => handleDeleteListClick(id)}
         title="Confirm Delete"
         message="Are you sure you want to delete this list? This action cannot be undone."
         confirmText="Delete"

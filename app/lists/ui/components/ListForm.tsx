@@ -91,7 +91,7 @@ export default function ListForm({
     try {
       // Call the appropriate action based on whether we're editing or creating
       const result = isEditing
-        ? await updateList(Number(list!.id), data)
+        ? await updateList(list!.id, data)
         : await createList(data);
 
       // Handle successful submission

@@ -3,7 +3,7 @@ import ItemsLoading from './ItemLoading';
 import Items from './Items';
 
 interface ItemsContainerProps {
-  listId?: number;
+  listId?: string;
   showEditButton?: boolean;
 }
 
