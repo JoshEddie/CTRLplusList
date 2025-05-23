@@ -15,10 +15,10 @@
 .auth-link {
   display: block;
   text-align: center;
-  color: var(--altColorHex);
+  color: var(--secondary-color);
   text-decoration: none;
 }
 
 .auth-link:hover {
-  color: #ffffff;
+  color: var(--primary-text-color);
 }

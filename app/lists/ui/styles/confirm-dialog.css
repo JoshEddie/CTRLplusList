@@ -13,7 +13,7 @@
 
 .confirm-dialog-content {
   background-color: var(--darkColorHex);
-  border: 1px solid var(--mainColorHex);
+  border: 1px solid var(--primary-color);
   padding: 1.5rem;
   border-radius: 0.5rem;
   max-width: 24rem;

@@ -18,7 +18,7 @@
 }
 
 .list-row {
-  border: 1px solid var(--mainColorHex);
+  border: 1px solid var(--primary-color);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -27,17 +27,18 @@
   text-decoration: none;
   display: grid;
   gap: 8px;
-  background-color: #111111;
+  background-color: var(--secondary-background-color);
   padding: 16px;
+  color: var(--primary-text-color);
 }
 
 .list:hover {
-  background-color: var(--altColorHex);
+  background-color: var(--secondary-color);
+  color: #ffffff;
 }
 
 .list-cell {
   align-items: center;
-  color: #ffffff;
   font-size: 16px;
   text-decoration: none;
 }
@@ -61,7 +62,7 @@
 }
 
 .list-header .list-cell {
-  background-color: var(--mainColorHex);
+  background-color: var(--primary-color);
   color: #ffffff;
   font-family: var(--font-crimson-pro);
   font-size: 18px;
@@ -83,19 +84,6 @@
   color: #ffffff;
 }
 
-.empty-list {
-  padding: 40px 20px;
-  border: 1px solid var(--mainColorHex);
-  background-color: #111111;
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 20px;
-}
-
 .error-message {
   color: #ff4d4f;
   font-size: 14px;
@@ -103,20 +91,10 @@
   padding: 4px 0;
 }
 
-.empty-list h3 {
-  font-size: 40px;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
-}
-
-.empty-list p {
-  font-size: 18px;
-}
-
 @media (min-width: 600px) {
   .list-grid {
     grid-template-columns: 1fr 200px 150px;
-    border: 1px solid var(--mainColorHex);
+    border: 1px solid var(--primary-color);
     gap: 0;
   }
 
@@ -133,15 +111,16 @@
 
   .list-cell {
     padding: 15px;
-    background-color: #111111;
+    background-color: var(--secondary-background-color);
   }
 
   .list-row:nth-child(odd) .list-cell {
-    background-color: #222222;
+    background-color: var(--third-background-color);
   }
 
   .list-row:hover .list:hover .list-cell {
-    background-color: var(--altColorHex);
+    background-color: var(--secondary-color);
+    color: #ffffff;
   }
 
   .list-name {

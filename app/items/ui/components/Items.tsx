@@ -1,3 +1,4 @@
+import Empty from '@/app/ui/components/Empty';
 import { getCurrentUser, getItemsByListId, getItemsByUser } from '@/lib/dal';
 import { redirect } from 'next/navigation';
 import Item from './Item';
@@ -26,10 +27,14 @@ export default async function Items({
   }
 
   return (
+    items.length === 0 ? (
+      <Empty type="item" />
+    ) : (
     <div className="item-grid">
       {items.map((item) => (
         <Item key={item.id} item={item} showEditButton={showEditButton} />
       ))}
     </div>
+    )
   );
 }
