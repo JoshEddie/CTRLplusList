@@ -146,7 +146,7 @@ export async function getItemById(id: string): Promise<
   ItemTable & {
     stores: ItemStoreTable[];
     lists: (ListTable & { position: number })[];
-  }
+  } | undefined
 > {
   'use cache';
   cacheTag('items');
@@ -165,7 +165,7 @@ export async function getItemById(id: string): Promise<
     });
 
     if (!result) {
-      throw new Error(`Item with id ${id} not found`);
+      return result;
     }
 
     const lists: (ListTable & { position: number })[] =
@@ -173,15 +173,6 @@ export async function getItemById(id: string): Promise<
         ...li.list,
         position: li.position,
       })) || [];
-
-    // Transform the data to match ItemWithLists type
-    // const transformedResult = {
-    //   ...result,
-    //   lists: result.list_items?.map(li => ({
-    //     id: li.list.id,
-    //     name: li.list.name
-    //   })) || []
-    // };
 
     const newResult = {
       id: result.id,

@@ -1,13 +1,13 @@
 'use client';
 
 import { deleteList } from '@/app/actions/lists';
+import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { MdDeleteForever } from 'react-icons/md';
-import ConfirmDialog from './ConfirmDialog';
 
-export default function DeleteButton({ id }: { id: string }) {
+export default function DeleteListButton({ id }: { id: string }) {
   const router = useRouter();
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -16,6 +16,8 @@ export default function DeleteButton({ id }: { id: string }) {
     if (result.success) {
       toast.success('List deleted successfully');
       router.push('/lists');
+    } else {
+      toast.error(result.error || 'Failed to delete list');
     }
   };
 

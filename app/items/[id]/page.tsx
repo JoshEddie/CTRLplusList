@@ -1,8 +1,16 @@
+import Header from '@/app/ui/components/Header';
 import { getCurrentUser, getItemById, getListsByUser } from '@/lib/dal';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { BsArrowLeftShort } from 'react-icons/bs';
+import DeleteItemButton from '../ui/components/DeleteItemButton';
 import ItemForm from '../ui/components/ItemForm';
 
-const EditItem = async ({ params }: { params: Promise<{ id: string }> }) => {
+export default async function EditItem({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const user = await getCurrentUser();
   const { id } = await params;
 
@@ -18,19 +26,16 @@ const EditItem = async ({ params }: { params: Promise<{ id: string }> }) => {
 
   const lists = await getListsByUser(user.id);
 
-  return <ItemForm user_id={user.id} item={item} lists={lists} />;
+  return (
+    <>
+      <Header title={`Edit ${item.name}`}>
+        <Link className="btn primary" href="/items">
+          <BsArrowLeftShort />
+          Back to Items
+        </Link>
+        <DeleteItemButton id={item.id} />
+      </Header>
+      <ItemForm user_id={user.id} item={item} lists={lists} />
+    </>
+  )
 };
-
-export default EditItem;
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const item = await getItemById(id);
-  return {
-    title: item?.name ? `Edit ${item.name}` : 'Edit Item',
-  };
-}

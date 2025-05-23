@@ -4,7 +4,7 @@ import { getList } from '@/lib/dal';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { MdModeEdit, MdOutlineIosShare } from 'react-icons/md';
-import DeleteButton from '../ui/components/DeleteButton';
+import DeleteListButton from '../ui/components/DeleteListButton';
 
 export default async function ListPage({
   params,
@@ -22,7 +22,7 @@ export default async function ListPage({
   return (
     <div className="list-container">
       <Header title={list.name}>
-        <DeleteButton id={list.id} />
+        <DeleteListButton id={list.id} />
         <Link className="btn primary" href={`/lists/${id}/edit`}>
           <MdModeEdit />
           <span className="label mobile-hide">Edit List</span>
