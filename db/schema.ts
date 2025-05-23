@@ -15,7 +15,7 @@ export const lists = pgTable('lists', {
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
   user_id: text('user_id')
-    .references(() => users.id)
+    .references(() => users.id, { onDelete: 'cascade' })
     .notNull(),
 });
 
@@ -33,7 +33,7 @@ export const items = pgTable('items', {
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
   user_id: text('user_id')
-    .references(() => users.id)
+    .references(() => users.id, { onDelete: 'cascade' })
     .notNull(),
   quantity_limit: integer('quantity_limit').default(1).notNull(),
 });
@@ -45,7 +45,7 @@ export const list_items = pgTable(
       .references(() => lists.id, { onDelete: 'cascade' })
       .notNull(),
     item_id: text('item_id')
-      .references(() => items.id)
+      .references(() => items.id, { onDelete: 'cascade' })
       .notNull(),
     position: integer('position').notNull(),
   },
@@ -57,7 +57,7 @@ export const list_items = pgTable(
 export const item_stores = pgTable('item_stores', {
   id: text('id').primaryKey(),
   item_id: text('item_id')
-    .references(() => items.id)
+    .references(() => items.id, { onDelete: 'cascade' })
     .notNull(),
   name: text('name').notNull(),
   link: text('link').notNull(),
@@ -67,9 +67,9 @@ export const item_stores = pgTable('item_stores', {
 export const purchases = pgTable('purchases', {
   id: text('id').primaryKey(),
   item_id: text('item_id')
-    .references(() => items.id)
+    .references(() => items.id, { onDelete: 'cascade' })
     .notNull(),
-  user_id: text('user_id').references(() => users.id), // Made optional
+  user_id: text('user_id').references(() => users.id, { onDelete: 'cascade' }), // Made optional
   guest_name: text('guest_name'), // For guest purchases
   purchased_at: timestamp('purchased_at').defaultNow().notNull(),
 });

@@ -526,6 +526,8 @@ export async function deleteItem(id: string) {
     // Delete item
     await db.delete(items).where(eq(items.id, id));
 
+    revalidateTag('items');
+
     return { success: true, message: 'Item deleted successfully' };
   } catch (error) {
     console.error('Error deleting item:', error);
