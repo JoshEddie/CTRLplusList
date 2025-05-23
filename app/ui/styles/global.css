@@ -1,15 +1,30 @@
 :root {
-  --mainColorHex: #7324ce;
-  --altColorHex: #2264c1;
-  --background-color: #ffffff;
-  --darkColorHex: #000000;
-  color: var(--mainColorHex);
+  --primary-color: #7324ce;
+  --secondary-color: #2264c1;
+  --light-color: #ffffff;
+  --secondary-light-color: #f5f5f5;
+  --third-light-color: #e5e5e5;
+  --dark-color: #000000;
+  --secondary-dark-color: #111111;
+  --third-dark-color: #222222;
+  --danger-color: #ef4444;
+
+  --background-color: var(--light-color);
+  --secondary-background-color: var(--secondary-light-color);
+  --third-background-color: var(--third-light-color);
+  --primary-text-color: var(--primary-color);
+  --contrast-text-color: var(--light-color);
+  --danger-text-color: var(--danger-color);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background-color: var(--darkColorHex);
-    color: #ffffff;
+    --background-color: var(--dark-color);
+    --secondary-background-color: var(--secondary-dark-color);
+    --third-background-color: var(--third-dark-color);
+    --primary-text-color: var(--light-color);
+    --contrast-text-color: var(--primary-color);
+    --danger-text-color: var(--light-color);
   }
 }
 
@@ -31,11 +46,13 @@ body {
   /* background-color: var(--background-color); */
   height: 100vh;
   overflow-y: auto;
-  background-color: var(--mainColorHex);
+  -webkit-overflow-scrolling: touch;
+  /* Background for the page */
+  background-color: var(--primary-color);
   background-image: linear-gradient(
     120deg,
-    var(--mainColorHex),
-    var(--altColorHex)
+    var(--primary-color),
+    var(--secondary-color)
   );
   background-attachment: fixed;
 }
@@ -46,14 +63,29 @@ body {
   margin: 0;
 }
 
+/* This is the visible container with rounded corners */
 .container {
-  background-color: var(--background-color);
   position: absolute;
   top: 150px;
   left: 8px;
   right: 8px;
+  z-index: 1;
   padding: 20px;
-  padding-bottom: 80px;
+}
+
+/* This is the background that stays fixed */
+.container::before {
+  content: '';
+  position: fixed;
+  top: 150px;
+  left: 8px;
+  right: 8px;
+  bottom: 60px;
+  background-color: var(--background-color);
+  border-radius: 8px;
+  z-index: -1;
+  /* Ensure it's behind the content */
+  pointer-events: none;
 }
 
 .header {
@@ -61,6 +93,7 @@ body {
   grid-template-columns: 1fr;
   gap: 10px;
   margin-bottom: 20px;
+  color: var(--primary-text-color);
 }
 
 .header .pageTitle {
@@ -88,10 +121,11 @@ body {
   z-index: 50;
   background-image: linear-gradient(
     120deg,
-    var(--mainColorHex),
-    var(--altColorHex)
+    var(--primary-color),
+    var(--secondary-color)
   );
   background-attachment: fixed;
+  box-sizing: border-box;
 }
 
 .logo {
@@ -145,7 +179,8 @@ body {
 .user-container {
   position: fixed;
   bottom: 0;
-  width: 100%;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -153,10 +188,11 @@ body {
   padding: 8px;
   background-image: linear-gradient(
     120deg,
-    var(--mainColorHex),
-    var(--altColorHex)
+    var(--primary-color),
+    var(--secondary-color)
   );
   background-attachment: fixed;
+  box-sizing: border-box;
 }
 
 .user-container .user-name {
@@ -171,8 +207,31 @@ body {
   margin-right: 10px;
 }
 
-@media (min-width: 800px) {
+.empty-container {
+  padding: 40px 20px;
+  border: 1px solid var(--primary-color);
+  background-color: var(--secondary-background-color);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 20px;
+  color: var(--primary-text-color);
+}
 
+.empty-container h3 {
+  font-size: 40px;
+  font-family: var(--font-crimson-pro);
+  font-weight: 100;
+}
+
+.empty-container p {
+  font-size: 18px;
+}
+
+@media (min-width: 1000px) {
   body {
     overflow: hidden;
   }
@@ -183,8 +242,14 @@ body {
     right: 8px;
     bottom: 8px;
     padding: 30px;
-    border-radius: 8px;
+    position: fixed;
     overflow-y: auto;
+    border-radius: 8px;
+    background-color: var(--background-color);
+  }
+
+  .container::before {
+    display : none;
   }
 
   .menu {
@@ -220,7 +285,7 @@ body {
   }
 }
 
-@media (min-width: 1000px) {
+@media (min-width: 1200px) {
   .container {
     left: 250px;
     padding: 30px;
@@ -231,7 +296,7 @@ body {
   }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1400px) {
   .container {
     left: 300px;
     padding: 40px;

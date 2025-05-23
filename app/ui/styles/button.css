@@ -16,47 +16,51 @@
 }
 
 .primary {
-  background-color: var(--mainColorHex);
-  border-color: var(--mainColorHex);
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
   color: #ffffff;
 }
 
 .primary:hover {
-  background-color: var(--altColorHex);
-  border-color: var(--altColorHex);
+  background-color: var(--secondary-color);
+  border-color: var(--secondary-color);
 }
 
 .danger {
   background-color: transparent;
-  border-color: #dc2626;
-  color: #ffffff;
+  border-color: var(--danger-color);
+  color: var(--danger-text-color);
 }
 
 .danger:hover {
-  background-color: #dc2626;
-  border-color: #dc2626;
-}
-
-.outline {
-  background-color: transparent;
-}
-
-.outline:hover {
-  background-color: var(--mainColorHex);
-  border-color: var(--mainColorHex);
+  background-color: var(--danger-color);
+  border-color: var(--danger-color);
+  color: #ffffff;
 }
 
 .nav {
-  background-color: var(--darkColorHex);
-  border-color: var(--darkColorHex);
-  color: #ffffff;
+  background-color: var(--background-color);
+  border-color: var(--background-color);
+  color: var(--primary-text-color);
 }
 
 .nav:hover {
   background-color: transparent;
+  color: #ffffff;
 }
 
-@media (max-width: 800px) {
+.outline {
+  background-color: transparent;
+  color: var(--primary-text-color);
+}
+
+.outline:hover {
+  background-color: var(--secondary-color);
+  border-color: var(--secondary-color);
+  color: #ffffff;
+}
+
+@media (max-width: 1000px) {
 
   .btn {
     padding: 15px 20px;

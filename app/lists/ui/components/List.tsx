@@ -1,4 +1,4 @@
-import EmptyList from '@/app/lists/ui/components/EmptyList';
+import Empty from '@/app/ui/components/Empty';
 import { getCurrentUser, getListsByUser } from '@/lib/dal';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -15,7 +15,7 @@ export default async function ListSelect() {
   return (
     <>
       {lists.length === 0 ? (
-        <EmptyList />
+        <Empty type="list" />
       ) : (
         <>
           <div className="list-grid">

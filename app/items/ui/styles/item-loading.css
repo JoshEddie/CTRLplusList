@@ -10,7 +10,7 @@
 .item-form-loading-item {
   height: 175px;
   border-radius: 20px;
-  background: #111111;
+  background: var(--secondary-background-color);
 }
 
 .item-form-loading {
@@ -50,11 +50,10 @@
   height: 2.5rem;
   width: 100%;
   border-radius: 20px;
-  background: #111111;
+  background: var(--secondary-background-color);
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   transition: border-color 0.15s;
-  color: #ffffff;
 }
 
 @keyframes pulse {
