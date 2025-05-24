@@ -73,6 +73,7 @@ body {
   right: 8px;
   z-index: 1;
   padding: 20px;
+  padding-bottom: 80px;
 }
 
 /* This is the background that stays fixed */

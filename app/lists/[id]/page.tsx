@@ -3,8 +3,9 @@ import Header from '@/app/ui/components/Header';
 import { getList } from '@/lib/dal';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { MdModeEdit, MdOutlineIosShare } from 'react-icons/md';
+import { MdModeEdit } from 'react-icons/md';
 import DeleteListButton from '../ui/components/DeleteListButton';
+import ShareButton from '../ui/components/ShareButton';
 
 export default async function ListPage({
   params,
@@ -27,10 +28,7 @@ export default async function ListPage({
           <MdModeEdit />
           <span className="label mobile-hide">Edit List</span>
         </Link>
-        <Link className="btn primary" href={`/lists/${id}/shared`}>
-          <MdOutlineIosShare />
-          <span className="label mobile-hide">Share List</span>
-        </Link>
+        <ShareButton list={list} />
       </Header>
       <ItemsContainer listId={id} showEditButton={true} />
     </div>
