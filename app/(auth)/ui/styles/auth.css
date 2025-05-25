@@ -1,24 +1,91 @@
-/* Auth Page Styles */
-.auth-container {
-  width: 100%;
-}
-
-.button-group {
+.sign-in-page {
   display: flex;
-  flex-direction: column;
   justify-content: center;
-  width: 300px;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+}
+
+.auth-container {
+  background-color: var(--secondary-background-color);
+  padding: 40px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  display: flex;
+  gap: 20px;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 10px 10px 15px rgba(0, 0, 0, 0.4);
+}
+
+.user-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  flex-direction: column;
   gap: 10px;
-  margin: 0 auto;
 }
 
-.auth-link {
-  display: block;
+.user-container:hover {
+  align-items: center;
+  background-color: var(--background-color);
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.user-container:hover .avatar {
+  width: 60px;
+  height: 60px;
+}
+
+.user-container .sign-out-button {
+  display: none;
+}
+
+.user-container:hover .sign-out-button {
+  display: flex;
+}
+
+.user-container .user-name {
+  font-size: 1rem;
+  font-family: var(--font-crimson-pro);
+  font-weight: 100;
+  color: #ffffff;
   text-align: center;
-  color: var(--secondary-color);
-  text-decoration: none;
 }
 
-.auth-link:hover {
-  color: var(--primary-text-color);
+.user-container .avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
 }
+
+@media (min-width: 1000px) {
+
+  .user-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: auto;
+    top: auto;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+  }
+
+  .user-container .sign-out-button {
+    display: flex;
+  }
+
+  .user-container .avatar {
+    width: 60px;
+    height: 60px;
+  }
+
+}
+  

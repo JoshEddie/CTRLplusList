@@ -2,7 +2,6 @@ import '@/app/ui/styles/button.css';
 import type { Metadata } from 'next';
 import { Crimson_Pro, Roboto, Roboto_Condensed } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
-import Menu from './ui/components/Menu';
 import './ui/styles/global.css';
 
 const roboto = Roboto({
@@ -65,14 +64,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+
   return (
     <html lang="en">
       <body
         className={`${roboto.variable} ${robotoCondensed.variable} ${crimsonPro.variable}`}
       >
         <Toaster position="top-right" />
-        <Menu />
-        <main className="container">{children}</main>
+        {children}
       </body>
     </html>
   );

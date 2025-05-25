@@ -1,6 +1,6 @@
 'use client';
 
-import '@/app/lists/ui/styles/confirm-dialog.css';
+import '@/app/(main)/lists/ui/styles/confirm-dialog.css';
 
 interface ConfirmDialogProps {
   isOpen: boolean;

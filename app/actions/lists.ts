@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { lists } from '@/db/schema';
-import { getCurrentUser } from '@/lib/dal';
+import { auth } from '@/lib/auth';
 import { eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { revalidateTag } from 'next/cache';
@@ -34,8 +34,8 @@ export type ActionResponse = {
 export async function createList(data: ListData): Promise<ActionResponse> {
   try {
     // Security check - ensure user is authenticated
-    const user = await getCurrentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -90,8 +90,8 @@ export async function updateList(
 ): Promise<ActionResponse> {
   try {
     // Security check - ensure user is authenticated
-    const user = await getCurrentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -147,8 +147,8 @@ export async function updateList(
 export async function deleteList(id: string): Promise<ActionResponse> {
   try {
     // Security check - ensure user is authenticated
-    const user = await getCurrentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user) {
       return {
         success: false,
         message: 'Unauthorized access',
