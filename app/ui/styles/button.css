@@ -60,11 +60,6 @@
   color: #ffffff;
 }
 
-.google {
-  background-color: #ffffff;
-  flex-direction: row-reverse;
-}
-
 @media (max-width: 1000px) {
 
   .btn {

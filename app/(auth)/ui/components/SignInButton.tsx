@@ -1,10 +1,7 @@
-import { signOutUser } from '@/app/actions/user';
-import { auth, signIn } from '@/lib/auth';
-import { redirect } from 'next/navigation';
-import { LuLogOut } from 'react-icons/lu';
+import { auth, signIn } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-
-export async function SignInButton() {
+export default async function SignInButton() {
   const session = await auth();
 
   if (session?.user) {
@@ -52,20 +49,6 @@ export async function SignInButton() {
           </span>
           <span style={{ display: 'none' }}>Sign in with Google</span>
         </div>
-      </button>
-    </form>
-  );
-}
-
-export function SignOutButton() {
-  return (
-    <form
-      className="sign-out-button"
-      action={signOutUser}
-    >
-      <button type="submit" className="btn nav">
-        <LuLogOut size={20} />
-        Sign Out
       </button>
     </form>
   );

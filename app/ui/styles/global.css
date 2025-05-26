@@ -74,7 +74,7 @@ body {
   right: 8px;
   z-index: 1;
   padding: 20px;
-  padding-bottom: 80px;
+  padding-bottom: 20px;
 }
 
 /* This is the background that stays fixed */
@@ -84,13 +84,28 @@ body {
   top: 150px;
   left: 8px;
   right: 8px;
-  bottom: 60px;
+  bottom: 8px;
   background-color: var(--background-color);
   border-radius: 8px;
   z-index: -1;
   /* Ensure it's behind the content */
   pointer-events: none;
 }
+
+/* .bottom-line {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background-color: var(--primary-color);
+  background-image: linear-gradient(
+    120deg,
+    var(--primary-color),
+    var(--secondary-color)
+  );
+  background-attachment: fixed;
+} */
 
 .header {
   display: grid;
@@ -104,6 +119,10 @@ body {
   font-size: 40px;
   font-family: var(--font-crimson-pro);
   font-weight: 100;
+  text-align: center;
+}
+
+.header .listDetails {
   text-align: center;
 }
 
@@ -130,6 +149,22 @@ body {
   );
   background-attachment: fixed;
   box-sizing: border-box;
+}
+
+.menu::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background-color: var(--primary-color);
+  background-image: linear-gradient(
+    120deg,
+    var(--primary-color),
+    var(--secondary-color)
+  );
+  background-attachment: fixed;
 }
 
 .logo {
@@ -205,14 +240,14 @@ body {
   font-size: 18px;
 }
 
-@media (min-width: 1000px) {
+@media (min-width: 1200px) {
   body {
     overflow: hidden;
   }
 
   .container {
     top: 8px;
-    left: 200px;
+    left: 250px;
     right: 8px;
     bottom: 8px;
     padding: 30px;
@@ -230,7 +265,7 @@ body {
     top: 28px;
     left: 0;
     bottom: 8px;
-    width: 200px;
+    width: 250px;
     height: auto;
   }
 
@@ -249,16 +284,9 @@ body {
   .header .pageTitle {
     text-align: left;
   }
-}
 
-@media (min-width: 1200px) {
-  .container {
-    left: 250px;
-    padding: 30px;
-  }
-
-  .menu {
-    width: 250px;
+  .header .listDetails {
+    text-align: left;
   }
 }
 

@@ -237,7 +237,7 @@
   }
 }
 
-@media (min-width: 1000px) {
+@media (min-width: 1200px) {
   .form-group.name-link-input {
     grid-template-columns: 30% 1fr;
   }
@@ -252,16 +252,6 @@
     gap: 1rem;
   }
 
-  .store-input-container {
-    grid-template-columns: 1fr;
-  }
-  
-  .store-input-container .store-input:last-child {
-    grid-column: span 1;
-  }
-}
-
-@media (min-width: 1200px) {
   .store-input-container {
     grid-template-columns: 1fr 100px;
   }
