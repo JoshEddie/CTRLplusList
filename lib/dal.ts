@@ -1,45 +1,27 @@
 import { db } from '@/db';
 import { items, list_items, lists, users } from '@/db/schema';
-import { getSession } from '@/lib/auth';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { unstable_cacheTag as cacheTag } from 'next/cache';
 import { cache } from 'react';
 import { ItemStoreTable, ItemTable, ListTable, UserTable } from './types';
 
-// Current user
-export const getCurrentUser: () => Promise<Omit<UserTable, 'password'> | null> =
-  cache(async () => {
-    const session = await getSession();
-    if (!session) return null;
-
-    // Skip database query during prerendering if we don't have a session
-    // hack until we have PPR https://nextjs.org/docs/app/building-your-application/rendering/partial-prerendering
-    if (
-      typeof window === 'undefined' &&
-      process.env.NEXT_PHASE === 'phase-production-build'
-    ) {
-      return null;
-    }
-
+// Get user by id
+export const getUserById: (id: string) => Promise<UserTable | null> =
+  cache(async (id: string) => {
     try {
       const result = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          name: users.name,
-        })
+        .select()
         .from(users)
-        .where(eq(users.id, session.userId));
-
+        .where(eq(users.id, id));
       return result[0] || null;
     } catch (error) {
-      console.error('Error getting user by ID:', error);
+      console.error('Error getting user by id:', error);
       return null;
     }
   });
 
 // Get user by email
-export const getUserByEmail: (email: string) => Promise<UserTable | null> =
+export const getUserIdByEmail: (email: string) => Promise<UserTable | null> =
   cache(async (email: string) => {
     try {
       const result = await db
@@ -71,9 +53,7 @@ export async function getList(id: string) {
   }
 }
 
-export async function getLists(): Promise<
-  (ListTable & { user: Omit<UserTable, 'password'> })[]
-> {
+export async function getLists() {
   'use cache';
   cacheTag('lists');
   try {
@@ -98,7 +78,7 @@ export async function getLists(): Promise<
 
 export async function getListsByUser(
   userId: string
-): Promise<(ListTable & { user: Omit<UserTable, 'password'> })[]> {
+) {
   'use cache';
   cacheTag('lists');
   try {
@@ -124,7 +104,7 @@ export async function getListsByUser(
 
 export async function getItemsByUser(
   userId: string
-): Promise<(ItemTable & { stores: ItemStoreTable[] })[]> {
+) {
   'use cache';
   cacheTag('items');
   try {
@@ -142,17 +122,12 @@ export async function getItemsByUser(
   }
 }
 
-export async function getItemById(id: string): Promise<
-  ItemTable & {
-    stores: ItemStoreTable[];
-    lists: (ListTable & { position: number })[];
-  } | undefined
-> {
+export async function getItemById(id: string, userId: string) {
   'use cache';
   cacheTag('items');
   try {
     const result = await db.query.items.findFirst({
-      where: eq(items.id, id),
+      where: and(eq(items.id, id), eq(items.user_id, userId)),
       with: {
         stores: true,
         list_items: {

@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { item_stores, items, list_items, purchases } from '@/db/schema';
-import { getCurrentUser } from '@/lib/dal';
+import { auth } from '@/lib/auth';
 import { ItemDetails } from '@/lib/types';
 import { and, asc, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -79,8 +79,8 @@ export async function createPurchase(data: {
 }): Promise<ActionResponse> {
   try {
     // Security check - ensure user is authenticated
-    const user = await getCurrentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -112,8 +112,8 @@ export async function createPurchase(data: {
 export async function createItem(data: ItemDetails): Promise<ActionResponse> {
   try {
     // Security check - ensure user is authenticated
-    const user = await getCurrentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -442,8 +442,8 @@ export async function updateItem(
 ): Promise<ActionResponse> {
   try {
     // Security check - ensure user is authenticated
-    const user = await getCurrentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -505,11 +505,11 @@ export async function updateItem(
   }
 }
 
-export async function deleteItem(id: string) {
+export async function deleteItem(id: string, userId: string) {
   try {
     // Security check - ensure user is authenticated
-    const user = await getCurrentUser();
-    if (!user) {
+    const session = await auth();
+    if (!session?.user) {
       throw new Error('Unauthorized');
     }
 
@@ -519,7 +519,7 @@ export async function deleteItem(id: string) {
       columns: { user_id: true },
     });
 
-    if (!item || item.user_id !== user.id) {
+    if (!item || item.user_id !== userId) {
       throw new Error('Unauthorized - Item does not belong to you');
     }
 
@@ -555,7 +555,7 @@ export async function seedItems() {
       name: item.name,
       image_url: item.image_url,
       quantity_limit: 1,
-      user_id: '3fJLoNhvwn9d2ahehmVA4',
+      user_id: 'jR6PWU8wp_DbkNlxenDZi',
     })
 
       // Extract the domain part between www. and .com

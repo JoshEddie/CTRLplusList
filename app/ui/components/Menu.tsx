@@ -1,15 +1,19 @@
-import Link from 'next/link';
+'use server';
+
 import { Suspense } from 'react';
+import User from '../../(auth)/ui/components/User';
 import Logo from './Logo';
 import Nav from './Nav';
-import User from './User';
 
 const Menu: React.FC = () => {
   return (
     <div className="menu">
       <Logo />
-      <Nav />
-      <Suspense fallback={<Link href="/signin">Sign In</Link>}>
+      <Suspense fallback={<></>}>
+        <Nav />
+      </Suspense>
+
+      <Suspense fallback={<></>}>
         <User />
       </Suspense>
     </div>

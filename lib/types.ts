@@ -10,9 +10,10 @@ export type ListTable = {
 
 export type UserTable = {
   id: string;
-  email: string;
-  name: string;
-  password: string;
+  email: string | null;
+  name: string | null;
+  emailVerified: Date | null;
+  image: string | null;
 };
 
 export type ItemTable = {
