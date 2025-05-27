@@ -1,25 +1,25 @@
-import { ListTable, UserTable } from '@/lib/types';
+import { ListTable } from '@/lib/types';
 import { FaCalendar, FaGift, FaUser } from 'react-icons/fa';
 interface ListHeaderProps {
   title: string;
-  user: UserTable | null;
+  user_name: string | null;
   list: ListTable;
   children?: React.ReactNode;
 }
 
 export default function ListHeader({
   title,
-  user,
+  user_name,
   list,
   children,
 }: ListHeaderProps) {
   return (
     <>
       <div className="list-title">{title}</div>
-      {user && (
+      {user_name && (
         <div className="list-info">
           <div className="list-info-item">
-            <FaUser /> {user.name}
+            <FaUser /> {user_name}
           </div>
           <div className="list-info-item">
             <FaCalendar />{' '}

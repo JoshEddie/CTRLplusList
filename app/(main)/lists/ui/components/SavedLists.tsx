@@ -22,7 +22,7 @@ export default async function SavedLists() {
     <>
       {savedLists.length === 0 ? (
         <div className="empty-container">
-          <h3>No Saved Lists Found</h3>
+          <h3>No Saved Lists</h3>
         </div>
       ) : (
         <>

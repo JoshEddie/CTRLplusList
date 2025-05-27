@@ -14,7 +14,7 @@ export default async function Home() {
       <Header title="My Lists">
         <Link className="btn primary" href="/lists/new">
           <FaPlus size={14} />
-          New List
+          <span className="mobile-hide">New List</span>
         </Link>
       </Header>
       <Suspense fallback={<ListLoading />}>

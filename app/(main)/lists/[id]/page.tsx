@@ -1,15 +1,9 @@
 import ItemsContainer from '@/app/(main)/items/ui/components/ItemsContainer';
-import ListHeader from '@/app/(main)/lists/ui/components/ListHeader';
 import { auth } from '@/lib/auth';
 import { getList, getUserById, getUserIdByEmail } from '@/lib/dal';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { MdModeEdit } from 'react-icons/md';
-import DeleteListButton from '../ui/components/DeleteListButton';
+import ListDetails from '../ui/components/ListDetails';
 import ListPrivate from '../ui/components/ListPrivate';
-import SaveContainer from '../ui/components/SaveContainer';
-import ShareButton from '../ui/components/ShareButton';
-import ShareList from '../ui/components/ShareList';
 
 export default async function ListPage({
   params,
@@ -43,23 +37,7 @@ export default async function ListPage({
 
   return (
     <div className={`list-details-container ${user ? '' : 'no-user'}`}>
-      <div className="list-details">
-        {isOwner && <ShareList list={list} />}
-        <ListHeader title={list.name} user={listOwner} list={list}>
-          {isOwner ? (
-            <>
-              <Link className="btn primary" href={`/lists/${id}/edit`}>
-                <MdModeEdit />
-                <span className="label mobile-hide">Edit List</span>
-              </Link>
-              <ShareButton list={list} />
-              <DeleteListButton id={list.id} />
-            </>
-          ) : (
-            user?.id && <SaveContainer list_id={list.id} user_id={user.id} />
-          )}
-        </ListHeader>
-      </div>
+      <ListDetails isOwner={isOwner} list={list} user_name={listOwner?.name || undefined} user_id={user?.id || undefined} />
       <ItemsContainer listId={id} />
     </div>
   );

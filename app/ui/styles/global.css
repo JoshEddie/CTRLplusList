@@ -75,7 +75,7 @@ body {
 /* This is the visible container with rounded corners */
 .container {
   position: absolute;
-  top: 158px;
+  top: 153px;
   left: 16px;
   right: 16px;
   z-index: 1;
@@ -87,7 +87,7 @@ body {
 .container::before {
   content: '';
   position: fixed;
-  top: 158px;
+  top: 153px;
   left: 16px;
   right: 16px;
   bottom: 16px;
@@ -107,11 +107,11 @@ body {
 }
 
 .header {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   color: var(--primary-text-color);
 }
 
@@ -123,11 +123,11 @@ body {
   font-size: 40px;
   font-family: var(--font-crimson-pro);
   font-weight: 100;
-  text-align: center;
+  text-align: left;
 }
 
 .header .listDetails {
-  text-align: center;
+  text-align: left;
 }
 
 .header-buttons {
@@ -267,20 +267,7 @@ body {
   }
 }
 
-@media (min-width: 1200px) {
-
-  /* .container {
-    position: fixed;
-    bottom: 16px;
-    background-color: var(--background-color);
-    overflow-y: auto;
-    border-radius: 8px;
-  }
-
-  .container::before {
-    display: none;
-  } */
-
+@media (min-width: 800px) {
   .header {
     display: grid;
     grid-template-columns: 1fr auto;

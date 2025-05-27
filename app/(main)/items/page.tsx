@@ -9,7 +9,7 @@ export default async function Home() {
       <Header title="Items">
         <Link className="btn primary" href="/items/new">
           <FaPlus size={14} />
-          New Item
+          <span className="mobile-hide">New Item</span>
         </Link>
       </Header>
       <ItemsContainer />
