@@ -6,6 +6,7 @@ export type ListTable = {
   created_at: Date;
   updated_at: Date;
   user_id: string;
+  shared: boolean;
 };
 
 export type UserTable = {

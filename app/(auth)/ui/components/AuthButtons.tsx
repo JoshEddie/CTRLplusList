@@ -1,8 +1,7 @@
-import { signOutUser } from '@/app/actions/user';
-import { auth, signIn } from '@/lib/auth';
+import { signInUser, signOutUser } from '@/app/actions/user';
+import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { LuLogOut } from 'react-icons/lu';
-
 
 export async function SignInButton() {
   const session = await auth();
@@ -13,8 +12,7 @@ export async function SignInButton() {
   return (
     <form
       action={async () => {
-        'use server';
-        await signIn('google');
+        await signInUser();
       }}
     >
       <button className="gsi-material-button">

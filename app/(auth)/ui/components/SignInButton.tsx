@@ -1,18 +1,10 @@
-import { auth, signIn } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { signInUser } from "@/app/actions/user";
 
-export default async function SignInButton() {
-  const session = await auth();
+export default function SignInButton() {
 
-  if (session?.user) {
-    redirect('/lists');
-  }
   return (
     <form
-      action={async () => {
-        'use server';
-        await signIn('google');
-      }}
+      action={signInUser}
     >
       <button className="gsi-material-button">
         <div className="gsi-material-button-state"></div>
