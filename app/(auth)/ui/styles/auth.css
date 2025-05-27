@@ -94,15 +94,12 @@
 }
 
 .avatar-container {
-  position: fixed;
-  top: 20px;
-  right: 20px;
   height: 45px;
   width: 45px;
   border-radius: 50%;
   overflow: hidden;
-  z-index: 100;
   cursor: pointer;
+  position: relative;
 }
 
 .avatar-container.hide {
@@ -138,42 +135,12 @@
   cursor: pointer;
 }
 
-@media (min-width: 1200px) {
+.avatar-container.placeholder {
+  width: 90px;
+  border-radius: 0;
+}
 
-  .auth-container p {
-    display: block;
-  }
-
-  .avatar-container {
-    display: none;
-  }
-
-  .user-menu {
-    display: flex;
-    background-color: transparent;
-    background: none;
-    position: static;
-    padding: 8px 16px;
-  }
-
-  .user-menu .auth-container {
-    box-shadow: none;
-    width: 100%;
-    max-width: none;
-  }
-
-  .user-menu .close-button {
-    display: none;
-  }
-
-  .user-menu.sign-in {
-    position: static;
-  }
-  
-  .user-menu.sign-in .auth-container {
-    background-color: var(--background-color);
-    box-shadow: none;
-  }
-
+.avatar-container .placeholder {
+  width: 90px;
 }
   

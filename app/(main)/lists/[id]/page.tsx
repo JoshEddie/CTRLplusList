@@ -1,25 +1,27 @@
 import ItemsContainer from '@/app/(main)/items/ui/components/ItemsContainer';
-import ListHeader from '@/app/(main)/lists/ui/components/ListHeader';
 import { auth } from '@/lib/auth';
 import { getList, getUserById, getUserIdByEmail } from '@/lib/dal';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { MdModeEdit } from 'react-icons/md';
-import DeleteListButton from '../ui/components/DeleteListButton';
-import ShareButton from '../ui/components/ShareButton';
+import ListDetails from '../ui/components/ListDetails';
+import ListPrivate from '../ui/components/ListPrivate';
 
 export default async function ListPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-
   const session = await auth();
-  const user = session?.user?.email ? await getUserIdByEmail(session?.user?.email) : null;
+  const user = session?.user?.email
+    ? await getUserIdByEmail(session?.user?.email)
+    : null;
 
   const { id } = await params;
 
   const list = await getList(id);
+
+  if (!user && !list) {
+    redirect('/');
+  }
 
   if (!list) {
     redirect('/lists');
@@ -29,20 +31,13 @@ export default async function ListPage({
 
   const isOwner = user?.id === list.user_id;
 
+  if (!list.shared && !isOwner) {
+    return <ListPrivate loggedIn={!!user} />;
+  }
+
   return (
-    <div className="list-container">
-      <ListHeader title={list.name} user={listOwner} list={list}>
-        {isOwner && (
-          <>
-            <DeleteListButton id={list.id} />
-            <Link className="btn primary" href={`/lists/${id}/edit`}>
-              <MdModeEdit />
-              <span className="label mobile-hide">Edit List</span>
-            </Link>
-            <ShareButton list={list} />
-          </>
-        )}
-      </ListHeader>
+    <div className={`list-details-container ${user ? '' : 'no-user'}`}>
+      <ListDetails isOwner={isOwner} list={list} user_name={listOwner?.name || undefined} user_id={user?.id || undefined} />
       <ItemsContainer listId={id} />
     </div>
   );

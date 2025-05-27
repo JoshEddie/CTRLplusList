@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+  boolean,
   integer,
   pgTable,
   primaryKey,
@@ -55,6 +56,7 @@ export const lists = pgTable('lists', {
   user_id: text('user_id')
     .references(() => users.id, { onDelete: 'cascade' })
     .notNull(),
+  shared: boolean('shared').default(false).notNull(),
 });
 
 export const items = pgTable('items', {
@@ -80,10 +82,20 @@ export const list_items = pgTable(
       .notNull(),
     position: integer('position').notNull(),
   },
-  (table) => ({
-    pk: primaryKey({ columns: [table.list_id, table.item_id] }),
-  })
+  (table) => [
+    primaryKey({ columns: [table.list_id, table.item_id] }),
+  ]
 );
+
+export const saved_lists = pgTable('saved_lists', {
+  id: text('id').primaryKey(),
+  list_id: text('list_id')
+    .references(() => lists.id, { onDelete: 'cascade' })
+    .notNull(),
+  user_id: text('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+});
 
 export const item_stores = pgTable('item_stores', {
   id: text('id').primaryKey(),
@@ -137,12 +149,25 @@ export const listsRelations = relations(lists, ({ one, many }) => ({
     references: [users.id],
   }),
   items: many(list_items),
+  saved_lists: many(saved_lists),
+}));
+
+export const saved_listsRelations = relations(saved_lists, ({ one }) => ({
+  list: one(lists, {
+    fields: [saved_lists.list_id],
+    references: [lists.id],
+  }),
+  user: one(users, {
+    fields: [saved_lists.user_id],
+    references: [users.id],
+  }),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
   lists: many(lists),
   items: many(items),
   purchases: many(purchases),
+  saved_lists: many(saved_lists),
 }));
 
 export const list_itemsRelations = relations(list_items, ({ one }) => ({

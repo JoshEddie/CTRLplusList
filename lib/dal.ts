@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { items, list_items, lists, users } from '@/db/schema';
+import { items, list_items, lists, saved_lists, users } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { unstable_cacheTag as cacheTag } from 'next/cache';
 import { cache } from 'react';
@@ -194,4 +194,64 @@ export async function getItemsByListId(listId: string): Promise<
     console.error('Error fetching items:', error);
     throw new Error('Failed to fetch items');
   }
+}
+
+export async function getListsSharedByUser(userId: string) {
+  'use cache';
+  cacheTag('lists');
+  try {
+    const result = await db.query.lists.findMany({
+      where: and(eq(lists.shared, true), eq(lists.user_id, userId)),
+      with: {
+        user: {
+          columns: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: (lists, { desc }) => [desc(lists.created_at)],
+    });
+    return result;
+  } catch (error) {
+    console.error('Error fetching lists:', error);
+    throw new Error('Failed to fetch lists');
+  }
+}
+
+export async function getSavedListsByUser(userId: string) {
+  'use cache';
+  cacheTag('saved_lists');
+  try {
+    const result = await db.query.saved_lists.findMany({
+      where: eq(saved_lists.user_id, userId),
+      with: {
+        list: true,
+      },
+    });
+    return result;
+  } catch (error) {
+    console.error('Error fetching saved lists:', error);
+    throw new Error('Failed to fetch saved lists');
+  }
+}
+
+export async function getSavedStatus(listId: string, userId: string): Promise<{ list_id: string; user_id: string; id: string; } | undefined> {
+    'use cache';
+    cacheTag('saved_lists');
+    try {
+        const result = await db.query.saved_lists.findFirst({
+            where: and(eq(saved_lists.list_id, listId), eq(saved_lists.user_id, userId)),
+        });
+
+        if (!result) {
+            return undefined;
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error fetching saved status:', error);
+        throw new Error('Failed to fetch saved status');
+    }
 }

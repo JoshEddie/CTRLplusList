@@ -1,9 +1,9 @@
 'use server';
 
 import { db } from '@/db';
-import { lists } from '@/db/schema';
+import { lists, saved_lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
@@ -57,15 +57,13 @@ export async function createList(data: ListData): Promise<ActionResponse> {
 
     // Create list with validated data
     const validatedData = validationResult.data;
-    await db
-      .insert(lists)
-      .values({
-        id,
-        name: sql`${validatedData.name}`,
-        occasion: sql`${validatedData.occasion}`,
-        date: sql`${validatedData.date}`,
-        user_id: sql`${validatedData.user_id}`,
-      });
+    await db.insert(lists).values({
+      id,
+      name: sql`${validatedData.name}`,
+      occasion: sql`${validatedData.occasion}`,
+      date: sql`${validatedData.date}`,
+      user_id: sql`${validatedData.user_id}`,
+    });
 
     revalidateTag('lists');
 
@@ -168,6 +166,99 @@ export async function deleteList(id: string): Promise<ActionResponse> {
       success: false,
       message: 'An error occurred while deleting the list',
       error: 'Failed to delete list',
+    };
+  }
+}
+
+export async function toggleShareList(
+  id: string,
+  shared: boolean
+): Promise<ActionResponse> {
+  try {
+    // Security check - ensure user is authenticated
+    const session = await auth();
+    if (!session?.user) {
+      return {
+        success: false,
+        message: 'Unauthorized access',
+        error: 'Unauthorized',
+      };
+    }
+
+    // Share list
+    await db.update(lists).set({ shared: shared }).where(eq(lists.id, id));
+
+    revalidateTag('lists');
+
+    return { success: true, message: 'List shared successfully' };
+  } catch (error) {
+    console.error('Error sharing list:', error);
+    return {
+      success: false,
+      message: 'An error occurred while sharing the list',
+      error: 'Failed to share list',
+    };
+  }
+}
+
+export async function saveList(
+  list_id: string,
+  user_id: string
+): Promise<ActionResponse> {
+  try {
+    // Security check - ensure user is authenticated
+    const session = await auth();
+    if (!session?.user) {
+      return {
+        success: false,
+        message: 'Unauthorized access',
+        error: 'Unauthorized',
+      };
+    }
+
+    // Save list
+    await db.insert(saved_lists).values({ id: nanoid(), list_id, user_id });
+
+    revalidateTag('saved_lists');
+
+    return { success: true, message: 'List saved successfully' };
+  } catch (error) {
+    console.error('Error saving list:', error);
+    return {
+      success: false,
+      message: 'An error occurred while saving the list',
+      error: 'Failed to save list',
+    };
+  }
+}
+
+export async function unsaveList(
+  list_id: string,
+  user_id: string
+): Promise<ActionResponse> {
+  try {
+    // Security check - ensure user is authenticated
+    const session = await auth();
+    if (!session?.user) {
+      return {
+        success: false,
+        message: 'Unauthorized access',
+        error: 'Unauthorized',
+      };
+    }
+
+    // Unsave list
+    await db.delete(saved_lists).where(and(eq(saved_lists.list_id, list_id), eq(saved_lists.user_id, user_id)));
+
+    revalidateTag('saved_lists');
+
+    return { success: true, message: 'List unsaved successfully' };
+  } catch (error) {
+    console.error('Error unsaving list:', error);
+    return {
+      success: false,
+      message: 'An error occurred while unsaving the list',
+      error: 'Failed to unsave list',
     };
   }
 }

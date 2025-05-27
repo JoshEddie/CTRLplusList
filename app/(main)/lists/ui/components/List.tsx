@@ -26,12 +26,12 @@ export default async function ListSelect() {
       ) : (
         <>
           <div className="list-grid">
-            {/* Header Row */}
+            {/* Header Row
             <div className="list-header mobile-hide">
               <div className="list-cell">Name</div>
               <div className="list-cell">Occasion</div>
               <div className="list-cell">Date</div>
-            </div>
+            </div> */}
 
             {/* List Rows */}
             {lists.map((list) => (
