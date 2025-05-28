@@ -1,6 +1,8 @@
 import Header from '@/app/ui/components/Header';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { FaPlus } from 'react-icons/fa';
+import ItemLoading from './ui/components/ItemLoading';
 import ItemsContainer from './ui/components/ItemsContainer';
 
 export default async function Home() {
@@ -12,7 +14,9 @@ export default async function Home() {
           <span className="mobile-hide">New Item</span>
         </Link>
       </Header>
-      <ItemsContainer />
+      <Suspense fallback={<ItemLoading />}>
+        <ItemsContainer />
+      </Suspense>
     </div>
   );
 }

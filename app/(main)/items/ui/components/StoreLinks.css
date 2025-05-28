@@ -7,6 +7,11 @@
   margin: 0 auto;
 }
 
+.drag-active .storeLinks,
+.item-drag-overlay .storeLinks {
+  display: none;
+}
+
 .storeLinks .store-name {
   font-weight: 200;
 }
