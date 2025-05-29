@@ -5,7 +5,7 @@ import Google from "next-auth/providers/google";
 import { db } from "../db";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  theme: { logo: "http://localhost:3000/ctrlpluslist_logo-hor-white.webp" },
+  theme: { logo: "https://ctrlpluslist.com/ctrlpluslist_logo-hor-white.webp" },
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
