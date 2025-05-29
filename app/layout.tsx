@@ -29,12 +29,12 @@ const crimsonPro = Crimson_Pro({
 });
 
 export const metadata: Metadata = {
-  title: 'Wishlist',
-  description: 'Create and share your wishlists with friends and family',
+  title: 'Ctrl+List',
+  description: 'Create and share your lists with friends and family',
   metadataBase: new URL('https://list.eddiefamily.com'),
   openGraph: {
-    title: 'Wishlist',
-    description: 'Create and share your wishlists with friends and family',
+    title: 'Ctrl+List',
+    description: 'Create and share your lists with friends and family',
     images: [
       {
         url: '/images/Wishlist_preview.jpg',
@@ -47,13 +47,13 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Wishlist',
-    description: 'Create and share your wishlists with friends and family',
+    title: 'Ctrl+List',
+    description: 'Create and share your lists with friends and family',
     images: ['/images/Wishlist_preview.jpg'],
   },
   other: {
     'apple-mobile-web-app-capable': 'yes',
-    'apple-mobile-web-app-title': 'Wishlist',
+    'apple-mobile-web-app-title': 'Ctrl+List',
     'format-detection': 'telephone=no',
     'apple-mobile-web-app-status-bar-style': 'default',
   },
