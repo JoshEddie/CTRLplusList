@@ -138,9 +138,16 @@
 .avatar-container.placeholder {
   width: 90px;
   border-radius: 0;
+  margin-left: auto;
+  margin-right: 0;
 }
 
 .avatar-container .placeholder {
   width: 90px;
 }
   
+@media (min-width: 600px) {
+  .avatar-container.placeholder {
+    grid-column: span 2;
+  }
+}

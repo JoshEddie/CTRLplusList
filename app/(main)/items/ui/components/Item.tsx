@@ -10,18 +10,19 @@ export default function Item({
   className,
   showEditButton = false,
 }: {
-  item: ItemTable & { stores: ItemStoreTable[] } | ItemDetails;
+  item: ItemTable & { stores: ItemStoreTable[] } | ItemDetails | undefined;
   className?: string;
   showEditButton?: boolean;
 }) {
+
   return (
-    <div className={`item ${className || ''}`} title={item.name}>
-      <ItemPhoto name={item.name} url={item.image_url} />
-      <h1 className="itemName">{item.name}</h1>
-      <StoreLinks stores={item.stores} />
+    <div className={`item ${className || ''}`} title={item?.name || ''}>
+      <ItemPhoto name={item?.name || ''} url={item?.image_url || ''} />
+      <h1 className="itemName">{item?.name || ''}</h1>
+      <StoreLinks stores={item?.stores || []} />
 
       {showEditButton && (
-        <Link href={`/items/${item.id}`} className="edit-button">
+        <Link href={`/items/${item?.id}`} className="edit-button">
           <MdModeEdit />
         </Link>
       )}

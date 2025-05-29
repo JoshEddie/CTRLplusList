@@ -35,6 +35,7 @@
     border-color 0.15s,
     box-shadow 0.15s;
   color: var(--primary-text-color);
+  min-height: 37px;
 }
 
 .form-input:hover {

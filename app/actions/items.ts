@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { item_stores, items, list_items, purchases } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { ItemDetails } from '@/lib/types';
-import { and, asc, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
@@ -177,133 +177,6 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       success: false,
       message: 'An error occurred while creating the item',
       error: 'Failed to create item',
-    };
-  }
-}
-
-async function checkListBalance(listId: string): Promise<boolean> {
-  try {
-    const result = await db
-      .select()
-      .from(list_items)
-      .where(eq(list_items.list_id, listId))
-      .orderBy(desc(list_items.position))
-      .limit(2);
-
-    if (result.length < 2) return false;
-
-    const [first, second] = result;
-    const minGap = 0.001;
-    return first.position - second.position < minGap;
-  } catch (error) {
-    console.error('Error checking list balance:', error);
-    throw error;
-  }
-}
-
-async function rebalanceList(listId: string): Promise<void> {
-  try {
-    const items = await db
-      .select()
-      .from(list_items)
-      .where(eq(list_items.list_id, listId))
-      .orderBy(asc(list_items.position));
-
-    const updates = items.map((item: { item_id: string }, index: number) => {
-      const newPosition = (index + 1) * 65536;
-      return db
-        .update(list_items)
-        .set({ position: newPosition })
-        .where(
-          and(
-            eq(list_items.list_id, listId),
-            eq(list_items.item_id, item.item_id)
-          )
-        );
-    });
-
-    await Promise.all(updates);
-  } catch (error) {
-    console.error('Error rebalancing list:', error);
-    throw error;
-  }
-}
-
-export async function updatePriority(
-  item_id: string,
-  targetPosition: number,
-  listId: string
-): Promise<ActionResponse> {
-  try {
-    // Get the positions before and after target position
-    const positions = await db
-      .select({ position: list_items.position })
-      .from(list_items)
-      .where(
-        and(
-          eq(list_items.list_id, listId),
-          or(
-            and(
-              lt(list_items.position, targetPosition),
-              eq(
-                list_items.position,
-                sql<number>`(
-                  SELECT MAX(position) 
-                  FROM ${list_items} 
-                  WHERE list_id = ${listId} 
-                  AND position < ${targetPosition}
-                )`
-              )
-            ),
-            and(
-              gt(list_items.position, targetPosition),
-              eq(
-                list_items.position,
-                sql<number>`(
-                  SELECT MIN(position) 
-                  FROM ${list_items} 
-                  WHERE list_id = ${listId} 
-                  AND position > ${targetPosition}
-                )`
-              )
-            )
-          )
-        )
-      )
-      .orderBy(asc(list_items.position));
-
-    // Calculate new position
-    const new_position =
-      positions.length === 2
-        ? (positions[0].position + positions[1].position) / 2
-        : targetPosition;
-
-    // Update the item's position
-    await db
-      .update(list_items)
-      .set({ position: new_position })
-      .where(
-        and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
-      );
-
-    // Check and rebalance if needed
-    if (await checkListBalance(listId)) {
-      await rebalanceList(listId);
-    }
-
-    const data = await db.query.items.findFirst({
-      where: eq(list_items.item_id, item_id),
-    });
-    if (!data) {
-      throw new Error('Item not found');
-    }
-    return { success: true, message: 'Item priority updated successfully' };
-  } catch (error) {
-    console.error('Database Error:', error);
-    return {
-      success: false,
-      message: 'Failed to update item priority',
-      error: 'Failed to update item priority',
     };
   }
 }

@@ -40,7 +40,7 @@ export default function UserMenu({ session }: { session: Session | null }) {
             </>
         ) : (
             <>
-            <Image src="/wishlist.webp" alt="Wishlist Logo" width={250} height={56} priority={true} />
+            <Image src="/ctrlpluslist_logo-ver-color.webp" alt="Ctrl+List" width={200} height={120} priority={true} />
             <SignInButton />
             </>
         )}

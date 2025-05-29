@@ -23,11 +23,4 @@ export default async function Nav() {
       </Link>
     </nav>
   )
-    // <AuthContainer className={`user-menu sign-in`}>
-    //   <p>
-    //     To Access the full features of this site such as creating lists, saving
-    //     shared lists, and tracking purchased items, please sign in.
-    //   </p>
-    //   <SignInButton />
-    // </AuthContainer>
 }

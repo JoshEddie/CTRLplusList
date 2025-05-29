@@ -28,7 +28,33 @@
   font-size: 18px;
 }
 
+.sortable-item {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  gap: 4px;
+}
+
+.item-drag-overlay {
+  cursor: grabbing;
+}
+
+.sortable-item.is-dragging,
+.item-drag-overlay.is-dragging {
+  opacity: 0.5;
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.drag-handle:active,
+body:has(.item-drag-overlay) {
+  cursor: grabbing;
+}
+
 .item {
+  background-color: var(--background-color);
   display: grid;
   grid-template-rows: 150px 30px 1fr;
   row-gap: 8px;
@@ -39,6 +65,7 @@
   transition: all 1s;
   padding: 20px;
   align-items: start;
+  height: 100%;
 }
 
 .item.preview {

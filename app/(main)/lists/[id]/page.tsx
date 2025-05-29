@@ -1,7 +1,8 @@
-import ItemsContainer from '@/app/(main)/items/ui/components/ItemsContainer';
+import SortItemsContainer from '@/app/(main)/items/ui/components/SortItemsContainer';
 import { auth } from '@/lib/auth';
 import { getList, getUserById, getUserIdByEmail } from '@/lib/dal';
 import { redirect } from 'next/navigation';
+import ItemsContainer from '../../items/ui/components/ItemsContainer';
 import ListDetails from '../ui/components/ListDetails';
 import ListPrivate from '../ui/components/ListPrivate';
 
@@ -38,7 +39,7 @@ export default async function ListPage({
   return (
     <div className={`list-details-container ${user ? '' : 'no-user'}`}>
       <ListDetails isOwner={isOwner} list={list} user_name={listOwner?.name || undefined} user_id={user?.id || undefined} />
-      <ItemsContainer listId={id} />
+      {isOwner ? <SortItemsContainer listId={id} /> : <ItemsContainer listId={id} />}
     </div>
   );
 }

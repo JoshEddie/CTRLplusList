@@ -16,7 +16,7 @@ export default async function SignInPage() {
 
   return (
     <AuthContainer>
-      <Image src="/wishlist.webp" alt="Wishlist Logo" width={250} height={56} priority={true} />
+      <Image src="/ctrlpluslist_logo-ver-color.webp" alt="Ctrl+List" width={200} height={120} priority={true} />
       <Suspense fallback={"loading sign in..."}>
         <SignInButton />
       </Suspense>

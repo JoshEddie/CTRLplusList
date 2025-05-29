@@ -1,9 +1,9 @@
 'use server';
 
 import { db } from '@/db';
-import { lists, saved_lists } from '@/db/schema';
+import { list_items, lists, saved_lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
@@ -259,6 +259,177 @@ export async function unsaveList(
       success: false,
       message: 'An error occurred while unsaving the list',
       error: 'Failed to unsave list',
+    };
+  }
+}
+
+async function checkListBalance(listId: string): Promise<boolean> {
+  try {
+    const result = await db
+      .select()
+      .from(list_items)
+      .where(eq(list_items.list_id, listId))
+      .orderBy(desc(list_items.position))
+      .limit(2);
+
+    if (result.length < 2) return false;
+
+    const [first, second] = result;
+    const minGap = 0.001;
+    return first.position - second.position < minGap;
+  } catch (error) {
+    console.error('Error checking list balance:', error);
+    throw error;
+  }
+}
+
+async function rebalanceList(listId: string): Promise<void> {
+  try {
+    const items = await db
+      .select()
+      .from(list_items)
+      .where(eq(list_items.list_id, listId))
+      .orderBy(asc(list_items.position));
+
+    const updates = items.map((item: { item_id: string }, index: number) => {
+      const newPosition = (index + 1) * 65536;
+      return db
+        .update(list_items)
+        .set({ position: newPosition })
+        .where(
+          and(
+            eq(list_items.list_id, listId),
+            eq(list_items.item_id, item.item_id)
+          )
+        );
+    });
+
+    await Promise.all(updates);
+  } catch (error) {
+    console.error('Error rebalancing list:', error);
+    throw error;
+  }
+}
+
+export async function updatePriority(
+  item_id: string,
+  target_id: string,
+  listId: string
+): Promise<ActionResponse> {
+  try {
+    // Get the positions before and after target position
+
+    const itemPositionResult = await db
+      .select({ position: list_items.position })
+      .from(list_items)
+      .where(eq(list_items.item_id, item_id))
+      .orderBy(desc(list_items.position))
+      .limit(1);
+
+    const targetPositionResult = await db
+      .select({ position: list_items.position })
+      .from(list_items)
+      .where(eq(list_items.item_id, target_id))
+      .orderBy(desc(list_items.position))
+      .limit(1);
+
+    const itemPosition = itemPositionResult[0].position;
+    const targetPosition = targetPositionResult[0].position;
+    console.log("itemPosition: ", itemPosition);
+    console.log("targetPosition: ", targetPosition);
+
+    if (itemPosition === targetPosition) {
+      return {
+        success: false,
+        message: 'Item is already at the target position',
+        error: 'Item is already at the target position',
+      };
+    }
+
+    let new_position;
+
+    if (itemPosition > targetPosition) {
+      const result = await db
+        .select({ position: list_items.position })
+        .from(list_items)
+        .where(
+          and(
+            lt(list_items.position, targetPosition),
+            eq(
+              list_items.position,
+              sql<number>`(
+                SELECT MAX(position) 
+                FROM ${list_items} 
+                WHERE list_id = ${listId} 
+                AND position < ${targetPosition}
+              )`
+            )
+          )
+        )
+        .orderBy(desc(list_items.position))
+        .limit(1);
+
+      if (result.length > 0) {
+        const otherBoundary = result[0].position;
+        console.log("otherBoundary: ", otherBoundary);
+        new_position = (otherBoundary + targetPosition) / 2;
+      } else {
+        new_position = targetPosition / 2;
+      }
+    } else {
+      const result = await db
+        .select({ position: list_items.position })
+        .from(list_items)
+        .where(
+          and(
+            gt(list_items.position, targetPosition),
+            eq(
+              list_items.position,
+              sql<number>`(
+                SELECT MIN(position) 
+                FROM ${list_items} 
+                WHERE list_id = ${listId} 
+                AND position > ${targetPosition}
+              )`
+            )
+          )
+        )
+        .orderBy(desc(list_items.position))
+        .limit(1);
+
+      if (result.length > 0) {
+        const otherBoundary = result[0].position;
+        console.log("otherBoundary: ", otherBoundary);
+        new_position = (otherBoundary + targetPosition) / 2;
+      } else {
+        new_position = targetPosition + 65536;
+      }
+    }
+
+    console.log("new_position: ", new_position);
+
+    if (new_position) {
+      await db
+        .update(list_items)
+        .set({ position: new_position })
+        .where(eq(list_items.item_id, item_id));
+
+    }
+
+    revalidateTag('items');
+
+    // Check and rebalance if needed
+    if (await checkListBalance(listId)) {
+      await rebalanceList(listId);
+    }
+
+    return { success: true, message: 'Item priority updated successfully' };
+  } catch (error) {
+    console.error('Database Error:', error);
+    return {
+      success: false,
+      message: 'Failed to update item priority',
+      error: 'Failed to update item priority',
     };
   }
 }
