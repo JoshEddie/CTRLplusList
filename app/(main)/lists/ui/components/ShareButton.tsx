@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import { MdOutlineIosShare } from 'react-icons/md';
 
 export default function ShareButton({ list }: { list: ListTable }) {
-  const listUrl = `https://list.eddiefamily.com/lists/${list.id}`;
+  const listUrl = `https://www.ctrlpluslist.com/lists/${list.id}`;
 
   const copyToClipboard = async () => {
     try {

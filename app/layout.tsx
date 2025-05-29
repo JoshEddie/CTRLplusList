@@ -31,7 +31,7 @@ const crimsonPro = Crimson_Pro({
 export const metadata: Metadata = {
   title: 'Ctrl+List',
   description: 'Create and share your lists with friends and family',
-  metadataBase: new URL('https://list.eddiefamily.com'),
+  metadataBase: new URL('https://ctrlpluslist.com'),
   openGraph: {
     title: 'Ctrl+List',
     description: 'Create and share your lists with friends and family',
