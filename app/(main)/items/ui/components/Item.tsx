@@ -38,8 +38,17 @@ export default function Item({
   const [purchaseFlow, setPurchaseFlow] = useState<
     'initial' | 'self' | 'other' | 'guest'
   >('initial');
+
+  const initialName = useMemo(() => {
+    if (item.purchase?.user?.name) {
+      const firstLastName: string[] = item.purchase?.user?.name?.split(' ');
+      return `${firstLastName[0]} ${firstLastName[1]?.[0]}`;
+    }
+    return item.purchase?.guest_name || '';
+  }, [item.purchase?.guest_name, item.purchase?.user?.name]);
+
   const [purchasedBy, setPurchasedBy] = useState<string | undefined>(
-    item.purchase?.user?.name || item.purchase?.guest_name || undefined
+    initialName
   );
   const [guestName, setGuestName] = useState('');
 
