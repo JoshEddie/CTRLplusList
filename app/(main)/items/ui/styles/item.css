@@ -72,6 +72,24 @@ body:has(.item-drag-overlay) {
   margin-bottom: 20px;
 }
 
+.item.purchased {
+  border-color: var(--secondary-color);
+  background-color: var(--secondary-color);
+}
+
+.item.purchased .item-image-container {
+  opacity: 0.5;
+}
+
+.item.purchased .itemName {
+  opacity: 0.5;
+  color: #ffffff;
+}
+
+/* .item.purchased .btn {
+  opacity: 0.5;
+} */
+
 .itemName {
   text-align: center;
   color: var(--secondary-color);
@@ -161,6 +179,10 @@ body:has(.item-drag-overlay) {
 .edit-button:hover {
   background-color: var(--contrast-text-color);
   color: var(--primary-text-color);
+}
+
+.item.preview .edit-button {
+  display: none;
 }
 
 .reorder-input-group {

@@ -19,7 +19,7 @@ export default function CancelSubmitButtons({
     <div className="form-button-group">
       <FormButton
         type="button"
-        variant="primary outline"
+        variant="secondary"
         onClick={() => router.back()}
         disabled={isPending}
       >

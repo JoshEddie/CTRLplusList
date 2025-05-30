@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
 import { getItemsByListId, getItemsByUser, getUserIdByEmail } from '@/lib/dal';
+import { ItemDisplay } from '@/lib/types';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import ItemsLoading from './ItemLoading';
@@ -15,7 +16,7 @@ export default async function ItemsContainer({
 
   const session = await auth();
 
-  let items;
+  let items: ItemDisplay[];
   
   const user = session?.user?.email ? await getUserIdByEmail(session.user.email) : null;
 
@@ -34,7 +35,7 @@ export default async function ItemsContainer({
 
   return (
     <Suspense fallback={<ItemsLoading />}>
-      <Items items={items} user_id={user?.id}/>
+      <Items items={items} user_id={user?.id} user_name={user?.name}/>
     </Suspense>
   );
 }

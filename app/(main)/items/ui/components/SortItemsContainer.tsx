@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
 import { getItemsByListId, getUserIdByEmail } from '@/lib/dal';
+import { ItemDisplay } from '@/lib/types';
 import { Suspense } from 'react';
 import ItemsLoading from './ItemLoading';
 import SortItems from './SortItems';
@@ -16,7 +17,7 @@ export default async function SortItemsContainer({
 
   const user = session?.user?.email ? await getUserIdByEmail(session.user.email) : null;
 
-  const items = await getItemsByListId(listId);
+  const items: ItemDisplay[] = await getItemsByListId(listId);
 
   return (
     <Suspense fallback={<ItemsLoading />}>

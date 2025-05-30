@@ -75,7 +75,8 @@ export type ActionResponse = {
 
 export async function createPurchase(data: {
   item_id: string;
-  user_id: string;
+  user_id: string | null;
+  guest_name: string | null;
 }): Promise<ActionResponse> {
   try {
     // Security check - ensure user is authenticated
@@ -93,6 +94,7 @@ export async function createPurchase(data: {
       id: nanoid(),
       item_id: data.item_id,
       user_id: data.user_id,
+      guest_name: data.guest_name,
       purchased_at: new Date(),
     });
 
@@ -105,6 +107,26 @@ export async function createPurchase(data: {
       success: false,
       message: 'An error occurred while marking the item as purchased',
       error: 'Failed to create purchase',
+    };
+  }
+}
+
+export async function removePurchase(data: {
+  item_id: string;
+}): Promise<ActionResponse> {
+  try {
+    // Remove purchase record
+    await db.delete(purchases).where(eq(purchases.item_id, data.item_id));
+
+    revalidateTag('items');
+
+    return { success: true, message: 'Item marked as not purchased successfully' };
+  } catch (error) {
+    console.error('Error removing purchase:', error);
+    return {
+      success: false,
+      message: 'An error occurred while removing the purchase',
+      error: 'Failed to remove purchase',
     };
   }
 }

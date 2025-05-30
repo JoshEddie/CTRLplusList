@@ -18,6 +18,7 @@ import SelectWrapper from '@/app/ui/components/SelectWrapper';
 import '@/app/ui/styles/select.css';
 import {
   ItemDetails,
+  ItemDisplay,
   ItemStoreTable,
   ItemTable,
   ListTable,
@@ -142,7 +143,7 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
   return (
     <>
       <FormLabel>Preview Item</FormLabel>
-      <Item item={itemForm} className="preview" />
+      <Item item={itemForm as unknown as ItemDisplay} className="preview" user_id={user_id}/>
       <Form action={formAction}>
         {state?.message && (
           <FormError

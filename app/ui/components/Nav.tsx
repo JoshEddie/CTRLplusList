@@ -17,7 +17,7 @@ export default async function Nav() {
         <BsBoxFill />
         <span className="label nav-hide">Items</span>
       </Link>
-      <Link href="/items/purchased" className="btn nav">
+      <Link href="/purchased" className="btn nav">
         <FaShoppingCart />
         <span className="label nav-hide">Purchased</span>
       </Link>

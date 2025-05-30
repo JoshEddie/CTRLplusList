@@ -27,6 +27,11 @@ export type ItemTable = {
   quantity_limit: number;
 };
 
+export type ItemDisplay = ItemTable & {
+  stores?: ItemStoreTable[];
+  purchase?: PurchaseTable | null;
+};
+
 export type ItemDetails = {
   id: string;
   name: string;
@@ -52,9 +57,10 @@ export type ItemStoreTable = {
 export type PurchaseTable = {
   id: string;
   item_id: string;
-  user_id: string;
-  guest_name: string;
+  user_id: string | null;
+  guest_name: string | null;
   purchased_at: Date;
+  user: { name: string | null; } | null;
 };
 
 export type OptionType = {

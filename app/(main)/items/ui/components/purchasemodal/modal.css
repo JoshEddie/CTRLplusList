@@ -1,0 +1,130 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.modal-overlay::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;  
+    background-color: var(--primary-color);
+    background-image: linear-gradient(
+      120deg,
+      var(--primary-color),
+      var(--secondary-color)
+    );
+    background-attachment: fixed;
+    z-index: 99;
+    opacity: 0.9;
+}
+
+.modal {
+    background-color: var(--background-color);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 101;
+    max-width: 90%;
+    width: 400px;
+    max-height: 90vh;
+    position: relative;
+}
+
+.purchase-flow {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.purchase-flow p {
+    font-size: 20px;
+    text-align: center;
+}
+
+.button-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    justify-content: center;
+}
+
+.button-group.single {
+    grid-template-columns: 1fr;
+}
+
+.tooltip-container {
+  position: relative;
+  display: inline-block;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.tooltip {
+  visibility: hidden;
+  width: 200px;
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  border-radius: 4px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 14px;
+  font-weight: normal;
+  pointer-events: none;
+}
+
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #333 transparent transparent transparent;
+}
+
+.tooltip-container:hover .tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+.guest-purchase {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.guest-name-input {
+    padding: 0.6rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.guest-name-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
+}

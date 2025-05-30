@@ -335,8 +335,6 @@ export async function updatePriority(
 
     const itemPosition = itemPositionResult[0].position;
     const targetPosition = targetPositionResult[0].position;
-    console.log("itemPosition: ", itemPosition);
-    console.log("targetPosition: ", targetPosition);
 
     if (itemPosition === targetPosition) {
       return {
@@ -371,7 +369,6 @@ export async function updatePriority(
 
       if (result.length > 0) {
         const otherBoundary = result[0].position;
-        console.log("otherBoundary: ", otherBoundary);
         new_position = (otherBoundary + targetPosition) / 2;
       } else {
         new_position = targetPosition / 2;
@@ -399,14 +396,11 @@ export async function updatePriority(
 
       if (result.length > 0) {
         const otherBoundary = result[0].position;
-        console.log("otherBoundary: ", otherBoundary);
         new_position = (otherBoundary + targetPosition) / 2;
       } else {
         new_position = targetPosition + 65536;
       }
     }
-
-    console.log("new_position: ", new_position);
 
     if (new_position) {
       await db

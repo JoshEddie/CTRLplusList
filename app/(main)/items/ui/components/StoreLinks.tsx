@@ -1,7 +1,7 @@
 'use client';
 
 import { ItemStoreTable } from '@/lib/types';
-import './StoreLinks.css';
+import '../styles/storeLinks.css';
 
 export default function StoreLinks({ stores }: { stores: ItemStoreTable[] }) {
 

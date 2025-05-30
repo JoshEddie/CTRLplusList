@@ -26,6 +26,23 @@
   border-color: var(--secondary-color);
 }
 
+.primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.secondary {
+  border-color: var(--third-background-color);
+  background-color: var(--third-background-color);
+  color: var(--primary-text-color);
+}
+
+.secondary:hover {
+  border-color: var(--secondary-color);
+  background-color: var(--secondary-color);
+  color: #ffffff;
+}
+
 .danger {
   background-color: transparent;
   border-color: var(--danger-color);
