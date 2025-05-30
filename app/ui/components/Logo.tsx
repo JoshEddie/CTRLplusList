@@ -8,6 +8,7 @@ const Logo = () => {
       className="menu-logo"
       width={199}
       height={52}
+      priority
     />
   );
 };

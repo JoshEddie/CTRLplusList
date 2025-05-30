@@ -16,6 +16,8 @@
   --contrast-text-color: var(--light-color);
   --danger-text-color: var(--danger-color);
   --transparent-overlay: rgba(0, 0, 0, 0.7);
+
+  --max-width: 1500px;
 }
 
 /* @media (prefers-color-scheme: dark) {
@@ -81,6 +83,8 @@ body {
   z-index: 1;
   padding: 20px;
   padding-bottom: 36px;
+  max-width: var(--max-width);
+  margin: 0 auto;
 }
 
 /* This is the background that stays fixed */
@@ -96,6 +100,8 @@ body {
   z-index: -1;
   /* Ensure it's behind the content */
   pointer-events: none;
+  max-width: var(--max-width);
+  margin: 0 auto;
 }
 
 .container:has(.no-user) {
@@ -142,6 +148,9 @@ body {
   top: 0;
   left: 0;
   right: 0;
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
   padding: 16px;
   text-align: left;
   z-index: 50;
@@ -259,11 +268,11 @@ body {
   }
 
   .container {
-    top: 92px;
+    top: 84px;
   }
 
   .container::before {
-    top: 92px;
+    top: 84px;
   }
 }
 

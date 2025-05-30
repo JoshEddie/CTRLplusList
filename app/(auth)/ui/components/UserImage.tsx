@@ -8,6 +8,7 @@ export default function UserImage({ image, name }: { image: string; name: string
       alt={name}
       width={80}
       height={80}
+      priority
     />
   );
 }
