@@ -2,7 +2,7 @@
 .form {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1rem;
+  gap: 8px;
   justify-content: end;
 }
 
@@ -10,7 +10,7 @@
 .form-group {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
+  gap: 4px;
 }
 
 /* Form Label */
@@ -20,6 +20,16 @@
   font-family: var(--font-crimson-pro);
   color: var(--primary-text-color);
   text-align: left;
+  display: flex;
+  align-items: center;
+}
+
+.required::after {
+  content: 'Required';
+  color: var(--danger-color);
+  font-size: 12px;
+  font-style: italic;
+  margin-left: 4px;
 }
 
 /* Form Input */
@@ -38,6 +48,10 @@
   min-height: 37px;
 }
 
+.form-input-error {
+  border-color: var(--danger-color);
+}
+
 .form-input:hover {
   cursor: text;
 }
@@ -46,11 +60,23 @@
   outline: none;
 }
 
+/* .price-input {
+  margin-left: 10px;
+} */
+
+.price-input-container {
+  display: flex;
+  align-items: center;
+  color: var(--primary-text-color);
+}
+
 /* Form Error */
 .form-error {
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 400;
   color: var(--danger-color);
+  text-align: right;
+  margin-left: 4px;
 }
 
 /* Loading Spinner */

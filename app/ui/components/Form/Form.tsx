@@ -1,5 +1,7 @@
 import React, { forwardRef } from 'react';
+import { LuInfo } from 'react-icons/lu';
 import '../../styles/form.css';
+import TooltipWrapper from '../TooltipWrapper';
 
 // Form
 interface FormProps extends React.FormHTMLAttributes<HTMLFormElement> {
@@ -69,15 +71,19 @@ export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(
 FormTextarea.displayName = 'FormTextarea';
 
 // Form Error
-interface FormErrorProps extends React.HTMLAttributes<HTMLParagraphElement> {
+interface FormErrorProps {
   children: React.ReactNode;
+  className?: string;
 }
 
-export function FormError({ className, children, ...props }: FormErrorProps) {
+export function FormError({ className, children }: FormErrorProps) {
   return (
-    <p className={`form-error ${className || ''}`} {...props}>
-      {children}
-    </p>
+    // <p className={`form-error ${className || ''}`} {...props}>
+    //   {children}
+    // </p>
+    <TooltipWrapper className={className || 'form-error'} tooltip={children as string}>
+      <LuInfo size={16} />
+    </TooltipWrapper>
   );
 }
 

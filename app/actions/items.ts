@@ -16,7 +16,25 @@ const ItemSchema = z.object({
     .min(3, 'Title must be at least 3 characters')
     .max(100, 'Title must be less than 100 characters'),
 
-  image_url: z.string().url('Please provide a valid URL'),
+  image_url: z
+    .string()
+    .optional()
+    .superRefine((val, ctx) => {
+      // If the value is empty or undefined, it's valid
+      if (!val) return true;
+
+      // Otherwise, validate it as a URL
+      try {
+        new URL(val);
+        return true;
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Please provide a valid URL',
+        });
+        return false;
+      }
+    }),
 
   user_id: z.string().min(1, 'User ID is required'),
 
@@ -43,9 +61,16 @@ const ItemSchema = z.object({
       (stores) => {
         if (!stores) return true;
         return stores.every((store) => {
-          // Skip validation if all fields are empty
-          if (!store.name && !store.link && !store.price) return true;
-          // Validate URL if link is provided
+          const hasAnyField = store.name || store.link || store.price;
+          const hasAllFields = store.name && store.link && store.price;
+
+          // If no fields are filled, it's valid
+          if (!hasAnyField) return true;
+
+          // If any field is filled, all must be filled
+          if (!hasAllFields) return false;
+
+          // Validate URL format if link is provided
           if (store.link) {
             try {
               new URL(store.link);
@@ -120,7 +145,10 @@ export async function removePurchase(data: {
 
     revalidateTag('items');
 
-    return { success: true, message: 'Item marked as not purchased successfully' };
+    return {
+      success: true,
+      message: 'Item marked as not purchased successfully',
+    };
   } catch (error) {
     console.error('Error removing purchase:', error);
     return {
@@ -159,17 +187,15 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
 
     // Create item with validated data
     const validatedData = validationResult.data;
-    await db
-      .insert(items)
-      .values({
-        id,
-        name: validatedData.name,
-        image_url: validatedData.image_url,
-        created_at: new Date(),
-        updated_at: new Date(),
-        user_id: validatedData.user_id,
-        quantity_limit: validatedData.quantity_limit,
-      });
+    await db.insert(items).values({
+      id,
+      name: validatedData.name,
+      image_url: validatedData.image_url,
+      created_at: new Date(),
+      updated_at: new Date(),
+      user_id: validatedData.user_id,
+      quantity_limit: validatedData.quantity_limit,
+    });
 
     // Get the lists from the form data and ensure they exist
     const lists = validatedData.lists || [];
@@ -332,9 +358,7 @@ export async function updateItemLists(
   }
 }
 
-export async function updateItem(
-  data: ItemDetails
-): Promise<ActionResponse> {
+export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
   try {
     // Security check - ensure user is authenticated
     const session = await auth();

@@ -17,6 +17,11 @@
   color: var(--primary-text-color);
 }
 
+.react-select__placeholder {
+  color: var(--primary-text-color);
+  opacity: 0.5;
+}
+
 .react-select__multi-value {
   background-color: var(--primary-color);
   color: #ffffff;

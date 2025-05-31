@@ -5,6 +5,7 @@ import { ItemDisplay } from '@/lib/types';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import { MdModeEdit } from 'react-icons/md';
 import '../styles/item.css';
 import ItemPhoto from './ItemPhoto';
@@ -26,7 +27,6 @@ export default function Item({
   user_id?: string;
   user_name?: string | null;
 }) {
-
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -77,30 +77,54 @@ export default function Item({
   const handleUndoConfirm = async () => {
     if (!item.id) return;
     try {
-      await removePurchase({ item_id: item.id });
-      setPurchasedBy(undefined);
+      const result = await toast.promise(
+        removePurchase({ item_id: item.id }),
+        {
+          loading: 'Removing purchased status',
+          success: 'Purchased status removed successfully',
+          error: 'Failed to remove purchased status',
+        }
+      );
+      if (result?.success) {
+        setPurchasedBy(undefined);
+      }
     } catch (error) {
       console.error('Failed to remove purchase:', error);
     }
     handleModalClose();
   };
 
-  const handlePurchaseConfirm = (name: string, user_purchase: boolean = false) => {
-    if (user_purchase && user_id) {
-      createPurchase({
-        item_id: item.id || '',
-        user_id,
-        guest_name: null,
+  const handlePurchaseConfirm = async (
+    name: string,
+    user_purchase: boolean = false
+  ) => {
+    try {
+      let method;
+      if (user_purchase && user_id) {
+        method = createPurchase({
+          item_id: item.id || '',
+          user_id,
+          guest_name: null,
+        });
+      } else {
+        method = createPurchase({
+          item_id: item.id || '',
+          user_id: null,
+          guest_name: name,
+        });
+      }
+      const result = await toast.promise(method, {
+        loading: 'Adding purchased status',
+        success: 'Purchased status added successfully',
+        error: 'Failed to add purchased status',
       });
-    } else {
-      createPurchase({
-        item_id: item.id || '',
-        user_id: null,
-        guest_name: name,
-      });
+      if (result?.success) {
+        setPurchasedBy(name);
+      }
+      handleModalClose();
+    } catch (error) {
+      console.error('Failed to create purchase:', error);
     }
-    setPurchasedBy(name);
-    handleModalClose();
   };
 
   return (
@@ -126,30 +150,29 @@ export default function Item({
 
       {showModal && (
         <>
-        {!purchasedBy ? (
-        <Modal onClose={handleModalClose}>
-          <PurchaseFlowContainer
-            user_id={user_id}
-            guestName={guestName}
-            setGuestName={setGuestName}
-            handlePurchaseConfirm={handlePurchaseConfirm}
-            purchaseFlow={purchaseFlow}
-            setPurchaseFlow={setPurchaseFlow}
-            user_name={user_name}
-          />
-        </Modal>
-      ) : (
-        <Modal onClose={handleModalClose}>
-          <PurchaseFlow
-              primary_text="Are you sure you want to mark this item as not purchased?">
-            <ModalButtons
-              primary_button_text="Mark as Not Purchased"
-              primary_button_onclick={() => handleUndoConfirm()}
-            />
-          </PurchaseFlow>
-        </Modal>
-      )}
-      </>
+          {!purchasedBy ? (
+            <Modal onClose={handleModalClose}>
+              <PurchaseFlowContainer
+                user_id={user_id}
+                guestName={guestName}
+                setGuestName={setGuestName}
+                handlePurchaseConfirm={handlePurchaseConfirm}
+                purchaseFlow={purchaseFlow}
+                setPurchaseFlow={setPurchaseFlow}
+                user_name={user_name}
+              />
+            </Modal>
+          ) : (
+            <Modal onClose={handleModalClose}>
+              <PurchaseFlow primary_text="Are you sure you want to mark this item as not purchased?">
+                <ModalButtons
+                  primary_button_text="Mark as Not Purchased"
+                  primary_button_onclick={() => handleUndoConfirm()}
+                />
+              </PurchaseFlow>
+            </Modal>
+          )}
+        </>
       )}
     </div>
   );

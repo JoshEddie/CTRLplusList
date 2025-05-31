@@ -107,6 +107,23 @@
   opacity: 1;
 }
 
+.input-tooltip .tooltip,
+.input-tooltip:hover .tooltip {
+  visibility: hidden;
+  opacity: 0;
+}
+
+.form-error .tooltip,
+.form-error:hover .tooltip {
+  visibility: visible;
+  opacity: 1;
+  background-color: var(--danger-color);
+}
+
+.form-error .tooltip::after {
+  border-color: var(--danger-color) transparent transparent transparent;
+}
+
 .guest-purchase {
     display: flex;
     flex-direction: column;

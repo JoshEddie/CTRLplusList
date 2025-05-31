@@ -1,9 +1,9 @@
-import ItemFormLoading from '@/app/(main)/items/ui/components/ItemFormLoading';
+import ItemFormLoading from '@/app/(main)/items/ui/components/itemform/ItemFormLoading';
 import Header from '@/app/ui/components/Header';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { BsArrowLeftShort } from 'react-icons/bs';
-import ItemFormContainer from '../ui/components/ItemFormContainer';
+import ItemFormContainer from '../ui/components/itemform/ItemFormContainer';
 
 const NewItem = async () => {
   return (

@@ -1,3 +1,5 @@
+import TooltipWrapper from '@/app/ui/components/TooltipWrapper';
+
 export default function ModalButtons({
   primary_button_text,
   primary_button_onclick,
@@ -22,7 +24,7 @@ export default function ModalButtons({
       type="button"
       className="btn primary"
       onClick={primary_button_onclick}
-      disabled={primary_button_disabled}
+      disabled={primary_button_disabled || !!primary_button_disabled_with_tooltip}
     >
       {primary_button_text}
     </button>
@@ -33,7 +35,7 @@ export default function ModalButtons({
       type="button"
       className="btn secondary"
       onClick={secondary_button_onclick}
-      disabled={secondary_button_disabled}
+      disabled={secondary_button_disabled || !!secondary_button_disabled_with_tooltip}
     >
       {secondary_button_text}
     </button>
@@ -41,26 +43,21 @@ export default function ModalButtons({
 
   return (
     <div className={`button-group ${secondary_button_text ? '' : 'single'}`}>
-      {secondary_button_text &&
-        (secondary_button_disabled_with_tooltip ? (
-          <div className="tooltip-container">
+      {secondary_button_text && 
+          <TooltipWrapper
+            tooltip={secondary_button_disabled_with_tooltip}
+            showTooltip={!!secondary_button_disabled_with_tooltip}
+          >
             {secondaryButton}
-            <span className="tooltip">
-              {secondary_button_disabled_with_tooltip}
-            </span>
-          </div>
-        ) : (
-          secondaryButton
-        ))}
-      {primary_button_disabled_with_tooltip ? (
-        <div className="tooltip-container">
+          </TooltipWrapper>
+        }
+      {primary_button_disabled_with_tooltip && (
+        <TooltipWrapper
+          tooltip={primary_button_disabled_with_tooltip}
+          showTooltip={!!primary_button_disabled_with_tooltip}
+        >
           {primaryButton}
-          <span className="tooltip">
-            {primary_button_disabled_with_tooltip}
-          </span>
-        </div>
-      ) : (
-        primaryButton
+        </TooltipWrapper>
       )}
     </div>
   );

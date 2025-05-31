@@ -12,12 +12,21 @@ export default function DeleteItemButton({ id, userId }: { id: string; userId: s
   const [showConfirm, setShowConfirm] = useState(false);
 
   const handleDeleteItemClick = async (id: string) => {
-      const result = await deleteItem(id, userId);
-      if (result.success) {
-        toast.success('Item deleted successfully');
+    try {
+      const result = await toast.promise(
+        deleteItem(id, userId),
+        {
+          loading: 'Deleting',
+          success: 'Item deleted successfully',
+          error: 'Failed to delete item',
+        }
+      );
+      
+      if (result?.success) {
         router.push('/items');
-    } else {
-      toast.error(result.error || 'Failed to delete item');
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error);
     }
   };
 

@@ -9,8 +9,17 @@ export default function ShareButton({ list }: { list: ListTable }) {
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(listUrl);
-      toast.success('URL copied to clipboard');
+      toast.promise(
+        async () => {
+          await navigator.clipboard.writeText(listUrl);
+          return true;
+        },
+        {
+          loading: 'Copying',
+          success: 'Copied to clipboard',
+          error: 'Failed to copy URL to clipboard',
+        }
+      );
     } catch (err) {
       console.error('Failed to copy:', err);
     }
@@ -25,6 +34,7 @@ export default function ShareButton({ list }: { list: ListTable }) {
         });
       } catch (error) {
         console.error('Error sharing list:', error);
+        toast.error('Failed to share list');
       }
     } else {
       // Fallback for browsers that don't support Web Share API
