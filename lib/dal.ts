@@ -111,7 +111,7 @@ export async function getItemsByUser(
     const result = await db.query.items.findMany({
       where: eq(items.user_id, userId),
       with: {
-        stores: true,
+        stores: {orderBy: (stores, {asc}) => [asc(stores.order)]},
       },
       orderBy: (items, { desc }) => [desc(items.created_at)],
     });
@@ -129,7 +129,7 @@ export async function getItemById(id: string, userId: string) {
     const result = await db.query.items.findFirst({
       where: and(eq(items.id, id), eq(items.user_id, userId)),
       with: {
-        stores: true,
+        stores: {orderBy: (stores, {asc}) => [asc(stores.order)]},
         list_items: {
           with: {
             list: true,
@@ -180,7 +180,7 @@ export async function getItemsByPurchased(userId?: string) {
             with: {
                 item: {
                     with: {
-                        stores: true,
+                        stores: {orderBy: (stores, {asc}) => [asc(stores.order)]},
                         purchase: {
                           with: {
                             user: {
@@ -216,7 +216,7 @@ export async function getItemsByListId(listId: string) {
       with: {
         item: {
           with: {
-            stores: true,
+            stores: {orderBy: (stores, {asc}) => [asc(stores.order)]},
             purchase: {
               with: {
                 user: {

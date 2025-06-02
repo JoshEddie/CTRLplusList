@@ -1,32 +1,33 @@
 'use client';
 
-import { MdCheckBox, MdCheckBoxOutlineBlank } from 'react-icons/md';
+import { FaShoppingCart } from 'react-icons/fa';
 import '../styles/purchase.css';
 
 type PurchaseProps = {
   purchasedBy: string | undefined;
   handlePurchaseClick: () => void;
+  className?: string;
 };
 
 export default function Purchase({
   purchasedBy,
   handlePurchaseClick,
+  className,
 }: PurchaseProps) {
   return (
-    <div className="purchase-container">
       <div
-        className={`purchase-checkbox ${purchasedBy ? 'purchased' : ''}`}
+        className={`btn purchase ${purchasedBy ? 'purchased' : ''} ${className || ''}`}
         onClick={handlePurchaseClick}
       >
+        <FaShoppingCart size={20}/>
         {purchasedBy ? (
-          <MdCheckBox className="check-icon" />
+          <div className="purchased-by-container">
+            <div>Purchased by:</div>
+            <div className="purchased-by">{purchasedBy}</div>
+          </div>
         ) : (
-          <MdCheckBoxOutlineBlank className="check-icon" />
+          'Mark as Purchased'
         )}
       </div>
-      <span className="purchase-text">
-        {purchasedBy ? `Purchased by ${purchasedBy}` : 'I Purchased This'}
-      </span>
-    </div>
   );
 }

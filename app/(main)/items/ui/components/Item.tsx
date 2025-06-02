@@ -77,14 +77,11 @@ export default function Item({
   const handleUndoConfirm = async () => {
     if (!item.id) return;
     try {
-      const result = await toast.promise(
-        removePurchase({ item_id: item.id }),
-        {
-          loading: 'Removing purchased status',
-          success: 'Purchased status removed successfully',
-          error: 'Failed to remove purchased status',
-        }
-      );
+      const result = await toast.promise(removePurchase({ item_id: item.id }), {
+        loading: 'Removing purchased status',
+        success: 'Purchased status removed successfully',
+        error: 'Failed to remove purchased status',
+      });
       if (result?.success) {
         setPurchasedBy(undefined);
       }
@@ -127,26 +124,34 @@ export default function Item({
     }
   };
 
-  return (
-    <div
-      className={`item ${className || ''} ${showPurchased ? 'purchased' : ''}`}
-      title={item.name || ''}
-    >
-      <ItemPhoto name={item.name || ''} url={item.image_url || ''} />
-      <h1 className="itemName">{item.name || ''}</h1>
-      <StoreLinks stores={item.stores || []} />
+  return (  
+    <>
+    <div className={`item-container ${isOwner ? 'owner' : ''}`}>
+      <div
+        className={`item ${className || ''} ${showPurchased ? 'purchased' : ''}`}
+        title={item.name || ''}
+      >
+        <ItemPhoto name={item.name || ''} url={item.image_url || ''} />
+        <div className="item-info">
+          <h1 className="itemName">{item.name || ''}</h1>
+          <StoreLinks item={item} />
+        </div>
+      </div>
+
       {!isOwner && (
-        <Purchase
-          purchasedBy={purchasedBy || undefined}
-          handlePurchaseClick={handlePurchaseClick}
-        />
-      )}
+            <Purchase
+              purchasedBy={purchasedBy || undefined}
+              handlePurchaseClick={handlePurchaseClick}
+              className={showPurchased ? 'purchased' : ''}
+            />
+          )}
 
       {isOwner && (
-        <Link href={`/items/${item.id}`} className="edit-button">
-          <MdModeEdit />
-        </Link>
-      )}
+          <Link href={`/items/${item.id}`} className="edit-button">
+            <MdModeEdit />
+          </Link>
+        )}
+    </div>
 
       {showModal && (
         <>
@@ -174,6 +179,6 @@ export default function Item({
           )}
         </>
       )}
-    </div>
+    </>
   );
 }

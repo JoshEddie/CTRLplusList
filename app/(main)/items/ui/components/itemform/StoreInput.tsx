@@ -1,7 +1,8 @@
 import { FormInput, FormLabel } from '@/app/ui/components/Form/Form';
-import TooltipWrapper from '@/app/ui/components/TooltipWrapper';
 import { ItemDetails } from '@/lib/types';
-import { PiCurrencyDollarLight } from 'react-icons/pi';
+import { FaPlus } from 'react-icons/fa';
+import { IoMdRemove } from 'react-icons/io';
+import { LuDollarSign } from 'react-icons/lu';
 
 interface ItemFormErrors {
   name: string;
@@ -13,6 +14,64 @@ interface ItemFormErrors {
     price: string;
   }[];
 }
+
+export function StoreInputContainer({
+  itemForm,
+  itemFormErrors,
+  handleStoreChange,
+  handleStoreAdd,
+  handleStoreRemove,
+}: {
+  itemForm: ItemDetails;
+  itemFormErrors: ItemFormErrors;
+  handleStoreChange: (
+    index: number,
+    value: string | number,
+    type: 'name' | 'price' | 'link'
+  ) => void;
+  handleStoreAdd: (index: number) => void;
+  handleStoreRemove: (index: number) => void;
+}) {
+
+  return (
+    <>
+      <FormLabel>Stores/Prices</FormLabel>
+      <div className="stores-input-container">
+      {itemForm.stores.map((store, index) => {
+          return (
+            <div key={index} className="store-input-wrapper">
+              <StoreInput
+                index={index}
+                itemForm={itemForm}
+                itemFormErrors={itemFormErrors}
+                handleStoreChange={handleStoreChange}
+              />
+              {itemForm.stores.length > 1 && (
+                <button 
+                  type="button" 
+                  className="remove-store-btn"
+                  onClick={() => handleStoreRemove(index)}
+                  aria-label={`Remove store ${index + 1}`}
+                >
+                  <IoMdRemove />
+                </button>
+              )}
+            </div>
+          );
+        })}
+        <button 
+          type="button" 
+          className="add-store-btn"
+          onClick={() => handleStoreAdd(itemForm.stores.length)}
+        >
+          <FaPlus size={18} className="add-store-icon"/>
+          Add Store
+        </button>
+      </div>
+    </>
+  );
+}
+
 interface StoreInputProps {
   required?: boolean;
   index: number;
@@ -23,46 +82,6 @@ interface StoreInputProps {
     value: string | number,
     type: 'name' | 'price' | 'link'
   ) => void;
-}
-
-export function StoreInputContainer({
-  itemForm,
-  itemFormErrors,
-  handleStoreChange,
-}: {
-  itemForm: ItemDetails;
-  itemFormErrors: ItemFormErrors;
-  handleStoreChange: (
-    index: number,
-    value: string | number,
-    type: 'name' | 'price' | 'link'
-  ) => void;
-}) {
-  return (
-    <>
-      <FormLabel>Stores/Prices</FormLabel>
-      <div className="stores-input-container">
-        <StoreInput
-          index={0}
-          itemForm={itemForm}
-          itemFormErrors={itemFormErrors}
-          handleStoreChange={handleStoreChange}
-        />
-        <StoreInput
-          index={1}
-          itemForm={itemForm}
-          itemFormErrors={itemFormErrors}
-          handleStoreChange={handleStoreChange}
-        />
-        <StoreInput
-          index={2}
-          itemForm={itemForm}
-          itemFormErrors={itemFormErrors}
-          handleStoreChange={handleStoreChange}
-        />
-      </div>
-    </>
-  );
 }
 
 export function StoreInput({
@@ -76,10 +95,6 @@ export function StoreInput({
     <div className="store-input-container">
       <div className="store-input">
         <FormLabel>Store {required ? '*' : ''}</FormLabel>
-        <TooltipWrapper
-          className={`input-tooltip ${itemFormErrors.stores[index]?.name ? 'form-error' : ''}`}
-          tooltip={itemFormErrors.stores[index]?.name as string}
-        >
           <FormInput
             name="store"
             value={itemForm.stores[index]?.name || ''}
@@ -93,37 +108,33 @@ export function StoreInput({
             }
             autoComplete="off"
           />
-        </TooltipWrapper>
+          <div className="input-error">
+            {itemFormErrors.stores[index]?.name}
+          </div>
       </div>
       <div className="store-input">
         <FormLabel>Price {required ? '*' : ''}</FormLabel>
-        <TooltipWrapper
-          className={`input-tooltip ${itemFormErrors.stores[index]?.price ? 'form-error' : ''}`}
-          tooltip={itemFormErrors.stores[index]?.price as string}
-        >
-          <div className="price-input-container">
-            <PiCurrencyDollarLight size={36} />
+          <div className={`price-input-container ${itemFormErrors.stores[index]?.price ? 'form-input-error' : ''}`}>
+            <LuDollarSign size={20} />
             <FormInput
               name="price"
-              type="tel"
+              type="text"
+              inputMode="decimal"
               value={itemForm.stores[index]?.price || ''}
               placeholder="0.00"
               required={required}
               onChange={(e) => {
                 handleStoreChange(index, e.target.value, 'price');
               }}
-              className={`${itemFormErrors.stores[index]?.price ? 'form-input-error' : ''}`}
               autoComplete="off"
             />
           </div>
-        </TooltipWrapper>
+          <div className="input-error">
+            {itemFormErrors.stores[index]?.price}
+          </div>
       </div>
       <div className="store-input">
         <FormLabel>Link {required ? '*' : ''}</FormLabel>
-        <TooltipWrapper
-          className={`input-tooltip ${itemFormErrors.stores[index]?.link ? 'form-error' : ''}`}
-          tooltip={itemFormErrors.stores[index]?.link as string}
-        >
           <FormInput
             name="link"
             value={itemForm.stores[index]?.link || ''}
@@ -137,7 +148,9 @@ export function StoreInput({
             }
             autoComplete="off"
           />
-        </TooltipWrapper>
+          <div className="input-error">
+            {itemFormErrors.stores[index]?.link}
+          </div>
       </div>
     </div>
   );

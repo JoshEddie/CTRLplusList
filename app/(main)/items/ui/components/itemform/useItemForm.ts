@@ -58,8 +58,6 @@ export function useItemForm(initialItem?: ItemTable & {
       ? initialItem.stores
       : [
           { name: '', link: '', price: '' },
-          { name: '', link: '', price: '' },
-          { name: '', link: '', price: '' },
         ],
     lists: initialItem?.lists?.map((list) => {
       return {
@@ -75,8 +73,6 @@ export function useItemForm(initialItem?: ItemTable & {
     image_url: '',
     quantity_limit: '',
     stores: [
-      { name: '', link: '', price: '' },
-      { name: '', link: '', price: '' },
       { name: '', link: '', price: '' },
     ],
     lists: '',
@@ -111,7 +107,6 @@ export function useItemForm(initialItem?: ItemTable & {
       if (type === 'name') {
         if (!value) {
           newErrors.name = 'Name is required';
-          toast.error('Name is required');
         } else {
           newErrors.name = '';
         }
@@ -129,7 +124,6 @@ export function useItemForm(initialItem?: ItemTable & {
           });
           if (!isValid) {
             newErrors.image_url = 'Please provide a valid image URL';
-            toast.error('Please provide a valid image URL');
           }
         }
       }
@@ -137,7 +131,6 @@ export function useItemForm(initialItem?: ItemTable & {
       if (type === 'quantity_limit') {
         if ((value as number) < 0) {
           newErrors.quantity_limit = 'Quantity limit must be greater than 0';
-          toast.error('Quantity limit must be greater than 0');
         } else {
           newErrors.quantity_limit = '';
         }
@@ -163,10 +156,7 @@ export function useItemForm(initialItem?: ItemTable & {
           (formState.stores[index].link || formState.stores[index].price)
         ) {
           newErrors.stores[index].name =
-            'Store name is required when price and/or link is provided';
-          toast.error(
-            'Store name is required when price and/or link is provided'
-          );
+            'Store name required when price or link is added';
         }
       }
 
@@ -174,7 +164,6 @@ export function useItemForm(initialItem?: ItemTable & {
         if (value && !value.toString().match(/^\$?[0-9]+(\.[0-9][0-9]?)?$/)) {
           value = value.toString().replace(/[^.0-9]/gi, '');
           newErrors.stores[index].price = 'Invalid price format 00.00';
-          toast.error('Invalid Price Format');
         }
         if (
           !value &&
@@ -182,9 +171,6 @@ export function useItemForm(initialItem?: ItemTable & {
         ) {
           newErrors.stores[index].price =
             'Price is required when store name and/or link is provided';
-          toast.error(
-            'Price is required when store name and/or link is provided'
-          );
         }
       }
 
@@ -193,7 +179,6 @@ export function useItemForm(initialItem?: ItemTable & {
           const formatted = isValidHttpUrl(value.toString());
           if (formatted.error) {
             newErrors.stores[index].link = `Invalid URL: ${formatted.error}`;
-            toast.error(`Invalid URL: ${formatted.error}`);
           }
         } else if (
           !value &&
@@ -201,9 +186,6 @@ export function useItemForm(initialItem?: ItemTable & {
         ) {
           newErrors.stores[index].link =
             'Link is required when store name and/or price is provided';
-          toast.error(
-            'Link is required when store name and/or price is provided'
-          );
         }
       }
 
@@ -262,6 +244,36 @@ export function useItemForm(initialItem?: ItemTable & {
       debouncedStoreValidate(index, value, field);
     },
     [debouncedStoreValidate, errors, formState.stores]
+  );
+
+  const handleStoreAdd = useCallback((index: number) => {
+    const newStores = [...formState.stores];
+    while (index >= newStores.length) {
+      newStores.push({ name: '', link: '', price: '' });
+    }
+    setFormState((prev) => ({ ...prev, stores: newStores }));
+
+    const newErrors = { ...errors };
+      
+      while (index >= (newErrors.stores?.length || 0)) {
+        newErrors.stores = [...(newErrors.stores || []), { name: '', link: '', price: '' }];
+      }
+      
+      setErrors({...errors, stores: newErrors.stores});
+    
+  }, [errors, formState.stores]);
+
+  const handleStoreRemove = useCallback(
+    (index: number) => {
+      const newStores = [...formState.stores];
+      newStores.splice(index, 1);
+      setFormState((prev) => ({ ...prev, stores: newStores }));
+
+      const newErrors = { ...errors };
+      newErrors.stores = newStores.map(() => ({ name: '', link: '', price: '' }));
+      setErrors({...errors, stores: newErrors.stores});
+    },
+    [errors, formState.stores]
   );
 
   const handleListChange = useCallback(
@@ -354,6 +366,8 @@ export function useItemForm(initialItem?: ItemTable & {
     handleListChange,
     handleQuantityLimitChange,
     handleStoreChange,
+    handleStoreAdd,
+    handleStoreRemove,
     handleSubmit,
   };
 }

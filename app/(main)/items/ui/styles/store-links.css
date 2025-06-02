@@ -1,10 +1,32 @@
-.storeLinks {
+.storeLinks,
+.modal-store-links {
   display: grid;
-  gap: 10px;
+  gap: 4px;
+  grid-template-rows: auto 20px;
   text-align: center;
   width: 100%;
-  max-width: 300px;
   margin: 0 auto;
+}
+
+.modal-store-links {
+  grid-template-rows: auto;
+  gap: 8px;
+}
+
+.stores-show-more {
+  color: var(--secondary-color);
+  background-color: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  width: max-content;
+  margin: 0 auto;
+  font-size: 14px;
+}
+
+.stores-show-more:hover {
+  color: var(--primary-color);
+  text-decoration: underline;
 }
 
 .drag-active .storeLinks,
@@ -16,64 +38,8 @@
   font-weight: 200;
 }
 
-.modalBackdrop {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 50;
-}
-
-.storeModal {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  background-color: var(--darkColorHex);
-  border: 1px solid var(--primary-color);
-  padding: 1.5rem;
-  border-radius: 0.5rem;
-  width: 24rem;
-  z-index: 1000;
-  width: 90%;
-  max-width: 400px;
-}
-
-.modalContent {
+.storeLinksModal .itemName {
   text-align: center;
+  margin-bottom: 10px;
 }
-
-.goNowButton {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background-color: #22c55e;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.goNowButton:hover {
-  background-color: #16a34a;
-}
-
-.closeButton {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  color: #6b7280;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1.25rem;
-  padding: 0.25rem;
-}
-
-.closeButton:hover {
-  color: #4b5563;
-}
+    

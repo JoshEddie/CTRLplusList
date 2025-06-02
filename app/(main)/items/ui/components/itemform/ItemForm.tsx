@@ -33,6 +33,8 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
     handleListChange,
     handleQuantityLimitChange,
     handleStoreChange,
+    handleStoreAdd,
+    handleStoreRemove,
     handleSubmit,
   } = useItemForm(item, user_id);
 
@@ -45,13 +47,15 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
   }, [lists]);
 
   return (
-    <>
-      <FormLabel>Preview Item</FormLabel>
-      <Item
-        item={formState as unknown as ItemDisplay}
-        className="preview"
-        user_id={user_id}
-      />
+    <div className='item-form-container'>
+      <FormGroup>
+        <FormLabel>Preview Item</FormLabel>
+        <Item
+          item={formState as unknown as ItemDisplay}
+          className="preview"
+          user_id={user_id}
+        />
+      </FormGroup>
       <Form onSubmit={handleSubmit}>
         <div className="form">
           <FormGroup className="name-link-input">
@@ -113,6 +117,8 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
               itemForm={formState}
               itemFormErrors={errors}
               handleStoreChange={handleStoreChange}
+              handleStoreRemove={handleStoreRemove}
+              handleStoreAdd={handleStoreAdd}
             />
           </FormGroup>
         </div>
@@ -123,6 +129,6 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
           type="Item"
         />
       </Form>
-    </>
+    </div>
   );
 }

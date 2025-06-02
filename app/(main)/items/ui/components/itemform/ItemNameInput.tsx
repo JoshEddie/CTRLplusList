@@ -2,7 +2,6 @@
 'use client';
 
 import { FormGroup, FormLabel } from '@/app/ui/components/Form/Form';
-import TooltipWrapper from '@/app/ui/components/TooltipWrapper';
 
 interface ItemNameInputProps {
   value: string;
@@ -15,10 +14,6 @@ export function ItemNameInput({ value, error, onChange, disabled }: ItemNameInpu
   return (
     <FormGroup>
       <FormLabel>Name*</FormLabel>
-      <TooltipWrapper
-        className={`input-tooltip ${error ? 'form-error' : ''}`}
-        tooltip={error}
-      >
         <input
           type="text"
           value={value}
@@ -29,7 +24,9 @@ export function ItemNameInput({ value, error, onChange, disabled }: ItemNameInpu
           required
           autoComplete="off"
         />
-      </TooltipWrapper>
+      <div className="input-error">
+        {error}
+      </div>
     </FormGroup>
   );
 }

@@ -51,7 +51,7 @@ export default function ModalButtons({
             {secondaryButton}
           </TooltipWrapper>
         }
-      {primary_button_disabled_with_tooltip && (
+      {primary_button_text && (
         <TooltipWrapper
           tooltip={primary_button_disabled_with_tooltip}
           showTooltip={!!primary_button_disabled_with_tooltip}

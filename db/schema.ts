@@ -105,6 +105,7 @@ export const item_stores = pgTable('item_stores', {
   name: text('name').notNull(),
   link: text('link').notNull(),
   price: text('price').notNull(),
+  order: integer('order').notNull().default(1),
 });
 
 export const purchases = pgTable('purchases', {

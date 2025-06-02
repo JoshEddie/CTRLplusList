@@ -1,35 +1,35 @@
-.purchase-container {
-    display: flex;
+
+.purchased-by-container {
+    display: grid;
+    grid-template-columns: 1fr;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    min-height: 20px;
+    text-align: center;
 }
 
-.purchase-checkbox {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    color: var(--primary-color);
-    cursor: pointer;
+.purchased-by {
+    font-size: 12px;
+    font-weight: 200;
 }
 
-.purchase-checkbox.purchased {
-    color: #ffffff;
+.purchase:hover,
+.purchase.purchased {
+  background-color: var(--secondary-color);
+  border-color: var(--secondary-color);
+  color: #ffffff;
 }
 
-.check-icon {
-    width: 30px;
-    height: 30px;
+.purchase.purchased:hover {
+  background-color: #ffffff;
+  color: var(--secondary-color);
 }
 
-.purchase-text {
-    transition: color 0.2s;
-    color: var(--primary-color);
+.purchase.purchased:hover .purchased-by-container {
+    display: none;
 }
 
-.purchased .purchase-text {
-    color: #ffffff;
+.purchase.purchased:hover::after {
+    content: 'Undo';
 }
+
 

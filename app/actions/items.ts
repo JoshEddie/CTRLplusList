@@ -267,14 +267,16 @@ async function updateItemStores(
 
     if (count < stores.length) {
       await Promise.all(
-        stores.slice(count).map(async (store) => {
+        stores.slice(count).map(async (store, index) => {
           if (emptyStore(store)) return;
+          const currentOrder = count + index + 1;
           await db.insert(item_stores).values({
             id: nanoid(),
             item_id: itemId,
             name: store.name,
             link: store.link,
             price: store.price,
+            order: currentOrder,
           });
         })
       );

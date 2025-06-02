@@ -2,7 +2,6 @@
 'use client';
 
 import { FormGroup, FormLabel } from '@/app/ui/components/Form/Form';
-import TooltipWrapper from '@/app/ui/components/TooltipWrapper';
 
 interface ImageUrlInputProps {
   value?: string | null;
@@ -15,11 +14,7 @@ export function ImageUrlInput({ value, error, onChange, disabled }: ImageUrlInpu
   return (
     <FormGroup>
       <FormLabel>Image URL</FormLabel>
-      <TooltipWrapper
-        className={`input-tooltip ${error ? 'form-error' : ''}`}
-        tooltip={error}
-      >
-        <input
+      <input
           type="url"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
@@ -28,7 +23,9 @@ export function ImageUrlInput({ value, error, onChange, disabled }: ImageUrlInpu
           placeholder="https://example.com/image.jpg"
           autoComplete="off"
         />
-      </TooltipWrapper>
+      <div className="input-error">
+        {error}
+      </div>
     </FormGroup>
   );
 }

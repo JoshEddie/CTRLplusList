@@ -24,7 +24,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { useState } from 'react';
-import { RxDragHandleDots2 } from 'react-icons/rx';
+import { RxDragHandleDots1 } from 'react-icons/rx';
 import Item from './Item';
 
 interface ItemsProps {
@@ -104,7 +104,7 @@ export default function SortItems({ items, listId, user_id }: ItemsProps) {
         items={itemsState.map((item) => item.id)}
         strategy={rectSortingStrategy}
       >
-        <div className="item-grid">
+        <div className="item-grid sortable">
           {itemsState.map((item) => {
             return (
               <SortableItem
@@ -179,7 +179,7 @@ export function SortableItem({
         {...listeners}
         aria-label="Drag to reorder"
       >
-        <RxDragHandleDots2 size={24}/>
+        <RxDragHandleDots1 size={40} className="drag-handle-icon"/>
       </div>
       <Item
         item={item}
