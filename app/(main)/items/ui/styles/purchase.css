@@ -1,0 +1,35 @@
+
+.purchased-by-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.purchased-by {
+    font-size: 12px;
+    font-weight: 200;
+}
+
+.purchase:hover,
+.purchase.purchased {
+  background-color: var(--secondary-color);
+  border-color: var(--secondary-color);
+  color: #ffffff;
+}
+
+.purchase.purchased:hover {
+  background-color: #ffffff;
+  color: var(--secondary-color);
+}
+
+.purchase.purchased:hover .purchased-by-container {
+    display: none;
+}
+
+.purchase.purchased:hover::after {
+    content: 'Undo';
+}
+
+

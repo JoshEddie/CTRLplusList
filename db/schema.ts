@@ -62,7 +62,7 @@ export const lists = pgTable('lists', {
 export const items = pgTable('items', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  image_url: text('image_url').notNull(),
+  image_url: text('image_url'),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
   user_id: text('user_id')
@@ -105,6 +105,7 @@ export const item_stores = pgTable('item_stores', {
   name: text('name').notNull(),
   link: text('link').notNull(),
   price: text('price').notNull(),
+  order: integer('order').notNull().default(1),
 });
 
 export const purchases = pgTable('purchases', {
@@ -112,8 +113,8 @@ export const purchases = pgTable('purchases', {
   item_id: text('item_id')
     .references(() => items.id, { onDelete: 'cascade' })
     .notNull(),
-  user_id: text('user_id').references(() => users.id, { onDelete: 'cascade' }), // Made optional
-  guest_name: text('guest_name'), // For guest purchases
+  user_id: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  guest_name: text('guest_name'),
   purchased_at: timestamp('purchased_at').defaultNow().notNull(),
 });
 
@@ -130,7 +131,7 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
     fields: [items.user_id],
     references: [users.id],
   }),
-  purchases: many(purchases),
+  purchase: one(purchases),
   stores: many(item_stores),
   list_items: many(list_items),
 }));
@@ -139,6 +140,10 @@ export const purchasesRelations = relations(purchases, ({ one }) => ({
   item: one(items, {
     fields: [purchases.item_id],
     references: [items.id],
+  }),
+  user: one(users, {
+    fields: [purchases.user_id],
+    references: [users.id],
   }),
 }));
 

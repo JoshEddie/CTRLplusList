@@ -2,7 +2,8 @@
 import '@/app/ui/styles/button.css';
 import { useRouter } from 'next/navigation';
 import { BsArrowLeftShort } from 'react-icons/bs';
-import { FaSquareCheck } from 'react-icons/fa6';
+import { FaCheck } from 'react-icons/fa6';
+import TooltipWrapper from '../TooltipWrapper';
 import FormButton from './FormButton';
 
 export default function CancelSubmitButtons({
@@ -19,15 +20,17 @@ export default function CancelSubmitButtons({
     <div className="form-button-group">
       <FormButton
         type="button"
-        variant="primary outline"
+        variant="secondary"
         onClick={() => router.back()}
         disabled={isPending}
       >
         <BsArrowLeftShort size={20} /> Cancel
       </FormButton>
-      <FormButton type="submit" variant="primary" disabled={isPending}>
-        <FaSquareCheck /> {isEditing ? 'Update ' + type : 'Create ' + type}
-      </FormButton>
+      <TooltipWrapper tooltip="Form is missing required fields or has invalid values" showTooltip={isPending}>
+        <FormButton type="submit" variant="primary" disabled={isPending}>
+          <FaCheck /> {isEditing ? 'Update ' + type : 'Create ' + type}
+        </FormButton>
+      </TooltipWrapper>
     </div>
   );
 }

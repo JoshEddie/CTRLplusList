@@ -1,6 +1,6 @@
 import Header from '@/app/ui/components/Header';
 import { Suspense } from 'react';
-import ItemFormLoading from '../ui/components/ItemFormLoading';
+import ItemFormLoading from '../ui/components/itemform/ItemFormLoading';
 
 const EditItemLayout = async ({ children }: { children: React.ReactNode }) => {
 

@@ -2,7 +2,7 @@
 .form {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1rem;
+  gap: 8px;
   justify-content: end;
 }
 
@@ -10,7 +10,8 @@
 .form-group {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 10px;
+  grid-template-rows: auto 1fr;
+  gap: 8px;
 }
 
 /* Form Label */
@@ -20,10 +21,21 @@
   font-family: var(--font-crimson-pro);
   color: var(--primary-text-color);
   text-align: left;
+  display: flex;
+  align-items: center;
+}
+
+.required::after {
+  content: 'Required';
+  color: var(--danger-color);
+  font-size: 12px;
+  font-style: italic;
+  margin-left: 4px;
 }
 
 /* Form Input */
-.form-input {
+.form-input,
+.price-input-container {
   display: flex;
   font-size: 16px;
   width: 100%;
@@ -36,6 +48,29 @@
     box-shadow 0.15s;
   color: var(--primary-text-color);
   min-height: 37px;
+  align-items: center;
+}
+
+.price-input-container .form-input {
+  border: none;
+  padding-left: 0;
+}
+
+.price-input-container {
+  padding: 0;
+  padding-left: 8px;
+}
+
+.form-input-error {
+  border-color: var(--danger-color);
+  border-width: 2px;
+}
+
+.input-error {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--danger-color);
+  text-align: right;
 }
 
 .form-input:hover {
@@ -48,9 +83,10 @@
 
 /* Form Error */
 .form-error {
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 400;
   color: var(--danger-color);
+  text-align: right;
 }
 
 /* Loading Spinner */
@@ -79,4 +115,98 @@
 .button-group {
   display: flex;
   justify-content: center;
+}
+
+.stores-input-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.store-input-container {
+  border: 1px solid var(--primary-color);
+  border-radius: 10px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.store-input-wrapper {
+  position: relative;
+}
+
+.remove-store-btn {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background-color: var(--primary-text-color);
+    border: 1px solid var(--primary-text-color);
+    color: var(--contrast-text-color);
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.remove-store-btn:hover {
+    background-color: var(--contrast-text-color);
+    color: var(--primary-text-color);
+}
+
+.add-store-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border: none;
+    background-color: transparent;
+    color: var(--secondary-color);
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.add-store-icon {
+  border: 1px solid var(--secondary-color);
+  border-radius: 50%;
+  padding: 2px;
+}
+
+.add-store-btn:hover {
+    color: var(--primary-color);
+}
+
+.add-store-btn:hover .add-store-icon {
+    border-color: var(--primary-color);
+}
+
+@media (min-width: 800px) {
+
+  .item-form-container {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 16px;
+  }
+
+  .item.preview {
+    max-width: 600px;
+  }
+
+  .itemName {
+    order: 0;
+  }
+}
+
+@media (min-width: 1200px) {
+  .form-group.name-link-input {
+    grid-template-columns: 30% 1fr;
+  }
+  
+  .form-group.occasion-quantity-input {
+    grid-template-columns: 1fr 220px;
+  }
 }

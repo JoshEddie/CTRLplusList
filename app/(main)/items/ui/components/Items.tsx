@@ -1,25 +1,29 @@
 import Empty from '@/app/ui/components/Empty';
-import { ItemStoreTable, ItemTable } from '@/lib/types';
+import { ItemDisplay } from '@/lib/types';
 import Item from './Item';
 
 interface ItemsProps {
-  items: (ItemTable & { stores: ItemStoreTable[] })[];
+  items: ItemDisplay[];
   user_id?: string;
+  user_name?: string | null;
+  type?: string;
 }
 
 export default function Items({
   items,
   user_id,
+  user_name,
+  type = 'item',
 }: ItemsProps) {
 
   return (
     items.length === 0 ? (
-      <Empty type="item" />
+      <Empty type={type} />
     ) : (
     <div className="item-grid">
       {items.map((item) => {
         return (
-          <Item key={item.id} item={item} showEditButton={item.user_id === user_id} />
+          <Item key={item.id} item={item} user_id={user_id} user_name={user_name} />
         )
       })}
     </div>

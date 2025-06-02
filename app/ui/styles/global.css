@@ -16,6 +16,8 @@
   --contrast-text-color: var(--light-color);
   --danger-text-color: var(--danger-color);
   --transparent-overlay: rgba(0, 0, 0, 0.7);
+
+  --max-width: 1500px;
 }
 
 /* @media (prefers-color-scheme: dark) {
@@ -56,7 +58,15 @@ body {
   height: 100vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  /* Background for the page */
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background-color: var(--primary-color);
   background-image: linear-gradient(
     120deg,
@@ -64,6 +74,7 @@ body {
     var(--secondary-color)
   );
   background-attachment: fixed;
+  pointer-events: none;
 }
 
 * {
@@ -81,21 +92,24 @@ body {
   z-index: 1;
   padding: 20px;
   padding-bottom: 36px;
+  max-width: var(--max-width);
+  margin: 0 auto;
 }
 
 /* This is the background that stays fixed */
 .container::before {
   content: '';
   position: fixed;
-  top: 153px;
+  top: 149px;
   left: 16px;
   right: 16px;
   bottom: 16px;
   background-color: var(--background-color);
   border-radius: 8px;
   z-index: -1;
-  /* Ensure it's behind the content */
   pointer-events: none;
+  max-width: var(--max-width);
+  margin: 0 auto;
 }
 
 .container:has(.no-user) {
@@ -142,6 +156,9 @@ body {
   top: 0;
   left: 0;
   right: 0;
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
   padding: 16px;
   text-align: left;
   z-index: 50;
@@ -259,11 +276,11 @@ body {
   }
 
   .container {
-    top: 92px;
+    top: 84px;
   }
 
   .container::before {
-    top: 92px;
+    top: 84px;
   }
 }
 

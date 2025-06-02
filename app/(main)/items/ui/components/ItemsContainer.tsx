@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
 import { getItemsByListId, getItemsByUser, getUserIdByEmail } from '@/lib/dal';
+import { ItemDisplay } from '@/lib/types';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import ItemsLoading from './ItemLoading';
@@ -9,15 +10,14 @@ interface ItemsContainerProps {
   listId?: string;
 }
 
-export default async function ItemsContainer({
-  listId,
-}: ItemsContainerProps) {
-
+export default async function ItemsContainer({ listId }: ItemsContainerProps) {
   const session = await auth();
 
-  let items;
-  
-  const user = session?.user?.email ? await getUserIdByEmail(session.user.email) : null;
+  let items: ItemDisplay[];
+
+  const user = session?.user?.email
+    ? await getUserIdByEmail(session.user.email)
+    : null;
 
   if (!listId && !user) {
     redirect('/');
@@ -32,9 +32,15 @@ export default async function ItemsContainer({
     items = await getItemsByUser(user.id);
   }
 
+  const firstLastName: string[] = user?.name ? user.name.split(' ') : [];
+  const firstLastInitial =
+    firstLastName.length > 1
+      ? `${firstLastName[0]} ${firstLastName[1]?.[0]}`
+      : firstLastName[0];
+
   return (
     <Suspense fallback={<ItemsLoading />}>
-      <Items items={items} user_id={user?.id}/>
+      <Items items={items} user_id={user?.id} user_name={firstLastInitial} />
     </Suspense>
   );
 }

@@ -1,9 +1,9 @@
 import { db } from '@/db';
-import { items, list_items, lists, saved_lists, users } from '@/db/schema';
+import { items, list_items, lists, purchases, saved_lists, users } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { unstable_cacheTag as cacheTag } from 'next/cache';
 import { cache } from 'react';
-import { ItemStoreTable, ItemTable, ListTable, UserTable } from './types';
+import { ListTable, UserTable } from './types';
 
 // Get user by id
 export const getUserById: (id: string) => Promise<UserTable | null> =
@@ -111,7 +111,7 @@ export async function getItemsByUser(
     const result = await db.query.items.findMany({
       where: eq(items.user_id, userId),
       with: {
-        stores: true,
+        stores: {orderBy: (stores, {asc}) => [asc(stores.order)]},
       },
       orderBy: (items, { desc }) => [desc(items.created_at)],
     });
@@ -129,7 +129,7 @@ export async function getItemById(id: string, userId: string) {
     const result = await db.query.items.findFirst({
       where: and(eq(items.id, id), eq(items.user_id, userId)),
       with: {
-        stores: true,
+        stores: {orderBy: (stores, {asc}) => [asc(stores.order)]},
         list_items: {
           with: {
             list: true,
@@ -168,9 +168,46 @@ export async function getItemById(id: string, userId: string) {
   }
 }
 
-export async function getItemsByListId(listId: string): Promise<
-  (ItemTable & { stores: ItemStoreTable[] })[]
-> {
+export async function getItemsByPurchased(userId?: string) {
+    'use cache';
+    cacheTag('items');
+    if (!userId) {
+        return [];
+    }
+    try {
+        const result = await db.query.purchases.findMany({
+            where: eq(purchases.user_id, userId),
+            with: {
+                item: {
+                    with: {
+                        stores: {orderBy: (stores, {asc}) => [asc(stores.order)]},
+                        purchase: {
+                          with: {
+                            user: {
+                              columns: {
+                                name: true
+                              }
+                            }
+                          }
+                        }
+                    },
+                },
+            },
+            orderBy: (purchases, { desc }) => [desc(purchases.purchased_at)],
+        });
+
+        const items = result.map(({ item }) => ({
+            ...item,
+        }));
+
+        return items;
+    } catch (error) {
+        console.error('Error fetching items:', error);
+        throw error;
+    }
+}
+
+export async function getItemsByListId(listId: string) {
   'use cache';
   cacheTag('items');
   try {
@@ -179,7 +216,16 @@ export async function getItemsByListId(listId: string): Promise<
       with: {
         item: {
           with: {
-            stores: true,
+            stores: {orderBy: (stores, {asc}) => [asc(stores.order)]},
+            purchase: {
+              with: {
+                user: {
+                  columns: {
+                    name: true
+                  }
+                }
+              }
+            }
           },
         },
       },
@@ -187,9 +233,11 @@ export async function getItemsByListId(listId: string): Promise<
     });
 
     // Transform the result to match the expected format
-    return result.map(({ item }) => ({
+    const items = result.map(({ item }) => ({
       ...item,
     }));
+
+    return items;
   } catch (error) {
     console.error('Error fetching items:', error);
     throw new Error('Failed to fetch items');

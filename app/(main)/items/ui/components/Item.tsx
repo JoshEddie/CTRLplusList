@@ -1,31 +1,184 @@
-import { ItemDetails, ItemStoreTable, ItemTable } from '@/lib/types';
+'use client';
+
+import { createPurchase, removePurchase } from '@/app/actions/items';
+import { ItemDisplay } from '@/lib/types';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import { MdModeEdit } from 'react-icons/md';
 import '../styles/item.css';
 import ItemPhoto from './ItemPhoto';
+import Purchase from './Purchase';
+import Modal from './purchasemodal/Modal';
+import ModalButtons from './purchasemodal/ModalButtons';
+import PurchaseFlow from './purchasemodal/PurchaseFlow';
+import PurchaseFlowContainer from './purchasemodal/PurchaseFlowContainer';
 import StoreLinks from './StoreLinks';
 
 export default function Item({
   item,
   className,
-  showEditButton = false,
+  user_id,
+  user_name,
 }: {
-  item: ItemTable & { stores: ItemStoreTable[] } | ItemDetails | undefined;
+  item: ItemDisplay;
   className?: string;
-  showEditButton?: boolean;
+  user_id?: string;
+  user_name?: string | null;
 }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
-  return (
-    <div className={`item ${className || ''}`} title={item?.name || ''}>
-      <ItemPhoto name={item?.name || ''} url={item?.image_url || ''} />
-      <h1 className="itemName">{item?.name || ''}</h1>
-      <StoreLinks stores={item?.stores || []} />
+  const showModal = useMemo(
+    () => searchParams?.get('purchaseItem') === item.id,
+    [searchParams, item.id]
+  );
+  const [purchaseFlow, setPurchaseFlow] = useState<
+    'initial' | 'self' | 'other' | 'guest'
+  >('initial');
 
-      {showEditButton && (
-        <Link href={`/items/${item?.id}`} className="edit-button">
-          <MdModeEdit />
-        </Link>
-      )}
+  const initialName = useMemo(() => {
+    if (item.purchase?.user?.name) {
+      const firstLastName: string[] = item.purchase?.user?.name?.split(' ');
+      return `${firstLastName[0]} ${firstLastName[1]?.[0]}`;
+    }
+    return item.purchase?.guest_name || '';
+  }, [item.purchase?.guest_name, item.purchase?.user?.name]);
+
+  const [purchasedBy, setPurchasedBy] = useState<string | undefined>(
+    initialName
+  );
+  const [guestName, setGuestName] = useState('');
+
+  const isOwner = user_id === item.user_id;
+  const showPurchased = purchasedBy && !isOwner;
+
+  const handleModalOpen = () => {
+    setPurchaseFlow('initial');
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.set('purchaseItem', item.id || '');
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const handleModalClose = async () => {
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.delete('purchaseItem');
+    router.replace(`${pathname}?${params.toString()}`);
+    setGuestName('');
+  };
+
+  const handlePurchaseClick = () => {
+    if (!item.id) return;
+    handleModalOpen();
+  };
+
+  const handleUndoConfirm = async () => {
+    if (!item.id) return;
+    try {
+      const result = await toast.promise(removePurchase({ item_id: item.id }), {
+        loading: 'Removing purchased status',
+        success: 'Purchased status removed successfully',
+        error: 'Failed to remove purchased status',
+      });
+      if (result?.success) {
+        setPurchasedBy(undefined);
+      }
+    } catch (error) {
+      console.error('Failed to remove purchase:', error);
+    }
+    handleModalClose();
+  };
+
+  const handlePurchaseConfirm = async (
+    name: string,
+    user_purchase: boolean = false
+  ) => {
+    try {
+      let method;
+      if (user_purchase && user_id) {
+        method = createPurchase({
+          item_id: item.id || '',
+          user_id,
+          guest_name: null,
+        });
+      } else {
+        method = createPurchase({
+          item_id: item.id || '',
+          user_id: null,
+          guest_name: name,
+        });
+      }
+      const result = await toast.promise(method, {
+        loading: 'Adding purchased status',
+        success: 'Purchased status added successfully',
+        error: 'Failed to add purchased status',
+      });
+      if (result?.success) {
+        setPurchasedBy(name);
+      }
+      handleModalClose();
+    } catch (error) {
+      console.error('Failed to create purchase:', error);
+    }
+  };
+
+  return (  
+    <>
+    <div className={`item-container ${isOwner ? 'owner' : ''}`}>
+      <div
+        className={`item ${className || ''} ${showPurchased ? 'purchased' : ''}`}
+        title={item.name || ''}
+      >
+        <ItemPhoto name={item.name || ''} url={item.image_url || ''} />
+        <div className="item-info">
+          <h1 className="itemName">{item.name || ''}</h1>
+          <StoreLinks item={item} />
+        </div>
+      </div>
+
+      {!isOwner && (
+            <Purchase
+              purchasedBy={purchasedBy || undefined}
+              handlePurchaseClick={handlePurchaseClick}
+              className={showPurchased ? 'purchased' : ''}
+            />
+          )}
+
+      {isOwner && (
+          <Link href={`/items/${item.id}`} className="edit-button">
+            <MdModeEdit />
+          </Link>
+        )}
     </div>
+
+      {showModal && (
+        <>
+          {!purchasedBy ? (
+            <Modal onClose={handleModalClose}>
+              <PurchaseFlowContainer
+                user_id={user_id}
+                guestName={guestName}
+                setGuestName={setGuestName}
+                handlePurchaseConfirm={handlePurchaseConfirm}
+                purchaseFlow={purchaseFlow}
+                setPurchaseFlow={setPurchaseFlow}
+                user_name={user_name}
+              />
+            </Modal>
+          ) : (
+            <Modal onClose={handleModalClose}>
+              <PurchaseFlow primary_text="Are you sure you want to mark this item as not purchased?">
+                <ModalButtons
+                  primary_button_text="Mark as Not Purchased"
+                  primary_button_onclick={() => handleUndoConfirm()}
+                />
+              </PurchaseFlow>
+            </Modal>
+          )}
+        </>
+      )}
+    </>
   );
 }

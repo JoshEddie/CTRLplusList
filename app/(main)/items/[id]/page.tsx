@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { BsArrowLeftShort } from 'react-icons/bs';
 import DeleteItemButton from '../ui/components/DeleteItemButton';
-import ItemForm from '../ui/components/ItemForm';
+import ItemForm from '../ui/components/itemform/ItemForm';
 
 export default async function EditItem({
   params,

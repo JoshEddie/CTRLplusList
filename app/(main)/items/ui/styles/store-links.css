@@ -1,0 +1,52 @@
+.storeLinks,
+.modal-store-links {
+  display: grid;
+  gap: 4px;
+  grid-template-rows: auto 20px;
+  text-align: center;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.modal-store-links {
+  grid-template-rows: auto;
+  gap: 8px;
+}
+
+.storeLinks .btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+
+.stores-show-more {
+  color: var(--secondary-color);
+  background-color: transparent;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  width: max-content;
+  margin: 0 auto;
+  font-size: 14px;
+}
+
+.stores-show-more:hover {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.drag-active .storeLinks,
+.item-drag-overlay .storeLinks {
+  display: none;
+}
+
+.storeLinks .store-name {
+  font-weight: 200;
+}
+
+.storeLinksModal .itemName {
+  text-align: center;
+  margin-bottom: 10px;
+}
+    

@@ -18,6 +18,7 @@ interface FormSelectProps {
   placeholder?: string;
   isMulti?: boolean;
   defaultValue?: OptionType | OptionType[];
+  isClearable?: boolean;
 }
 
 export default function FormSelect({
@@ -29,6 +30,7 @@ export default function FormSelect({
   placeholder,
   isMulti,
   defaultValue,
+  isClearable = true,
 }: FormSelectProps) {
   const [isClient, setIsClient] = useState(false);
 
@@ -52,7 +54,7 @@ export default function FormSelect({
       }}
       isDisabled={isPending}
       placeholder={placeholder}
-      isClearable={true}
+      isClearable={isClearable}
       isSearchable={true}
       autoFocus={false}
       isMulti={isMulti}

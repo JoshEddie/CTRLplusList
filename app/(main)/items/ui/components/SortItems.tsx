@@ -2,7 +2,7 @@
 
 import { updatePriority } from '@/app/actions/lists';
 import Empty from '@/app/ui/components/Empty';
-import { ItemDetails, ItemStoreTable, ItemTable } from '@/lib/types';
+import { ItemDisplay } from '@/lib/types';
 import {
   closestCenter,
   DndContext,
@@ -24,16 +24,16 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { useState } from 'react';
-import { RxDragHandleDots2 } from 'react-icons/rx';
+import { RxDragHandleDots1 } from 'react-icons/rx';
 import Item from './Item';
 
 interface ItemsProps {
-  items: (ItemTable & { stores: ItemStoreTable[] })[];
+  items: ItemDisplay[];
   listId: string;
   user_id?: string;
 }
 
-export default function Items({ items, listId, user_id }: ItemsProps) {
+export default function SortItems({ items, listId, user_id }: ItemsProps) {
   const [itemsState, setItemsState] = useState(items);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -66,9 +66,6 @@ export default function Items({ items, listId, user_id }: ItemsProps) {
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
-    console.log("active: ", active);
-    console.log("over: ", over);
     
     setIsDragging(false);
 
@@ -107,14 +104,14 @@ export default function Items({ items, listId, user_id }: ItemsProps) {
         items={itemsState.map((item) => item.id)}
         strategy={rectSortingStrategy}
       >
-        <div className="item-grid">
+        <div className="item-grid sortable">
           {itemsState.map((item) => {
             return (
               <SortableItem
                 key={item.id}
                 id={item.id}
                 item={item}
-                showEditButton={item.user_id === user_id}
+                user_id={user_id}
                 isAnyDragging={isDragging}
               />
             );
@@ -127,7 +124,7 @@ export default function Items({ items, listId, user_id }: ItemsProps) {
             <Item
               item={itemsState[activeIndex]}
               className="item-drag-overlay"
-              showEditButton={false}
+              user_id={user_id}
             />
           ) : null}
         </DragOverlay>
@@ -139,13 +136,13 @@ export function SortableItem({
   id,
   item,
   className,
-  showEditButton = false,
+  user_id,
   isAnyDragging = false,
 }: {
   id: string;
-  item: (ItemTable & { stores: ItemStoreTable[] }) | ItemDetails | undefined;
+  item: ItemDisplay;
   className?: string;
-  showEditButton?: boolean;
+  user_id?: string;
   isAnyDragging?: boolean;
 }) {
   const { 
@@ -182,11 +179,11 @@ export function SortableItem({
         {...listeners}
         aria-label="Drag to reorder"
       >
-        <RxDragHandleDots2 size={24}/>
+        <RxDragHandleDots1 size={40} className="drag-handle-icon"/>
       </div>
       <Item
         item={item}
-        showEditButton={showEditButton}
+        user_id={user_id}
       />
     </div>
   );
