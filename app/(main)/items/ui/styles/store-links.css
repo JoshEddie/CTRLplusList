@@ -13,6 +13,13 @@
   gap: 8px;
 }
 
+.storeLinks .btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+}
+
 .stores-show-more {
   color: var(--secondary-color);
   background-color: transparent;

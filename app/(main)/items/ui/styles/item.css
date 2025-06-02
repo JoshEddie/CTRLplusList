@@ -1,8 +1,8 @@
 .item-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr));
   grid-auto-rows: min-content;
-  gap: 20px;
+  gap: 10px;
 }
 
 .empty-item {
@@ -69,14 +69,14 @@ body:has(.item-drag-overlay) {
 .item {
   background-color: var(--background-color);
   display: grid;
-  grid-template-rows: 200px auto;
+  grid-template-rows: 100px auto;
   row-gap: 8px;
   column-gap: 16px;
   border-radius: 20px 20px 0 0;
   border: 2px solid var(--primary-color);
   border-bottom: none;
   position: relative;
-  transition: all 1s;
+  /* transition: all 1s; */
   align-items: end;
   overflow: hidden;
 }
@@ -134,7 +134,7 @@ body:has(.item-drag-overlay) {
   color: var(--secondary-color);
   font-family: var(--font-crimson-pro);
   width: 100%;
-  font-size: 25px;
+  font-size: 18px;
   font-weight: 100;
 }
 
@@ -144,7 +144,7 @@ body:has(.item-drag-overlay) {
   border-radius: 8px;
   display: flex;
   width: 100%;
-  height: 200px;
+  height: 100px;
   justify-content: center;
   align-items: center;
   margin: 0 auto;
@@ -152,7 +152,7 @@ body:has(.item-drag-overlay) {
 
 .item-image {
   width: 100%;
-  height: 200px;
+  height: 100px;
   object-fit: cover;
 }
 
@@ -265,6 +265,51 @@ body:has(.item-drag-overlay) {
 .position-input::placeholder {
   color: #888;
 }
+
+/* @media (min-width: 500px) {
+  .item-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(170px, 100%), 1fr));
+    gap: 15px;
+  }
+
+  .item {
+    grid-template-rows: 120px auto;
+  }
+
+  .itemName {
+    font-size: 18px;
+  }
   
+  .item-image-container {
+    height: 120px;
+  }
+  
+  .item-image {
+    height: 120px;
+  }
+} */
+  
+@media (min-width: 500px) {
+  .item-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
+    gap: 20px;
+  }
+
+  .item {
+    grid-template-rows: 140px auto;
+  }
+
+  .itemName {
+    font-size: 18px;
+  }
+  
+  .item-image-container {
+    height: 140px;
+  }
+  
+  .item-image {
+    height: 140px;
+  }
+}
   
   

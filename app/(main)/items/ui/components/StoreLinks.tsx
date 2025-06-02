@@ -26,8 +26,8 @@ export default function StoreLinks({ item }: { item: ItemDisplay }) {
           href={firstStore.link}
           target="_blank"
       >
-        ${Number(firstStore.price).toFixed(2)}
-        <span className="store-name">{firstStore.name}</span>
+        <div className="price">${Number(firstStore.price).toFixed(2)}</div>
+        <div className="store-name">{firstStore.name}</div>
       </a>)}
       {showModal && item.stores.length > 1 && (
         <Modal className="storeLinksModal" onClose={() => setShowModal(false)}>
@@ -43,8 +43,8 @@ export default function StoreLinks({ item }: { item: ItemDisplay }) {
                       href={store.link}
                       target="_blank"
                     >
-                      ${Number(store.price).toFixed(2)}
-                      <span className="store-name">{store.name}</span>
+                      <div className="price">${Number(store.price).toFixed(2)}</div>
+                      <div className="store-name">{store.name}</div>
                     </a>
                   )
                 );
