@@ -126,7 +126,7 @@ export default function Item({
 
   return (  
     <>
-    <div className={`item-container ${isOwner ? 'owner' : ''}`}>
+    <div className={`item-container ${className || ''} ${isOwner ? 'owner' : ''}`}>
       <div
         className={`item ${className || ''} ${showPurchased ? 'purchased' : ''}`}
         title={item.name || ''}

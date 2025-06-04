@@ -29,6 +29,7 @@
 }
 
 .sortable-item {
+  width: 100%;
   display: grid;
   grid-template-columns: 30px 1fr;
   align-items: center;
@@ -37,6 +38,7 @@
 
 .item-drag-overlay {
   cursor: grabbing;
+  grid-column: span 2;
 }
 
 .sortable-item.is-dragging,
@@ -49,14 +51,13 @@
 }
 
 .drag-handle-icon {
-    transform: translate(-5px, -5px);
+  transform: translate(-5px, -5px);
 }
 
 .drag-handle:active,
 body:has(.item-drag-overlay) {
   cursor: grabbing;
 }
-
 
 .item-container {
   position: relative;
@@ -71,7 +72,6 @@ body:has(.item-drag-overlay) {
   display: grid;
   grid-template-rows: 100px auto;
   row-gap: 8px;
-  column-gap: 16px;
   border-radius: 20px 20px 0 0;
   border: 2px solid var(--primary-color);
   border-bottom: none;
@@ -82,12 +82,12 @@ body:has(.item-drag-overlay) {
 }
 
 .item-container.owner {
-    grid-template-rows: 1fr;
+  grid-template-rows: 1fr;
 }
 
 .item-container.owner .item {
-    border-radius: 20px;
-    border: 2px solid var(--primary-color);
+  border-radius: 20px;
+  border: 2px solid var(--primary-color);
 }
 
 .item.preview {
@@ -200,95 +200,45 @@ body:has(.item-drag-overlay) {
   display: none;
 }
 
-.reorder-input-group {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  position: absolute;
-  top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1;
-  padding: 0.25rem;
+.item-grid.sortable {
+  grid-template-columns: 1fr;
 }
 
-.position-stepper {
-  background-color: #ffffff;
-  color: var(--primary-color);
-  border: none;
-  border-radius: 50%;
-  width: 35px;
-  height: 35px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.sortable-item .item {
+  padding: 10px;
+  gap: 10px;
+  grid-template-columns: 80px 1fr;
+  grid-template-rows: auto;
+  align-items: start;
 }
 
-.position-stepper:hover {
-  background-color: var(--primary-color);
-  color: #ffffff;
-  transform: translateY(-1px);
+.sortable-item .item-image-container {
+  height: 100%;
+  width: 80px;
 }
 
-.position-input {
-  padding: 8px;
-  font-size: 16px;
-  text-align: center;
-  border: 2px solid var(--primary-color);
-  border-radius: 8px;
-  background-color: #ffffff;
-  color: var(--primary-color);
-  transition: all 0.3s ease;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: textfield;
-  width: -moz-fit-content;
-  width: fit-content;
-  /* min-width: 40px; */
-  box-sizing: border-box;
+.sortable-item .item-image {
+  height: 100%;
+  width: 80px;
+  object-fit: contain;
 }
 
-.position-input::-webkit-outer-spin-button,
-.position-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+.sortable-item .item-info {
+  display: contents;
 }
 
-.position-input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+.sortable-item .storeLinks {
+  grid-column: span 2;
 }
 
-.position-input::placeholder {
-  color: #888;
-}
-
-/* @media (min-width: 500px) {
-  .item-grid {
-    grid-template-columns: repeat(auto-fill, minmax(min(170px, 100%), 1fr));
-    gap: 15px;
+@media (max-width: 500px) {
+  .sortable-item .storeLinks .btn {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 8px;
   }
+}
 
-  .item {
-    grid-template-rows: 120px auto;
-  }
-
-  .itemName {
-    font-size: 18px;
-  }
-  
-  .item-image-container {
-    height: 120px;
-  }
-  
-  .item-image {
-    height: 120px;
-  }
-} */
-  
 @media (min-width: 500px) {
   .item-grid {
     grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
@@ -302,14 +252,47 @@ body:has(.item-drag-overlay) {
   .itemName {
     font-size: 18px;
   }
-  
+
   .item-image-container {
     height: 140px;
   }
-  
+
   .item-image {
     height: 140px;
   }
+
+  .sortable-item .item {
+    padding: 0;
+    gap: 10px;
+    grid-template-columns: 100px 1fr;
+    grid-template-rows: auto;
+    align-items: start;
+  }
+
+  .sortable-item .item-image-container {
+    height: 100%;
+    max-height: 100px;
+    width: 100px;
+  }
+
+  .sortable-item .item-image {
+    height: 100%;
+    max-height: 100px;
+    width: 100px;
+    object-fit: cover;
+  }
+
+  .sortable-item .item-info {
+    display: grid;
+    grid-template-columns: 1fr 150px;
+    grid-template-rows: 1fr;
+    gap: 10px;
+    align-items: start;
+    padding: 10px;
+  }
+
+  .sortable-item .storeLinks {
+    grid-column: span 1;
+  }
+
 }
-  
-  

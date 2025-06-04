@@ -36,10 +36,10 @@
   text-decoration: underline;
 }
 
-.drag-active .storeLinks,
+/* .drag-active .storeLinks,
 .item-drag-overlay .storeLinks {
   display: none;
-}
+} */
 
 .storeLinks .store-name {
   font-weight: 200;
