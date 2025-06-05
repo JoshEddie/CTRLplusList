@@ -18,13 +18,12 @@ import {
 } from '@dnd-kit/core';
 import {
   arrayMove,
-  rectSortingStrategy,
   SortableContext,
   sortableKeyboardCoordinates,
-  useSortable,
+  useSortable
 } from '@dnd-kit/sortable';
 import { useState } from 'react';
-import { RxDragHandleDots1 } from 'react-icons/rx';
+import { MdOutlineDragHandle } from 'react-icons/md';
 import Item from './Item';
 
 interface ItemsProps {
@@ -102,7 +101,7 @@ export default function SortItems({ items, listId, user_id }: ItemsProps) {
     >
       <SortableContext
         items={itemsState.map((item) => item.id)}
-        strategy={rectSortingStrategy}
+        // strategy={rectSortingStrategy}
       >
         <div className="item-grid sortable">
           {itemsState.map((item) => {
@@ -119,13 +118,13 @@ export default function SortItems({ items, listId, user_id }: ItemsProps) {
         </div>
       </SortableContext>
 
-        <DragOverlay>
+        <DragOverlay className="sortable-item">
           {activeId ? (
-            <Item
-              item={itemsState[activeIndex]}
-              className="item-drag-overlay"
-              user_id={user_id}
-            />
+              <Item
+                item={itemsState[activeIndex]}
+                className="item-drag-overlay"
+                user_id={user_id}
+              />
           ) : null}
         </DragOverlay>
     </DndContext>
@@ -179,7 +178,7 @@ export function SortableItem({
         {...listeners}
         aria-label="Drag to reorder"
       >
-        <RxDragHandleDots1 size={40} className="drag-handle-icon"/>
+        <MdOutlineDragHandle size={40} className="drag-handle-icon"/>
       </div>
       <Item
         item={item}

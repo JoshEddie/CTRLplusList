@@ -1,15 +1,25 @@
 
 .purchased-by-container {
-    display: grid;
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: row;
     align-items: center;
-    justify-content: center;
-    text-align: center;
+    row-gap: 0;
+    column-gap: 4px;
+    flex-wrap: wrap;
+    justify-content: start;
+    text-align: left;
 }
 
 .purchased-by {
     font-size: 12px;
     font-weight: 200;
+}
+
+.purchase {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  padding: 0 8px;
+  justify-content: center;
 }
 
 .purchase:hover,
@@ -24,12 +34,12 @@
   color: var(--secondary-color);
 }
 
-.purchase.purchased:hover .purchased-by-container {
+/* .purchase.purchased:hover .purchased-by-container {
     display: none;
 }
 
 .purchase.purchased:hover::after {
     content: 'Undo';
-}
+} */
 
 
