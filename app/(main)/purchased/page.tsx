@@ -20,7 +20,7 @@ export default async function Purchased() {
     return (
         <div>
             <Header title="Purchased" />
-            <Items items={items} type="purchase" />
+            <Items items={items} />
         </div>
     );
 }

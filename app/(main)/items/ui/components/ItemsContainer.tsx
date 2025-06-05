@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth';
-import { getItemsByListId, getItemsByUser, getListsByUser, getUserIdByEmail } from '@/lib/dal';
+import { getItemsByListId, getItemsByUser, getUserIdByEmail } from '@/lib/dal';
 import { ItemDisplay } from '@/lib/types';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
@@ -32,8 +32,6 @@ export default async function ItemsContainer({ listId }: ItemsContainerProps) {
     items = await getItemsByUser(user.id);
   }
 
-  const lists = user?.id ? await getListsByUser(user.id) : [];
-
   const firstLastName: string[] = user?.name ? user.name.split(' ') : [];
   const firstLastInitial =
     firstLastName.length > 1
@@ -42,7 +40,7 @@ export default async function ItemsContainer({ listId }: ItemsContainerProps) {
 
   return (
     <Suspense fallback={<ItemsLoading />}>
-      <Items items={items} user_id={user?.id} user_name={firstLastInitial} lists={lists} />
+      <Items items={items} user_id={user?.id} user_name={firstLastInitial} />
     </Suspense>
   );
 }
