@@ -1,7 +1,5 @@
 'use client';
 import '@/app/ui/styles/button.css';
-import { useRouter } from 'next/navigation';
-import { BsArrowLeftShort } from 'react-icons/bs';
 import { FaCheck } from 'react-icons/fa6';
 import TooltipWrapper from '../TooltipWrapper';
 import FormButton from './FormButton';
@@ -15,17 +13,8 @@ export default function CancelSubmitButtons({
   isEditing: boolean;
   type: 'List' | 'Item';
 }) {
-  const router = useRouter();
   return (
     <div className="form-button-group">
-      <FormButton
-        type="button"
-        variant="secondary"
-        onClick={() => router.back()}
-        disabled={isPending}
-      >
-        <BsArrowLeftShort size={20} /> Cancel
-      </FormButton>
       <TooltipWrapper tooltip="Form is missing required fields or has invalid values" showTooltip={isPending}>
         <FormButton type="submit" variant="primary" disabled={isPending}>
           <FaCheck /> {isEditing ? 'Update ' + type : 'Create ' + type}

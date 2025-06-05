@@ -94,6 +94,7 @@ body:has(.item-drag-overlay) {
   margin-bottom: 20px;
   border-width: 1px;
   height: min-content;
+  max-width: 300px;
 }
 
 .item.purchased {
@@ -122,11 +123,14 @@ body:has(.item-drag-overlay) {
   height: 100%;
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: auto 1fr;
-  gap: 8px;
-  align-items: end;
+  grid-template-rows: auto 50px;
+  align-items: start;
   padding: 10px;
   padding-top: 0;
+}
+
+.item-info:has(.stores-show-more) {
+  grid-template-rows: auto 50px auto;
 }
 
 .itemName {
@@ -136,6 +140,7 @@ body:has(.item-drag-overlay) {
   width: 100%;
   font-size: 18px;
   font-weight: 100;
+  margin-bottom: 8px;
 }
 
 .item-image-container {
@@ -196,7 +201,7 @@ body:has(.item-drag-overlay) {
   color: #ffffff;
 }
 
-.item.preview .edit-button {
+.preview .edit-button {
   display: none;
 }
 

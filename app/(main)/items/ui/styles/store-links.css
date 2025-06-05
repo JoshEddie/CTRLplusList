@@ -1,14 +1,12 @@
 .storeLinks,
 .modal-store-links {
-  display: grid;
-  gap: 4px;
-  grid-template-rows: auto 20px;
   text-align: center;
   width: 100%;
   margin: 0 auto;
 }
 
 .modal-store-links {
+  display: grid;
   grid-template-rows: auto;
   gap: 8px;
 }
@@ -45,8 +43,11 @@
   font-weight: 200;
 }
 
-.storeLinksModal .itemName {
+.modal-item-name {
   text-align: center;
   margin-bottom: 10px;
+  color: var(--secondary-color);
+  font-family: var(--font-crimson-pro);
+  font-size: 18px;
 }
     

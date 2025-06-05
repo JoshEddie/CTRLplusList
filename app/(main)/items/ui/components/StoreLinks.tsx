@@ -17,6 +17,7 @@ export default function StoreLinks({ item }: { item: ItemDisplay }) {
   if (!item.stores?.length) return null;
 
   return (
+    <>
     <div className="storeLinks">
       {item.stores.length === 0 && <p>No stores found</p>}
       {firstStore && showFirstStore && (
@@ -29,10 +30,12 @@ export default function StoreLinks({ item }: { item: ItemDisplay }) {
         <div className="price">${Number(firstStore.price).toFixed(2)}</div>
         <div className="store-name">{firstStore.name}</div>
       </a>)}
+
+    </div>
       {showModal && item.stores.length > 1 && (
         <Modal className="storeLinksModal" onClose={() => setShowModal(false)}>
           <div className="modalContent">
-            <div className="itemName">{item.name}</div>
+            <div className="modal-item-name">{item.name}</div>
             <div className="modal-store-links">
               {item.stores.map((store) => {
                 return (
@@ -61,6 +64,6 @@ export default function StoreLinks({ item }: { item: ItemDisplay }) {
           See More Stores
         </button>
       )}
-    </div>
+    </>
   );
 }

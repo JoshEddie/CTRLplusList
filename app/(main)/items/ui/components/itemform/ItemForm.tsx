@@ -58,7 +58,7 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
       </FormGroup>
       <Form onSubmit={handleSubmit}>
         <div className="form">
-          <FormGroup className="name-link-input">
+          {/* <FormGroup className="name-link-input"> */}
             <ItemNameInput
               value={formState.name}
               error={errors.name}
@@ -71,9 +71,9 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
               onChange={handleImageUrlChange}
               disabled={isPending}
             />
-          </FormGroup>
+          {/* </FormGroup> */}
 
-          <FormGroup className="occasion-quantity-input">
+          {/* <FormGroup className="occasion-quantity-input"> */}
             <ListSelection
               name="lists"
               options={listOptions}
@@ -110,7 +110,7 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
               isClearable={false}
               error={errors.quantity_limit}
             />
-          </FormGroup>
+          {/* </FormGroup> */}
 
           <FormGroup>
             <StoreInputContainer
