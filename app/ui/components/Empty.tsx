@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { FaPlus } from 'react-icons/fa';
 
-export default function Empty({type, setShowNewItem}: {type: string, setShowNewItem: (show: boolean) => void}) {
+export default function Empty({type, setShowNewItem}: {type: string, setShowNewItem?: (show: boolean) => void}) {
 
   const typeCap = type.charAt(0).toUpperCase() + type.slice(1);
 
@@ -13,12 +14,17 @@ export default function Empty({type, setShowNewItem}: {type: string, setShowNewI
     <div className="empty-container">
       <h3>{title}</h3>
       <p>{description}</p>
-      {type !== 'purchase' && (
-        <button className="btn primary" onClick={() => setShowNewItem(true)}>
+      {type !== 'purchase' && setShowNewItem ? (
+          <button className="btn primary" onClick={() => setShowNewItem(true)}>
+            <FaPlus size={14} />
+            Create {typeCap}
+          </button>
+        ) : 
+        <Link href={`/${type}s/new`} className="btn primary">
           <FaPlus size={14} />
           Create {typeCap}
-        </button>
-      )}
+        </Link>
+      }
     </div>
   );
 }
