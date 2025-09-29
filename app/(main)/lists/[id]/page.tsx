@@ -8,13 +8,13 @@ import ListDetails from '../ui/components/ListDetails';
 import ListPrivate from '../ui/components/ListPrivate';
 
 type Props = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export async function generateMetadata(
   { params }: Props,
 ): Promise<Metadata> {
-  const { id } = params;
+  const { id } = await params;
   const list = await getList(id);
 
   const title = `${list?.name}`;
