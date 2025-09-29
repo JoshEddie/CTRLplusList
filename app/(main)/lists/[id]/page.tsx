@@ -1,10 +1,45 @@
 import SortItemsContainer from '@/app/(main)/items/ui/components/SortItemsContainer';
 import { auth } from '@/lib/auth';
 import { getList, getUserById, getUserIdByEmail } from '@/lib/dal';
+import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import ItemsContainer from '../../items/ui/components/ItemsContainer';
 import ListDetails from '../ui/components/ListDetails';
 import ListPrivate from '../ui/components/ListPrivate';
+
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+export async function generateMetadata(
+  { params }: Props,
+): Promise<Metadata> {
+  const { id } = await params;
+  const list = await getList(id);
+
+  const title = `${list?.name}`;
+  
+  return {
+    title,
+    openGraph: {
+      title,
+      description: `View ${title}`,
+      images: [{
+        url: "/ctrlpluslist_preview.jpg",
+        width: 1200,
+        height: 630,
+        alt: "ctrl+list"
+      }],
+      type: 'website'
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: `View ${title}`,
+      images: ["/ctrlpluslist_preview.jpg"]
+    }
+  };
+}
 
 export default async function ListPage({
   params,

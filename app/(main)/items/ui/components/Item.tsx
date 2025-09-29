@@ -124,19 +124,19 @@ export default function Item({
     }
   };
 
-  return (  
+  return (
     <>
     <div className={`item-container ${className || ''} ${isOwner ? 'owner' : ''}`}>
-      <div
-        className={`item ${className || ''} ${showPurchased ? 'purchased' : ''}`}
-        title={item.name || ''}
-      >
-        <ItemPhoto name={item.name || ''} url={item.image_url || ''} />
-        <div className="item-info">
-          <h1 className="itemName">{item.name || ''}</h1>
-          <StoreLinks item={item} />
+        <div
+          className={`item ${className || ''} ${showPurchased ? 'purchased' : ''}`}
+          title={item.name || ''}
+        >
+          <ItemPhoto name={item.name || ''} url={item.image_url || ''} />
+          <div className="item-info">
+            <h1 className="itemName">{item.name || ''}</h1>
+            <StoreLinks item={item} />
+          </div>
         </div>
-      </div>
 
       {!isOwner && (
             <Purchase

@@ -26,14 +26,6 @@ export default async function ListSelect() {
       ) : (
         <>
           <div className="list-grid">
-            {/* Header Row
-            <div className="list-header mobile-hide">
-              <div className="list-cell">Name</div>
-              <div className="list-cell">Occasion</div>
-              <div className="list-cell">Date</div>
-            </div> */}
-
-            {/* List Rows */}
             {lists.map((list) => (
               <div className="list-row" key={list.id}>
                 <Link className="list" href={`/lists/${list.id}`}>

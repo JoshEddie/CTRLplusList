@@ -24,7 +24,7 @@ export default function ModalButtons({
       type="button"
       className="btn primary"
       onClick={primary_button_onclick}
-      disabled={primary_button_disabled || !!primary_button_disabled_with_tooltip}
+      disabled={primary_button_disabled}
     >
       {primary_button_text}
     </button>
@@ -35,7 +35,7 @@ export default function ModalButtons({
       type="button"
       className="btn secondary"
       onClick={secondary_button_onclick}
-      disabled={secondary_button_disabled || !!secondary_button_disabled_with_tooltip}
+      disabled={secondary_button_disabled}
     >
       {secondary_button_text}
     </button>

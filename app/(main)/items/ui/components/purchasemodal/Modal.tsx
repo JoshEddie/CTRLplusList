@@ -13,10 +13,10 @@ export default function Modal({
 
   return (
     <div className={`modal-overlay ${className || ''}`}>
-      <div 
-        className="modal"
-      >
-        {children}
+      <div className="modal-container">
+        <div className="modal">
+          {children}
+        </div>
         <div className="close-button" onClick={onClose}><LuX /></div>
       </div>
     </div>
