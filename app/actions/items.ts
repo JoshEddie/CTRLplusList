@@ -16,6 +16,8 @@ const ItemSchema = z.object({
     .min(3, 'Title must be at least 3 characters')
     .max(100, 'Title must be less than 100 characters'),
 
+  description: z.string().optional(),
+
   image_url: z
     .string()
     .optional()
@@ -190,6 +192,7 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
     await db.insert(items).values({
       id,
       name: validatedData.name,
+      description: validatedData.description || '',
       image_url: validatedData.image_url,
       created_at: new Date(),
       updated_at: new Date(),
@@ -389,6 +392,7 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
     const updateData: Record<string, unknown> = {};
 
     if (validatedData.name !== undefined) updateData.name = validatedData.name;
+    if (validatedData.description !== undefined) updateData.description = validatedData.description;
     if (validatedData.image_url !== undefined)
       updateData.image_url = validatedData.image_url;
     if (validatedData.quantity_limit !== undefined)

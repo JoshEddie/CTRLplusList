@@ -152,6 +152,7 @@ export async function getItemById(id: string, userId: string) {
     const newResult = {
       id: result.id,
       name: result.name,
+      description: result.description,
       image_url: result.image_url,
       quantity_limit: result.quantity_limit,
       user_id: result.user_id,

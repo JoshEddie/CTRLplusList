@@ -133,7 +133,10 @@ export default function Item({
         >
           <ItemPhoto name={item.name || ''} url={item.image_url || ''} />
           <div className="item-info">
-            <h1 className="itemName">{item.name || ''}</h1>
+            <div className="item-name-description">
+              <h1 className="itemName">{item.name || ''}</h1>
+              <p className="itemDescription">{item.description || ''}</p>
+            </div>
             <StoreLinks item={item} />
           </div>
         </div>

@@ -140,6 +140,15 @@ body:has(.item-drag-overlay) {
   width: 100%;
   font-size: 18px;
   font-weight: 100;
+}
+
+.itemDescription {
+  text-align: left;
+  color: var(--primary-color);
+  font-family: var(--font-roboto-condensed);
+  width: 100%;
+  font-size: 13px;
+  font-weight: 300;
   margin-bottom: 8px;
 }
 
