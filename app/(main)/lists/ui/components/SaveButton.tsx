@@ -22,7 +22,7 @@ export default function SaveButton({ saved, list_id, user_id }: { saved: boolean
             }
         }}>
             {isSaved ? <FaCheck /> : <FaPlus />}
-            <span className="label">{isSaved ? 'Saved' : 'Add List'}</span>
+            <span className="label">{isSaved ? 'Saved' : 'Save List'}</span>
         </button>
     );
 }
