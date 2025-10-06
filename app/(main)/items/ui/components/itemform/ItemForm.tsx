@@ -2,7 +2,7 @@
 'use client';
 
 import CancelSubmitButtons from '@/app/ui/components/Form/CancelSubmitButtons';
-import { Form, FormGroup, FormLabel } from '@/app/ui/components/Form/Form';
+import { Form, FormGroup, FormLabel, FormTextarea } from '@/app/ui/components/Form/Form';
 import { ItemDisplay, ItemStoreTable, ItemTable, ListTable, OptionType } from '@/lib/types';
 import { useMemo } from 'react';
 import Item from '../Item';
@@ -29,6 +29,7 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
     errors,
     isPending,
     handleNameChange,
+    handleDescriptionChange,
     handleImageUrlChange,
     handleListChange,
     handleQuantityLimitChange,
@@ -65,6 +66,16 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
               onChange={handleNameChange}
               disabled={isPending}
             />
+            <FormGroup>
+              <FormLabel>Description</FormLabel>
+              <FormTextarea
+                value={formState.description}
+                onChange={(e) => handleDescriptionChange(e.target.value)}
+                disabled={isPending}
+                placeholder="Add a description for this item...(Optional)"
+                className=""
+              />
+            </FormGroup>
             <ImageUrlInput
               value={formState.image_url}
               error={errors.image_url}

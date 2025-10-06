@@ -35,7 +35,8 @@
 
 /* Form Input */
 .form-input,
-.price-input-container {
+.price-input-container,
+.form-textarea {
   display: flex;
   font-size: 16px;
   width: 100%;
@@ -47,6 +48,7 @@
     border-color 0.15s,
     box-shadow 0.15s;
   color: var(--primary-text-color);
+  font-family: var(--font-roboto-condensed);
   min-height: 37px;
   align-items: center;
 }

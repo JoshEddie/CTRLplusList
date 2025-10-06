@@ -36,6 +36,7 @@ const useDebounce = <T extends (...args: never[]) => void>(
 
 interface FormErrors {
   name: string;
+  description: string;
   image_url: string;
   quantity_limit: string;
   stores: Array<{ name: string; link: string; price: string }>;
@@ -52,6 +53,7 @@ export function useItemForm(initialItem?: ItemTable & {
   const [formState, setFormState] = useState<ItemDetails>({
     id: initialItem?.id || '',
     name: initialItem?.name || '',
+    description: initialItem?.description || '',
     image_url: initialItem?.image_url || '',
     quantity_limit: initialItem?.quantity_limit || 1,
     stores: initialItem?.stores?.length
@@ -70,6 +72,7 @@ export function useItemForm(initialItem?: ItemTable & {
 
   const [errors, setErrors] = useState<FormErrors>({
     name: '',
+    description: '',
     image_url: '',
     quantity_limit: '',
     stores: [
@@ -100,7 +103,7 @@ export function useItemForm(initialItem?: ItemTable & {
   const validateForm = useCallback(
     async (
       value?: string | number | null,
-      type?: 'name' | 'image_url' | 'quantity_limit'
+      type?: 'name' | 'description' | 'image_url' | 'quantity_limit'
     ) => {
       const newErrors = { ...errors };
 
@@ -202,6 +205,15 @@ export function useItemForm(initialItem?: ItemTable & {
       setFormState((prev) => ({ ...prev, name: value }));
       setErrors((prev) => ({ ...prev, name: '' }));
       debouncedFormValidate(value, 'name');
+    },
+    [debouncedFormValidate]
+  );
+
+  const handleDescriptionChange = useCallback(
+    (value: string) => {
+      setFormState((prev) => ({ ...prev, description: value }));
+      setErrors((prev) => ({ ...prev, description: '' }));
+      debouncedFormValidate(value, 'description');
     },
     [debouncedFormValidate]
   );
@@ -362,6 +374,7 @@ export function useItemForm(initialItem?: ItemTable & {
     errors,
     isPending,
     handleNameChange,
+    handleDescriptionChange,
     handleImageUrlChange,
     handleListChange,
     handleQuantityLimitChange,

@@ -62,6 +62,7 @@ export const lists = pgTable('lists', {
 export const items = pgTable('items', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  description: text('description').notNull().default(''),
   image_url: text('image_url'),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),

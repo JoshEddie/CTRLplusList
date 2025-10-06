@@ -20,6 +20,7 @@ export type UserTable = {
 export type ItemTable = {
   id: string;
   name: string;
+  description: string;
   image_url?: string | null;
   created_at: Date;
   updated_at: Date;
@@ -35,6 +36,7 @@ export type ItemDisplay = ItemTable & {
 export type ItemDetails = {
   id: string;
   name: string;
+  description: string;
   image_url?: string | null;
   quantity_limit: number;
   user_id: string;
