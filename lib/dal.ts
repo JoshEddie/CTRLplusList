@@ -276,7 +276,15 @@ export async function getSavedListsByUser(userId: string) {
     const result = await db.query.saved_lists.findMany({
       where: eq(saved_lists.user_id, userId),
       with: {
-        list: true,
+        list: {
+          with: {
+            user: {
+              columns: {
+                name: true
+              }
+            }
+          }
+        },
       },
     });
     return result;
