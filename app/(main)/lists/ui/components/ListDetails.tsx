@@ -23,13 +23,13 @@ export default function ListDetails({
     <div className="list-details">
       {isOwner && <ShareList list={list} />}
       <ListHeader title={list.name} user_name={user_name || null} list={list}>
+        <ShareButton list={list} />
         {isOwner ? (
           <>
             <Link className="btn primary" href={`/lists/${list.id}/edit`}>
               <MdModeEdit />
               <span className="label mobile-hide">Edit List</span>
             </Link>
-            <ShareButton list={list} />
             <DeleteListButton id={list.id} />
           </>
         ) : (
