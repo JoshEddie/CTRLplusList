@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { getListsByUser, getUserIdByEmail } from '@/lib/dal';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { FaCalendar, FaGift } from 'react-icons/fa';
 
 export default async function ListSelect() {
   const session = await auth();
@@ -30,14 +31,17 @@ export default async function ListSelect() {
               <div className="list-row" key={list.id}>
                 <Link className="list" href={`/lists/${list.id}`}>
                   <div className="list-cell list-name">{list.name}</div>
-                  <div className="list-cell list-occasion">{list.occasion}</div>
-                  <div className="list-cell list-date">
-                    {list.date.toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: '2-digit',
-                      timeZone: 'UTC',
-                    })}
+                  <div className="list-cell-details">
+                    <div className="list-cell list-occasion"><FaGift />{list.occasion}</div>
+                    <div className="list-cell list-date">
+                      <FaCalendar />
+                      {list.date.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: '2-digit',
+                        timeZone: 'UTC',
+                      })}
+                    </div>
                   </div>
                 </Link>
               </div>

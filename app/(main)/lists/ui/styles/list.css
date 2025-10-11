@@ -25,7 +25,10 @@
 
 .list {
   text-decoration: none;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: center;
   gap: 8px;
   background-color: var(--secondary-background-color);
   padding: 16px;
@@ -37,8 +40,25 @@
   color: #ffffff;
 }
 
+.list-cell-details {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+@media (max-width: 550px) {
+  .list-cell-details {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
 .list-cell {
+  display: flex;
   align-items: center;
+  gap: 8px;
   font-size: 16px;
   text-decoration: none;
 }
@@ -47,18 +67,14 @@
   font-size: 24px;
   font-weight: 100;
   font-family: var(--font-crimson-pro);
+  word-break: break-word;
 }
 
-.list-cell::before {
-  font-weight: 100;
-}
-
-.list-occasion::before {
-  content: 'Occasion: ';
-}
-
-.list-date::before {
-  content: 'Date: ';
+@media (min-width: 550px) {
+  .list-name {
+    text-align: center;
+    justify-content: center;
+  }
 }
 
 .list-header .list-cell {

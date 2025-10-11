@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth';
 import { getSavedListsByUser, getUserIdByEmail } from '@/lib/dal';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { FaCalendar, FaGift, FaUser } from 'react-icons/fa';
 
 export default async function SavedLists() {
   const session = await auth();
@@ -31,15 +32,19 @@ export default async function SavedLists() {
               <div className="list-row" key={savedList.id}>
                 <Link className="list" href={`/lists/${savedList.list_id}`}>
                   <div className="list-cell list-name">{savedList.list.name}</div>
-                  <div className="list-cell list-occasion">{savedList.list.occasion}</div>
-                  <div className="list-cell list-date">
-                    {savedList.list.date.toLocaleDateString('en-US', {
+                  <div className="list-cell-details">
+                    <div className="list-cell list-owner"><FaUser /> {savedList.list.user.name}</div>
+                    <div className="list-cell list-occasion"><FaGift /> {savedList.list.occasion}</div>
+                    <div className="list-cell list-date">
+                      <FaCalendar />
+                      {savedList.list.date.toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'short',
                       day: '2-digit',
                       timeZone: 'UTC',
                     })}
                   </div>
+                </div>
                 </Link>
               </div>
             ))}
