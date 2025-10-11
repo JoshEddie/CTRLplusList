@@ -14,11 +14,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   trustHost: true, // Trust the host in development
   callbacks: {
+    async signIn({ user, profile }) {
+      // Use Google's given_name (first name) if available, otherwise fall back to splitting
+      if (profile?.given_name) {
+        user.name = profile.given_name;
+      } else if (user.name) {
+        user.name = user.name.split(' ')[0];
+      }
+      return true;
+    },
     jwt({ token, trigger, session }) {
       if (trigger === "update") {
-        token.name = session.user.name
+        token.name = session.user.name;
       }
-      return token
+      return token;
     },
     async session({ session }) {
       return session;
