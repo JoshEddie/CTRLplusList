@@ -41,10 +41,9 @@ export default function Item({
 
   const initialName = useMemo(() => {
     if (item.purchase?.user?.name) {
-      const firstLastName: string[] = item.purchase?.user?.name?.split(' ');
-      return `${firstLastName[0]} ${firstLastName[1]?.[0]}`;
+      return item.purchase?.user?.name;
     }
-    return item.purchase?.guest_name || '';
+    return item.purchase?.user?.name || item.purchase?.guest_name || '';
   }, [item.purchase?.guest_name, item.purchase?.user?.name]);
 
   const [purchasedBy, setPurchasedBy] = useState<string | undefined>(
