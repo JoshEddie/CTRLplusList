@@ -401,12 +401,10 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
     // Update item
     await db.update(items).set(updateData).where(eq(items.id, data.id));
 
-    // Get the lists from the form data and ensure they exist
+    // Call updateItemLists even with empty array to properly remove all associations
     const lists = validatedData.lists || [];
-    if (lists.length > 0) {
-      const listIds = lists.map((list) => list.value);
-      await updateItemLists(listIds, data.id);
-    }
+    const listIds = lists.map((list) => list.value);
+    await updateItemLists(listIds, data.id);
 
     await updateItemStores(
       (validatedData.stores || []).map((store) => ({
