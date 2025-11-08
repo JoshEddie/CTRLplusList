@@ -156,7 +156,6 @@ export function GoogleImageSearch({
           onPrev={prevImages}
           onNext={nextImages}
           onSelect={handleImageSelect}
-          customUrl={customUrl}
           canGoPrev={canGoPrev}
           canGoNext={canGoNext}
           itemsPerView={ITEMS_PER_VIEW}
