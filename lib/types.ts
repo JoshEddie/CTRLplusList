@@ -69,3 +69,15 @@ export type OptionType = {
   value: string;
   label: string;
 };
+
+export interface GoogleImageResult {
+  link: string;
+  title: string;
+  image: {
+    byteSize: number;
+    contextLink: string;
+    height: number;
+    thumbnailLink: string;
+    width: number;
+  };
+}
