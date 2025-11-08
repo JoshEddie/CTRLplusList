@@ -15,7 +15,6 @@ interface ImageResultsViewerProps {
   onPrev: () => void;
   onNext: () => void;
   onSelect: (url: string) => void;
-  customUrl: string;
   canGoPrev: boolean;
   canGoNext: boolean;
   itemsPerView: number;
@@ -28,7 +27,6 @@ export function ImageResultsViewer({
   onPrev,
   onNext,
   onSelect,
-  customUrl,
   canGoPrev,
   canGoNext,
   itemsPerView,
