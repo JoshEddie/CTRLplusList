@@ -70,7 +70,7 @@ export type OptionType = {
   label: string;
 };
 
-export interface GoogleImageResult {
+export interface ImageSearchResult {
   link: string;
   title: string;
   image: {

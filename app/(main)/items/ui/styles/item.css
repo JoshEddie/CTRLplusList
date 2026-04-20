@@ -260,7 +260,7 @@ body:has(.item-drag-overlay) {
   }
 
   .item {
-    grid-template-rows: 140px auto;
+    grid-template-rows: 180px auto;
   }
 
   .itemName {
@@ -268,11 +268,11 @@ body:has(.item-drag-overlay) {
   }
 
   .item-image-container {
-    height: 140px;
+    height: 180px;
   }
 
   .item-image {
-    height: 140px;
+    height: 180px;
   }
 
   .sortable-item .item {

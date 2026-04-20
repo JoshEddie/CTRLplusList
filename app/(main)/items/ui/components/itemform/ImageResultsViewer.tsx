@@ -1,8 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-
 interface ImageResultsViewerProps {
   results: Array<{
     link: string;
@@ -11,77 +9,43 @@ interface ImageResultsViewerProps {
       thumbnailLink?: string;
     };
   }>;
-  currentIndex: number;
-  onPrev: () => void;
-  onNext: () => void;
   onSelect: (url: string) => void;
-  canGoPrev: boolean;
-  canGoNext: boolean;
-  itemsPerView: number;
-  totalResults: number;
 }
 
 export function ImageResultsViewer({
   results,
-  currentIndex,
-  onPrev,
-  onNext,
   onSelect,
-  canGoPrev,
-  canGoNext,
-  itemsPerView,
-  totalResults,
 }: ImageResultsViewerProps) {
   return (
     <div className="image-results">
       <div className="image-results-header">
         <span>Search Results</span>
-        <div className="pagination-controls">
-          <button
-            onClick={onPrev}
-            disabled={!canGoPrev}
-            className="pagination-button"
-            type="button"
-            aria-label="Previous images"
-          >
-            <FaChevronLeft />
-          </button>
-          <span className="pagination-info">
-            {currentIndex + 1}-{Math.min(currentIndex + itemsPerView, totalResults)} of {totalResults}
-          </span>
-          <button
-            onClick={onNext}
-            disabled={!canGoNext}
-            className="pagination-button"
-            type="button"
-            aria-label="Next images"
-          >
-            <FaChevronRight />
-          </button>
-        </div>
+        <span className="pagination-info">{results.length} images</span>
       </div>
 
       <div className="image-grid">
         {results.map((result, index) => (
           <div
-            key={index}
+            key={`${result.link}-${index}`}
             className="image-thumbnail"
             onClick={() => onSelect(result.link)}
             onKeyDown={(e) => e.key === 'Enter' && onSelect(result.link)}
             role="button"
             tabIndex={0}
+            title={result.title}
           >
             <div className="image-wrapper">
               <img
                 src={result.image?.thumbnailLink || result.link}
                 alt={result.title || 'Search result'}
+                loading="lazy"
               />
             </div>
           </div>
         ))}
       </div>
 
-      <div className="image-search-note">Click on an image to select it</div>
+      <div className="image-search-note">Click an image to select it</div>
     </div>
   );
 }
