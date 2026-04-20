@@ -43,10 +43,13 @@ interface FormErrors {
   lists: string;
 }
 
-export function useItemForm(initialItem?: ItemTable & {
+export function useItemForm(
+  initialItem?: ItemTable & {
     stores: ItemStoreTable[];
     lists: ListTable[];
-  }, user_id?: string) {
+  },
+  user_id?: string
+) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
 
@@ -58,15 +61,14 @@ export function useItemForm(initialItem?: ItemTable & {
     quantity_limit: initialItem?.quantity_limit || 1,
     stores: initialItem?.stores?.length
       ? initialItem.stores
-      : [
-          { name: '', link: '', price: '' },
-        ],
-    lists: initialItem?.lists?.map((list) => {
-      return {
-        value: list.id.toString(),
-        label: list.name,
-      };
-    }) || [],
+      : [{ name: '', link: '', price: '' }],
+    lists:
+      initialItem?.lists?.map((list) => {
+        return {
+          value: list.id.toString(),
+          label: list.name,
+        };
+      }) || [],
     user_id: user_id || '',
   });
 
@@ -75,9 +77,7 @@ export function useItemForm(initialItem?: ItemTable & {
     description: '',
     image_url: '',
     quantity_limit: '',
-    stores: [
-      { name: '', link: '', price: '' },
-    ],
+    stores: [{ name: '', link: '', price: '' }],
     lists: '',
   });
 
@@ -258,22 +258,27 @@ export function useItemForm(initialItem?: ItemTable & {
     [debouncedStoreValidate, errors, formState.stores]
   );
 
-  const handleStoreAdd = useCallback((index: number) => {
-    const newStores = [...formState.stores];
-    while (index >= newStores.length) {
-      newStores.push({ name: '', link: '', price: '' });
-    }
-    setFormState((prev) => ({ ...prev, stores: newStores }));
-
-    const newErrors = { ...errors };
-      
-      while (index >= (newErrors.stores?.length || 0)) {
-        newErrors.stores = [...(newErrors.stores || []), { name: '', link: '', price: '' }];
+  const handleStoreAdd = useCallback(
+    (index: number) => {
+      const newStores = [...formState.stores];
+      while (index >= newStores.length) {
+        newStores.push({ name: '', link: '', price: '' });
       }
-      
-      setErrors({...errors, stores: newErrors.stores});
-    
-  }, [errors, formState.stores]);
+      setFormState((prev) => ({ ...prev, stores: newStores }));
+
+      const newErrors = { ...errors };
+
+      while (index >= (newErrors.stores?.length || 0)) {
+        newErrors.stores = [
+          ...(newErrors.stores || []),
+          { name: '', link: '', price: '' },
+        ];
+      }
+
+      setErrors({ ...errors, stores: newErrors.stores });
+    },
+    [errors, formState.stores]
+  );
 
   const handleStoreRemove = useCallback(
     (index: number) => {
@@ -282,8 +287,12 @@ export function useItemForm(initialItem?: ItemTable & {
       setFormState((prev) => ({ ...prev, stores: newStores }));
 
       const newErrors = { ...errors };
-      newErrors.stores = newStores.map(() => ({ name: '', link: '', price: '' }));
-      setErrors({...errors, stores: newErrors.stores});
+      newErrors.stores = newStores.map(() => ({
+        name: '',
+        link: '',
+        price: '',
+      }));
+      setErrors({ ...errors, stores: newErrors.stores });
     },
     [errors, formState.stores]
   );

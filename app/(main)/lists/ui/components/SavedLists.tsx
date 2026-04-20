@@ -31,20 +31,26 @@ export default async function SavedLists() {
             {savedLists.map((savedList) => (
               <div className="list-row" key={savedList.id}>
                 <Link className="list" href={`/lists/${savedList.list_id}`}>
-                  <div className="list-cell list-name">{savedList.list.name}</div>
+                  <div className="list-cell list-name">
+                    {savedList.list.name}
+                  </div>
                   <div className="list-cell-details">
-                    <div className="list-cell list-owner"><FaUser /> {savedList.list.user.name}</div>
-                    <div className="list-cell list-occasion"><FaGift /> {savedList.list.occasion}</div>
+                    <div className="list-cell list-owner">
+                      <FaUser /> {savedList.list.user.name}
+                    </div>
+                    <div className="list-cell list-occasion">
+                      <FaGift /> {savedList.list.occasion}
+                    </div>
                     <div className="list-cell list-date">
                       <FaCalendar />
                       {savedList.list.date.toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'short',
-                      day: '2-digit',
-                      timeZone: 'UTC',
-                    })}
+                        year: 'numeric',
+                        month: 'short',
+                        day: '2-digit',
+                        timeZone: 'UTC',
+                      })}
+                    </div>
                   </div>
-                </div>
                 </Link>
               </div>
             ))}

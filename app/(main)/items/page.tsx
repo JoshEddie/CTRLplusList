@@ -26,6 +26,11 @@ export default async function Home() {
       : firstLastName[0];
 
   return (
-    <ItemsPage items={items} user_id={user?.id} user_name={firstLastInitial} lists={lists} />
+    <ItemsPage
+      items={items}
+      user_id={user?.id}
+      user_name={firstLastInitial}
+      lists={lists}
+    />
   );
 }

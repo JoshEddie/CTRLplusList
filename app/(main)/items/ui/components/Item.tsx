@@ -125,7 +125,9 @@ export default function Item({
 
   return (
     <>
-    <div className={`item-container ${className || ''} ${isOwner ? 'owner' : ''}`}>
+      <div
+        className={`item-container ${className || ''} ${isOwner ? 'owner' : ''}`}
+      >
         <div
           className={`item ${className || ''} ${showPurchased ? 'purchased' : ''}`}
           title={item.name || ''}
@@ -140,20 +142,20 @@ export default function Item({
           </div>
         </div>
 
-      {!isOwner && (
-            <Purchase
-              purchasedBy={purchasedBy || undefined}
-              handlePurchaseClick={handlePurchaseClick}
-              className={showPurchased ? 'purchased' : ''}
-            />
-          )}
+        {!isOwner && (
+          <Purchase
+            purchasedBy={purchasedBy || undefined}
+            handlePurchaseClick={handlePurchaseClick}
+            className={showPurchased ? 'purchased' : ''}
+          />
+        )}
 
-      {isOwner && (
+        {isOwner && (
           <Link href={`/items/${item.id}`} className="edit-button">
             <MdModeEdit />
           </Link>
         )}
-    </div>
+      </div>
 
       {showModal && (
         <>

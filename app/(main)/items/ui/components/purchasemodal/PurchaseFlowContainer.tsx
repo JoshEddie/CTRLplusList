@@ -59,14 +59,11 @@ export default function PurchaseFlowContainer({
           )}
 
           {purchaseFlow === 'self' && (
-            <PurchaseFlow
-              primary_text={`Confirm purchase for ${user_name}`}
-            >
+            <PurchaseFlow primary_text={`Confirm purchase for ${user_name}`}>
               <ModalButtons
                 primary_button_text="Confirm Purchase"
                 primary_button_onclick={() =>
-                  user_name &&
-                  handlePurchaseConfirm(user_name, USER_PURCHASE)
+                  user_name && handlePurchaseConfirm(user_name, USER_PURCHASE)
                 }
                 secondary_button_text="Back"
                 secondary_button_onclick={() => setPurchaseFlow('initial')}

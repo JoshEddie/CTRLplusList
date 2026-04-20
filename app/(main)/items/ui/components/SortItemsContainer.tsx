@@ -12,16 +12,17 @@ interface SortItemsContainerProps {
 export default async function SortItemsContainer({
   listId,
 }: SortItemsContainerProps) {
-
   const session = await auth();
 
-  const user = session?.user?.email ? await getUserIdByEmail(session.user.email) : null;
+  const user = session?.user?.email
+    ? await getUserIdByEmail(session.user.email)
+    : null;
 
   const items: ItemDisplay[] = await getItemsByListId(listId);
 
   return (
     <Suspense fallback={<ItemsLoading />}>
-      <SortItems items={items} user_id={user?.id} listId={listId}/>
+      <SortItems items={items} user_id={user?.id} listId={listId} />
     </Suspense>
   );
 }

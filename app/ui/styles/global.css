@@ -33,13 +33,13 @@
 } */
 
 @media (max-width: 600px) {
-  body [class*="mobile-hide"] {
+  body [class*='mobile-hide'] {
     display: none;
   }
 }
 
 @media (max-width: 800px) {
-  body [class*="nav-hide"] {
+  body [class*='nav-hide'] {
     display: none;
   }
 }

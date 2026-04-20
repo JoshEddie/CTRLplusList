@@ -32,7 +32,10 @@ export default async function ListSelect() {
                 <Link className="list" href={`/lists/${list.id}`}>
                   <div className="list-cell list-name">{list.name}</div>
                   <div className="list-cell-details">
-                    <div className="list-cell list-occasion"><FaGift />{list.occasion}</div>
+                    <div className="list-cell list-occasion">
+                      <FaGift />
+                      {list.occasion}
+                    </div>
                     <div className="list-cell list-date">
                       <FaCalendar />
                       {list.date.toLocaleDateString('en-US', {

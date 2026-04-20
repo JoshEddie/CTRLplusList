@@ -9,12 +9,7 @@ interface ItemsProps {
   user_name?: string | null;
 }
 
-export default function Items({
-  items,
-  user_id,
-  user_name,
-}: ItemsProps) {
-
+export default function Items({ items, user_id, user_name }: ItemsProps) {
   return (
     <div className="item-grid">
       {items.map((item) => {

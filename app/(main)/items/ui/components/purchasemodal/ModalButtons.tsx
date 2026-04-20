@@ -43,14 +43,14 @@ export default function ModalButtons({
 
   return (
     <div className={`button-group ${secondary_button_text ? '' : 'single'}`}>
-      {secondary_button_text && 
-          <TooltipWrapper
-            tooltip={secondary_button_disabled_with_tooltip}
-            showTooltip={!!secondary_button_disabled_with_tooltip}
-          >
-            {secondaryButton}
-          </TooltipWrapper>
-        }
+      {secondary_button_text && (
+        <TooltipWrapper
+          tooltip={secondary_button_disabled_with_tooltip}
+          showTooltip={!!secondary_button_disabled_with_tooltip}
+        >
+          {secondaryButton}
+        </TooltipWrapper>
+      )}
       {primary_button_text && (
         <TooltipWrapper
           tooltip={primary_button_disabled_with_tooltip}

@@ -57,10 +57,7 @@ export async function SignInButton() {
 
 export function SignOutButton() {
   return (
-    <form
-      className="sign-out-button"
-      action={signOutUser}
-    >
+    <form className="sign-out-button" action={signOutUser}>
       <button type="submit" className="btn nav">
         <LuLogOut size={20} />
         Sign Out

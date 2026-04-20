@@ -7,21 +7,24 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { MdDeleteForever } from 'react-icons/md';
 
-export default function DeleteItemButton({ id, userId }: { id: string; userId: string }) {
+export default function DeleteItemButton({
+  id,
+  userId,
+}: {
+  id: string;
+  userId: string;
+}) {
   const router = useRouter();
   const [showConfirm, setShowConfirm] = useState(false);
 
   const handleDeleteItemClick = async (id: string) => {
     try {
-      const result = await toast.promise(
-        deleteItem(id, userId),
-        {
-          loading: 'Deleting',
-          success: 'Item deleted successfully',
-          error: 'Failed to delete item',
-        }
-      );
-      
+      const result = await toast.promise(deleteItem(id, userId), {
+        loading: 'Deleting',
+        success: 'Item deleted successfully',
+        error: 'Failed to delete item',
+      });
+
       if (result?.success) {
         router.push('/items');
       }

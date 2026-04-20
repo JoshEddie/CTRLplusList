@@ -1,6 +1,6 @@
 import '@/app/ui/styles/button.css';
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata } from 'next';
 import { Crimson_Pro, Roboto, Roboto_Condensed } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
@@ -66,7 +66,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html lang="en">
       <body

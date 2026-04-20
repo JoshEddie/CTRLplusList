@@ -3,14 +3,16 @@ import { Suspense } from 'react';
 import ItemFormLoading from '../ui/components/itemform/ItemFormLoading';
 
 const EditItemLayout = async ({ children }: { children: React.ReactNode }) => {
-
   return (
     <>
-      <Suspense fallback={
-        <>
-          <Header title="Edit Item" />
-          <ItemFormLoading />
-        </>}>
+      <Suspense
+        fallback={
+          <>
+            <Header title="Edit Item" />
+            <ItemFormLoading />
+          </>
+        }
+      >
         {children}
       </Suspense>
     </>

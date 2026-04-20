@@ -44,5 +44,5 @@ export default async function EditItem({
       </Header>
       <ItemForm user_id={user.id} item={item} lists={lists} />
     </>
-  )
-};
+  );
+}

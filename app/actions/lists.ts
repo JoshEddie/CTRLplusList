@@ -248,7 +248,11 @@ export async function unsaveList(
     }
 
     // Unsave list
-    await db.delete(saved_lists).where(and(eq(saved_lists.list_id, list_id), eq(saved_lists.user_id, user_id)));
+    await db
+      .delete(saved_lists)
+      .where(
+        and(eq(saved_lists.list_id, list_id), eq(saved_lists.user_id, user_id))
+      );
 
     updateTag('saved_lists');
 
@@ -407,7 +411,6 @@ export async function updatePriority(
         .update(list_items)
         .set({ position: new_position })
         .where(eq(list_items.item_id, item_id));
-
     }
 
     updateTag('items');

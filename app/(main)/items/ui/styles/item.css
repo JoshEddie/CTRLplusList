@@ -308,5 +308,4 @@ body:has(.item-drag-overlay) {
   .sortable-item .storeLinks {
     grid-column: span 1;
   }
-
 }

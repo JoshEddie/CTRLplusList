@@ -43,8 +43,8 @@ export default function ShareButton({ list }: { list: ListTable }) {
   };
 
   return (
-    <button 
-      className={`btn primary`} 
+    <button
+      className={`btn primary`}
       onClick={shareList}
       aria-label="Share list"
     >

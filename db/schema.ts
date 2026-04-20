@@ -8,34 +8,34 @@ import {
   timestamp,
 } from 'drizzle-orm/pg-core';
 import { nanoid } from 'nanoid';
-import type { AdapterAccountType } from "next-auth/adapters";
+import type { AdapterAccountType } from 'next-auth/adapters';
 
-export const users = pgTable("user", {
-  id: text("id")
+export const users = pgTable('user', {
+  id: text('id')
     .primaryKey()
     .$defaultFn(() => nanoid()),
-  name: text("name"),
-  email: text("email").unique(),
-  emailVerified: timestamp("emailVerified", { mode: "date" }),
-  image: text("image"),
-})
- 
+  name: text('name'),
+  email: text('email').unique(),
+  emailVerified: timestamp('emailVerified', { mode: 'date' }),
+  image: text('image'),
+});
+
 export const accounts = pgTable(
-  "account",
+  'account',
   {
-    userId: text("userId")
+    userId: text('userId')
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    type: text("type").$type<AdapterAccountType>().notNull(),
-    provider: text("provider").notNull(),
-    providerAccountId: text("providerAccountId").notNull(),
-    refresh_token: text("refresh_token"),
-    access_token: text("access_token"),
-    expires_at: integer("expires_at"),
-    token_type: text("token_type"),
-    scope: text("scope"),
-    id_token: text("id_token"),
-    session_state: text("session_state"),
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: text('type').$type<AdapterAccountType>().notNull(),
+    provider: text('provider').notNull(),
+    providerAccountId: text('providerAccountId').notNull(),
+    refresh_token: text('refresh_token'),
+    access_token: text('access_token'),
+    expires_at: integer('expires_at'),
+    token_type: text('token_type'),
+    scope: text('scope'),
+    id_token: text('id_token'),
+    session_state: text('session_state'),
   },
   (account) => [
     {
@@ -44,7 +44,7 @@ export const accounts = pgTable(
       }),
     },
   ]
-)
+);
 
 export const lists = pgTable('lists', {
   id: text('id').primaryKey(),
@@ -83,9 +83,7 @@ export const list_items = pgTable(
       .notNull(),
     position: integer('position').notNull(),
   },
-  (table) => [
-    primaryKey({ columns: [table.list_id, table.item_id] }),
-  ]
+  (table) => [primaryKey({ columns: [table.list_id, table.item_id] })]
 );
 
 export const saved_lists = pgTable('saved_lists', {

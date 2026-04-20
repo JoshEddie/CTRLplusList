@@ -34,11 +34,7 @@ export default function ItemsPage({
       {items.length === 0 ? (
         <Empty type="item" setShowNewItem={setShowNewItem} />
       ) : (
-        <Items
-          items={items}
-          user_id={user_id}
-          user_name={user_name}
-        />
+        <Items items={items} user_id={user_id} user_name={user_name} />
       )}
       {showNewItem && (
         <ItemFormContainer

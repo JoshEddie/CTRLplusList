@@ -2,8 +2,19 @@
 'use client';
 
 import CancelSubmitButtons from '@/app/ui/components/Form/CancelSubmitButtons';
-import { Form, FormGroup, FormLabel, FormTextarea } from '@/app/ui/components/Form/Form';
-import { ItemDisplay, ItemStoreTable, ItemTable, ListTable, OptionType } from '@/lib/types';
+import {
+  Form,
+  FormGroup,
+  FormLabel,
+  FormTextarea,
+} from '@/app/ui/components/Form/Form';
+import {
+  ItemDisplay,
+  ItemStoreTable,
+  ItemTable,
+  ListTable,
+  OptionType,
+} from '@/lib/types';
 import { useMemo } from 'react';
 import Item from '../Item';
 import { ImageUrlInput } from './ImageUrlInput';
@@ -23,7 +34,6 @@ interface ItemFormProps {
 }
 
 export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
-
   const {
     formState,
     errors,
@@ -48,7 +58,7 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
   }, [lists]);
 
   return (
-    <div className='item-form-container'>
+    <div className="item-form-container">
       <FormGroup>
         <FormLabel>Preview Item</FormLabel>
         <Item
@@ -60,67 +70,67 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
       <Form onSubmit={handleSubmit}>
         <div className="form">
           {/* <FormGroup className="name-link-input"> */}
-            <ItemNameInput
-              value={formState.name}
-              error={errors.name}
-              onChange={handleNameChange}
+          <ItemNameInput
+            value={formState.name}
+            error={errors.name}
+            onChange={handleNameChange}
+            disabled={isPending}
+          />
+          <FormGroup>
+            <FormLabel>Description</FormLabel>
+            <FormTextarea
+              value={formState.description}
+              onChange={(e) => handleDescriptionChange(e.target.value)}
               disabled={isPending}
+              placeholder="Add a description for this item...(Optional)"
+              className=""
             />
-            <FormGroup>
-              <FormLabel>Description</FormLabel>
-              <FormTextarea
-                value={formState.description}
-                onChange={(e) => handleDescriptionChange(e.target.value)}
-                disabled={isPending}
-                placeholder="Add a description for this item...(Optional)"
-                className=""
-              />
-            </FormGroup>
-            <ImageUrlInput
-              value={formState.image_url}
-              error={errors.image_url}
-              onChange={handleImageUrlChange}
-              disabled={isPending}
-            />
+          </FormGroup>
+          <ImageUrlInput
+            value={formState.image_url}
+            error={errors.image_url}
+            onChange={handleImageUrlChange}
+            disabled={isPending}
+          />
           {/* </FormGroup> */}
 
           {/* <FormGroup className="occasion-quantity-input"> */}
-            <ListSelection
-              name="lists"
-              options={listOptions}
-              defaultValue={formState.lists?.map((list) => ({
-                value: list.value,
-                label: list.label,
-              }))}
-              onChange={(value) => handleListChange(value as OptionType[])}
-              isPending={isPending}
-              placeholder="Select a list"
-              isMulti={true}
-              error={errors.lists}
-            />
-            <QuantityLimitSelect
-              name="quantity_limit"
-              options={[
-                { value: 'Unlimited', label: 'Unlimited' },
-                { value: '1', label: '1' },
-              ]}
-              onChange={(quantity: OptionType | OptionType[] | null) => {
-                if (!quantity) {
-                  handleQuantityLimitChange(0);
-                  return;
-                }
-                const selectedQuantity = Array.isArray(quantity)
-                  ? quantity
-                  : [quantity];
-                const quantity_limit =
-                  selectedQuantity[0].value === 'Unlimited' ? 0 : 1;
-                handleQuantityLimitChange(quantity_limit);
-              }}
-              isPending={isPending}
-              defaultValue={{ value: '1', label: '1' }}
-              isClearable={false}
-              error={errors.quantity_limit}
-            />
+          <ListSelection
+            name="lists"
+            options={listOptions}
+            defaultValue={formState.lists?.map((list) => ({
+              value: list.value,
+              label: list.label,
+            }))}
+            onChange={(value) => handleListChange(value as OptionType[])}
+            isPending={isPending}
+            placeholder="Select a list"
+            isMulti={true}
+            error={errors.lists}
+          />
+          <QuantityLimitSelect
+            name="quantity_limit"
+            options={[
+              { value: 'Unlimited', label: 'Unlimited' },
+              { value: '1', label: '1' },
+            ]}
+            onChange={(quantity: OptionType | OptionType[] | null) => {
+              if (!quantity) {
+                handleQuantityLimitChange(0);
+                return;
+              }
+              const selectedQuantity = Array.isArray(quantity)
+                ? quantity
+                : [quantity];
+              const quantity_limit =
+                selectedQuantity[0].value === 'Unlimited' ? 0 : 1;
+              handleQuantityLimitChange(quantity_limit);
+            }}
+            isPending={isPending}
+            defaultValue={{ value: '1', label: '1' }}
+            isClearable={false}
+            error={errors.quantity_limit}
+          />
           {/* </FormGroup> */}
 
           <FormGroup>

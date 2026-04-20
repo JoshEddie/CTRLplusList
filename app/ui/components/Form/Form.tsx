@@ -81,15 +81,17 @@ export function FormError({ className, children }: FormErrorProps) {
     // <p className={`form-error ${className || ''}`} {...props}>
     //   {children}
     // </p>
-    <TooltipWrapper className={className || 'form-error'} tooltip={children as string}>
+    <TooltipWrapper
+      className={className || 'form-error'}
+      tooltip={children as string}
+    >
       <LuInfo size={16} />
     </TooltipWrapper>
   );
 }
 
 // Form Description
-interface FormDescriptionProps
-  extends React.HTMLAttributes<HTMLParagraphElement> {
+interface FormDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement> {
   children: React.ReactNode;
 }
 

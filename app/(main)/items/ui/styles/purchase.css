@@ -1,17 +1,16 @@
-
 .purchased-by-container {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    row-gap: 0;
-    column-gap: 4px;
-    flex-wrap: wrap;
-    justify-content: start;
-    text-align: left;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  row-gap: 0;
+  column-gap: 4px;
+  flex-wrap: wrap;
+  justify-content: start;
+  text-align: left;
 }
 
 .purchased-by {
-    font-weight: 200;
+  font-weight: 200;
 }
 
 .purchase {

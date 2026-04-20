@@ -62,7 +62,7 @@ export type PurchaseTable = {
   user_id: string | null;
   guest_name: string | null;
   purchased_at: Date;
-  user: { name: string | null; } | null;
+  user: { name: string | null } | null;
 };
 
 export type OptionType = {

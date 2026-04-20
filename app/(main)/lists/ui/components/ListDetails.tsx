@@ -1,4 +1,3 @@
-
 import { ListTable } from '@/lib/types';
 import Link from 'next/link';
 import { MdModeEdit } from 'react-icons/md';

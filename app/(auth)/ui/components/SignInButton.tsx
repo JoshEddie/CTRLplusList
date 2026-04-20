@@ -1,11 +1,8 @@
-import { signInUser } from "@/app/actions/user";
+import { signInUser } from '@/app/actions/user';
 
 export default function SignInButton() {
-
   return (
-    <form
-      action={signInUser}
-    >
+    <form action={signInUser}>
       <button className="gsi-material-button">
         <div className="gsi-material-button-state"></div>
         <div className="gsi-material-button-content-wrapper">

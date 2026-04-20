@@ -11,33 +11,33 @@ type Props = {
   params: Promise<{ id: string }>;
 };
 
-export async function generateMetadata(
-  { params }: Props,
-): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const list = await getList(id);
 
   const title = `${list?.name}`;
-  
+
   return {
     title,
     openGraph: {
       title,
       description: `View ${title}`,
-      images: [{
-        url: "/ctrlpluslist_preview.jpg",
-        width: 1200,
-        height: 630,
-        alt: "ctrl+list"
-      }],
-      type: 'website'
+      images: [
+        {
+          url: '/ctrlpluslist_preview.jpg',
+          width: 1200,
+          height: 630,
+          alt: 'ctrl+list',
+        },
+      ],
+      type: 'website',
     },
     twitter: {
-      card: "summary_large_image",
+      card: 'summary_large_image',
       title,
       description: `View ${title}`,
-      images: ["/ctrlpluslist_preview.jpg"]
-    }
+      images: ['/ctrlpluslist_preview.jpg'],
+    },
   };
 }
 
@@ -74,8 +74,17 @@ export default async function ListPage({
   return (
     <>
       {!user && <div className="no-user" hidden />}
-      <ListDetails isOwner={isOwner} list={list} user_name={listOwner?.name || undefined} user_id={user?.id || undefined} />
-      {isOwner ? <SortItemsContainer listId={id} /> : <ItemsContainer listId={id} />}
+      <ListDetails
+        isOwner={isOwner}
+        list={list}
+        user_name={listOwner?.name || undefined}
+        user_id={user?.id || undefined}
+      />
+      {isOwner ? (
+        <SortItemsContainer listId={id} />
+      ) : (
+        <ItemsContainer listId={id} />
+      )}
     </>
   );
 }

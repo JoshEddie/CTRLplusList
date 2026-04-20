@@ -7,31 +7,31 @@ import Modal from './purchasemodal/Modal';
 
 export default function StoreLinks({ item }: { item: ItemDisplay }) {
   const [showModal, setShowModal] = useState(false);
-  
+
   const firstStore = item.stores?.[0];
   const showFirstStore = useMemo(
-    () => firstStore?.name || firstStore?.link || firstStore?.price, 
+    () => firstStore?.name || firstStore?.link || firstStore?.price,
     [firstStore]
   );
-  
+
   if (!item.stores?.length) return null;
 
   return (
     <>
-    <div className="storeLinks">
-      {item.stores.length === 0 && <p>No stores found</p>}
-      {firstStore && showFirstStore && (
-        <a
-          key={firstStore.name}
-          className="btn primary"
-          href={firstStore.link}
-          target="_blank"
-      >
-        <div className="price">${Number(firstStore.price).toFixed(2)}</div>
-        <div className="store-name">{firstStore.name}</div>
-      </a>)}
-
-    </div>
+      <div className="storeLinks">
+        {item.stores.length === 0 && <p>No stores found</p>}
+        {firstStore && showFirstStore && (
+          <a
+            key={firstStore.name}
+            className="btn primary"
+            href={firstStore.link}
+            target="_blank"
+          >
+            <div className="price">${Number(firstStore.price).toFixed(2)}</div>
+            <div className="store-name">{firstStore.name}</div>
+          </a>
+        )}
+      </div>
       {showModal && item.stores.length > 1 && (
         <Modal className="storeLinksModal" onClose={() => setShowModal(false)}>
           <div className="modalContent">
@@ -46,7 +46,9 @@ export default function StoreLinks({ item }: { item: ItemDisplay }) {
                       href={store.link}
                       target="_blank"
                     >
-                      <div className="price">${Number(store.price).toFixed(2)}</div>
+                      <div className="price">
+                        ${Number(store.price).toFixed(2)}
+                      </div>
                       <div className="store-name">{store.name}</div>
                     </a>
                   )

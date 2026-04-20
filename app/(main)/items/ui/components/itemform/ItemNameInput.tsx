@@ -10,23 +10,26 @@ interface ItemNameInputProps {
   disabled?: boolean;
 }
 
-export function ItemNameInput({ value, error, onChange, disabled }: ItemNameInputProps) {
+export function ItemNameInput({
+  value,
+  error,
+  onChange,
+  disabled,
+}: ItemNameInputProps) {
   return (
     <FormGroup>
       <FormLabel>Name*</FormLabel>
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          className={`form-input ${error ? 'form-input-error' : ''}`}
-          placeholder="Item Name"
-          required
-          autoComplete="off"
-        />
-      <div className="input-error">
-        {error}
-      </div>
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className={`form-input ${error ? 'form-input-error' : ''}`}
+        placeholder="Item Name"
+        required
+        autoComplete="off"
+      />
+      <div className="input-error">{error}</div>
     </FormGroup>
   );
 }

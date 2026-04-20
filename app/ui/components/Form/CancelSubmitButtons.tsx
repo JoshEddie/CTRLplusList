@@ -15,7 +15,10 @@ export default function CancelSubmitButtons({
 }) {
   return (
     <div className="form-button-group">
-      <TooltipWrapper tooltip="Form is missing required fields or has invalid values" showTooltip={isPending}>
+      <TooltipWrapper
+        tooltip="Form is missing required fields or has invalid values"
+        showTooltip={isPending}
+      >
         <FormButton type="submit" variant="primary" disabled={isPending}>
           <FaCheck /> {isEditing ? 'Update ' + type : 'Create ' + type}
         </FormButton>

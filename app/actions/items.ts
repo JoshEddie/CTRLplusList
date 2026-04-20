@@ -392,7 +392,8 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
     const updateData: Record<string, unknown> = {};
 
     if (validatedData.name !== undefined) updateData.name = validatedData.name;
-    if (validatedData.description !== undefined) updateData.description = validatedData.description;
+    if (validatedData.description !== undefined)
+      updateData.description = validatedData.description;
     if (validatedData.image_url !== undefined)
       updateData.image_url = validatedData.image_url;
     if (validatedData.quantity_limit !== undefined)

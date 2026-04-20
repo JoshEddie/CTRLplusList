@@ -1,7 +1,5 @@
-import ItemLoading from "../items/ui/components/ItemLoading";
+import ItemLoading from '../items/ui/components/ItemLoading';
 
 export default function PurchasedLoading() {
-    return (
-        <ItemLoading />
-    );
+  return <ItemLoading />;
 }

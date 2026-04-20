@@ -70,7 +70,7 @@ export default function ListForm({
     FormData
   >(async (prevState: ActionResponse, formData: FormData) => {
     const dateString = formData.get('date') as string;
-    
+
     // Client-side validation
     if (!validateDate(dateString)) {
       return {
@@ -171,17 +171,15 @@ export default function ListForm({
             }
             required
             disabled={isPending}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => validateDate(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              validateDate(e.target.value)
+            }
             min="1900-01-01"
             max="9999-12-31"
           />
-          {dateError && (
-            <p className="error-message">{dateError}</p>
-          )}
+          {dateError && <p className="error-message">{dateError}</p>}
           {state?.errors?.date && (
-            <p className="error-message">
-              {state.errors.date.join(', ')}
-            </p>
+            <p className="error-message">{state.errors.date.join(', ')}</p>
           )}
         </FormGroup>
         <CancelSubmitButtons

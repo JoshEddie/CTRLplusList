@@ -1,17 +1,17 @@
-import { accounts, users } from "@/db/schema";
-import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
-import { db } from "../db";
+import { accounts, users } from '@/db/schema';
+import { DrizzleAdapter } from '@auth/drizzle-adapter';
+import NextAuth from 'next-auth';
+import Google from 'next-auth/providers/google';
+import { db } from '../db';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  theme: { logo: "https://ctrlpluslist.com/ctrlpluslist_logo-hor-white.webp" },
+  theme: { logo: 'https://ctrlpluslist.com/ctrlpluslist_logo-hor-white.webp' },
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
   }),
   providers: [Google],
-  session: { strategy: "jwt" },
+  session: { strategy: 'jwt' },
   trustHost: true, // Trust the host in development
   callbacks: {
     async signIn({ user, profile }) {
@@ -24,7 +24,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
     jwt({ token, trigger, session }) {
-      if (trigger === "update") {
+      if (trigger === 'update') {
         token.name = session.user.name;
       }
       return token;

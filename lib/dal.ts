@@ -1,24 +1,29 @@
 import { db } from '@/db';
-import { items, list_items, lists, purchases, saved_lists, users } from '@/db/schema';
+import {
+  items,
+  list_items,
+  lists,
+  purchases,
+  saved_lists,
+  users,
+} from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 import { cache } from 'react';
 import { ListTable, UserTable } from './types';
 
 // Get user by id
-export const getUserById: (id: string) => Promise<UserTable | null> =
-  cache(async (id: string) => {
+export const getUserById: (id: string) => Promise<UserTable | null> = cache(
+  async (id: string) => {
     try {
-      const result = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, id));
+      const result = await db.select().from(users).where(eq(users.id, id));
       return result[0] || null;
     } catch (error) {
       console.error('Error getting user by id:', error);
       return null;
     }
-  });
+  }
+);
 
 // Get user by email
 export const getUserIdByEmail: (email: string) => Promise<UserTable | null> =
@@ -76,9 +81,7 @@ export async function getLists() {
   }
 }
 
-export async function getListsByUser(
-  userId: string
-) {
+export async function getListsByUser(userId: string) {
   'use cache';
   cacheTag('lists');
   try {
@@ -102,16 +105,14 @@ export async function getListsByUser(
   }
 }
 
-export async function getItemsByUser(
-  userId: string
-) {
+export async function getItemsByUser(userId: string) {
   'use cache';
   cacheTag('items');
   try {
     const result = await db.query.items.findMany({
       where: eq(items.user_id, userId),
       with: {
-        stores: {orderBy: (stores, {asc}) => [asc(stores.order)]},
+        stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
       },
       orderBy: (items, { desc }) => [desc(items.created_at)],
     });
@@ -129,7 +130,7 @@ export async function getItemById(id: string, userId: string) {
     const result = await db.query.items.findFirst({
       where: and(eq(items.id, id), eq(items.user_id, userId)),
       with: {
-        stores: {orderBy: (stores, {asc}) => [asc(stores.order)]},
+        stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
         list_items: {
           with: {
             list: true,
@@ -170,42 +171,42 @@ export async function getItemById(id: string, userId: string) {
 }
 
 export async function getItemsByPurchased(userId?: string) {
-    'use cache';
-    cacheTag('items');
-    if (!userId) {
-        return [];
-    }
-    try {
-        const result = await db.query.purchases.findMany({
-            where: eq(purchases.user_id, userId),
-            with: {
-                item: {
-                    with: {
-                        stores: {orderBy: (stores, {asc}) => [asc(stores.order)]},
-                        purchase: {
-                          with: {
-                            user: {
-                              columns: {
-                                name: true
-                              }
-                            }
-                          }
-                        }
-                    },
+  'use cache';
+  cacheTag('items');
+  if (!userId) {
+    return [];
+  }
+  try {
+    const result = await db.query.purchases.findMany({
+      where: eq(purchases.user_id, userId),
+      with: {
+        item: {
+          with: {
+            stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
+            purchase: {
+              with: {
+                user: {
+                  columns: {
+                    name: true,
+                  },
                 },
+              },
             },
-            orderBy: (purchases, { desc }) => [desc(purchases.purchased_at)],
-        });
+          },
+        },
+      },
+      orderBy: (purchases, { desc }) => [desc(purchases.purchased_at)],
+    });
 
-        const items = result.map(({ item }) => ({
-            ...item,
-        }));
+    const items = result.map(({ item }) => ({
+      ...item,
+    }));
 
-        return items;
-    } catch (error) {
-        console.error('Error fetching items:', error);
-        throw error;
-    }
+    return items;
+  } catch (error) {
+    console.error('Error fetching items:', error);
+    throw error;
+  }
 }
 
 export async function getItemsByListId(listId: string) {
@@ -217,16 +218,16 @@ export async function getItemsByListId(listId: string) {
       with: {
         item: {
           with: {
-            stores: {orderBy: (stores, {asc}) => [asc(stores.order)]},
+            stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
             purchase: {
               with: {
                 user: {
                   columns: {
-                    name: true
-                  }
-                }
-              }
-            }
+                    name: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -280,10 +281,10 @@ export async function getSavedListsByUser(userId: string) {
           with: {
             user: {
               columns: {
-                name: true
-              }
-            }
-          }
+                name: true,
+              },
+            },
+          },
         },
       },
     });
@@ -294,21 +295,27 @@ export async function getSavedListsByUser(userId: string) {
   }
 }
 
-export async function getSavedStatus(listId: string, userId: string): Promise<{ list_id: string; user_id: string; id: string; } | undefined> {
-    'use cache';
-    cacheTag('saved_lists');
-    try {
-        const result = await db.query.saved_lists.findFirst({
-            where: and(eq(saved_lists.list_id, listId), eq(saved_lists.user_id, userId)),
-        });
+export async function getSavedStatus(
+  listId: string,
+  userId: string
+): Promise<{ list_id: string; user_id: string; id: string } | undefined> {
+  'use cache';
+  cacheTag('saved_lists');
+  try {
+    const result = await db.query.saved_lists.findFirst({
+      where: and(
+        eq(saved_lists.list_id, listId),
+        eq(saved_lists.user_id, userId)
+      ),
+    });
 
-        if (!result) {
-            return undefined;
-        }
-
-        return result;
-    } catch (error) {
-        console.error('Error fetching saved status:', error);
-        throw new Error('Failed to fetch saved status');
+    if (!result) {
+      return undefined;
     }
+
+    return result;
+  } catch (error) {
+    console.error('Error fetching saved status:', error);
+    throw new Error('Failed to fetch saved status');
+  }
 }

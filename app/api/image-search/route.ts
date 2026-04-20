@@ -120,9 +120,7 @@ const serperProvider: ImageSearchProvider = {
     }
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(
-        `Serper error ${response.status}: ${body.slice(0, 200)}`
-      );
+      throw new Error(`Serper error ${response.status}: ${body.slice(0, 200)}`);
     }
 
     const data = await response.json();
@@ -264,7 +262,10 @@ function getProviderChain(): ImageSearchProvider[] {
 // for the same thing today.
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 500;
-const resultCache = new Map<string, { expires: number; items: ImageSearchResult[] }>();
+const resultCache = new Map<
+  string,
+  { expires: number; items: ImageSearchResult[] }
+>();
 
 function cacheKey(query: string): string {
   return query.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -310,7 +311,8 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         error: 'quota_exceeded',
-        message: 'Simulated quota exhaustion (IMAGE_SEARCH_SIMULATE_QUOTA=true).',
+        message:
+          'Simulated quota exhaustion (IMAGE_SEARCH_SIMULATE_QUOTA=true).',
         exhausted: ['serpapi', 'serper'],
       },
       { status: 429 }
