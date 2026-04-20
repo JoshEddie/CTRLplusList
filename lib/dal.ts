@@ -1,7 +1,7 @@
 import { db } from '@/db';
 import { items, list_items, lists, purchases, saved_lists, users } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { unstable_cacheTag as cacheTag } from 'next/cache';
+import { cacheTag } from 'next/cache';
 import { cache } from 'react';
 import { ListTable, UserTable } from './types';
 

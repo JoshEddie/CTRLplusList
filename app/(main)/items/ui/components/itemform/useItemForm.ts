@@ -316,7 +316,12 @@ export function useItemForm(initialItem?: ItemTable & {
     return hasNoErrors && isNameFilled;
   }, [formState.name, errors]);
 
+  // TODO: revisit memoization here. React Compiler (Next 16) can't preserve the
+  // manual memo because the dep list uses `initialItem?.id` while it infers
+  // `initialItem`. Either widen the dep to `initialItem` or drop `useCallback`
+  // entirely and let the compiler memoize.
   const handleSubmit = useCallback(
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     async (e: React.FormEvent) => {
       e.preventDefault();
       setIsPending(true);

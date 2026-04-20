@@ -5,7 +5,7 @@ import { list_items, lists, saved_lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { revalidateTag } from 'next/cache';
+import { updateTag } from 'next/cache';
 import { z } from 'zod';
 // Define Zod schema for list validation
 const ListSchema = z.object({
@@ -65,7 +65,7 @@ export async function createList(data: ListData): Promise<ActionResponse> {
       user_id: sql`${validatedData.user_id}`,
     });
 
-    revalidateTag('lists');
+    updateTag('lists');
 
     return {
       success: true,
@@ -125,7 +125,7 @@ export async function updateList(
       .where(eq(lists.id, id))
       .returning();
 
-    revalidateTag('lists');
+    updateTag('lists');
 
     return {
       success: true,
@@ -157,7 +157,7 @@ export async function deleteList(id: string): Promise<ActionResponse> {
     // Delete list
     await db.delete(lists).where(eq(lists.id, id));
 
-    revalidateTag('lists');
+    updateTag('lists');
 
     return { success: true, message: 'List deleted successfully' };
   } catch (error) {
@@ -188,7 +188,7 @@ export async function toggleShareList(
     // Share list
     await db.update(lists).set({ shared: shared }).where(eq(lists.id, id));
 
-    revalidateTag('lists');
+    updateTag('lists');
 
     return { success: true, message: 'List shared successfully' };
   } catch (error) {
@@ -219,7 +219,7 @@ export async function saveList(
     // Save list
     await db.insert(saved_lists).values({ id: nanoid(), list_id, user_id });
 
-    revalidateTag('saved_lists');
+    updateTag('saved_lists');
 
     return { success: true, message: 'List saved successfully' };
   } catch (error) {
@@ -250,7 +250,7 @@ export async function unsaveList(
     // Unsave list
     await db.delete(saved_lists).where(and(eq(saved_lists.list_id, list_id), eq(saved_lists.user_id, user_id)));
 
-    revalidateTag('saved_lists');
+    updateTag('saved_lists');
 
     return { success: true, message: 'List unsaved successfully' };
   } catch (error) {
@@ -410,7 +410,7 @@ export async function updatePriority(
 
     }
 
-    revalidateTag('items');
+    updateTag('items');
 
     // Check and rebalance if needed
     if (await checkListBalance(listId)) {

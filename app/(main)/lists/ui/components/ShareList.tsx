@@ -1,11 +1,13 @@
 'use client';
 import { toggleShareList } from '@/app/actions/lists';
 import { ListTable } from '@/lib/types';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { FaLock, FaUnlock } from 'react-icons/fa';
 
 export default function ShareList({ list }: { list: ListTable }) {
+  const router = useRouter();
   const [shared, setShared] = useState(list.shared);
 
   const toggleShared = async () => {
@@ -17,6 +19,7 @@ export default function ShareList({ list }: { list: ListTable }) {
       } else {
         toast.success('List is now public');
       }
+      router.refresh();
     }
   };
 

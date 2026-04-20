@@ -22,7 +22,9 @@ import {
   sortableKeyboardCoordinates,
   useSortable
 } from '@dnd-kit/sortable';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { MdOutlineDragHandle } from 'react-icons/md';
 import Item from './Item';
 
@@ -33,6 +35,7 @@ interface ItemsProps {
 }
 
 export default function SortItems({ items, listId, user_id }: ItemsProps) {
+  const router = useRouter();
   const [itemsState, setItemsState] = useState(items);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -63,25 +66,33 @@ export default function SortItems({ items, listId, user_id }: ItemsProps) {
     setActiveId(event.active.id);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
-    
-    setIsDragging(false);
 
-    if (!over) {
-      setActiveId(null);
+    setIsDragging(false);
+    setActiveId(null);
+
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = getIndex(active.id);
+    const newIndex = getIndex(over.id);
+    const previousItems = itemsState;
+
+    setItemsState((items) => arrayMove(items, oldIndex, newIndex));
+
+    const result = await updatePriority(
+      active.id as string,
+      over.id as string,
+      listId,
+    );
+
+    if (!result.success) {
+      setItemsState(previousItems);
+      toast.error(result.message || 'Failed to reorder items');
       return;
     }
 
-    if (active.id !== over.id) {
-      const oldIndex = getIndex(active.id);
-      const newIndex = getIndex(over.id);
-      
-      setItemsState((items) => arrayMove(items, oldIndex, newIndex));
-      updatePriority(active.id as string, over.id as string, listId);
-    }
-
-    setActiveId(null);
+    router.refresh();
   };
 
   const handleDragCancel = () => {

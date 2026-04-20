@@ -1,11 +1,9 @@
-'use server';
-
 import { Suspense } from 'react';
 import User from '../../(auth)/ui/components/User';
 import Logo from './Logo';
 import Nav from './Nav';
 
-const Menu: React.FC = () => {
+export default async function Menu() {
   return (
     <div className="menu">
       <Logo />
@@ -18,6 +16,4 @@ const Menu: React.FC = () => {
       </Suspense>
     </div>
   );
-};
-
-export default Menu;
+}

@@ -6,7 +6,7 @@ import { auth } from '@/lib/auth';
 import { ItemDetails } from '@/lib/types';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { revalidateTag } from 'next/cache';
+import { updateTag } from 'next/cache';
 import { z } from 'zod';
 
 // Define Zod schema for item validation
@@ -125,7 +125,7 @@ export async function createPurchase(data: {
       purchased_at: new Date(),
     });
 
-    revalidateTag('items');
+    updateTag('items');
 
     return { success: true, message: 'Item marked as purchased successfully' };
   } catch (error) {
@@ -145,7 +145,7 @@ export async function removePurchase(data: {
     // Remove purchase record
     await db.delete(purchases).where(eq(purchases.item_id, data.item_id));
 
-    revalidateTag('items');
+    updateTag('items');
 
     return {
       success: true,
@@ -219,7 +219,7 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       id
     );
 
-    revalidateTag('items');
+    updateTag('items');
 
     return { success: true, message: 'Item created successfully' };
   } catch (error) {
@@ -415,7 +415,7 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
       data.id
     );
 
-    revalidateTag('items');
+    updateTag('items');
 
     return { success: true, message: 'Item updated successfully' };
   } catch (error) {
@@ -449,7 +449,7 @@ export async function deleteItem(id: string, userId: string) {
     // Delete item
     await db.delete(items).where(eq(items.id, id));
 
-    revalidateTag('items');
+    updateTag('items');
 
     return { success: true, message: 'Item deleted successfully' };
   } catch (error) {

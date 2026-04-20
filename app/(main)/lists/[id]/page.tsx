@@ -1,11 +1,11 @@
+import ItemsContainer from '@/app/(main)/items/ui/components/ItemsContainer';
 import SortItemsContainer from '@/app/(main)/items/ui/components/SortItemsContainer';
+import ListDetails from '@/app/(main)/lists/ui/components/ListDetails';
+import ListPrivate from '@/app/(main)/lists/ui/components/ListPrivate';
 import { auth } from '@/lib/auth';
 import { getList, getUserById, getUserIdByEmail } from '@/lib/dal';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import ItemsContainer from '../../items/ui/components/ItemsContainer';
-import ListDetails from '../ui/components/ListDetails';
-import ListPrivate from '../ui/components/ListPrivate';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -72,9 +72,10 @@ export default async function ListPage({
   }
 
   return (
-    <div className={`list-details-container ${user ? '' : 'no-user'}`}>
+    <>
+      {!user && <div className="no-user" hidden />}
       <ListDetails isOwner={isOwner} list={list} user_name={listOwner?.name || undefined} user_id={user?.id || undefined} />
       {isOwner ? <SortItemsContainer listId={id} /> : <ItemsContainer listId={id} />}
-    </div>
+    </>
   );
 }

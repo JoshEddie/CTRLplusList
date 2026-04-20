@@ -299,11 +299,14 @@ body::before {
   }
 }
 
-.container:has(.list-details-container) {
+.container--list-details {
   bottom: 0;
-  padding: 0;
+  padding: 0 0 16px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
 }
 
-.container:has(.list-details-container)::before {
+.container--list-details::before {
   display: none;
 }

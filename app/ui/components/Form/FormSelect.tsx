@@ -2,11 +2,14 @@
 
 import { OptionType } from '@/lib/types';
 import dynamic from 'next/dynamic';
-import { useEffect, useState } from 'react';
 
+// react-select is not SSR-safe (auto-incrementing internal IDs cause hydration
+// mismatches), so it's loaded via `dynamic({ ssr: false })`. Next renders the
+// `loading` fallback on both server and initial client hydration, then swaps
+// in the real component after mount — no manual isClient gate needed.
 const Select = dynamic(() => import('react-select'), {
   ssr: false,
-  loading: () => <div className="react-select">Loading...</div>,
+  loading: () => <div className="react-select" aria-hidden="true" />,
 });
 
 interface FormSelectProps {
@@ -32,16 +35,6 @@ export default function FormSelect({
   defaultValue,
   isClearable = true,
 }: FormSelectProps) {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) {
-    return <div className="react-select" aria-hidden="true" />;
-  }
-
   return (
     <Select
       instanceId={name}
