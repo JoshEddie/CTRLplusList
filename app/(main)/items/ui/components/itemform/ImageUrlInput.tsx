@@ -2,9 +2,9 @@
 'use client';
 
 import { FormGroup, FormLabel } from '@/app/ui/components/Form/Form';
-import { GoogleImageResult } from '@/lib/types';
+import { ImageSearchResult } from '@/lib/types';
 import { useState } from 'react';
-import { GoogleImageSearch } from './GoogleImageSearch';
+import { ImageSearch } from './ImageSearch';
 import './image-search.css';
 
 interface ImageUrlInputProps {
@@ -20,13 +20,13 @@ export function ImageUrlInput({
   onChange,
   disabled,
 }: ImageUrlInputProps) {
-  const [customUrl, setCustomUrl] = useState(value || '');
-  const [searchResults, setSearchResults] = useState<GoogleImageResult[]>([]);
+  const [searchResults, setSearchResults] = useState<ImageSearchResult[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const handleImageSelect = (url: string) => {
-    setCustomUrl(url);
     onChange(url);
+    setIsSearchOpen(false);
   };
 
   return (
@@ -41,8 +41,20 @@ export function ImageUrlInput({
         placeholder="https://example.com/image.jpg"
         autoComplete="off"
       />
-      <GoogleImageSearch
-        customUrl={customUrl}
+      {error && <div className="input-error">{error}</div>}
+
+      <button
+        type="button"
+        className="search-toggle"
+        onClick={() => setIsSearchOpen(true)}
+        disabled={disabled}
+      >
+        Can&apos;t find a URL? Search for an image
+      </button>
+
+      <ImageSearch
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
         searchResults={searchResults}
         setSearchResults={setSearchResults}
         searchTerm={searchTerm}
@@ -50,7 +62,6 @@ export function ImageUrlInput({
         onSelectImage={handleImageSelect}
         disabled={disabled}
       />
-      {error && <div className="input-error">{error}</div>}
     </FormGroup>
   );
 }
