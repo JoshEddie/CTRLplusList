@@ -1,10 +1,19 @@
 import { auth } from '@/lib/auth';
 import { getItemsByUser, getListsByUser, getUserIdByEmail } from '@/lib/dal';
 import { ItemDisplay } from '@/lib/types';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import {
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+} from './ui/components/paginationConstants';
 import ItemsPage from './ui/components/ItemsPage';
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const session = await auth();
 
   const user = session?.user?.email
@@ -15,7 +24,25 @@ export default async function Home() {
     redirect('/');
   }
 
-  const items: ItemDisplay[] = await getItemsByUser(user.id);
+  const sp = await searchParams;
+  const purchasesParam =
+    typeof sp.purchases === 'string' ? sp.purchases : undefined;
+  const showSpoilers =
+    purchasesParam === 'reveal' || purchasesParam === 'only';
+
+  const cookieStore = await cookies();
+  const rawPageSize = cookieStore.get('items_page_size')?.value;
+  const parsedPageSize = rawPageSize ? parseInt(rawPageSize, 10) : NaN;
+  const initialPageSize = PAGE_SIZE_OPTIONS.includes(
+    parsedPageSize as 12 | 24 | 48 | 96
+  )
+    ? parsedPageSize
+    : DEFAULT_PAGE_SIZE;
+
+  const [activeItems, archivedItems] = await Promise.all([
+    getItemsByUser(user.id, { filter: 'active', showSpoilers }),
+    getItemsByUser(user.id, { filter: 'archived', showSpoilers }),
+  ]);
 
   const lists = user?.id ? await getListsByUser(user.id) : [];
 
@@ -27,10 +54,12 @@ export default async function Home() {
 
   return (
     <ItemsPage
-      items={items}
+      items={activeItems as ItemDisplay[]}
+      archivedItems={archivedItems as ItemDisplay[]}
       user_id={user?.id}
       user_name={firstLastInitial}
       lists={lists}
+      initialPageSize={initialPageSize}
     />
   );
 }
