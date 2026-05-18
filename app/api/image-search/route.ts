@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
 import { ImageSearchResult } from '@/lib/types';
+import { NextResponse } from 'next/server';
 
 type ProviderName = 'serpapi' | 'serper' | 'mock';
 
@@ -193,16 +193,16 @@ function buildMockResults(query: string, limit: number): ImageSearchResult[] {
     const { width, height } = MOCK_ASPECTS[i % MOCK_ASPECTS.length];
     const thumbW = Math.round(width / 2);
     const thumbH = Math.round(height / 2);
-    const lock = i + 1;
+    const randomNumber = Math.floor(100000 + Math.random() * 900000);
 
     return {
       title: `${query} ${i + 1}`,
-      link: `https://loremflickr.com/${width}/${height}/${tags}?lock=${lock}`,
+      link: `https://placeholderimage.io/api/${width}/${height}/objects/${randomNumber}/000000/9013fe/ffffff/png`,
       image: {
         byteSize: 0,
-        contextLink: 'https://loremflickr.com',
+        contextLink: 'https://placeholderimage.io',
         height,
-        thumbnailLink: `https://loremflickr.com/${thumbW}/${thumbH}/${tags}?lock=${lock}`,
+        thumbnailLink: `https://placeholderimage.io/api/${thumbW}/${thumbH}/objects/${randomNumber}/000000/9013fe/ffffff/png`,
         width,
       },
     };

@@ -96,7 +96,11 @@ export default function ListForm({
 
       // Handle successful submission
       if (result.success) {
-        router.push(`/lists/${result.id}`);
+        router.push(
+          isEditing
+            ? `/lists/${result.id}`
+            : `/lists/${result.id}/choose-items?new=1`
+        );
       }
 
       return result;

@@ -75,8 +75,8 @@
   position: absolute;
   top: -10px;
   right: -10px;
-  background-color: var(--primary-text-color);
-  border: 1px solid var(--primary-text-color);
+  background-color: var(--primary-color);
+  border: 1px solid var(--primary-color);
   color: var(--contrast-text-color);
   border-radius: 50%;
   width: 34px;
@@ -91,7 +91,7 @@
 
 .close-button:hover {
   background-color: var(--contrast-text-color);
-  color: var(--primary-text-color);
+  color: var(--primary-color);
 }
 
 .avatar-container {

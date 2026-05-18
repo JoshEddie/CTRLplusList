@@ -1,6 +1,10 @@
 :root {
   --primary-color: #7324ce;
+  --primary-color-dark: #2f233c;
+  --primary-color-light: #cda2ff;
   --secondary-color: #2264c1;
+  --primary-color-transparent: #7324ce7f;
+  --secondary-color-transparent: #2264c17f;
   --light-color: #ffffff;
   --secondary-light-color: #f5f5f5;
   --third-light-color: #e5e5e5;
@@ -9,10 +13,14 @@
   --third-dark-color: #222222;
   --danger-color: #ef4444;
 
-  --background-color: var(--light-color);
+  --neutral-text-color: #1f2937;
+  --muted-text-color: #6b7280;
+  --neutral-border-color: #d1d5db;
+
+  --background-color: rgba(255,255,255,0.95);
   --secondary-background-color: var(--secondary-light-color);
   --third-background-color: var(--third-light-color);
-  --primary-text-color: var(--primary-color);
+  --primary-text-color: var(--neutral-text-color);
   --contrast-text-color: var(--light-color);
   --danger-text-color: var(--danger-color);
   --transparent-overlay: rgba(0, 0, 0, 0.7);
@@ -67,11 +75,11 @@ body::before {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--primary-color);
+  background-color: #000000;
   background-image: linear-gradient(
     120deg,
-    var(--primary-color),
-    var(--secondary-color)
+    var(--primary-color-transparent),
+    var(--secondary-color-transparent)
   );
   background-attachment: fixed;
   pointer-events: none;
@@ -105,7 +113,8 @@ body::before {
   right: 16px;
   bottom: 16px;
   background-color: var(--background-color);
-  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  border-radius: 4px;
   z-index: -1;
   pointer-events: none;
   max-width: var(--max-width);
@@ -138,6 +147,7 @@ body::before {
   font-family: var(--font-crimson-pro);
   font-weight: 100;
   text-align: left;
+  color: var(--primary-color);
 }
 
 .header .listDetails {
@@ -162,10 +172,11 @@ body::before {
   padding: 16px;
   text-align: left;
   z-index: 50;
+  background-color: #000000;
   background-image: linear-gradient(
     120deg,
-    var(--primary-color),
-    var(--secondary-color)
+    var(--primary-color-transparent),
+    var(--secondary-color-transparent)
   );
   background-attachment: fixed;
   box-sizing: border-box;
@@ -182,11 +193,11 @@ body::before {
   left: 0;
   right: 0;
   height: 16px;
-  background-color: var(--primary-color);
+  background-color: #000000;
   background-image: linear-gradient(
     120deg,
-    var(--primary-color),
-    var(--secondary-color)
+    var(--primary-color-transparent),
+    var(--secondary-color-transparent)
   );
   background-attachment: fixed;
 }
