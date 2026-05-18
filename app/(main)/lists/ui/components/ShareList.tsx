@@ -9,22 +9,34 @@ import { FaLock, FaUnlock } from 'react-icons/fa';
 export default function ShareList({ list }: { list: ListTable }) {
   const router = useRouter();
   const [shared, setShared] = useState(list.shared);
+  const [isToggling, setIsToggling] = useState(false);
 
   const toggleShared = async () => {
-    const result = await toggleShareList(list.id, !shared);
-    if (result.success) {
-      setShared(!shared);
-      if (shared) {
-        toast.success('List is now private');
-      } else {
-        toast.success('List is now public');
+    if (isToggling) return;
+    setIsToggling(true);
+    try {
+      const result = await toggleShareList(list.id, !shared);
+      if (result.success) {
+        setShared(!shared);
+        if (shared) {
+          toast.success('List is now private');
+        } else {
+          toast.success('List is now public');
+        }
+        router.refresh();
       }
-      router.refresh();
+    } finally {
+      setIsToggling(false);
     }
   };
 
   return (
-    <div className={`list-shared`} onClick={toggleShared}>
+    <div
+      className={`list-shared${isToggling ? ' toggling' : ''}`}
+      onClick={toggleShared}
+      aria-disabled={isToggling}
+      aria-busy={isToggling}
+    >
       {shared ? (
         <>
           <FaUnlock /> Public

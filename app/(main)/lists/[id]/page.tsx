@@ -43,8 +43,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ListPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const session = await auth();
   const user = session?.user?.email
@@ -52,6 +54,7 @@ export default async function ListPage({
     : null;
 
   const { id } = await params;
+  const sp = await searchParams;
 
   const list = await getList(id);
 
@@ -66,10 +69,14 @@ export default async function ListPage({
   const listOwner = await getUserById(list?.user_id);
 
   const isOwner = user?.id === list.user_id;
+  const previewMode = isOwner && sp.preview === 'viewer';
+  const showSpoilers = isOwner && sp.spoilers === '1';
 
   if (!list.shared && !isOwner) {
     return <ListPrivate loggedIn={!!user} />;
   }
+
+  const effectiveOwner = isOwner && !previewMode;
 
   return (
     <>
@@ -79,11 +86,25 @@ export default async function ListPage({
         list={list}
         user_name={listOwner?.name || undefined}
         user_id={user?.id || undefined}
+        showSpoilers={showSpoilers}
+        previewMode={previewMode}
       />
-      {isOwner ? (
-        <SortItemsContainer listId={id} />
+      {effectiveOwner ? (
+        <SortItemsContainer
+          listId={id}
+          isOwner={true}
+          showSpoilers={showSpoilers}
+        />
       ) : (
-        <ItemsContainer listId={id} />
+        <ItemsContainer
+          listId={id}
+          // In preview mode, route through the owner-sanitize path so the
+          // spoilers toggle fully gates visibility (off = nothing, on = full names)
+          // instead of leaking first names regardless.
+          isListOwner={previewMode}
+          viewerId={user?.id}
+          showSpoilers={showSpoilers}
+        />
       )}
     </>
   );
