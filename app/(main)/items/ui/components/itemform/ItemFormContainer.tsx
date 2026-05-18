@@ -6,14 +6,16 @@ const ItemFormContainer = ({
   user_id,
   lists,
   onClose,
+  onSuccess,
 }: {
   user_id: string;
   lists: ListTable[];
   onClose: () => void;
+  onSuccess?: () => void;
 }) => {
   return (
     <Modal className="item-form-modal" onClose={onClose}>
-      <ItemForm user_id={user_id} lists={lists} />
+      <ItemForm user_id={user_id} lists={lists} onSuccess={onSuccess} />
     </Modal>
   );
 };

@@ -10,9 +10,11 @@ import { MdDeleteForever } from 'react-icons/md';
 export default function DeleteItemButton({
   id,
   userId,
+  returnTo,
 }: {
   id: string;
   userId: string;
+  returnTo?: string;
 }) {
   const router = useRouter();
   const [showConfirm, setShowConfirm] = useState(false);
@@ -26,7 +28,7 @@ export default function DeleteItemButton({
       });
 
       if (result?.success) {
-        router.push('/items');
+        router.push(returnTo ?? '/items');
       }
     } catch (error) {
       console.error('Error deleting item:', error);

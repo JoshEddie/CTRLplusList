@@ -1,71 +1,52 @@
 'use client';
 
 import { ItemDisplay } from '@/lib/types';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import '../styles/store-links.css';
-import Modal from './purchasemodal/Modal';
 
 export default function StoreLinks({ item }: { item: ItemDisplay }) {
-  const [showModal, setShowModal] = useState(false);
+  const stores = item.stores ?? [];
 
-  const firstStore = item.stores?.[0];
-  const showFirstStore = useMemo(
-    () => firstStore?.name || firstStore?.link || firstStore?.price,
-    [firstStore]
+  const validStores = useMemo(
+    () =>
+      stores.filter(
+        (s) => s?.name && s?.link && !Number.isNaN(Number(s.price))
+      ),
+    [stores]
   );
 
-  if (!item.stores?.length) return null;
+  const lowestPrice = useMemo(() => {
+    if (!validStores.length) return null;
+    return validStores.reduce((min, s) =>
+      Number(s.price) < Number(min.price) ? s : min
+    );
+  }, [validStores]);
+
+  if (!lowestPrice) return null;
 
   return (
     <>
+      <div className="item-price">
+        ${Number(lowestPrice.price).toFixed(2)}
+      </div>
+      <div className="store-links-label-row">
+        <span className="store-links-label from-label">
+          from {lowestPrice.name}
+        </span>
+        <span className="store-links-label">Buy on</span>
+      </div>
       <div className="storeLinks">
-        {item.stores.length === 0 && <p>No stores found</p>}
-        {firstStore && showFirstStore && (
+        {validStores.map((store) => (
           <a
-            key={firstStore.name}
-            className="btn primary"
-            href={firstStore.link}
+            key={store.name}
+            className="btn store-link-btn"
+            href={store.link}
             target="_blank"
           >
-            <div className="price">${Number(firstStore.price).toFixed(2)}</div>
-            <div className="store-name">{firstStore.name}</div>
+            {store.name}
           </a>
-        )}
+        ))}
       </div>
-      {showModal && item.stores.length > 1 && (
-        <Modal className="storeLinksModal" onClose={() => setShowModal(false)}>
-          <div className="modalContent">
-            <div className="modal-item-name">{item.name}</div>
-            <div className="modal-store-links">
-              {item.stores.map((store) => {
-                return (
-                  store.name && (
-                    <a
-                      key={store.name}
-                      className="btn primary"
-                      href={store.link}
-                      target="_blank"
-                    >
-                      <div className="price">
-                        ${Number(store.price).toFixed(2)}
-                      </div>
-                      <div className="store-name">{store.name}</div>
-                    </a>
-                  )
-                );
-              })}
-            </div>
-          </div>
-        </Modal>
-      )}
-      {item.stores.length > 1 && (
-        <button
-          className="stores-show-more"
-          onClick={() => setShowModal(!showModal)}
-        >
-          See More Stores
-        </button>
-      )}
     </>
   );
 }

@@ -7,10 +7,14 @@ import SortItems from './SortItems';
 
 interface SortItemsContainerProps {
   listId: string;
+  isOwner?: boolean;
+  showSpoilers?: boolean;
 }
 
 export default async function SortItemsContainer({
   listId,
+  isOwner,
+  showSpoilers,
 }: SortItemsContainerProps) {
   const session = await auth();
 
@@ -18,7 +22,11 @@ export default async function SortItemsContainer({
     ? await getUserIdByEmail(session.user.email)
     : null;
 
-  const items: ItemDisplay[] = await getItemsByListId(listId);
+  const items: ItemDisplay[] = await getItemsByListId(listId, {
+    viewerId: user?.id,
+    isOwner: isOwner ?? false,
+    showSpoilers: showSpoilers ?? false,
+  });
 
   return (
     <Suspense fallback={<ItemsLoading />}>

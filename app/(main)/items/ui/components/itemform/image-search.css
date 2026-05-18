@@ -140,7 +140,7 @@
 }
 
 .search-button:disabled {
-  background-color: #ccc;
+  background-color: var(--neutral-border-color);
   cursor: not-allowed;
 }
 

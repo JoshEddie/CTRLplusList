@@ -31,9 +31,17 @@ interface ItemFormProps {
   };
   lists?: ListTable[];
   user_id: string;
+  returnTo?: string;
+  onSuccess?: () => void;
 }
 
-export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
+export default function ItemForm({
+  item,
+  lists,
+  user_id,
+  returnTo,
+  onSuccess,
+}: ItemFormProps) {
   const {
     formState,
     errors,
@@ -47,7 +55,7 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
     handleStoreAdd,
     handleStoreRemove,
     handleSubmit,
-  } = useItemForm(item, user_id);
+  } = useItemForm(item, user_id, returnTo, onSuccess);
 
   const listOptions: OptionType[] = useMemo(() => {
     if (!lists) return [];
@@ -109,26 +117,9 @@ export default function ItemForm({ item, lists, user_id }: ItemFormProps) {
             error={errors.lists}
           />
           <QuantityLimitSelect
-            name="quantity_limit"
-            options={[
-              { value: 'Unlimited', label: 'Unlimited' },
-              { value: '1', label: '1' },
-            ]}
-            onChange={(quantity: OptionType | OptionType[] | null) => {
-              if (!quantity) {
-                handleQuantityLimitChange(0);
-                return;
-              }
-              const selectedQuantity = Array.isArray(quantity)
-                ? quantity
-                : [quantity];
-              const quantity_limit =
-                selectedQuantity[0].value === 'Unlimited' ? 0 : 1;
-              handleQuantityLimitChange(quantity_limit);
-            }}
+            value={formState.quantity_limit}
+            onChange={handleQuantityLimitChange}
             isPending={isPending}
-            defaultValue={{ value: '1', label: '1' }}
-            isClearable={false}
             error={errors.quantity_limit}
           />
           {/* </FormGroup> */}

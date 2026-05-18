@@ -5,17 +5,101 @@
   margin: 0 auto;
 }
 
+.storeLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: end;
+  width: 100%;
+}
+
 .modal-store-links {
   display: grid;
   grid-template-rows: auto;
   gap: 8px;
 }
 
-.storeLinks .btn {
+.item-price {
+  font-family: var(--font-roboto-condensed);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--primary-color);
+  line-height: 1.1;
+  text-align: left;
+}
+
+.store-links-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+}
+
+.store-links-label {
+  font-family: var(--font-roboto-condensed);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--primary-text-color);
+  opacity: 0.6;
+  text-align: right;
+}
+
+.store-links-label.from-label {
+  text-align: left;
+}
+
+.storeLinks .store-link-btn {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font-roboto-condensed);
+  background-color: var(--primary-color);
+  color: white;
+  border: 1px solid var(--primary-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  text-align: center;
+  line-height: 1.2;
+  width: max-content;
+  max-width: 100%;
+}
+
+.storeLinks .store-link-btn:hover {
+  background-color: transparent;
+  color: var(--primary-color);
+}
+
+.item.purchased .store-link-btn {
+  background-color: transparent;
+  color: var(--primary-color);
+  opacity: 0.6;
+}
+
+.item.purchased .store-link-btn:hover {
+  background-color: var(--primary-color);
+  color: white;
+  opacity: 1;
+}
+
+.modal-store-links .btn {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 4px;
+  padding: 10px;
+}
+
+.modal-store-links .store-name {
+  font-weight: 200;
 }
 
 .stores-show-more {
@@ -32,15 +116,6 @@
 .stores-show-more:hover {
   color: var(--primary-color);
   text-decoration: underline;
-}
-
-/* .drag-active .storeLinks,
-.item-drag-overlay .storeLinks {
-  display: none;
-} */
-
-.storeLinks .store-name {
-  font-weight: 200;
 }
 
 .modal-item-name {

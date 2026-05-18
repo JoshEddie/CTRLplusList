@@ -1,35 +1,37 @@
-// QuantityLimitSelect.tsx
 'use client';
 
-import { FormGroup, FormLabel } from '@/app/ui/components/Form/Form';
-import FormSelect from '@/app/ui/components/Form/FormSelect';
-import SelectWrapper from '@/app/ui/components/SelectWrapper';
+import { FormGroup, FormInput, FormLabel } from '@/app/ui/components/Form/Form';
 import TooltipWrapper from '@/app/ui/components/TooltipWrapper';
-import { OptionType } from '@/lib/types';
+import { ChangeEvent } from 'react';
 
-interface QuantityLimitSelectProps {
-  options: OptionType[];
-  name: string;
-  onChange: (value: OptionType | OptionType[] | null) => void;
+interface QuantityLimitInputProps {
+  value: number | null;
+  onChange: (value: number | null) => void;
   isPending?: boolean;
-  placeholder?: string;
-  isMulti?: boolean;
-  defaultValue?: OptionType | OptionType[];
-  isClearable?: boolean;
   error?: string;
 }
 
 export function QuantityLimitSelect({
-  name,
+  value,
   onChange,
-  options,
   isPending,
-  placeholder,
-  isMulti,
-  defaultValue,
-  isClearable = true,
   error = '',
-}: QuantityLimitSelectProps) {
+}: QuantityLimitInputProps) {
+  const isUnlimited = value === null;
+
+  const handleUnlimitedToggle = (e: ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.checked ? null : 1);
+  };
+
+  const handleNumberChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const parsed = parseInt(e.target.value, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      onChange(parsed);
+    } else if (e.target.value === '') {
+      onChange(1);
+    }
+  };
+
   return (
     <FormGroup>
       <FormLabel>Quantity Limit</FormLabel>
@@ -37,19 +39,28 @@ export function QuantityLimitSelect({
         className={`input-tooltip ${error ? 'form-error' : ''}`}
         tooltip={error}
       >
-        <SelectWrapper>
-          <FormSelect
-            name={name}
-            options={options}
-            defaultValue={defaultValue}
-            onChange={onChange}
-            isPending={isPending}
-            placeholder={placeholder}
-            isMulti={isMulti}
+        <div className="quantity-limit-control">
+          <FormInput
+            type="number"
+            name="quantity_limit"
+            min={1}
+            step={1}
+            value={isUnlimited ? '' : value ?? 1}
+            onChange={handleNumberChange}
+            disabled={isPending || isUnlimited}
             className={error ? 'form-input-error' : ''}
-            isClearable={isClearable}
+            placeholder="Unlimited"
           />
-        </SelectWrapper>
+          <label className="unlimited-toggle">
+            <input
+              type="checkbox"
+              checked={isUnlimited}
+              onChange={handleUnlimitedToggle}
+              disabled={isPending}
+            />
+            Unlimited
+          </label>
+        </div>
       </TooltipWrapper>
     </FormGroup>
   );

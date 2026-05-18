@@ -1,8 +1,9 @@
 'use client';
 
 import { updatePriority } from '@/app/actions/lists';
-import Empty from '@/app/ui/components/Empty';
 import { ItemDisplay } from '@/lib/types';
+import Link from 'next/link';
+import { MdChecklist } from 'react-icons/md';
 import {
   closestCenter,
   DndContext,
@@ -23,7 +24,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MdOutlineDragHandle } from 'react-icons/md';
 import Item from './Item';
@@ -34,9 +35,36 @@ interface ItemsProps {
   user_id?: string;
 }
 
+function EmptyListCTA({ listId }: { listId: string }) {
+  return (
+    <div className="empty-container">
+      <h3>No items on this list yet</h3>
+      <p>Pick from your item library or create a new one.</p>
+      <Link href={`/lists/${listId}/choose-items`} className="btn primary">
+        <MdChecklist size={18} />
+        Choose items
+      </Link>
+    </div>
+  );
+}
+
 export default function SortItems({ items, listId, user_id }: ItemsProps) {
   const router = useRouter();
+  const itemsKey = items
+    .map((i) => {
+      const pkey = (i.purchases ?? [])
+        .map((p) => `${p.id}:${p.firstName}:${p.by}`)
+        .join('|');
+      return `${i.id}[${pkey}]`;
+    })
+    .join(';');
+  const dndId = useId();
   const [itemsState, setItemsState] = useState(items);
+  const [prevItemsKey, setPrevItemsKey] = useState(itemsKey);
+  if (itemsKey !== prevItemsKey) {
+    setPrevItemsKey(itemsKey);
+    setItemsState(items);
+  }
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -101,9 +129,10 @@ export default function SortItems({ items, listId, user_id }: ItemsProps) {
   };
 
   return itemsState.length === 0 ? (
-    <Empty type="item" />
+    <EmptyListCTA listId={listId} />
   ) : (
     <DndContext
+      id={dndId}
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
@@ -186,9 +215,14 @@ export function SortableItem({
         .trim()
         .replace(/\s+/g, ' ')}
     >
-      <div className="drag-handle" {...listeners} aria-label="Drag to reorder">
+      <button
+        type="button"
+        className="drag-handle"
+        {...listeners}
+        aria-label="Drag to reorder item"
+      >
         <MdOutlineDragHandle size={40} className="drag-handle-icon" />
-      </div>
+      </button>
       <Item item={item} user_id={user_id} />
     </div>
   );

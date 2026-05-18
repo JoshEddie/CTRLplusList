@@ -48,7 +48,9 @@ export function useItemForm(
     stores: ItemStoreTable[];
     lists: ListTable[];
   },
-  user_id?: string
+  user_id?: string,
+  returnTo?: string,
+  onSuccess?: () => void
 ) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
@@ -58,7 +60,8 @@ export function useItemForm(
     name: initialItem?.name || '',
     description: initialItem?.description || '',
     image_url: initialItem?.image_url || '',
-    quantity_limit: initialItem?.quantity_limit || 1,
+    quantity_limit:
+      initialItem?.quantity_limit === undefined ? 1 : initialItem.quantity_limit,
     stores: initialItem?.stores?.length
       ? initialItem.stores
       : [{ name: '', link: '', price: '' }],
@@ -132,8 +135,8 @@ export function useItemForm(
       }
 
       if (type === 'quantity_limit') {
-        if ((value as number) < 0) {
-          newErrors.quantity_limit = 'Quantity limit must be greater than 0';
+        if (value !== null && (value as number) < 1) {
+          newErrors.quantity_limit = 'Quantity limit must be at least 1';
         } else {
           newErrors.quantity_limit = '';
         }
@@ -228,7 +231,7 @@ export function useItemForm(
   );
 
   const handleQuantityLimitChange = useCallback(
-    (value: number) => {
+    (value: number | null) => {
       setFormState((prev) => ({ ...prev, quantity_limit: value }));
       setErrors((prev) => ({ ...prev, quantity_limit: '' }));
       debouncedFormValidate(value, 'quantity_limit');
@@ -361,8 +364,13 @@ export function useItemForm(
           toast.success(
             `Item ${initialItem?.id ? 'updated' : 'created'} successfully`
           );
-          router.push('/items');
-          router.refresh();
+          if (onSuccess) {
+            onSuccess();
+            router.refresh();
+          } else {
+            router.push(returnTo ?? '/items');
+            router.refresh();
+          }
         } else {
           toast.error(result.message || 'An error occurred');
         }
@@ -377,6 +385,8 @@ export function useItemForm(
       formState,
       initialItem?.id,
       isFormValid,
+      onSuccess,
+      returnTo,
       router,
       validateForm,
       validateStoreField,
