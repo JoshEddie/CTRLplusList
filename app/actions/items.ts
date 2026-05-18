@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { item_stores, items, list_items, purchases } from '@/db/schema';
+import { item_stores, items, list_items, purchases, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { ItemDetails } from '@/lib/types';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
@@ -41,7 +41,11 @@ const ItemSchema = z.object({
   user_id: z.string().min(1, 'User ID is required'),
 
   // Optional fields
-  quantity_limit: z.number().min(0, 'Quantity limit must be at least 0'),
+  quantity_limit: z
+    .number()
+    .int('Quantity limit must be a whole number')
+    .min(1, 'Quantity limit must be at least 1')
+    .nullable(),
   lists: z
     .array(
       z.object({
@@ -106,17 +110,52 @@ export async function createPurchase(data: {
   guest_name: string | null;
 }): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
-    // const session = await auth();
-    // if (!session?.user) {
-    //   return {
-    //     success: false,
-    //     message: 'Unauthorized access',
-    //     error: 'Unauthorized',
-    //   };
-    // }
+    const item = await db.query.items.findFirst({
+      where: eq(items.id, data.item_id),
+      columns: { quantity_limit: true },
+    });
 
-    // Create purchase record
+    if (!item) {
+      return {
+        success: false,
+        message: 'Item not found',
+        error: 'Item not found',
+      };
+    }
+
+    const existing = await db
+      .select({
+        id: purchases.id,
+        user_id: purchases.user_id,
+        guest_name: purchases.guest_name,
+      })
+      .from(purchases)
+      .where(eq(purchases.item_id, data.item_id));
+
+    const isDuplicate = existing.some((p) =>
+      data.user_id
+        ? p.user_id === data.user_id
+        : !!data.guest_name && p.guest_name === data.guest_name
+    );
+    if (isDuplicate) {
+      return {
+        success: false,
+        message: 'You have already claimed this item',
+        error: 'Duplicate claim',
+      };
+    }
+
+    if (
+      item.quantity_limit !== null &&
+      existing.length >= item.quantity_limit
+    ) {
+      return {
+        success: false,
+        message: 'This item is fully claimed',
+        error: 'Fully claimed',
+      };
+    }
+
     await db.insert(purchases).values({
       id: nanoid(),
       item_id: data.item_id,
@@ -140,10 +179,33 @@ export async function createPurchase(data: {
 
 export async function removePurchase(data: {
   item_id: string;
+  guest_name?: string | null;
 }): Promise<ActionResponse> {
   try {
-    // Remove purchase record
-    await db.delete(purchases).where(eq(purchases.item_id, data.item_id));
+    const session = await auth();
+    let userId: string | null = null;
+    if (session?.user?.email) {
+      const user = await db.query.users.findFirst({
+        where: eq(users.email, session.user.email),
+        columns: { id: true },
+      });
+      userId = user?.id ?? null;
+    }
+
+    const conditions = [eq(purchases.item_id, data.item_id)];
+    if (userId) {
+      conditions.push(eq(purchases.user_id, userId));
+    } else if (data.guest_name) {
+      conditions.push(eq(purchases.guest_name, data.guest_name));
+    } else {
+      return {
+        success: false,
+        message: 'Cannot identify which claim to remove',
+        error: 'Missing identity',
+      };
+    }
+
+    await db.delete(purchases).where(and(...conditions));
 
     updateTag('items');
 
@@ -425,6 +487,65 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
       success: false,
       message: 'An error occurred while updating the item',
       error: 'Failed to update item',
+    };
+  }
+}
+
+export async function archiveItem(
+  item_id: string,
+  archived: boolean
+): Promise<ActionResponse> {
+  try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return {
+        success: false,
+        message: 'Unauthorized access',
+        error: 'Unauthorized',
+      };
+    }
+
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User not found',
+        error: 'Unauthorized',
+      };
+    }
+
+    const item = await db.query.items.findFirst({
+      where: eq(items.id, item_id),
+      columns: { user_id: true },
+    });
+    if (!item || item.user_id !== sessionUser.id) {
+      return {
+        success: false,
+        message: 'Unauthorized - item does not belong to you',
+        error: 'Forbidden',
+      };
+    }
+
+    await db
+      .update(items)
+      .set({ archived_at: archived ? new Date() : null })
+      .where(eq(items.id, item_id));
+
+    updateTag('items');
+
+    return {
+      success: true,
+      message: archived ? 'Item archived' : 'Item unarchived',
+    };
+  } catch (error) {
+    console.error('Error archiving item:', error);
+    return {
+      success: false,
+      message: 'An error occurred while archiving the item',
+      error: 'Failed to archive item',
     };
   }
 }

@@ -25,20 +25,39 @@ export type ItemTable = {
   created_at: Date;
   updated_at: Date;
   user_id: string;
-  quantity_limit: number;
+  quantity_limit: number | null;
+  archived_at?: Date | null;
+};
+
+export type PurchaseView = {
+  id: string;
+  by: 'self' | 'other';
+  firstName: string;
 };
 
 export type ItemDisplay = ItemTable & {
   stores?: ItemStoreTable[];
-  purchase?: PurchaseTable | null;
+  purchases?: PurchaseView[];
+  hasPurchases?: boolean;
 };
+
+export type SortKey =
+  | 'list_order'
+  | 'created_desc'
+  | 'created_asc'
+  | 'name_asc'
+  | 'name_desc'
+  | 'store_asc'
+  | 'store_desc'
+  | 'price_asc'
+  | 'price_desc';
 
 export type ItemDetails = {
   id: string;
   name: string;
   description: string;
   image_url?: string | null;
-  quantity_limit: number;
+  quantity_limit: number | null;
   user_id: string;
   stores: ItemStoreTable[];
   lists: OptionType[];

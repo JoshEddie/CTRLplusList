@@ -1,9 +1,9 @@
 'use server';
 
 import { db } from '@/db';
-import { list_items, lists, saved_lists } from '@/db/schema';
+import { list_items, lists, saved_lists, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
@@ -175,9 +175,8 @@ export async function toggleShareList(
   shared: boolean
 ): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -185,7 +184,37 @@ export async function toggleShareList(
       };
     }
 
-    // Share list
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User not found',
+        error: 'Unauthorized',
+      };
+    }
+
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, id),
+      columns: { user_id: true },
+    });
+    if (!list) {
+      return {
+        success: false,
+        message: 'List not found',
+        error: 'Not found',
+      };
+    }
+    if (list.user_id !== sessionUser.id) {
+      return {
+        success: false,
+        message: 'Unauthorized - list does not belong to you',
+        error: 'Forbidden',
+      };
+    }
+
     await db.update(lists).set({ shared: shared }).where(eq(lists.id, id));
 
     updateTag('lists');
@@ -267,6 +296,114 @@ export async function unsaveList(
   }
 }
 
+export async function setListItems(
+  list_id: string,
+  item_ids: string[]
+): Promise<ActionResponse> {
+  try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      return {
+        success: false,
+        message: 'Unauthorized access',
+        error: 'Unauthorized',
+      };
+    }
+
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, list_id),
+      columns: { user_id: true },
+    });
+    if (!list) {
+      return { success: false, message: 'List not found', error: 'Not found' };
+    }
+
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser || sessionUser.id !== list.user_id) {
+      return {
+        success: false,
+        message: 'Unauthorized - list does not belong to you',
+        error: 'Forbidden',
+      };
+    }
+
+    const parsed = z.array(z.string().min(1)).safeParse(item_ids);
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: 'Invalid item selection',
+        error: 'Invalid input',
+      };
+    }
+
+    const incomingIds = new Set(parsed.data);
+    const existing = await db
+      .select({ item_id: list_items.item_id })
+      .from(list_items)
+      .where(eq(list_items.list_id, list_id));
+    const existingIds = new Set(existing.map((r) => r.item_id));
+
+    const toRemove = [...existingIds].filter((id) => !incomingIds.has(id));
+    const toInsert = [...incomingIds].filter((id) => !existingIds.has(id));
+
+    if (toRemove.length === 0 && toInsert.length === 0) {
+      return { success: true, message: 'No changes' };
+    }
+
+    if (toRemove.length > 0) {
+      await db
+        .delete(list_items)
+        .where(
+          and(
+            eq(list_items.list_id, list_id),
+            inArray(list_items.item_id, toRemove)
+          )
+        );
+    }
+
+    if (toInsert.length > 0) {
+      const baseResult = await db
+        .select({
+          base: sql<number>`COALESCE(MAX(${list_items.position}) + 65536, 65536)`,
+        })
+        .from(list_items)
+        .where(eq(list_items.list_id, list_id))
+        .limit(1);
+      const basePosition = Math.floor(baseResult[0]?.base ?? 65536);
+
+      await db.insert(list_items).values(
+        toInsert.map((item_id, index) => ({
+          list_id,
+          item_id,
+          position: basePosition + index * 65536,
+        }))
+      );
+    }
+
+    updateTag('items');
+    updateTag('lists');
+
+    const parts: string[] = [];
+    if (toInsert.length > 0) parts.push(`Added ${toInsert.length}`);
+    if (toRemove.length > 0) parts.push(`removed ${toRemove.length}`);
+
+    return {
+      success: true,
+      message: parts.join(', '),
+    };
+  } catch (error) {
+    console.error('Error setting list items:', error);
+    return {
+      success: false,
+      message: 'An error occurred while saving items',
+      error: 'Failed to save items',
+    };
+  }
+}
+
 async function checkListBalance(listId: string): Promise<boolean> {
   try {
     const result = await db
@@ -326,16 +463,32 @@ export async function updatePriority(
     const itemPositionResult = await db
       .select({ position: list_items.position })
       .from(list_items)
-      .where(eq(list_items.item_id, item_id))
-      .orderBy(desc(list_items.position))
+      .where(
+        and(
+          eq(list_items.list_id, listId),
+          eq(list_items.item_id, item_id)
+        )
+      )
       .limit(1);
 
     const targetPositionResult = await db
       .select({ position: list_items.position })
       .from(list_items)
-      .where(eq(list_items.item_id, target_id))
-      .orderBy(desc(list_items.position))
+      .where(
+        and(
+          eq(list_items.list_id, listId),
+          eq(list_items.item_id, target_id)
+        )
+      )
       .limit(1);
+
+    if (!itemPositionResult[0] || !targetPositionResult[0]) {
+      return {
+        success: false,
+        message: 'Item or target not found on this list',
+        error: 'Item or target not found on this list',
+      };
+    }
 
     const itemPosition = itemPositionResult[0].position;
     const targetPosition = targetPositionResult[0].position;
@@ -356,16 +509,8 @@ export async function updatePriority(
         .from(list_items)
         .where(
           and(
-            lt(list_items.position, targetPosition),
-            eq(
-              list_items.position,
-              sql<number>`(
-                SELECT MAX(position) 
-                FROM ${list_items} 
-                WHERE list_id = ${listId} 
-                AND position < ${targetPosition}
-              )`
-            )
+            eq(list_items.list_id, listId),
+            lt(list_items.position, targetPosition)
           )
         )
         .orderBy(desc(list_items.position))
@@ -373,9 +518,9 @@ export async function updatePriority(
 
       if (result.length > 0) {
         const otherBoundary = result[0].position;
-        new_position = (otherBoundary + targetPosition) / 2;
+        new_position = Math.floor((otherBoundary + targetPosition) / 2);
       } else {
-        new_position = targetPosition / 2;
+        new_position = Math.floor(targetPosition / 2);
       }
     } else {
       const result = await db
@@ -383,34 +528,31 @@ export async function updatePriority(
         .from(list_items)
         .where(
           and(
-            gt(list_items.position, targetPosition),
-            eq(
-              list_items.position,
-              sql<number>`(
-                SELECT MIN(position) 
-                FROM ${list_items} 
-                WHERE list_id = ${listId} 
-                AND position > ${targetPosition}
-              )`
-            )
+            eq(list_items.list_id, listId),
+            gt(list_items.position, targetPosition)
           )
         )
-        .orderBy(desc(list_items.position))
+        .orderBy(asc(list_items.position))
         .limit(1);
 
       if (result.length > 0) {
         const otherBoundary = result[0].position;
-        new_position = (otherBoundary + targetPosition) / 2;
+        new_position = Math.floor((otherBoundary + targetPosition) / 2);
       } else {
         new_position = targetPosition + 65536;
       }
     }
 
-    if (new_position) {
+    if (new_position !== undefined && new_position !== itemPosition) {
       await db
         .update(list_items)
         .set({ position: new_position })
-        .where(eq(list_items.item_id, item_id));
+        .where(
+          and(
+            eq(list_items.list_id, listId),
+            eq(list_items.item_id, item_id)
+          )
+        );
     }
 
     updateTag('items');

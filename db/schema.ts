@@ -69,7 +69,8 @@ export const items = pgTable('items', {
   user_id: text('user_id')
     .references(() => users.id, { onDelete: 'cascade' })
     .notNull(),
-  quantity_limit: integer('quantity_limit').default(1).notNull(),
+  quantity_limit: integer('quantity_limit').default(1),
+  archived_at: timestamp('archived_at'),
 });
 
 export const list_items = pgTable(
@@ -130,7 +131,7 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
     fields: [items.user_id],
     references: [users.id],
   }),
-  purchase: one(purchases),
+  purchases: many(purchases),
   stores: many(item_stores),
   list_items: many(list_items),
 }));
