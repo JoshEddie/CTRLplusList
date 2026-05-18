@@ -3,7 +3,7 @@
 import Modal from '@/app/(main)/items/ui/components/purchasemodal/Modal';
 import ModalButtons from '@/app/(main)/items/ui/components/purchasemodal/ModalButtons';
 import PurchaseFlow from '@/app/(main)/items/ui/components/purchasemodal/PurchaseFlow';
-import { toggleShareList } from '@/app/actions/lists';
+import { setListVisibility } from '@/app/actions/lists';
 import { ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -45,8 +45,12 @@ export default function ShareButton({ list }: { list: ListTable }) {
     }
   };
 
+  const isPrivate =
+    ((list as { visibility?: string }).visibility ??
+      (list.shared ? 'unlisted' : 'private')) === 'private';
+
   const handleShareClick = async () => {
-    if (!list.shared) {
+    if (isPrivate) {
       setShowWarning(true);
       return;
     }
@@ -54,13 +58,15 @@ export default function ShareButton({ list }: { list: ListTable }) {
   };
 
   const handleMakePublicAndShare = async () => {
-    // Fire toggle in parallel so navigator.share stays inside the user gesture window
-    void toggleShareList(list.id, true).then((result) => {
+    // Promote to unlisted (link-only) before sharing. Owner can later promote
+    // to public from the visibility picker if they want feed broadcast.
+    // Fire in parallel so navigator.share stays inside the user gesture window.
+    void setListVisibility(list.id, 'unlisted').then((result) => {
       if (result.success) {
-        toast.success('List is now public');
+        toast.success('Sharing enabled');
         router.refresh();
       } else {
-        toast.error('Failed to make list public');
+        toast.error('Failed to enable sharing');
       }
     });
     setShowWarning(false);

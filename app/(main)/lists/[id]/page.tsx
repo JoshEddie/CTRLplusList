@@ -2,10 +2,12 @@ import ItemsContainer from '@/app/(main)/items/ui/components/ItemsContainer';
 import SortItemsContainer from '@/app/(main)/items/ui/components/SortItemsContainer';
 import ListDetails from '@/app/(main)/lists/ui/components/ListDetails';
 import ListPrivate from '@/app/(main)/lists/ui/components/ListPrivate';
+import { recordVisit } from '@/app/actions/lists';
 import { auth } from '@/lib/auth';
 import { getList, getUserById, getUserIdByEmail } from '@/lib/dal';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -72,8 +74,15 @@ export default async function ListPage({
   const previewMode = isOwner && sp.preview === 'viewer';
   const showSpoilers = isOwner && sp.spoilers === '1';
 
-  if (!list.shared && !isOwner) {
+  if (list.visibility === 'private' && !isOwner) {
     return <ListPrivate loggedIn={!!user} />;
+  }
+
+  // Record the visit for authenticated non-owner viewers of non-private lists.
+  // Deferred via after() because the action calls updateTag, which Next 16
+  // disallows during render. Server-side, idempotent on (user_id, list_id).
+  if (user && !isOwner && list.visibility !== 'private') {
+    after(() => recordVisit(id));
   }
 
   const effectiveOwner = isOwner && !previewMode;
@@ -83,7 +92,10 @@ export default async function ListPage({
       {!user && <div className="no-user" hidden />}
       <ListDetails
         isOwner={isOwner}
-        list={list}
+        list={{
+          ...list,
+          visibility: list.visibility as 'private' | 'unlisted' | 'public',
+        }}
         user_name={listOwner?.name || undefined}
         user_id={user?.id || undefined}
         showSpoilers={showSpoilers}

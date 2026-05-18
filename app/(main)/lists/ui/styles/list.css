@@ -117,7 +117,7 @@
   padding: 4px 0;
 }
 
-.container--list-details .item-grid {
+.container--list-details .item-grid-container {
   background-color: var(--background-color);
   border-radius: 4px;
   padding: 20px;
@@ -392,6 +392,15 @@
     bottom: 16px;
     padding: 0;
     grid-template-columns: 280px 1fr;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .container--list-details .items-browser {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    gap: 16px;
   }
 
   .list-details {
@@ -426,9 +435,18 @@
     display: none;
   }
 
-  .container--list-details .item-grid {
-    overflow: hidden;
+  .container--list-details .item-grid-container {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
+  }
+
+  .container--list-details > .item-grid.sortable {
+    overflow-y: auto;
+    min-height: 0;
+    background-color: var(--background-color);
+    border-radius: 4px;
+    padding: 20px;
   }
 }
 

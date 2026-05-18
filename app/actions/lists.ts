@@ -1,9 +1,9 @@
 'use server';
 
 import { db } from '@/db';
-import { list_items, lists, saved_lists, users } from '@/db/schema';
+import { list_items, list_visits, lists, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
@@ -170,9 +170,12 @@ export async function deleteList(id: string): Promise<ActionResponse> {
   }
 }
 
-export async function toggleShareList(
+const VisibilitySchema = z.enum(['private', 'unlisted', 'public']);
+export type ListVisibility = z.infer<typeof VisibilitySchema>;
+
+export async function setListVisibility(
   id: string,
-  shared: boolean
+  visibility: ListVisibility
 ): Promise<ActionResponse> {
   try {
     const session = await auth();
@@ -181,6 +184,15 @@ export async function toggleShareList(
         success: false,
         message: 'Unauthorized access',
         error: 'Unauthorized',
+      };
+    }
+
+    const parsed = VisibilitySchema.safeParse(visibility);
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: 'Invalid visibility value',
+        error: 'Validation',
       };
     }
 
@@ -198,14 +210,10 @@ export async function toggleShareList(
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, id),
-      columns: { user_id: true },
+      columns: { user_id: true, visibility: true },
     });
     if (!list) {
-      return {
-        success: false,
-        message: 'List not found',
-        error: 'Not found',
-      };
+      return { success: false, message: 'List not found', error: 'Not found' };
     }
     if (list.user_id !== sessionUser.id) {
       return {
@@ -215,84 +223,227 @@ export async function toggleShareList(
       };
     }
 
-    await db.update(lists).set({ shared: shared }).where(eq(lists.id, id));
+    const next = parsed.data;
+    const wasPrivate = list.visibility === 'private';
+    const goingPrivate = next === 'private';
+    // shared_at: set on first private → non-private transition; clear on transition
+    // back to private; preserve on unlisted ↔ public. See design Decision 3.
+    const sharedAtUpdate: { shared_at?: Date | null } = goingPrivate
+      ? { shared_at: null }
+      : wasPrivate
+        ? { shared_at: new Date() }
+        : {};
+
+    // Dual-write the legacy `shared` boolean for main-branch compatibility during
+    // the soak window (see design Decision 4b).
+    await db
+      .update(lists)
+      .set({
+        visibility: next,
+        shared: next !== 'private',
+        ...sharedAtUpdate,
+      })
+      .where(eq(lists.id, id));
 
     updateTag('lists');
 
-    return { success: true, message: 'List shared successfully' };
+    return { success: true, message: 'Visibility updated' };
   } catch (error) {
-    console.error('Error sharing list:', error);
+    console.error('Error updating list visibility:', error);
     return {
       success: false,
-      message: 'An error occurred while sharing the list',
-      error: 'Failed to share list',
+      message: 'An error occurred while updating visibility',
+      error: 'Failed to update visibility',
     };
   }
 }
 
-export async function saveList(
-  list_id: string,
-  user_id: string
-): Promise<ActionResponse> {
-  try {
-    // Security check - ensure user is authenticated
-    const session = await auth();
-    if (!session?.user) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
-    }
+// --- Visit history + bookmarks ---
 
-    // Save list
-    await db.insert(saved_lists).values({ id: nanoid(), list_id, user_id });
-
-    updateTag('saved_lists');
-
-    return { success: true, message: 'List saved successfully' };
-  } catch (error) {
-    console.error('Error saving list:', error);
-    return {
-      success: false,
-      message: 'An error occurred while saving the list',
-      error: 'Failed to save list',
-    };
-  }
+async function authedUserId(): Promise<string | null> {
+  const session = await auth();
+  if (!session?.user?.email) return null;
+  const u = await db.query.users.findFirst({
+    where: eq(users.email, session.user.email),
+    columns: { id: true },
+  });
+  return u?.id ?? null;
 }
 
-export async function unsaveList(
-  list_id: string,
-  user_id: string
-): Promise<ActionResponse> {
+export async function recordVisit(list_id: string): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
-    const session = await auth();
-    if (!session?.user) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
+    const userId = await authedUserId();
+    if (!userId) return { success: true, message: 'Not authenticated; skipped' };
+
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, list_id),
+      columns: { user_id: true, visibility: true },
+    });
+    if (!list) return { success: true, message: 'List not found; skipped' };
+    if (list.user_id === userId) {
+      return { success: true, message: 'Owner visit; skipped' };
+    }
+    if (list.visibility === 'private') {
+      return { success: true, message: 'Private list; skipped' };
     }
 
-    // Unsave list
     await db
-      .delete(saved_lists)
+      .insert(list_visits)
+      .values({
+        user_id: userId,
+        list_id,
+        last_visited_at: new Date(),
+        visit_count: 1,
+      })
+      .onConflictDoUpdate({
+        target: [list_visits.user_id, list_visits.list_id],
+        set: {
+          last_visited_at: new Date(),
+          visit_count: sql`${list_visits.visit_count} + 1`,
+        },
+      });
+
+    updateTag('list_visits');
+    return { success: true, message: 'Visit recorded' };
+  } catch (error) {
+    console.error('Error recording visit:', error);
+    return {
+      success: false,
+      message: 'Failed to record visit',
+      error: 'Failed',
+    };
+  }
+}
+
+export async function bookmarkList(list_id: string): Promise<ActionResponse> {
+  try {
+    const userId = await authedUserId();
+    if (!userId) {
+      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+    }
+
+    const now = new Date();
+    await db
+      .insert(list_visits)
+      .values({
+        user_id: userId,
+        list_id,
+        last_visited_at: now,
+        visit_count: 1,
+        favorited_at: now,
+      })
+      .onConflictDoUpdate({
+        target: [list_visits.user_id, list_visits.list_id],
+        set: { favorited_at: now },
+      });
+
+    updateTag('list_visits');
+    return { success: true, message: 'Bookmarked' };
+  } catch (error) {
+    console.error('Error bookmarking list:', error);
+    return { success: false, message: 'Failed to bookmark', error: 'Failed' };
+  }
+}
+
+export async function unbookmarkList(
+  list_id: string
+): Promise<ActionResponse> {
+  try {
+    const userId = await authedUserId();
+    if (!userId) {
+      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+    }
+
+    await db
+      .update(list_visits)
+      .set({ favorited_at: null })
       .where(
-        and(eq(saved_lists.list_id, list_id), eq(saved_lists.user_id, user_id))
+        and(
+          eq(list_visits.user_id, userId),
+          eq(list_visits.list_id, list_id)
+        )
       );
 
-    updateTag('saved_lists');
-
-    return { success: true, message: 'List unsaved successfully' };
+    updateTag('list_visits');
+    return { success: true, message: 'Bookmark removed' };
   } catch (error) {
-    console.error('Error unsaving list:', error);
+    console.error('Error unbookmarking list:', error);
+    return { success: false, message: 'Failed to unbookmark', error: 'Failed' };
+  }
+}
+
+export async function clearVisitHistory(opts: {
+  includeBookmarked: boolean;
+}): Promise<ActionResponse> {
+  try {
+    const userId = await authedUserId();
+    if (!userId) {
+      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+    }
+
+    if (opts.includeBookmarked) {
+      await db.delete(list_visits).where(eq(list_visits.user_id, userId));
+    } else {
+      await db
+        .delete(list_visits)
+        .where(
+          and(
+            eq(list_visits.user_id, userId),
+            isNull(list_visits.favorited_at)
+          )
+        );
+    }
+
+    updateTag('list_visits');
+    return { success: true, message: 'History cleared' };
+  } catch (error) {
+    console.error('Error clearing history:', error);
     return {
       success: false,
-      message: 'An error occurred while unsaving the list',
-      error: 'Failed to unsave list',
+      message: 'Failed to clear history',
+      error: 'Failed',
     };
+  }
+}
+
+export async function removeVisit(list_id: string): Promise<ActionResponse> {
+  try {
+    const userId = await authedUserId();
+    if (!userId) {
+      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+    }
+
+    // Block delete on bookmarked rows; user must unbookmark first.
+    const row = await db.query.list_visits.findFirst({
+      where: and(
+        eq(list_visits.user_id, userId),
+        eq(list_visits.list_id, list_id)
+      ),
+      columns: { favorited_at: true },
+    });
+    if (!row) return { success: true, message: 'No history row' };
+    if (row.favorited_at) {
+      return {
+        success: false,
+        message: 'Unbookmark this list before removing it from history',
+        error: 'Bookmarked',
+      };
+    }
+
+    await db
+      .delete(list_visits)
+      .where(
+        and(
+          eq(list_visits.user_id, userId),
+          eq(list_visits.list_id, list_id)
+        )
+      );
+
+    updateTag('list_visits');
+    return { success: true, message: 'Removed from history' };
+  } catch (error) {
+    console.error('Error removing visit:', error);
+    return { success: false, message: 'Failed to remove', error: 'Failed' };
   }
 }
 

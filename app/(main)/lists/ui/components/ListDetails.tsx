@@ -1,3 +1,4 @@
+import FollowContainer from '@/app/(main)/users/ui/components/FollowContainer';
 import { ListTable } from '@/lib/types';
 import Link from 'next/link';
 import {
@@ -6,13 +7,17 @@ import {
   MdPreview,
   MdVisibility,
 } from 'react-icons/md';
+import BookmarkContainer from './BookmarkContainer';
 import DeleteListButton from './DeleteListButton';
 import ListActionsMenu from './ListActionsMenu';
 import ListHeader from './ListHeader';
-import SaveContainer from './SaveContainer';
 import ShareButton from './ShareButton';
-import ShareList from './ShareList';
 import SpoilerToggle from './SpoilerToggle';
+import VisibilityPicker from './VisibilityPicker';
+
+type ListWithVisibility = ListTable & {
+  visibility?: 'private' | 'unlisted' | 'public';
+};
 
 export default function ListDetails({
   isOwner,
@@ -23,12 +28,13 @@ export default function ListDetails({
   previewMode,
 }: {
   isOwner: boolean;
-  list: ListTable;
+  list: ListWithVisibility;
   user_name: string | undefined;
   user_id: string | undefined;
   showSpoilers?: boolean;
   previewMode?: boolean;
 }) {
+  const visibility = list.visibility ?? (list.shared ? 'unlisted' : 'private');
   const previewHref = `/lists/${list.id}?preview=viewer${
     showSpoilers ? '&spoilers=1' : ''
   }`;
@@ -52,7 +58,9 @@ export default function ListDetails({
 
       {/* Mobile top row: privacy + share + kebab side-by-side */}
       <div className="list-top-row">
-        {isOwner && !previewMode && <ShareList list={list} />}
+        {isOwner && !previewMode && (
+          <VisibilityPicker listId={list.id} initialVisibility={visibility} />
+        )}
         <div className="list-actions list-actions-mobile">
           {!previewMode && <ShareButton list={list} />}
           {isOwner && (
@@ -66,7 +74,14 @@ export default function ListDetails({
             />
           )}
           {!isOwner && user_id && (
-            <SaveContainer list_id={list.id} user_id={user_id} />
+            <>
+              <FollowContainer
+                ownerId={list.user_id}
+                ownerName={user_name ?? null}
+                viewerId={user_id}
+              />
+              <BookmarkContainer list_id={list.id} user_id={user_id} />
+            </>
           )}
         </div>
       </div>
@@ -118,7 +133,13 @@ export default function ListDetails({
 
           {!isOwner && user_id && (
             <section className="list-section">
-              <SaveContainer list_id={list.id} user_id={user_id} />
+              <div className="list-section-label">Connect</div>
+              <FollowContainer
+                ownerId={list.user_id}
+                ownerName={user_name ?? null}
+                viewerId={user_id}
+              />
+              <BookmarkContainer list_id={list.id} user_id={user_id} />
             </section>
           )}
         </div>

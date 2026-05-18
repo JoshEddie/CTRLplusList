@@ -1,13 +1,15 @@
 import { db } from '@/db';
 import {
+  user_blocks,
+  user_follows,
   items,
   list_items,
+  list_visits,
   lists,
   purchases,
-  saved_lists,
   users,
 } from '@/db/schema';
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 import { cache } from 'react';
 import { ListTable, PurchaseView, UserTable } from './types';
@@ -335,7 +337,10 @@ export async function getListsSharedByUser(userId: string) {
   cacheTag('lists');
   try {
     const result = await db.query.lists.findMany({
-      where: and(eq(lists.shared, true), eq(lists.user_id, userId)),
+      where: and(
+        inArray(lists.visibility, ['unlisted', 'public']),
+        eq(lists.user_id, userId)
+      ),
       with: {
         user: {
           columns: {
@@ -354,12 +359,16 @@ export async function getListsSharedByUser(userId: string) {
   }
 }
 
-export async function getSavedListsByUser(userId: string) {
-  'use cache';
-  cacheTag('saved_lists');
+// Not cached: joins `users` for `list.user.name`. NextAuth updates user rows
+// out-of-band on sign-in, and we have no hook to fire `updateTag` for that,
+// so caching here can pin a stale (null-image, null-name) version.
+export async function getBookmarkedListsByUser(userId: string) {
   try {
-    const result = await db.query.saved_lists.findMany({
-      where: eq(saved_lists.user_id, userId),
+    const result = await db.query.list_visits.findMany({
+      where: and(
+        eq(list_visits.user_id, userId),
+        isNotNull(list_visits.favorited_at)
+      ),
       with: {
         list: {
           with: {
@@ -371,35 +380,268 @@ export async function getSavedListsByUser(userId: string) {
           },
         },
       },
+      orderBy: (list_visits, { desc }) => [desc(list_visits.favorited_at)],
     });
     return result;
   } catch (error) {
-    console.error('Error fetching saved lists:', error);
-    throw new Error('Failed to fetch saved lists');
+    console.error('Error fetching bookmarked lists:', error);
+    throw new Error('Failed to fetch bookmarked lists');
   }
 }
 
-export async function getSavedStatus(
+export async function getBookmarkStatus(
   listId: string,
   userId: string
-): Promise<{ list_id: string; user_id: string; id: string } | undefined> {
+): Promise<boolean> {
   'use cache';
-  cacheTag('saved_lists');
+  cacheTag('list_visits');
   try {
-    const result = await db.query.saved_lists.findFirst({
+    const result = await db.query.list_visits.findFirst({
       where: and(
-        eq(saved_lists.list_id, listId),
-        eq(saved_lists.user_id, userId)
+        eq(list_visits.list_id, listId),
+        eq(list_visits.user_id, userId),
+        isNotNull(list_visits.favorited_at)
       ),
     });
+    return !!result;
+  } catch (error) {
+    console.error('Error fetching bookmark status:', error);
+    throw new Error('Failed to fetch bookmark status');
+  }
+}
 
-    if (!result) {
-      return undefined;
-    }
-
+// Not cached: joins `users` (see note on getBookmarkedListsByUser above).
+export async function getVisitHistoryByUser(
+  userId: string,
+  opts: { limit?: number; offset?: number } = {}
+) {
+  try {
+    const result = await db.query.list_visits.findMany({
+      where: eq(list_visits.user_id, userId),
+      with: {
+        list: {
+          with: {
+            user: {
+              columns: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: (list_visits, { desc }) => [desc(list_visits.last_visited_at)],
+      limit: opts.limit,
+      offset: opts.offset,
+    });
     return result;
   } catch (error) {
-    console.error('Error fetching saved status:', error);
-    throw new Error('Failed to fetch saved status');
+    console.error('Error fetching visit history:', error);
+    throw new Error('Failed to fetch visit history');
+  }
+}
+
+// Not cached: joins `users` for followee name/image.
+export async function getFollowingByUser(userId: string) {
+  try {
+    const result = await db.query.user_follows.findMany({
+      where: eq(user_follows.follower_id, userId),
+      with: {
+        followee: {
+          columns: { id: true, name: true, image: true },
+        },
+      },
+      orderBy: (user_follows, { desc }) => [desc(user_follows.created_at)],
+    });
+    return result;
+  } catch (error) {
+    console.error('Error fetching following:', error);
+    throw new Error('Failed to fetch following');
+  }
+}
+
+// Not cached: joins `users` for follower name/image.
+export async function getFollowersOfUser(userId: string) {
+  try {
+    const result = await db.query.user_follows.findMany({
+      where: eq(user_follows.followee_id, userId),
+      with: {
+        follower: {
+          columns: { id: true, name: true, image: true },
+        },
+      },
+      orderBy: (user_follows, { desc }) => [desc(user_follows.created_at)],
+    });
+    return result;
+  } catch (error) {
+    console.error('Error fetching followers:', error);
+    throw new Error('Failed to fetch followers');
+  }
+}
+
+// Not cached: joins `users` for blocked user's name/image.
+export async function getBlockedByUser(userId: string) {
+  try {
+    const result = await db.query.user_blocks.findMany({
+      where: eq(user_blocks.blocker_id, userId),
+      with: {
+        blocked: {
+          columns: { id: true, name: true, image: true },
+        },
+      },
+      orderBy: (user_blocks, { desc }) => [desc(user_blocks.created_at)],
+    });
+    return result;
+  } catch (error) {
+    console.error('Error fetching blocked users:', error);
+    throw new Error('Failed to fetch blocked users');
+  }
+}
+
+export async function isFollowing(
+  followerId: string,
+  followeeId: string
+): Promise<boolean> {
+  'use cache';
+  cacheTag('user_follows');
+  try {
+    const result = await db.query.user_follows.findFirst({
+      where: and(
+        eq(user_follows.follower_id, followerId),
+        eq(user_follows.followee_id, followeeId)
+      ),
+    });
+    return !!result;
+  } catch (error) {
+    console.error('Error checking follow status:', error);
+    throw new Error('Failed to check follow status');
+  }
+}
+
+export async function isBlocked(
+  blockerId: string,
+  blockedId: string
+): Promise<boolean> {
+  'use cache';
+  cacheTag('user_blocks');
+  try {
+    const result = await db.query.user_blocks.findFirst({
+      where: and(
+        eq(user_blocks.blocker_id, blockerId),
+        eq(user_blocks.blocked_id, blockedId)
+      ),
+    });
+    return !!result;
+  } catch (error) {
+    console.error('Error checking block status:', error);
+    throw new Error('Failed to check block status');
+  }
+}
+
+// Not cached: joins `users` for owner name/image.
+export async function getPublicListsByUser(
+  userId: string,
+  opts: { limit?: number; offset?: number } = {}
+) {
+  try {
+    const result = await db.query.lists.findMany({
+      where: and(eq(lists.user_id, userId), eq(lists.visibility, 'public')),
+      with: {
+        user: {
+          columns: { id: true, name: true, image: true },
+        },
+      },
+      orderBy: (lists, { desc }) => [desc(lists.shared_at)],
+      limit: opts.limit,
+      offset: opts.offset,
+    });
+    return result;
+  } catch (error) {
+    console.error('Error fetching public lists:', error);
+    throw new Error('Failed to fetch public lists');
+  }
+}
+
+/**
+ * Returns users the viewer follows, with per-user metadata for the home Following rail:
+ *   - latest_shared_at: MAX(shared_at) over the followee's public lists (null if none)
+ *   - new_count: number of public lists the followee shared since the viewer last
+ *     visited /following (or since the follow was created, whichever is later)
+ */
+// Not cached: reads `users.name`/`users.image` which NextAuth updates
+// out-of-band on sign-in (no invalidation hook).
+export async function getFollowingFeedUsers(viewerId: string) {
+  try {
+    const rows = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        image: users.image,
+        follow_created_at: user_follows.created_at,
+        last_seen_following_at: users.last_seen_following_at,
+        latest_shared_at: sql<Date | null>`MAX(${lists.shared_at})`.as(
+          'latest_shared_at'
+        ),
+        new_count: sql<number>`COUNT(${lists.id}) FILTER (WHERE ${lists.shared_at} > GREATEST(COALESCE(${users.last_seen_following_at}, ${user_follows.created_at}), ${user_follows.created_at}))`.as(
+          'new_count'
+        ),
+      })
+      .from(user_follows)
+      .innerJoin(users, eq(users.id, user_follows.followee_id))
+      .leftJoin(
+        lists,
+        and(eq(lists.user_id, users.id), eq(lists.visibility, 'public'))
+      )
+      .where(eq(user_follows.follower_id, viewerId))
+      .groupBy(users.id, user_follows.created_at)
+      .orderBy(desc(sql`MAX(${lists.shared_at})`));
+
+    // Convert Postgres-returned count strings to numbers.
+    return rows.map((r) => ({
+      ...r,
+      new_count: Number(r.new_count),
+    }));
+  } catch (error) {
+    console.error('Error fetching following feed users:', error);
+    throw new Error('Failed to fetch following feed users');
+  }
+}
+
+// Not cached: reads `users.name`/`users.image` which NextAuth updates
+// out-of-band on sign-in (no invalidation hook).
+export async function getProfileForUser(
+  userId: string,
+  viewerId: string | null
+) {
+  try {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { id: true, name: true, image: true },
+    });
+    if (!user) return null;
+
+    const publicListCount = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(lists)
+      .where(and(eq(lists.user_id, userId), eq(lists.visibility, 'public')));
+
+    let viewerIsFollowing = false;
+    let viewerIsBlocked = false;
+    let blockedByViewer = false;
+    if (viewerId && viewerId !== userId) {
+      viewerIsFollowing = await isFollowing(viewerId, userId);
+      viewerIsBlocked = await isBlocked(userId, viewerId);
+      blockedByViewer = await isBlocked(viewerId, userId);
+    }
+
+    return {
+      ...user,
+      publicListCount: Number(publicListCount[0]?.count ?? 0),
+      viewerIsFollowing,
+      viewerIsBlocked,
+      blockedByViewer,
+    };
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    throw new Error('Failed to fetch profile');
   }
 }
