@@ -1,0 +1,1 @@
+ALTER TABLE "lists" ADD COLUMN "subtitle" text;

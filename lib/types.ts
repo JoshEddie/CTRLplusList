@@ -1,6 +1,7 @@
 export type ListTable = {
   id: string;
   name: string;
+  subtitle: string | null;
   occasion: string;
   date: Date;
   created_at: Date;

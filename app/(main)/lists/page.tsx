@@ -1,6 +1,5 @@
-import HomePage from './HomePage';
-import './ui/styles/list-loading.css';
+import MyListsPage from './MyListsPage';
 
 export default function Page() {
-  return <HomePage />;
+  return <MyListsPage />;
 }

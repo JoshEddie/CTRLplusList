@@ -1,4 +1,4 @@
-import Header from '@/app/ui/components/Header';
+import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { auth } from '@/lib/auth';
 import { getBookmarkedListsByUser, getUserIdByEmail } from '@/lib/dal';
 import { redirect } from 'next/navigation';
@@ -14,7 +14,7 @@ export default async function BookmarksPage() {
 
   return (
     <div className="bookmarks-page">
-      <Header title="Bookmarks" />
+      <ListCollectionsNav />
       <BookmarksList rows={rows} />
     </div>
   );

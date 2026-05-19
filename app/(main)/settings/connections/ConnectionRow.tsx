@@ -23,7 +23,7 @@ export default function ConnectionRow({
   return (
     <li className="connections-row">
       <div className="connections-row-meta">
-        <Link href={`/u/${userId}`} className="connections-link">
+        <Link href={`/user/${userId}`} className="connections-link">
           {name ?? 'Unnamed'}
         </Link>
         {since && (

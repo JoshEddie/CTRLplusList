@@ -18,7 +18,7 @@ export default function UserCard({
 }) {
   const hasImage = !!user.image && user.image.length > 0;
   return (
-    <Link href={`/u/${user.id}`} className="user-card">
+    <Link href={`/user/${user.id}`} className="user-card">
       <div className="user-card-avatar">
         {hasImage ? (
           <Image

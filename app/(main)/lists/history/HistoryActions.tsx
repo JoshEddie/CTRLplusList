@@ -6,15 +6,7 @@ import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
 import { FaTimes } from 'react-icons/fa';
 
-export function RemoveVisitButton({
-  listId,
-  disabled,
-  disabledReason,
-}: {
-  listId: string;
-  disabled: boolean;
-  disabledReason?: string;
-}) {
+export function RemoveVisitButton({ listId }: { listId: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -23,10 +15,10 @@ export function RemoveVisitButton({
       type="button"
       className="history-remove-button"
       aria-label="Remove from history"
-      aria-disabled={disabled || isPending}
-      title={disabled ? disabledReason : 'Remove from history'}
+      aria-disabled={isPending}
+      title="Remove from history"
       onClick={() => {
-        if (disabled || isPending) return;
+        if (isPending) return;
         startTransition(async () => {
           const result = await removeVisit(listId);
           if (!result.success) {

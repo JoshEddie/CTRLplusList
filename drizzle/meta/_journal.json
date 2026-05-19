@@ -15,6 +15,20 @@
       "when": 1779137290876,
       "tag": "0001_black_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779191937272,
+      "tag": "0002_ordinary_maximus",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779200088485,
+      "tag": "0003_cold_whiplash",
+      "breakpoints": true
     }
   ]
 }

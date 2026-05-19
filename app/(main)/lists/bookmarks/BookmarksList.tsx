@@ -1,4 +1,10 @@
-import BookmarkRow, { BookmarkRowData } from './BookmarkRow';
+import ListCard, { ListCardData } from '@/app/ui/components/ListCard';
+
+export type BookmarkRowData = {
+  user_id: string;
+  list_id: string;
+  list: ListCardData;
+};
 
 export default function BookmarksList({ rows }: { rows: BookmarkRowData[] }) {
   if (rows.length === 0) {
@@ -9,9 +15,11 @@ export default function BookmarksList({ rows }: { rows: BookmarkRowData[] }) {
     );
   }
   return (
-    <ul className="bookmarks-list">
+    <ul className="list-card-grid" role="list">
       {rows.map((row) => (
-        <BookmarkRow key={`${row.user_id}-${row.list_id}`} row={row} />
+        <li key={`${row.user_id}-${row.list_id}`}>
+          <ListCard list={row.list} showOwner />
+        </li>
       ))}
     </ul>
   );

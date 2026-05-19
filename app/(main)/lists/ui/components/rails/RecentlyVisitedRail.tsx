@@ -1,5 +1,5 @@
 import { getVisitHistoryByUser } from '@/lib/dal';
-import HomeListGrid from '../HomeListGrid';
+import HistoryCard from '../../../history/HistoryCard';
 
 export default async function RecentlyVisitedRail({
   userId,
@@ -7,22 +7,22 @@ export default async function RecentlyVisitedRail({
   userId: string;
 }) {
   const rows = (await getVisitHistoryByUser(userId, { limit: 5 })).slice(0, 5);
-  const lists = rows.map((r) => ({
-    id: r.list_id,
-    name: r.list.name,
-    occasion: r.list.occasion,
-    date: r.list.date,
-    user: r.list.user,
-  }));
-  const bookmarkedIds = new Set(
-    rows.filter((r) => r.favorited_at !== null).map((r) => r.list_id)
-  );
+
+  if (rows.length === 0) {
+    return <div className="list-card-row-empty">No visits yet.</div>;
+  }
+
   return (
-    <HomeListGrid
-      lists={lists}
-      showOwner
-      bookmarkedIds={bookmarkedIds}
-      emptyMessage="No visits yet."
-    />
+    <div className="list-card-row" role="list">
+      {rows.map((row) => (
+        <div
+          className="list-card-row-item"
+          role="listitem"
+          key={`${row.user_id}-${row.list_id}`}
+        >
+          <HistoryCard row={row} />
+        </div>
+      ))}
+    </div>
   );
 }

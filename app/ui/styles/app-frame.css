@@ -1,0 +1,236 @@
+/* App frame — gradient nav + white-card surface. See openspec/changes/redesign-home-and-tokens. */
+
+.app-frame {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding-top: 7px;
+}
+
+/* Gradient nav bar */
+.app-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 60px;
+  padding: 0 28px;
+  background-image: var(--page-frame-gradient);
+  flex-shrink: 0;
+}
+
+@media (max-width: 800px) {
+  .app-nav {
+    height: 54px;
+    padding: 0 20px;
+  }
+}
+
+/* Brand logo (image) */
+.app-logo {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.app-logo-image {
+  width: auto;
+  height: 38px;
+  display: block;
+}
+
+@media (max-width: 800px) {
+  .app-logo-image {
+    height: 30px;
+  }
+}
+
+/* Primary nav — single render, breakpoint-driven layout.
+   Desktop: inline pill row. Mobile: hamburger reveals a dropdown. */
+.app-nav-wrap {
+  position: relative;
+}
+
+.app-nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  color: var(--light-color);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.app-nav-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.app-nav-items {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Large layout (>1099px): roomy pills that fill the bar comfortably */
+.app-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  color: var(--light-color);
+  font-family: var(--font-roboto-condensed);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.3;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.app-nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.app-nav-item--active {
+  background-color: rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+}
+
+.app-nav-item--active:hover {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+.app-nav-item-icon {
+  font-size: 17px;
+  flex-shrink: 0;
+}
+
+/* Small layout (801–1099px): compact pills, still inline */
+@media (max-width: 1099px) and (min-width: 801px) {
+  .app-nav-items {
+    gap: 6px;
+  }
+  .app-nav-item {
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 6px;
+  }
+  .app-nav-item-icon {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 800px) {
+  /* On mobile the hamburger sits at the start of the bar, before the logo.
+     CSS order rearranges the existing flex children without touching markup. */
+  .app-nav-wrap {
+    order: 0;
+  }
+  .app-logo {
+    order: 1;
+  }
+  .app-nav-avatar {
+    order: 2;
+    margin-left: auto;
+  }
+  .app-nav {
+    gap: 12px;
+    justify-content: flex-start;
+  }
+  .app-nav-toggle {
+    display: inline-flex;
+  }
+  .app-nav-toggle[aria-expanded='true'] {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  .app-nav-items {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 20;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    min-width: 200px;
+    padding: 6px;
+    background-color: var(--light-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  }
+  .app-nav-wrap[data-open='true'] .app-nav-items {
+    display: flex;
+  }
+  .app-nav-item {
+    border: none;
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: var(--heading-text-color);
+    font-size: 14px;
+  }
+  .app-nav-item:hover {
+    background-color: var(--secondary-background-color);
+  }
+  .app-nav-item--active {
+    background-color: var(--secondary-background-color);
+    color: var(--primary-color);
+    font-weight: 600;
+  }
+  .app-nav-item-icon {
+    color: var(--primary-color);
+    font-size: 16px;
+  }
+}
+
+/* Avatar slot (delegates to existing <User /> popover) */
+.app-nav-avatar {
+  display: flex;
+  align-items: center;
+}
+
+/* White-card surface with rounded top + side gradient bleed */
+.app-surface-bleed {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 7px 20px 0;
+}
+
+@media (max-width: 800px) {
+  .app-surface-bleed {
+    padding: 5px 12px 0;
+  }
+}
+
+.app-surface {
+  flex: 1;
+  background-color: var(--light-color);
+  border-radius: 14px 14px 0 0;
+  max-width: 1700px;
+  width: 100%;
+  margin: 0 auto;
+  box-shadow: var(--surface-shadow);
+}
+
+@media (max-width: 800px) {
+  .app-surface {
+    border-radius: 12px 12px 0 0;
+  }
+}

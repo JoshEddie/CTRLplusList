@@ -50,6 +50,7 @@ export const accounts = pgTable(
 export const lists = pgTable('lists', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  subtitle: text('subtitle'),
   occasion: text('occasion').notNull(),
   date: timestamp('date').defaultNow().notNull(),
   created_at: timestamp('created_at').defaultNow().notNull(),
@@ -114,7 +115,7 @@ export const list_visits = pgTable(
     list_id: text('list_id')
       .references(() => lists.id, { onDelete: 'cascade' })
       .notNull(),
-    last_visited_at: timestamp('last_visited_at').defaultNow().notNull(),
+    last_visited_at: timestamp('last_visited_at').defaultNow(),
     visit_count: integer('visit_count').notNull().default(1),
     favorited_at: timestamp('favorited_at'),
   },

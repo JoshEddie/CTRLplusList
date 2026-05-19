@@ -26,6 +26,20 @@
   --transparent-overlay: rgba(0, 0, 0, 0.7);
 
   --max-width: 1500px;
+
+  /* Redesign tokens — see openspec/changes/redesign-home-and-tokens design.md D3 */
+  --page-frame-gradient: linear-gradient(120deg, rgb(37, 25, 78) 0%, rgb(26, 37, 84) 100%);
+  --heading-text-color: #1a1a2e;
+  --subtitle-text-color: #aaaaaa;
+  --meta-text-color: #bbbbbb;
+  --date-text-color: #cccccc;
+  --divider-color: #f0f0f8;
+  --card-border-color: #ebebf5;
+  --card-border-hover-color: #d4baf5;
+  --card-hover-background-color: #fafaff;
+  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --card-shadow-hover: 0 6px 24px rgba(0, 0, 0, 0.1);
+  --surface-shadow: 0 -8px 40px rgba(0, 0, 0, 0.18);
 }
 
 /* @media (prefers-color-scheme: dark) {
@@ -75,12 +89,7 @@ body::before {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #000000;
-  background-image: linear-gradient(
-    120deg,
-    var(--primary-color-transparent),
-    var(--secondary-color-transparent)
-  );
+  background-image: var(--page-frame-gradient);
   background-attachment: fixed;
   pointer-events: none;
 }
@@ -91,42 +100,18 @@ body::before {
   margin: 0;
 }
 
-/* This is the visible container with rounded corners */
+/* Content well inside the .app-surface. The white surface is the backdrop now,
+   so .container is just inner padding and flow positioning. */
 .container {
-  position: absolute;
-  top: 153px;
-  left: 16px;
-  right: 16px;
-  z-index: 1;
-  padding: 20px;
+  padding: 32px 44px 0;
   padding-bottom: 36px;
-  max-width: var(--max-width);
-  margin: 0 auto;
 }
 
-/* This is the background that stays fixed */
-.container::before {
-  content: '';
-  position: fixed;
-  top: 149px;
-  left: 16px;
-  right: 16px;
-  bottom: 16px;
-  background-color: var(--background-color);
-  backdrop-filter: blur(10px);
-  border-radius: 4px;
-  z-index: -1;
-  pointer-events: none;
-  max-width: var(--max-width);
-  margin: 0 auto;
-}
-
-.container:has(.no-user) {
-  top: 93px;
-}
-
-.container:has(.no-user)::before {
-  top: 93px;
+@media (max-width: 800px) {
+  .container {
+    padding: 32px 20px 0;
+    padding-bottom: 36px;
+  }
 }
 
 .header {
@@ -285,14 +270,6 @@ body::before {
     order: 0;
     grid-column: span 1;
   }
-
-  .container {
-    top: 84px;
-  }
-
-  .container::before {
-    top: 84px;
-  }
 }
 
 @media (min-width: 800px) {
@@ -311,13 +288,8 @@ body::before {
 }
 
 .container--list-details {
-  bottom: 0;
   padding: 0 0 16px;
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
-}
-
-.container--list-details::before {
-  display: none;
 }

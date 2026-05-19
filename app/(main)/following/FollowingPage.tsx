@@ -1,5 +1,5 @@
 import { markFollowingSeen } from '@/app/actions/follows';
-import Header from '@/app/ui/components/Header';
+import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { auth } from '@/lib/auth';
 import { getFollowingFeedUsers, getUserIdByEmail } from '@/lib/dal';
 import { redirect } from 'next/navigation';
@@ -27,7 +27,7 @@ export default async function FollowingPage() {
 
   return (
     <div className="following-page">
-      <Header title="Following" />
+      <ListCollectionsNav />
       <UserCardGrid users={users} emptyMessage={EMPTY_MESSAGE} />
     </div>
   );

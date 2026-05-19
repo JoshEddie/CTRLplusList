@@ -81,8 +81,10 @@ export default function ListForm({
     }
 
     // Extract data from form
+    const rawSubtitle = (formData.get('subtitle') as string | null)?.trim() ?? '';
     const data = {
       name: formData.get('name') as string,
+      subtitle: rawSubtitle === '' ? null : rawSubtitle,
       occasion: selectedOccasion,
       date: new Date(dateString),
       user_id,
@@ -134,6 +136,17 @@ export default function ListForm({
             defaultValue={list?.name}
             required
             disabled={isPending}
+          />
+        </FormGroup>
+
+        <FormGroup>
+          <FormLabel>Subtitle</FormLabel>
+          <FormInput
+            name="subtitle"
+            defaultValue={list?.subtitle ?? ''}
+            disabled={isPending}
+            placeholder="e.g. Brandy Family"
+            maxLength={120}
           />
         </FormGroup>
 

@@ -3,7 +3,18 @@
 import { db } from '@/db';
 import { list_items, list_visits, lists, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { and, asc, desc, eq, gt, inArray, isNull, lt, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  sql,
+} from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
@@ -13,6 +24,13 @@ const ListSchema = z.object({
     .string()
     .min(3, 'Title must be at least 3 characters')
     .max(100, 'Title must be less than 100 characters'),
+
+  subtitle: z
+    .string()
+    .max(120, 'Subtitle must be less than 120 characters')
+    .optional()
+    .nullable()
+    .transform((v) => (v === '' || v == null ? null : v)),
 
   occasion: z.string().optional().nullable(),
 
@@ -60,6 +78,7 @@ export async function createList(data: ListData): Promise<ActionResponse> {
     await db.insert(lists).values({
       id,
       name: sql`${validatedData.name}`,
+      subtitle: validatedData.subtitle ?? null,
       occasion: sql`${validatedData.occasion}`,
       date: sql`${validatedData.date}`,
       user_id: sql`${validatedData.user_id}`,
@@ -114,6 +133,8 @@ export async function updateList(
     const updateData: Record<string, unknown> = {};
 
     if (validatedData.name !== undefined) updateData.name = validatedData.name;
+    if (validatedData.subtitle !== undefined)
+      updateData.subtitle = validatedData.subtitle;
     if (validatedData.occasion !== undefined)
       updateData.occasion = validatedData.occasion;
     if (validatedData.date !== undefined) updateData.date = validatedData.date;
@@ -384,12 +405,23 @@ export async function clearVisitHistory(opts: {
     if (opts.includeBookmarked) {
       await db.delete(list_visits).where(eq(list_visits.user_id, userId));
     } else {
+      // Drop non-bookmarked rows outright; for bookmarked rows, null
+      // last_visited_at so the bookmark survives but the row leaves history.
       await db
         .delete(list_visits)
         .where(
           and(
             eq(list_visits.user_id, userId),
             isNull(list_visits.favorited_at)
+          )
+        );
+      await db
+        .update(list_visits)
+        .set({ last_visited_at: null })
+        .where(
+          and(
+            eq(list_visits.user_id, userId),
+            isNotNull(list_visits.favorited_at)
           )
         );
     }
@@ -413,7 +445,8 @@ export async function removeVisit(list_id: string): Promise<ActionResponse> {
       return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
     }
 
-    // Block delete on bookmarked rows; user must unbookmark first.
+    // If the row is bookmarked, clear last_visited_at so it leaves the history
+    // view but the bookmark survives. Otherwise delete the row outright.
     const row = await db.query.list_visits.findFirst({
       where: and(
         eq(list_visits.user_id, userId),
@@ -422,22 +455,27 @@ export async function removeVisit(list_id: string): Promise<ActionResponse> {
       columns: { favorited_at: true },
     });
     if (!row) return { success: true, message: 'No history row' };
-    if (row.favorited_at) {
-      return {
-        success: false,
-        message: 'Unbookmark this list before removing it from history',
-        error: 'Bookmarked',
-      };
-    }
 
-    await db
-      .delete(list_visits)
-      .where(
-        and(
-          eq(list_visits.user_id, userId),
-          eq(list_visits.list_id, list_id)
-        )
-      );
+    if (row.favorited_at) {
+      await db
+        .update(list_visits)
+        .set({ last_visited_at: null })
+        .where(
+          and(
+            eq(list_visits.user_id, userId),
+            eq(list_visits.list_id, list_id)
+          )
+        );
+    } else {
+      await db
+        .delete(list_visits)
+        .where(
+          and(
+            eq(list_visits.user_id, userId),
+            eq(list_visits.list_id, list_id)
+          )
+        );
+    }
 
     updateTag('list_visits');
     return { success: true, message: 'Removed from history' };

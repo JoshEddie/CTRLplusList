@@ -2,8 +2,8 @@
 
 import { usePathname } from 'next/navigation';
 
-// /lists/:id only — excludes /lists/new (and any future non-id sibling segments).
-const LIST_DETAILS_ROUTE = /^\/lists\/(?!new$)[^/]+$/;
+// /lists/:id only — excludes non-id siblings (/lists/new, /lists/bookmarks, /lists/history).
+const LIST_DETAILS_ROUTE = /^\/lists\/(?!new$|bookmarks$|history$)[^/]+$/;
 
 export default function MainShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

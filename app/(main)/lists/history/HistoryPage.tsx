@@ -1,4 +1,4 @@
-import Header from '@/app/ui/components/Header';
+import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { auth } from '@/lib/auth';
 import { getUserIdByEmail, getVisitHistoryByUser } from '@/lib/dal';
 import { redirect } from 'next/navigation';
@@ -15,9 +15,9 @@ export default async function HistoryPage() {
 
   return (
     <div className="history-page">
-      <Header title="Recently visited">
+      <ListCollectionsNav>
         {rows.length > 0 && <ClearHistoryButton />}
-      </Header>
+      </ListCollectionsNav>
       <HistoryList rows={rows} />
     </div>
   );

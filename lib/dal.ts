@@ -417,7 +417,10 @@ export async function getVisitHistoryByUser(
 ) {
   try {
     const result = await db.query.list_visits.findMany({
-      where: eq(list_visits.user_id, userId),
+      where: and(
+        eq(list_visits.user_id, userId),
+        isNotNull(list_visits.last_visited_at)
+      ),
       with: {
         list: {
           with: {

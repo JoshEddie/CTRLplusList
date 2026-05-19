@@ -1,4 +1,5 @@
 import Header from '@/app/ui/components/Header';
+import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { auth } from '@/lib/auth';
 import {
   getProfileForUser,
@@ -43,6 +44,7 @@ export default async function ProfilePage({
 
   return (
     <div className="profile-page">
+      <ListCollectionsNav />
       <ProfileHeader
         user={{ id: profile.id, name: profile.name, image: profile.image }}
         publicListCount={profile.publicListCount}

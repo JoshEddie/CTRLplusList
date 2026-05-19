@@ -115,13 +115,12 @@
   line-height: 1.3;
   max-width: 240px;
 }
-.list-bookmark-indicator,
-.history-bookmark-indicator {
+.list-bookmark-indicator {
   color: var(--primary-color);
   margin-right: 6px;
 }
 
-/* User card grid + card */
+/* User card grid + card (re-skin: list-card surface tokens) */
 .user-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -134,15 +133,21 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 16px 8px;
-  background-color: var(--background-color);
-  border-radius: 8px;
+  gap: 10px;
+  padding: 20px 12px;
+  background-color: var(--light-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+  box-shadow: var(--card-shadow);
   text-decoration: none;
   color: inherit;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .user-card:hover {
-  background-color: var(--third-background-color);
+  background-color: var(--card-hover-background-color);
+  border-color: var(--card-border-hover-color);
+  box-shadow: var(--card-shadow-hover);
 }
 .user-card-avatar {
   position: relative;
@@ -150,7 +155,7 @@
   height: 64px;
   border-radius: 50%;
   overflow: hidden;
-  background-color: var(--third-background-color);
+  background-color: var(--secondary-background-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -171,7 +176,7 @@
   top: -4px;
   right: -4px;
   background-color: var(--primary-color);
-  color: #ffffff;
+  color: var(--light-color);
   border-radius: 999px;
   min-width: 22px;
   height: 22px;
@@ -186,14 +191,19 @@
   text-align: center;
 }
 .user-card-name {
-  font-weight: 600;
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 18px;
+  color: var(--heading-text-color);
+  line-height: 1.2;
 }
 .user-card-sub {
-  font-size: 0.8rem;
-  opacity: 0.7;
+  font-family: var(--font-roboto-condensed);
+  font-size: 11px;
+  color: var(--meta-text-color);
 }
 .user-card-sub-muted {
-  opacity: 0.5;
+  color: var(--date-text-color);
 }
 
 /* Profile page */
@@ -246,95 +256,49 @@
   border-radius: 4px;
   margin: 12px 0;
 }
-.profile-list-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.profile-list-card {
-  background-color: var(--background-color);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.profile-list-card a {
-  display: block;
-  padding: 16px;
-  text-decoration: none;
-  color: inherit;
-}
-.profile-list-card a:hover {
-  background-color: var(--third-background-color);
-}
-.profile-list-name {
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-.profile-list-occasion {
-  font-size: 0.85rem;
-  opacity: 0.7;
-}
 .profile-empty {
-  opacity: 0.7;
+  padding: 16px 0;
+  color: var(--date-text-color);
+  font-family: var(--font-roboto-condensed);
 }
 
 /* History + bookmarks pages */
-.history-list,
-.bookmarks-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.history-row,
-.bookmark-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: var(--background-color);
-  border-radius: 8px;
-  padding: 12px 16px;
-}
-.history-link,
-.bookmark-link {
-  flex: 1;
-  text-decoration: none;
-  color: inherit;
-}
-.history-name,
-.bookmark-name {
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-}
-.history-sub,
-.bookmark-sub {
-  font-size: 0.85rem;
-  opacity: 0.7;
-}
 .history-empty,
 .bookmarks-empty {
-  opacity: 0.7;
+  padding: 16px 0;
+  color: var(--date-text-color);
+  font-family: var(--font-roboto-condensed);
+}
+.history-card {
+  position: relative;
+  height: 100%;
 }
 .history-remove-button {
-  background: none;
-  border: none;
-  padding: 8px;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--light-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 999px;
+  color: var(--meta-text-color);
   cursor: pointer;
-  border-radius: 4px;
-  opacity: 0.6;
+  font-size: 10px;
+  opacity: 0.7;
+  transition: opacity 0.15s ease, border-color 0.15s ease,
+    background-color 0.15s ease, color 0.15s ease;
+  z-index: 1;
 }
-.history-remove-button:hover:not([aria-disabled='true']) {
+.history-card:hover .history-remove-button {
   opacity: 1;
-  background-color: rgba(0, 0, 0, 0.08);
 }
-.history-remove-button[aria-disabled='true'] {
-  opacity: 0.3;
-  cursor: not-allowed;
+.history-remove-button:hover {
+  border-color: var(--card-border-hover-color);
+  color: var(--heading-text-color);
 }
 .history-clear-modal {
   position: fixed;
@@ -417,34 +381,43 @@
 .home-digest {
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 .rail {
-  margin: 8px 0;
+  margin: 0;
+  padding: 18px 0;
+}
+.home-rail-divider {
+  height: 1px;
+  background-color: var(--divider-color);
 }
 .rail-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 0;
+  padding: 0 0 12px;
 }
 .rail-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   background: none;
   border: none;
   cursor: pointer;
   color: inherit;
-  padding: 4px 0;
+  padding: 0;
 }
 .rail-title {
   margin: 0;
   font-family: var(--font-crimson-pro);
-  font-size: 1.3rem;
+  font-weight: 300;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--heading-text-color);
 }
 .rail-chevron {
-  transition: transform 0.15s ease;
+  transition: transform 0.18s ease;
+  color: var(--meta-text-color);
+  font-size: 12px;
 }
 .rail-chevron.collapsed {
   transform: rotate(-90deg);
@@ -455,22 +428,232 @@
   gap: 12px;
 }
 .rail-see-all {
-  font-size: 0.85rem;
+  font-family: var(--font-roboto-condensed);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--primary-color);
   text-decoration: none;
+}
+.rail-see-all::after {
+  content: ' →';
 }
 .rail-see-all:hover {
   text-decoration: underline;
 }
 .rail-body {
-  padding-top: 8px;
+  padding-top: 4px;
 }
 .rail.collapsed .rail-body {
   display: none;
 }
 .rail-empty {
   padding: 12px 0;
-  opacity: 0.7;
+  color: var(--date-text-color);
+  font-family: var(--font-roboto-condensed);
+}
+
+@media (max-width: 800px) {
+  .rail {
+    padding: 12px 0;
+  }
+  .rail-title {
+    font-size: 22px;
+  }
+}
+
+/* Horizontal-scrolling rail row */
+.list-card-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-left: -4px;
+  padding-left: 4px;
+  scrollbar-width: thin;
+}
+.list-card-row-item {
+  flex-shrink: 0;
+  width: 236px;
+}
+@media (min-width: 1700px) {
+  .list-card-row-item {
+    width: 260px;
+  }
+}
+@media (max-width: 800px) {
+  .list-card-row-item {
+    width: 190px;
+  }
+}
+.list-card-row-empty {
+  padding: 14px 0;
+  color: var(--date-text-color);
+  font-family: var(--font-roboto-condensed);
+}
+
+/* Home card (used in rails and on the My Lists page) */
+.list-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  border-radius: 10px;
+  padding: 18px 20px;
+  height: 100%;
+  background-color: var(--light-color);
+  border: 1px solid var(--card-border-color);
+  box-shadow: var(--card-shadow);
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.list-card:hover {
+  background-color: var(--card-hover-background-color);
+  border-color: var(--card-border-hover-color);
+  box-shadow: var(--card-shadow-hover);
+}
+.list-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.list-card-name {
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--heading-text-color);
+  text-wrap: pretty;
+  word-break: break-word;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.list-card-bookmark-indicator {
+  color: var(--primary-color);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.list-card-subtitle {
+  font-family: var(--font-roboto-condensed);
+  font-size: 12px;
+  color: var(--subtitle-text-color);
+}
+.list-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.list-card-occasion {
+  font-family: var(--font-roboto-condensed);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--meta-text-color);
+  background-color: var(--secondary-background-color);
+  border-radius: 20px;
+  padding: 3px 9px;
+}
+.list-card-date {
+  font-family: var(--font-roboto-condensed);
+  font-size: 11px;
+  color: var(--date-text-color);
+}
+
+@media (max-width: 800px) {
+  .list-card {
+    gap: 10px;
+    padding: 14px 16px;
+  }
+  .list-card-name {
+    font-size: 18px;
+  }
+}
+
+/* My Lists full page */
+.my-lists-page {
+  width: 100%;
+}
+.my-lists-empty {
+  padding: 16px 0;
+  color: var(--date-text-color);
+  font-family: var(--font-roboto-condensed);
+}
+
+/* Peer sub-nav across the four list-collection pages */
+.list-collections-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--divider-color);
+}
+.list-collections-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-width: 0;
+  flex: 1;
+}
+.list-collections-tabs::-webkit-scrollbar {
+  display: none;
+}
+.list-collections-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 4px 12px;
+  margin: 0 8px;
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--meta-text-color);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.list-collections-tab:hover {
+  color: var(--heading-text-color);
+}
+.list-collections-tab--active {
+  color: var(--heading-text-color);
+  border-bottom-color: var(--primary-color);
+}
+.list-collections-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 800px) {
+  .list-collections-tab {
+    font-size: 18px;
+    padding: 8px 4px 10px;
+    margin: 0 6px;
+  }
+}
+
+/* Shared full-page grid of list cards (My Lists, Bookmarks, History) */
+.list-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 /* One-time migration toast on home */
