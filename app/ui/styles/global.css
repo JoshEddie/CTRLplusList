@@ -40,6 +40,19 @@
   --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   --card-shadow-hover: 0 6px 24px rgba(0, 0, 0, 0.1);
   --surface-shadow: 0 -8px 40px rgba(0, 0, 0, 0.18);
+  --card-accent-background-color: #f7f3ff;
+
+  /* Stage 4: list/items view tokens */
+  --hero-gradient: linear-gradient(135deg, #4a35c5 0%, #7855f0 100%);
+  --buy-link-bg: #f0eeff;
+  --buy-link-border: #c4b8ff;
+  --buy-link-text: #5038d0;
+  --buy-link-hover-bg: #e0d8ff;
+  --buy-link-hover-text: #3520a8;
+  --success-bg: #ecfdf3;
+  --success-border: #6ee7b7;
+  --success-text: #059669;
+  --tab-active-color: var(--primary-color);
 }
 
 /* @media (prefers-color-scheme: dark) {

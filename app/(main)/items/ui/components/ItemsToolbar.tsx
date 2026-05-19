@@ -3,7 +3,12 @@
 import { SortKey } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { MdClose, MdSearch } from 'react-icons/md';
+import {
+  MdClose,
+  MdGridView,
+  MdSearch,
+  MdViewList,
+} from 'react-icons/md';
 import PriceFilterPopover from './PriceFilterPopover';
 import StoreFilterPopover from './StoreFilterPopover';
 
@@ -68,6 +73,7 @@ export default function ItemsToolbar({
   const show = searchParams?.get('show') ?? 'all';
   const priceMin = searchParams?.get('price_min') ?? '';
   const priceMax = searchParams?.get('price_max') ?? '';
+  const view = searchParams?.get('view') === 'list' ? 'list' : 'grid';
 
   const [searchInput, setSearchInput] = useState(q);
 
@@ -254,6 +260,31 @@ export default function ItemsToolbar({
             onClear={clearPrice}
           />
         )}
+
+        <div className="view-toggle" role="group" aria-label="View toggle">
+          <button
+            type="button"
+            className={`view-toggle-btn ${view === 'grid' ? 'active' : ''}`}
+            onClick={() =>
+              updateParams({ view: view === 'grid' ? null : 'grid' })
+            }
+            aria-label="Grid view"
+            aria-pressed={view === 'grid'}
+            title="Grid view"
+          >
+            <MdGridView />
+          </button>
+          <button
+            type="button"
+            className={`view-toggle-btn ${view === 'list' ? 'active' : ''}`}
+            onClick={() => updateParams({ view: 'list' })}
+            aria-label="List view"
+            aria-pressed={view === 'list'}
+            title="List view"
+          >
+            <MdViewList />
+          </button>
+        </div>
       </div>
     </div>
   );

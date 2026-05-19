@@ -173,44 +173,103 @@ export default function Item({
   return (
     <>
       <div
-        className={`item-container ${className || ''} ${isOwner ? 'owner' : ''}`}
+        className={`item-container ${className || ''} ${isOwner ? 'owner' : ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''}`}
       >
         <div
-          className={`item ${className || ''} ${showPurchased ? 'purchased' : ''}`}
+          className={`item ${className || ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''}`}
           title={item.name || ''}
         >
           <ItemPhoto name={item.name || ''} url={item.image_url || ''} />
           <div className="item-info">
             <div className="item-name-description">
               <h1 className="itemName">{item.name || ''}</h1>
-              <p className="itemDescription">{item.description || ''}</p>
+              {item.description ? (
+                <p className="itemDescription">{item.description}</p>
+              ) : null}
             </div>
-            <StoreLinks item={item} />
-            {showCounter && !isOwner && (
+            <StoreLinks
+              item={item}
+              showStores={!showPurchased && !showSpoilerInfo}
+            >
+              {!isOwner && (
+                <Purchase
+                  purchasedBy={
+                    showPurchased ? (myClaim ? 'You' : claimSummary) : undefined
+                  }
+                  handlePurchaseClick={handlePurchaseClick}
+                  className={showPurchased ? 'purchased' : ''}
+                  disabled={claimActionDisabled}
+                  fullyClaimedLabel={
+                    claimActionDisabled ? 'Fully claimed' : undefined
+                  }
+                />
+              )}
+            </StoreLinks>
+            {showCounter && !isOwner && !showPurchased && (
               <div className="claim-counter">{counterText}</div>
-            )}
-            {showSpoilerInfo && (
-              <div className="spoiler-info">
-                <span className="spoiler-badge">Spoilers</span>
-                <span>
-                  {counterText}
-                  {claimSummary && ` — ${claimSummary}`}
-                </span>
-              </div>
             )}
           </div>
         </div>
 
-        {!isOwner && (
-          <Purchase
-            purchasedBy={
-              showPurchased ? (myClaim ? 'You' : claimSummary) : undefined
-            }
-            handlePurchaseClick={handlePurchaseClick}
-            className={showPurchased ? 'purchased' : ''}
-            disabled={claimActionDisabled}
-            fullyClaimedLabel={claimActionDisabled ? 'Fully claimed' : undefined}
-          />
+        {showPurchased && !myClaim && (
+          <div className="purchased-banner" role="status">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            Claimed by {claimSummary}
+          </div>
+        )}
+        {showPurchased && myClaim && (
+          <div
+            className="purchased-banner purchased-banner--mine"
+            role="status"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            You claimed this
+          </div>
+        )}
+        {showSpoilerInfo && (
+          <div
+            className="purchased-banner purchased-banner--spoiler"
+            role="status"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            <span>
+              <strong>Spoilers:</strong> {counterText}
+              {claimSummary && ` — ${claimSummary}`}
+            </span>
+          </div>
         )}
 
         {isOwner && (
@@ -245,6 +304,7 @@ export default function Item({
                     : '')
               )}`}
               className="edit-button"
+              aria-label="Edit item"
             >
               <MdModeEdit />
             </Link>

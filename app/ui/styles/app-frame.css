@@ -1,5 +1,18 @@
 /* App frame — gradient nav + white-card surface. See openspec/changes/redesign-home-and-tokens. */
 
+:root {
+  --app-nav-height: 60px;
+  --app-surface-bleed-top: 7px;
+  --app-sticky-top: calc(var(--app-nav-height) + var(--app-surface-bleed-top));
+}
+
+@media (max-width: 800px) {
+  :root {
+    --app-nav-height: 54px;
+    --app-surface-bleed-top: 5px;
+  }
+}
+
 .app-frame {
   position: relative;
   z-index: 1;
@@ -7,6 +20,13 @@
   flex-direction: column;
   min-height: 100vh;
   padding-top: 7px;
+}
+
+/* Surface chain allows fixed-height children (e.g. container--items-library)
+   to compute height: calc(100vh - var(--app-sticky-top)) reliably. */
+.app-surface-bleed,
+.app-surface {
+  min-height: 0;
 }
 
 /* Gradient nav bar */

@@ -1,3 +1,4 @@
+import MoreCard from '@/app/ui/components/MoreCard';
 import UserCard from './UserCard';
 
 export type FollowingFeedUser = {
@@ -11,13 +12,18 @@ export type FollowingFeedUser = {
 export default function UserCardGrid({
   users,
   emptyMessage,
+  moreCount = 0,
+  seeAllHref,
 }: {
   users: FollowingFeedUser[];
   emptyMessage: React.ReactNode;
+  moreCount?: number;
+  seeAllHref?: string;
 }) {
   if (users.length === 0) {
     return <p className="following-empty">{emptyMessage}</p>;
   }
+  const showMore = moreCount > 0 && seeAllHref;
   return (
     <ul className="user-card-grid">
       {users.map((u) => (
@@ -29,6 +35,11 @@ export default function UserCardGrid({
           />
         </li>
       ))}
+      {showMore && (
+        <li>
+          <MoreCard moreCount={moreCount} href={seeAllHref} />
+        </li>
+      )}
     </ul>
   );
 }

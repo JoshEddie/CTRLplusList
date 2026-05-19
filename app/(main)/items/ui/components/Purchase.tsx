@@ -1,6 +1,6 @@
 'use client';
 
-import { MdCheckBox, MdCheckBoxOutlineBlank, MdLock } from 'react-icons/md';
+import { MdCheck, MdLock } from 'react-icons/md';
 import '../styles/purchase.css';
 
 type PurchaseProps = {
@@ -19,42 +19,49 @@ export default function Purchase({
   fullyClaimedLabel,
 }: PurchaseProps) {
   const onClick = disabled ? undefined : handlePurchaseClick;
+  const isClaimed = !!purchasedBy;
+
+  if (disabled) {
+    return (
+      <div
+        className={`claimed-state claimed-state--fully ${className || ''}`}
+        role="status"
+      >
+        <span className="claimed-state-label">
+          <MdLock aria-hidden />
+          {fullyClaimedLabel || 'Fully claimed'}
+        </span>
+      </div>
+    );
+  }
+
+  if (isClaimed) {
+    return (
+      <div className={`claimed-state ${className || ''}`} role="status">
+        <span className="claimed-state-label">
+          <MdCheck aria-hidden />
+          {purchasedBy === 'You' ? 'You claimed this' : `Claimed: ${purchasedBy}`}
+        </span>
+        <button
+          type="button"
+          className="claimed-state-undo"
+          onClick={onClick}
+          aria-label="Remove your claim"
+        >
+          Undo
+        </button>
+      </div>
+    );
+  }
 
   return (
     <button
       type="button"
-      className={`btn purchase ${purchasedBy ? 'purchased' : ''} ${
-        disabled ? 'disabled' : ''
-      } ${className || ''}`}
+      className={`claim-cta-btn ${className || ''}`}
       onClick={onClick}
-      disabled={disabled}
-      aria-label={
-        disabled
-          ? fullyClaimedLabel || 'Fully claimed'
-          : purchasedBy
-            ? `Claimed: ${purchasedBy}`
-            : 'Claim this item'
-      }
+      aria-label="Claim this item"
     >
-      {disabled ? (
-        <MdLock size={30} className="check-icon" />
-      ) : purchasedBy ? (
-        <MdCheckBox size={30} className="check-icon" />
-      ) : (
-        <MdCheckBoxOutlineBlank size={30} className="check-icon" />
-      )}
-      {disabled ? (
-        <div className="purchased-by-container">
-          <div>{fullyClaimedLabel || 'Fully claimed'}</div>
-        </div>
-      ) : purchasedBy ? (
-        <div className="purchased-by-container">
-          <div>Claimed:</div>
-          <div className="purchased-by">{purchasedBy}</div>
-        </div>
-      ) : (
-        'Claim'
-      )}
+      Claim this gift
     </button>
   );
 }

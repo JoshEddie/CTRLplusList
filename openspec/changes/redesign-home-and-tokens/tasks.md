@@ -30,6 +30,29 @@ before any implementation tasks start.
 
 - [x] 1.C1 User reviewed the new chrome on `/` and `/lists` in the preview. Active-pill behavior, mobile hamburger (with the post-checkpoint hamburger-left-of-logo fix), and frame wrapping all confirmed working. Other `(main)/` routes (`/lists/[id]`, `/items`, `/purchased`, `/following`, `/settings/connections`, `/user/[id]`) inherit the frame automatically and were explicitly accepted as "OK if untouched pages start breaking" — they'll get visual attention at their own stage.
 
+## 1b. Stage 1b — "+N more" trailing tile on home rails
+
+<!--
+Surfaced after Stage 2 landed and the seed grew enough to expose the gap: when each
+rail caps at 5, there's no signal whether the underlying set has 5 or 50. A trailing
+6th tile (same dimensions as the cards, faint brand tint, centered "+N more →") makes
+the remainder legible and gives a second tap target for "See all". Spec delta is in
+`specs/home-digest/spec.md` under "Rails SHALL render a trailing 'see more' tile".
+-->
+
+- [x] 1b.1 Created `app/ui/components/MoreCard.tsx`: a `<Link>` rendering centered "+N more →" with `aria-label="${count} more — see all"`. Width comes from the parent slot (`.list-card-row-item` or `.user-card-grid > li`) so the tile inherits the per-breakpoint sizing — no per-breakpoint width overrides needed inside the component.
+- [x] 1b.2 Added `--card-accent-background-color: #f7f3ff` to `:root` in `global.css`. MoreCard consumes it via `.more-card` (see 1b.3). Easy to swap to a different tint later if `#f7f3ff` doesn't land (e.g. reuse `--buy-link-bg`).
+- [x] 1b.3 Added `.more-card` rule + `:hover` variant to `following-and-history.css` adjacent to the existing `.list-card` / `.user-card` blocks. `height: 100%` lets it stretch to the row's flex-stretched height (matches card height exactly — confirmed 236×95 in preview). Compact `padding: 14px 16px; font-size: 13px;` variant under `@media (max-width: 800px)`.
+- [x] 1b.4 `ListCardRow` accepts `moreCount?: number` and `seeAllHref?: string`. Appends `<MoreCard />` as an extra `.list-card-row-item` when `moreCount > 0 && seeAllHref`. Default behavior unchanged when props absent.
+- [x] 1b.5 `UserCardGrid` accepts the same two props. Appends `<li><MoreCard /></li>` as the final grid cell.
+- [x] 1b.6 `RecentlyVisitedRail`'s inline `list-card-row` markup now appends `<MoreCard moreCount={...} href="/lists/history" />` when its dataset has > 5 entries.
+- [x] 1b.7 All four rails (`MyListsRail`, `BookmarksRail`, `RecentlyVisitedRail`, `FollowingRail`) fetch the full dataset, compute `moreCount = Math.max(0, all.length - shown.length)` after `slice(0, 5)`, and pass `moreCount` + `seeAllHref` through. The `RecentlyVisitedRail` DAL call uses `{ limit: 50 }` since `getVisitHistoryByUser` requires an explicit limit — a tighter total-count query would be a perf follow-up if visit history rows grow large.
+- [x] 1b.8 Smoke-tested in the auth-bypass preview at 1400×900 and 375×812. Verified four `.more-card` tiles render with the correct copy (`+10 more →` My Lists, `+1 more →` Following, `+10 more →` Recently visited, `+3 more →` Bookmarks). Each links to the right destination (`/lists`, `/following`, `/lists/history`, `/lists/bookmarks`). Dimensions match the regular cards (236×95 at desktop). Brand tint background resolves to `#f7f3ff`, text resolves to `--primary-color`.
+
+### Checkpoint 1b
+
+- [ ] 1b.C1 User reviews all four rails with >5 items each. Confirms tile visual fits the card rhythm, count is correct, and tap/click navigation works on desktop + mobile.
+
 ## 2. Stage 2 — Home digest + My Lists page
 
 - [x] 2.1 Add `subtitle: text('subtitle')` to the `lists` table in `db/schema.ts`. Generate the Drizzle migration (`drizzle/0002_ordinary_maximus.sql`) and verify it is purely additive.
@@ -86,7 +109,14 @@ surface. Spec capture: `specs/list-collections/spec.md`.
 - [x] 3.C1 User reviewed the three list-collection pages, the peer sub-nav across the four surfaces, the global-nav active-pill change, and the `/user/[id]` card re-skin. Stage 3 scope expanded mid-review to include: peer sub-nav (`list-collections` capability), `HomeListCard` → `ListCard` rename + move to `app/ui/components/`, `/u/[id]` → `/user/[id]` URL fix, bookmark-preserving remove-from-history (schema + action + UI), `MainShell` regex regression fix, and AppNav Suspense wrap silencing all `cacheComponents` warnings across `(main)/` routes.
 - [x] 3.C2 Stage 4 (View / Browse — `/lists/[id]`, `/items`, `/items/[id]`, Purchase modal) decision: **proceed within this change**. Claude Design session already conducted in parallel during Stage 3 review. Stage 4 implementation begins in the next session.
 
-## 4. Stage 4 — View / Browse (`/lists/[id]`, `/items`, `/items/[id]`, Purchase modal)
+## 4. Stage 4 — View / Browse (`/lists/[id]`, `/items`, Purchase modal)
+
+<!--
+`/items/[id]` was originally listed here; reassigned to Stage 5 because it's
+the item edit form, not a card/view, and lands cleaner with the rest of the
+create/edit forms.
+-->
+
 
 <!--
 Splits the old Stage 4 ("list interior") and Stage 5 ("items library") by USER MODE
@@ -96,14 +126,15 @@ is designed once against both, and downstream stages inherit it. Stage 5 (Create
 Manage) consumes this primitive and adds selection / form chrome on top.
 -->
 
-- [ ] 4.0 **Open Claude Design session** for the View / Browse surfaces. Cover: the item card/row primitive (resolved against both contexts — inside a list and in the library), `/lists/[id]` list-as-container chrome, `/items` library layout (grid/list, toolbar, filters, pagination), `/items/[id]` item detail, Purchase modal. Resolve density, sort/filter chrome, and any net-new components. Save the handoff bundle.
-- [ ] 4.1 Update tasks 4.2+ based on the session's resolved direction. (Placeholder — refine after 4.0.)
-- [ ] 4.2 Re-skin `app/(main)/lists/[id]/page.tsx` consuming the new tokens and the session's item-primitive decisions.
-- [ ] 4.3 Re-skin `app/(main)/items/page.tsx` (library) consuming the same item primitive plus the resolved toolbar/filter/pagination treatment.
-- [ ] 4.4 Re-skin `app/(main)/items/[id]/page.tsx` (item detail).
-- [ ] 4.5 Re-skin the Purchase modal component.
-- [ ] 4.6 Migrate `app/(main)/lists/ui/styles/list.css` and `app/(main)/items/ui/styles/item.css`, `purchase.css`, `store-links.css`, `item-loading.css` to consume tokens. Also migrate `confirm-dialog.css` if it surfaces inside these flows.
-- [ ] 4.7 Smoke-test the read flow end to end on desktop and mobile: home → list detail → item detail → purchase modal; and home → items library → item detail → purchase modal.
+- [x] 4.0 Claude Design session conducted; handoff bundle (`List views designs-handoff.zip` → `List Views Design v2.html`) read and understood. Locked decisions: unified item card primitive (image 4:3, name, price, optional claim CTA, store labels + BuyLinks pills, optional purchased banner footer), gradient purple list-detail hero with title/owner/date/chip/claimed-count + Share/Follow/Bookmark actions, underline-tab Active/Archived on items library, search + sort + purchases + stores + price + grid/list view-toggle toolbar, pill-button pagination.
+- [x] 4.1 Tasks reconciled: removed `/items/[id]` (moved to Stage 5 with the other forms) and renumbered 4.4→4.4 (Purchase modal), 4.5→4.5 (CSS migration), 4.6→4.6 (smoke test). User constraint folded in: **keep existing `.item-grid` column counts and breakpoints** (1/2/3/4/6 at 0/415/640/890/1300px container widths) so paginated pages never orphan rows.
+- [x] 4.2 Re-skinned `/lists/[id]` (viewer view): purple gradient `.list-hero` with title, owner, date, occasion chip, and Share/Follow/Bookmark (or owner Manage actions). Owner sortable view deferred to Stage 5 (see 5.6). The 2-column sidebar layout from Stage 1 is gone — hero now spans the full surface above the toolbar + items grid.
+- [x] 4.3 Re-skinned `/items` (library): underline Active/Archived tabs (new `.container--items-library` variant in MainShell.tsx), restyled toolbar (search + sort + purchases + stores + price + grid/list view toggle). Item cards consume the new shared primitive (Item.tsx → 4:3 image, name, price, claim CTA / purchased banner, store labels + buy-link pills). Grid columns kept at the existing 1/2/3/4/6 breakpoints per the user's pagination constraint.
+- [x] 4.4 Re-skinned the Purchase modal (lighter dark-blur scrim, white card with 14px radius, retokenized guest-name input).
+- [x] 4.5 Migrated `item.css`, `purchase.css`, `store-links.css`, `list.css`, and `modal.css` to consume tokens (`--card-border-color`, `--card-shadow*`, `--success-*`, `--buy-link-*`, `--hero-gradient`, `--light-color`, `--neutral-text-color`, `--muted-text-color`, `--secondary-background-color`). Added Stage 4 tokens to `global.css` (`--hero-gradient`, `--buy-link-bg/border/text/hover-*`, `--success-bg/border/text`).
+- [x] 4.5a Added grid/list **view toggle** (URL `?view=list`) to `ItemsToolbar`/`ItemsBrowser`/`Items.tsx`. New `.item-list` row CSS in `item.css` reshapes the same Item card markup into a horizontal row (52px thumbnail + name/meta/buy-links + price + claim/edit actions). Mobile collapses to a tighter 48px thumbnail + 2-col layout.
+- [x] 4.5b Architectural fix for header/toolbar staying visible during scroll. Replaced the original sticky-with-magic-numbers approach with a constrained-height flex-column on `.container--list-details`, `.container--items-library`, and the new `.container--list-collections` (`height: calc(100vh - var(--app-sticky-top)); overflow: hidden`). Inside, hero/header/tabs/toolbar/pagination are `flex-shrink: 0`; the inner grid (`.item-grid-container` / `.item-grid.sortable` / `.list-card-grid` / `.user-card-grid`) is `flex: 1; overflow-y: auto` and scrolls internally. Added `--app-nav-height`, `--app-surface-bleed-top`, `--app-sticky-top` tokens in `app-frame.css`. `MainShell.tsx` registers the new `list-collections` variant for `/lists`, `/lists/bookmarks`, `/lists/history`, `/following` so their peer tab strip stays at the top while only the card grid scrolls.
+- [x] 4.6 Smoke-tested desktop (1400×900) and mobile (375×812) in the auth-bypass preview: home → list detail → claim CTA + purchase modal; items library grid + list view + pagination; sticky hero/header/tabs/toolbar; Active↔Archived tab switching; view-toggle URL persistence. All states render: claim CTA, "You claimed this — Undo", "Claimed by <name>", "Fully claimed" lock, and the purchased-banner footer. (Note: `/items/[id]` is the item edit form; deferred to Stage 5 with the other create/edit forms. Owner sortable view on `/lists/[id]` also deferred — see 5.6.)
 
 ### Checkpoint 4
 
@@ -124,9 +155,10 @@ inside the item form.
 - [ ] 5.2 Re-skin `app/(main)/lists/new/page.tsx` (consumes the resolved list form).
 - [ ] 5.3 Re-skin `app/(main)/lists/[id]/edit/page.tsx` (same form, edit mode).
 - [ ] 5.4 Re-skin `app/(main)/lists/[id]/choose-items/page.tsx` and the selection chrome layered onto the item primitive.
-- [ ] 5.5 Re-skin the item form and image-search modal components under `app/(main)/items/ui/components/itemform/`.
-- [ ] 5.6 Migrate any remaining `app/(main)/items/ui/styles/*.css` and list-form styles to consume tokens.
-- [ ] 5.7 Smoke-test the manage flow end to end on desktop and mobile: create list → edit list metadata → choose items (with create-item-inline) → image search → save.
+- [ ] 5.5 Re-skin the item form and image-search modal components under `app/(main)/items/ui/components/itemform/`. Includes `app/(main)/items/[id]/page.tsx` (item detail = the same item form in edit mode; moved here from Stage 4 after recognizing it's a form, not a card view).
+- [x] 5.6 Pulled forward into Stage 4 after the list-collections sticky fix landed: rewrote `.sortable-item` CSS in `app/(main)/items/ui/styles/item.css` so the inner `.item` element becomes the row grid (100px image + 1fr info) instead of the outer `.item-container` (which doesn't have the image as a direct child). The `.sortable-item` row is now ~103px tall with thumbnail + name/store + price/buy-links + edit-overlay actions reading cleanly. Drag-and-drop handle behavior + the constrained-height grid scroll (set in `.container--list-details > .item-grid.sortable`) preserved.
+- [ ] 5.7 Migrate any remaining `app/(main)/items/ui/styles/*.css` and list-form styles to consume tokens.
+- [ ] 5.8 Smoke-test the manage flow end to end on desktop and mobile: create list → edit list metadata → choose items (with create-item-inline) → image search → save → drag-reorder.
 
 ### Checkpoint 5
 

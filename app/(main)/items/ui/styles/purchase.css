@@ -1,34 +1,78 @@
-.purchased-by-container {
-  display: flex;
-  flex-direction: row;
+/* Claim CTA — full-width purple button sits inside the item card body */
+.claim-cta-btn {
+  width: 100%;
+  display: inline-flex;
   align-items: center;
-  row-gap: 0;
-  column-gap: 4px;
-  flex-wrap: wrap;
-  justify-content: start;
-  text-align: left;
-}
-
-.purchased-by {
-  font-weight: 200;
-}
-
-.purchase {
-  display: grid;
-  grid-template-columns: 30px 1fr;
-  padding: 0 8px;
   justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--primary-color);
+  color: var(--light-color);
+  font-family: var(--font-roboto-condensed);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    transform 0.1s;
+}
+
+.claim-cta-btn:hover {
+  background-color: var(--primary-color-dark);
+}
+
+.claim-cta-btn:active {
+  transform: scale(0.99);
+}
+
+/* Claimed / Fully-claimed inline state — green pill inside the card body */
+.claimed-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1.5px solid var(--success-border);
+  border-radius: 8px;
+  background-color: var(--success-bg);
+  color: var(--success-text);
+}
+
+.claimed-state-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12px;
+  font-weight: 700;
 }
 
-.purchase:hover,
-.purchase.purchased {
-  background-color: var(--secondary-color);
-  border-color: var(--secondary-color);
-  color: #ffffff;
+.claimed-state-undo {
+  background: none;
+  border: none;
+  font-family: var(--font-roboto-condensed);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-text-color);
+  cursor: pointer;
+  padding: 2px 4px;
 }
 
-.purchase.purchased:hover {
-  background-color: #ffffff;
-  color: var(--secondary-color);
+.claimed-state-undo:hover {
+  color: var(--success-text);
+  text-decoration: underline;
+}
+
+.claimed-state--fully {
+  justify-content: center;
+  background-color: var(--secondary-background-color);
+  border-color: var(--neutral-border-color);
+  color: var(--muted-text-color);
+}
+
+.claimed-state--fully .claimed-state-label {
+  color: var(--muted-text-color);
 }

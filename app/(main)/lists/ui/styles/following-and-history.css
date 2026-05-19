@@ -133,8 +133,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 20px 12px;
+  padding: 18px 20px;
+  height: 100%;
   background-color: var(--light-color);
   border: 1px solid var(--card-border-color);
   border-radius: 10px;
@@ -148,6 +150,32 @@
   background-color: var(--card-hover-background-color);
   border-color: var(--card-border-hover-color);
   box-shadow: var(--card-shadow-hover);
+}
+
+/* Compact variant: horizontal avatar + name. Used by the home FollowingRail
+   so user cards share the rhythm of the list cards in the row. */
+.user-card--compact {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+}
+.user-card--compact .user-card-avatar {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.user-card--compact .user-card-avatar-initials {
+  font-size: 1.1rem;
+}
+.user-card--compact .user-card-meta {
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+.user-card--compact .user-card-name {
+  font-size: 20px;
+  word-break: break-word;
 }
 .user-card-avatar {
   position: relative;
@@ -493,6 +521,44 @@
   font-family: var(--font-roboto-condensed);
 }
 
+/* "+N more" trailing tile — same dimensions as .list-card / .user-card,
+   distinguished by a faint brand-tinted background and centered copy. */
+.more-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 100%;
+  padding: 18px 20px;
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+  background-color: var(--card-accent-background-color);
+  box-shadow: var(--card-shadow);
+  color: var(--primary-color);
+  font-family: var(--font-roboto-condensed);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.more-card:hover {
+  border-color: var(--card-border-hover-color);
+  box-shadow: var(--card-shadow-hover);
+}
+.more-card-text {
+  white-space: nowrap;
+}
+
+@media (max-width: 800px) {
+  .more-card {
+    padding: 14px 16px;
+    font-size: 13px;
+  }
+}
+
 /* Home card (used in rails and on the My Lists page) */
 .list-card {
   display: flex;
@@ -589,7 +655,7 @@
 /* Peer sub-nav across the four list-collection pages */
 .list-collections-nav {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
@@ -635,6 +701,7 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  padding-bottom: 8px;
 }
 
 @media (max-width: 800px) {
@@ -654,6 +721,58 @@
   list-style: none;
   padding: 0;
   margin: 0;
+}
+
+/* ── List-collections container (My Lists / Bookmarks / History / Following) ──
+   Fixed-height flex column. The peer tab strip stays at the top; only the
+   card grid scrolls. Matches the architectural pattern used by
+   .container--list-details and .container--items-library. */
+.container--list-collections {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--app-sticky-top));
+  overflow: hidden;
+}
+
+/* The per-page wrapper (.my-lists-page / .bookmarks-page / .history-page /
+   .following-page) inherits the flex layout from the container. */
+.container--list-collections
+  > .my-lists-page,
+.container--list-collections
+  > .bookmarks-page,
+.container--list-collections
+  > .history-page,
+.container--list-collections
+  > .following-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.container--list-collections .list-collections-nav {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding-top: 8px;
+  background-color: var(--light-color);
+}
+
+.container--list-collections .list-card-grid,
+.container--list-collections .user-card-grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+  padding: 16px 0 16px;
+}
+
+.container--list-collections .my-lists-empty,
+.container--list-collections .profile-empty {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: 16px;
 }
 
 /* One-time migration toast on home */

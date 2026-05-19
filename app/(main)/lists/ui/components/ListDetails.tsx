@@ -1,23 +1,25 @@
 import FollowContainer from '@/app/(main)/users/ui/components/FollowContainer';
 import { ListTable } from '@/lib/types';
 import Link from 'next/link';
-import {
-  MdChecklist,
-  MdModeEdit,
-  MdPreview,
-  MdVisibility,
-} from 'react-icons/md';
+import { FaCalendar, FaUser } from 'react-icons/fa';
+import { MdChecklist, MdModeEdit, MdVisibility } from 'react-icons/md';
 import BookmarkContainer from './BookmarkContainer';
-import DeleteListButton from './DeleteListButton';
 import ListActionsMenu from './ListActionsMenu';
-import ListHeader from './ListHeader';
 import ShareButton from './ShareButton';
-import SpoilerToggle from './SpoilerToggle';
 import VisibilityPicker from './VisibilityPicker';
 
 type ListWithVisibility = ListTable & {
   visibility?: 'private' | 'unlisted' | 'public';
 };
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    timeZone: 'UTC',
+  });
+}
 
 export default function ListDetails({
   isOwner,
@@ -39,31 +41,73 @@ export default function ListDetails({
     showSpoilers ? '&spoilers=1' : ''
   }`;
   const exitPreviewHref = `/lists/${list.id}${showSpoilers ? '?spoilers=1' : ''}`;
-  // Spoiler toggle preserves preview state
   const spoilerHref = showSpoilers
     ? `/lists/${list.id}${previewMode ? '?preview=viewer' : ''}`
     : `/lists/${list.id}?${previewMode ? 'preview=viewer&' : ''}spoilers=1`;
 
   return (
-    <div className="list-details">
+    <div className="list-hero">
       {previewMode && (
         <div className="preview-banner" role="status">
           <MdVisibility />
           <span>You&apos;re previewing this list as a viewer.</span>
-          <Link href={exitPreviewHref} className="btn secondary">
+          <Link href={exitPreviewHref} className="btn">
             Exit preview
           </Link>
         </div>
       )}
 
-      {/* Mobile top row: privacy + share + kebab side-by-side */}
-      <div className="list-top-row">
+      <div className="list-hero-row">
+        <div className="list-hero-info">
+          <h1 className="list-hero-title">{list.name}</h1>
+          {list.subtitle ? (
+            <div className="list-hero-subtitle">{list.subtitle}</div>
+          ) : null}
+          <div className="list-hero-meta">
+            {user_name && (
+              <span className="list-hero-mi">
+                <FaUser aria-hidden /> {user_name}
+              </span>
+            )}
+            <span className="list-hero-mi">
+              <FaCalendar aria-hidden /> {formatDate(list.date)}
+            </span>
+            {list.occasion ? (
+              <span className="list-hero-chip">{list.occasion}</span>
+            ) : null}
+          </div>
+        </div>
+
+        {/* Visibility status + picker on the right of the hero (owner only) */}
         {isOwner && !previewMode && (
-          <VisibilityPicker listId={list.id} initialVisibility={visibility} />
+          <div className="list-hero-side">
+            <VisibilityPicker
+              listId={list.id}
+              initialVisibility={visibility}
+            />
+          </div>
         )}
-        <div className="list-actions list-actions-mobile">
-          {!previewMode && <ShareButton list={list} />}
-          {isOwner && (
+      </div>
+
+      <div className="list-hero-actions">
+        {!previewMode && <ShareButton list={list} />}
+
+        {isOwner && !previewMode && (
+          <>
+            <Link
+              className="btn list-hero-btn"
+              href={`/lists/${list.id}/choose-items`}
+            >
+              <MdChecklist />
+              <span className="label">Choose items</span>
+            </Link>
+            <Link
+              className="btn list-hero-btn"
+              href={`/lists/${list.id}/edit`}
+            >
+              <MdModeEdit />
+              <span className="label">Edit list</span>
+            </Link>
             <ListActionsMenu
               listId={list.id}
               showSpoilers={!!showSpoilers}
@@ -72,78 +116,20 @@ export default function ListDetails({
               previewHref={previewHref}
               exitPreviewHref={exitPreviewHref}
             />
-          )}
-          {!isOwner && user_id && (
-            <>
-              <FollowContainer
-                ownerId={list.user_id}
-                ownerName={user_name ?? null}
-                viewerId={user_id}
-              />
-              <BookmarkContainer list_id={list.id} user_id={user_id} />
-            </>
-          )}
-        </div>
+          </>
+        )}
+
+        {!isOwner && user_id && (
+          <>
+            <FollowContainer
+              ownerId={list.user_id}
+              ownerName={user_name ?? null}
+              viewerId={user_id}
+            />
+            <BookmarkContainer list_id={list.id} user_id={user_id} />
+          </>
+        )}
       </div>
-
-      <ListHeader title={list.name} user_name={user_name || null} list={list}>
-        {/* Desktop: labeled sections */}
-        <div className="list-actions list-actions-desktop">
-          {!previewMode && (
-            <section className="list-section">
-              <div className="list-section-label">Share</div>
-              <ShareButton list={list} />
-            </section>
-          )}
-
-          {isOwner && (
-            <section className="list-section">
-              <div className="list-section-label">View as</div>
-              {!previewMode && (
-                <Link
-                  className="btn secondary"
-                  href={previewHref}
-                  title="Preview as a viewer"
-                >
-                  <MdPreview />
-                  <span className="label">Preview as viewer</span>
-                </Link>
-              )}
-              <SpoilerToggle showSpoilers={!!showSpoilers} />
-            </section>
-          )}
-
-          {isOwner && !previewMode && (
-            <section className="list-section">
-              <div className="list-section-label">Manage</div>
-              <Link
-                className="btn secondary"
-                href={`/lists/${list.id}/choose-items`}
-              >
-                <MdChecklist size={18} />
-                <span className="label">Choose items</span>
-              </Link>
-              <Link className="btn primary" href={`/lists/${list.id}/edit`}>
-                <MdModeEdit />
-                <span className="label">Edit list</span>
-              </Link>
-              <DeleteListButton id={list.id} />
-            </section>
-          )}
-
-          {!isOwner && user_id && (
-            <section className="list-section">
-              <div className="list-section-label">Connect</div>
-              <FollowContainer
-                ownerId={list.user_id}
-                ownerName={user_name ?? null}
-                viewerId={user_id}
-              />
-              <BookmarkContainer list_id={list.id} user_id={user_id} />
-            </section>
-          )}
-        </div>
-      </ListHeader>
     </div>
   );
 }

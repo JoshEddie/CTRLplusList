@@ -78,3 +78,27 @@ On pointer hover or keyboard focus, a rail card SHALL change its background colo
 
 - **WHEN** the user hovers any card in a rail
 - **THEN** no part of the card is clipped against the rail's `overflow-x` boundary (because no translation occurs)
+
+### Requirement: Rails SHALL render a trailing "see more" tile when more entries exist
+
+When a rail's underlying dataset contains more than 5 entries, the rail body SHALL render a trailing tile after the 5 shown items linking to the rail's `seeAllHref`. The tile SHALL match the dimensions and overall shape of the regular rail cards (same width per breakpoint, same border-radius, same border style — no dashed border), differentiated only by a faint brand-tinted background and centered "+N more →" copy where N is the remainder count (total minus 5). When the dataset contains 5 or fewer entries, the tile SHALL NOT render.
+
+#### Scenario: Tile renders with remainder count when more exist
+
+- **WHEN** the My Lists rail's underlying dataset contains 17 lists
+- **THEN** the rail body renders the 5 most-recent lists followed by a trailing tile that reads "+12 more →" and links to `/lists`
+
+#### Scenario: Tile is absent when 5 or fewer entries
+
+- **WHEN** a rail's underlying dataset contains 5 or fewer entries
+- **THEN** the rail body renders only the cards for those entries — no trailing "more" tile
+
+#### Scenario: Tile matches rail card dimensions
+
+- **WHEN** the trailing tile renders alongside regular cards in any rail
+- **THEN** the tile occupies the same width slot as a regular card at the active breakpoint (236px / 260px / 190px) and shares the same border-radius and solid border style — no dashed border
+
+#### Scenario: Tile is brand-tinted
+
+- **WHEN** the trailing tile renders
+- **THEN** the tile's background is a faint brand-tinted surface (visibly distinct from `--light-color` but quiet enough to feel like a sibling card) and the "+N more →" text uses `--primary-color`

@@ -2,114 +2,6 @@
   width: 100%;
 }
 
-.list-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(450px, 100%), 1fr));
-  gap: 12px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.list-header,
-.list,
-.list-row {
-  width: 100%;
-  position: relative;
-}
-
-.list-row {
-  border: 1px solid var(--primary-color);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.list {
-  text-decoration: none;
-  display: flex;
-  flex-direction: column;
-  flex-wrap: nowrap;
-  justify-content: center;
-  gap: 8px;
-  background-color: transparent;
-  padding: 16px;
-  color: var(--muted-text-color);
-}
-
-.list .list-cell-details svg {
-  color: var(--secondary-color);
-}
-
-.list:hover {
-  background-color: var(--secondary-color);
-  color: #ffffff;
-}
-
-.list:hover .list-name,
-.list:hover .list-cell-details svg {
-  color: #ffffff;
-}
-
-.list-cell-details {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-}
-
-@media (max-width: 550px) {
-  .list-cell-details {
-    flex-direction: column;
-    gap: 8px;
-  }
-}
-
-.list-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  text-decoration: none;
-}
-
-.list-name {
-  font-size: 24px;
-  font-weight: 100;
-  font-family: var(--font-crimson-pro);
-  word-break: break-word;
-  color: var(--primary-color);
-}
-
-@media (min-width: 550px) {
-  .list-name {
-    text-align: center;
-    justify-content: center;
-  }
-}
-
-.list-header .list-cell {
-  background-color: var(--primary-color);
-  color: #ffffff;
-  font-family: var(--font-crimson-pro);
-  font-size: 18px;
-  letter-spacing: 0.5px;
-  display: grid;
-  align-items: center;
-  padding: 5px 15px;
-}
-
-.delete-list-button {
-  border: none;
-  outline: none;
-  border-radius: 0;
-  cursor: pointer;
-}
-
-.delete-list-button:hover {
-  background-color: var(--danger-color);
-  color: #ffffff;
-}
-
 .error-message {
   color: var(--danger-color);
   font-size: 14px;
@@ -117,58 +9,290 @@
   padding: 4px 0;
 }
 
-.container--list-details .item-grid-container {
-  background-color: var(--background-color);
-  border-radius: 4px;
-  padding: 20px;
-}
-
-.list-details {
+/* ── LIST DETAIL HERO ──
+   Purple gradient header inside the white surface; sits above the
+   toolbar + items grid. */
+.list-hero {
+  background-image: var(--hero-gradient);
+  color: var(--light-color);
+  padding: 22px 28px 19px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  background-color: var(--background-color);
-  border-radius: 4px;
-  height: min-content;
-  padding: 20px;
+  gap: 14px;
+  border-radius: 14px 14px 0 0;
+  flex-shrink: 0;
 }
 
-.list-shared {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background-color: var(--third-background-color);
-  border-radius: 20px;
-  padding: 8px 16px;
-  cursor: pointer;
-  max-width: 260px;
+@media (max-width: 800px) {
+  .list-hero {
+    padding: 16px 16px 14px;
+    border-radius: 12px 12px 0 0;
+  }
 }
 
-.list-top-row {
+.list-hero-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 16px;
+}
+
+.list-hero-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-hero-title {
+  font-family: var(--font-crimson-pro);
+  font-weight: 400;
+  font-size: 28px;
+  color: var(--light-color);
+  margin: 0;
+  line-height: 1.15;
+  word-break: break-word;
+}
+
+@media (max-width: 800px) {
+  .list-hero-title {
+    font-size: 22px;
+  }
+}
+
+.list-hero-subtitle {
+  margin-top: 4px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.list-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.list-hero-mi {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.list-hero-mi svg {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.list-hero-chip {
+  padding: 2px 9px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.17);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.list-hero-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Hero action buttons — white-translucent pill style */
+.list-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.list-hero .btn,
+.list-hero-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background-color: rgba(255, 255, 255, 0.13);
+  border: 1.5px solid rgba(255, 255, 255, 0.27);
+  color: var(--light-color);
+  font-family: var(--font-roboto-condensed);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.list-hero .btn:hover,
+.list-hero-actions .btn:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: var(--light-color);
+}
+
+/* All action buttons in the hero share the same translucent-white pill
+   style — no primary/secondary visual hierarchy. Override any .btn.primary
+   styling that bleeds in from button.css so they don't look out of place
+   on the gradient. */
+.list-hero .btn.primary,
+.list-hero .btn.secondary {
+  background-color: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.27);
+  color: var(--light-color);
+}
+
+.list-hero .btn.primary:hover,
+.list-hero .btn.secondary:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: var(--light-color);
+}
+
+.list-hero .btn.danger {
+  background-color: rgba(239, 68, 68, 0.25);
+  border-color: rgba(255, 200, 200, 0.5);
+  color: var(--light-color);
+}
+
+.list-hero .btn.danger:hover {
+  background-color: var(--danger-color);
+  border-color: var(--danger-color);
+}
+
+/* Visibility picker inside the hero side — translucent white on the
+   purple gradient, more compact than the default white-card variant. */
+.list-hero-side .visibility-picker {
+  width: auto;
+  gap: 6px;
+  align-items: flex-end;
+}
+.list-hero-side .visibility-toggle {
+  background-color: rgba(255, 255, 255, 0.13);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  padding: 2px;
+  gap: 2px;
+  min-width: 260px;
+}
+.list-hero-side .visibility-option {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  padding: 5px 14px;
+}
+.list-hero-side .visibility-option-label {
+  overflow: visible;
+  text-overflow: clip;
+}
+.list-hero-side .visibility-option:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--light-color);
+}
+.list-hero-side .visibility-option.active {
+  background-color: var(--light-color);
+  color: var(--primary-color);
+}
+.list-hero-side .visibility-feed-toggle {
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 11px;
+  padding: 5px 10px;
+}
+.list-hero-side .visibility-feed-toggle:hover {
+  border-color: rgba(255, 255, 255, 0.42);
+}
+.list-hero-side .visibility-feed-toggle:has(input:checked) {
+  background-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.42);
+}
+.list-hero-side .visibility-feed-toggle input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  border-color: rgba(255, 255, 255, 0.5);
+  background-color: transparent;
+}
+.list-hero-side .visibility-feed-toggle input[type='checkbox']:checked {
+  background-color: var(--light-color);
+  border-color: var(--light-color);
+}
+.list-hero-side .visibility-feed-toggle input[type='checkbox']:checked::after {
+  /* Scale the default 5×10 @ left:4 top:0 checkmark down for this 14×14 box */
+  width: 4px;
+  height: 8px;
+  left: 3px;
+  top: 0;
+  border-color: var(--primary-color);
+  border-width: 0 2px 2px 0;
+}
+
+@media (max-width: 800px) {
+  .list-hero-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .list-hero-side {
+    width: 100%;
+  }
+  .list-hero-side .visibility-picker {
+    width: 100%;
+    align-items: stretch;
+  }
+}
+
+/* Kebab "more actions" button living in the hero action row, on the
+   gradient. Override the existing .btn secondary look. */
+.list-hero-actions .menu-trigger {
+  background-color: rgba(255, 255, 255, 0.13);
+  border: 1.5px solid rgba(255, 255, 255, 0.27);
+  color: var(--light-color);
+  padding: 6px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  margin-left: auto;
+}
+.list-hero-actions .menu-trigger:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Preview banner inside hero */
+.list-hero .preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background-color: rgba(255, 255, 255, 0.13);
+  border: 1.5px dashed rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
   width: 100%;
+  font-size: 13px;
+  color: var(--light-color);
+  flex-wrap: wrap;
 }
 
-.list-top-row:empty,
-.list-top-row:has(> :only-child) {
-  justify-content: center;
+.list-hero .preview-banner > svg {
+  flex-shrink: 0;
+  color: var(--light-color);
 }
 
-.list-shared:hover {
-  background-color: var(--primary-color);
-  color: #ffffff;
+.list-hero .preview-banner > span {
+  flex: 1;
+  min-width: 140px;
 }
 
+.list-hero .preview-banner .btn {
+  margin-left: auto;
+}
+
+/* Private-list message (unchanged) */
 .list-private {
   display: flex;
   flex-direction: column;
   gap: 16px;
   align-items: center;
+  padding: 40px 20px;
 }
 
 .list-private h1 {
@@ -184,89 +308,11 @@
   font-size: 18px;
 }
 
-.list-details .list-title {
-  font-size: 35px;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
-}
-
-.list-details .list-info {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.list-details .list-info-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.list-details-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-  align-items: center;
-}
-
-/* Desktop: labeled sections */
-.list-actions-desktop {
-  display: none;
-  width: 100%;
-  max-width: 320px;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.list-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-}
-
-.list-section-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.2px;
-  color: var(--secondary-color);
-  text-transform: uppercase;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--third-background-color);
-  text-align: left;
-}
-
-/* Mobile: share + kebab row */
-.list-actions-mobile {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: flex-end;
-  width: 100%;
-}
-
-.list-actions-mobile .btn {
-  flex-shrink: 0;
-  padding: 10px;
-}
-
-.list-actions-mobile .label {
-  display: none;
-}
-
-/* Kebab menu */
+/* Kebab menu (unchanged — still used by list-hero-side on owner) */
 .list-actions-menu {
   position: relative;
   display: inline-block;
 }
-
-/* .menu-trigger {
-  padding: 12px;
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-} */
 
 .menu-dropdown {
   position: absolute;
@@ -274,8 +320,8 @@
   right: 0;
   z-index: 20;
   min-width: 220px;
-  background: var(--background-color);
-  border: 1px solid var(--third-background-color);
+  background: var(--light-color);
+  border: 1px solid var(--card-border-color);
   border-radius: 10px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
   padding: 6px;
@@ -292,7 +338,7 @@
   border-radius: 6px;
   background: none;
   border: none;
-  color: var(--primary-text-color);
+  color: var(--neutral-text-color);
   font-family: var(--font-roboto-condensed);
   font-size: 15px;
   font-weight: 500;
@@ -307,12 +353,12 @@
 
 .menu-item:hover {
   background-color: var(--secondary-background-color);
-  color: var(--secondary-color);
+  color: var(--primary-color);
 }
 
 .menu-item-danger {
   color: var(--danger-color);
-  border-top: 1px solid var(--third-background-color);
+  border-top: 1px solid var(--card-border-color);
   margin-top: 4px;
   padding-top: 12px;
   border-radius: 0 0 6px 6px;
@@ -320,14 +366,22 @@
 
 .menu-item-danger:hover {
   background-color: var(--danger-color);
-  color: #ffffff;
+  color: var(--light-color);
+}
+
+/* Kebab trigger sitting on the gradient */
+.list-hero-side .menu-trigger,
+.list-hero-side > button {
+  background-color: rgba(255, 255, 255, 0.13);
+  border: 1.5px solid rgba(255, 255, 255, 0.27);
+  color: var(--light-color);
+  border-radius: 50%;
 }
 
 /* Spoiler toggle with inline ON/OFF badge */
 .spoiler-toggle {
   justify-content: space-between;
   padding-right: 12px;
-  width: 100%;
 }
 
 .spoiler-toggle-inner {
@@ -347,106 +401,71 @@
 
 .state-badge.on {
   background-color: rgba(255, 255, 255, 0.25);
-  color: #ffffff;
+  color: var(--light-color);
   border-color: rgba(255, 255, 255, 0.35);
 }
 
 .state-badge.off {
-  background-color: var(--background-color);
-  color: var(--secondary-color);
-  border-color: var(--third-background-color);
+  background-color: rgba(255, 255, 255, 0.13);
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-.preview-banner {
+/* ── List-detail container: fixed-height flex column.
+   The hero + toolbar stay at the top; only the items grid scrolls.
+   This replaces the old 2-column-sidebar layout entirely. */
+.container--list-details {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background-color: var(--secondary-background-color);
-  border: 2px dashed var(--secondary-color);
-  border-radius: 8px;
-  width: 100%;
-  font-size: 14px;
-  color: var(--primary-text-color);
-  flex-wrap: wrap;
+  flex-direction: column;
+  height: calc(100vh - var(--app-sticky-top));
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
 }
 
-.preview-banner > svg {
-  flex-shrink: 0;
-  color: var(--secondary-color);
-}
-
-.preview-banner > span {
+.container--list-details .items-browser {
   flex: 1;
-  min-width: 140px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.preview-banner .btn {
-  padding: 8px 12px;
-  font-size: 13px;
-  margin-left: auto;
+.container--list-details .items-toolbar {
+  padding: 12px 28px;
 }
 
-@media (min-width: 800px) {
-  .container--list-details {
-    bottom: 16px;
-    padding: 0;
-    grid-template-columns: 280px 1fr;
-    grid-template-rows: minmax(0, 1fr);
-  }
+.container--list-details .item-grid-container {
+  padding: 16px 28px 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
 
-  .container--list-details .items-browser {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    height: 100%;
-    gap: 16px;
-  }
+.container--list-details .items-pagination {
+  padding: 12px 28px;
+  margin-top: 0;
+  border-top: 1px solid var(--card-border-color);
+  flex-shrink: 0;
+}
 
-  .list-details {
-    align-items: start;
-  }
+.container--list-details > .item-grid.sortable {
+  padding: 16px 28px 28px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
 
-  .container--list-details .pageTitle,
-  .container--list-details .listDetails {
-    text-align: left;
-  }
-
-  .list-details .list-info {
-    flex-direction: column;
-  }
-
-  .container--list-details .list-details-buttons {
-    width: 100%;
-    align-items: stretch;
-  }
-
-  /* Desktop: privacy pill alone (centered/left), no mobile actions row */
-  .list-top-row {
-    justify-content: flex-start;
-  }
-
-  .list-actions-desktop {
-    display: flex;
-    max-width: none;
-  }
-
-  .list-actions-mobile {
-    display: none;
+@media (max-width: 800px) {
+  .container--list-details .items-toolbar,
+  .container--list-details .items-pagination {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 
   .container--list-details .item-grid-container {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-  }
-
-  .container--list-details > .item-grid.sortable {
-    overflow-y: auto;
-    min-height: 0;
-    background-color: var(--background-color);
-    border-radius: 4px;
-    padding: 20px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
 

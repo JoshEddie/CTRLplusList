@@ -79,6 +79,8 @@ export default function ItemsBrowser({
   const hasPriceFilter = Number.isFinite(priceMin) || Number.isFinite(priceMax);
   const rawPage = parseInt(searchParams?.get('page') ?? '1', 10);
   const requestedPage = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const view: 'grid' | 'list' =
+    searchParams?.get('view') === 'list' ? 'list' : 'grid';
 
   const [pageSize, setPageSize] = useState<number>(
     normalizePageSize(initialPageSize)
@@ -197,6 +199,7 @@ export default function ItemsBrowser({
             items={visible}
             user_id={user_id}
             user_name={user_name}
+            view={view}
             showArchiveAction={showArchiveAction}
             archivedView={archivedView}
           />
