@@ -134,11 +134,51 @@ The "N new" badge gives the recency cue without paying for a separate "What's ne
 **Choice**:
 - **Remove** deletes the `user_follows` row. The removed user can re-follow.
 - **Block** deletes any existing `user_follows` rows in both directions AND inserts into `user_blocks`. The blocked user cannot follow again until unblocked.
-- Blocks affect the social graph only: blocked users still see your `'unlisted'` lists if they have the URL. URL-level visibility is per-list (`visibility`), not per-relationship.
+
+**Why**: Two distinct severities give users proportionate tools. Remove handles "I changed my mind"; block handles "I don't want this person interacting."
+
+### Decision 9a: Block gates URL access while signed in; signed-out access remains intact
+
+**Choice**: When a blocked viewer is **signed in** and navigates to:
+- the blocker's list page → redirect to `/lists` (same response as a deleted list)
+- the blocker's profile page → `notFound()` (same response as a non-existent user)
+
+When the blocked viewer is **signed out**, URL access is unchanged. Sign-out is the acknowledged seam — links are public to anyone who has them, and gating sign-out would break the "share by link" model.
+
+The list-page redirect target is centralized in `lib/listAccess.ts`'s `guardListViewable` helper. Both the list-missing and viewer-blocked branches route through that one helper, so future changes to the response shape (e.g. to a dedicated 404 page that unifies deleted + blocked + private) edit one place.
 
 **Why**:
-- Two distinct severities give users proportionate tools. Remove handles "I changed my mind"; block handles "I don't want this person interacting."
-- Conflating URL access with social blocking would mean URLs silently 404 after a block, which is opaque and confusing. The current per-list visibility model is the right place to control URL access.
+- The original "blocks affect social graph only" stance left a felt gap: blocking someone did nothing while they were poking around your shared lists in the same browser tab they always use. Casual return-visiting was un-discouraged.
+- The 404/redirect cover is borrowed from how Instagram and (historically) Facebook handle blocked content: make blocked resources indistinguishable from "doesn't exist." A blocked user sees a familiar end state, not a special "BLOCKED" treatment, so confrontation is muted.
+- Parity with existing app idioms keeps the cover honest. Today, a deleted list redirects to `/lists`; a missing user 404s. Blocked = same response per surface = no special tell.
+- Sign-out workaround is acknowledged, not solved. Block is **defense in depth, not a security boundary**. If a list truly needs to be hidden from a specific person, the universal recourse is setting it back to private or deleting it.
+
+**Trade-off**: A blocked user who *does* piece together both surfaces ("their profile is gone AND their list is gone") will suspect. The cover holds at each surface individually but isn't airtight in combination. Acceptable — the friction this adds is real, and the alternative ("BLOCKED" text) is worse.
+
+### Decision 9b: Block + connections-page identity polish (full name, follow date, follow disclosure)
+
+**Choice**:
+- Sign-in callback (`lib/auth.ts`) captures `${given_name} ${family_name}` when both are present, instead of trimming to first name only.
+- Casual surfaces (purchase attribution, etc.) continue to derive first-name via `firstNameOf()` in `lib/dal.ts`. The storage change does **not** alter casual display.
+- Connections page rows show the full stored name (helps the owner disambiguate "Josh from college" vs "Josh my cousin") plus a `since` date.
+- The Follow button on list pages renders an inline disclosure note when the viewer is not yet following: *"Shares your name and profile picture with the owner."*
+
+**Why**: Two problems on the connections page were entangled:
+1. **Owner-side identity verification**: "Is this Josh-my-friend or Josh-some-stranger?" — image alone isn't enough when display name is just a first name.
+2. **Follower-side disclosure surprise**: a follower might not realize that following exposes their name/picture to the owner.
+
+The full-name storage solves (1) with no display change to casual surfaces — purchase attribution stays first-name-only via `firstNameOf()`. The inline disclosure under Follow solves (2) without a confirmation modal (modals add friction; this is a one-line note next to the action).
+
+Backfill is lazy: existing users keep their stored first-name-only value until they next sign in. No migration is required, and the connections page is only partially-useful at first (showing first-name-only rows for users who haven't re-authed yet). That partial-usefulness is acceptable for a passive improvement.
+
+**Rejected alternatives**:
+- **Follow source** ("followed you via your Birthday 2026 list"): high-signal context, but degrades when the list is deleted. UX would be either "via a deleted list" (clunky) or silently dropping the context (loses signal). Not worth the schema add.
+- **Mutual follows** ("also followed by Mom"): strong social proof, but cold-start problem makes it noise until the graph fills out. Easy to add later.
+- **User-settable display name / bio**: respects follower agency, but most won't bother setting it. Theoretical benefit, practical ~0% adoption at family scale.
+- **Owner-settable private label for each follower**: solves disambiguation permanently, but doesn't help the *first-recognition* moment. Could add later.
+- **Email exposure**: rejected. Owners get the disambiguation benefit from name + image + date in this context; email would surprise followers and creates a privacy expectation problem.
+
+**Reverses**: Decision implicitly reverses an earlier choice (in pre-OpenSpec code) to store first-name only. That earlier choice was downstream of a different problem — purchase attribution showing full names felt invasive. That problem is independently solved by `firstNameOf()` at the display layer; throwing away storage was overcorrection. Re-storage doesn't change any display surface that was previously first-name-only.
 
 ### Decision 10: Invite URL `/u/[id]?follow=1` for cold-start
 

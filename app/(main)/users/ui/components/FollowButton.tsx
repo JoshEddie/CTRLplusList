@@ -46,15 +46,22 @@ export default function FollowButton({
       : 'Follow';
 
   return (
-    <button
-      type="button"
-      className={`btn ${variant} follow-button${following ? ' is-following' : ''}`}
-      aria-pressed={following}
-      aria-disabled={isPending}
-      onClick={toggle}
-    >
-      {following ? <FaCheck /> : <FaPlus />}
-      <span className="label">{label}</span>
-    </button>
+    <div className="follow-button-wrap">
+      <button
+        type="button"
+        className={`btn ${variant} follow-button${following ? ' is-following' : ''}`}
+        aria-pressed={following}
+        aria-disabled={isPending}
+        onClick={toggle}
+      >
+        {following ? <FaCheck /> : <FaPlus />}
+        <span className="label">{label}</span>
+      </button>
+      {!following && (
+        <div className="follow-disclosure">
+          Shares your name and profile picture with the owner.
+        </div>
+      )}
+    </div>
   );
 }

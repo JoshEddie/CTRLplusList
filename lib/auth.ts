@@ -15,12 +15,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true, // Trust the host in development
   callbacks: {
     async signIn({ user, profile }) {
-      // Use Google's given_name (first name) if available, otherwise fall back to splitting
-      if (profile?.given_name) {
+      // Store the full name (first + last) when Google provides both — used
+      // for disambiguation on the connections page. Other surfaces extract
+      // first name via firstNameOf() in lib/dal.ts to preserve the casual
+      // tone in purchase attribution and similar contexts.
+      if (profile?.given_name && profile?.family_name) {
+        user.name = `${profile.given_name} ${profile.family_name}`;
+      } else if (profile?.given_name) {
         user.name = profile.given_name;
-      } else if (user.name) {
-        user.name = user.name.split(' ')[0];
       }
+      // else: keep whatever default user.name we received
       return true;
     },
     jwt({ token, trigger, session }) {

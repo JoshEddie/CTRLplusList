@@ -37,6 +37,7 @@ export default async function ConnectionsPage() {
             key={f.followee_id}
             userId={f.followee_id}
             name={f.followee?.name ?? null}
+            since={f.created_at}
             actions={
               <ConnectionsAction action="unfollow" targetId={f.followee_id} />
             }
@@ -54,6 +55,7 @@ export default async function ConnectionsPage() {
             key={f.follower_id}
             userId={f.follower_id}
             name={f.follower?.name ?? null}
+            since={f.created_at}
             actions={
               <>
                 <ConnectionsAction action="remove" targetId={f.follower_id} />
@@ -74,6 +76,7 @@ export default async function ConnectionsPage() {
             key={b.blocked_id}
             userId={b.blocked_id}
             name={b.blocked?.name ?? null}
+            since={b.created_at}
             actions={
               <ConnectionsAction action="unblock" targetId={b.blocked_id} />
             }

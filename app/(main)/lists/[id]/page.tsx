@@ -5,8 +5,8 @@ import ListPrivate from '@/app/(main)/lists/ui/components/ListPrivate';
 import { recordVisit } from '@/app/actions/lists';
 import { auth } from '@/lib/auth';
 import { getList, getUserById, getUserIdByEmail } from '@/lib/dal';
+import { guardListViewable } from '@/lib/listAccess';
 import { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 
 type Props = {
@@ -58,17 +58,9 @@ export default async function ListPage({
   const { id } = await params;
   const sp = await searchParams;
 
-  const list = await getList(id);
+  const list = await guardListViewable(await getList(id), user?.id ?? null);
 
-  if (!user && !list) {
-    redirect('/');
-  }
-
-  if (!list) {
-    redirect('/lists');
-  }
-
-  const listOwner = await getUserById(list?.user_id);
+  const listOwner = await getUserById(list.user_id);
 
   const isOwner = user?.id === list.user_id;
   const previewMode = isOwner && sp.preview === 'viewer';

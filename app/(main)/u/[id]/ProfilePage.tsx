@@ -29,6 +29,10 @@ export default async function ProfilePage({
   const profile = await getProfileForUser(id, viewerId);
   if (!profile) notFound();
 
+  // If the profile's owner has blocked the viewer, treat as not-found.
+  // Cover story: account doesn't exist. Sign-out access remains intact.
+  if (profile.viewerIsBlocked) notFound();
+
   const lists = await getPublicListsByUser(id, { limit: 50 });
 
   const isOtherUser = !!viewerId && viewerId !== id;

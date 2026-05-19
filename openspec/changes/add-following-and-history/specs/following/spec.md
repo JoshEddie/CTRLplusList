@@ -101,9 +101,9 @@ The connections settings page (`/settings/connections`) SHALL show three section
 - **WHEN** the viewer clicks Unblock in the Blocked section
 - **THEN** the `user_blocks` row is deleted; the user can attempt to follow again
 
-### Requirement: Blocks SHALL affect the social graph only, not URL access
+### Requirement: Blocks SHALL gate URL access for signed-in blocked viewers; signed-out access is unchanged
 
-A block SHALL prevent follow actions in both directions and SHALL exclude the blocker's `'public'` lists from the blocked user's Following feed (and vice versa). A block SHALL NOT change per-list URL access; an `'unlisted'` or `'public'` list remains URL-accessible to anyone with the link, including a blocked user.
+A block SHALL prevent follow actions in both directions and SHALL exclude the blocker's `'public'` lists from the blocked user's Following feed (and vice versa). When the blocked user is **signed in** AND attempts to load the blocker's list page or profile page, the system SHALL respond as if the resource were unavailable, using the existing app idioms (list page redirects to `/lists`, the same response a deleted list produces, via the shared `guardListViewable` helper; profile page returns a not-found response). When the blocked user is **signed out**, URL access is unchanged — the page renders normally. This signed-out seam is acknowledged: deleting the list or setting it to `'private'` is the only universal recourse.
 
 #### Scenario: Blocked user cannot follow
 
@@ -115,10 +115,89 @@ A block SHALL prevent follow actions in both directions and SHALL exclude the bl
 - **WHEN** user A blocks user B, and B previously followed A
 - **THEN** A no longer appears in B's Following feed (the prior `user_follows` row is deleted by the block action)
 
-#### Scenario: URL access intact for unlisted lists
+#### Scenario: Signed-in blocked user redirected from list page
 
-- **WHEN** user A blocks user B, and B has the URL to A's `'unlisted'` list
-- **THEN** B can still load the URL and view the list
+- **WHEN** user A has blocked user B, and B (signed in) navigates to a list owned by A
+- **THEN** the system redirects to `/lists` (the same response shape used for a deleted list), without rendering the list contents
+
+#### Scenario: Signed-in blocked user 404s on profile page
+
+- **WHEN** user A has blocked user B, and B (signed in) navigates to `/u/<A's id>`
+- **THEN** the system returns a not-found response (the same response shape used for a non-existent user)
+
+#### Scenario: Signed-out access intact for unlisted/public lists
+
+- **WHEN** user A has blocked user B, and B (signed out) navigates to A's `'unlisted'` or `'public'` list URL
+- **THEN** the page renders normally — block gating applies only to signed-in viewers
+
+#### Scenario: Shared `guardListViewable` helper centralizes the redirect target
+
+- **WHEN** the list-page render checks fail (list missing OR viewer blocked by owner)
+- **THEN** both conditions flow through `lib/listAccess.ts`'s `guardListViewable` helper and exit via the same `redirect('/lists')` call, so future changes to the response shape (e.g. to a 404 page) edit one place
+
+### Requirement: Sign-in SHALL capture the user's full name from Google when available
+
+The sign-in callback in `lib/auth.ts` SHALL store `${profile.given_name} ${profile.family_name}` in `users.name` when both fields are present on Google's OAuth profile. If only `given_name` is present, `users.name` SHALL fall back to the first name. Existing surfaces that prefer first-name-only (purchase attribution, etc.) SHALL continue to derive that via `firstNameOf()` in `lib/dal.ts` — the storage change does not alter display in casual contexts.
+
+The connections settings page SHALL display the stored `users.name` (full name when available) for each row alongside the follow/follower/block-since date, to help owners disambiguate between users who share a first name. Backfill is lazy: existing users retain their stored first-name-only value until they next sign in.
+
+#### Scenario: Full name captured at sign-in
+
+- **WHEN** a user signs in with Google and the profile includes `given_name = "Josh"` and `family_name = "Eddie"`
+- **THEN** `users.name` is set to `"Josh Eddie"`
+
+#### Scenario: Falls back to first name when no family_name
+
+- **WHEN** Google's profile includes `given_name` but no `family_name`
+- **THEN** `users.name` is set to the `given_name` alone
+
+#### Scenario: Purchase attribution stays first-name-only
+
+- **WHEN** a user with `name = "Josh Eddie"` claims an item
+- **THEN** the claim is attributed to "Josh" (via `firstNameOf()`) in the item-display surfaces, unchanged
+
+#### Scenario: Connections page shows the full stored name
+
+- **WHEN** an owner views `/settings/connections` and a follower has `name = "Josh Eddie"`
+- **THEN** the row renders "Josh Eddie", helping disambiguate from another Josh
+
+#### Scenario: Pre-existing user lazy-backfills on next sign-in
+
+- **WHEN** a user signed in before this change and currently has `name = "Josh"`
+- **THEN** their `users.name` remains "Josh" until their next sign-in, at which point it updates to "Josh Eddie" (if Google returns `family_name`)
+
+### Requirement: Follow button SHALL include an inline disclosure of what is shared
+
+When the Follow button is visible to a not-yet-following viewer, the UI SHALL render an inline disclosure note (not a modal) clarifying what the action exposes to the followee. The note SHALL state plainly: name and profile picture are shared with the owner. The note SHALL hide once the viewer is following (no longer relevant).
+
+#### Scenario: Disclosure visible before follow
+
+- **WHEN** an authenticated viewer who is not following the owner sees the Follow button
+- **THEN** an inline disclosure appears near the button stating that following shares the viewer's name and profile picture with the owner
+
+#### Scenario: Disclosure hides after follow
+
+- **WHEN** the viewer is already following the owner
+- **THEN** the inline disclosure is not rendered (the button shows "Following")
+
+### Requirement: Connections page SHALL show a "since" date for each relationship
+
+Each row on `/settings/connections` (Following, Followers, Blocked) SHALL display the relationship's `created_at` formatted as a short date (e.g. "May 19, 2026"), used by the owner as a time anchor when disambiguating users.
+
+#### Scenario: Following row shows follow date
+
+- **WHEN** the connections page renders a row for a followee with `user_follows.created_at = 2026-05-19`
+- **THEN** the row shows "May 19, 2026" as a sub-line beneath the name
+
+#### Scenario: Followers row shows follow date
+
+- **WHEN** the connections page renders a row for a follower
+- **THEN** the row shows the `created_at` of the `user_follows` row that targets the viewer
+
+#### Scenario: Blocked row shows block date
+
+- **WHEN** the connections page renders a row for a blocked user
+- **THEN** the row shows the `created_at` of the `user_blocks` row
 
 ### Requirement: A `last_seen_following_at` per-user timestamp SHALL drive a "N new" badge
 

@@ -194,3 +194,26 @@
 - [ ] 14.13 Manual: "Clear non-bookmarked" wipes history but preserves bookmarks; "Clear all" wipes both.
 - [ ] 14.14 Manual: unauthenticated user views a `'public'` list → no visit recorded; CTAs not shown.
 - [ ] 14.15 `pnpm tsc --noEmit` and `pnpm lint` clean.
+
+## 15. Block hardening + connections identity polish
+
+- [x] 15.1 Create `lib/listAccess.ts` exporting `guardListViewable<T extends { user_id: string }>(list, viewerId)`. Redirects to `/lists` if list is missing (or `/` for unauthenticated viewers hitting a missing list), and redirects to `/lists` if `isBlocked(list.user_id, viewerId)` returns true. Returns the narrowed non-null list.
+- [x] 15.2 Refactor `app/(main)/lists/[id]/page.tsx` to call `guardListViewable` in place of the two inline `redirect()` checks. The list-existence check, the blocked-by-owner check, and the redirect target all live in the helper.
+- [x] 15.3 In `app/(main)/u/[id]/ProfilePage.tsx`, add `if (profile.viewerIsBlocked) notFound();` immediately after the missing-profile check. Comment that this is the signed-in URL-gate (cover: "account doesn't exist").
+- [x] 15.4 Revert the first-name-only trimming in `lib/auth.ts`'s `signIn` callback. Prefer `${given_name} ${family_name}` when both are present; fall back to `given_name` alone otherwise. Document that `firstNameOf()` continues to handle casual-display surfaces.
+- [x] 15.5 In `app/(main)/settings/connections/ConnectionRow.tsx`, accept a `since` prop and render it as a sub-line under the name. Format short ("May 19, 2026"). Wire the date through from each section in `ConnectionsPage.tsx` (Following: `user_follows.created_at`; Followers: same; Blocked: `user_blocks.created_at`).
+- [x] 15.6 In `app/(main)/users/ui/components/FollowButton.tsx`, render an inline `.follow-disclosure` note under the button when the viewer is not yet following. Hide it once `following === true`.
+- [x] 15.7 CSS additions: `.connections-row-meta` / `.connections-row-since`, `.follow-button-wrap` / `.follow-disclosure`. Reuse existing tokens (`--muted-text-color`, `--background-color`).
+
+## 16. Verification (block + identity)
+
+- [ ] 16.1 Manual: signed-in User A blocks User B → B (signed in) opens a URL to one of A's lists → redirected to `/lists`, no list contents rendered.
+- [ ] 16.2 Manual: same setup, B navigates to `/u/<A's id>` → 404.
+- [ ] 16.3 Manual: same setup, B signs out → B's URL to A's `'unlisted'` list still renders normally.
+- [ ] 16.4 Manual: A removes the block → B can re-load both the list page and A's profile without redirect/404.
+- [ ] 16.5 Manual: a user signs in for the first time post-change; their `users.name` is the full name from Google (verify in DB or via their connections row).
+- [ ] 16.6 Manual: an existing user with `name = "Josh"` (first-name-only) re-signs in → `name` updates to "Josh Eddie".
+- [ ] 16.7 Manual: a user claims a purchased item → attribution still shows first name only.
+- [ ] 16.8 Manual: connections page shows full name for users who have re-authed, plus a date sub-line under each row across all three sections.
+- [ ] 16.9 Manual: Follow button on a list page renders the inline disclosure when not-following; disclosure disappears after clicking Follow.
+- [ ] 16.10 `pnpm tsc --noEmit` and `pnpm lint` clean.
