@@ -1,7 +1,6 @@
 'use client';
 
 import SignInButton from '@/app/(auth)/ui/components/SignInButton';
-import SignOutButton from '@/app/(auth)/ui/components/SignOutButton';
 import { Session } from 'next-auth';
 
 import '@/app/(auth)/ui/styles/auth.css';
@@ -9,47 +8,40 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { LuX } from 'react-icons/lu';
 import AuthContainer from './AuthContainer';
-import UserImage from './UserImage';
+import UserAvatarPopover from './UserAvatarPopover';
 
 export default function UserMenu({ session }: { session: Session | null }) {
-  const [showMenu, setShowMenu] = useState(false);
-
   const userSignedIn: boolean = !!session?.user;
   const user = session?.user;
 
+  // Signed-in users get a compact popover anchored to the avatar.
+  if (userSignedIn && user) {
+    return <UserAvatarPopover user={user} />;
+  }
+
+  // Signed-out users get the full-screen modal sign-in flow.
+  return <SignedOutMenu />;
+}
+
+function SignedOutMenu() {
+  const [showMenu, setShowMenu] = useState(false);
   return (
     <>
       <div
-        className={`avatar-container ${showMenu ? 'hide' : ''} ${userSignedIn ? '' : 'placeholder'}`}
+        className={`avatar-container ${showMenu ? 'hide' : ''} placeholder`}
         onClick={() => setShowMenu(!showMenu)}
       >
-        {userSignedIn ? (
-          <>
-            <UserImage image={user?.image || ''} name={user?.name || ''} />
-            <div className="gradientOverlay" />
-          </>
-        ) : (
-          <div className="btn nav avatar placeholder">Sign In</div>
-        )}
+        <div className="btn nav avatar placeholder">Sign In</div>
       </div>
       <AuthContainer className={`user-menu ${showMenu ? 'show' : ''}`}>
-        {userSignedIn ? (
-          <>
-            <UserImage image={user?.image || ''} name={user?.name || ''} />
-            <SignOutButton action={() => setShowMenu(false)} />
-          </>
-        ) : (
-          <>
-            <Image
-              src="/ctrlpluslist_logo-ver-color.webp"
-              alt="Ctrl+List"
-              width={200}
-              height={120}
-              priority={true}
-            />
-            <SignInButton />
-          </>
-        )}
+        <Image
+          src="/ctrlpluslist_logo-ver-color.webp"
+          alt="Ctrl+List"
+          width={200}
+          height={120}
+          priority={true}
+        />
+        <SignInButton />
         <div onClick={() => setShowMenu(false)} className="close-button">
           <LuX />
         </div>

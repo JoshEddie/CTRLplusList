@@ -33,6 +33,93 @@
   box-shadow: none;
 }
 
+/* Anchored popover for signed-in user menu. */
+.avatar-popover-wrap {
+  position: relative;
+}
+.avatar-popover-wrap .avatar-container {
+  /* Override the existing div-as-button: this is now a real <button>. */
+  background: none;
+  border: none;
+  padding: 0;
+  display: block;
+}
+.avatar-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 240px;
+  background-color: var(--background-color);
+  border: 1px solid var(--third-background-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+.avatar-popover-header {
+  padding: 8px 12px 6px;
+}
+.avatar-popover-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--primary-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avatar-popover-email {
+  font-size: 0.8rem;
+  color: var(--muted-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avatar-popover-divider {
+  height: 1px;
+  background-color: var(--third-background-color);
+  margin: 4px 0;
+}
+.avatar-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--primary-text-color);
+  font-size: 0.9rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+.avatar-popover-item:hover {
+  background-color: var(--secondary-background-color);
+}
+.avatar-popover-form {
+  padding: 0;
+}
+.avatar-popover-item-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: var(--primary-text-color);
+}
+.avatar-popover-item-button:hover {
+  background-color: var(--secondary-background-color);
+}
+
 .user-menu {
   display: none;
 }
