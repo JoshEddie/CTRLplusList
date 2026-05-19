@@ -3,7 +3,7 @@
 import { setListItems } from '@/app/actions/lists';
 import {
   compareItems,
-  firstStorePrice,
+  displayPrice,
 } from '@/app/(main)/items/ui/components/itemFilters';
 import ItemFormContainer from '@/app/(main)/items/ui/components/itemform/ItemFormContainer';
 import ItemsToolbar from '@/app/(main)/items/ui/components/ItemsToolbar';
@@ -84,7 +84,7 @@ export default function ChooseItemsForm({
 
   const hasAnyStore = storeOptions.length > 0;
   const hasAnyPrice = useMemo(
-    () => items.some((item) => Number.isFinite(firstStorePrice(item))),
+    () => items.some((item) => Number.isFinite(displayPrice(item))),
     [items]
   );
 
@@ -112,7 +112,7 @@ export default function ChooseItemsForm({
       const lo = Number.isFinite(priceMin) ? priceMin : -Infinity;
       const hi = Number.isFinite(priceMax) ? priceMax : Infinity;
       result = result.filter((item) => {
-        const p = firstStorePrice(item);
+        const p = displayPrice(item);
         return Number.isFinite(p) && p >= lo && p <= hi;
       });
     }

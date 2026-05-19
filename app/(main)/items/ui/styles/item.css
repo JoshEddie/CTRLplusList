@@ -293,7 +293,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding-bottom: 16px;
+  margin: 16px 0;
 }
 
 .container--items-library .items-pagination {
@@ -309,16 +309,24 @@
 }
 
 .items-toolbar-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  display: grid;
+  gap: 8px;
   align-items: center;
+  /* Large >900px: single row */
+  grid-template-columns: 1fr repeat(5, min-content);
+  grid-template-areas: 'search sort purchases stores price view';
 }
+
+.items-toolbar-cell--search { grid-area: search; }
+.items-toolbar-cell--sort { grid-area: sort; }
+.items-toolbar-cell--purchases { grid-area: purchases; }
+.items-toolbar-cell--stores { grid-area: stores; }
+.items-toolbar-cell--price { grid-area: price; }
+.items-toolbar-cell--view { grid-area: view; }
 
 .items-search {
   position: relative;
-  flex: 1 1 240px;
-  min-width: 200px;
+  min-width: 0;
   display: flex;
   align-items: center;
   border: 1.5px solid var(--card-border-color);
@@ -326,6 +334,30 @@
   background-color: var(--secondary-background-color);
   padding: 7px 12px 7px 36px;
   transition: border-color 0.15s;
+}
+
+/* Medium 600–900px: 8-col grid so the 4 filters are equal width */
+@media (max-width: 900px) {
+  .items-toolbar-row {
+    grid-template-columns: repeat(11, 1fr);
+    grid-template-areas:
+      'search search search search search search search search search view view'
+      'sort sort sort purchases purchases purchases purchases stores stores price price';
+  }
+  .items-sort select, .items-sort {
+    width: 100%;
+  }
+}
+
+/* Mobile <600px: 8-col grid; filters paired across rows */
+@media (max-width: 549px) {
+  .items-toolbar-row {
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-areas:
+      'search search search search view view'
+      'sort sort sort purchases purchases purchases'
+      'stores stores stores price price price';
+  }
 }
 
 .items-search:focus-within {
@@ -415,6 +447,7 @@
   background-color: var(--secondary-background-color);
   color: var(--neutral-text-color);
   transition: all 0.15s;
+  width: 100%;
 }
 
 .store-filter-trigger:hover {
@@ -444,6 +477,7 @@
 .store-filter-popover {
   position: relative;
   display: inline-block;
+  width: 100%;
 }
 
 .store-filter-panel {
@@ -776,7 +810,9 @@
 
 /* ── GRID / LIST VIEW TOGGLE ── */
 .view-toggle {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
   border: 1.5px solid var(--card-border-color);
   border-radius: 8px;
   overflow: hidden;

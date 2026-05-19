@@ -432,7 +432,7 @@
 }
 
 .container--list-details .items-toolbar {
-  padding: 12px 28px;
+  margin: 12px 28px;
 }
 
 .container--list-details .item-grid-container {
@@ -443,8 +443,7 @@
 }
 
 .container--list-details .items-pagination {
-  padding: 12px 28px;
-  margin-top: 0;
+  margin: 16px 28px;
   border-top: 1px solid var(--card-border-color);
   flex-shrink: 0;
 }
@@ -457,12 +456,6 @@
 }
 
 @media (max-width: 800px) {
-  .container--list-details .items-toolbar,
-  .container--list-details .items-pagination {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-
   .container--list-details .item-grid-container {
     padding-left: 16px;
     padding-right: 16px;

@@ -138,8 +138,8 @@ Manage) consumes this primitive and adds selection / form chrome on top.
 
 ### Checkpoint 4
 
-- [ ] 4.C1 User reviews the View / Browse surfaces and confirms the item primitive reads well in both contexts.
-- [ ] 4.C2 Decide on Stage 5 (Create / Manage — `/lists/new`, `/lists/[id]/edit`, `/lists/[id]/choose-items`, item form, image-search modal). Claude Design session required, but smaller — the item primitive is locked.
+- [x] 4.C1 User reviews the View / Browse surfaces and confirms the item primitive reads well in both contexts.
+- [x] 4.C2 Decide on Stage 5 (Create / Manage — `/lists/new`, `/lists/[id]/edit`, `/lists/[id]/choose-items`, item form, image-search modal). Claude Design session required, but smaller — the item primitive is locked.
 
 ## 5. Stage 5 — Create / Manage (`/lists/new`, `/lists/[id]/edit`, `/lists/[id]/choose-items`, item form, image-search modal)
 
@@ -160,42 +160,26 @@ inside the item form.
 - [ ] 5.7 Migrate any remaining `app/(main)/items/ui/styles/*.css` and list-form styles to consume tokens.
 - [ ] 5.8 Smoke-test the manage flow end to end on desktop and mobile: create list → edit list metadata → choose items (with create-item-inline) → image search → save → drag-reorder.
 
-### Checkpoint 5
-
-- [ ] 5.C1 User reviews the Create / Manage surfaces and confirms the create → edit → choose-items → image-search → save flow works end to end.
-- [ ] 5.C2 Decide on Stage 6 (purchased). Claude Design session required only if `/purchased` has bespoke layout that doesn't reduce to the View / Browse item pattern or the list-collection pattern.
-
 ## 6. Stage 6 — Purchased (`/purchased`)
 
-- [ ] 6.0 Decide at Checkpoint 5: design session, OR reuse list-collection / items-library pattern directly. If a session is needed, open it here.
+- [ ] 6.0 reuse list-collection / items-library pattern directly.
 - [ ] 6.1 Re-skin `app/(main)/purchased/page.tsx`.
 - [ ] 6.2 Migrate any related CSS to consume tokens.
 - [ ] 6.3 Smoke-test the purchased flow end to end.
 
-### Checkpoint 6
+## 7. Stage 7 — Settings + Profile (`/settings/connections`)
 
-- [ ] 6.C1 User reviews `/purchased`.
-- [ ] 6.C2 Decide on Stage 7 (settings + profile). Claude Design session required for the profile page; settings may not need one.
-
-## 7. Stage 7 — Settings + Profile (`/settings/connections`, `/user/[id]`)
-
-- [ ] 7.0 **Open Claude Design session** for the public profile page. Cover: profile hero, followers/following surfaces, public lists rail. Save the handoff bundle.
-- [ ] 7.1 Decide whether `/settings/connections` needs a separate session or can reuse simple form/list primitives.
-- [ ] 7.2 Re-skin `app/(main)/user/[id]/page.tsx` per the session's direction. (Route was at `/user/[id]` before; renamed to `/user/[id]` during Stage 3 user review along with adding `ListCollectionsNav` so a viewer on a profile can jump back to Following.)
-- [ ] 7.3 Re-skin `app/(main)/settings/connections/page.tsx`.
-- [ ] 7.4 Migrate the related CSS files to tokens.
-- [ ] 7.5 Smoke-test follow/unfollow/block flows from the profile page; smoke-test settings.
-
-### Checkpoint 7
-
-- [ ] 7.C1 User reviews the profile + settings pages.
-- [ ] 7.C2 Decide on Stage 8 (auth). Auth pages live outside `(main)/` and may stay current or get their own change.
+- [ ] 7.0 Decide whether `/settings/connections` needs a separate session or can reuse simple form/list primitives.
+- [ ] 7.1 Re-skin `app/(main)/settings/connections/page.tsx` to use collasiple tab headers that the home page uses. Format rows more similar to list/items list style row with dividers.
+- [ ] 7.2 Migrate the related CSS files to tokens.
+- [ ] 7.3 Smoke-test follow/unfollow/block flows from the profile page; smoke-test settings.
 
 ## 8. Stage 8 — Auth pages (`(auth)/`)
 
-- [ ] 8.0 Decide at Checkpoint 7: include auth pages in this change, defer to a follow-up, or leave current.
+- [ ] 8.0 include auth pages in this change
 - [ ] 8.1 (Conditional on 8.0.) Re-skin `app/(auth)/page.tsx` (and any sibling auth routes) consuming the new tokens where they fit. Auth pages do NOT inherit the `(main)/` frame.
 - [ ] 8.2 (Conditional.) Migrate `app/(auth)/ui/styles/auth.css` to tokens.
+- [ ] 8.3 ensure that the sign in with google button styling is unchanged as there are strict guidelines for how these buttons much look.
 
 ### Checkpoint 8 (final)
 

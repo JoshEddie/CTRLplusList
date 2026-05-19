@@ -6,10 +6,16 @@ export function firstStoreName(item: ItemDisplay): string {
   return [...stores].map((s) => s.name).sort()[0] ?? '';
 }
 
-export function firstStorePrice(item: ItemDisplay): number {
-  const raw = item.stores?.[0]?.price;
-  if (raw == null || raw === '') return NaN;
-  return Number(raw);
+export function displayPrice(item: ItemDisplay): number {
+  const stores = item.stores ?? [];
+  let lowest = NaN;
+  for (const s of stores) {
+    if (!s?.name || !s?.link) continue;
+    const n = Number(s.price);
+    if (!Number.isFinite(n)) continue;
+    if (!Number.isFinite(lowest) || n < lowest) lowest = n;
+  }
+  return lowest;
 }
 
 export function compareItems(
@@ -45,8 +51,8 @@ export function compareItems(
     }
     case 'price_asc':
     case 'price_desc': {
-      const aPrice = firstStorePrice(a);
-      const bPrice = firstStorePrice(b);
+      const aPrice = displayPrice(a);
+      const bPrice = displayPrice(b);
       const aMissing = !Number.isFinite(aPrice);
       const bMissing = !Number.isFinite(bPrice);
       if (aMissing && bMissing) return 0;

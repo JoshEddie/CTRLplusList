@@ -6,7 +6,7 @@ import { useMemo, useState } from 'react';
 import Items from './Items';
 import ItemsToolbar from './ItemsToolbar';
 import Pagination from './Pagination';
-import { compareItems, firstStorePrice } from './itemFilters';
+import { compareItems, displayPrice } from './itemFilters';
 import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_OPTIONS,
@@ -108,7 +108,7 @@ export default function ItemsBrowser({
 
   const hasAnyStore = storeOptions.length > 0;
   const hasAnyPrice = useMemo(
-    () => items.some((item) => Number.isFinite(firstStorePrice(item))),
+    () => items.some((item) => Number.isFinite(displayPrice(item))),
     [items]
   );
 
@@ -136,7 +136,7 @@ export default function ItemsBrowser({
       const lo = Number.isFinite(priceMin) ? priceMin : -Infinity;
       const hi = Number.isFinite(priceMax) ? priceMax : Infinity;
       result = result.filter((item) => {
-        const p = firstStorePrice(item);
+        const p = displayPrice(item);
         return Number.isFinite(p) && p >= lo && p <= hi;
       });
     }

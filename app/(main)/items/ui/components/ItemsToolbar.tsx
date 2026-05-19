@@ -22,37 +22,32 @@ interface ItemsToolbarProps {
   showPriceFilter: boolean;
 }
 
-const SORT_OPTIONS_ITEMS: { value: SortKey; label: string }[] = [
-  { value: 'created_desc', label: 'Newest' },
-  { value: 'created_asc', label: 'Oldest' },
-  { value: 'name_asc', label: 'Name A–Z' },
-  { value: 'name_desc', label: 'Name Z–A' },
-  { value: 'store_asc', label: 'Store A–Z' },
-  { value: 'store_desc', label: 'Store Z–A' },
-  { value: 'price_asc', label: 'Price: Low to high' },
-  { value: 'price_desc', label: 'Price: High to low' },
+const SORT_LABELS: Record<SortKey, string> = {
+  list_order: 'List order',
+  created_desc: 'Newest',
+  created_asc: 'Oldest',
+  name_asc: 'Name A–Z',
+  name_desc: 'Name Z–A',
+  store_asc: 'Store A–Z',
+  store_desc: 'Store Z–A',
+  price_asc: 'Price Low',
+  price_desc: 'Price High',
+};
+
+const SHARED_SORT_KEYS: SortKey[] = [
+  'name_asc',
+  'name_desc',
+  'store_asc',
+  'store_desc',
+  'price_asc',
+  'price_desc',
 ];
 
-const SORT_OPTIONS_LIST: { value: SortKey; label: string }[] = [
-  { value: 'list_order', label: 'List order' },
-  { value: 'name_asc', label: 'Name A–Z' },
-  { value: 'name_desc', label: 'Name Z–A' },
-  { value: 'store_asc', label: 'Store A–Z' },
-  { value: 'store_desc', label: 'Store Z–A' },
-  { value: 'price_asc', label: 'Price: Low to high' },
-  { value: 'price_desc', label: 'Price: High to low' },
-];
-
-const SORT_OPTIONS_CHOOSE: { value: SortKey; label: string }[] = [
-  { value: 'created_desc', label: 'Newest' },
-  { value: 'created_asc', label: 'Oldest' },
-  { value: 'name_asc', label: 'Name A–Z' },
-  { value: 'name_desc', label: 'Name Z–A' },
-  { value: 'store_asc', label: 'Store A–Z' },
-  { value: 'store_desc', label: 'Store Z–A' },
-  { value: 'price_asc', label: 'Price: Low to high' },
-  { value: 'price_desc', label: 'Price: High to low' },
-];
+const SORT_KEYS_BY_MODE: Record<BrowserMode, SortKey[]> = {
+  items: ['created_desc', 'created_asc', ...SHARED_SORT_KEYS],
+  list: ['list_order', ...SHARED_SORT_KEYS],
+  choose: ['created_desc', 'created_asc', ...SHARED_SORT_KEYS],
+};
 
 export default function ItemsToolbar({
   mode,
@@ -134,23 +129,19 @@ export default function ItemsToolbar({
   };
 
   const sortOptions = useMemo(() => {
-    const base =
-      mode === 'list'
-        ? SORT_OPTIONS_LIST
-        : mode === 'choose'
-          ? SORT_OPTIONS_CHOOSE
-          : SORT_OPTIONS_ITEMS;
-    return base.filter((o) => {
-      if (!showStoreSort && o.value.startsWith('store_')) return false;
-      if (!showPriceSort && o.value.startsWith('price_')) return false;
-      return true;
-    });
+    return SORT_KEYS_BY_MODE[mode]
+      .filter((key) => {
+        if (!showStoreSort && key.startsWith('store_')) return false;
+        if (!showPriceSort && key.startsWith('price_')) return false;
+        return true;
+      })
+      .map((key) => ({ value: key, label: SORT_LABELS[key] }));
   }, [mode, showStoreSort, showPriceSort]);
 
   return (
     <div className="items-toolbar">
       <div className="items-toolbar-row">
-        <div className="items-search">
+        <div className="items-search items-toolbar-cell--search">
           <MdSearch className="items-search-icon" />
           <input
             type="search"
@@ -172,7 +163,7 @@ export default function ItemsToolbar({
           )}
         </div>
 
-        <label className="items-sort">
+        <label className="items-sort items-toolbar-cell--sort">
           <span className="sr-only">Sort</span>
           <select
             value={sort}
@@ -193,7 +184,7 @@ export default function ItemsToolbar({
         </label>
 
         {mode !== 'choose' && (
-          <label className="items-sort">
+          <label className="items-sort items-toolbar-cell--purchases">
             <span className="sr-only">Purchases</span>
             <select
               value={purchases}
@@ -209,14 +200,14 @@ export default function ItemsToolbar({
                 <>
                   <option value="hide">Purchases: Hide</option>
                   <option value="reveal">Purchases: Reveal</option>
-                  <option value="only">Purchases: Only purchased</option>
-                  <option value="none">Purchases: Only not purchased</option>
+                  <option value="only">Only purchased</option>
+                  <option value="none">Only not purchased</option>
                 </>
               ) : (
                 <>
                   <option value="hide">Purchases: All</option>
-                  <option value="only">Purchases: Only purchased</option>
-                  <option value="none">Purchases: Only not purchased</option>
+                  <option value="only">Only purchased</option>
+                  <option value="none">Only not purchased</option>
                 </>
               )}
             </select>
@@ -224,7 +215,7 @@ export default function ItemsToolbar({
         )}
 
         {mode === 'choose' && (
-          <label className="items-sort">
+          <label className="items-sort items-toolbar-cell--purchases">
             <span className="sr-only">Show</span>
             <select
               value={show}
@@ -244,24 +235,28 @@ export default function ItemsToolbar({
         )}
 
         {storeOptions.length > 0 && (
-          <StoreFilterPopover
-            storeOptions={storeOptions}
-            selectedStores={selectedStores}
-            onToggle={toggleStore}
-            onClear={clearStores}
-          />
+          <div className="items-toolbar-cell--stores">
+            <StoreFilterPopover
+              storeOptions={storeOptions}
+              selectedStores={selectedStores}
+              onToggle={toggleStore}
+              onClear={clearStores}
+            />
+          </div>
         )}
 
         {showPriceFilter && (
-          <PriceFilterPopover
-            min={priceMin}
-            max={priceMax}
-            onApply={applyPrice}
-            onClear={clearPrice}
-          />
+          <div className="items-toolbar-cell--price">
+            <PriceFilterPopover
+              min={priceMin}
+              max={priceMax}
+              onApply={applyPrice}
+              onClear={clearPrice}
+            />
+          </div>
         )}
 
-        <div className="view-toggle" role="group" aria-label="View toggle">
+        <div className="view-toggle items-toolbar-cell--view" role="group" aria-label="View toggle">
           <button
             type="button"
             className={`view-toggle-btn ${view === 'grid' ? 'active' : ''}`}
