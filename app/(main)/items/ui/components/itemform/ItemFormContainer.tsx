@@ -1,5 +1,4 @@
 import { ListTable } from '@/lib/types';
-import Modal from '../purchasemodal/Modal';
 import ItemForm from './ItemForm';
 
 const ItemFormContainer = ({
@@ -14,9 +13,12 @@ const ItemFormContainer = ({
   onSuccess?: () => void;
 }) => {
   return (
-    <Modal className="item-form-modal" onClose={onClose}>
-      <ItemForm user_id={user_id} lists={lists} onSuccess={onSuccess} />
-    </Modal>
+    <ItemForm
+      user_id={user_id}
+      lists={lists}
+      onSuccess={onSuccess}
+      onClose={onClose}
+    />
   );
 };
 

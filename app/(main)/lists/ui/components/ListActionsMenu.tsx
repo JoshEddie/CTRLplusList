@@ -2,6 +2,7 @@
 
 import { deleteList } from '@/app/actions/lists';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
+import { ListTable } from '@/lib/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -15,22 +16,24 @@ import {
   MdVisibility,
   MdVisibilityOff,
 } from 'react-icons/md';
+import EditListButton from './EditListButton';
 
 export default function ListActionsMenu({
-  listId,
+  list,
   showSpoilers,
   previewMode,
   spoilerHref,
   previewHref,
   exitPreviewHref,
 }: {
-  listId: string;
+  list: ListTable;
   showSpoilers: boolean;
   previewMode: boolean;
   spoilerHref: string;
   previewHref: string;
   exitPreviewHref: string;
 }) {
+  const listId = list.id;
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -93,15 +96,15 @@ export default function ListActionsMenu({
               </Link>
             )}
             {!previewMode && (
-              <Link
-                href={`/lists/${listId}/edit`}
+              <EditListButton
+                list={list}
+                user_id={list.user_id}
                 className="menu-item"
-                role="menuitem"
-                onClick={close}
+                onOpen={close}
               >
                 <MdModeEdit size={18} />
                 Edit list
-              </Link>
+              </EditListButton>
             )}
             <Link
               href={spoilerHref}

@@ -45,6 +45,8 @@ export default async function ConnectionsPage() {
         ))}
       </ConnectionsSection>
 
+      <div className="home-rail-divider" role="separator" />
+
       <ConnectionsSection
         title="Followers"
         count={followers.length}
@@ -65,6 +67,8 @@ export default async function ConnectionsPage() {
           />
         ))}
       </ConnectionsSection>
+
+      <div className="home-rail-divider" role="separator" />
 
       <ConnectionsSection
         title="Blocked"

@@ -1,14 +1,14 @@
 'use client';
 
-import { setListItems } from '@/app/actions/lists';
 import {
   compareItems,
   displayPrice,
 } from '@/app/(main)/items/ui/components/itemFilters';
 import ItemFormContainer from '@/app/(main)/items/ui/components/itemform/ItemFormContainer';
 import ItemsToolbar from '@/app/(main)/items/ui/components/ItemsToolbar';
-import Header from '@/app/ui/components/Header';
+import { setListItems } from '@/app/actions/lists';
 import { ItemDisplay, ListTable, SortKey } from '@/lib/types';
+import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -63,7 +63,7 @@ export default function ChooseItemsForm({
   const q = (searchParams?.get('q') ?? '').toLowerCase().trim();
   const rawSort = searchParams?.get('sort') as SortKey | null;
   const sort: SortKey =
-    rawSort && VALID_SORT_CHOOSE.includes(rawSort) ? rawSort : 'created_desc';
+    rawSort && VALID_SORT_CHOOSE.includes(rawSort) ? rawSort : 'name_asc';
   const rawShow = searchParams?.get('show');
   const show: ShowFilter =
     rawShow === 'on' || rawShow === 'off' ? rawShow : 'all';
@@ -91,9 +91,9 @@ export default function ChooseItemsForm({
   const filtered = useMemo(() => {
     let result = items;
     if (show === 'on') {
-      result = result.filter((item) => initialSet.has(item.id));
+      result = result.filter((item) => selected.has(item.id));
     } else if (show === 'off') {
-      result = result.filter((item) => !initialSet.has(item.id));
+      result = result.filter((item) => !selected.has(item.id));
     }
     if (q) {
       result = result.filter((item) =>
@@ -120,7 +120,7 @@ export default function ChooseItemsForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     items,
-    initialSet,
+    selected,
     show,
     q,
     selectedStores.join('|'),
@@ -136,13 +136,19 @@ export default function ChooseItemsForm({
     selectedStores.length > 0 ||
     hasPriceFilter;
 
-  const hasChanges = useMemo(() => {
-    if (selected.size !== initialSet.size) return true;
-    for (const id of selected) {
-      if (!initialSet.has(id)) return true;
-    }
-    return false;
+  const addedCount = useMemo(() => {
+    let n = 0;
+    for (const id of selected) if (!initialSet.has(id)) n++;
+    return n;
   }, [selected, initialSet]);
+
+  const removedCount = useMemo(() => {
+    let n = 0;
+    for (const id of initialSet) if (!selected.has(id)) n++;
+    return n;
+  }, [selected, initialSet]);
+
+  const hasChanges = addedCount > 0 || removedCount > 0;
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -152,6 +158,8 @@ export default function ChooseItemsForm({
       return next;
     });
   };
+
+  const undoAll = () => setSelected(new Set(initialSet));
 
   const clearFilters = () => {
     const params = new URLSearchParams(searchParams?.toString() || '');
@@ -166,7 +174,10 @@ export default function ChooseItemsForm({
   };
 
   const handleSubmit = async () => {
-    if (!hasChanges || isSubmitting) return;
+    if (!hasChanges || isSubmitting) {
+      if (isNew) router.push(`/lists/${list_id}`);
+      return;
+    }
     setIsSubmitting(true);
     try {
       const result = await toast.promise(
@@ -190,18 +201,38 @@ export default function ChooseItemsForm({
     router.push(`/lists/${list_id}`);
   };
 
+  const totalSelected = selected.size;
+  const mode: 'create' | 'manage' = isNew ? 'create' : 'manage';
+  const saveLabel =
+    mode === 'create'
+      ? totalSelected > 0
+        ? `Add ${totalSelected} item${totalSelected !== 1 ? 's' : ''} to list →`
+        : 'Skip for now →'
+      : 'Save changes →';
+
   return (
     <div className="choose-items-page">
-      <Header title={`Choose items for "${list_name}"`}>
+      <div className="choose-items-pg-hd">
+        <div className="choose-items-pg-hd-main">
+          <Link
+            href={isNew ? '/lists' : `/lists/${list_id}`}
+            className="choose-items-back"
+          >
+            ← {isNew ? 'Back to Lists' : 'Back to list'}
+          </Link>
+          <h1 className="choose-items-pg-title">
+            Choose items for <em>&ldquo;{list_name}&rdquo;</em>
+          </h1>
+        </div>
         <button
           type="button"
-          className="btn secondary"
+          className="choose-items-new-btn"
           onClick={() => setShowNewItem(true)}
         >
-          <FaPlus size={14} />
+          <FaPlus size={12} />
           <span className="mobile-hide">Create new item</span>
         </button>
-      </Header>
+      </div>
 
       {items.length === 0 ? (
         <div className="empty-container">
@@ -246,45 +277,134 @@ export default function ChooseItemsForm({
               </div>
             )
           ) : (
-            <ul className="choose-items-list">
+            <ul className="choose-items-list" role="list">
               {filtered.map((item) => {
                 const isSelected = selected.has(item.id);
+                const wasIn = initialSet.has(item.id);
+                const removing = wasIn && !isSelected;
                 const isArchived = !!item.archived_at;
+                const primaryStore = item.stores?.[0];
+                const price = displayPrice(item);
                 return (
-                  <li
-                    key={item.id}
-                    className={`choose-items-row ${isSelected ? 'selected' : ''}`}
-                  >
-                    <label className="choose-items-label">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggle(item.id)}
-                      />
-                      {item.image_url && (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      className={`choose-items-row${isSelected ? ' is-on' : ''}${
+                        removing ? ' is-removing' : ''
+                      }`}
+                      onClick={() => toggle(item.id)}
+                      aria-pressed={isSelected}
+                    >
+                      <span
+                        className={`choose-items-cb${
+                          isSelected ? ' is-on' : ''
+                        }${removing ? ' is-removing' : ''}`}
+                        aria-hidden="true"
+                      >
+                        {isSelected && (
+                          <svg
+                            width="10"
+                            height="8"
+                            viewBox="0 0 10 8"
+                            fill="none"
+                          >
+                            <path
+                              d="M1 4l3 3 5-6"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        )}
+                      </span>
+
+                      {item.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={item.image_url}
                           alt={item.name || ''}
                           className="choose-items-thumb"
                         />
+                      ) : (
+                        <div
+                          className="choose-items-thumb choose-items-thumb-empty"
+                          aria-hidden="true"
+                        />
                       )}
-                      <div className="choose-items-text">
-                        <span className="choose-items-name">
+
+                      <div className="choose-items-main">
+                        <div
+                          className={`choose-items-name${
+                            removing ? ' is-strike' : ''
+                          }`}
+                        >
                           {item.name}
+                          {wasIn && isSelected && (
+                            <span className="choose-items-in-badge">
+                              In list
+                            </span>
+                          )}
                           {isArchived && (
                             <span className="choose-items-archived-badge">
                               archived
                             </span>
                           )}
-                        </span>
-                        {item.description && (
-                          <span className="choose-items-description">
-                            {item.description}
+                        </div>
+                        {primaryStore?.name && (
+                          <div className="choose-items-from">
+                            FROM {primaryStore.name.toUpperCase()}
+                          </div>
+                        )}
+                        {item.stores && item.stores.length > 0 && (
+                          <div className="choose-items-chips">
+                            {item.stores
+                              .filter((s) => s.name)
+                              .slice(0, 4)
+                              .map((s, i) =>
+                                s.link ? (
+                                  // eslint-disable-next-line react/jsx-no-target-blank
+                                  <a
+                                    key={i}
+                                    href={s.link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="choose-items-chip"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title={`View on ${s.name}`}
+                                  >
+                                    {s.name} ↗
+                                  </a>
+                                ) : (
+                                  <span
+                                    key={i}
+                                    className="choose-items-chip choose-items-chip-static"
+                                  >
+                                    {s.name}
+                                  </span>
+                                )
+                              )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="choose-items-right">
+                        {Number.isFinite(price) && (
+                          <span
+                            className={`choose-items-price${
+                              removing ? ' is-muted' : ''
+                            }`}
+                          >
+                            ${(price as number).toFixed(2)}
+                          </span>
+                        )}
+                        {item.stores && item.stores.length > 1 && (
+                          <span className="choose-items-stores-count">
+                            {item.stores.length} stores
                           </span>
                         )}
                       </div>
-                    </label>
+                    </button>
                   </li>
                 );
               })}
@@ -293,24 +413,64 @@ export default function ChooseItemsForm({
         </>
       )}
 
-      <div className="choose-items-actions">
-        <button
-          type="button"
-          className="btn secondary"
-          onClick={handleBack}
-          disabled={isSubmitting}
-        >
-          {isNew ? 'Skip for now' : 'Back to list'}
-        </button>
-        <button
-          type="button"
-          className="btn primary"
-          onClick={handleSubmit}
-          disabled={!hasChanges || isSubmitting}
-        >
-          {isSubmitting ? 'Saving...' : 'Save changes'}
-        </button>
+      <div className="choose-items-sticky-ft">
+        <div className="choose-items-count">
+          {totalSelected > 0 ? (
+            <>
+              {totalSelected} item{totalSelected !== 1 ? 's' : ''} selected
+            </>
+          ) : (
+            <span className="choose-items-count-muted">No items selected</span>
+          )}
+          {mode === 'manage' && hasChanges && (
+            <span className="choose-items-count-diff">
+              {addedCount > 0 && (
+                <>
+                  {' · '}
+                  <span className="choose-items-count-added">
+                    +{addedCount} added
+                  </span>
+                </>
+              )}
+              {removedCount > 0 && (
+                <>
+                  {' · '}
+                  <span className="choose-items-count-removed">
+                    −{removedCount} removed
+                  </span>
+                </>
+              )}
+              {' · '}
+              <button
+                type="button"
+                className="choose-items-undo"
+                onClick={undoAll}
+              >
+                Undo
+              </button>
+            </span>
+          )}
+        </div>
+        <div className="choose-items-sticky-actions">
+          <button
+            type="button"
+            className="form-shell-btn-ghost"
+            onClick={handleBack}
+            disabled={isSubmitting}
+          >
+            {isNew ? 'Skip' : 'Cancel'}
+          </button>
+          <button
+            type="button"
+            className="form-shell-btn-primary"
+            onClick={handleSubmit}
+            disabled={isSubmitting || (!hasChanges && !isNew)}
+          >
+            {isSubmitting ? 'Saving…' : saveLabel}
+          </button>
+        </div>
       </div>
+
       {showNewItem && (
         <ItemFormContainer
           lists={lists}

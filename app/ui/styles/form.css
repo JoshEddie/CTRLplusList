@@ -8,21 +8,20 @@
 
 /* Form Group */
 .form-group {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto 1fr;
-  gap: 8px;
+  display: block;
+  margin-bottom: 14px;
 }
 
-/* Form Label */
+/* Form Label — small sans-serif (matches the Stage 5 mockup's .if-label). */
 .form-label {
-  font-size: 1.15rem;
-  font-weight: 100;
-  font-family: var(--font-crimson-pro);
-  color: var(--primary-text-color);
+  display: block;
+  font-family: var(--font-roboto-condensed), sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--muted-text-color);
+  margin-bottom: 4px;
   text-align: left;
-  display: flex;
-  align-items: center;
 }
 
 .required::after {

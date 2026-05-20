@@ -4,8 +4,9 @@ import { usePathname } from 'next/navigation';
 
 // /lists/:id only — excludes non-id siblings (/lists/new, /lists/bookmarks, /lists/history).
 const LIST_DETAILS_ROUTE = /^\/lists\/(?!new$|bookmarks$|history$)[^/]+$/;
-// /items only — excludes /items/:id (the item edit form).
-const ITEMS_LIBRARY_ROUTE = /^\/items\/?$/;
+// /items and /purchased — both render the items-library shell.
+// Excludes /items/:id (the item edit form).
+const ITEMS_LIBRARY_ROUTE = /^\/(items|purchased)\/?$/;
 // Pages that share the <ListCollectionsNav> tab strip.
 const LIST_COLLECTIONS_ROUTES = new Set([
   '/lists',

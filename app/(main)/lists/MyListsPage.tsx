@@ -2,9 +2,8 @@ import ListCard from '@/app/ui/components/ListCard';
 import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { auth } from '@/lib/auth';
 import { getListsByUser, getUserIdByEmail } from '@/lib/dal';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { FaPlus } from 'react-icons/fa';
+import NewListButton from './ui/components/NewListButton';
 
 export default async function MyListsPage() {
   const session = await auth();
@@ -17,10 +16,7 @@ export default async function MyListsPage() {
   return (
     <div className="my-lists-page">
       <ListCollectionsNav>
-        <Link className="btn primary" href="/lists/new">
-          <FaPlus size={14} />
-          <span className="mobile-hide">New List</span>
-        </Link>
+        <NewListButton user_id={viewer.id} />
       </ListCollectionsNav>
 
       {lists.length === 0 ? (

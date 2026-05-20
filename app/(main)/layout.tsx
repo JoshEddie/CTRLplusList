@@ -10,14 +10,17 @@ import './lists/ui/styles/list.css';
 
 export default function MainLayout({
   children,
+  modal,
 }: {
   children: React.ReactNode;
+  modal: React.ReactNode;
 }) {
   return (
     <AppFrame>
       <Suspense fallback={<ListLoading />}>
         <MainShell>{children}</MainShell>
       </Suspense>
+      {modal}
     </AppFrame>
   );
 }

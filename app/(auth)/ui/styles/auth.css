@@ -7,12 +7,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--primary-color);
-  background-image: linear-gradient(
-    120deg,
-    var(--primary-color),
-    var(--secondary-color)
-  );
+  background-color: #000;
+  background-image: var(--page-frame-gradient);
   background-attachment: fixed;
   z-index: 150;
 }
@@ -49,8 +45,8 @@
   top: calc(100% + 8px);
   right: 0;
   min-width: 240px;
-  background-color: var(--background-color);
-  border: 1px solid var(--third-background-color);
+  background-color: var(--light-color);
+  border: 1px solid var(--card-border-color);
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   padding: 6px;
@@ -78,7 +74,7 @@
 }
 .avatar-popover-divider {
   height: 1px;
-  background-color: var(--third-background-color);
+  background-color: var(--card-border-color);
   margin: 4px 0;
 }
 .avatar-popover-item {
@@ -130,16 +126,16 @@
 }
 
 .auth-container {
-  background-color: var(--background-color);
+  background-color: var(--light-color);
   padding: 40px;
-  border-radius: 8px;
+  border-radius: 14px;
   width: 90%;
   max-width: 400px;
   display: flex;
   gap: 20px;
   flex-direction: column;
   align-items: center;
-  box-shadow: 10px 10px 15px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--surface-shadow);
   position: relative;
 }
 

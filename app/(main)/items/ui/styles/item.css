@@ -12,7 +12,14 @@
   gap: 12px;
 }
 
-@container (min-width: 415px) {
+/* 2-col threshold lowered from the spec's 340px to 300px to account for
+   the `.app-surface-bleed` mobile padding (~12px each side) that the
+   design.md D9 math overlooked. At the smallest target viewport (iPhone
+   SE / iPhone 13 mini, 375px) the inner `.item-grid-container` is
+   ~311px — below 340 — so 2-col would never engage. 300px lets every
+   iPhone-class device flip to 2-col while still keeping the
+   pagination-orphan constraint (cols in {1, 2, 3, 4, 6}). */
+@container (min-width: 300px) {
   .item-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 14px;
@@ -323,6 +330,28 @@
 .items-toolbar-cell--stores { grid-area: stores; }
 .items-toolbar-cell--price { grid-area: price; }
 .items-toolbar-cell--view { grid-area: view; }
+.items-toolbar-cell--filters { grid-area: filters; }
+
+/* Desktop/tablet: the filters-group is a layout-neutral wrapper so the
+   four filter cells participate in the parent grid via their own
+   grid-area declarations. The mobile filter sheet chrome is hidden. */
+.items-toolbar-filters-group {
+  display: contents;
+}
+
+.items-toolbar-filters-group > .items-toolbar-filters-sheet-header,
+.items-toolbar-filters-group > .items-toolbar-filters-sheet-done {
+  display: none;
+}
+
+/* Mobile filters trigger button is hidden on desktop/tablet. */
+.items-toolbar-filters-trigger {
+  display: none;
+}
+
+.items-toolbar-filters-scrim {
+  display: none;
+}
 
 .items-search {
   position: relative;
@@ -349,15 +378,198 @@
   }
 }
 
-/* Mobile <600px: 8-col grid; filters paired across rows */
+/* Mobile <550px: single row [search][filters][view-toggle].
+   The four filter controls are relocated into a bottom sheet that the
+   Filters button opens. Active non-default filters render as chips
+   in a sub-row beneath the toolbar. */
 @media (max-width: 549px) {
   .items-toolbar-row {
-    grid-template-columns: repeat(6, 1fr);
-    grid-template-areas:
-      'search search search search view view'
-      'sort sort sort purchases purchases purchases'
-      'stores stores stores price price price';
+    grid-template-columns: 1fr min-content min-content;
+    grid-template-areas: 'search filters view';
   }
+
+  .items-toolbar-filters-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-family: var(--font-roboto-condensed);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid var(--card-border-color);
+    background-color: var(--secondary-background-color);
+    color: var(--neutral-text-color);
+    transition: all 0.15s;
+  }
+
+  .items-toolbar-filters-trigger:hover,
+  .items-toolbar-filters-trigger.active {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+
+  .items-toolbar-filters-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background-color: var(--primary-color);
+    color: var(--light-color);
+    border-radius: 999px;
+  }
+
+  /* Filters group transforms into a bottom sheet on mobile. */
+  .items-toolbar-filters-group {
+    display: none;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    flex-direction: column;
+    gap: 12px;
+    background-color: var(--light-color);
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
+    padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.2);
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .items-toolbar-filters-group.is-open {
+    display: flex;
+  }
+
+  .items-toolbar-filters-group > .items-toolbar-filters-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--card-border-color);
+  }
+
+  .items-toolbar-filters-sheet-title {
+    font-family: var(--font-roboto-condensed);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--heading-text-color);
+  }
+
+  .items-toolbar-filters-sheet-close {
+    background: none;
+    border: none;
+    padding: 4px;
+    color: var(--muted-text-color);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    font-size: 20px;
+  }
+
+  /* Inside the sheet, each filter cell stacks full-width. Reset the
+     grid-areas so they participate in the flex column. */
+  .items-toolbar-filters-group .items-toolbar-cell--sort,
+  .items-toolbar-filters-group .items-toolbar-cell--purchases,
+  .items-toolbar-filters-group .items-toolbar-cell--stores,
+  .items-toolbar-filters-group .items-toolbar-cell--price {
+    grid-area: auto;
+    width: 100%;
+  }
+
+  .items-toolbar-filters-group .items-sort {
+    width: 100%;
+  }
+
+  .items-toolbar-filters-group .items-sort select {
+    width: 100%;
+  }
+
+  /* The Store and Price popovers anchor to themselves; inside the sheet
+     position the panel above the trigger instead of below, so it doesn't
+     get clipped off-screen at the bottom. */
+  .items-toolbar-filters-group .store-filter-panel,
+  .items-toolbar-filters-group .price-filter-panel {
+    top: auto;
+    bottom: calc(100% + 6px);
+    right: 0;
+    left: 0;
+    width: 100%;
+    max-width: none;
+  }
+
+  .items-toolbar-filters-group > .items-toolbar-filters-sheet-done {
+    display: inline-flex;
+    align-self: stretch;
+    justify-content: center;
+    background-color: var(--primary-color);
+    color: var(--light-color);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: var(--font-roboto-condensed);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+
+  .items-toolbar-filters-group > .items-toolbar-filters-sheet-done:hover {
+    background-color: var(--primary-color-dark);
+  }
+
+  .items-toolbar-filters-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background-color: rgba(0, 0, 0, 0.4);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+}
+
+/* ── ACTIVE FILTER CHIPS ──
+   Renders beneath the toolbar row at any viewport when non-default filters
+   are present. On mobile they're the only visible filter state since the
+   four filter controls are tucked into the Filters sheet. */
+.items-toolbar-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.items-toolbar-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 999px;
+  background-color: var(--secondary-background-color);
+  border: 1px solid var(--card-border-color);
+  color: var(--neutral-text-color);
+  font-family: var(--font-roboto-condensed);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.items-toolbar-chip:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.items-toolbar-chip svg {
+  font-size: 14px;
 }
 
 .items-search:focus-within {

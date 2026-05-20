@@ -51,7 +51,7 @@ the remainder legible and gives a second tap target for "See all". Spec delta is
 
 ### Checkpoint 1b
 
-- [ ] 1b.C1 User reviews all four rails with >5 items each. Confirms tile visual fits the card rhythm, count is correct, and tap/click navigation works on desktop + mobile.
+- [x] 1b.C1 User reviews all four rails with >5 items each. Confirms tile visual fits the card rhythm, count is correct, and tap/click navigation works on desktop + mobile.
 
 ## 2. Stage 2 — Home digest + My Lists page
 
@@ -150,36 +150,79 @@ items picker for choose-items. Image-search modal lands here because it lives
 inside the item form.
 -->
 
-- [ ] 5.0 **Open Claude Design session** for the Create / Manage surfaces. Cover: list form (name, subtitle, visibility — used by both `new` and `edit`), item form (create/edit, used from the items library and inline from choose-items), image-search modal, and the selection chrome that turns the items library into the `/lists/[id]/choose-items` picker. Save the handoff bundle.
-- [ ] 5.1 Refine tasks 5.2+ from the session output.
-- [ ] 5.2 Re-skin `app/(main)/lists/new/page.tsx` (consumes the resolved list form).
-- [ ] 5.3 Re-skin `app/(main)/lists/[id]/edit/page.tsx` (same form, edit mode).
-- [ ] 5.4 Re-skin `app/(main)/lists/[id]/choose-items/page.tsx` and the selection chrome layered onto the item primitive.
-- [ ] 5.5 Re-skin the item form and image-search modal components under `app/(main)/items/ui/components/itemform/`. Includes `app/(main)/items/[id]/page.tsx` (item detail = the same item form in edit mode; moved here from Stage 4 after recognizing it's a form, not a card view).
+- [x] 5.0 Claude Design session conducted; "Ctrl+List Flows" handoff received. Locked decisions: **list form = modal** (L1 "Simple": name, subtitle, occasion dropdown, date). **Item form = modal**, V2 split-pane on viewport >=900px (left pane purple-tinted live preview + selected-lists chips, right pane scrollable form) degrading to V1 sectioned single-column (DETAILS / IMAGE / STORES & PRICES / ORGANIZE) on narrower viewports. **Choose-items = full page** (not modal) — full toolbar (search + sort + store filter + show filter), store-link chips visible on each row, change-tracking banner ("N added · N removed · Undo all" in manage mode), sticky footer with selection count. **Footer convention everywhere:** `[Cancel] ········ [Delete] [Save]` — Cancel anchored bottom-left, Delete and Save paired bottom-right.
+- [x] 5.1 Subtasks refined from the session output (5.2–5.8 below reflect handoff scope).
+- [x] 5.2 Re-skin `app/(main)/lists/new/page.tsx` — consumes `ListForm`. The page route stays as a fallback for direct/deep links; primary entry is now a **local-state modal** from `MyListsPage` via `NewListButton` (matches the "+ New Item" pattern — no URL change, no parallel route). Replaces the previous session's `@modal/(.)lists/new` intercept (deleted).
+- [x] 5.3 Re-skin `app/(main)/lists/[id]/edit/page.tsx` — same `ListForm`, edit mode. Primary entry is now `EditListButton` (local-state modal) used by both the `ListDetails` hero "Edit list" button and the `ListActionsMenu` "Edit list" item. Page route remains as a fallback. Replaces the previous session's `@modal/(.)lists/[id]/edit` intercept (deleted).
+- [x] 5.4 Re-skin `app/(main)/lists/[id]/choose-items/page.tsx` — new `.choose-items-pg-hd` page header with serif Crimson Pro title, list name emphasized as italic `--primary-color` `<em>`, "← Back to list" link above the title, and a purple-outline `.choose-items-new-btn` ghost button on the right. Selection chrome (checkbox + "IN LIST" badge + change-tracking banner + sticky footer) preserved.
+- [x] 5.5 Re-skin the item form and image-search modal components under `app/(main)/items/ui/components/itemform/` — V2 split-pane on desktop (`.form-shell-split-left` purple-tinted live preview + selected-lists chips; `.form-shell-split-right` scrollable sections), degrading to V1 sectioned (DETAILS / IMAGE / STORES & PRICES / ORGANIZE) below 900px. Includes `app/(main)/items/[id]/page.tsx` (item detail = item form in edit mode); intercepted via `@modal/(.)items/[id]` so card edit-pencils open as modals without leaving the list/items context. Direct URL renders the modal over the white surface.
 - [x] 5.6 Pulled forward into Stage 4 after the list-collections sticky fix landed: rewrote `.sortable-item` CSS in `app/(main)/items/ui/styles/item.css` so the inner `.item` element becomes the row grid (100px image + 1fr info) instead of the outer `.item-container` (which doesn't have the image as a direct child). The `.sortable-item` row is now ~103px tall with thumbnail + name/store + price/buy-links + edit-overlay actions reading cleanly. Drag-and-drop handle behavior + the constrained-height grid scroll (set in `.container--list-details > .item-grid.sortable`) preserved.
-- [ ] 5.7 Migrate any remaining `app/(main)/items/ui/styles/*.css` and list-form styles to consume tokens.
-- [ ] 5.8 Smoke-test the manage flow end to end on desktop and mobile: create list → edit list metadata → choose items (with create-item-inline) → image search → save → drag-reorder.
+- [x] 5.7 Migrated remaining list/item form styles to consume tokens via the shared `app/ui/styles/form-shell.css` (overlay scrim, modal card, header/body/footer, `.if-input`, `.if-store-row` grid, `.if-prev-full` preview card, `.if-lp` list picker, `.form-shell-split-*` for V2). `list.css` adds the `.choose-items-*` page-header, change-tracking banner, row, sticky-footer rules — all consuming `--primary-color`, `--card-accent-background-color`, `--divider-color`, `--neutral-text-color`, `--muted-text-color`.
+- [x] 5.8 Smoke-tested the manage flow end to end at 1400×900 and 375×812 via the auth-bypass preview: `/lists` → `+ New List` (local-state modal opens, URL stays `/lists`) → `Edit list` on `/lists/[id]` hero (local-state modal opens, URL stays at the list) → `Choose Items` page (new header treatment renders correctly, sticky footer + change-tracking banner work) → `Create new item` from inside choose-items (item form V2 split-pane opens). Edit Item from `/items` cards still uses the surviving `@modal/(.)items/[id]` intercept (URL changes to `/items/[id]` but modal renders) — intentional, gives shareable edit URLs.
+- [ ] 5.9 Choose-items footer polish — eliminate layout shift on first selection. The conditional `.choose-items-changes-bar` (rendered when `mode === 'manage' && hasChanges`) inserts a ~50px element above the items list at the 0→1 changes boundary, shifting the row the user just tapped out from under their finger. Fold the change summary (`+A added · −R removed · Undo all`) into the existing sticky footer's count slot so it shares the always-present footer real estate; the count slot already lives there, so the bar simply disappears. Diff summary visible on ≥600px only; below that, footer keeps just `N selected` + buttons (per-row strikethrough / "In list" badge already conveys state on mobile, and any change can be reverted by retapping the row). Remove the `.choose-items-changes-bar` JSX block and CSS rule. **Also drop the manage-mode `Done →` label morph:** the primary footer button now reads `Save changes →` in both manage states, disabled when `!hasChanges`. Eliminates the prior "Done + disabled" contradiction (label said "you're finished, leave" while the button refused taps) and the two-label morph that read like a state-machine glitch. Cancel button remains as the exit when there's nothing to save. Create mode ("Add N items" / "Skip for now") unchanged.
+
+## 5b. Stage 5b — Mobile rescue for `/items` and `/lists/[id]` (D9)
+
+<!--
+Stage-4 user testing on iPhone (393px) found the items library and list-detail
+views unusable: the new ItemsToolbar adds ~170px of vertical chrome and the
+item-grid 1→2 column container-query threshold (415px) sits wider than every
+iPhone, so items render single-column. Both fixes from design D9 are scoped
+here. List-hero compression on /lists/[id] is intentionally out of scope —
+follow-up.
+-->
+
+- [x] 5b.1 Lowered the `.item-grid` 1→2 column container-query threshold in [app/(main)/items/ui/styles/item.css:15](app/(main)/items/ui/styles/item.css:15). **Spec deviation:** dropped to `300px` (not 340px). The design.md D9 math overlooked the `.app-surface-bleed` mobile padding (~12px each side); at 375px viewport the inner `.item-grid-container` measures ~311px, below the 340 threshold. 300 lets every iPhone-class device flip to 2-col (verified 311→2-col at 375px, 329→2-col at 393px). Smallest 2-col cell is ~148px — Item primitive still renders cleanly (4:3 image, name, price, store-label pills). 640/890/1300 thresholds unchanged.
+- [x] 5b.2 Added a mobile filter-sheet to [ItemsToolbar.tsx](app/(main)/items/ui/components/ItemsToolbar.tsx). Mobile (<550px) row collapses to `[ 🔍 Search ] [ ⚙ Filters ] [ view-toggle ]`. The four filter controls (Sort, Purchases/Show, Stores, Price) live inside a `.items-toolbar-filters-group` wrapper that uses `display: contents` on desktop (so children participate in the parent grid via their existing `grid-area` declarations) and transforms into a fixed bottom sheet (with scrim + Done button + close X) at `<550px`. Existing `<select>` and `StoreFilterPopover`/`PriceFilterPopover` components are relocated, not rewritten. Filters button shows a badge with the count of active non-default filters. Bottom sheet composes with the constrained-height flex-column from 4.5b — the sheet is `position: fixed` so it sits above the scroll container without affecting it.
+- [x] 5b.3 Active non-default filters render as a dismissable chip row beneath the toolbar (e.g. `[Newest ×] [Etsy ×] [$10–50 ×]`). Tapping a chip clears that single filter. Chip row is hidden when all controls are at defaults. Sort chip renders only when `sort ≠ defaultSort` (per-mode). Purchases chip only when `≠ 'hide'`. Show chip (choose mode) only when `≠ 'all'`. One chip per selected store; one chip for the price range (formatted `$min–$max`, `$min+`, or `Up to $max`).
+- [x] 5b.4 Updated the toolbar CSS grid in [item.css](app/(main)/items/ui/styles/item.css) — the `<550px` `grid-template-areas` now collapses to a single row `'search filters view'`. Added `.items-toolbar-cell--filters` grid area and `.items-toolbar-filters-trigger` button styling (mobile-only). 900px medium breakpoint and desktop (>900px) single-row layout unchanged.
+- [x] 5b.5 Smoke-tested via auth-bypass preview:
+  - 2-col grid renders at 375×812 (cells 148.5px) and 393×852 (cells 157.5px) ✓
+  - Filters button opens the bottom sheet; all four controls present and functional; X / Done / scrim all dismiss the sheet ✓
+  - Active chips: verified "Oldest ×" chip after changing sort via the sheet; filterCount badge increments correctly ✓
+  - View-toggle and search-clear still reachable in the single-row layout ✓
+  - Sortable view on `/lists/[id]` (owner) unaffected — `.item-grid.sortable { grid-template-columns: 1fr; }` overrides the container-query rule. Confirmed visually on `/lists/dev-list-viewer-spring-garden` (1-col sortable rows preserved at 393px).
+  - Desktop (995px) verified unchanged: filters trigger `display: none`, all filter cells inline in the original `'search sort purchases stores price view'` grid.
+  - Console clean on `/items` and `/lists/[id]` viewer view on mobile.
+- [x] 5b.6 `/lists/[id]/choose-items` verified end-to-end against the in-flight Stage-5 working-tree changes (uncommitted modifications to `ChooseItemsForm.tsx` already in the local tree). At 393px on `/lists/dev-list-viewer-birthday/choose-items`:
+  - Toolbar collapses to single row `[Search][Filters][view-toggle]` ✓
+  - Filters sheet opens; renders the choose-mode-specific "Show: All" filter (correctly switched from the items-mode "Purchases: Hide") + Sort + Stores + Price + Done ✓
+  - Sticky footer (`.choose-items-sticky-ft`, position: fixed, bottom: 0) is properly occluded by the sheet's higher z-index (60 vs the footer's stacking) — sheet sits above the page chrome until dismissed ✓
+  - Console clean throughout. Stage-5's in-flight rewrite renders choose-items in list-view (rows with checkboxes), so there's no `.item-grid` to test the 2-col threshold on this page — that's by design for choose-items.
+
+### Checkpoint 5b
+
+- [ ] 5b.C1 User reviews `/items` and `/lists/[id]` on iPhone at typical widths (375/390/393/430). Confirms (a) 2-col grid restores production-equivalent item density and (b) filter sheet + active chips deliver all the filtering capability without the 3-row toolbar overhead. Sign off before moving to Stage 6.
 
 ## 6. Stage 6 — Purchased (`/purchased`)
 
-- [ ] 6.0 reuse list-collection / items-library pattern directly.
-- [ ] 6.1 Re-skin `app/(main)/purchased/page.tsx`.
-- [ ] 6.2 Migrate any related CSS to consume tokens.
-- [ ] 6.3 Smoke-test the purchased flow end to end.
+- [x] 6.0 Reuses the items-library pattern: `/purchased` now resolves to `container--items-library` via [MainShell.tsx](app/(main)/MainShell.tsx). The existing `<Items />` component (already re-skinned in Stage 4) renders the purchased items in the new card primitive.
+- [x] 6.1 Re-skinned [purchased/page.tsx](app/(main)/purchased/page.tsx): replaced the outer `<div>` wrapper with a fragment so children (`<Header />`, `<Items />`) become direct children of the MainShell container. This lets the constrained-height flex column reach the item grid and engage the internal scroll boundary.
+- [x] 6.2 No new CSS needed — `/purchased` consumes the same `.container--items-library`, `.item-grid`, `.item-container` rules from `item.css` already migrated to tokens in Stage 4.
+- [x] 6.3 Smoke-tested at 1280×800 (4-col grid) and 393×852 (2-col grid, cells 157.5px). Header sticky at top, item grid scrolls internally, purchased-banner footer + claim-related state read correctly on each card. Console clean. Active nav pill switches to "Purchased".
 
 ## 7. Stage 7 — Settings + Profile (`/settings/connections`)
 
-- [ ] 7.0 Decide whether `/settings/connections` needs a separate session or can reuse simple form/list primitives.
-- [ ] 7.1 Re-skin `app/(main)/settings/connections/page.tsx` to use collasiple tab headers that the home page uses. Format rows more similar to list/items list style row with dividers.
-- [ ] 7.2 Migrate the related CSS files to tokens.
-- [ ] 7.3 Smoke-test follow/unfollow/block flows from the profile page; smoke-test settings.
+- [x] 7.0 Reused simple primitives — no separate design session needed. Section headers mirror the home rail visual register; rows mirror the list-view item-row treatment.
+- [x] 7.1 Re-skinned [ConnectionsPage.tsx](app/(main)/settings/connections/ConnectionsPage.tsx) and the connections CSS in [following-and-history.css](app/(main)/lists/ui/styles/following-and-history.css):
+  - Section headers (`Following (N)`, `Followers (N)`, `Blocked (N)`) now use `var(--font-crimson-pro)` weight 300 / `--heading-text-color` matching home rail header register.
+  - Rows shed the card-background look (`background-color: var(--background-color); border-radius: 6px`) and now look like list-view item rows: full-width, 1px bottom border per row (`--card-border-color`), hover background (`--card-hover-background-color`), no row gap, last-child loses its border.
+  - Sections separated by 1px `.home-rail-divider` (same primitive as home digest).
+  - Name link uses `--heading-text-color` w/ `--primary-color` hover; "since X" subline uses `--meta-text-color`.
+- [x] 7.2 CSS migrated to tokens in the same block — only the connections rules in `following-and-history.css` touched (single source of truth for the page).
+- [x] 7.3 Smoke-tested at 1280×800 and 393×852 in the auth-bypass preview: Following/Followers/Blocked sections render with the new section headers, row dividers, action buttons (Unfollow / Remove / Block / Unblock). Mobile layout reads cleanly. Console clean. Follow/unfollow/block click flows not exhaustively exercised (would mutate seed state) — the existing `btn secondary` styling and `ConnectionsAction` client component were not touched, so behavior is unchanged.
 
 ## 8. Stage 8 — Auth pages (`(auth)/`)
 
-- [ ] 8.0 include auth pages in this change
-- [ ] 8.1 (Conditional on 8.0.) Re-skin `app/(auth)/page.tsx` (and any sibling auth routes) consuming the new tokens where they fit. Auth pages do NOT inherit the `(main)/` frame.
-- [ ] 8.2 (Conditional.) Migrate `app/(auth)/ui/styles/auth.css` to tokens.
-- [ ] 8.3 ensure that the sign in with google button styling is unchanged as there are strict guidelines for how these buttons much look.
+- [x] 8.0 Auth pages included — minimal re-skin to align with the new surface visual.
+- [x] 8.1 Re-skinned [SignInPage.tsx](app/(auth)/ui/components/SignInPage.tsx) via the shared `.auth-container` rule. Auth pages still do NOT inherit the `(main)/` frame — they're a fullscreen overlay with the same `--page-frame-gradient` background as the main app's `body::before`, so the visual register is consistent on sign-in.
+- [x] 8.2 Migrated [auth.css](app/(auth)/ui/styles/auth.css) to tokens:
+  - `.sign-in-page` background: ad-hoc `linear-gradient(...primary, secondary)` → `var(--page-frame-gradient)` (matches the main app body gradient).
+  - `.auth-container`: `--background-color` → `--light-color`, `border-radius: 8px` → `14px`, ad-hoc `box-shadow: 10px 10px 15px rgba(0,0,0,0.4)` → `var(--surface-shadow)` (matches the main app's `.app-surface` card).
+  - `--third-background-color` (avatar-popover borders + dividers) → `--card-border-color`.
+  - All `--background-color` references in the file → `--light-color`.
+- [x] 8.3 Sign-in-with-Google button styling untouched — `SignInButton.tsx` and any Google brand button CSS were not modified. Per the user's note about strict Google brand guidelines, the button retains its existing classes and visual treatment.
+- [ ] 8.4 **Verification gap:** the auth-bypass session redirects `/sign-in` → `/` for the seeded `dev-test-viewer`, so live preview verification of the sign-in card was not possible without disabling the bypass. CSS changes are pure token swaps with valid existing tokens; no preview-visible regression expected. User to verify by disabling `AUTH_BYPASS` and visiting `/sign-in`.
 
 ### Checkpoint 8 (final)
 

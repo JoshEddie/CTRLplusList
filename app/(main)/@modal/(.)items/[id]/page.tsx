@@ -1,10 +1,11 @@
+import { Suspense } from 'react';
 import { auth } from '@/lib/auth';
 import { getItemById, getListsByUser, getUserIdByEmail } from '@/lib/dal';
 import { redirect } from 'next/navigation';
-import ItemForm from '../ui/components/itemform/ItemForm';
-import { sanitizeReturnTo } from '../ui/components/returnTo';
+import ItemForm from '../../../items/ui/components/itemform/ItemForm';
+import { sanitizeReturnTo } from '../../../items/ui/components/returnTo';
 
-export default async function EditItem({
+async function InterceptedEditItemBody({
   params,
   searchParams,
 }: {
@@ -16,21 +17,13 @@ export default async function EditItem({
   const sp = await searchParams;
   const returnTo = sanitizeReturnTo(sp.returnTo);
 
-  if (!session?.user?.email) {
-    redirect('/');
-  }
+  if (!session?.user?.email) redirect('/');
 
   const user = await getUserIdByEmail(session.user.email);
-
-  if (!user) {
-    redirect('/');
-  }
+  if (!user) redirect('/');
 
   const item = await getItemById(id, user.id);
-
-  if (!item) {
-    redirect(returnTo ?? '/items');
-  }
+  if (!item) redirect(returnTo ?? '/items');
 
   const lists = await getListsByUser(user.id);
 
@@ -41,5 +34,16 @@ export default async function EditItem({
       lists={lists}
       returnTo={returnTo}
     />
+  );
+}
+
+export default function InterceptedEditItem(props: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <InterceptedEditItemBody {...props} />
+    </Suspense>
   );
 }

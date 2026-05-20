@@ -143,6 +143,39 @@ The in-flight gradient brand colors (`--primary-color #7324ce`, `--secondary-col
 
 **Why:** The alternative — folding the redesign into `add-following-and-history`'s remaining 15 tasks — bloats a feature change with styling decisions, conflates spec deltas, and makes review and revert harder. The clean ordering is: finish + archive the feature, then this change applies on top.
 
+### D9. Mobile rescue for `/items` and `/lists/[id]`: lower the 2-col grid threshold + collapse filters
+
+**Context:** Post-Stage-4 user testing on iPhone (393px viewport) revealed both list views are unusable on mobile. The new `ItemsToolbar` adds ~170px of vertical chrome (search row + sort/purchases row + stores/price row), and the `.item-grid` 1→2 column container-query breakpoint sits at 415px — wider than every iPhone — so items render single-column. Stacking those means one massive item card per screen with the toolbar consuming most of the viewport. `/lists/[id]` is worse: the purple `.list-hero` (title, owner, date, occasion chip, Share/Follow/Bookmark actions) compounds the problem on top of the same toolbar + grid pair.
+
+Production avoided this because pre-redesign list views had no toolbar — just a title bar and a 2-col grid.
+
+**Decision:** Apply two independent, additive fixes scoped to mobile. Both target the items library (`/items`) and the list detail (`/lists/[id]`) since they share `ItemsToolbar` + `.item-grid`.
+
+**A — Lower the 2-col grid breakpoint from 415px → ~340px.** Single CSS change in [app/(main)/items/ui/styles/item.css:15](app/(main)/items/ui/styles/item.css:15). Container-query threshold becomes `min-width: 340px`. On a 390-430px iPhone (surface padding 16-20px each side per the existing mobile rule at item.css:305-309), the `.item-grid-container` width is ~350-394px — comfortably above 340px → 2-col. The 640/890/1300px thresholds for 3/4/6 cols are unchanged.
+
+**B — Collapse the four filter controls behind a "Filters" sheet on mobile (<550px).** The current 3-row toolbar grid (`grid-template-areas` at item.css:353-361) becomes a single row: `[ 🔍 Search… ] [ ⚙ Filters ] [ ⊞ / ☰ view-toggle ]`. Tapping Filters opens a bottom sheet (or expanding inline panel; choose during implementation) containing the Sort, Purchases, Stores, and Price controls — same `<select>` and popover components used today, just relocated. Active non-default filters render as dismissable chips in a sub-row beneath the toolbar so they stay visible (e.g. `[Newest ×] [Amazon ×] [$10–50 ×]`). Tapping a chip clears that one filter; chip-row is hidden when all filters are at defaults.
+
+**Why this combination:**
+- A alone doesn't reduce chrome height — only doubles the items-per-screen of what little space remains.
+- B alone reclaims ~120px of toolbar but leaves single-column oversized item cards.
+- Together they restore production-equivalent density on the item grid (2-col) while keeping all the new filtering capability one tap away.
+
+**Why not the alternatives considered:**
+- *Sticky-collapse on scroll* (toolbar shrinks as the user scrolls into the grid) was rejected: the constrained-height flex-column from task 4.5b means the grid scrolls **inside** its container, not the page — there's no page-scroll signal to drive a collapse. Re-architecting around it for this fix is disproportionate.
+- *Removing the "Items" page title bar on mobile* was discussed and deferred; tabs already say "Active (24) / Archived (14)" which carries the page identity, but the title also anchors the `+` add button. Worth revisiting after A+B if more headroom is needed, especially on `/lists/[id]` where the hero is the bigger consumer.
+- *Combining Sort + Purchases into one dropdown* couples two unrelated axes — rejected.
+
+**Pagination-orphan constraint (task 4.1) is preserved:** column counts stay in `{1, 2, 3, 4, 6}` — all factors of the 12/24 page sizes — so the last page can't render with a half-empty row.
+
+**Scope guards:**
+- Choose-items page (full-page picker) uses the same `ItemsToolbar`; the filter-sheet treatment applies there too. Confirm during implementation that the change-tracking banner + sticky footer still compose.
+- The Item card primitive must remain legible at ~170px wide (smallest 2-col cell on a ~360px container). Verify the 4:3 image + name + price + store-label pills don't break — the same primitive already renders at similar widths inside home-digest rails on mobile, so this is likely fine but worth a smoke check.
+- Sortable view on `/lists/[id]` (owner-only) uses a row layout, not the grid — A doesn't apply there. B still applies (same toolbar).
+
+**Followups deferred:**
+- `/lists/[id]` list-hero compression on mobile (drop the action row to icon-only, smaller title) — bigger conversation, separate decision.
+- Any change to `/items` page header (title + add button) on mobile.
+
 ## Risks / Trade-offs
 
 - **[Visual regression on non-redesigned pages]** → The new tokens change `body::before` and add new variables, but every existing page's CSS continues to consume the unchanged `--primary-color`, `--secondary-color`, `--light-color`, etc. Net visual change on out-of-scope pages should be limited to the body background (which goes slightly darker/cooler). Mitigation: visual smoke pass on `/lists/[id]`, `/lists/new`, `/following`, `/settings/*`, `/items/*`, `/purchased/*` after the global.css change lands and before merging.

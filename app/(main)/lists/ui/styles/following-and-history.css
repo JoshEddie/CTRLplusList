@@ -355,54 +355,91 @@
   margin-top: 16px;
 }
 
-/* Connections page */
+/* ── CONNECTIONS PAGE ──
+   Section headers match the home rail visual register (Crimson Pro,
+   --heading-text-color). Rows look like .item-list rows with bottom
+   dividers between siblings. Sections separated by .home-rail-divider. */
+.connections-page {
+  padding-top: 8px;
+}
+
 .connections-section {
-  margin: 24px 0;
+  padding: 18px 0;
 }
+
 .connections-section h2 {
-  margin-bottom: 12px;
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 28px;
+  color: var(--heading-text-color);
+  margin: 0 0 12px;
 }
+
 .connections-list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
+
 .connections-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background-color: var(--background-color);
-  padding: 10px 14px;
-  border-radius: 6px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--card-border-color);
+  transition: background-color 0.13s;
 }
+
+.connections-row:last-child {
+  border-bottom: none;
+}
+
+.connections-row:hover {
+  background-color: var(--card-hover-background-color);
+}
+
 .connections-row-meta {
   display: flex;
   flex-direction: column;
+  gap: 2px;
   min-width: 0;
 }
+
 .connections-link {
   text-decoration: none;
-  color: inherit;
-  font-weight: 500;
+  color: var(--heading-text-color);
+  font-family: var(--font-roboto-condensed);
+  font-weight: 600;
+  font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.connections-row-since {
-  font-size: 0.8rem;
-  color: var(--muted-text-color);
+
+.connections-link:hover {
+  color: var(--primary-color);
 }
+
+.connections-row-since {
+  font-size: 12px;
+  color: var(--meta-text-color);
+  font-family: var(--font-roboto-condensed);
+}
+
 .connections-row-actions {
   display: flex;
   gap: 6px;
   flex-shrink: 0;
 }
+
 .connections-empty {
-  opacity: 0.7;
+  color: var(--meta-text-color);
+  font-size: 14px;
+  padding: 8px 4px 0;
+  margin: 0;
 }
 
 /* Home digest rails */

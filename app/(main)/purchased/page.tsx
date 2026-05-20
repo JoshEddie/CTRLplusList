@@ -17,9 +17,9 @@ export default async function Purchased() {
 
   const items = await getItemsByPurchased(user.id);
   return (
-    <div>
+    <>
       <Header title="Purchased" />
       <Items items={items} />
-    </div>
+    </>
   );
 }

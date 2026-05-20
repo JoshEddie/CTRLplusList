@@ -5,7 +5,6 @@ import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { MdDeleteForever } from 'react-icons/md';
 
 export default function DeleteItemButton({
   id,
@@ -37,9 +36,12 @@ export default function DeleteItemButton({
 
   return (
     <>
-      <button className="btn danger" onClick={() => setShowConfirm(true)}>
-        <MdDeleteForever />
-        <span className="label mobile-hide">Delete Item</span>
+      <button
+        type="button"
+        className="form-shell-btn-delete"
+        onClick={() => setShowConfirm(true)}
+      >
+        Delete
       </button>
       <ConfirmDialog
         isOpen={showConfirm}

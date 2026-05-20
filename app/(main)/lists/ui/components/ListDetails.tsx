@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FaCalendar, FaUser } from 'react-icons/fa';
 import { MdChecklist, MdModeEdit, MdVisibility } from 'react-icons/md';
 import BookmarkContainer from './BookmarkContainer';
+import EditListButton from './EditListButton';
 import ListActionsMenu from './ListActionsMenu';
 import ShareButton from './ShareButton';
 import VisibilityPicker from './VisibilityPicker';
@@ -101,15 +102,16 @@ export default function ListDetails({
               <MdChecklist />
               <span className="label">Choose items</span>
             </Link>
-            <Link
+            <EditListButton
+              list={list}
+              user_id={list.user_id}
               className="btn list-hero-btn"
-              href={`/lists/${list.id}/edit`}
             >
               <MdModeEdit />
               <span className="label">Edit list</span>
-            </Link>
+            </EditListButton>
             <ListActionsMenu
-              listId={list.id}
+              list={list}
               showSpoilers={!!showSpoilers}
               previewMode={!!previewMode}
               spoilerHref={spoilerHref}

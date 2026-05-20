@@ -1,0 +1,635 @@
+/* Form shell — modal-style chrome shared by list-form and item-form routes.
+   Matches the Stage 5 "Ctrl+List Flows" design handoff: overlay + centered
+   white card, header with title + close, body, footer with
+   [Cancel] ········ [Delete] [Save] convention. */
+
+.form-shell-overlay {
+  position: fixed;
+  top: var(--app-sticky-top, 60px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+  z-index: 60;
+  overflow-y: auto;
+  background: rgba(42, 32, 96, 0.45);
+  backdrop-filter: blur(3px);
+}
+
+.form-shell {
+  position: relative;
+  background: var(--light-color);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22), 0 4px 18px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  color: var(--neutral-text-color);
+  max-height: calc(100vh - var(--app-sticky-top, 60px) - 48px);
+  z-index: 1;
+}
+
+.form-shell-wide  { max-width: 640px; }
+.form-shell-split { max-width: 960px; }
+
+/* The inner <form> should fill the shell so body can scroll and footer stays pinned. */
+.form-shell > form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.form-shell-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid var(--divider-color);
+  flex-shrink: 0;
+}
+
+.form-shell-title {
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 22px;
+  color: var(--heading-text-color);
+}
+
+.form-shell-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted-text-color);
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.form-shell-close:hover {
+  background: var(--divider-color);
+  color: var(--neutral-text-color);
+}
+
+.form-shell-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.form-shell-ft {
+  display: flex;
+  align-items: center;
+  padding: 14px 24px;
+  border-top: 1px solid var(--divider-color);
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.form-shell-ft-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.form-shell-btn-primary {
+  background: var(--primary-color);
+  color: var(--light-color);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font: 600 14px var(--font-roboto-condensed), sans-serif;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.form-shell-btn-primary:hover  { background: var(--primary-color-dark); }
+.form-shell-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form-shell-btn-ghost {
+  background: none;
+  border: 1px solid var(--card-border-color);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font: 500 14px var(--font-roboto-condensed), sans-serif;
+  color: var(--muted-text-color);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.form-shell-btn-ghost:hover {
+  border-color: var(--muted-text-color);
+  color: var(--neutral-text-color);
+}
+
+.form-shell-btn-delete {
+  background: none;
+  border: 1px solid var(--danger-color);
+  border-radius: 8px;
+  padding: 10px 18px;
+  font: 600 14px var(--font-roboto-condensed), sans-serif;
+  color: var(--danger-color);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.form-shell-btn-delete:hover { background: #fee2e2; }
+
+/* Section labels (V1 sectioned layout) */
+.if-sec + .if-sec {
+  border-top: 1px solid var(--divider-color);
+  padding-top: 20px;
+  margin-top: 20px;
+}
+
+.if-sec-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--primary-color);
+  margin-bottom: 12px;
+}
+
+/* Compact store row grid: Store name | $Price | Link URL | × remove */
+.if-stores {
+  display: flex;
+  flex-direction: column;
+}
+
+.if-store-hd {
+  display: grid;
+  grid-template-columns: 1fr 90px 1fr 28px;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding: 0 2px;
+}
+
+.if-store-hd span {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--meta-text-color);
+}
+
+.if-store-row {
+  display: grid;
+  grid-template-columns: 1fr 90px 1fr 28px;
+  gap: 6px;
+  margin-bottom: 6px;
+  align-items: start;
+}
+
+.if-stores-single .if-store-hd,
+.if-stores-single .if-store-row {
+  grid-template-columns: 1fr 90px 1fr;
+}
+
+.if-price-wrap {
+  position: relative;
+}
+
+.if-dollar {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted-text-color);
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.if-price-in {
+  padding-left: 20px !important;
+}
+
+.if-store-rm {
+  width: 28px;
+  height: 36px;
+  border: 1px solid var(--card-border-color);
+  border-radius: 6px;
+  background: none;
+  color: var(--muted-text-color);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.if-store-rm:hover:not(:disabled) {
+  border-color: var(--danger-color);
+  color: var(--danger-color);
+}
+
+.if-store-rm:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.if-add-store {
+  background: none;
+  border: 1.5px dashed var(--card-border-hover-color);
+  border-radius: 8px;
+  padding: 9px 14px;
+  color: var(--primary-color);
+  font: 600 13px var(--font-roboto-condensed), sans-serif;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.if-add-store:hover {
+  background: var(--card-accent-background-color);
+}
+
+@media (max-width: 500px) {
+  .if-store-hd,
+  .if-store-row {
+    grid-template-columns: 1fr 80px 28px;
+  }
+  .if-store-hd span:nth-child(3),
+  .if-store-row > *:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Image URL + inline thumbnail */
+.if-img-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.if-img-row .if-input {
+  flex: 1;
+}
+
+.if-img-thumb {
+  width: 38px;
+  height: 36px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--card-border-color);
+  background: var(--secondary-background-color);
+}
+
+.if-img-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.if-search-link {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font: 12px var(--font-roboto-condensed), sans-serif;
+  padding: 6px 0 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.if-search-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Live preview card (V2 left pane on desktop) */
+.if-prev-full {
+  background: var(--light-color);
+  border-radius: 10px;
+  border: 1px solid var(--card-border-color);
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
+}
+
+.if-prev-full-img {
+  aspect-ratio: 4 / 3;
+  background: var(--secondary-background-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.if-prev-full-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.if-prev-full-ph {
+  color: var(--meta-text-color);
+}
+
+.if-prev-full-body {
+  padding: 12px 14px;
+}
+
+.if-prev-full-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--heading-text-color);
+  margin-bottom: 3px;
+}
+
+.if-prev-full-name-ph {
+  color: var(--meta-text-color);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.if-prev-from {
+  font-size: 10px;
+  color: var(--meta-text-color);
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+
+.if-prev-btm {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.if-prev-price {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.if-prev-chip {
+  font-size: 10px;
+  padding: 2px 7px;
+  border: 1px solid var(--buy-link-border);
+  border-radius: 99px;
+  color: var(--buy-link-text);
+  background: var(--buy-link-bg);
+}
+
+.if-prev-more {
+  font-size: 10px;
+  color: var(--meta-text-color);
+}
+
+/* Inline list picker (chips + trigger + dropdown) */
+.if-lp {
+  position: relative;
+}
+
+.if-lp-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.if-lp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: var(--card-accent-background-color);
+  border-radius: 99px;
+  font-size: 12px;
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.if-lp-chip button {
+  background: none;
+  border: none;
+  color: var(--meta-text-color);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.if-lp-chip button:hover:not(:disabled) {
+  color: var(--primary-color);
+}
+
+.if-lp-chip button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Inherits sizing/padding/border/font from .form-input. Adds dropdown affordances only. */
+.if-lp-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  cursor: pointer;
+  text-align: left;
+  background: var(--light-color);
+}
+
+.if-lp-trigger-label {
+  color: var(--muted-text-color);
+}
+
+.if-lp-trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.if-lp-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--light-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  overflow: hidden;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.if-lp-opt {
+  display: block;
+  width: 100%;
+  padding: 9px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--neutral-text-color);
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+}
+
+.if-lp-opt:hover {
+  background: var(--card-accent-background-color);
+  color: var(--primary-color);
+}
+
+.if-lp-empty {
+  padding: 9px 14px;
+  font-size: 13px;
+  color: var(--meta-text-color);
+  font-style: italic;
+}
+
+/* Split-pane (V2) — desktop only */
+.form-shell-split-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.form-shell-split-left {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--card-accent-background-color);
+  padding: 20px;
+  overflow-y: auto;
+  border-right: 1px solid var(--divider-color);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-shell-split-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--primary-color);
+}
+
+.form-shell-split-right {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.form-shell-split-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-shell-split-list-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.form-shell-split-list-chip {
+  padding: 4px 10px;
+  background: rgba(115, 36, 206, 0.16);
+  border-radius: 99px;
+  font-size: 12px;
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.form-shell-split-lists-empty {
+  font-size: 12px;
+  color: var(--muted-text-color);
+  font-style: italic;
+}
+
+/* Below 900px, split collapses to single-column sectioned layout */
+@media (max-width: 900px) {
+  .form-shell-split {
+    max-width: 560px;
+  }
+  .form-shell-split-body {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .form-shell-split-left {
+    width: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--divider-color);
+    padding: 12px 18px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  /* On narrow viewports, reshape the live-preview card into a compact row
+     (48px square thumbnail + name/price block) so it doesn't eat the screen. */
+  .form-shell-split-left .if-prev-full {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    box-shadow: none;
+  }
+  .form-shell-split-left .if-prev-full-img {
+    aspect-ratio: 1 / 1;
+    width: 48px;
+    height: 48px;
+  }
+  .form-shell-split-left .if-prev-full-body {
+    padding: 6px 12px;
+  }
+  .form-shell-split-left .if-prev-full-name {
+    font-size: 13px;
+    margin-bottom: 0;
+  }
+  .form-shell-split-left .if-prev-from {
+    margin-top: 1px;
+  }
+  .form-shell-split-left .if-prev-btm {
+    margin-top: 3px;
+  }
+  .form-shell-split-left .form-shell-split-lbl,
+  .form-shell-split-left .form-shell-split-lists {
+    display: none;
+  }
+  .form-shell-split-right {
+    padding: 18px 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .form-shell-hd     { padding: 14px 18px 12px; }
+  .form-shell-body   { padding: 16px 18px; }
+  .form-shell-ft     { padding: 12px 18px; }
+  .form-shell-title  { font-size: 19px; }
+  .form-shell-btn-primary,
+  .form-shell-btn-ghost,
+  .form-shell-btn-delete { padding: 9px 14px; font-size: 13px; }
+}

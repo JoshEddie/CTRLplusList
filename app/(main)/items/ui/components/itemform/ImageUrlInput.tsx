@@ -1,7 +1,6 @@
 // ImageUrlInput.tsx
 'use client';
 
-import { FormGroup, FormLabel } from '@/app/ui/components/Form/Form';
 import { ImageSearchResult } from '@/lib/types';
 import { useState } from 'react';
 import { ImageSearch } from './ImageSearch';
@@ -30,22 +29,36 @@ export function ImageUrlInput({
   };
 
   return (
-    <FormGroup>
-      <FormLabel>Image URL</FormLabel>
-      <input
-        type="url"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        className={`form-input ${error ? 'form-input-error' : ''}`}
-        placeholder="https://example.com/image.jpg"
-        autoComplete="off"
-      />
+    <div>
+      <div className="if-img-row">
+        <input
+          type="url"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className={`form-input ${error ? 'form-input-error' : ''}`}
+          placeholder="https://example.com/image.jpg"
+          autoComplete="off"
+        />
+        {value && (
+          <div className="if-img-thumb" aria-hidden="true">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={value}
+              alt=""
+              onError={(e) => {
+                (e.currentTarget.parentElement as HTMLElement).style.display =
+                  'none';
+              }}
+            />
+          </div>
+        )}
+      </div>
       {error && <div className="input-error">{error}</div>}
 
       <button
         type="button"
-        className="search-toggle"
+        className="if-search-link"
         onClick={() => setIsSearchOpen(true)}
         disabled={disabled}
       >
@@ -62,6 +75,6 @@ export function ImageUrlInput({
         onSelectImage={handleImageSelect}
         disabled={disabled}
       />
-    </FormGroup>
+    </div>
   );
 }
