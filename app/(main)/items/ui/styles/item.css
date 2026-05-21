@@ -69,7 +69,11 @@
   font-size: 18px;
 }
 
-/* ── ITEM CARD ── */
+/* ── ITEM CARD ──
+   No overflow:hidden on the container — the StoreLinks "+N" popover
+   needs to render past the card boundary without being clipped. Corner
+   clipping moves onto the leaf surfaces that touch the card edge:
+   .item-image-container (top) and .purchased-banner (bottom). */
 .item-container {
   position: relative;
   display: flex;
@@ -78,7 +82,6 @@
   background-color: var(--light-color);
   border: 1.5px solid var(--card-border-color);
   border-radius: 10px;
-  overflow: hidden;
   cursor: default;
   transition:
     border-color 0.18s,
@@ -89,7 +92,6 @@
 .item-container:hover {
   border-color: var(--card-border-hover-color);
   box-shadow: var(--card-shadow-hover);
-  transform: translateY(-2px);
 }
 
 .item-container.purchased {
@@ -114,6 +116,10 @@
   overflow: hidden;
   background-color: var(--secondary-background-color);
   border-bottom: none;
+  /* Top-corner clip moves here from .item-container so the card's
+     popover children can render outside the card boundary. */
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
 }
 
 .item-image {
@@ -185,6 +191,10 @@
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 600;
+  /* Bottom-corner clip moves here from .item-container so the card's
+     popover children can render outside the card boundary. */
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
 }
 
 .purchased-banner--mine {
@@ -288,7 +298,6 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .container--items-library .items-toolbar,
@@ -300,7 +309,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  margin: 16px 0;
+  padding: 16px 0;
 }
 
 .container--items-library .items-pagination {
@@ -324,13 +333,32 @@
   grid-template-areas: 'search sort purchases stores price view';
 }
 
-.items-toolbar-cell--search { grid-area: search; }
-.items-toolbar-cell--sort { grid-area: sort; }
-.items-toolbar-cell--purchases { grid-area: purchases; }
-.items-toolbar-cell--stores { grid-area: stores; }
-.items-toolbar-cell--price { grid-area: price; }
-.items-toolbar-cell--view { grid-area: view; }
-.items-toolbar-cell--filters { grid-area: filters; }
+.hide-grid-toggle .items-toolbar-row {
+  grid-template-columns: 1fr repeat(4, min-content);
+  grid-template-areas: 'search sort purchases stores price';
+}
+
+.items-toolbar-cell--search {
+  grid-area: search;
+}
+.items-toolbar-cell--sort {
+  grid-area: sort;
+}
+.items-toolbar-cell--purchases {
+  grid-area: purchases;
+}
+.items-toolbar-cell--stores {
+  grid-area: stores;
+}
+.items-toolbar-cell--price {
+  grid-area: price;
+}
+.items-toolbar-cell--view {
+  grid-area: view;
+}
+.items-toolbar-cell--filters {
+  grid-area: filters;
+}
 
 /* Desktop/tablet: the filters-group is a layout-neutral wrapper so the
    four filter cells participate in the parent grid via their own
@@ -344,8 +372,13 @@
   display: none;
 }
 
-/* Mobile filters trigger button is hidden on desktop/tablet. */
-.items-toolbar-filters-trigger {
+/* Mobile filters trigger (PopoverTrigger primitive in the .--filters cell)
+   is hidden on desktop/tablet — the filter controls themselves render
+   inline in their own grid cells at this breakpoint. The compound
+   `.popover-trigger.items-toolbar-cell--filters` selector keeps a higher
+   specificity than the primitive's own `.popover-trigger { display: inline-flex }`
+   regardless of CSS import order. */
+.popover-trigger.items-toolbar-cell--filters {
   display: none;
 }
 
@@ -353,16 +386,11 @@
   display: none;
 }
 
+/* SearchField primitive owns its own chrome now. This wrapper exists
+   only to participate in the toolbar grid layout. */
 .items-search {
   position: relative;
   min-width: 0;
-  display: flex;
-  align-items: center;
-  border: 1.5px solid var(--card-border-color);
-  border-radius: 8px;
-  background-color: var(--secondary-background-color);
-  padding: 7px 12px 7px 36px;
-  transition: border-color 0.15s;
 }
 
 /* Medium 600–900px: 8-col grid so the 4 filters are equal width */
@@ -373,8 +401,11 @@
       'search search search search search search search search search view view'
       'sort sort sort purchases purchases purchases purchases stores stores price price';
   }
-  .items-sort select, .items-sort {
-    width: 100%;
+
+  .hide-grid-toggle .items-toolbar-row {    
+    grid-template-areas:
+      'search search search search search search search search search search search'
+      'sort sort sort purchases purchases purchases purchases stores stores price price';
   }
 }
 
@@ -382,46 +413,22 @@
    The four filter controls are relocated into a bottom sheet that the
    Filters button opens. Active non-default filters render as chips
    in a sub-row beneath the toolbar. */
-@media (max-width: 549px) {
+@media (max-width: 599px) {
   .items-toolbar-row {
-    grid-template-columns: 1fr min-content min-content;
-    grid-template-areas: 'search filters view';
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: 'search search' 'filters view';
   }
 
-  .items-toolbar-filters-trigger {
+    .hide-grid-toggle .items-toolbar-row {    
+    grid-template-columns: 1fr auto;
+    grid-template-areas: 'search filters';
+  }
+
+  /* Show the Filters PopoverTrigger on mobile. Visual treatment is
+     provided by the .popover-trigger primitive class. Compound
+     selector mirrors the desktop hide above so specificity matches. */
+  .popover-trigger.items-toolbar-cell--filters {
     display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 7px 12px;
-    border-radius: 8px;
-    font-family: var(--font-roboto-condensed);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    border: 1.5px solid var(--card-border-color);
-    background-color: var(--secondary-background-color);
-    color: var(--neutral-text-color);
-    transition: all 0.15s;
-  }
-
-  .items-toolbar-filters-trigger:hover,
-  .items-toolbar-filters-trigger.active {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-  }
-
-  .items-toolbar-filters-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 6px;
-    font-size: 11px;
-    font-weight: 600;
-    background-color: var(--primary-color);
-    color: var(--light-color);
-    border-radius: 999px;
   }
 
   /* Filters group transforms into a bottom sheet on mobile. */
@@ -480,14 +487,6 @@
   .items-toolbar-filters-group .items-toolbar-cell--stores,
   .items-toolbar-filters-group .items-toolbar-cell--price {
     grid-area: auto;
-    width: 100%;
-  }
-
-  .items-toolbar-filters-group .items-sort {
-    width: 100%;
-  }
-
-  .items-toolbar-filters-group .items-sort select {
     width: 100%;
   }
 
@@ -572,119 +571,9 @@
   font-size: 14px;
 }
 
-.items-search:focus-within {
-  border-color: var(--primary-color);
-  background-color: var(--light-color);
-}
-
-.items-search-icon {
-  position: absolute;
-  left: 12px;
-  color: var(--muted-text-color);
-  pointer-events: none;
-  font-size: 16px;
-}
-
-.items-search-input {
-  width: 100%;
-  padding: 0;
-  font-size: 13px;
-  border: none;
-  background: transparent;
-  color: var(--neutral-text-color);
-  font-family: var(--font-roboto-condensed);
-  outline: none;
-}
-
-.items-search-input::placeholder {
-  color: var(--muted-text-color);
-}
-
-.items-search-clear {
-  position: absolute;
-  right: 8px;
-  background: none;
-  border: none;
-  color: var(--muted-text-color);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  padding: 4px;
-}
-
-.items-search-clear:hover {
-  color: var(--neutral-text-color);
-}
-
-.items-sort select,
-.items-sort {
-  background-color: var(--secondary-background-color);
-  border: 1.5px solid var(--card-border-color);
-  border-radius: 8px;
-  padding: 7px 10px;
-  font-size: 13px;
-  color: var(--neutral-text-color);
-  font-family: var(--font-roboto-condensed);
-  cursor: pointer;
-  transition: border-color 0.15s;
-}
-
-.items-sort select:hover,
-.items-sort:hover {
-  border-color: var(--primary-color);
-}
-
-.items-sort select {
-  border: none;
-  background: transparent;
-  padding: 0;
-}
-
-.items-sort {
-  padding: 7px 10px;
-}
-
-/* Store-filter / Price-filter trigger buttons (shared 'filter-btn' look) */
-.store-filter-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 12px;
-  border-radius: 8px;
-  font-family: var(--font-roboto-condensed);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1.5px solid var(--card-border-color);
-  background-color: var(--secondary-background-color);
-  color: var(--neutral-text-color);
-  transition: all 0.15s;
-  width: 100%;
-}
-
-.store-filter-trigger:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.store-filter-trigger.active {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.store-filter-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 6px;
-  font-size: 11px;
-  font-weight: 600;
-  background-color: var(--primary-color);
-  color: var(--light-color);
-  border-radius: 999px;
-}
+/* Store-filter / Price-filter trigger buttons are now the PopoverTrigger
+   primitive (.popover-trigger in app/ui/components/popover-trigger/). Only
+   the popover panel + body remains page-scoped. */
 
 .store-filter-popover {
   position: relative;
@@ -701,6 +590,8 @@
   max-height: 60vh;
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  padding: 12px;
   background-color: var(--light-color);
   border: 1px solid var(--card-border-color);
   border-radius: 10px;
@@ -708,22 +599,10 @@
   overflow: hidden;
 }
 
-.store-filter-search {
-  width: 100%;
-  padding: 10px 12px;
-  font-size: 14px;
-  border: none;
-  border-bottom: 1px solid var(--card-border-color);
-  background-color: var(--light-color);
-  color: var(--neutral-text-color);
-  font-family: var(--font-roboto-condensed);
-  outline: none;
-}
-
 .store-filter-list {
   list-style: none;
   margin: 0;
-  padding: 4px 0;
+  padding: 0;
   overflow-y: auto;
   flex: 1 1 auto;
 }
@@ -735,76 +614,12 @@
   font-size: 13px;
 }
 
-.store-filter-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--neutral-text-color);
-  font-family: var(--font-roboto-condensed);
-}
-
-.store-filter-item:hover {
-  background-color: var(--secondary-background-color);
-}
-
-.store-filter-item input[type='checkbox'] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--primary-color);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.store-filter-item span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .store-filter-footer {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 8px 0 0;
   border-top: 1px solid var(--card-border-color);
-}
-
-.store-filter-clear {
-  background: none;
-  border: none;
-  color: var(--muted-text-color);
-  font-size: 13px;
-  font-family: var(--font-roboto-condensed);
-  cursor: pointer;
-  padding: 6px 8px;
-}
-
-.store-filter-clear:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.store-filter-clear:not(:disabled):hover {
-  text-decoration: underline;
-  color: var(--neutral-text-color);
-}
-
-.store-filter-done {
-  background-color: var(--primary-color);
-  color: var(--light-color);
-  border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-family: var(--font-roboto-condensed);
-  cursor: pointer;
-}
-
-.store-filter-done:hover {
-  background-color: var(--primary-color-dark);
 }
 
 /* Price filter popover */
@@ -819,56 +634,28 @@
   padding: 12px;
 }
 
-.price-filter-field {
+.price-filter-inputs > .field {
   flex: 1 1 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
-  font-family: var(--font-roboto-condensed);
-  color: var(--neutral-text-color);
 }
 
-.price-filter-field span {
-  color: var(--muted-text-color);
-}
-
-.price-filter-field input {
-  padding: 8px 10px;
-  font-size: 14px;
-  border: 1.5px solid var(--card-border-color);
-  border-radius: 6px;
-  background-color: var(--light-color);
-  color: var(--neutral-text-color);
-  font-family: var(--font-roboto-condensed);
-  width: 100%;
-}
-
-.price-filter-field input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-}
-
-/* Page-size select (sits inside the pagination nav) */
+/* Pagination page-size select (sits inside the pagination nav).
+   The Select primitive handles its own borders/padding. Constrain
+   width to content so it doesn't stretch to fill the pagination row. */
 .page-size-select {
   display: inline-flex;
   align-items: center;
   margin-left: 12px;
 }
-
-.page-size-select select {
-  padding: 6px 10px;
-  font-size: 13px;
-  border: 1.5px solid var(--card-border-color);
-  border-radius: 8px;
-  background-color: var(--secondary-background-color);
-  color: var(--neutral-text-color);
-  font-family: var(--font-roboto-condensed);
-  cursor: pointer;
+.page-size-select .form_field {
+  width: auto;
 }
 
-.page-size-select select:hover {
-  border-color: var(--primary-color);
+/* Toolbar selects (Sort / Purchases / Show) should shrink to fit their
+   currently-selected option's text, not stretch to fill the grid cell. */
+.items-toolbar-cell--sort .form_field,
+.items-toolbar-cell--purchases .form_field {
+  width: auto;
+  min-width: max-content;
 }
 
 /* Items page: empty state when filters return nothing */
@@ -899,41 +686,6 @@
   padding: 12px 0;
   border-top: 1px solid var(--card-border-color);
   flex-wrap: wrap;
-}
-
-.items-page-btn {
-  min-width: 32px;
-  height: 32px;
-  padding: 0 8px;
-  border: 1.5px solid var(--card-border-color);
-  border-radius: 8px;
-  background-color: transparent;
-  color: var(--muted-text-color);
-  font-family: var(--font-roboto-condensed);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.items-page-btn:hover:not(:disabled):not(.active) {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
-.items-page-btn.active {
-  background-color: var(--primary-color);
-  color: var(--light-color);
-  border-color: var(--primary-color);
-  cursor: default;
-}
-
-.items-page-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 .items-page-gap {
@@ -992,67 +744,16 @@
   flex-wrap: wrap;
 }
 
-.quantity-limit-control .form-input {
+.quantity-limit-control > .form_field_group {
+  width: auto;
+  margin-bottom: 0;
   flex: 0 0 auto;
-  max-width: 120px;
-  min-width: 80px;
+  max-width: 160px;
+  min-width: 100px;
 }
 
-.quantity-limit-control .form-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.unlimited-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  color: var(--neutral-text-color);
-  cursor: pointer;
-  user-select: none;
-}
-
-.unlimited-toggle input[type='checkbox'] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--primary-color);
-}
-
-/* ── GRID / LIST VIEW TOGGLE ── */
-.view-toggle {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  width: 100%;
-  border: 1.5px solid var(--card-border-color);
-  border-radius: 8px;
-  overflow: hidden;
-  margin-left: auto;
-}
-
-.view-toggle-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 10px;
-  background-color: transparent;
-  border: none;
-  color: var(--muted-text-color);
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-  transition: all 0.15s;
-}
-
-.view-toggle-btn:hover:not(.active) {
-  color: var(--primary-color);
-}
-
-.view-toggle-btn.active {
-  background-color: var(--primary-color);
-  color: var(--light-color);
-}
+/* The grid/list view toggle is the SegmentedControl primitive
+   (tone=light); container styling lives in segmented-control.css. */
 
 /* ── LIST VIEW (single-column row layout) ──
    Reuses the same Item.tsx markup; CSS reshapes the card into a horizontal row.
@@ -1063,12 +764,24 @@
   flex-direction: column;
 }
 
+/* Row-view outer grid (≥600px):
+   col1: image (52px, spans content rows 1-2)
+   col2: name (row1) + price+leader-dots (row2)
+   col3: tall buy-link pill (spans rows 1-2)
+   col4: +N popover trigger when extras present (spans rows 1-2)
+   col5: right-column — edit/archive icons OR Claim button (spans 1-2)
+   row3: description (spans cols 1/-1, full-width footer line)
+   row4: claim-counter if present (spans cols 1/-1)
+   When the row is in a claimed/spoiler state, .claimed-state spans cols 3→-1
+   as a single wide pill — overriding the default col5 placement. */
 .item-list .item-container,
 .sortable-item .item-container {
   display: grid;
-  grid-template-columns: 60px 1fr auto;
+  grid-template-columns: 52px 1fr auto auto auto;
+  grid-template-rows: auto auto;
+  column-gap: 14px;
+  row-gap: 2px;
   align-items: center;
-  gap: 14px;
   padding: 11px 14px;
   border: none;
   border-bottom: 1px solid var(--card-border-color);
@@ -1094,8 +807,17 @@
   opacity: 1;
 }
 
+/* Flatten .item, .item-info, AND .item-name-description into the outer
+   grid so all leaf cells (name, description, price, storeLinks,
+   claim/claimed-state, owner-actions) sit in the same coordinate space.
+   This lets the description take its own full-width row underneath the
+   name/price/pill content. */
 .item-list .item,
-.sortable-item .item {
+.sortable-item .item,
+.item-list .item-info,
+.sortable-item .item-info,
+.item-list .item-name-description,
+.sortable-item .item-name-description {
   display: contents;
 }
 
@@ -1107,55 +829,64 @@
   border-radius: 8px;
   overflow: hidden;
   grid-column: 1;
-  grid-row: 1;
+  grid-row: 1 / 3;
   border-right: none;
-}
-
-.item-list .item-info,
-.sortable-item .item-info {
-  padding: 0;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-rows: auto auto;
-  column-gap: 14px;
-  row-gap: 2px;
-  min-width: 0;
-  align-items: center;
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.item-list .item-name-description,
-.sortable-item .item-name-description {
-  grid-column: 1;
-  grid-row: 1;
-  margin-bottom: 0;
-  min-width: 0;
 }
 
 .item-list .item-name-description .itemName,
 .sortable-item .item-name-description .itemName {
+  grid-column: 2;
+  grid-row: 1;
   font-size: 14px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
+/* Description occupies its own full-width row beneath the
+   image/name/price/pill area. Image spans rows 1-2 only, so row 3 is
+   wide-open for the description text. Clamp to 2 lines so unusually long
+   descriptions don't blow out row height. */
 .item-list .item-name-description .itemDescription,
 .sortable-item .item-name-description .itemDescription {
+  grid-column: 1 / -1;
+  grid-row: 3;
   font-size: 12px;
-  -webkit-line-clamp: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+  color: var(--muted-text-color);
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  padding-top: 4px;
+  margin: 0;
+  min-width: 0;
 }
 
+/* Price + leader-dots row (D3). The ::after pseudo grows to fill the
+   horizontal space between the price text and the tall pill column,
+   drawing a dotted leader. Pseudo-elements are not in the
+   accessibility tree, so no aria-hidden needed. */
 .item-list .item-price-row,
 .sortable-item .item-price-row {
   grid-column: 2;
-  grid-row: 1;
-  justify-content: flex-end;
+  grid-row: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   margin-bottom: 0;
+  min-width: 0;
+}
+
+.item-list .item-price-row::after,
+.sortable-item .item-price-row::after {
+  content: '';
+  flex: 1;
+  /* 2px dotted in muted-text-color so the leader actually reads as a
+     dotted line across the row. The earlier 1px in --card-border-color
+     was nearly invisible at typical viewing distance. */
+  border-bottom: 2px dotted var(--muted-text-color);
+  margin-bottom: 6px;
+  opacity: 0.5;
 }
 
 .item-list .item-price,
@@ -1163,66 +894,133 @@
   font-size: 16px;
 }
 
-.item-list .store-links-label-row,
-.sortable-item .store-links-label-row {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  margin: 0;
-}
-
+/* Tall buy-link pill spans both content rows in col 3. The +N anchor
+   sits inline within the .storeLinks grid (1fr auto). Page-scoped
+   overrides on .btn.storeLinks-link enforce the tall geometry — this is
+   a documented exception to the design-system Button contract; only
+   applies inside row-view layouts so no leak risk. */
 .item-list .storeLinks,
 .sortable-item .storeLinks {
-  grid-column: 1 / -1;
-  grid-row: 3;
-}
-
-.item-list .claim-cta-btn,
-.item-list .claimed-state,
-.sortable-item .claim-cta-btn,
-.sortable-item .claimed-state {
-  grid-column: 1 / -1;
-  grid-row: 4;
+  grid-column: 3;
+  grid-row: 1 / 3;
+  align-self: stretch;
   width: auto;
-  justify-self: end;
-  padding: 5px 14px;
-  min-width: 140px;
 }
 
+.item-list .btn.storeLinks-link,
+.sortable-item .btn.storeLinks-link {
+  align-self: stretch;
+  min-height: 64px;
+  max-width: 180px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Default placement for the right column (col 5): owner actions OR the
+   non-owner Claim button. Both span both content rows. */
+.item-list .item-owner-actions,
+.sortable-item .item-owner-actions,
+.item-list .item-owner-actions-mobile,
+.sortable-item .item-owner-actions-mobile,
 .item-list .claim-cta-btn,
 .sortable-item .claim-cta-btn {
-  border-radius: 20px;
+  grid-column: 5;
+  grid-row: 1 / 3;
+  align-self: center;
 }
 
 .item-list .item-owner-actions,
 .sortable-item .item-owner-actions {
   position: static;
   opacity: 1;
-  grid-column: 3;
-  grid-row: 1;
+  display: flex;
 }
 
+.item-list .claim-cta-btn,
+.sortable-item .claim-cta-btn {
+  width: auto;
+  padding: 5px 14px;
+  min-width: 140px;
+  border-radius: 20px;
+}
+
+/* In row view, the .purchased-banner family IS the wide claimed pill —
+   it already carries the canonical claim/spoiler text in all states, so
+   it absorbs the buy-pill + +N + right-column slots (cols 3 → -1) into
+   one indicator. The grid view keeps these as footer banners. */
 .item-list .purchased-banner,
 .sortable-item .purchased-banner {
-  grid-column: 1 / -1;
-  border-top: none;
-  padding: 6px 0 0;
+  grid-column: 3 / -1;
+  grid-row: 1 / 3;
+  align-self: stretch;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--success-border);
+  border-radius: 10px;
+  background: var(--success-bg);
+  color: var(--success-text);
+  font-weight: 600;
+  font-size: 13px;
+  border-top: 1.5px solid var(--success-border); /* override default */
+}
+
+.item-list .purchased-banner-undo,
+.sortable-item .purchased-banner-undo {
+  margin-left: auto;
   background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+@media (hover: hover) {
+  .item-list .purchased-banner-undo:hover,
+  .sortable-item .purchased-banner-undo:hover {
+    opacity: 0.7;
+  }
+}
+
+/* Hide the inline .claimed-state pill from <Purchase> in row view —
+   the wide banner above already conveys the state, no need for the
+   inline duplicate. */
+.item-list .claimed-state,
+.sortable-item .claimed-state {
+  display: none;
+}
+
+/* Hide the Claim button AND the store-link chip row when the viewer
+   already has a claim: the wide banner above takes over the right area
+   ("you claimed this · undo"), per the design intent of "claim replaces
+   store buttons." This was also surfaced by the row redesign — without
+   it, the Claim button and chip row overlap the wide pill. */
+.item-list .item-container.has-my-claim .claim-cta-btn,
+.item-list .item-container.has-my-claim .storeLinks,
+.sortable-item .item-container.has-my-claim .claim-cta-btn,
+.sortable-item .item-container.has-my-claim .storeLinks {
+  display: none;
 }
 
 .item-list .claim-counter,
 .sortable-item .claim-counter {
   grid-column: 1 / -1;
-  grid-row: 5;
+  grid-row: 4;
   margin-top: 0;
 }
 
-/* On narrow viewports, collapse the inner info grid to single column so
-   labels + buy-link pills don't overflow. */
-@media (max-width: 600px) {
+/* M1 (400-599px): single-row content. Stack name above price in col 2;
+   remove leader dots (no horizontal room); shorten Claim copy via
+   attribute. Inline owner icons remain visible. */
+@media (max-width: 599px) {
   .item-list .item-container,
   .sortable-item .item-container {
-    grid-template-columns: 48px 1fr;
-    gap: 10px;
+    grid-template-rows: auto;
+    column-gap: 10px;
     padding: 10px 12px;
   }
 
@@ -1230,20 +1028,126 @@
   .sortable-item .item-image-container {
     width: 48px;
     height: 48px;
+    grid-row: 1;
+  }
+
+  .item-list .item-name-description,
+  .sortable-item .item-name-description {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .item-list .item-price-row,
+  .sortable-item .item-price-row {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+    justify-self: start;
+  }
+
+  /* No leader at narrow widths — there's no room for a dot line between
+     the stacked name/price and the buy pill. */
+  .item-list .item-price-row::after,
+  .sortable-item .item-price-row::after {
+    display: none;
+  }
+
+  .item-list .storeLinks,
+  .sortable-item .storeLinks {
+    grid-row: 1;
+  }
+
+  .item-list .btn.storeLinks-link,
+  .sortable-item .btn.storeLinks-link {
+    min-height: 32px;
+    max-width: 110px;
+    align-self: center;
+    /* Text-align center on .btn causes ellipsis-on-overflow to clip
+       from both sides; left-align so the start of the store name
+       stays visible and "..." shows on the right. */
+    justify-content: flex-start;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: normal;
+    padding-left: 10px;
+    padding-right: 8px;
+  }
+
+  /* Tighten the claim button at mobile so the name column has more
+     room. The full "Claim this gift" copy stays — accessibility wins
+     over a 1-2 char shortening. */
+  .item-list .claim-cta-btn,
+  .sortable-item .claim-cta-btn {
+    min-width: 0;
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .item-list .claimed-state,
+  .sortable-item .claimed-state {
+    grid-row: 1;
+    min-height: 36px;
+  }
+
+  /* Wide banner-as-pill on mobile: single-row placement, shorter height. */
+  .item-list .purchased-banner,
+  .sortable-item .purchased-banner {
+    grid-row: 1;
+    min-height: 36px;
+    font-size: 12px;
+    padding: 6px 10px;
   }
 
   .item-list .item-owner-actions,
-  .sortable-item .item-owner-actions {
-    grid-column: 2;
+  .sortable-item .item-owner-actions,
+  .item-list .item-owner-actions-mobile,
+  .sortable-item .item-owner-actions-mobile,
+  .item-list .claim-cta-btn,
+  .sortable-item .claim-cta-btn {
     grid-row: 1;
-    justify-self: end;
   }
 
-  .item-list .store-links-label-row,
-  .item-list .storeLinks,
-  .sortable-item .store-links-label-row,
-  .sortable-item .storeLinks {
-    grid-column: 1 / -1;
+  /* Description sits directly below the single content row on mobile —
+     desktop puts it on row 3 (after the 2-row D3 content stack); mobile
+     content is row 1, so description goes on row 2. */
+  .item-list .item-name-description .itemDescription,
+  .sortable-item .item-name-description .itemDescription {
+    grid-row: 2;
+    -webkit-line-clamp: 1;
+    padding-top: 2px;
+  }
+
+  /* Stack name on top of price visually using a single-row trick:
+     name-description and price-row both placed in col2 row1 with
+     name-description aligned to start (top) and price aligned to end
+     (bottom). */
+  .item-list .item-name-description,
+  .sortable-item .item-name-description {
+    align-self: start;
+  }
+
+  .item-list .claim-counter,
+  .sortable-item .claim-counter {
+    display: none;
+  }
+}
+
+/* M1-kebab (<400px): hide inline edit/archive icons, show kebab Menu. */
+.item-owner-actions-mobile {
+  display: none;
+}
+
+@media (max-width: 399px) {
+  .item-list .item-owner-actions,
+  .sortable-item .item-owner-actions {
+    display: none;
+  }
+  .item-list .item-owner-actions-mobile,
+  .sortable-item .item-owner-actions-mobile {
+    display: flex;
+    align-items: center;
   }
 }
 

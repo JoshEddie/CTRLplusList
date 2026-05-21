@@ -238,8 +238,3 @@
   text-align: center;
 }
 
-.error-message {
-  color: var(--danger-color);
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
-}

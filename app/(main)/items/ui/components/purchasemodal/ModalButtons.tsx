@@ -1,3 +1,4 @@
+import { Button } from '@/app/ui/components/button';
 import TooltipWrapper from '@/app/ui/components/TooltipWrapper';
 
 export default function ModalButtons({
@@ -20,25 +21,23 @@ export default function ModalButtons({
   secondary_button_disabled_with_tooltip?: string;
 }) {
   const primaryButton = (
-    <button
-      type="button"
-      className="btn primary"
+    <Button
+      variant="primary"
       onClick={primary_button_onclick}
       disabled={primary_button_disabled}
     >
       {primary_button_text}
-    </button>
+    </Button>
   );
 
   const secondaryButton = (
-    <button
-      type="button"
-      className="btn secondary"
+    <Button
+      variant="secondary"
       onClick={secondary_button_onclick}
       disabled={secondary_button_disabled}
     >
       {secondary_button_text}
-    </button>
+    </Button>
   );
 
   return (

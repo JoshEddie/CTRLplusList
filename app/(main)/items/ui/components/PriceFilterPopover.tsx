@@ -1,6 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Button } from '@/app/ui/components/button';
+import { PriceField } from '@/app/ui/components/field';
+import { PopoverTrigger } from '@/app/ui/components/popover-trigger';
+import { usePopoverDismiss } from '@/app/ui/hooks/usePopoverDismiss';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MdAttachMoney } from 'react-icons/md';
 
 interface PriceFilterPopoverProps {
@@ -9,6 +13,14 @@ interface PriceFilterPopoverProps {
   onApply: (min: string, max: string) => void;
   onClear: () => void;
 }
+
+const toNumber = (s: string): number | null => {
+  if (!s) return null;
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : null;
+};
+
+const toString = (n: number): string => (n === 0 ? '' : n.toFixed(2));
 
 export default function PriceFilterPopover({
   min,
@@ -26,30 +38,14 @@ export default function PriceFilterPopover({
     setLocalMax(max);
   }, [min, max]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) {
-        if (localMin !== min || localMax !== max) {
-          onApply(localMin, localMax);
-        }
-        setOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setLocalMin(min);
-        setLocalMax(max);
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open, localMin, localMax, min, max, onApply]);
+  const handleClose = useCallback(() => {
+    if (localMin !== min || localMax !== max) {
+      onApply(localMin, localMax);
+    }
+    setOpen(false);
+  }, [localMin, localMax, min, max, onApply]);
+
+  usePopoverDismiss({ open, onClose: handleClose, ref: rootRef });
 
   const activeCount = (min ? 1 : 0) + (max ? 1 : 0);
 
@@ -66,19 +62,15 @@ export default function PriceFilterPopover({
 
   return (
     <div className="store-filter-popover" ref={rootRef}>
-      <button
-        type="button"
-        className={`store-filter-trigger ${activeCount > 0 ? 'active' : ''}`}
+      <PopoverTrigger
+        icon={<MdAttachMoney />}
+        label="Price"
+        count={activeCount || undefined}
+        active={activeCount > 0}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="dialog"
-      >
-        <MdAttachMoney />
-        <span>Price</span>
-        {activeCount > 0 && (
-          <span className="store-filter-badge">{activeCount}</span>
-        )}
-      </button>
+      />
       {open && (
         <div
           className="store-filter-panel price-filter-panel"
@@ -86,54 +78,30 @@ export default function PriceFilterPopover({
           aria-label="Filter by price"
         >
           <div className="price-filter-inputs">
-            <label className="price-filter-field">
-              <span>Min</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={localMin}
-                onChange={(e) => setLocalMin(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleApply();
-                }}
-                autoFocus
-              />
-            </label>
-            <label className="price-filter-field">
-              <span>Max</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0"
-                placeholder="No max"
-                value={localMax}
-                onChange={(e) => setLocalMax(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleApply();
-                }}
-              />
-            </label>
+            <PriceField
+              label="Min"
+              amount={toNumber(localMin)}
+              onChange={(v) => setLocalMin(toString(v))}
+              autoFocus
+            />
+            <PriceField
+              label="Max"
+              amount={toNumber(localMax)}
+              onChange={(v) => setLocalMax(toString(v))}
+            />
           </div>
           <div className="store-filter-footer">
-            <button
-              type="button"
-              className="store-filter-clear"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleClear}
               disabled={activeCount === 0 && !localMin && !localMax}
             >
               Clear
-            </button>
-            <button
-              type="button"
-              className="store-filter-done"
-              onClick={handleApply}
-            >
+            </Button>
+            <Button variant="primary" size="sm" onClick={handleApply}>
               Apply
-            </button>
+            </Button>
           </div>
         </div>
       )}

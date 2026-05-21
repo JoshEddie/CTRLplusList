@@ -3,11 +3,29 @@
 import { db } from '@/db';
 import { item_stores, items, list_items, purchases, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
+import {
+  getItemById,
+  getListsByUser,
+  getUserIdByEmail,
+} from '@/lib/dal';
 import { ItemDetails } from '@/lib/types';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
+
+export async function getItemEditData(itemId: string) {
+  const session = await auth();
+  if (!session?.user?.email) return null;
+  const user = await getUserIdByEmail(session.user.email);
+  if (!user) return null;
+  const [item, lists] = await Promise.all([
+    getItemById(itemId, user.id),
+    getListsByUser(user.id),
+  ]);
+  if (!item) return null;
+  return { item, lists };
+}
 
 // Define Zod schema for item validation
 const ItemSchema = z.object({

@@ -1,6 +1,7 @@
 'use client';
 
 import { deleteItem } from '@/app/actions/items';
+import { Button } from '@/app/ui/components/button';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -10,10 +11,12 @@ export default function DeleteItemButton({
   id,
   userId,
   returnTo,
+  onDeleted,
 }: {
   id: string;
   userId: string;
   returnTo?: string;
+  onDeleted?: () => void;
 }) {
   const router = useRouter();
   const [showConfirm, setShowConfirm] = useState(false);
@@ -27,7 +30,12 @@ export default function DeleteItemButton({
       });
 
       if (result?.success) {
-        router.push(returnTo ?? '/items');
+        if (onDeleted) {
+          onDeleted();
+          router.refresh();
+        } else {
+          router.push(returnTo ?? '/items');
+        }
       }
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -36,13 +44,9 @@ export default function DeleteItemButton({
 
   return (
     <>
-      <button
-        type="button"
-        className="form-shell-btn-delete"
-        onClick={() => setShowConfirm(true)}
-      >
+      <Button variant="danger" onClick={() => setShowConfirm(true)}>
         Delete
-      </button>
+      </Button>
       <ConfirmDialog
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}

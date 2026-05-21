@@ -119,46 +119,11 @@
   opacity: 1;
 }
 
-.input-tooltip .tooltip,
-.input-tooltip:hover .tooltip {
-  visibility: hidden;
-  opacity: 0;
-}
-
-.form-error .tooltip,
-.form-error:hover .tooltip {
-  visibility: visible;
-  opacity: 1;
-  background-color: var(--danger-color);
-}
-
-.form-error .tooltip::after {
-  border-color: var(--danger-color) transparent transparent transparent;
-}
-
 .guest-purchase {
   display: flex;
   flex-direction: column;
   gap: 1rem;
   margin-top: 1rem;
-}
-
-.guest-name-input {
-  padding: 0.6rem;
-  border: 1.5px solid var(--card-border-color);
-  border-radius: 8px;
-  font-size: 1rem;
-  width: 100%;
-  box-sizing: border-box;
-  background-color: var(--secondary-background-color);
-  color: var(--neutral-text-color);
-  font-family: var(--font-roboto-condensed);
-}
-
-.guest-name-input:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  background-color: var(--light-color);
 }
 
 @media (min-width: 600px) {

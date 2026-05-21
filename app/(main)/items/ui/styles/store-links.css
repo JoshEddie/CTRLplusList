@@ -14,164 +14,103 @@
   line-height: 1;
 }
 
-/* "from {store}" / "Buy on" label row */
-.store-links-label-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-  width: 100%;
-  margin-top: 8px;
-  margin-bottom: 4px;
-}
-
-.store-links-label {
-  font-family: var(--font-roboto-condensed);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: var(--muted-text-color);
-  text-align: right;
-}
-
-.store-links-label.from-label {
-  text-align: left;
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Buy-link pill row.
-   Extras + "+N more" are always rendered; CSS animates them in/out. */
+/* Buy-link row. Single-row grid — extras live in a popover, not inline.
+   Single store: one column stretching to fill (primary chip).
+   Multi-store: primary stretches; +N trigger hugs its content. */
 .storeLinks {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 5px;
   width: 100%;
-  /* Smooth gap collapse when items vanish */
-  transition: gap 0.18s ease;
 }
 
-.buy-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 6px;
+.storeLinks.has-extras {
+  grid-template-columns: 1fr auto;
+}
+
+/* Store-link chips opt out of the design system's standard variant colors —
+   buy-links carry their own "filled lavender CTA" treatment to signal
+   "leave the page to purchase." Sizing/typography stay at the system's
+   `sm` tier (32px floor, 13px font). Documented exception per
+   openspec/changes/standardize-buttons. */
+.btn.storeLinks-link {
   background-color: var(--buy-link-bg);
-  border: 1.5px solid var(--buy-link-border);
+  border-color: var(--buy-link-border);
   color: var(--buy-link-text);
-  font-family: var(--font-roboto-condensed);
-  font-size: 11px;
-  font-weight: 600;
-  text-decoration: none;
   white-space: nowrap;
-  cursor: pointer;
-  /* Default transition: color / hover effects. Width/padding animations
-     for collapse/expand are added on the extras + more-button below. */
+  text-decoration: none;
   transition:
     background-color 0.13s ease,
     border-color 0.13s ease,
     color 0.13s ease;
 }
 
-.buy-link:hover {
-  background-color: var(--buy-link-hover-bg);
-  border-color: var(--primary-color);
-  color: var(--buy-link-hover-text);
+@media (hover: hover) {
+  .btn.storeLinks-link:hover {
+    background-color: var(--buy-link-hover-bg);
+    border-color: var(--primary-color);
+    color: var(--buy-link-hover-text);
+  }
 }
 
-.buy-link svg {
-  width: 9px;
-  height: 9px;
-}
-
-/* Extras animate in/out as the row expands / collapses. */
-.buy-link--extra {
-  max-width: 240px;
-  opacity: 1;
-  transform: translateX(0);
-  transition:
-    max-width 0.22s ease,
-    opacity 0.18s ease,
-    padding 0.22s ease,
-    border-width 0.22s ease,
-    transform 0.22s ease,
-    background-color 0.13s ease,
-    color 0.13s ease;
-}
-
-.storeLinks:not(.is-expanded) .buy-link--extra {
-  max-width: 0;
-  opacity: 0;
-  padding-left: 0;
-  padding-right: 0;
-  border-left-width: 0;
-  border-right-width: 0;
-  transform: translateX(-6px);
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.buy-link-more {
+/* Anchor wrapper for the +N Button and its <Menu> popover. Position
+   relative so .menu-popover (position:absolute) anchors here, not to
+   the card or the items grid. */
+.storeLinks-more-anchor {
+  position: relative;
   display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 4px 9px;
-  border-radius: 6px;
-  background-color: var(--secondary-background-color);
-  border: 1.5px solid var(--card-border-color);
-  color: var(--muted-text-color);
+}
+
+/* Placement is computed at open-time by StoreLinks.tsx (see
+   `computePlacement`). The default `placement-above` overlays the card
+   body — preferred because the chip row sits at the bottom of the card,
+   so a downward-opening panel would be clipped by/cover the card below.
+   `placement-below` is used when there's not enough room above (top-row
+   items in the list view, especially) and falls through to the
+   `.menu-popover` default from menu.css. */
+.storeLinks-more-anchor.placement-above .menu-popover {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+/* Menu rows render as [external-link icon] [store name] [price]. Name
+   stretches to push price to the right edge; price uses the same accent
+   treatment as the card's primary price for visual continuity. */
+.storeLinks-menu-item .storeLinks-menu-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.storeLinks-menu-item .storeLinks-menu-price {
+  flex: 0 0 auto;
   font-family: var(--font-roboto-condensed);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  max-width: 60px;
-  opacity: 1;
-  transform: translateX(0);
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.btn.storeLinks-more {
+  background-color: var(--secondary-background-color);
+  border-color: var(--card-border-color);
+  color: var(--muted-text-color);
   transition:
-    max-width 0.22s ease,
-    opacity 0.18s ease,
-    padding 0.22s ease,
-    border-width 0.22s ease,
-    transform 0.22s ease,
     background-color 0.13s ease,
+    border-color 0.13s ease,
     color 0.13s ease;
 }
 
-.buy-link-more:hover {
-  background-color: var(--buy-link-bg);
-  border-color: var(--buy-link-border);
-  color: var(--buy-link-text);
-}
-
-.storeLinks.is-expanded .buy-link-more {
-  max-width: 0;
-  opacity: 0;
-  padding-left: 0;
-  padding-right: 0;
-  border-left-width: 0;
-  border-right-width: 0;
-  transform: translateX(6px);
-  pointer-events: none;
-  overflow: hidden;
-}
-
-/* Respect reduced-motion users — snap instantly. */
-@media (prefers-reduced-motion: reduce) {
-  .buy-link--extra,
-  .buy-link-more,
-  .storeLinks {
-    transition: none;
+@media (hover: hover) {
+  .btn.storeLinks-more:hover {
+    background-color: var(--buy-link-bg);
+    border-color: var(--buy-link-border);
+    color: var(--buy-link-text);
   }
 }
 
 /* Fade store-links on the item card when the item has been purchased */
-.item.purchased .buy-link,
-.item.purchased .buy-link-more {
+.item.purchased .storeLinks-link,
+.item.purchased .storeLinks-more {
   opacity: 0.5;
 }
 

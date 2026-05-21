@@ -1,5 +1,6 @@
 'use client';
 
+import { SelectField } from '@/app/ui/components/field';
 import { PAGE_SIZE_OPTIONS } from './paginationConstants';
 
 interface PageSizeSelectProps {
@@ -12,19 +13,17 @@ export default function PageSizeSelect({
   onChange,
 }: PageSizeSelectProps) {
   return (
-    <label className="page-size-select">
-      <span className="sr-only">Items per page</span>
-      <select
+    <div className="page-size-select">
+      <SelectField
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         aria-label="Items per page"
-      >
-        {PAGE_SIZE_OPTIONS.map((n) => (
-          <option key={n} value={n}>
-            {n} / page
-          </option>
-        ))}
-      </select>
-    </label>
+        options={PAGE_SIZE_OPTIONS.map((n) => ({
+          value: String(n),
+          label: `${n} / page`,
+        }))}
+        fieldSize="sm"
+      />
+    </div>
   );
 }

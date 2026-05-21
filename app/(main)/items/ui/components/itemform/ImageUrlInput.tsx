@@ -1,6 +1,6 @@
-// ImageUrlInput.tsx
 'use client';
 
+import { TextField } from '@/app/ui/components/field';
 import { ImageSearchResult } from '@/lib/types';
 import { useState } from 'react';
 import { ImageSearch } from './ImageSearch';
@@ -30,31 +30,16 @@ export function ImageUrlInput({
 
   return (
     <div>
-      <div className="if-img-row">
-        <input
-          type="url"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          className={`form-input ${error ? 'form-input-error' : ''}`}
-          placeholder="https://example.com/image.jpg"
-          autoComplete="off"
-        />
-        {value && (
-          <div className="if-img-thumb" aria-hidden="true">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={value}
-              alt=""
-              onError={(e) => {
-                (e.currentTarget.parentElement as HTMLElement).style.display =
-                  'none';
-              }}
-            />
-          </div>
-        )}
-      </div>
-      {error && <div className="input-error">{error}</div>}
+      <TextField
+        type="url"
+        label="Image URL"
+        error={error || undefined}
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        placeholder="https://example.com/image.jpg"
+        autoComplete="off"
+      />
 
       <button
         type="button"

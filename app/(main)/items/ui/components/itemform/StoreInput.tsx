@@ -1,3 +1,4 @@
+import { PriceField, TextField } from '@/app/ui/components/field';
 import { ItemDetails } from '@/lib/types';
 
 interface ItemFormErrors {
@@ -41,30 +42,27 @@ export function StoreInputContainer({
       )}
       {itemForm.stores.map((store, index) => {
         const err = itemFormErrors.stores[index];
+        const parsedPrice = store.price ? parseFloat(String(store.price)) : NaN;
+        const priceAmount = Number.isFinite(parsedPrice) ? parsedPrice : null;
         return (
           <div key={index} className="if-store-row">
-            <input
-              className={`form-input ${err?.name ? 'form-input-error' : ''}`}
+            <TextField
+              aria-label={`Store ${index + 1} name`}
+              error={err?.name || undefined}
               placeholder="Store name"
               value={store.name || ''}
               onChange={(e) => handleStoreChange(index, e.target.value, 'name')}
               autoComplete="off"
             />
-            <div className="if-price-wrap">
-              <span className="if-dollar">$</span>
-              <input
-                className={`form-input if-price-in ${err?.price ? 'form-input-error' : ''}`}
-                inputMode="decimal"
-                placeholder="0.00"
-                value={store.price || ''}
-                onChange={(e) =>
-                  handleStoreChange(index, e.target.value, 'price')
-                }
-                autoComplete="off"
-              />
-            </div>
-            <input
-              className={`form-input ${err?.link ? 'form-input-error' : ''}`}
+            <PriceField
+              aria-label={`Store ${index + 1} price`}
+              error={err?.price || undefined}
+              amount={priceAmount}
+              onChange={(v) => handleStoreChange(index, v.toFixed(2), 'price')}
+            />
+            <TextField
+              aria-label={`Store ${index + 1} link`}
+              error={err?.link || undefined}
               type="url"
               placeholder="https://..."
               value={store.link || ''}

@@ -1,9 +1,11 @@
 // ListSelection.tsx — inline chip picker matching the Stage 5 mockup.
 'use client';
 
-import { FormGroup, FormLabel } from '@/app/ui/components/Form/Form';
+import { FieldError } from '@/app/ui/components/field';
+import { PopoverTrigger } from '@/app/ui/components/popover-trigger';
+import { usePopoverDismiss } from '@/app/ui/hooks/usePopoverDismiss';
 import { OptionType } from '@/lib/types';
-import { useEffect, useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
 interface ListSelectionProps {
   options: OptionType[];
@@ -32,21 +34,14 @@ export function ListSelection({
   });
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const reactId = useId();
+  const errorId = error ? `${reactId}-error` : undefined;
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (
-        wrapRef.current &&
-        !wrapRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, [open]);
+  usePopoverDismiss({
+    open,
+    onClose: () => setOpen(false),
+    ref: wrapRef,
+  });
 
   const remove = (value: string) => {
     const next = selected.filter((s) => s.value !== value);
@@ -66,12 +61,18 @@ export function ListSelection({
     (o) => !selected.some((s) => s.value === o.value)
   );
 
+  // ListSelection is a custom popover-listbox composite, not a single field
+  // primitive — FormField's cloneElement injection doesn't fit. We wire the
+  // label/error association manually here (the documented exception per
+  // standardize-form-fields spec, requirement "All form-field call sites").
   return (
-    <FormGroup>
-      <FormLabel htmlFor={`${name}-trigger`}>Lists</FormLabel>
+    <div className="form_field_group">
+      <label htmlFor={`${name}-trigger`} className="form_field_label">
+        Lists
+      </label>
       <div
         ref={wrapRef}
-        className={`if-lp${error ? ' form-input-error' : ''}`}
+        className={`if-lp${error ? ' if-lp--invalid' : ''}`}
       >
         <div className="if-lp-top">
           {selected.map((s) => (
@@ -90,34 +91,18 @@ export function ListSelection({
               </button>
             </span>
           ))}
-          <button
-            type="button"
+          <PopoverTrigger
             id={`${name}-trigger`}
-            className="form-input if-lp-trigger"
+            label={
+              selected.length === 0 ? placeholder : 'Add another list…'
+            }
             onClick={() => setOpen((o) => !o)}
             disabled={isPending}
             aria-haspopup="listbox"
             aria-expanded={open}
-          >
-            <span className="if-lp-trigger-label">
-              {selected.length === 0 ? placeholder : 'Add another list…'}
-            </span>
-            <svg
-              width="10"
-              height="6"
-              viewBox="0 0 10 6"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M1 1l4 4 4-4"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+            aria-invalid={error ? true : undefined}
+            aria-describedby={errorId}
+          />
         </div>
         {open && (
           <div className="if-lp-menu" role="listbox">
@@ -139,7 +124,7 @@ export function ListSelection({
           </div>
         )}
       </div>
-      {error && <div className="input-error">{error}</div>}
-    </FormGroup>
+      {error && errorId && <FieldError id={errorId}>{error}</FieldError>}
+    </div>
   );
 }

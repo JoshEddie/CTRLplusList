@@ -1,13 +1,20 @@
 'use client';
 
 import { archiveItem, createPurchase, removePurchase } from '@/app/actions/items';
+import { Button } from '@/app/ui/components/button';
+import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
 import { ItemDisplay, PurchaseView } from '@/lib/types';
-import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { MdArchive, MdModeEdit, MdUnarchive } from 'react-icons/md';
+import {
+  MdArchive,
+  MdModeEdit,
+  MdMoreHoriz,
+  MdUnarchive,
+} from 'react-icons/md';
 import '../styles/item.css';
+import EditItemButton from './EditItemButton';
 import ItemPhoto from './ItemPhoto';
 import Purchase from './Purchase';
 import Modal from './purchasemodal/Modal';
@@ -30,6 +37,7 @@ export default function Item({
   user_name,
   showArchiveAction,
   archivedView,
+  preview,
 }: {
   item: ItemDisplay;
   className?: string;
@@ -37,6 +45,8 @@ export default function Item({
   user_name?: string | null;
   showArchiveAction?: boolean;
   archivedView?: boolean;
+  /** Render as a live preview inside the item form: no modal, no interactions. */
+  preview?: boolean;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -77,7 +87,11 @@ export default function Item({
   );
 
   const hasAnyClaim = claimCount > 0;
-  const showPurchased = hasAnyClaim && !isOwner;
+  // "Sold out" treatment (strikethrough price, faded stores, hidden claim
+  // button) only fires when the item is fully claimed. Partial multi-claim
+  // and unlimited items still accept buyers, so stores + claim button stay
+  // live and price stays unstruck.
+  const showPurchased = isFullyClaimed && !isOwner;
   // Owner only sees purchase state when spoilers are on (DAL returns empty otherwise)
   const showSpoilerInfo = hasAnyClaim && isOwner;
 
@@ -167,13 +181,16 @@ export default function Item({
   const showCounter = quantityLimit !== 1;
   const counterText =
     quantityLimit == null
-      ? `${claimCount} claimed`
+      ? `${claimCount}/∞ claimed`
       : `${claimCount}/${quantityLimit} claimed`;
+
+  const kebabRef = useRef<HTMLButtonElement>(null);
+  const [kebabOpen, setKebabOpen] = useState(false);
 
   return (
     <>
       <div
-        className={`item-container ${className || ''} ${isOwner ? 'owner' : ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''}`}
+        className={`item-container ${className || ''} ${isOwner ? 'owner' : ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''} ${myClaim ? 'has-my-claim' : ''} ${preview ? 'preview' : ''}`}
       >
         <div
           className={`item ${className || ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''}`}
@@ -228,7 +245,7 @@ export default function Item({
             Claimed by {claimSummary}
           </div>
         )}
-        {showPurchased && myClaim && (
+        {!isOwner && myClaim && (
           <div
             className="purchased-banner purchased-banner--mine"
             role="status"
@@ -246,6 +263,14 @@ export default function Item({
               <polyline points="20 6 9 17 4 12" />
             </svg>
             You claimed this
+            <button
+              type="button"
+              className="purchased-banner-undo"
+              onClick={handlePurchaseClick}
+              aria-label="Remove your claim"
+            >
+              Undo
+            </button>
           </div>
         )}
         {showSpoilerInfo && (
@@ -296,23 +321,73 @@ export default function Item({
                 {archivedView ? <MdUnarchive /> : <MdArchive />}
               </button>
             )}
-            <Link
-              href={`/items/${item.id}?returnTo=${encodeURIComponent(
-                pathname +
-                  (searchParams?.toString()
-                    ? `?${searchParams.toString()}`
-                    : '')
-              )}`}
-              className="edit-button"
-              aria-label="Edit item"
+            {user_id && <EditItemButton itemId={item.id} user_id={user_id} />}
+          </div>
+        )}
+        {isOwner && (
+          <div className="item-owner-actions-mobile">
+            <Button
+              ref={kebabRef}
+              variant="ghost"
+              size="sm"
+              className="item-owner-actions-kebab"
+              aria-haspopup="menu"
+              aria-expanded={kebabOpen}
+              aria-label="Item actions"
+              onClick={() => setKebabOpen((o) => !o)}
             >
-              <MdModeEdit />
-            </Link>
+              <MdMoreHoriz />
+            </Button>
+            <Menu
+              open={kebabOpen}
+              onClose={() => setKebabOpen(false)}
+              anchorRef={kebabRef}
+              aria-label="Item actions"
+            >
+              <MenuLinkItem
+                href={`/items/${item.id}?returnTo=${encodeURIComponent(
+                  pathname +
+                    (searchParams?.toString()
+                      ? `?${searchParams.toString()}`
+                      : '')
+                )}`}
+                icon={<MdModeEdit size={18} />}
+                onClick={() => setKebabOpen(false)}
+              >
+                Edit
+              </MenuLinkItem>
+              {showArchiveAction && (
+                <MenuItem
+                  icon={
+                    archivedView ? (
+                      <MdUnarchive size={18} />
+                    ) : (
+                      <MdArchive size={18} />
+                    )
+                  }
+                  onClick={async () => {
+                    setKebabOpen(false);
+                    const nextArchived = !archivedView;
+                    const result = await toast.promise(
+                      archiveItem(item.id, nextArchived),
+                      {
+                        loading: nextArchived ? 'Archiving' : 'Unarchiving',
+                        success: nextArchived ? 'Archived' : 'Unarchived',
+                        error: 'Failed',
+                      }
+                    );
+                    if (result?.success) router.refresh();
+                  }}
+                >
+                  {archivedView ? 'Unarchive' : 'Archive'}
+                </MenuItem>
+              )}
+            </Menu>
           </div>
         )}
       </div>
 
-      {showModal && (
+      {!preview && showModal && (
         <>
           {!myClaim ? (
             <Modal onClose={handleModalClose}>

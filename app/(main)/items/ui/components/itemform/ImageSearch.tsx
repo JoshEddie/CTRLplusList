@@ -1,5 +1,6 @@
 'use client';
 
+import { FieldError, SearchField } from '@/app/ui/components/field';
 import {
   useCallback,
   useEffect,
@@ -180,15 +181,14 @@ export function ImageSearch({
 
         <div className="image-modal-body">
           <div className="search-input-container">
-            <input
+            <SearchField
               ref={searchInputRef}
-              type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleInputKeyDown}
               disabled={disabled || isSearching}
               placeholder="Search for an image..."
-              className="form-input"
+              aria-label="Search for an image"
               autoComplete="off"
             />
             <button
@@ -201,7 +201,7 @@ export function ImageSearch({
             </button>
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && <FieldError>{error}</FieldError>}
 
           {searchResults.length > 0 && (
             <ImageResultsViewer

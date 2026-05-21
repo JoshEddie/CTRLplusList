@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/app/ui/components/button';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import PageSizeSelect from './PageSizeSelect';
@@ -49,42 +50,42 @@ export default function Pagination({
 
   return (
     <nav className="items-pagination" aria-label="Pagination">
-      <button
-        type="button"
-        className="items-page-btn"
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => goToPage(page - 1)}
         disabled={page <= 1}
         aria-label="Previous page"
       >
         <MdChevronLeft />
-      </button>
+      </Button>
       {range.map((entry, idx) =>
         entry === 'gap' ? (
           <span key={`gap-${idx}`} className="items-page-gap" aria-hidden>
             …
           </span>
         ) : (
-          <button
+          <Button
             key={entry}
-            type="button"
-            className={`items-page-btn ${entry === page ? 'active' : ''}`}
+            variant={entry === page ? 'primary' : 'ghost'}
+            size="sm"
             onClick={() => goToPage(entry)}
             aria-current={entry === page ? 'page' : undefined}
             aria-label={`Page ${entry}`}
           >
             {entry}
-          </button>
+          </Button>
         )
       )}
-      <button
-        type="button"
-        className="items-page-btn"
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => goToPage(page + 1)}
         disabled={page >= totalPages}
         aria-label="Next page"
       >
         <MdChevronRight />
-      </button>
+      </Button>
       <PageSizeSelect value={pageSize} onChange={onPageSizeChange} />
     </nav>
   );

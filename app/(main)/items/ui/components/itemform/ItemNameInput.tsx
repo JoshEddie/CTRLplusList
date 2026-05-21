@@ -1,7 +1,6 @@
-// ItemNameInput.tsx
 'use client';
 
-import { FormGroup, FormLabel } from '@/app/ui/components/Form/Form';
+import { TextField } from '@/app/ui/components/field';
 
 interface ItemNameInputProps {
   value: string;
@@ -17,19 +16,15 @@ export function ItemNameInput({
   disabled,
 }: ItemNameInputProps) {
   return (
-    <FormGroup>
-      <FormLabel>Name*</FormLabel>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        className={`form-input ${error ? 'form-input-error' : ''}`}
-        placeholder="Item Name"
-        required
-        autoComplete="off"
-      />
-      <div className="input-error">{error}</div>
-    </FormGroup>
+    <TextField
+      label="Name"
+      required
+      error={error || undefined}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      placeholder="Item Name"
+      autoComplete="off"
+    />
   );
 }

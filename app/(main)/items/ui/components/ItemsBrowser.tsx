@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/app/ui/components/button';
 import { ItemDisplay, SortKey } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -185,13 +186,9 @@ export default function ItemsBrowser({
       {filteredSorted.length === 0 ? (
         <div className="items-empty-filtered">
           <p>No items match your filters.</p>
-          <button
-            type="button"
-            className="btn secondary"
-            onClick={clearFilters}
-          >
+          <Button variant="secondary" onClick={clearFilters}>
             Clear filters
-          </button>
+          </Button>
         </div>
       ) : (
         <>

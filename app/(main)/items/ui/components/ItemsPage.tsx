@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/app/ui/components/button';
 import Empty from '@/app/ui/components/Empty';
 import Header from '@/app/ui/components/Header';
 import { ItemDisplay, ListTable } from '@/lib/types';
@@ -49,10 +50,10 @@ export default function ItemsPage({
   return (
     <>
       <Header title="Items">
-        <button className="btn primary" onClick={() => setShowNewItem(true)}>
+        <Button variant="primary" onClick={() => setShowNewItem(true)}>
           <FaPlus size={14} />
           <span className="mobile-hide">New Item</span>
-        </button>
+        </Button>
       </Header>
 
       <div

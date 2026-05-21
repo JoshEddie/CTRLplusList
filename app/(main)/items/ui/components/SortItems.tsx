@@ -1,8 +1,8 @@
 'use client';
 
 import { updatePriority } from '@/app/actions/lists';
+import { LinkButton } from '@/app/ui/components/button';
 import { ItemDisplay } from '@/lib/types';
-import Link from 'next/link';
 import { MdChecklist } from 'react-icons/md';
 import {
   closestCenter,
@@ -40,10 +40,10 @@ function EmptyListCTA({ listId }: { listId: string }) {
     <div className="empty-container">
       <h3>No items on this list yet</h3>
       <p>Pick from your item library or create a new one.</p>
-      <Link href={`/lists/${listId}/choose-items`} className="btn primary">
+      <LinkButton href={`/lists/${listId}/choose-items`} variant="primary">
         <MdChecklist size={18} />
         Choose items
-      </Link>
+      </LinkButton>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/app/ui/components/button';
 import { MdCheck, MdLock } from 'react-icons/md';
 import '../styles/purchase.css';
 
@@ -40,7 +41,9 @@ export default function Purchase({
       <div className={`claimed-state ${className || ''}`} role="status">
         <span className="claimed-state-label">
           <MdCheck aria-hidden />
-          {purchasedBy === 'You' ? 'You claimed this' : `Claimed: ${purchasedBy}`}
+          {purchasedBy === 'You'
+            ? 'You claimed this'
+            : `Claimed: ${purchasedBy}`}
         </span>
         <button
           type="button"
@@ -55,13 +58,13 @@ export default function Purchase({
   }
 
   return (
-    <button
-      type="button"
-      className={`claim-cta-btn ${className || ''}`}
+    <Button
+      variant="primary"
+      className="claim-cta-btn"
       onClick={onClick}
       aria-label="Claim this item"
     >
       Claim this gift
-    </button>
+    </Button>
   );
 }

@@ -1,15 +1,15 @@
 'use client';
 
+import { SearchField, SelectField } from '@/app/ui/components/field';
+import { PopoverTrigger } from '@/app/ui/components/popover-trigger';
+import {
+  SegmentedControl,
+  SegmentedOption,
+} from '@/app/ui/components/segmented-control';
 import { SortKey } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import {
-  MdClose,
-  MdGridView,
-  MdSearch,
-  MdTune,
-  MdViewList,
-} from 'react-icons/md';
+import { MdClose, MdGridView, MdTune, MdViewList } from 'react-icons/md';
 import PriceFilterPopover from './PriceFilterPopover';
 import StoreFilterPopover from './StoreFilterPopover';
 
@@ -21,6 +21,7 @@ interface ItemsToolbarProps {
   showStoreSort: boolean;
   showPriceSort: boolean;
   showPriceFilter: boolean;
+  showGridToggle?: boolean;
 }
 
 const SORT_LABELS: Record<SortKey, string> = {
@@ -72,6 +73,7 @@ export default function ItemsToolbar({
   showStoreSort,
   showPriceSort,
   showPriceFilter,
+  showGridToggle = true,
 }: ItemsToolbarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -225,43 +227,29 @@ export default function ItemsToolbar({
     (priceMin || priceMax ? 1 : 0);
 
   return (
-    <div className="items-toolbar">
+    <div className={`items-toolbar ${!showGridToggle ? 'hide-grid-toggle' : ''}`}>
       <div className="items-toolbar-row">
         <div className="items-search items-toolbar-cell--search">
-          <MdSearch className="items-search-icon" />
-          <input
-            type="search"
-            className="items-search-input"
+          <SearchField
             placeholder="Search items..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
+            onClear={() => setSearchInput('')}
             aria-label="Search items"
           />
-          {searchInput && (
-            <button
-              type="button"
-              className="items-search-clear"
-              onClick={() => setSearchInput('')}
-              aria-label="Clear search"
-            >
-              <MdClose />
-            </button>
-          )}
         </div>
 
-        <button
-          type="button"
-          className={`items-toolbar-filters-trigger items-toolbar-cell--filters ${filterCount > 0 ? 'active' : ''}`}
+        <PopoverTrigger
+          className="items-toolbar-cell--filters"
+          icon={<MdTune />}
+          label="Filters"
+          count={filterCount || undefined}
+          active={filterCount > 0}
           onClick={() => setFiltersOpen(true)}
           aria-label="Open filters"
           aria-expanded={filtersOpen}
-        >
-          <MdTune />
-          <span>Filters</span>
-          {filterCount > 0 && (
-            <span className="items-toolbar-filters-badge">{filterCount}</span>
-          )}
-        </button>
+          aria-haspopup="dialog"
+        />
 
         <div
           className={`items-toolbar-filters-group ${filtersOpen ? 'is-open' : ''}`}
@@ -280,9 +268,10 @@ export default function ItemsToolbar({
             </button>
           </div>
 
-          <label className="items-sort items-toolbar-cell--sort">
-            <span className="sr-only">Sort</span>
-            <select
+          {/* Toolbar selects render as bare SelectField with aria-label only
+              (labels are implied by the option text itself). */}
+          <div className="items-toolbar-cell--sort">
+            <SelectField
               value={sort}
               onChange={(e) =>
                 updateParams({
@@ -291,19 +280,16 @@ export default function ItemsToolbar({
                 })
               }
               aria-label="Sort items"
-            >
-              {sortOptions.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={sortOptions.map((o) => ({
+                value: o.value,
+                label: o.label,
+              }))}
+            />
+          </div>
 
           {mode !== 'choose' && (
-            <label className="items-sort items-toolbar-cell--purchases">
-              <span className="sr-only">Purchases</span>
-              <select
+            <div className="items-toolbar-cell--purchases">
+              <SelectField
                 value={purchases}
                 onChange={(e) =>
                   updateParams({
@@ -315,26 +301,25 @@ export default function ItemsToolbar({
               >
                 {mode === 'items' ? (
                   <>
-                    <option value="hide">Purchases: Hide</option>
-                    <option value="reveal">Purchases: Reveal</option>
+                    <option value="hide">Hide purchases</option>
+                    <option value="reveal">Reveal purchases</option>
                     <option value="only">Only purchased</option>
                     <option value="none">Only not purchased</option>
                   </>
                 ) : (
                   <>
-                    <option value="hide">Purchases: All</option>
+                    <option value="hide">All</option>
                     <option value="only">Only purchased</option>
                     <option value="none">Only not purchased</option>
                   </>
                 )}
-              </select>
-            </label>
+              </SelectField>
+            </div>
           )}
 
           {mode === 'choose' && (
-            <label className="items-sort items-toolbar-cell--purchases">
-              <span className="sr-only">Show</span>
-              <select
+            <div className="items-toolbar-cell--purchases">
+              <SelectField
                 value={show}
                 onChange={(e) =>
                   updateParams({
@@ -343,12 +328,13 @@ export default function ItemsToolbar({
                   })
                 }
                 aria-label="Show items by list membership"
-              >
-                <option value="all">Show: All</option>
-                <option value="on">Show: Only on the list</option>
-                <option value="off">Show: Only not on the list</option>
-              </select>
-            </label>
+                options={[
+                  { value: 'all', label: 'All' },
+                  { value: 'on', label: 'Only on the list' },
+                  { value: 'off', label: 'Only not on the list' },
+                ]}
+              />
+            </div>
           )}
 
           {storeOptions.length > 0 && (
@@ -383,39 +369,30 @@ export default function ItemsToolbar({
         </div>
 
         {filtersOpen && (
-          <button
-            type="button"
+          <div
             className="items-toolbar-filters-scrim"
             onClick={() => setFiltersOpen(false)}
-            aria-label="Close filters"
-            tabIndex={-1}
+            role="presentation"
           />
         )}
 
-        <div className="view-toggle items-toolbar-cell--view" role="group" aria-label="View toggle">
-          <button
-            type="button"
-            className={`view-toggle-btn ${view === 'grid' ? 'active' : ''}`}
-            onClick={() =>
-              updateParams({ view: view === 'grid' ? null : 'grid' })
+        {showGridToggle && <div className="items-toolbar-cell--view">
+          <SegmentedControl
+            value={view}
+            onChange={(v) =>
+              updateParams({ view: v === 'grid' ? null : v })
             }
-            aria-label="Grid view"
-            aria-pressed={view === 'grid'}
-            title="Grid view"
+            tone="light"
+            aria-label="View toggle"
           >
-            <MdGridView />
-          </button>
-          <button
-            type="button"
-            className={`view-toggle-btn ${view === 'list' ? 'active' : ''}`}
-            onClick={() => updateParams({ view: 'list' })}
-            aria-label="List view"
-            aria-pressed={view === 'list'}
-            title="List view"
-          >
-            <MdViewList />
-          </button>
-        </div>
+            <SegmentedOption value="grid" aria-label="Grid view" title="Grid view">
+              <MdGridView />
+            </SegmentedOption>
+            <SegmentedOption value="list" aria-label="List view" title="List view">
+              <MdViewList />
+            </SegmentedOption>
+          </SegmentedControl>
+        </div>}
       </div>
 
       {chips.length > 0 && (

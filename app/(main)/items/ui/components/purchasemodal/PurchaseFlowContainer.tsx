@@ -1,4 +1,5 @@
 import SignInButton from '@/app/(auth)/ui/components/SignInButton';
+import { TextField } from '@/app/ui/components/field';
 import ModalButtons from './ModalButtons';
 import PurchaseFlow from './PurchaseFlow';
 
@@ -28,12 +29,11 @@ export default function PurchaseFlowContainer({
           <SignInButton />
           <div className="guest-purchase">
             <p>Or continue as guest:</p>
-            <input
-              type="text"
+            <TextField
+              label="Your name"
               value={guestName}
               onChange={(e) => setGuestName(e.target.value)}
               placeholder="Your name"
-              className="guest-name-input"
             />
             <ModalButtons
               primary_button_text="Purchase as Guest"
@@ -73,12 +73,11 @@ export default function PurchaseFlowContainer({
 
           {purchaseFlow === 'other' && (
             <PurchaseFlow primary_text="Who purchased this item?">
-              <input
-                type="text"
+              <TextField
+                label="Purchaser's name"
                 value={guestName}
                 onChange={(e) => setGuestName(e.target.value)}
                 placeholder="Purchaser's name"
-                className="guest-name-input"
               />
               <ModalButtons
                 primary_button_text="Confirm Purchase"

@@ -1,14 +1,10 @@
 // ItemForm.tsx
 'use client';
 
-import {
-  FormGroup,
-  FormLabel,
-  FormTextarea,
-} from '@/app/ui/components/Form/Form';
+import { TextareaField } from '@/app/ui/components/field';
 import { FormShell, FormShellFooter } from '@/app/ui/components/FormShell';
 import {
-  ItemDetails,
+  ItemDisplay,
   ItemStoreTable,
   ItemTable,
   ListTable,
@@ -16,10 +12,11 @@ import {
 } from '@/lib/types';
 import { useMemo } from 'react';
 import DeleteItemButton from '../DeleteItemButton';
+import Item from '../Item';
 import { ImageUrlInput } from './ImageUrlInput';
 import { ItemNameInput } from './ItemNameInput';
 import { ListSelection } from './ListSelection';
-import { QuantityLimitSelect } from './QuantityLimitSelect';
+import { QuantityLimitField } from './QuantityLimitField';
 import { StoreInputContainer } from './StoreInput';
 import { useItemForm } from './useItemForm';
 
@@ -70,7 +67,24 @@ export default function ItemForm({
   const closeHref = returnTo ?? '/items';
   const title = isEditing ? `Edit ${item.name || 'Item'}` : 'New Item';
 
-  const previewCard = <ItemPreviewCard form={formState} />;
+  // Live preview renders the real <Item> card in preview mode (no modal,
+  // pointer-events disabled). Map form state → ItemDisplay; the
+  // never-rendered timestamp fields are stubbed.
+  const previewItem: ItemDisplay = {
+    id: formState.id || 'preview',
+    name: formState.name,
+    description: formState.description,
+    image_url: formState.image_url,
+    quantity_limit: formState.quantity_limit,
+    user_id: formState.user_id,
+    stores: formState.stores.filter((s) => s.name || s.price || s.link),
+    purchases: [],
+    created_at: new Date(),
+    updated_at: new Date(),
+  };
+  const previewCard = (
+    <Item item={previewItem} user_id={user_id} preview className="preview" />
+  );
 
   const sections = (
     <>
@@ -81,28 +95,23 @@ export default function ItemForm({
           onChange={handleNameChange}
           disabled={isPending}
         />
-        <FormGroup>
-          <FormLabel>Description</FormLabel>
-          <FormTextarea
-            value={formState.description}
-            onChange={(e) => handleDescriptionChange(e.target.value)}
-            disabled={isPending}
-            placeholder="Add a description... (optional)"
-            rows={2}
-          />
-        </FormGroup>
+        <TextareaField
+          label="Description"
+          value={formState.description}
+          onChange={(e) => handleDescriptionChange(e.target.value)}
+          disabled={isPending}
+          placeholder="Add a description... (optional)"
+          rows={2}
+        />
       </Section>
 
       <Section label="IMAGE">
-        <FormGroup>
-          <FormLabel>URL</FormLabel>
-          <ImageUrlInput
-            value={formState.image_url}
-            error={errors.image_url}
-            onChange={handleImageUrlChange}
-            disabled={isPending}
-          />
-        </FormGroup>
+        <ImageUrlInput
+          value={formState.image_url}
+          error={errors.image_url}
+          onChange={handleImageUrlChange}
+          disabled={isPending}
+        />
       </Section>
 
       <Section label="STORES & PRICES">
@@ -129,7 +138,7 @@ export default function ItemForm({
           isMulti={true}
           error={errors.lists}
         />
-        <QuantityLimitSelect
+        <QuantityLimitField
           value={formState.quantity_limit}
           onChange={handleQuantityLimitChange}
           isPending={isPending}
@@ -184,6 +193,7 @@ export default function ItemForm({
                 id={item.id}
                 userId={user_id}
                 returnTo={returnTo}
+                onDeleted={onClose}
               />
             ) : undefined
           }
@@ -210,69 +220,3 @@ function Section({
   );
 }
 
-function ItemPreviewCard({ form }: { form: ItemDetails }) {
-  const stores = form.stores || [];
-  const firstStore = stores.find((s) => s.name);
-  const rawPrice = firstStore?.price ? parseFloat(String(firstStore.price)) : NaN;
-  const price = Number.isFinite(rawPrice) ? rawPrice : null;
-  const storeCount = stores.filter((s) => s.name).length;
-
-  return (
-    <div className="if-prev-full">
-      <div className="if-prev-full-img">
-        {form.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={form.image_url}
-            alt=""
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = 'none';
-            }}
-          />
-        ) : (
-          <div className="if-prev-full-ph" aria-hidden="true">
-            <svg
-              width="32"
-              height="32"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.2"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="3" />
-              <circle
-                cx="8.5"
-                cy="8.5"
-                r="1.5"
-                fill="currentColor"
-                stroke="none"
-              />
-              <path d="M21 15l-5-5L5 21" strokeLinejoin="round" />
-            </svg>
-          </div>
-        )}
-      </div>
-      <div className="if-prev-full-body">
-        <div className="if-prev-full-name">
-          {form.name || <span className="if-prev-full-name-ph">Item Name</span>}
-        </div>
-        {firstStore?.name && (
-          <div className="if-prev-from">
-            FROM {firstStore.name.toUpperCase()}
-          </div>
-        )}
-        <div className="if-prev-btm">
-          {price !== null && (
-            <span className="if-prev-price">${price.toFixed(2)}</span>
-          )}
-          {firstStore?.name && (
-            <span className="if-prev-chip">{firstStore.name}</span>
-          )}
-          {storeCount > 1 && (
-            <span className="if-prev-more">+{storeCount - 1}</span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
