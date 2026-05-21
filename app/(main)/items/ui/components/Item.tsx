@@ -125,17 +125,18 @@ export default function Item({
   const handleUndoConfirm = async () => {
     if (!item.id) return;
     try {
-      const result = await toast.promise(
-        removePurchase({
-          item_id: item.id,
-          guest_name: guestName || null,
-        }),
-        {
-          loading: 'Removing purchased status',
-          success: 'Purchased status removed successfully',
-          error: 'Failed to remove purchased status',
-        }
-      );
+      // Prefer purchase_id (works for both signed-in and guest paths and is
+      // immune to display-name collisions). Fall back to the legacy
+      // item_id-scoped shape, which the server only honors for signed-in
+      // callers.
+      const payload = myClaim
+        ? { purchase_id: myClaim.id, guest_name: guestName || null }
+        : { item_id: item.id, guest_name: guestName || null };
+      const result = await toast.promise(removePurchase(payload), {
+        loading: 'Removing purchased status',
+        success: 'Purchased status removed successfully',
+        error: 'Failed to remove purchased status',
+      });
       if (result?.success && myClaim) {
         setLocalPurchases((prev) => prev.filter((p) => p.id !== myClaim.id));
       }
@@ -150,10 +151,13 @@ export default function Item({
     user_purchase: boolean = false
   ) => {
     try {
+      // user_purchase: signed-in self-claim — server resolves user from session.
+      // !user_purchase: guest path — supply guest_name. Server ignores
+      // guest_name when the caller has a session.
       const payload =
         user_purchase && user_id
-          ? { item_id: item.id || '', user_id, guest_name: null }
-          : { item_id: item.id || '', user_id: null, guest_name: name };
+          ? { item_id: item.id || '', guest_name: null }
+          : { item_id: item.id || '', guest_name: name };
 
       const result = await toast.promise(createPurchase(payload), {
         loading: 'Adding purchased status',

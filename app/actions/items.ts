@@ -8,11 +8,15 @@ import {
   getListsByUser,
   getUserIdByEmail,
 } from '@/lib/dal';
+import { isItemViewable } from '@/lib/listAccess';
 import { ItemDetails } from '@/lib/types';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
+
+// Postgres unique-violation error code.
+const PG_UNIQUE_VIOLATION = '23505';
 
 export async function getItemEditData(itemId: string) {
   const session = await auth();
@@ -27,7 +31,9 @@ export async function getItemEditData(itemId: string) {
   return { item, lists };
 }
 
-// Define Zod schema for item validation
+// Define Zod schema for item validation. The actor's user_id is resolved
+// server-side from the session, never accepted from the client payload — see
+// openspec/specs/server-endpoint-authorization.
 const ItemSchema = z.object({
   name: z
     .string()
@@ -55,8 +61,6 @@ const ItemSchema = z.object({
         return false;
       }
     }),
-
-  user_id: z.string().min(1, 'User ID is required'),
 
   // Optional fields
   quantity_limit: z
@@ -124,15 +128,53 @@ export type ActionResponse = {
 
 export async function createPurchase(data: {
   item_id: string;
-  user_id: string | null;
   guest_name: string | null;
 }): Promise<ActionResponse> {
   try {
+    const session = await auth();
+
+    let actorUserId: string | null = null;
+    let guestName: string | null = null;
+    if (session?.user?.email) {
+      const sessionUser = await db.query.users.findFirst({
+        where: eq(users.email, session.user.email),
+        columns: { id: true },
+      });
+      if (!sessionUser) {
+        return {
+          success: false,
+          message: 'User not found',
+          error: 'Unauthorized',
+        };
+      }
+      actorUserId = sessionUser.id;
+    } else {
+      const trimmed = data.guest_name?.trim() ?? '';
+      if (!trimmed) {
+        return {
+          success: false,
+          message: 'Cannot identify which claim to add',
+          error: 'Missing identity',
+        };
+      }
+      guestName = trimmed;
+    }
+
+    // Gate by viewability: items on lists the caller can't see are unclaimable.
+    // Indistinguishable from a missing item on purpose.
+    const viewable = await isItemViewable(data.item_id, actorUserId);
+    if (!viewable) {
+      return {
+        success: false,
+        message: 'Item not found',
+        error: 'Item not found',
+      };
+    }
+
     const item = await db.query.items.findFirst({
       where: eq(items.id, data.item_id),
       columns: { quantity_limit: true },
     });
-
     if (!item) {
       return {
         success: false,
@@ -151,9 +193,9 @@ export async function createPurchase(data: {
       .where(eq(purchases.item_id, data.item_id));
 
     const isDuplicate = existing.some((p) =>
-      data.user_id
-        ? p.user_id === data.user_id
-        : !!data.guest_name && p.guest_name === data.guest_name
+      actorUserId
+        ? p.user_id === actorUserId
+        : !!guestName && p.guest_name === guestName
     );
     if (isDuplicate) {
       return {
@@ -174,13 +216,32 @@ export async function createPurchase(data: {
       };
     }
 
-    await db.insert(purchases).values({
-      id: nanoid(),
-      item_id: data.item_id,
-      user_id: data.user_id,
-      guest_name: data.guest_name,
-      purchased_at: new Date(),
-    });
+    try {
+      await db.insert(purchases).values({
+        id: nanoid(),
+        item_id: data.item_id,
+        user_id: actorUserId,
+        guest_name: guestName,
+        purchased_at: new Date(),
+      });
+    } catch (insertError) {
+      // Partial unique index trip (purchases_item_user_unique_idx): a
+      // duplicate claim by the same authenticated user slipped past the
+      // in-app check because two requests raced against distinct DB
+      // sessions. The capacity-race for guest claims / different users on a
+      // limited item is not closed at the DB layer (neon-http driver does
+      // not support interactive transactions, so SELECT … FOR UPDATE is not
+      // available). Accepted as a known limitation.
+      const code = (insertError as { code?: string } | null)?.code;
+      if (code === PG_UNIQUE_VIOLATION) {
+        return {
+          success: false,
+          message: 'You have already claimed this item',
+          error: 'Duplicate claim',
+        };
+      }
+      throw insertError;
+    }
 
     updateTag('items');
 
@@ -195,27 +256,83 @@ export async function createPurchase(data: {
   }
 }
 
-export async function removePurchase(data: {
-  item_id: string;
-  guest_name?: string | null;
-}): Promise<ActionResponse> {
+type RemovePurchaseInput =
+  | { purchase_id: string; guest_name?: string | null }
+  | { item_id: string; guest_name?: string | null };
+
+export async function removePurchase(
+  data: RemovePurchaseInput
+): Promise<ActionResponse> {
   try {
     const session = await auth();
-    let userId: string | null = null;
+    let actorUserId: string | null = null;
     if (session?.user?.email) {
       const user = await db.query.users.findFirst({
         where: eq(users.email, session.user.email),
         columns: { id: true },
       });
-      userId = user?.id ?? null;
+      actorUserId = user?.id ?? null;
     }
 
-    const conditions = [eq(purchases.item_id, data.item_id)];
-    if (userId) {
-      conditions.push(eq(purchases.user_id, userId));
-    } else if (data.guest_name) {
-      conditions.push(eq(purchases.guest_name, data.guest_name));
-    } else {
+    if ('purchase_id' in data && data.purchase_id) {
+      const row = await db.query.purchases.findFirst({
+        where: eq(purchases.id, data.purchase_id),
+        columns: { id: true, user_id: true, guest_name: true },
+      });
+      if (!row) {
+        return {
+          success: false,
+          message: 'Claim not found',
+          error: 'Not found',
+        };
+      }
+
+      if (actorUserId) {
+        if (row.user_id !== actorUserId) {
+          return {
+            success: false,
+            message: 'Not your claim',
+            error: 'Not your claim',
+          };
+        }
+      } else {
+        // Guest path: row must be a guest row AND the supplied guest_name must
+        // match. Without this, any guest who knew a purchase id could revoke it.
+        if (row.user_id !== null) {
+          return {
+            success: false,
+            message: 'Not your claim',
+            error: 'Not your claim',
+          };
+        }
+        const supplied = data.guest_name?.trim() ?? '';
+        if (!supplied || row.guest_name !== supplied) {
+          return {
+            success: false,
+            message: 'Not your claim',
+            error: 'Not your claim',
+          };
+        }
+      }
+
+      await db.delete(purchases).where(eq(purchases.id, row.id));
+      updateTag('items');
+      return {
+        success: true,
+        message: 'Item marked as not purchased successfully',
+      };
+    }
+
+    // Legacy item-scoped path: only authenticated callers are permitted.
+    // Guests must use the purchase_id shape (see spec).
+    if (!('item_id' in data) || !data.item_id) {
+      return {
+        success: false,
+        message: 'Cannot identify which claim to remove',
+        error: 'Missing identity',
+      };
+    }
+    if (!actorUserId) {
       return {
         success: false,
         message: 'Cannot identify which claim to remove',
@@ -223,7 +340,14 @@ export async function removePurchase(data: {
       };
     }
 
-    await db.delete(purchases).where(and(...conditions));
+    await db
+      .delete(purchases)
+      .where(
+        and(
+          eq(purchases.item_id, data.item_id),
+          eq(purchases.user_id, actorUserId)
+        )
+      );
 
     updateTag('items');
 
@@ -243,9 +367,8 @@ export async function removePurchase(data: {
 
 export async function createItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -253,7 +376,18 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       };
     }
 
-    // Validate with Zod
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User not found',
+        error: 'Unauthorized',
+      };
+    }
+
     const validationResult = ItemSchema.safeParse(data);
     if (!validationResult.success) {
       const errors = validationResult.error.flatten();
@@ -266,8 +400,6 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
     }
 
     const id = nanoid();
-
-    // Create item with validated data
     const validatedData = validationResult.data;
     await db.insert(items).values({
       id,
@@ -276,7 +408,7 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       image_url: validatedData.image_url,
       created_at: new Date(),
       updated_at: new Date(),
-      user_id: validatedData.user_id,
+      user_id: sessionUser.id,
       quantity_limit: validatedData.quantity_limit,
     });
 

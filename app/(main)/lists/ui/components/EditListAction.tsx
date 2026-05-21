@@ -16,7 +16,6 @@ export default function EditListAction({ list }: { list: ListTable }) {
       </Button>
       {open && (
         <ListFormContainer
-          user_id={list.user_id}
           list={list}
           isEditing
           onClose={() => setOpen(false)}

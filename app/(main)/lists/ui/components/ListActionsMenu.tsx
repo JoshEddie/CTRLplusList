@@ -152,7 +152,6 @@ export default function ListActionsMenu({
       </div>
       {editOpen && (
         <ListFormContainer
-          user_id={list.user_id}
           list={list}
           isEditing
           onClose={() => setEditOpen(false)}

@@ -19,7 +19,7 @@ const EditList = async ({ params }: { params: Promise<{ id: string }> }) => {
 
   const list = await getList(id);
 
-  return <ListForm user_id={user.id} list={list} isEditing={true} />;
+  return <ListForm list={list} isEditing={true} />;
 };
 
 export default EditList;

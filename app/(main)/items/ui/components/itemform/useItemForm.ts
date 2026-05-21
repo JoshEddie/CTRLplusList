@@ -48,7 +48,6 @@ export function useItemForm(
     stores: ItemStoreTable[];
     lists: ListTable[];
   },
-  user_id?: string,
   returnTo?: string,
   onSuccess?: () => void
 ) {
@@ -72,7 +71,6 @@ export function useItemForm(
           label: list.name,
         };
       }) || [],
-    user_id: user_id || '',
   });
 
   const [errors, setErrors] = useState<FormErrors>({

@@ -1,4 +1,8 @@
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import { auth } from '@/lib/auth';
 import { ImageSearchResult } from '@/lib/types';
+import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 type ProviderName = 'serpapi' | 'serper' | 'mock';
@@ -273,9 +277,52 @@ function writeCache(key: string, items: ImageSearchResult[]) {
   resultCache.set(key, { expires: Date.now() + CACHE_TTL_MS, items });
 }
 
+// ---- Rate limit -------------------------------------------------------------
+// Per-user in-memory token bucket. Sized so a single user cannot exhaust the
+// SerpAPI free monthly quota (250) within an hour. Per-process — degrades with
+// multi-replica deploys, accepted as a follow-up (see design Decision 6).
+
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_PER_WINDOW = 30;
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const bucket = rateBuckets.get(userId);
+  if (!bucket || bucket.resetAt <= now) {
+    rateBuckets.set(userId, {
+      count: 1,
+      resetAt: now + RATE_LIMIT_WINDOW_MS,
+    });
+    return true;
+  }
+  if (bucket.count >= RATE_LIMIT_PER_WINDOW) return false;
+  bucket.count += 1;
+  return true;
+}
+
+const MAX_QUERY_LENGTH = 200;
+
 // ---- Route ------------------------------------------------------------------
 
 export async function GET(request: Request) {
+  const session = await auth();
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const sessionUser = await db.query.users.findFirst({
+    where: eq(users.email, session.user.email),
+    columns: { id: true },
+  });
+  if (!sessionUser) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (!checkRateLimit(sessionUser.id)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
 
@@ -287,6 +334,10 @@ export async function GET(request: Request) {
   }
 
   const trimmed = query.trim();
+
+  if (trimmed.length > MAX_QUERY_LENGTH) {
+    return NextResponse.json({ error: 'query_too_long' }, { status: 400 });
+  }
 
   // Dev override: pretend all providers have hit quota, so the error-state UI
   // can be exercised without revoking real keys. Bypasses cache so repeated

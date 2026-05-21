@@ -53,7 +53,7 @@ export default function ItemForm({
     handleStoreAdd,
     handleStoreRemove,
     handleSubmit,
-  } = useItemForm(item, user_id, returnTo, onSuccess);
+  } = useItemForm(item, returnTo, onSuccess);
 
   const listOptions: OptionType[] = useMemo(() => {
     if (!lists) return [];
@@ -69,14 +69,15 @@ export default function ItemForm({
 
   // Live preview renders the real <Item> card in preview mode (no modal,
   // pointer-events disabled). Map form state → ItemDisplay; the
-  // never-rendered timestamp fields are stubbed.
+  // never-rendered timestamp fields are stubbed. The preview's `user_id`
+  // matches the viewer's so the card renders in owner mode (no claim CTA).
   const previewItem: ItemDisplay = {
     id: formState.id || 'preview',
     name: formState.name,
     description: formState.description,
     image_url: formState.image_url,
     quantity_limit: formState.quantity_limit,
-    user_id: formState.user_id,
+    user_id: user_id,
     stores: formState.stores.filter((s) => s.name || s.price || s.link),
     purchases: [],
     created_at: new Date(),

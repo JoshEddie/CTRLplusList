@@ -15,7 +15,6 @@ import DeleteListButton from './DeleteListButton';
 
 interface ListFormProps {
   list?: ListTable;
-  user_id: string;
   isEditing?: boolean;
   onClose?: () => void;
   onSuccess?: () => void;
@@ -38,7 +37,6 @@ const initialState: ActionResponse = {
 
 export default function ListForm({
   list,
-  user_id,
   isEditing = false,
   onClose,
   onSuccess,
@@ -83,7 +81,6 @@ export default function ListForm({
       subtitle: rawSubtitle === '' ? null : rawSubtitle,
       occasion: selectedOccasion,
       date: new Date(dateString),
-      user_id,
     };
 
     try {

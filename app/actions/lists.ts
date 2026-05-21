@@ -24,7 +24,9 @@ import {
   fromDb,
   type ListVisibility,
 } from '@/lib/visibility';
-// Define Zod schema for list validation
+// Define Zod schema for list validation. The actor's user_id is resolved
+// server-side from the session, never accepted from the client payload — see
+// openspec/specs/server-endpoint-authorization.
 const ListSchema = z.object({
   name: z
     .string()
@@ -41,8 +43,6 @@ const ListSchema = z.object({
   occasion: z.string().optional().nullable(),
 
   date: z.date(),
-
-  user_id: z.string().min(1, 'User ID is required'),
 });
 
 export type ListData = z.infer<typeof ListSchema>;
@@ -57,9 +57,8 @@ export type ActionResponse = {
 
 export async function createList(data: ListData): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -67,7 +66,18 @@ export async function createList(data: ListData): Promise<ActionResponse> {
       };
     }
 
-    // Validate with Zod
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User not found',
+        error: 'Unauthorized',
+      };
+    }
+
     const validationResult = ListSchema.safeParse(data);
     if (!validationResult.success) {
       return {
@@ -78,8 +88,6 @@ export async function createList(data: ListData): Promise<ActionResponse> {
     }
 
     const id = nanoid();
-
-    // Create list with validated data
     const validatedData = validationResult.data;
     await db.insert(lists).values({
       id,
@@ -87,7 +95,7 @@ export async function createList(data: ListData): Promise<ActionResponse> {
       subtitle: validatedData.subtitle ?? null,
       occasion: sql`${validatedData.occasion}`,
       date: sql`${validatedData.date}`,
-      user_id: sql`${validatedData.user_id}`,
+      user_id: sessionUser.id,
     });
 
     updateTag('lists');
@@ -112,9 +120,8 @@ export async function updateList(
   data: Partial<ListData>
 ): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -122,7 +129,33 @@ export async function updateList(
       };
     }
 
-    // Allow partial validation for updates
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User not found',
+        error: 'Unauthorized',
+      };
+    }
+
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, id),
+      columns: { user_id: true },
+    });
+    if (!list) {
+      return { success: false, message: 'List not found', error: 'Not found' };
+    }
+    if (list.user_id !== sessionUser.id) {
+      return {
+        success: false,
+        message: 'Unauthorized - list does not belong to you',
+        error: 'Unauthorized',
+      };
+    }
+
     const UpdateListSchema = ListSchema.partial();
     const validationResult = UpdateListSchema.safeParse(data);
 
@@ -134,7 +167,6 @@ export async function updateList(
       };
     }
 
-    // Type safe update object with validated data
     const validatedData = validationResult.data;
     const updateData: Record<string, unknown> = {};
 
@@ -145,12 +177,19 @@ export async function updateList(
       updateData.occasion = validatedData.occasion;
     if (validatedData.date !== undefined) updateData.date = validatedData.date;
 
-    // Update list
     const result = await db
       .update(lists)
       .set(updateData)
       .where(eq(lists.id, id))
       .returning();
+
+    if (result.length === 0) {
+      return {
+        success: false,
+        message: 'List not found',
+        error: 'Not found',
+      };
+    }
 
     updateTag('lists');
 
@@ -171,9 +210,8 @@ export async function updateList(
 
 export async function deleteList(id: string): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -181,7 +219,33 @@ export async function deleteList(id: string): Promise<ActionResponse> {
       };
     }
 
-    // Delete list
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User not found',
+        error: 'Unauthorized',
+      };
+    }
+
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, id),
+      columns: { user_id: true },
+    });
+    if (!list) {
+      return { success: false, message: 'List not found', error: 'Not found' };
+    }
+    if (list.user_id !== sessionUser.id) {
+      return {
+        success: false,
+        message: 'Unauthorized - list does not belong to you',
+        error: 'Unauthorized',
+      };
+    }
+
     await db.delete(lists).where(eq(lists.id, id));
 
     updateTag('lists');

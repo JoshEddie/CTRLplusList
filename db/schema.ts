@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
   integer,
@@ -6,6 +6,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { nanoid } from 'nanoid';
 import type { AdapterAccountType } from 'next-auth/adapters';
@@ -161,15 +162,25 @@ export const item_stores = pgTable('item_stores', {
   order: integer('order').notNull().default(1),
 });
 
-export const purchases = pgTable('purchases', {
-  id: text('id').primaryKey(),
-  item_id: text('item_id')
-    .references(() => items.id, { onDelete: 'cascade' })
-    .notNull(),
-  user_id: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  guest_name: text('guest_name'),
-  purchased_at: timestamp('purchased_at').defaultNow().notNull(),
-});
+export const purchases = pgTable(
+  'purchases',
+  {
+    id: text('id').primaryKey(),
+    item_id: text('item_id')
+      .references(() => items.id, { onDelete: 'cascade' })
+      .notNull(),
+    user_id: text('user_id').references(() => users.id, {
+      onDelete: 'cascade',
+    }),
+    guest_name: text('guest_name'),
+    purchased_at: timestamp('purchased_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('purchases_item_user_unique_idx')
+      .on(table.item_id, table.user_id)
+      .where(sql`${table.user_id} IS NOT NULL`),
+  ]
+);
 
 // Relations between tables
 export const item_storesRelations = relations(item_stores, ({ one }) => ({

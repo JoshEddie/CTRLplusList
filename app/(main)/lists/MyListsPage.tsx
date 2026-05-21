@@ -16,7 +16,7 @@ export default async function MyListsPage() {
   return (
     <div className="my-lists-page">
       <ListCollectionsNav>
-        <NewListButton user_id={viewer.id} />
+        <NewListButton />
       </ListCollectionsNav>
 
       {lists.length === 0 ? (

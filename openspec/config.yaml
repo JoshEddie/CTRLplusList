@@ -9,7 +9,15 @@ context: |
 
   # Stack
   Next.js App Router · React 19 · TS · NextAuth (Google) · Drizzle on
-  Postgres · vanilla CSS with tokens. No Tailwind, no CSS-in-JS.
+  Neon Postgres · vanilla CSS with tokens. No Tailwind, no CSS-in-JS.
+
+  # DB driver constraint — no transactions
+  DB connection uses `drizzle-orm/neon-http` (Neon HTTP API). Interactive
+  transactions, `db.transaction(...)`, and `SELECT … FOR UPDATE` are
+  unavailable — every query is its own HTTP round-trip. Cross-statement
+  atomicity must be backstopped at the DB layer (unique indexes, partial
+  unique indexes, `ON CONFLICT`) or accepted as residual. Do not propose
+  switching to neon-serverless / WebSocket Pool without owner approval.
 
   # Where things live (pointers — verify by ls, don't trust this map)
   - App-wide UI primitives under `app/ui/components/<family>/`

@@ -59,7 +59,6 @@ export type ItemDetails = {
   description: string;
   image_url?: string | null;
   quantity_limit: number | null;
-  user_id: string;
   stores: ItemStoreTable[];
   lists: OptionType[];
 };
