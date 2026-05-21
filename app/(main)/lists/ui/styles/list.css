@@ -453,6 +453,7 @@
   overflow: hidden;
   padding: 0;
   gap: 0;
+  position: relative;
 }
 
 .container--list-details .items-browser {
@@ -474,10 +475,27 @@
   overflow-y: auto;
 }
 
+/* Floating pagination overlay (all viewports). Mirrors the items-library
+   treatment — anchored to .container--list-details so it spans the
+   container's full width and sits flush against its bottom edge.
+   Items scroll under the 90%-alpha background. The desktop
+   `padding: 16px 28px 0` on .item-grid-container above zeroes
+   padding-bottom; this rule re-adds the overlay clearance. */
 .container--list-details .items-pagination {
-  margin: 16px 28px;
-  border-top: 1px solid var(--card-border-color);
-  flex-shrink: 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background-color: color-mix(in srgb, var(--light-color) 90%, transparent);
+  border-top: none;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 1;
+}
+
+.container--list-details .item-grid-container {
+  padding-bottom: var(--items-pagination-overlay-height, 96px);
 }
 
 .container--list-details > .item-grid.sortable {

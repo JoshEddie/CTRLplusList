@@ -1,25 +1,17 @@
-import { auth } from '@/lib/auth';
-import { getList, getUserIdByEmail } from '@/lib/dal';
-import { redirect } from 'next/navigation';
-import ListForm from '../../ui/components/ListForm';
+import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
+import { Suspense } from 'react';
+import EditListBody from './EditListBody';
 
-const EditList = async ({ params }: { params: Promise<{ id: string }> }) => {
-  const session = await auth();
-  const { id } = await params;
-
-  if (!session?.user?.email) {
-    redirect('/');
-  }
-
-  const user = await getUserIdByEmail(session.user.email);
-
-  if (!user) {
-    redirect('/');
-  }
-
-  const list = await getList(id);
-
-  return <ListForm list={list} isEditing={true} />;
+type Props = {
+  params: Promise<{ id: string }>;
 };
 
-export default EditList;
+export default function EditListPage({ params }: Props) {
+  return (
+    <main className="container">
+      <Suspense fallback={<LoadingIndicator size="form" />}>
+        <EditListBody params={params} />
+      </Suspense>
+    </main>
+  );
+}

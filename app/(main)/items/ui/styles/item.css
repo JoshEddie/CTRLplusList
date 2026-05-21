@@ -297,13 +297,17 @@
 }
 
 /* ── Items-library container: fixed-height flex column.
-   Page header + tabs + toolbar stay at the top; only the items grid scrolls. */
+   Page header + tabs + toolbar stay at the top; only the items grid scrolls.
+   `position: relative` establishes the positioning context for the floating
+   pagination overlay (anchored to this container, not to .items-browser, so
+   the overlay spans the container's full width). */
 .container--items-library {
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--app-sticky-top));
   overflow: hidden;
   padding: 24px 44px 0;
+  position: relative;
 }
 
 .container--items-library > .header,
@@ -334,10 +338,26 @@
   padding: 16px 0;
 }
 
+/* Floating pagination overlay (all viewports). Anchored to the container
+   (not .items-browser) so it spans the container's full width and sits
+   flush against its bottom edge. Items scroll under the 90%-alpha
+   background; .item-grid-container below gets bottom padding so the
+   final row clears the overlay. */
 .container--items-library .items-pagination {
-  flex-shrink: 0;
-  margin-top: 0;
-  border-top: 1px solid var(--card-border-color);
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background-color: color-mix(in srgb, var(--light-color) 90%, transparent);
+  border-top: none;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 1;
+}
+
+.container--items-library .item-grid-container {
+  padding-bottom: var(--items-pagination-overlay-height, 96px);
 }
 
 @media (max-width: 800px) {
@@ -431,26 +451,52 @@
   }
 }
 
-/* Mobile <550px: single row [search][filters][view-toggle].
-   The four filter controls are relocated into a bottom sheet that the
-   Filters button opens. Active non-default filters render as chips
-   in a sub-row beneath the toolbar. */
+/* Mobile <600px: single-row toolbar [search][filters].
+   The MdTune icon is universally read as "filters" — at this breakpoint
+   the trigger shrinks to icon-only (label visually hidden, width: auto)
+   so the search field gets nearly the full row width without needing
+   any focus-expand interaction. Grid view-toggle is hidden at this
+   breakpoint (item cards always render as the single-column list
+   layout — see the item-grid → list-behavior stanza in the mobile
+   block further down). The four filter controls are relocated into
+   a bottom sheet that the icon trigger opens. Active non-default
+   filters render as chips in a sub-row beneath the toolbar. */
 @media (max-width: 599px) {
   .items-toolbar-row {
-    grid-template-columns: 1fr 1fr;
-    grid-template-areas: 'search search' 'filters view';
-  }
-
-    .hide-grid-toggle .items-toolbar-row {    
     grid-template-columns: 1fr auto;
     grid-template-areas: 'search filters';
   }
 
+  .hide-grid-toggle .items-toolbar-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas: 'search filters';
+  }
+
+  /* Hide the SegmentedControl-bearing view-toggle cell on mobile. The
+     primitive is still mounted (so desktop's `?view=` URL preference
+     survives a viewport resize back up), just visually hidden here. */
+  .items-toolbar-cell--view {
+    display: none;
+  }
+
   /* Show the Filters PopoverTrigger on mobile. Visual treatment is
      provided by the .popover-trigger primitive class. Compound
-     selector mirrors the desktop hide above so specificity matches. */
+     selector mirrors the desktop hide above so specificity matches.
+     `width: auto` lets the trigger shrink to content size so search
+     keeps almost the full row width. */
   .popover-trigger.items-toolbar-cell--filters {
     display: inline-flex;
+    width: auto;
+  }
+
+  /* Hide the "Filters" text label and chevron visually — the MdTune icon
+     is the universal filter affordance on its own. The button's
+     `aria-label="Open filters"` keeps the accessible name intact
+     (aria-label takes precedence over visible text children, so the
+     hidden span carries no semantic weight). */
+  .popover-trigger.items-toolbar-cell--filters .popover-trigger-label,
+  .popover-trigger.items-toolbar-cell--filters .popover-trigger-chevron {
+    display: none;
   }
 
   /* Filters group transforms into a bottom sheet on mobile. */
@@ -1002,8 +1048,43 @@
    feel" — each row at mobile gets a full border, rounded corners, and
    margin separation instead of the 1px row-divider. */
 @media (max-width: 599px) {
+  /* === Grid view behaves as list view at this breakpoint ===
+     The `?view=grid` URL parameter has no effect on mobile — item cards
+     always render as full-width single-column rows regardless. Achieved by
+     reshaping `.item-grid` to flex-column (overriding the container-query
+     2-col grid above), flattening its descendant DOM the same way `.item-list`
+     does, and expanding every mobile-list selector below to also match
+     `.item-grid` parents. */
+  .item-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .item-grid .item,
+  .item-grid .item-info,
+  .item-grid .item-name-description {
+    display: contents;
+  }
+
+  /* Mirror the all-widths has-my-claim hide rule (lines ~1012) for the
+     mobile-grid-as-list case. The wide claimed-pill takes over the
+     action-row slot, so the claim-cta-btn and storeLinks chip row are
+     hidden to avoid overlap. */
+  .item-grid .item-container.has-my-claim .claim-cta-btn,
+  .item-grid .item-container.has-my-claim .storeLinks {
+    display: none;
+  }
+
+  /* Inline .claimed-state pill is redundant in list-shape — the wide
+     banner above already conveys claim state. */
+  .item-grid .claimed-state {
+    display: none;
+  }
+
   .item-list .item-container,
+  .item-grid .item-container,
   .sortable-item .item-container {
+    display: grid;
     grid-template-columns: 64px 1fr auto;
     grid-template-rows: auto auto auto auto;
     column-gap: 12px;
@@ -1017,17 +1098,20 @@
 
   /* Row hover/divider treatment doesn't apply when rows are cards. */
   .item-list .item-container:hover,
+  .item-grid .item-container:hover,
   .sortable-item .item-container:hover {
     background: var(--light-color);
     border-color: var(--card-border-hover-color);
   }
 
-  .item-list .item-container:last-child {
+  .item-list .item-container:last-child,
+  .item-grid .item-container:last-child {
     margin-bottom: 0;
   }
 
   /* Image upper-left, spans top two rows (title + price). */
   .item-list .item-image-container,
+  .item-grid .item-image-container,
   .sortable-item .item-image-container {
     width: 64px;
     height: 64px;
@@ -1037,12 +1121,14 @@
 
   /* Title row 1, price row 2 — stacked in col 2 next to image. */
   .item-list .item-name-description .itemName,
+  .item-grid .item-name-description .itemName,
   .sortable-item .item-name-description .itemName {
     grid-column: 2;
     grid-row: 1;
   }
 
   .item-list .item-price-row,
+  .item-grid .item-price-row,
   .sortable-item .item-price-row {
     grid-column: 2;
     grid-row: 2;
@@ -1051,12 +1137,14 @@
 
   /* No leader at mobile — there's no horizontal room. */
   .item-list .item-price-row::after,
+  .item-grid .item-price-row::after,
   .sortable-item .item-price-row::after {
     display: none;
   }
 
   /* Description full-width on row 3 (below image+title+price stack). */
   .item-list .item-name-description .itemDescription,
+  .item-grid .item-name-description .itemDescription,
   .sortable-item .item-name-description .itemDescription {
     grid-column: 1 / -1;
     grid-row: 3;
@@ -1067,6 +1155,7 @@
 
   /* Action row (row 4) — storeLinks hug-left, right-actions hug-right. */
   .item-list .storeLinks,
+  .item-grid .storeLinks,
   .sortable-item .storeLinks {
     grid-column: 1 / 3;
     grid-row: 4;
@@ -1082,10 +1171,13 @@
 
   /* Right-actions on action row, justified right. */
   .item-list .item-owner-actions,
+  .item-grid .item-owner-actions,
   .sortable-item .item-owner-actions,
   .item-list .item-owner-actions-mobile,
+  .item-grid .item-owner-actions-mobile,
   .sortable-item .item-owner-actions-mobile,
   .item-list .claim-cta-btn,
+  .item-grid .claim-cta-btn,
   .sortable-item .claim-cta-btn {
     grid-column: 3;
     grid-row: 4;
@@ -1095,6 +1187,7 @@
 
   /* Wide claimed-pill: takes the entire action row. */
   .item-list .purchased-banner,
+  .item-grid .purchased-banner,
   .sortable-item .purchased-banner {
     grid-column: 1 / -1;
     grid-row: 4;
@@ -1108,11 +1201,13 @@
      at <600px the row reflows to a horizontal card with no col-4 owner-actions
      slot competing for space — the action row's right slot owns that. */
   .item-list .purchased-banner--spoiler,
+  .item-grid .purchased-banner--spoiler,
   .sortable-item .purchased-banner--spoiler {
     grid-column: 1 / -1;
   }
 
   .item-list .claim-counter,
+  .item-grid .claim-counter,
   .sortable-item .claim-counter {
     display: none;
   }
@@ -1125,10 +1220,12 @@
 
 @media (max-width: 399px) {
   .item-list .item-owner-actions,
+  .item-grid .item-owner-actions,
   .sortable-item .item-owner-actions {
     display: none;
   }
   .item-list .item-owner-actions-mobile,
+  .item-grid .item-owner-actions-mobile,
   .sortable-item .item-owner-actions-mobile {
     display: flex;
     align-items: center;

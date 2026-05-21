@@ -4,8 +4,10 @@ import HomePage from './HomePage';
 
 export default function Page() {
   return (
-    <Suspense fallback={<LoadingIndicator size="page" />}>
-      <HomePage />
-    </Suspense>
+    <main className="container">
+      <Suspense fallback={<LoadingIndicator size="page" />}>
+        <HomePage />
+      </Suspense>
+    </main>
   );
 }

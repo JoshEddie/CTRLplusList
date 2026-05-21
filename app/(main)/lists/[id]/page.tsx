@@ -1,17 +1,15 @@
-import ItemsContainer from '@/app/(main)/items/ui/components/ItemsContainer';
-import SortItemsContainer from '@/app/(main)/items/ui/components/SortItemsContainer';
-import ListDetails from '@/app/(main)/lists/ui/components/ListDetails';
-import ListPrivate from '@/app/(main)/lists/ui/components/ListPrivate';
-import { recordVisit } from '@/app/actions/lists';
+import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { auth } from '@/lib/auth';
-import { getList, getUserById, getUserIdByEmail } from '@/lib/dal';
-import { guardListViewable } from '@/lib/listAccess';
+import { getList, getUserIdByEmail } from '@/lib/dal';
 import { VISIBILITY } from '@/lib/visibility';
 import { Metadata } from 'next';
-import { after } from 'next/server';
+import { Suspense } from 'react';
+import ListHeroSection from './ListHeroSection';
+import ListItemsSection from './ListItemsSection';
 
 type Props = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 const GENERIC_LIST_TITLE = 'List | ctrl+list';
@@ -77,72 +75,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ListPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const session = await auth();
-  const user = session?.user?.email
-    ? await getUserIdByEmail(session?.user?.email)
-    : null;
-
-  const { id } = await params;
-  const sp = await searchParams;
-
-  const list = await guardListViewable(await getList(id), user?.id ?? null);
-
-  const listOwner = await getUserById(list.user_id);
-
-  const isOwner = user?.id === list.user_id;
-  const previewMode = isOwner && sp.preview === 'viewer';
-  const showSpoilers = isOwner && sp.spoilers === '1';
-
-  if (list.visibility === VISIBILITY.OWNER && !isOwner) {
-    return <ListPrivate loggedIn={!!user} />;
-  }
-
-  // Record the visit for authenticated non-owner viewers of non-private lists.
-  // Deferred via after() because the action calls updateTag, which Next 16
-  // disallows during render. Server-side, idempotent on (user_id, list_id).
-  if (user && !isOwner && list.visibility !== VISIBILITY.OWNER) {
-    after(() => recordVisit(id));
-  }
-
-  const effectiveOwner = isOwner && !previewMode;
-
+export default function ListPage({ params, searchParams }: Props) {
   return (
-    <>
-      {!user && <div className="no-user" hidden />}
-      <ListDetails
-        isOwner={isOwner}
-        list={list}
-        owner_name={listOwner?.name || undefined}
-        owner_image={listOwner?.image || undefined}
-        viewer_id={user?.id || undefined}
-        showSpoilers={showSpoilers}
-        previewMode={previewMode}
-        itemCount={list.items?.length ?? 0}
-      />
-      {effectiveOwner ? (
-        <SortItemsContainer
-          listId={id}
-          isOwner={true}
-          showSpoilers={showSpoilers}
-        />
-      ) : (
-        <ItemsContainer
-          listId={id}
-          // In preview mode, route through the owner-sanitize path so the
-          // spoilers toggle fully gates visibility (off = nothing, on = full names)
-          // instead of leaking first names regardless.
-          isListOwner={previewMode}
-          viewerId={user?.id}
-          showSpoilers={showSpoilers}
-        />
-      )}
-    </>
+    <main className="container container--list-details">
+      <Suspense fallback={<LoadingIndicator size="rail" />}>
+        <ListHeroSection params={params} searchParams={searchParams} />
+      </Suspense>
+      <Suspense fallback={<LoadingIndicator size="page" />}>
+        <ListItemsSection params={params} searchParams={searchParams} />
+      </Suspense>
+    </main>
   );
 }

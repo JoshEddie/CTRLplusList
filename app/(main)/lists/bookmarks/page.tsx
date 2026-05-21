@@ -4,5 +4,9 @@ import BookmarksPage from './BookmarksPage';
 export const metadata: Metadata = { title: 'Bookmarks' };
 
 export default function Page() {
-  return <BookmarksPage />;
+  return (
+    <main className="container container--list-collections">
+      <BookmarksPage />
+    </main>
+  );
 }

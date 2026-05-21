@@ -53,13 +53,15 @@ export default async function Home({
       : firstLastName[0];
 
   return (
-    <ItemsPage
-      items={activeItems as ItemDisplay[]}
-      archivedItems={archivedItems as ItemDisplay[]}
-      user_id={user?.id}
-      user_name={firstLastInitial}
-      lists={lists}
-      initialPageSize={initialPageSize}
-    />
+    <main className="container container--items-library">
+      <ItemsPage
+        items={activeItems as ItemDisplay[]}
+        archivedItems={archivedItems as ItemDisplay[]}
+        user_id={user?.id}
+        user_name={firstLastInitial}
+        lists={lists}
+        initialPageSize={initialPageSize}
+      />
+    </main>
   );
 }

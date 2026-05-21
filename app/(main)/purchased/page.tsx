@@ -17,9 +17,9 @@ export default async function Purchased() {
 
   const items = await getItemsByPurchased(user.id);
   return (
-    <>
+    <main className="container container--items-library">
       <Header title="Purchased" />
       <Items items={items} />
-    </>
+    </main>
   );
 }

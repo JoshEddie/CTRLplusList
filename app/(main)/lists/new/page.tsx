@@ -16,7 +16,11 @@ const NewList = async () => {
     redirect('/');
   }
 
-  return <ListForm />;
+  return (
+    <main className="container">
+      <ListForm />
+    </main>
+  );
 };
 
 export default NewList;

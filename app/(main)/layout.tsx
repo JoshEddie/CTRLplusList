@@ -1,6 +1,5 @@
 import AppFrame from '../ui/components/AppFrame';
 import '../ui/styles/app-frame.css';
-import MainShell from './MainShell';
 import './items/ui/styles/item.css';
 import './lists/ui/styles/following-and-history.css';
 import './lists/ui/styles/list.css';
@@ -15,7 +14,7 @@ export default function MainLayout({
 }) {
   return (
     <AppFrame>
-      <MainShell>{children}</MainShell>
+      {children}
       {modal}
     </AppFrame>
   );

@@ -1,45 +1,20 @@
-import { auth } from '@/lib/auth';
-import { getItemById, getListsByUser, getUserIdByEmail } from '@/lib/dal';
-import { redirect } from 'next/navigation';
-import ItemForm from '../ui/components/itemform/ItemForm';
-import { sanitizeReturnTo } from '../ui/components/returnTo';
+import Header from '@/app/ui/components/Header';
+import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
+import { Suspense } from 'react';
+import ItemFormBody from './ItemFormBody';
 
-export default async function EditItem({
-  params,
-  searchParams,
-}: {
+type Props = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ returnTo?: string }>;
-}) {
-  const session = await auth();
-  const { id } = await params;
-  const sp = await searchParams;
-  const returnTo = sanitizeReturnTo(sp.returnTo);
+};
 
-  if (!session?.user?.email) {
-    redirect('/');
-  }
-
-  const user = await getUserIdByEmail(session.user.email);
-
-  if (!user) {
-    redirect('/');
-  }
-
-  const item = await getItemById(id, user.id);
-
-  if (!item) {
-    redirect(returnTo ?? '/items');
-  }
-
-  const lists = await getListsByUser(user.id);
-
+export default function EditItemPage({ params, searchParams }: Props) {
   return (
-    <ItemForm
-      user_id={user.id}
-      item={item}
-      lists={lists}
-      returnTo={returnTo}
-    />
+    <main className="container">
+      <Header title="Edit Item" />
+      <Suspense fallback={<LoadingIndicator size="form" />}>
+        <ItemFormBody params={params} searchParams={searchParams} />
+      </Suspense>
+    </main>
   );
 }
