@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { LuX } from 'react-icons/lu';
+import { Button } from '@/app/ui/components/button';
 import '@/app/ui/styles/form-shell.css';
 
 type Variant = 'default' | 'wide' | 'split';
@@ -88,22 +89,14 @@ export function FormShellFooter({
 
   return (
     <div className="form-shell-ft">
-      <button
-        type="button"
-        className="form-shell-btn-ghost"
-        onClick={dismiss}
-      >
+      <Button variant="ghost" onClick={dismiss}>
         Cancel
-      </button>
+      </Button>
       <div className="form-shell-ft-right">
         {deleteSlot}
-        <button
-          type="submit"
-          className="form-shell-btn-primary"
-          disabled={isPending}
-        >
-          {isPending ? 'Saving…' : submitLabel}
-        </button>
+        <Button type="submit" variant="primary" isLoading={isPending}>
+          {submitLabel}
+        </Button>
       </div>
     </div>
   );

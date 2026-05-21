@@ -1,6 +1,7 @@
 'use client';
 
 import SignInButton from '@/app/(auth)/ui/components/SignInButton';
+import { buttonClasses } from '@/app/ui/components/button';
 import { Session } from 'next-auth';
 
 import '@/app/(auth)/ui/styles/auth.css';
@@ -31,7 +32,7 @@ function SignedOutMenu() {
         className={`avatar-container ${showMenu ? 'hide' : ''} placeholder`}
         onClick={() => setShowMenu(!showMenu)}
       >
-        <div className="btn nav avatar placeholder">Sign In</div>
+        <div className={buttonClasses({ variant: 'on-dark', extra: 'avatar placeholder' })}>Sign In</div>
       </div>
       <AuthContainer className={`user-menu ${showMenu ? 'show' : ''}`}>
         <Image

@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth';
-import Link from 'next/link';
 import { BsBagCheckFill, BsBoxFill } from 'react-icons/bs';
 import { IoReceiptOutline } from 'react-icons/io5';
+import { LinkButton } from './button';
 
 export default async function Nav() {
   const session = await auth();
@@ -9,18 +9,18 @@ export default async function Nav() {
   return (
     session?.user && (
       <nav className="nav-container">
-        <Link href="/lists" className="btn nav">
+        <LinkButton href="/lists" variant="on-dark">
           <IoReceiptOutline />
           <span className="label nav-hide">Lists</span>
-        </Link>
-        <Link href="/items" className="btn nav">
+        </LinkButton>
+        <LinkButton href="/items" variant="on-dark">
           <BsBoxFill />
           <span className="label nav-hide">Items</span>
-        </Link>
-        <Link href="/purchased" className="btn nav">
+        </LinkButton>
+        <LinkButton href="/purchased" variant="on-dark">
           <BsBagCheckFill />
           <span className="label nav-hide">Purchased</span>
-        </Link>
+        </LinkButton>
       </nav>
     )
   );

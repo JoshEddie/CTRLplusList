@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FaBookmark } from 'react-icons/fa';
+import { FaBookmark, FaUser } from 'react-icons/fa';
 
 export type ListCardData = {
   id: string;
@@ -19,7 +19,7 @@ export default function ListCard({
   showOwner?: boolean;
   bookmarked?: boolean;
 }) {
-  const subtitle = list.subtitle ?? (showOwner ? list.user?.name : null) ?? null;
+  const ownerName = showOwner ? list.user?.name : null;
   return (
     <Link className="list-card" href={`/lists/${list.id}`}>
       <div className="list-card-head">
@@ -30,10 +30,19 @@ export default function ListCard({
               aria-label="Bookmarked"
             />
           )}
-          {list.name}
+          <span className="list-card-name-text" title={list.name}>
+            {list.name}
+          </span>
         </div>
-        {subtitle && (
-          <div className="list-card-subtitle">{subtitle}</div>
+        {ownerName && (
+          <div className="list-card-byline">
+            <FaUser aria-hidden /> {ownerName}
+          </div>
+        )}
+        {list.subtitle ? (
+          <div className="list-card-subtitle">{list.subtitle}</div>
+        ) : (
+          <div className="list-card-subtitle-placeholder" aria-hidden />
         )}
       </div>
       <div className="list-card-meta">

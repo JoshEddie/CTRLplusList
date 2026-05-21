@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { FaPlus } from 'react-icons/fa';
+import { Button, LinkButton } from './button';
 
 export default function Empty({
   type,
@@ -24,15 +24,15 @@ export default function Empty({
       <h3>{title}</h3>
       <p>{description}</p>
       {type !== 'purchase' && setShowNewItem ? (
-        <button className="btn primary" onClick={() => setShowNewItem(true)}>
+        <Button variant="primary" onClick={() => setShowNewItem(true)}>
           <FaPlus size={14} />
           Create {typeCap}
-        </button>
+        </Button>
       ) : (
-        <Link href={`/${type}s/new`} className="btn primary">
+        <LinkButton href={`/${type}s/new`} variant="primary">
           <FaPlus size={14} />
           Create {typeCap}
-        </Link>
+        </LinkButton>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/app/ui/components/button';
 import '@/app/(main)/lists/ui/styles/confirm-dialog.css';
 
 interface ConfirmDialogProps {
@@ -29,18 +30,18 @@ export default function ConfirmDialog({
         <h3 className="confirm-dialog-title">{title}</h3>
         <p className="confirm-dialog-message">{message}</p>
         <div className="confirm-dialog-buttons">
-          <button className="btn primary outline" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose}>
             {cancelText}
-          </button>
-          <button
-            className="btn danger"
+          </Button>
+          <Button
+            variant="danger"
             onClick={() => {
               onConfirm();
               onClose();
             }}
           >
             {confirmText}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

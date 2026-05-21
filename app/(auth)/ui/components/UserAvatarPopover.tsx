@@ -1,9 +1,9 @@
 'use client';
 
 import { signOutUser } from '@/app/actions/user';
+import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
 import { Session } from 'next-auth';
-import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { LuLogOut, LuUsers } from 'react-icons/lu';
 import UserImage from './UserImage';
 
@@ -13,34 +13,14 @@ export default function UserAvatarPopover({
   user: NonNullable<Session['user']>;
 }) {
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (e: MouseEvent) => {
-      if (
-        wrapRef.current &&
-        !wrapRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const close = () => setOpen(false);
 
   return (
-    <div ref={wrapRef} className="avatar-popover-wrap">
+    <div className="avatar-popover-wrap">
       <button
+        ref={triggerRef}
         type="button"
         className="avatar-container"
         aria-haspopup="menu"
@@ -52,42 +32,38 @@ export default function UserAvatarPopover({
         <div className="gradientOverlay" />
       </button>
 
-      {open && (
-        <div className="avatar-popover" role="menu">
-          <div className="avatar-popover-header">
-            <div className="avatar-popover-name">
-              {user.name ?? 'Signed in'}
-            </div>
-            {user.email && (
-              <div className="avatar-popover-email">{user.email}</div>
-            )}
+      <Menu
+        open={open}
+        onClose={close}
+        anchorRef={triggerRef}
+        aria-label="User menu"
+      >
+        <div className="avatar-popover-header" role="presentation">
+          <div className="avatar-popover-name">
+            {user.name ?? 'Signed in'}
           </div>
-          <div className="avatar-popover-divider" />
-          <Link
-            href="/settings/connections"
-            className="avatar-popover-item"
-            role="menuitem"
+          {user.email && (
+            <div className="avatar-popover-email">{user.email}</div>
+          )}
+        </div>
+        <div className="avatar-popover-divider" role="presentation" />
+        <MenuLinkItem
+          href="/settings/connections"
+          icon={<LuUsers size={18} />}
+          onClick={close}
+        >
+          Connections
+        </MenuLinkItem>
+        <form action={signOutUser}>
+          <MenuItem
+            type="submit"
+            icon={<LuLogOut size={18} />}
             onClick={close}
           >
-            <LuUsers size={18} />
-            <span>Connections</span>
-          </Link>
-          <form
-            action={signOutUser}
-            className="avatar-popover-item avatar-popover-form"
-          >
-            <button
-              type="submit"
-              role="menuitem"
-              onClick={close}
-              className="avatar-popover-item-button"
-            >
-              <LuLogOut size={18} />
-              <span>Sign out</span>
-            </button>
-          </form>
-        </div>
-      )}
+            Sign out
+          </MenuItem>
+        </form>
+      </Menu>
     </div>
   );
 }

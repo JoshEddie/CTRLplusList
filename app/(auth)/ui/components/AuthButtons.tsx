@@ -1,4 +1,5 @@
 import { signInUser, signOutUser } from '@/app/actions/user';
+import { Button } from '@/app/ui/components/button';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { LuLogOut } from 'react-icons/lu';
@@ -58,10 +59,10 @@ export async function SignInButton() {
 export function SignOutButton() {
   return (
     <form className="sign-out-button" action={signOutUser}>
-      <button type="submit" className="btn nav">
+      <Button type="submit" variant="on-dark">
         <LuLogOut size={20} />
         Sign Out
-      </button>
+      </Button>
     </form>
   );
 }

@@ -1,5 +1,5 @@
 import SignInPage from '@/app/(auth)/ui/components/SignInPage';
-import Menu from '@/app/ui/components/Menu';
+import AppMenu from '@/app/ui/components/AppMenu';
 import { auth } from '@/lib/auth';
 
 export default async function AuthProvider({
@@ -15,7 +15,7 @@ export default async function AuthProvider({
 
   return (
     <>
-      <Menu />
+      <AppMenu />
       <main className="container">{children}</main>
     </>
   );
