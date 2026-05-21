@@ -87,3 +87,20 @@ rules:
       in another capability, name the overlap and defer. Cross-
       capability constraints belong in the capability that owns the
       behavior, not the one that owns the DOM region.
+  tasks:
+    - |
+      Every tasks.md MUST include a pre-merge verification section
+      (conventionally the final numbered section, e.g. "## N. Pre-
+      merge") with explicit, separately-checkable tasks for ALL THREE
+      of the following gates passing clean:
+        - `npm run lint` (eslint — zero errors, zero warnings)
+        - `npx tsc --noEmit` (typescript — zero errors)
+        - `npm run build` (next build — completes successfully,
+          including type-check and production bundle)
+      These are not optional and not collapsible into a single
+      "validate" checkbox — each gate gets its own task so partial
+      failure is visible in the checklist. The `build` gate exists in
+      addition to `tsc --noEmit` because Next.js' production build
+      surfaces issues (route-level type errors, server/client boundary
+      violations, missing env at build time, RSC serialization) that
+      `tsc --noEmit` alone does not catch.
