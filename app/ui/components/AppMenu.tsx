@@ -3,7 +3,7 @@ import User from '../../(auth)/ui/components/User';
 import Logo from './Logo';
 import Nav from './Nav';
 
-export default async function Menu() {
+export default async function AppMenu() {
   return (
     <div className="menu">
       <Logo />

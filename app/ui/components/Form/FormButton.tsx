@@ -1,5 +1,5 @@
 import React from 'react';
-import '../../styles/form.css';
+import '../../styles/button.css';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: string;

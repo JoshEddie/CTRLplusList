@@ -53,6 +53,9 @@
   --success-border: #6ee7b7;
   --success-text: #059669;
   --tab-active-color: var(--primary-color);
+
+  --WCAG-input-size: 44px;
+  --WCAG-input-size-sm: 36px;
 }
 
 /* @media (prefers-color-scheme: dark) {

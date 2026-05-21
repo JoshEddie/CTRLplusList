@@ -86,6 +86,9 @@
   flex: 1;
   overflow-y: auto;
   padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .form-shell-ft {
@@ -104,56 +107,13 @@
   margin-left: auto;
 }
 
-.form-shell-btn-primary {
-  background: var(--primary-color);
-  color: var(--light-color);
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font: 600 14px var(--font-roboto-condensed), sans-serif;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.form-shell-btn-primary:hover  { background: var(--primary-color-dark); }
-.form-shell-btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.form-shell-btn-ghost {
-  background: none;
-  border: 1px solid var(--card-border-color);
-  border-radius: 8px;
-  padding: 10px 20px;
-  font: 500 14px var(--font-roboto-condensed), sans-serif;
-  color: var(--muted-text-color);
-  cursor: pointer;
-  transition: border-color 0.15s;
-}
-
-.form-shell-btn-ghost:hover {
-  border-color: var(--muted-text-color);
-  color: var(--neutral-text-color);
-}
-
-.form-shell-btn-delete {
-  background: none;
-  border: 1px solid var(--danger-color);
-  border-radius: 8px;
-  padding: 10px 18px;
-  font: 600 14px var(--font-roboto-condensed), sans-serif;
-  color: var(--danger-color);
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.form-shell-btn-delete:hover { background: #fee2e2; }
-
 /* Section labels (V1 sectioned layout) */
+.if-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .if-sec + .if-sec {
   border-top: 1px solid var(--divider-color);
   padding-top: 20px;
@@ -165,7 +125,6 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--primary-color);
-  margin-bottom: 12px;
 }
 
 /* Compact store row grid: Store name | $Price | Link URL | × remove */
@@ -176,22 +135,21 @@
 
 .if-store-hd {
   display: grid;
-  grid-template-columns: 1fr 90px 1fr 28px;
+  grid-template-columns: 1fr 130px 1fr 28px;
   gap: 6px;
   margin-bottom: 4px;
   padding: 0 2px;
 }
 
 .if-store-hd span {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--meta-text-color);
+  font-size: var(--field-label-font-size);
+  font-weight: 500;
+  color: var(--neutral-text-color);
 }
 
 .if-store-row {
   display: grid;
-  grid-template-columns: 1fr 90px 1fr 28px;
+  grid-template-columns: 1fr 130px 1fr 28px;
   gap: 6px;
   margin-bottom: 6px;
   align-items: start;
@@ -199,26 +157,7 @@
 
 .if-stores-single .if-store-hd,
 .if-stores-single .if-store-row {
-  grid-template-columns: 1fr 90px 1fr;
-}
-
-.if-price-wrap {
-  position: relative;
-}
-
-.if-dollar {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted-text-color);
-  font-size: 13px;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.if-price-in {
-  padding-left: 20px !important;
+  grid-template-columns: 1fr 130px 1fr;
 }
 
 .if-store-rm {
@@ -267,40 +206,12 @@
 @media (max-width: 500px) {
   .if-store-hd,
   .if-store-row {
-    grid-template-columns: 1fr 80px 28px;
+    grid-template-columns: 1fr 110px 28px;
   }
   .if-store-hd span:nth-child(3),
   .if-store-row > *:nth-child(3) {
     grid-column: 1 / -1;
   }
-}
-
-/* Image URL + inline thumbnail */
-.if-img-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.if-img-row .if-input {
-  flex: 1;
-}
-
-.if-img-thumb {
-  width: 38px;
-  height: 36px;
-  border-radius: 6px;
-  overflow: hidden;
-  flex-shrink: 0;
-  border: 1px solid var(--card-border-color);
-  background: var(--secondary-background-color);
-}
-
-.if-img-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 
 .if-search-link {
@@ -319,90 +230,15 @@
   cursor: not-allowed;
 }
 
-/* Live preview card (V2 left pane on desktop) */
-.if-prev-full {
-  background: var(--light-color);
-  border-radius: 10px;
-  border: 1px solid var(--card-border-color);
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.07);
-}
-
-.if-prev-full-img {
-  aspect-ratio: 4 / 3;
-  background: var(--secondary-background-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.if-prev-full-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.if-prev-full-ph {
-  color: var(--meta-text-color);
-}
-
-.if-prev-full-body {
-  padding: 12px 14px;
-}
-
-.if-prev-full-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--heading-text-color);
-  margin-bottom: 3px;
-}
-
-.if-prev-full-name-ph {
-  color: var(--meta-text-color);
-  font-style: italic;
-  font-weight: 400;
-}
-
-.if-prev-from {
-  font-size: 10px;
-  color: var(--meta-text-color);
-  letter-spacing: 0.1em;
-  margin-top: 2px;
-}
-
-.if-prev-btm {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-
-.if-prev-price {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--primary-color);
-}
-
-.if-prev-chip {
-  font-size: 10px;
-  padding: 2px 7px;
-  border: 1px solid var(--buy-link-border);
-  border-radius: 99px;
-  color: var(--buy-link-text);
-  background: var(--buy-link-bg);
-}
-
-.if-prev-more {
-  font-size: 10px;
-  color: var(--meta-text-color);
-}
-
 /* Inline list picker (chips + trigger + dropdown) */
 .if-lp {
   position: relative;
+}
+
+/* Invalid state — applied when the parent has a validation error.
+   Mirrors .form_field.invalid by tinting the trigger button border. */
+.if-lp--invalid .popover-trigger {
+  border-color: var(--field-border-color-error);
 }
 
 .if-lp-top {
@@ -446,25 +282,10 @@
   cursor: not-allowed;
 }
 
-/* Inherits sizing/padding/border/font from .form-input. Adds dropdown affordances only. */
-.if-lp-trigger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  cursor: pointer;
-  text-align: left;
-  background: var(--light-color);
-}
-
-.if-lp-trigger-label {
-  color: var(--muted-text-color);
-}
-
-.if-lp-trigger:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* The list-picker trigger is the PopoverTrigger primitive — its trigger
+   geometry lives in app/ui/components/popover-trigger/. The dropdown
+   listbox below stays page-scoped (Menu vs Listbox boundary, design.md
+   Decision 9). */
 
 .if-lp-menu {
   position: absolute;
@@ -484,9 +305,10 @@
 .if-lp-opt {
   display: block;
   width: 100%;
-  padding: 9px 14px;
+  min-height: var(--field-min-height);
+  padding: var(--field-padding-y) var(--field-padding-x);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--field-font-size);
   color: var(--neutral-text-color);
   background: none;
   border: none;
@@ -500,8 +322,8 @@
 }
 
 .if-lp-empty {
-  padding: 9px 14px;
-  font-size: 13px;
+  padding: var(--field-padding-y) var(--field-padding-x);
+  font-size: var(--field-font-size);
   color: var(--meta-text-color);
   font-style: italic;
 }
@@ -586,34 +408,61 @@
     gap: 12px;
     flex-shrink: 0;
   }
-  /* On narrow viewports, reshape the live-preview card into a compact row
-     (48px square thumbnail + name/price block) so it doesn't eat the screen. */
-  .form-shell-split-left .if-prev-full {
+  /* Narrow viewports: reshape the live-preview card into the row-view
+     layout (same as the /items list view + sortable item row), so the
+     preview matches what the user sees in the mobile UI. The selectors
+     below mirror `.item-list .item-container` etc. in item.css. */
+  .form-shell-split-left .item-container.preview {
     display: grid;
-    grid-template-columns: 48px 1fr;
+    grid-template-columns: 60px 1fr auto;
     align-items: center;
+    gap: 14px;
+    padding: 11px 14px;
+    border: 1px solid var(--card-border-color);
+    border-radius: 10px;
+    background-color: var(--light-color);
     flex: 1;
     min-width: 0;
-    overflow: hidden;
     box-shadow: none;
   }
-  .form-shell-split-left .if-prev-full-img {
+  .form-shell-split-left .item-container.preview .item {
+    display: contents;
+  }
+  .form-shell-split-left .item-container.preview .item-image-container {
+    width: 52px;
+    height: 52px;
     aspect-ratio: 1 / 1;
-    width: 48px;
-    height: 48px;
+    border-radius: 8px;
+    overflow: hidden;
+    grid-column: 1;
+    grid-row: 1;
   }
-  .form-shell-split-left .if-prev-full-body {
-    padding: 6px 12px;
+  .form-shell-split-left .item-container.preview .item-info {
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    column-gap: 14px;
+    row-gap: 2px;
+    min-width: 0;
+    align-items: center;
+    grid-column: 2;
+    grid-row: 1;
   }
-  .form-shell-split-left .if-prev-full-name {
-    font-size: 13px;
+  .form-shell-split-left .item-container.preview .item-name-description {
+    grid-column: 1;
+    grid-row: 1;
     margin-bottom: 0;
+    min-width: 0;
   }
-  .form-shell-split-left .if-prev-from {
-    margin-top: 1px;
+  .form-shell-split-left .item-container.preview .itemName {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .form-shell-split-left .if-prev-btm {
-    margin-top: 3px;
+  .form-shell-split-left .item-container.preview .itemDescription {
+    display: none;
   }
   .form-shell-split-left .form-shell-split-lbl,
   .form-shell-split-left .form-shell-split-lists {
@@ -629,7 +478,4 @@
   .form-shell-body   { padding: 16px 18px; }
   .form-shell-ft     { padding: 12px 18px; }
   .form-shell-title  { font-size: 19px; }
-  .form-shell-btn-primary,
-  .form-shell-btn-ghost,
-  .form-shell-btn-delete { padding: 9px 14px; font-size: 13px; }
 }
