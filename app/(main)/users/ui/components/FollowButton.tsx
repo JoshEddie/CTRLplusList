@@ -1,6 +1,8 @@
 'use client';
 
 import { followUser, unfollowUser } from '@/app/actions/follows';
+import { Button } from '@/app/ui/components/button';
+import type { ButtonVariant } from '@/app/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
@@ -15,7 +17,7 @@ export default function FollowButton({
   userId: string;
   userName: string | null;
   initialFollowing: boolean;
-  variant?: 'primary' | 'secondary';
+  variant?: ButtonVariant;
 }) {
   const router = useRouter();
   const [following, setFollowing] = useState(initialFollowing);
@@ -47,16 +49,16 @@ export default function FollowButton({
 
   return (
     <div className="follow-button-wrap">
-      <button
-        type="button"
-        className={`btn ${variant} follow-button${following ? ' is-following' : ''}`}
-        aria-pressed={following}
+      <Button
+        variant={variant}
+        pressed={following}
         aria-disabled={isPending}
+        aria-label={label}
         onClick={toggle}
       >
         {following ? <FaCheck /> : <FaPlus />}
         <span className="label">{label}</span>
-      </button>
+      </Button>
       {!following && (
         <div className="follow-disclosure">
           Shares your name and profile picture with the owner.

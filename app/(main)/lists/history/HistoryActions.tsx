@@ -1,6 +1,7 @@
 'use client';
 
 import { clearVisitHistory, removeVisit } from '@/app/actions/lists';
+import { Button } from '@/app/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
@@ -57,14 +58,13 @@ export function ClearHistoryButton() {
 
   return (
     <>
-      <button
-        type="button"
-        className="btn secondary"
+      <Button
+        variant="secondary"
         onClick={() => setOpen(true)}
         aria-disabled={isPending}
       >
         Clear history
-      </button>
+      </Button>
       {open && (
         <div className="history-clear-modal" role="dialog">
           <div className="history-clear-modal-inner">
@@ -73,27 +73,15 @@ export function ClearHistoryButton() {
               Bookmarked lists can be preserved or cleared along with the rest.
             </p>
             <div className="history-clear-modal-actions">
-              <button
-                type="button"
-                className="btn primary"
-                onClick={() => clear(false)}
-              >
+              <Button variant="primary" onClick={() => clear(false)}>
                 Clear non-bookmarked
-              </button>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => clear(true)}
-              >
+              </Button>
+              <Button variant="danger" onClick={() => clear(true)}>
                 Clear all
-              </button>
-              <button
-                type="button"
-                className="btn secondary"
-                onClick={() => setOpen(false)}
-              >
+              </Button>
+              <Button variant="ghost" onClick={() => setOpen(false)}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         </div>

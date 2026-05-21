@@ -1,6 +1,7 @@
 'use client';
 
 import { bookmarkList, unbookmarkList } from '@/app/actions/lists';
+import { Button } from '@/app/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
@@ -35,16 +36,18 @@ export default function BookmarkButton({
     });
   };
 
+  const label = bookmarked ? 'Remove bookmark' : 'Bookmark list';
+
   return (
-    <button
-      type="button"
-      className="btn secondary bookmark-button"
-      aria-pressed={bookmarked}
+    <Button
+      variant="on-dark"
+      pressed={bookmarked}
+      aria-label={label}
       aria-disabled={isPending}
       onClick={toggle}
     >
       {bookmarked ? <FaBookmark /> : <FaRegBookmark />}
       <span className="label">{bookmarked ? 'Bookmarked' : 'Bookmark'}</span>
-    </button>
+    </Button>
   );
 }

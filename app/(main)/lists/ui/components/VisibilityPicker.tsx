@@ -1,6 +1,11 @@
 'use client';
 
 import { setListVisibility } from '@/app/actions/lists';
+import { CheckboxField } from '@/app/ui/components/field';
+import {
+  SegmentedControl,
+  SegmentedOption,
+} from '@/app/ui/components/segmented-control';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
@@ -62,41 +67,29 @@ export default function VisibilityPicker({
 
   return (
     <div className="visibility-picker">
-      <div className="visibility-toggle" role="radiogroup" aria-label="List visibility">
-        <button
-          type="button"
-          role="radio"
-          aria-checked={!isShared}
-          aria-disabled={isPending}
-          className={`visibility-option${!isShared ? ' active' : ''}`}
-          onClick={() => setShared(false)}
-        >
+      <SegmentedControl
+        value={isShared ? 'shared' : 'private'}
+        onChange={(v) => setShared(v === 'shared')}
+        tone="on-dark"
+        aria-label="List visibility"
+      >
+        <SegmentedOption value="private">
           <FaLock />
-          <span className="visibility-option-label">Private</span>
-        </button>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={isShared}
-          aria-disabled={isPending}
-          className={`visibility-option${isShared ? ' active' : ''}`}
-          onClick={() => setShared(true)}
-        >
+          <span>Private</span>
+        </SegmentedOption>
+        <SegmentedOption value="shared">
           <FaShareAlt />
-          <span className="visibility-option-label">Shared</span>
-        </button>
-      </div>
+          <span>Shared</span>
+        </SegmentedOption>
+      </SegmentedControl>
 
       {isShared && (
-        <label className="visibility-feed-toggle">
-          <input
-            type="checkbox"
-            checked={inFeed}
-            disabled={isPending}
-            onChange={(e) => setInFeed(e.target.checked)}
-          />
-          <span>Show in followers&apos; feed</span>
-        </label>
+        <CheckboxField
+          label="Show in followers' feed"
+          checked={inFeed}
+          disabled={isPending}
+          onChange={(e) => setInFeed(e.target.checked)}
+        />
       )}
     </div>
   );

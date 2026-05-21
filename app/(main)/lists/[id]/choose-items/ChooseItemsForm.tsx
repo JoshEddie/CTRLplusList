@@ -7,12 +7,13 @@ import {
 import ItemFormContainer from '@/app/(main)/items/ui/components/itemform/ItemFormContainer';
 import ItemsToolbar from '@/app/(main)/items/ui/components/ItemsToolbar';
 import { setListItems } from '@/app/actions/lists';
+import { Button, LinkButton } from '@/app/ui/components/button';
 import { ItemDisplay, ListTable, SortKey } from '@/lib/types';
-import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { FaPlus } from 'react-icons/fa';
+import { FaArrowLeftLong, FaArrowRightLong } from 'react-icons/fa6';
 
 type ItemRow = ItemDisplay;
 
@@ -97,9 +98,7 @@ export default function ChooseItemsForm({
     }
     if (q) {
       result = result.filter((item) =>
-        `${item.name ?? ''} ${item.description ?? ''}`
-          .toLowerCase()
-          .includes(q)
+        `${item.name ?? ''} ${item.description ?? ''}`.toLowerCase().includes(q)
       );
     }
     if (selectedStores.length > 0) {
@@ -207,31 +206,31 @@ export default function ChooseItemsForm({
     mode === 'create'
       ? totalSelected > 0
         ? `Add ${totalSelected} item${totalSelected !== 1 ? 's' : ''} to list →`
-        : 'Skip for now →'
-      : 'Save changes →';
+        : 'Skip'
+      : 'Save';
 
   return (
     <div className="choose-items-page">
       <div className="choose-items-pg-hd">
+        <LinkButton
+          href={isNew ? '/lists' : `/lists/${list_id}`}
+          // className="choose-items-back"
+          variant="secondary"
+        >
+          <FaArrowLeftLong />
+          <span className="mobile-hide">
+            {isNew ? 'Back to Lists' : 'Back to list'}
+          </span>
+        </LinkButton>
+        <Button variant="primary" onClick={() => setShowNewItem(true)}>
+          <FaPlus size={12} />
+          <span className="mobile-hide">Create new item</span>
+        </Button>
         <div className="choose-items-pg-hd-main">
-          <Link
-            href={isNew ? '/lists' : `/lists/${list_id}`}
-            className="choose-items-back"
-          >
-            ← {isNew ? 'Back to Lists' : 'Back to list'}
-          </Link>
           <h1 className="choose-items-pg-title">
             Choose items for <em>&ldquo;{list_name}&rdquo;</em>
           </h1>
         </div>
-        <button
-          type="button"
-          className="choose-items-new-btn"
-          onClick={() => setShowNewItem(true)}
-        >
-          <FaPlus size={12} />
-          <span className="mobile-hide">Create new item</span>
-        </button>
       </div>
 
       {items.length === 0 ? (
@@ -241,14 +240,10 @@ export default function ChooseItemsForm({
             Create items first, then come back here to add them to{' '}
             <strong>{list_name}</strong>.
           </p>
-          <button
-            type="button"
-            className="btn primary"
-            onClick={() => setShowNewItem(true)}
-          >
+          <Button variant="primary" onClick={() => setShowNewItem(true)}>
             <FaPlus size={14} />
             Create Item
-          </button>
+          </Button>
         </div>
       ) : (
         <>
@@ -258,18 +253,15 @@ export default function ChooseItemsForm({
             showStoreSort={hasAnyStore}
             showPriceSort={hasAnyPrice}
             showPriceFilter={hasAnyPrice}
+            showGridToggle={false}
           />
           {filtered.length === 0 ? (
             hasActiveFilters ? (
               <div className="items-empty-filtered">
                 <p>No items match your filters.</p>
-                <button
-                  type="button"
-                  className="btn secondary"
-                  onClick={clearFilters}
-                >
+                <Button variant="secondary" onClick={clearFilters}>
                   Clear filters
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="items-empty-filtered">
@@ -452,22 +444,17 @@ export default function ChooseItemsForm({
           )}
         </div>
         <div className="choose-items-sticky-actions">
-          <button
-            type="button"
-            className="form-shell-btn-ghost"
-            onClick={handleBack}
-            disabled={isSubmitting}
-          >
+          <Button variant="ghost" onClick={handleBack} disabled={isSubmitting}>
             {isNew ? 'Skip' : 'Cancel'}
-          </button>
-          <button
-            type="button"
-            className="form-shell-btn-primary"
+          </Button>
+          <Button
+            variant="primary"
             onClick={handleSubmit}
-            disabled={isSubmitting || (!hasChanges && !isNew)}
+            disabled={!hasChanges && !isNew}
+            isLoading={isSubmitting}
           >
-            {isSubmitting ? 'Saving…' : saveLabel}
-          </button>
+            {saveLabel} <FaArrowRightLong />
+          </Button>
         </div>
       </div>
 

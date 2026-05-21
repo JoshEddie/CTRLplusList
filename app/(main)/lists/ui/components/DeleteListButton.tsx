@@ -1,6 +1,7 @@
 'use client';
 
 import { deleteList } from '@/app/actions/lists';
+import { Button } from '@/app/ui/components/button';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -22,13 +23,9 @@ export default function DeleteListButton({ id }: { id: string }) {
 
   return (
     <>
-      <button
-        type="button"
-        className="form-shell-btn-delete"
-        onClick={() => setShowConfirm(true)}
-      >
+      <Button variant="danger" onClick={() => setShowConfirm(true)}>
         Delete
-      </button>
+      </Button>
       <ConfirmDialog
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}

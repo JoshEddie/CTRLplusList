@@ -1,6 +1,6 @@
 import FollowContainer from '@/app/(main)/users/ui/components/FollowContainer';
+import { LinkButton, buttonClasses } from '@/app/ui/components/button';
 import { ListTable } from '@/lib/types';
-import Link from 'next/link';
 import { FaCalendar, FaUser } from 'react-icons/fa';
 import { MdChecklist, MdModeEdit, MdVisibility } from 'react-icons/md';
 import BookmarkContainer from './BookmarkContainer';
@@ -52,18 +52,20 @@ export default function ListDetails({
         <div className="preview-banner" role="status">
           <MdVisibility />
           <span>You&apos;re previewing this list as a viewer.</span>
-          <Link href={exitPreviewHref} className="btn">
+          <LinkButton href={exitPreviewHref} variant="on-dark" size="sm">
             Exit preview
-          </Link>
+          </LinkButton>
         </div>
       )}
 
       <div className="list-hero-row">
         <div className="list-hero-info">
-          <h1 className="list-hero-title">{list.name}</h1>
-          {list.subtitle ? (
-            <div className="list-hero-subtitle">{list.subtitle}</div>
-          ) : null}
+          <div className="list-hero-titlerow">
+            <h1 className="list-hero-title">{list.name}</h1>
+            {list.subtitle ? (
+              <div className="list-hero-subtitle">{list.subtitle}</div>
+            ) : null}
+          </div>
           <div className="list-hero-meta">
             {user_name && (
               <span className="list-hero-mi">
@@ -95,17 +97,17 @@ export default function ListDetails({
 
         {isOwner && !previewMode && (
           <>
-            <Link
-              className="btn list-hero-btn"
+            <LinkButton
               href={`/lists/${list.id}/choose-items`}
+              variant="on-dark"
             >
               <MdChecklist />
               <span className="label">Choose items</span>
-            </Link>
+            </LinkButton>
             <EditListButton
               list={list}
               user_id={list.user_id}
-              className="btn list-hero-btn"
+              className={buttonClasses({ variant: 'on-dark' })}
             >
               <MdModeEdit />
               <span className="label">Edit list</span>

@@ -2,16 +2,13 @@
 
 import { ActionResponse, createList, updateList } from '@/app/actions/lists';
 import {
-  FormError,
-  FormGroup,
-  FormInput,
-  FormLabel,
-} from '@/app/ui/components/Form/Form';
+  DatalistField,
+  DateField,
+  FieldError,
+  TextField,
+} from '@/app/ui/components/field';
 import { FormShell, FormShellFooter } from '@/app/ui/components/FormShell';
-import FormSelect from '@/app/ui/components/Form/FormSelect';
-import SelectWrapper from '@/app/ui/components/SelectWrapper';
-import '@/app/ui/styles/select.css';
-import { ListTable, OptionType } from '@/lib/types';
+import { ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, useActionState, useState } from 'react';
 import DeleteListButton from './DeleteListButton';
@@ -104,8 +101,6 @@ export default function ListForm({
             router.push(`/lists/${result.id}`);
           }
         } else {
-          // New list: redirect to choose-items regardless of modal/page mount —
-          // this is the natural next step in the create flow.
           router.push(`/lists/${result.id}/choose-items?new=1`);
         }
       }
@@ -132,80 +127,59 @@ export default function ListForm({
         <div className="form-shell-body">
           {state?.message && !state.success && (
             <div style={{ marginBottom: 12 }}>
-              <FormError className="form-error">{state.message}</FormError>
+              <FieldError>{state.message}</FieldError>
             </div>
           )}
-          <FormGroup>
-            <FormLabel>Name</FormLabel>
-            <FormInput
-              name="name"
-              defaultValue={list?.name}
-              required
-              disabled={isPending}
-            />
-          </FormGroup>
+          <TextField
+            label="Name"
+            required
+            name="name"
+            defaultValue={list?.name}
+            disabled={isPending}
+          />
 
-          <FormGroup>
-            <FormLabel>Subtitle</FormLabel>
-            <FormInput
-              name="subtitle"
-              defaultValue={list?.subtitle ?? ''}
-              disabled={isPending}
-              placeholder="e.g. Brandy Family"
-              maxLength={120}
-            />
-          </FormGroup>
+          <TextField
+            label="Subtitle"
+            name="subtitle"
+            defaultValue={list?.subtitle ?? ''}
+            disabled={isPending}
+            placeholder="e.g. Brandy Family"
+            maxLength={120}
+          />
 
-          <FormGroup>
-            <FormLabel>Occasion</FormLabel>
-            <SelectWrapper>
-              <FormSelect
-                name="occasion"
-                defaultValue={
-                  selectedOccasion
-                    ? { value: selectedOccasion, label: selectedOccasion }
-                    : undefined
-                }
-                options={commonOccasions.map((occasion) => ({
-                  value: occasion,
-                  label: occasion,
-                }))}
-                onChange={(e: OptionType | OptionType[] | null) => {
-                  if (Array.isArray(e)) {
-                    setSelectedOccasion(e[0].value);
-                  } else {
-                    setSelectedOccasion(e?.value || '');
-                  }
-                }}
-                isPending={isPending}
-                placeholder="Select an occasion"
-              />
-            </SelectWrapper>
-          </FormGroup>
+          <DatalistField
+            label="Occasion"
+            name="occasion"
+            value={selectedOccasion}
+            onChange={(e) => setSelectedOccasion(e.target.value)}
+            disabled={isPending}
+            placeholder="Select or type an occasion"
+            autoComplete="off"
+            options={commonOccasions.map((o) => (
+              <option key={o} value={o} />
+            ))}
+          />
 
-          <FormGroup>
-            <FormLabel>Date</FormLabel>
-            <FormInput
-              name="date"
-              type="date"
-              defaultValue={
-                list?.date
-                  ? new Date(list.date).toISOString().split('T')[0]
-                  : undefined
-              }
-              required
-              disabled={isPending}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                validateDate(e.target.value)
-              }
-              min="1900-01-01"
-              max="9999-12-31"
-            />
-            {dateError && <p className="error-message">{dateError}</p>}
-            {state?.errors?.date && (
-              <p className="error-message">{state.errors.date.join(', ')}</p>
-            )}
-          </FormGroup>
+          <DateField
+            label="Date"
+            required
+            name="date"
+            defaultValue={
+              list?.date
+                ? new Date(list.date).toISOString().split('T')[0]
+                : undefined
+            }
+            disabled={isPending}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              validateDate(e.target.value)
+            }
+            min="1900-01-01"
+            max="9999-12-31"
+            error={
+              dateError ??
+              (state?.errors?.date ? state.errors.date.join(', ') : undefined)
+            }
+          />
         </div>
 
         <FormShellFooter

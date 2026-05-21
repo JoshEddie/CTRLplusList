@@ -2,13 +2,6 @@
   width: 100%;
 }
 
-.error-message {
-  color: var(--danger-color);
-  font-size: 14px;
-  margin-top: 4px;
-  padding: 4px 0;
-}
-
 /* ── LIST DETAIL HERO ──
    Purple gradient header inside the white surface; sits above the
    toolbar + items grid. */
@@ -58,8 +51,18 @@
   }
 }
 
+/* Title + subtitle share a single flex row that wraps as a whole; subtitle
+   sits to the right of the title at wide widths and drops to its own line
+   when there isn't room. */
+.list-hero-titlerow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 14px;
+  row-gap: 4px;
+}
+
 .list-hero-subtitle {
-  margin-top: 4px;
   font-size: 14px;
   color: rgba(255, 255, 255, 0.75);
 }
@@ -162,69 +165,56 @@
   border-color: var(--danger-color);
 }
 
-/* Visibility picker inside the hero side — translucent white on the
-   purple gradient, more compact than the default white-card variant. */
+/* Visibility picker inside the hero side. The segmented-control primitive
+   (.segmented.tone-on-dark in app/ui/components/segmented-control/) owns
+   the on-dark pill treatment; this rule sets only the wrapper layout. */
 .list-hero-side .visibility-picker {
   width: auto;
   gap: 6px;
   align-items: flex-end;
 }
-.list-hero-side .visibility-toggle {
-  background-color: rgba(255, 255, 255, 0.13);
-  border: 1.5px solid rgba(255, 255, 255, 0.22);
-  padding: 2px;
-  gap: 2px;
+.list-hero-side .segmented {
   min-width: 260px;
 }
-.list-hero-side .visibility-option {
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 12px;
-  padding: 5px 14px;
-}
-.list-hero-side .visibility-option-label {
-  overflow: visible;
-  text-overflow: clip;
-}
-.list-hero-side .visibility-option:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--light-color);
-}
-.list-hero-side .visibility-option.active {
-  background-color: var(--light-color);
-  color: var(--primary-color);
-}
-.list-hero-side .visibility-feed-toggle {
+/* Feed toggle (on-dark CheckboxField primitive) — on the purple hero, the default
+   primary-color fill doesn't read. Retint border + checked-fill to white and
+   give the wrapper a translucent pill background. Page-scoped override is the
+   right answer here — the standardize-form-fields design (D11) explicitly
+   chose page-scoped over a data-surface mechanism for the single on-dark case. */
+.list-hero-side .visibility-picker .checkbox_field {
   background-color: rgba(255, 255, 255, 0.1);
   border: 1.5px solid rgba(255, 255, 255, 0.22);
   color: rgba(255, 255, 255, 0.85);
   font-size: 11px;
   padding: 5px 10px;
+  border-radius: 6px;
+  min-height: 0;
+  gap: 8px;
 }
-.list-hero-side .visibility-feed-toggle:hover {
-  border-color: rgba(255, 255, 255, 0.42);
+@media (hover: hover) {
+  .list-hero-side .visibility-picker .checkbox_field:hover {
+    border-color: rgba(255, 255, 255, 0.42);
+  }
 }
-.list-hero-side .visibility-feed-toggle:has(input:checked) {
+.list-hero-side .visibility-picker .checkbox_field:has(input:checked) {
   background-color: rgba(255, 255, 255, 0.18);
   border-color: rgba(255, 255, 255, 0.42);
 }
-.list-hero-side .visibility-feed-toggle input[type='checkbox'] {
+.list-hero-side .visibility-picker .checkbox_field_box {
   width: 14px;
   height: 14px;
+  flex: 0 0 14px;
   border-color: rgba(255, 255, 255, 0.5);
   background-color: transparent;
 }
-.list-hero-side .visibility-feed-toggle input[type='checkbox']:checked {
+.list-hero-side .visibility-picker .checkbox_field_box:checked {
   background-color: var(--light-color);
   border-color: var(--light-color);
 }
-.list-hero-side .visibility-feed-toggle input[type='checkbox']:checked::after {
-  /* Scale the default 5×10 @ left:4 top:0 checkmark down for this 14×14 box */
-  width: 4px;
-  height: 8px;
-  left: 3px;
-  top: 0;
-  border-color: var(--primary-color);
-  border-width: 0 2px 2px 0;
+.list-hero-side .visibility-picker .checkbox_field_box:checked::after {
+  width: 10px;
+  height: 10px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%237324ce'><path d='M7.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z'/></svg>");
 }
 
 @media (max-width: 800px) {
@@ -241,20 +231,24 @@
   }
 }
 
-/* Kebab "more actions" button living in the hero action row, on the
-   gradient. Override the existing .btn secondary look. */
+/* Circular kebab "more actions" button in the hero action row.
+   36px is below the 44px standard floor — WCAG 2.5.8 spacing-exception
+   applies: it sits inside a row with adequate gap to neighboring actions. */
 .list-hero-actions .menu-trigger {
   background-color: rgba(255, 255, 255, 0.13);
   border: 1.5px solid rgba(255, 255, 255, 0.27);
-  color: var(--light-color);
   padding: 6px;
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   border-radius: 50%;
   margin-left: auto;
 }
-.list-hero-actions .menu-trigger:hover {
-  background-color: rgba(255, 255, 255, 0.22);
+@media (hover: hover) {
+  .list-hero-actions .menu-trigger:hover {
+    background-color: rgba(255, 255, 255, 0.22);
+  }
 }
 
 /* Preview banner inside hero */
@@ -308,65 +302,11 @@
   font-size: 18px;
 }
 
-/* Kebab menu (unchanged — still used by list-hero-side on owner) */
+/* Wrapper for the kebab + menu primitive. .menu-popover and its rows
+   live in app/ui/components/menu/menu.css now. */
 .list-actions-menu {
   position: relative;
   display: inline-block;
-}
-
-.menu-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 20;
-  min-width: 220px;
-  background: var(--light-color);
-  border: 1px solid var(--card-border-color);
-  border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.menu-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: 6px;
-  background: none;
-  border: none;
-  color: var(--neutral-text-color);
-  font-family: var(--font-roboto-condensed);
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  text-decoration: none;
-  text-align: left;
-  transition:
-    background-color 0.15s,
-    color 0.15s;
-  white-space: nowrap;
-}
-
-.menu-item:hover {
-  background-color: var(--secondary-background-color);
-  color: var(--primary-color);
-}
-
-.menu-item-danger {
-  color: var(--danger-color);
-  border-top: 1px solid var(--card-border-color);
-  margin-top: 4px;
-  padding-top: 12px;
-  border-radius: 0 0 6px 6px;
-}
-
-.menu-item-danger:hover {
-  background-color: var(--danger-color);
-  color: var(--light-color);
 }
 
 /* Kebab trigger sitting on the gradient */
@@ -472,7 +412,8 @@
 }
 
 .choose-items-pg-hd {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto;
   justify-content: space-between;
   align-items: flex-start;
   gap: 20px;
@@ -480,6 +421,7 @@
 }
 
 .choose-items-pg-hd-main {
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -518,25 +460,6 @@
   color: var(--primary-color);
 }
 
-.choose-items-new-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1.5px solid var(--primary-color);
-  border-radius: 8px;
-  padding: 7px 14px;
-  color: var(--primary-color);
-  background: none;
-  font: 600 12px var(--font-roboto-condensed), sans-serif;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-  margin-top: 4px;
-}
-
-.choose-items-new-btn:hover {
-  background: var(--card-accent-background-color);
-}
 
 @media (max-width: 600px) {
   .choose-items-pg-title { font-size: 20px; }

@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import Link from 'next/link';
+import { LinkButton } from '@/app/ui/components/button';
 import FollowButton from './FollowButton';
 
 function initialsOf(name: string | null | undefined): string {
@@ -50,9 +50,9 @@ export default function ProfileHeader({
       </div>
       <div className="profile-actions">
         {isOwnProfile ? (
-          <Link href="/settings/connections" className="btn secondary">
+          <LinkButton href="/settings/connections" variant="secondary">
             Manage connections
-          </Link>
+          </LinkButton>
         ) : showFollowButton ? (
           <FollowButton
             userId={user.id}

@@ -4,6 +4,7 @@ import Modal from '@/app/(main)/items/ui/components/purchasemodal/Modal';
 import ModalButtons from '@/app/(main)/items/ui/components/purchasemodal/ModalButtons';
 import PurchaseFlow from '@/app/(main)/items/ui/components/purchasemodal/PurchaseFlow';
 import { setListVisibility } from '@/app/actions/lists';
+import { Button } from '@/app/ui/components/button';
 import { ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -75,16 +76,14 @@ export default function ShareButton({ list }: { list: ListTable }) {
 
   return (
     <>
-      <button
-        className={`btn primary`}
+      <Button
+        variant="on-dark"
         onClick={handleShareClick}
-        aria-label={'Share list'}
+        aria-label="Share list"
       >
         <MdOutlineIosShare />
-        <span className="label mobile-hide">
-          Share List
-        </span>
-      </button>
+        <span className="label mobile-hide">Share List</span>
+      </Button>
 
       {showWarning && (
         <Modal onClose={() => setShowWarning(false)}>

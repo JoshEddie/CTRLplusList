@@ -1,11 +1,12 @@
 'use client';
 
 import { deleteList } from '@/app/actions/lists';
+import { Button } from '@/app/ui/components/button';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
+import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
 import { ListTable } from '@/lib/types';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   MdChecklist,
@@ -16,7 +17,7 @@ import {
   MdVisibility,
   MdVisibilityOff,
 } from 'react-icons/md';
-import EditListButton from './EditListButton';
+import ListFormContainer from './ListFormContainer';
 
 export default function ListActionsMenu({
   list,
@@ -37,25 +38,8 @@ export default function ListActionsMenu({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('keydown', handleEscape);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [open]);
+  const [editOpen, setEditOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   const handleDelete = async () => {
     const result = await deleteList(listId);
@@ -71,92 +55,96 @@ export default function ListActionsMenu({
 
   return (
     <>
-      <div ref={menuRef} className="list-actions-menu">
-        <button
-          type="button"
-          className="btn secondary menu-trigger"
+      <div className="list-actions-menu">
+        <Button
+          ref={triggerRef}
+          variant="on-dark"
+          className="menu-trigger"
           onClick={() => setOpen((v) => !v)}
           aria-haspopup="menu"
           aria-expanded={open}
           aria-label="List actions"
         >
           <MdMoreVert size={22} />
-        </button>
-        {open && (
-          <div className="menu-dropdown" role="menu">
-            {!previewMode && (
-              <Link
-                href={`/lists/${listId}/choose-items`}
-                className="menu-item"
-                role="menuitem"
-                onClick={close}
-              >
-                <MdChecklist size={18} />
-                Choose items
-              </Link>
-            )}
-            {!previewMode && (
-              <EditListButton
-                list={list}
-                user_id={list.user_id}
-                className="menu-item"
-                onOpen={close}
-              >
-                <MdModeEdit size={18} />
-                Edit list
-              </EditListButton>
-            )}
-            <Link
-              href={spoilerHref}
-              className="menu-item"
-              role="menuitem"
+        </Button>
+        <Menu
+          open={open}
+          onClose={close}
+          anchorRef={triggerRef}
+          aria-label="List actions"
+        >
+          {!previewMode && (
+            <MenuLinkItem
+              href={`/lists/${listId}/choose-items`}
+              icon={<MdChecklist size={18} />}
               onClick={close}
             >
-              {showSpoilers ? (
+              Choose items
+            </MenuLinkItem>
+          )}
+          {!previewMode && (
+            <MenuItem
+              icon={<MdModeEdit size={18} />}
+              onClick={() => {
+                close();
+                setEditOpen(true);
+              }}
+            >
+              Edit list
+            </MenuItem>
+          )}
+          <MenuLinkItem
+            href={spoilerHref}
+            icon={
+              showSpoilers ? (
                 <MdVisibilityOff size={18} />
               ) : (
                 <MdVisibility size={18} />
-              )}
-              {showSpoilers ? 'Hide spoilers' : 'Show spoilers'}
-            </Link>
-            {previewMode ? (
-              <Link
-                href={exitPreviewHref}
-                className="menu-item"
-                role="menuitem"
-                onClick={close}
-              >
-                <MdPreview size={18} />
-                Exit preview
-              </Link>
-            ) : (
-              <Link
-                href={previewHref}
-                className="menu-item"
-                role="menuitem"
-                onClick={close}
-              >
-                <MdPreview size={18} />
-                Preview as viewer
-              </Link>
-            )}
-            {!previewMode && (
-              <button
-                type="button"
-                className="menu-item menu-item-danger"
-                role="menuitem"
-                onClick={() => {
-                  close();
-                  setShowConfirm(true);
-                }}
-              >
-                <MdDeleteForever size={18} />
-                Delete list
-              </button>
-            )}
-          </div>
-        )}
+              )
+            }
+            onClick={close}
+          >
+            {showSpoilers ? 'Hide spoilers' : 'Show spoilers'}
+          </MenuLinkItem>
+          {previewMode ? (
+            <MenuLinkItem
+              href={exitPreviewHref}
+              icon={<MdPreview size={18} />}
+              onClick={close}
+            >
+              Exit preview
+            </MenuLinkItem>
+          ) : (
+            <MenuLinkItem
+              href={previewHref}
+              icon={<MdPreview size={18} />}
+              onClick={close}
+            >
+              Preview as viewer
+            </MenuLinkItem>
+          )}
+          {!previewMode && (
+            <MenuItem
+              icon={<MdDeleteForever size={18} />}
+              tone="danger"
+              onClick={() => {
+                close();
+                setShowConfirm(true);
+              }}
+            >
+              Delete list
+            </MenuItem>
+          )}
+        </Menu>
       </div>
+      {editOpen && (
+        <ListFormContainer
+          user_id={list.user_id}
+          list={list}
+          isEditing
+          onClose={() => setEditOpen(false)}
+        />
+      )}
       <ConfirmDialog
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}

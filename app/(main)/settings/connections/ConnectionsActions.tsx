@@ -6,6 +6,7 @@ import {
   unblockUser,
   unfollowUser,
 } from '@/app/actions/follows';
+import { Button } from '@/app/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import toast from 'react-hot-toast';
@@ -36,9 +37,8 @@ export default function ConnectionsAction({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   return (
-    <button
-      type="button"
-      className="btn secondary"
+    <Button
+      variant="secondary"
       aria-disabled={isPending}
       onClick={() => {
         if (isPending) return;
@@ -54,6 +54,6 @@ export default function ConnectionsAction({
       }}
     >
       {labels[action]}
-    </button>
+    </Button>
   );
 }
