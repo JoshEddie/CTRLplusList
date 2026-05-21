@@ -2,9 +2,9 @@ import { auth } from '@/lib/auth';
 import { getUserIdByEmail } from '@/lib/dal';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
+import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import BookmarkMigrationToast from './lists/ui/components/BookmarkMigrationToast';
 import CollapsibleRail from './lists/ui/components/CollapsibleRail';
-import ListLoading from './lists/ui/components/ListLoading';
 import BookmarksRail from './lists/ui/components/rails/BookmarksRail';
 import FollowingRail from './lists/ui/components/rails/FollowingRail';
 import MyListsRail from './lists/ui/components/rails/MyListsRail';
@@ -21,14 +21,14 @@ export default async function HomePage() {
       <BookmarkMigrationToast />
 
       <CollapsibleRail name="my-lists" title="My Lists" seeAllHref="/lists">
-        <Suspense fallback={<ListLoading />}>
+        <Suspense fallback={<LoadingIndicator size="rail" />}>
           <MyListsRail userId={viewer.id} />
         </Suspense>
       </CollapsibleRail>
       <div className="home-rail-divider" role="separator" />
 
       <CollapsibleRail name="following" title="Following" seeAllHref="/following">
-        <Suspense fallback={<ListLoading />}>
+        <Suspense fallback={<LoadingIndicator size="rail" />}>
           <FollowingRail userId={viewer.id} />
         </Suspense>
       </CollapsibleRail>
@@ -39,7 +39,7 @@ export default async function HomePage() {
         title="Bookmarks"
         seeAllHref="/lists/bookmarks"
       >
-        <Suspense fallback={<ListLoading />}>
+        <Suspense fallback={<LoadingIndicator size="rail" />}>
           <BookmarksRail userId={viewer.id} />
         </Suspense>
       </CollapsibleRail>
@@ -50,7 +50,7 @@ export default async function HomePage() {
         title="Recently visited"
         seeAllHref="/lists/history"
       >
-        <Suspense fallback={<ListLoading />}>
+        <Suspense fallback={<LoadingIndicator size="rail" />}>
           <RecentlyVisitedRail userId={viewer.id} />
         </Suspense>
       </CollapsibleRail>

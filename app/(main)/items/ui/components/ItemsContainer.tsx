@@ -1,11 +1,11 @@
 import { auth } from '@/lib/auth';
 import { getItemsByListId, getItemsByUser, getUserIdByEmail } from '@/lib/dal';
 import { ItemDisplay } from '@/lib/types';
+import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import ItemsBrowser from './ItemsBrowser';
-import ItemsLoading from './ItemLoading';
 import Items from './Items';
 import {
   DEFAULT_PAGE_SIZE,
@@ -68,7 +68,7 @@ export default async function ItemsContainer({
   if (listId) {
     const initialPageSize = await readPageSizeCookie();
     return (
-      <Suspense fallback={<ItemsLoading />}>
+      <Suspense fallback={<LoadingIndicator size="page" />}>
         <ItemsBrowser
           items={items}
           mode="list"
@@ -81,7 +81,7 @@ export default async function ItemsContainer({
   }
 
   return (
-    <Suspense fallback={<ItemsLoading />}>
+    <Suspense fallback={<LoadingIndicator size="page" />}>
       <Items items={items} user_id={user?.id} user_name={firstLastInitial} />
     </Suspense>
   );

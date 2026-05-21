@@ -116,6 +116,18 @@ body::before {
   margin: 0;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Content well inside the .app-surface. The white surface is the backdrop now,
    so .container is just inner padding and flow positioning. */
 .container {

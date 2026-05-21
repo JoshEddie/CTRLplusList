@@ -1,6 +1,6 @@
 import Header from '@/app/ui/components/Header';
+import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { Suspense } from 'react';
-import ItemFormLoading from '../ui/components/itemform/ItemFormLoading';
 
 const EditItemLayout = async ({ children }: { children: React.ReactNode }) => {
   return (
@@ -9,7 +9,7 @@ const EditItemLayout = async ({ children }: { children: React.ReactNode }) => {
         fallback={
           <>
             <Header title="Edit Item" />
-            <ItemFormLoading />
+            <LoadingIndicator size="form" />
           </>
         }
       >
