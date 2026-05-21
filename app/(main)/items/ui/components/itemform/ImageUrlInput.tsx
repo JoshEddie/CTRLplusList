@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/app/ui/components/button';
 import { TextField } from '@/app/ui/components/field';
 import { ImageSearchResult } from '@/lib/types';
 import { useState } from 'react';
@@ -41,14 +42,13 @@ export function ImageUrlInput({
         autoComplete="off"
       />
 
-      <button
-        type="button"
-        className="if-search-link"
+      <Button
+        variant="link"
         onClick={() => setIsSearchOpen(true)}
         disabled={disabled}
       >
         Can&apos;t find a URL? Search for an image
-      </button>
+      </Button>
 
       <ImageSearch
         isOpen={isSearchOpen}

@@ -13,6 +13,15 @@
   --btn-sm-font-size: 14px;
   --btn-sm-min-height: var(--WCAG-input-size-sm);
   --btn-sm-min-width: var(--WCAG-input-size-sm);
+
+  /* Chip tier — pill-shaped label + remove-×. Below the sm floor; relies
+     on WCAG 2.5.8 spacing exception (chips are spaced from neighbors via
+     the chip-row gap). */
+  --chip-padding-y: 4px;
+  --chip-padding-x: 10px;
+  --chip-font-size: 12px;
+  --chip-radius: 999px;
+  --chip-gap: 4px;
 }
 
 .btn {
@@ -91,11 +100,32 @@
   outline-color: #ffffff;
 }
 
+/* Link variant — text-button affordance (no border, no background, no
+   horizontal padding, primary-color text). Opts out of the 44px touch
+   floor per WCAG 2.5.8 spacing exception: text buttons inside body copy
+   rely on the surrounding layout's spacing to neighboring targets. */
+
+.btn.link {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--primary-color);
+  padding: 0;
+  min-height: 0;
+  min-width: 0;
+  font-weight: 500;
+  text-decoration: none;
+}
+
 /* Pressed state (toggles) */
 
 .btn.on-dark[aria-pressed='true'] {
   background-color: #ffffff;
   color: var(--primary-color);
+}
+
+.btn.primary[aria-pressed='true'] {
+  background-color: var(--primary-color);
+  color: #ffffff;
 }
 
 /* Hover — guarded so iOS taps don't stick */
@@ -133,6 +163,63 @@
   .btn.on-dark[aria-pressed='true']:hover {
     background-color: transparent;
     color: #ffffff;
+  }
+
+  .btn.primary[aria-pressed='true']:hover {
+    background-color: transparent;
+    color: var(--primary-color);
+  }
+
+  .btn.link:hover {
+    text-decoration: underline;
+  }
+}
+
+/* Chip primitive — label + remove-× pair. The chip body is a non-interactive
+   span; only `.chip-remove` is interactive. The remove button reuses the
+   focus-ring and hover-on-touch contract from the button system. */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chip-gap);
+  padding: var(--chip-padding-y) var(--chip-padding-x);
+  border-radius: var(--chip-radius);
+  background-color: var(--card-accent-background-color);
+  color: var(--primary-color);
+  font-family: var(--font-roboto-condensed);
+  font-size: var(--chip-font-size);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--meta-text-color);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 50%;
+}
+
+.chip-remove:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: 2px;
+}
+
+.chip-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+@media (hover: hover) {
+  .chip-remove:hover:not(:disabled) {
+    color: var(--primary-color);
   }
 }
 
@@ -271,26 +358,3 @@
   opacity: 8%;
 }
 
-/* Form-row button helpers — used by FormButton and CancelSubmitButtons.
-   Lives here so form.css can be retired without orphaning the legacy spinner. */
-.form-button-group {
-  display: flex;
-  align-items: center;
-  justify-content: end;
-  gap: 1rem;
-}
-
-.loading-spinner {
-  animation: spin 1s linear infinite;
-  margin-left: -0.25rem;
-  margin-right: 0.5rem;
-  height: 1rem;
-  width: 1rem;
-  color: currentColor;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}

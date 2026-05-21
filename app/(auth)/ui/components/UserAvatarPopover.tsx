@@ -55,11 +55,7 @@ export default function UserAvatarPopover({
           Connections
         </MenuLinkItem>
         <form action={signOutUser}>
-          <MenuItem
-            type="submit"
-            icon={<LuLogOut size={18} />}
-            onClick={close}
-          >
+          <MenuItem type="submit" icon={<LuLogOut size={18} />}>
             Sign out
           </MenuItem>
         </form>

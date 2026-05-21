@@ -6,6 +6,7 @@ import PurchaseFlow from '@/app/(main)/items/ui/components/purchasemodal/Purchas
 import { setListVisibility } from '@/app/actions/lists';
 import { Button } from '@/app/ui/components/button';
 import { ListTable } from '@/lib/types';
+import { VISIBILITY, fromDb } from '@/lib/visibility';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -46,9 +47,13 @@ export default function ShareButton({ list }: { list: ListTable }) {
     }
   };
 
-  const isPrivate =
-    ((list as { visibility?: string }).visibility ??
-      (list.shared ? 'unlisted' : 'private')) === 'private';
+  const rawVisibility = (list as { visibility?: string }).visibility;
+  const visibility = rawVisibility
+    ? fromDb(rawVisibility)
+    : list.shared
+      ? VISIBILITY.LINK
+      : VISIBILITY.OWNER;
+  const isPrivate = visibility === VISIBILITY.OWNER;
 
   const handleShareClick = async () => {
     if (isPrivate) {
@@ -59,10 +64,10 @@ export default function ShareButton({ list }: { list: ListTable }) {
   };
 
   const handleMakePublicAndShare = async () => {
-    // Promote to unlisted (link-only) before sharing. Owner can later promote
-    // to public from the visibility picker if they want feed broadcast.
+    // Promote to link-only (private) before sharing. Owner can later promote
+    // to followers (shared) from the visibility picker if they want feed broadcast.
     // Fire in parallel so navigator.share stays inside the user gesture window.
-    void setListVisibility(list.id, 'unlisted').then((result) => {
+    void setListVisibility(list.id, VISIBILITY.LINK).then((result) => {
       if (result.success) {
         toast.success('Sharing enabled');
         router.refresh();
@@ -82,17 +87,17 @@ export default function ShareButton({ list }: { list: ListTable }) {
         aria-label="Share list"
       >
         <MdOutlineIosShare />
-        <span className="label mobile-hide">Share List</span>
+        <span className="label">Share List</span>
       </Button>
 
       {showWarning && (
         <Modal onClose={() => setShowWarning(false)}>
           <PurchaseFlow
-            primary_text="This list is private."
-            secondary_text="No one will be able to view it unless you make it public. Make it public and share?"
+            primary_text="This list is hidden."
+            secondary_text="No one can view it unless you make it private (link-only). Make private and share?"
           >
             <ModalButtons
-              primary_button_text="Make public & share"
+              primary_button_text="Make private & share"
               primary_button_onclick={handleMakePublicAndShare}
               secondary_button_text="Cancel"
               secondary_button_onclick={() => setShowWarning(false)}

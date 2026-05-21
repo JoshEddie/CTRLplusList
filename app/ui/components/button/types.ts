@@ -3,7 +3,8 @@ export type ButtonVariant =
   | 'secondary'
   | 'ghost'
   | 'danger'
-  | 'on-dark';
+  | 'on-dark'
+  | 'link';
 
 export type ButtonSize = 'sm' | 'md';
 

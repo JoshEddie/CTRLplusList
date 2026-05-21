@@ -49,7 +49,6 @@ export default async function ProfilePage({
         user={{ id: profile.id, name: profile.name, image: profile.image }}
         publicListCount={profile.publicListCount}
         viewerId={viewerId}
-        viewerIsFollowing={profile.viewerIsFollowing}
         showFollowButton={isReachable}
       />
       {showFollowPrompt && <FollowPrompt name={profile.name} />}

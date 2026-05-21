@@ -1,47 +1,32 @@
 'use client';
 
 import { setListVisibility } from '@/app/actions/lists';
-import { CheckboxField } from '@/app/ui/components/field';
-import {
-  SegmentedControl,
-  SegmentedOption,
-} from '@/app/ui/components/segmented-control';
+import { Menu, MenuItemRadio } from '@/app/ui/components/menu';
+import { PopoverTrigger } from '@/app/ui/components/popover-trigger';
+import { type ListVisibility } from '@/lib/visibility';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
-import { FaLock, FaShareAlt } from 'react-icons/fa';
-
-type Visibility = 'private' | 'unlisted' | 'public';
-
-function describe(v: Visibility): string {
-  switch (v) {
-    case 'private':
-      return 'List is now private';
-    case 'unlisted':
-      return 'Anyone with the link can view';
-    case 'public':
-      return 'Visible to your followers';
-  }
-}
+import { VISIBILITY_ROWS, rowFor } from './visibility-rows';
 
 export default function VisibilityPicker({
   listId,
   initialVisibility,
 }: {
   listId: string;
-  initialVisibility: Visibility;
+  initialVisibility: ListVisibility;
 }) {
   const router = useRouter();
-  const [current, setCurrent] = useState<Visibility>(initialVisibility);
+  const [current, setCurrent] = useState<ListVisibility>(initialVisibility);
   const [isPending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const isShared = current !== 'private';
-  const inFeed = current === 'public';
-
-  const apply = (next: Visibility) => {
+  const apply = (next: ListVisibility) => {
     if (next === current || isPending) return;
     const prev = current;
     setCurrent(next);
+    setOpen(false);
     startTransition(async () => {
       const result = await setListVisibility(listId, next);
       if (!result.success) {
@@ -49,48 +34,46 @@ export default function VisibilityPicker({
         toast.error(result.message);
         return;
       }
-      toast.success(describe(next));
+      toast.success(rowFor(next).toast);
       router.refresh();
     });
   };
 
-  const setShared = (shared: boolean) => {
-    // Going Private → Shared defaults to link-only (unlisted).
-    // Going Shared → Private clears the feed bit by design.
-    apply(shared ? 'unlisted' : 'private');
-  };
-
-  const setInFeed = (on: boolean) => {
-    if (!isShared) return;
-    apply(on ? 'public' : 'unlisted');
-  };
+  const currentRow = rowFor(current);
 
   return (
     <div className="visibility-picker">
-      <SegmentedControl
-        value={isShared ? 'shared' : 'private'}
-        onChange={(v) => setShared(v === 'shared')}
+      <PopoverTrigger
+        ref={triggerRef}
         tone="on-dark"
+        icon={currentRow.icon}
+        label={currentRow.label}
+        active={open}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Visibility: ${currentRow.label} — ${currentRow.description}. Click to change.`}
+      />
+      <Menu
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={triggerRef}
         aria-label="List visibility"
+        className="visibility-menu"
       >
-        <SegmentedOption value="private">
-          <FaLock />
-          <span>Private</span>
-        </SegmentedOption>
-        <SegmentedOption value="shared">
-          <FaShareAlt />
-          <span>Shared</span>
-        </SegmentedOption>
-      </SegmentedControl>
-
-      {isShared && (
-        <CheckboxField
-          label="Show in followers' feed"
-          checked={inFeed}
-          disabled={isPending}
-          onChange={(e) => setInFeed(e.target.checked)}
-        />
-      )}
+        {VISIBILITY_ROWS.map((row) => (
+          <MenuItemRadio
+            key={row.value}
+            icon={row.icon}
+            description={row.description}
+            checked={row.value === current}
+            disabled={isPending}
+            onSelect={() => apply(row.value)}
+          >
+            {row.label}
+          </MenuItemRadio>
+        ))}
+      </Menu>
     </div>
   );
 }

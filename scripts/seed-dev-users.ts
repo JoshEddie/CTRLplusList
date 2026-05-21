@@ -19,6 +19,7 @@ import {
   user_follows,
   users,
 } from '../db/schema';
+import { VISIBILITY, type ListVisibility } from '../lib/visibility';
 
 if (process.env.NODE_ENV === 'production') {
   console.error('[seed-dev-users] Refusing to run with NODE_ENV=production');
@@ -72,7 +73,7 @@ type SeedList = {
   subtitle?: string;
   occasion: string;
   user_id: string;
-  visibility: 'private' | 'unlisted' | 'public';
+  visibility: ListVisibility;
   itemNames: string[];
 };
 
@@ -149,23 +150,23 @@ const VIEWER_LIST_TEMPLATES: {
   name: string;
   subtitle?: string;
   occasion: string;
-  visibility: 'private' | 'unlisted' | 'public';
+  visibility: ListVisibility;
 }[] = [
-  { slug: 'birthday', name: "Test Viewer's Birthday", occasion: 'Birthday', visibility: 'public' },
-  { slug: 'housewarming', name: 'Housewarming Wishes', occasion: 'Housewarming', visibility: 'private' },
-  { slug: 'holiday-2026', name: 'Holiday 2026', subtitle: 'Group gift exchange', occasion: 'Holiday', visibility: 'public' },
-  { slug: 'anniversary', name: 'Anniversary Picks', occasion: 'Anniversary', visibility: 'unlisted' },
-  { slug: 'wedding-registry', name: 'Wedding Registry', subtitle: 'Brandy Family', occasion: 'Wedding', visibility: 'public' },
-  { slug: 'kitchen-upgrade', name: 'Kitchen Upgrade', occasion: 'Just Because', visibility: 'private' },
-  { slug: 'fitness-goals', name: 'Fitness Goals', occasion: 'Self-Care', visibility: 'public' },
-  { slug: 'home-office', name: 'Home Office Refresh', occasion: 'Just Because', visibility: 'unlisted' },
-  { slug: 'reading-stack', name: 'Reading Stack', occasion: 'Just Because', visibility: 'public' },
-  { slug: 'camping-trip', name: 'Camping Trip Gear', occasion: 'Adventure', visibility: 'public' },
-  { slug: 'baby-shower', name: 'Baby Shower Wishlist', subtitle: "It's a girl!", occasion: 'Baby Shower', visibility: 'public' },
-  { slug: 'graduation', name: 'Graduation Picks', occasion: 'Graduation', visibility: 'unlisted' },
-  { slug: 'fathers-day', name: "Father's Day Ideas", occasion: 'Holiday', visibility: 'private' },
-  { slug: 'mothers-day', name: "Mother's Day Ideas", occasion: 'Holiday', visibility: 'private' },
-  { slug: 'spring-garden', name: 'Spring Garden', occasion: 'Hobby', visibility: 'public' },
+  { slug: 'birthday', name: "Test Viewer's Birthday", occasion: 'Birthday', visibility: VISIBILITY.FOLLOWERS },
+  { slug: 'housewarming', name: 'Housewarming Wishes', occasion: 'Housewarming', visibility: VISIBILITY.OWNER },
+  { slug: 'holiday-2026', name: 'Holiday 2026', subtitle: 'Group gift exchange', occasion: 'Holiday', visibility: VISIBILITY.FOLLOWERS },
+  { slug: 'anniversary', name: 'Anniversary Picks', occasion: 'Anniversary', visibility: VISIBILITY.LINK },
+  { slug: 'wedding-registry', name: 'Wedding Registry', subtitle: 'Brandy Family', occasion: 'Wedding', visibility: VISIBILITY.FOLLOWERS },
+  { slug: 'kitchen-upgrade', name: 'Kitchen Upgrade', occasion: 'Just Because', visibility: VISIBILITY.OWNER },
+  { slug: 'fitness-goals', name: 'Fitness Goals', occasion: 'Self-Care', visibility: VISIBILITY.FOLLOWERS },
+  { slug: 'home-office', name: 'Home Office Refresh', occasion: 'Just Because', visibility: VISIBILITY.LINK },
+  { slug: 'reading-stack', name: 'Reading Stack', occasion: 'Just Because', visibility: VISIBILITY.FOLLOWERS },
+  { slug: 'camping-trip', name: 'Camping Trip Gear', occasion: 'Adventure', visibility: VISIBILITY.FOLLOWERS },
+  { slug: 'baby-shower', name: 'Baby Shower Wishlist', subtitle: "It's a girl!", occasion: 'Baby Shower', visibility: VISIBILITY.FOLLOWERS },
+  { slug: 'graduation', name: 'Graduation Picks', occasion: 'Graduation', visibility: VISIBILITY.LINK },
+  { slug: 'fathers-day', name: "Father's Day Ideas", occasion: 'Holiday', visibility: VISIBILITY.OWNER },
+  { slug: 'mothers-day', name: "Mother's Day Ideas", occasion: 'Holiday', visibility: VISIBILITY.OWNER },
+  { slug: 'spring-garden', name: 'Spring Garden', occasion: 'Hobby', visibility: VISIBILITY.FOLLOWERS },
 ];
 
 // Friend-owned lists — 1–2 per friend, all public so the viewer can visit
@@ -215,7 +216,7 @@ const seedLists: SeedList[] = [
       subtitle: t.subtitle,
       occasion: t.occasion,
       user_id: friendId(t.friendSlug),
-      visibility: 'public' as const,
+      visibility: VISIBILITY.FOLLOWERS,
       itemNames: itemsForList(id),
     };
   }),
@@ -305,7 +306,7 @@ async function main() {
     .insert(lists)
     .values(
       seedLists.map((l) => {
-        const shared = l.visibility !== 'private';
+        const shared = l.visibility !== VISIBILITY.OWNER;
         return {
           id: l.id,
           name: l.name,

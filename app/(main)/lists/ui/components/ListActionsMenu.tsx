@@ -6,7 +6,7 @@ import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
 import { ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { ReactNode, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   MdChecklist,
@@ -26,6 +26,8 @@ export default function ListActionsMenu({
   spoilerHref,
   previewHref,
   exitPreviewHref,
+  isOwner = true,
+  prependedItems,
 }: {
   list: ListTable;
   showSpoilers: boolean;
@@ -33,6 +35,8 @@ export default function ListActionsMenu({
   spoilerHref: string;
   previewHref: string;
   exitPreviewHref: string;
+  isOwner?: boolean;
+  prependedItems?: ReactNode;
 }) {
   const listId = list.id;
   const router = useRouter();
@@ -52,6 +56,11 @@ export default function ListActionsMenu({
   };
 
   const close = () => setOpen(false);
+  const showSpoilerToggle = isOwner;
+  const showPreviewToggle = isOwner;
+  const showOwnerEdit = isOwner && !previewMode;
+  const showOwnerChoose = isOwner && !previewMode;
+  const showOwnerDelete = isOwner && !previewMode;
 
   return (
     <>
@@ -73,7 +82,8 @@ export default function ListActionsMenu({
           anchorRef={triggerRef}
           aria-label="List actions"
         >
-          {!previewMode && (
+          {prependedItems}
+          {showOwnerChoose && (
             <MenuLinkItem
               href={`/lists/${listId}/choose-items`}
               icon={<MdChecklist size={18} />}
@@ -82,7 +92,7 @@ export default function ListActionsMenu({
               Choose items
             </MenuLinkItem>
           )}
-          {!previewMode && (
+          {showOwnerEdit && (
             <MenuItem
               icon={<MdModeEdit size={18} />}
               onClick={() => {
@@ -93,37 +103,40 @@ export default function ListActionsMenu({
               Edit list
             </MenuItem>
           )}
-          <MenuLinkItem
-            href={spoilerHref}
-            icon={
-              showSpoilers ? (
-                <MdVisibilityOff size={18} />
-              ) : (
-                <MdVisibility size={18} />
-              )
-            }
-            onClick={close}
-          >
-            {showSpoilers ? 'Hide spoilers' : 'Show spoilers'}
-          </MenuLinkItem>
-          {previewMode ? (
+          {showSpoilerToggle && (
             <MenuLinkItem
-              href={exitPreviewHref}
-              icon={<MdPreview size={18} />}
+              href={spoilerHref}
+              icon={
+                showSpoilers ? (
+                  <MdVisibilityOff size={18} />
+                ) : (
+                  <MdVisibility size={18} />
+                )
+              }
               onClick={close}
             >
-              Exit preview
-            </MenuLinkItem>
-          ) : (
-            <MenuLinkItem
-              href={previewHref}
-              icon={<MdPreview size={18} />}
-              onClick={close}
-            >
-              Preview as viewer
+              {showSpoilers ? 'Hide spoilers' : 'Show spoilers'}
             </MenuLinkItem>
           )}
-          {!previewMode && (
+          {showPreviewToggle &&
+            (previewMode ? (
+              <MenuLinkItem
+                href={exitPreviewHref}
+                icon={<MdPreview size={18} />}
+                onClick={close}
+              >
+                Exit preview
+              </MenuLinkItem>
+            ) : (
+              <MenuLinkItem
+                href={previewHref}
+                icon={<MdPreview size={18} />}
+                onClick={close}
+              >
+                Preview as viewer
+              </MenuLinkItem>
+            ))}
+          {showOwnerDelete && (
             <MenuItem
               icon={<MdDeleteForever size={18} />}
               tone="danger"

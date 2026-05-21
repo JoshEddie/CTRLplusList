@@ -1,5 +1,6 @@
 'use client';
 
+import { Chip } from '@/app/ui/components/chip';
 import { SearchField, SelectField } from '@/app/ui/components/field';
 import { PopoverTrigger } from '@/app/ui/components/popover-trigger';
 import {
@@ -8,7 +9,7 @@ import {
 } from '@/app/ui/components/segmented-control';
 import { SortKey } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MdClose, MdGridView, MdTune, MdViewList } from 'react-icons/md';
 import PriceFilterPopover from './PriceFilterPopover';
 import StoreFilterPopover from './StoreFilterPopover';
@@ -67,6 +68,34 @@ const SHOW_LABELS: Record<string, string> = {
   off: 'Not on the list',
 };
 
+function SearchInputControl({
+  initialQ,
+  onCommit,
+}: {
+  initialQ: string;
+  onCommit: (next: string) => void;
+}) {
+  const [value, setValue] = useState(initialQ);
+
+  useEffect(() => {
+    if (value === initialQ) return;
+    const handle = setTimeout(() => {
+      onCommit(value);
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [value, initialQ, onCommit]);
+
+  return (
+    <SearchField
+      placeholder="Search items..."
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onClear={() => setValue('')}
+      aria-label="Search items"
+    />
+  );
+}
+
 export default function ItemsToolbar({
   mode,
   storeOptions,
@@ -89,21 +118,25 @@ export default function ItemsToolbar({
   const priceMax = searchParams?.get('price_max') ?? '';
   const view = searchParams?.get('view') === 'list' ? 'list' : 'grid';
 
-  const [searchInput, setSearchInput] = useState(q);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  useEffect(() => {
-    setSearchInput(q);
-  }, [q]);
+  const updateParams = useCallback(
+    (patch: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams?.toString() || '');
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === null || value === '') params.delete(key);
+        else params.set(key, value);
+      }
+      const queryString = params.toString();
+      router.replace(queryString ? `${pathname}?${queryString}` : pathname);
+    },
+    [searchParams, router, pathname]
+  );
 
-  useEffect(() => {
-    if (searchInput === q) return;
-    const handle = setTimeout(() => {
-      updateParams({ q: searchInput || null, page: null });
-    }, 200);
-    return () => clearTimeout(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchInput]);
+  const commitSearch = useCallback(
+    (next: string) => updateParams({ q: next || null, page: null }),
+    [updateParams]
+  );
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -113,16 +146,6 @@ export default function ItemsToolbar({
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [filtersOpen]);
-
-  const updateParams = (patch: Record<string, string | null>) => {
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    for (const [key, value] of Object.entries(patch)) {
-      if (value === null || value === '') params.delete(key);
-      else params.set(key, value);
-    }
-    const queryString = params.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
-  };
 
   const toggleStore = (name: string) => {
     const params = new URLSearchParams(searchParams?.toString() || '');
@@ -230,13 +253,7 @@ export default function ItemsToolbar({
     <div className={`items-toolbar ${!showGridToggle ? 'hide-grid-toggle' : ''}`}>
       <div className="items-toolbar-row">
         <div className="items-search items-toolbar-cell--search">
-          <SearchField
-            placeholder="Search items..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onClear={() => setSearchInput('')}
-            aria-label="Search items"
-          />
+          <SearchInputControl key={q} initialQ={q} onCommit={commitSearch} />
         </div>
 
         <PopoverTrigger
@@ -398,16 +415,13 @@ export default function ItemsToolbar({
       {chips.length > 0 && (
         <div className="items-toolbar-chips" role="region" aria-label="Active filters">
           {chips.map((c) => (
-            <button
+            <Chip
               key={c.key}
-              type="button"
-              className="items-toolbar-chip"
-              onClick={c.onClear}
-              aria-label={`Remove filter: ${c.label}`}
+              onRemove={c.onClear}
+              removeLabel={`Remove filter: ${c.label}`}
             >
-              <span>{c.label}</span>
-              <MdClose aria-hidden />
-            </button>
+              {c.label}
+            </Chip>
           ))}
         </div>
       )}

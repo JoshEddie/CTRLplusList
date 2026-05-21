@@ -18,6 +18,12 @@ import {
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
+import {
+  VISIBILITY,
+  VISIBILITY_VALUES,
+  fromDb,
+  type ListVisibility,
+} from '@/lib/visibility';
 // Define Zod schema for list validation
 const ListSchema = z.object({
   name: z
@@ -191,8 +197,7 @@ export async function deleteList(id: string): Promise<ActionResponse> {
   }
 }
 
-const VisibilitySchema = z.enum(['private', 'unlisted', 'public']);
-export type ListVisibility = z.infer<typeof VisibilitySchema>;
+const VisibilitySchema = z.enum(VISIBILITY_VALUES);
 
 export async function setListVisibility(
   id: string,
@@ -245,8 +250,8 @@ export async function setListVisibility(
     }
 
     const next = parsed.data;
-    const wasPrivate = list.visibility === 'private';
-    const goingPrivate = next === 'private';
+    const wasPrivate = fromDb(list.visibility) === VISIBILITY.OWNER;
+    const goingPrivate = next === VISIBILITY.OWNER;
     // shared_at: set on first private → non-private transition; clear on transition
     // back to private; preserve on unlisted ↔ public. See design Decision 3.
     const sharedAtUpdate: { shared_at?: Date | null } = goingPrivate
@@ -261,7 +266,7 @@ export async function setListVisibility(
       .update(lists)
       .set({
         visibility: next,
-        shared: next !== 'private',
+        shared: next !== VISIBILITY.OWNER,
         ...sharedAtUpdate,
       })
       .where(eq(lists.id, id));
@@ -304,7 +309,7 @@ export async function recordVisit(list_id: string): Promise<ActionResponse> {
     if (list.user_id === userId) {
       return { success: true, message: 'Owner visit; skipped' };
     }
-    if (list.visibility === 'private') {
+    if (fromDb(list.visibility) === VISIBILITY.OWNER) {
       return { success: true, message: 'Private list; skipped' };
     }
 

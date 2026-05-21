@@ -1,20 +1,81 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+# Project context — shown to AI when creating any artifact.
+context: |
+  # What the app is
+  Ctrl+List — wishlist / gift-list sharing. Three-state visibility
+  (private | unlisted | public). Owners build lists; followers
+  bookmark, visit, and claim items with spoiler hiding.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  # Stack
+  Next.js App Router · React 19 · TS · NextAuth (Google) · Drizzle on
+  Postgres · vanilla CSS with tokens. No Tailwind, no CSS-in-JS.
+
+  # Where things live (pointers — verify by ls, don't trust this map)
+  - App-wide UI primitives under `app/ui/components/<family>/`
+  - Page-scoped UI under `app/(main)/<area>/ui/`
+  - CSS tokens in `app/ui/styles/global.css`
+  - Data reads in `lib/dal.ts`; mutations in `app/actions/`
+  - Drizzle schema in `db/schema.ts`
+
+  # Spec authority
+  Active specs in `openspec/specs/<capability>/spec.md` are the
+  authoritative normative contract. Archived changes under
+  `openspec/changes/archive/` are historical; their requirements were
+  rolled into the active spec at archive time. A behavior may be
+  governed by a different capability than the DOM region it affects
+  (e.g., Follow-button placement is owned by `following`, not by any
+  list-hero capability) — treat the active spec as binding regardless
+  of folder.
+
+  # Cross-cutting design systems
+  Every interactive surface (button, link, chip, input, textarea,
+  select, checkbox, menu, popover trigger, segmented control) is
+  governed by a primitive-family spec under `openspec/specs/` or an
+  in-flight change under `openspec/changes/`. Do not propose
+  page-scoped one-off classes for these surfaces — extend the
+  primitive via a spec modification instead.
+
+  # Data freshness
+  `lib/dal.ts` reads use `'use cache'` + `cacheTag(...)`. Mutations
+  must call `revalidateTag(...)` for matching tags or reads go stale.
+
+  # Meta: this file is a WIP
+  If during any OpenSpec workflow (explore, propose, design, apply)
+  anything in this file seems off, stale, or a missing pointer would
+  have saved a wrong turn, surface it and suggest editing this file —
+  the orientation here is iterated, not fixed.
+
+# Per-artifact rules — enforced during artifact creation.
+rules:
+  proposal:
+    - |
+      Before drafting, enumerate active specs (`openspec list --specs
+      --json` or `ls openspec/specs`) and grep EVERY active spec.md
+      for any DOM class, component name, file path, or behavior the
+      change will touch — not just the capability folder name. Cite
+      any binding SHALLs found as inherited constraints in "Why".
+    - |
+      If the change touches an interactive surface listed under
+      cross-cutting design systems, cite the relevant primitive spec
+      and explain how the change flows through existing primitives.
+      Adding a new variant, size, or sibling primitive is a spec
+      modification — include a MODIFIED Capabilities entry. Page-
+      scoped className overrides on primitive classes are not an
+      acceptable workaround.
+    - |
+      If the change adds or modifies a server-side read, name the
+      cache tag it consumes and every mutation path that must
+      revalidate that tag.
+  design:
+    - |
+      For each Decision, check whether an active spec governs the
+      region. If yes, align with it or scope a separate change to
+      modify it — do not silently override. Keep rejected decisions
+      in the doc with rationale so the constraint isn't re-discovered.
+  specs:
+    - |
+      When adding a requirement that overlaps semantically with one
+      in another capability, name the overlap and defer. Cross-
+      capability constraints belong in the capability that owns the
+      behavior, not the one that owns the DOM region.

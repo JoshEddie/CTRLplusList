@@ -11,14 +11,16 @@ export default function AppFrame({
   return (
     <div className="app-frame">
       <header className="app-nav">
-        <AppLogo />
-        <Suspense fallback={null}>
-          <AppNav />
-        </Suspense>
-        <div className="app-nav-avatar">
+        <div className="app-nav-inner">
+          <AppLogo />
           <Suspense fallback={null}>
-            <User />
+            <AppNav />
           </Suspense>
+          <div className="app-nav-avatar">
+            <Suspense fallback={null}>
+              <User />
+            </Suspense>
+          </div>
         </div>
       </header>
       <div className="app-surface-bleed">

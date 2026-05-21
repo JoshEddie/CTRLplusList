@@ -35,19 +35,26 @@
   top: 0;
   z-index: 10;
   display: flex;
+  height: 60px;
+  padding: 0 20px;
+  background-image: var(--page-frame-gradient);
+  flex-shrink: 0;
+}
+
+.app-nav-inner {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  height: 60px;
-  padding: 0 28px;
-  background-image: var(--page-frame-gradient);
-  flex-shrink: 0;
+  width: 100%;
+  max-width: 1700px;
+  margin: 0 auto;
 }
 
 @media (max-width: 800px) {
   .app-nav {
     height: 54px;
-    padding: 0 20px;
+    padding: 0 12px;
   }
 }
 
@@ -142,7 +149,7 @@
 }
 
 /* Small layout (801–1099px): compact pills, still inline */
-@media (max-width: 1099px) and (min-width: 801px) {
+/* @media (max-width: 1099px) and (min-width: 801px) {
   .app-nav-items {
     gap: 6px;
   }
@@ -155,9 +162,9 @@
   .app-nav-item-icon {
     font-size: 14px;
   }
-}
+} */
 
-@media (max-width: 800px) {
+@media (max-width: 700px) {
   /* On mobile the hamburger sits at the start of the bar, before the logo.
      CSS order rearranges the existing flex children without touching markup. */
   .app-nav-wrap {

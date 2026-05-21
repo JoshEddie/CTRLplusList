@@ -59,25 +59,28 @@
   outline-color: var(--light-color);
 }
 
-/* On-dark tone — translucent white pill on the purple hero, white-card active. */
+/* On-dark tone — dark translucent pill on the purple hero, white-card active.
+   The container uses a *dark* overlay (not white) so the pill is darker than
+   the hero surface — that's what lets the inactive option's solid white text
+   clear WCAG 1.4.3 AA (a white overlay produced a lighter pill where even
+   pure white text capped at ~3.9:1). */
 
 .segmented.tone-on-dark {
-  background-color: rgba(255, 255, 255, 0.13);
-  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  background-color: rgba(0, 0, 0, 0.22);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
   padding: 2px;
   gap: 2px;
   border-radius: var(--btn-radius);
 }
 
 .segmented.tone-on-dark .segmented-option {
-  color: rgba(255, 255, 255, 0.78);
+  color: #ffffff;
   border-radius: calc(var(--btn-radius) - 4px);
 }
 
 @media (hover: hover) {
   .segmented.tone-on-dark .segmented-option:hover:not(.active) {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: var(--light-color);
+    background-color: rgba(0, 0, 0, 0.18);
   }
 }
 

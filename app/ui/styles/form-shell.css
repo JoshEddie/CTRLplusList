@@ -214,22 +214,6 @@
   }
 }
 
-.if-search-link {
-  background: none;
-  border: none;
-  color: var(--primary-color);
-  font: 12px var(--font-roboto-condensed), sans-serif;
-  padding: 6px 0 0;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.if-search-link:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* Inline list picker (chips + trigger + dropdown) */
 .if-lp {
   position: relative;
@@ -246,40 +230,6 @@
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-}
-
-.if-lp-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  background: var(--card-accent-background-color);
-  border-radius: 99px;
-  font-size: 12px;
-  color: var(--primary-color);
-  font-weight: 500;
-}
-
-.if-lp-chip button {
-  background: none;
-  border: none;
-  color: var(--meta-text-color);
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.if-lp-chip button:hover:not(:disabled) {
-  color: var(--primary-color);
-}
-
-.if-lp-chip button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 /* The list-picker trigger is the PopoverTrigger primitive — its trigger

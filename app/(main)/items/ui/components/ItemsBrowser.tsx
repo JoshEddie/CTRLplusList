@@ -113,6 +113,8 @@ export default function ItemsBrowser({
     [items]
   );
 
+  const selectedStoresKey = selectedStores.join('|');
+
   const filteredSorted = useMemo(() => {
     let result = items;
     if (q) {
@@ -143,11 +145,11 @@ export default function ItemsBrowser({
     }
     if (sort === 'list_order') return result;
     return [...result].sort((a, b) => compareItems(a, b, sort));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `selectedStores` is depended on via its `selectedStoresKey` projection to keep the deps array stable across array reorderings
   }, [
     items,
     q,
-    selectedStores.join('|'),
+    selectedStoresKey,
     purchasesParam,
     hasPriceFilter,
     priceMin,

@@ -1,5 +1,6 @@
 'use client';
 
+import Item from '@/app/(main)/items/ui/components/Item';
 import {
   compareItems,
   displayPrice,
@@ -8,6 +9,7 @@ import ItemFormContainer from '@/app/(main)/items/ui/components/itemform/ItemFor
 import ItemsToolbar from '@/app/(main)/items/ui/components/ItemsToolbar';
 import { setListItems } from '@/app/actions/lists';
 import { Button, LinkButton } from '@/app/ui/components/button';
+import { CheckboxField } from '@/app/ui/components/field/CheckboxField';
 import { ItemDisplay, ListTable, SortKey } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -89,6 +91,8 @@ export default function ChooseItemsForm({
     [items]
   );
 
+  const selectedStoresKey = selectedStores.join('|');
+
   const filtered = useMemo(() => {
     let result = items;
     if (show === 'on') {
@@ -116,13 +120,13 @@ export default function ChooseItemsForm({
       });
     }
     return [...result].sort((a, b) => compareItems(a, b, sort));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `selectedStores` is depended on via its `selectedStoresKey` projection to keep the deps array stable across array reorderings
   }, [
     items,
     selected,
     show,
     q,
-    selectedStores.join('|'),
+    selectedStoresKey,
     hasPriceFilter,
     priceMin,
     priceMax,
@@ -207,7 +211,7 @@ export default function ChooseItemsForm({
       ? totalSelected > 0
         ? `Add ${totalSelected} item${totalSelected !== 1 ? 's' : ''} to list →`
         : 'Skip'
-      : 'Save';
+      : 'Save changes';
 
   return (
     <div className="choose-items-page">
@@ -269,70 +273,41 @@ export default function ChooseItemsForm({
               </div>
             )
           ) : (
-            <ul className="choose-items-list" role="list">
+            <ul className="choose-items-list item-list" role="list">
               {filtered.map((item) => {
                 const isSelected = selected.has(item.id);
                 const wasIn = initialSet.has(item.id);
                 const removing = wasIn && !isSelected;
                 const isArchived = !!item.archived_at;
-                const primaryStore = item.stores?.[0];
-                const price = displayPrice(item);
+                const checkboxId = `choose-item-${item.id}`;
+                const showInListBadge = wasIn && isSelected;
+                const showAnyBadge = showInListBadge || isArchived;
                 return (
                   <li key={item.id}>
-                    <button
-                      type="button"
-                      className={`choose-items-row${isSelected ? ' is-on' : ''}${
+                    <label
+                      htmlFor={checkboxId}
+                      className={`choose-items-select${isSelected ? ' is-on' : ''}${
                         removing ? ' is-removing' : ''
                       }`}
-                      onClick={() => toggle(item.id)}
-                      aria-pressed={isSelected}
                     >
-                      <span
-                        className={`choose-items-cb${
-                          isSelected ? ' is-on' : ''
-                        }${removing ? ' is-removing' : ''}`}
-                        aria-hidden="true"
-                      >
-                        {isSelected && (
-                          <svg
-                            width="10"
-                            height="8"
-                            viewBox="0 0 10 8"
-                            fill="none"
-                          >
-                            <path
-                              d="M1 4l3 3 5-6"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        )}
-                      </span>
-
-                      {item.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={item.image_url}
-                          alt={item.name || ''}
-                          className="choose-items-thumb"
-                        />
-                      ) : (
-                        <div
-                          className="choose-items-thumb choose-items-thumb-empty"
-                          aria-hidden="true"
-                        />
-                      )}
-
-                      <div className="choose-items-main">
-                        <div
-                          className={`choose-items-name${
-                            removing ? ' is-strike' : ''
-                          }`}
-                        >
-                          {item.name}
-                          {wasIn && isSelected && (
+                      <CheckboxField
+                        id={checkboxId}
+                        label={item.name ?? ''}
+                        checked={isSelected}
+                        onChange={() => toggle(item.id)}
+                      />
+                      {/* Body delegated to the shared row primitive. Passing
+                          user_id makes isOwner=true (the picker viewer always
+                          owns these items — it's their library), which suppresses
+                          the non-owner Claim CTA branch. The `.preview` className
+                          composed by <Item preview> then suppresses owner
+                          edit/archive/kebab cells via the existing rules in
+                          item.css. Result: identical visual to the sortable
+                          owner row, minus the drag handle. */}
+                      <Item item={item} user_id={user_id} preview />
+                      {showAnyBadge && (
+                        <span className="choose-items-badges">
+                          {showInListBadge && (
                             <span className="choose-items-in-badge">
                               In list
                             </span>
@@ -342,61 +317,9 @@ export default function ChooseItemsForm({
                               archived
                             </span>
                           )}
-                        </div>
-                        {primaryStore?.name && (
-                          <div className="choose-items-from">
-                            FROM {primaryStore.name.toUpperCase()}
-                          </div>
-                        )}
-                        {item.stores && item.stores.length > 0 && (
-                          <div className="choose-items-chips">
-                            {item.stores
-                              .filter((s) => s.name)
-                              .slice(0, 4)
-                              .map((s, i) =>
-                                s.link ? (
-                                  // eslint-disable-next-line react/jsx-no-target-blank
-                                  <a
-                                    key={i}
-                                    href={s.link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="choose-items-chip"
-                                    onClick={(e) => e.stopPropagation()}
-                                    title={`View on ${s.name}`}
-                                  >
-                                    {s.name} ↗
-                                  </a>
-                                ) : (
-                                  <span
-                                    key={i}
-                                    className="choose-items-chip choose-items-chip-static"
-                                  >
-                                    {s.name}
-                                  </span>
-                                )
-                              )}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="choose-items-right">
-                        {Number.isFinite(price) && (
-                          <span
-                            className={`choose-items-price${
-                              removing ? ' is-muted' : ''
-                            }`}
-                          >
-                            ${(price as number).toFixed(2)}
-                          </span>
-                        )}
-                        {item.stores && item.stores.length > 1 && (
-                          <span className="choose-items-stores-count">
-                            {item.stores.length} stores
-                          </span>
-                        )}
-                      </div>
-                    </button>
+                        </span>
+                      )}
+                    </label>
                   </li>
                 );
               })}

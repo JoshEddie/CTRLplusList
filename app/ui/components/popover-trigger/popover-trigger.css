@@ -81,3 +81,37 @@
   color: currentColor;
   opacity: 0.7;
 }
+
+/* tone="on-dark" — translucent-white treatment for use on saturated dark
+   surfaces (e.g., the list-hero gradient card). Mirrors the visual language
+   of <Button variant="on-dark"> and <SegmentedControl tone="on-dark">.
+   tone changes ONLY surface colors per the popover-trigger-system spec; it
+   does NOT change geometry, padding, border-radius, or chevron treatment. */
+.popover-trigger.tone-on-dark {
+  background-color: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: var(--light-color);
+}
+
+.popover-trigger.tone-on-dark:focus,
+.popover-trigger.tone-on-dark:focus-visible {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.popover-trigger.tone-on-dark:focus-visible {
+  box-shadow: 0 0 0 var(--field-focus-ring-width) rgba(255, 255, 255, 0.4);
+}
+
+@media (hover: hover) {
+  .popover-trigger.tone-on-dark:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: none;
+  }
+}
+
+.popover-trigger.tone-on-dark.active {
+  background-color: rgba(255, 255, 255, 0.22);
+  border-color: var(--light-color);
+  color: var(--light-color);
+}

@@ -59,7 +59,7 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
     const getItems = () =>
       Array.from(
         container.querySelectorAll<HTMLElement>(
-          '[role="menuitem"]:not([aria-disabled="true"])',
+          '[role^="menuitem"]:not([aria-disabled="true"])',
         ),
       );
 

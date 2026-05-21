@@ -27,7 +27,7 @@ export default function StoreLinks({
   showStores = true,
   children,
 }: Props) {
-  const stores = item.stores ?? [];
+  const stores = useMemo(() => item.stores ?? [], [item.stores]);
   const [open, setOpen] = useState(false);
   const [placement, setPlacement] = useState<'above' | 'below'>('above');
   const triggerRef = useRef<HTMLButtonElement>(null);

@@ -7,14 +7,14 @@ export const PopoverTrigger = forwardRef<
   HTMLButtonElement,
   PopoverTriggerProps
 >(function PopoverTrigger(
-  { icon, label, count, active, className, type = 'button', ...rest },
+  { icon, label, count, active, tone, className, type = 'button', ...rest },
   ref,
 ) {
   return (
     <button
       ref={ref}
       type={type}
-      className={triggerClasses({ active, extra: className })}
+      className={triggerClasses({ active, tone, extra: className })}
       {...rest}
     >
       {icon}

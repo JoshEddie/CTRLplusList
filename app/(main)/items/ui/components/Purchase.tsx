@@ -38,22 +38,22 @@ export default function Purchase({
 
   if (isClaimed) {
     return (
-      <div className={`claimed-state ${className || ''}`} role="status">
+      <button
+        type="button"
+        className={`claimed-state ${className || ''}`}
+        onClick={onClick}
+        aria-label="Remove your claim"
+      >
         <span className="claimed-state-label">
           <MdCheck aria-hidden />
           {purchasedBy === 'You'
             ? 'You claimed this'
             : `Claimed: ${purchasedBy}`}
         </span>
-        <button
-          type="button"
-          className="claimed-state-undo"
-          onClick={onClick}
-          aria-label="Remove your claim"
-        >
+        <span className="claimed-state-undo" aria-hidden>
           Undo
-        </button>
-      </div>
+        </span>
+      </button>
     );
   }
 

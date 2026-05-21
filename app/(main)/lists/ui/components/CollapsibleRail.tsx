@@ -1,7 +1,9 @@
 'use client';
 
+import { LinkButton } from '@/app/ui/components/button';
 import { useSyncExternalStore } from 'react';
-import { FaChevronDown } from 'react-icons/fa';
+import { FaArrowRight } from 'react-icons/fa';
+import { FaChevronDown } from 'react-icons/fa6';
 
 function subscribeLocalStorage(callback: () => void) {
   if (typeof window === 'undefined') return () => {};
@@ -63,9 +65,9 @@ export default function CollapsibleRail({
         <div className="rail-header-extra">
           {headerExtra}
           {seeAllHref && (
-            <a className="rail-see-all" href={seeAllHref}>
-              See all
-            </a>
+            <LinkButton variant="link" href={seeAllHref}>
+              See all <FaArrowRight aria-hidden />
+            </LinkButton>
           )}
         </div>
       </div>

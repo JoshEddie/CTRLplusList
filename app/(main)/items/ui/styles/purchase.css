@@ -1,6 +1,6 @@
 /* Claim CTA — full-width purple button sits inside the item card body */
-.claim-cta-btn {
-  width: 100%;
+/* .claim-cta-btn { */
+  /* width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -26,53 +26,76 @@
 
 .claim-cta-btn:active {
   transform: scale(0.99);
-}
+} */
 
-/* Claimed / Fully-claimed inline state — green pill inside the card body */
+/* Claimed / Fully-claimed inline state — pill inside the card body. Sized
+   to match the standard button floor so the card footer aligns whether the
+   item is unclaimed (Claim CTA / store-link), claimed (green pill), or
+   fully claimed (gray pill). When claimed by the viewer the entire pill is
+   a button that fires undo; the "Undo" text on the right is a visual hint
+   for the whole click target. */
 .claimed-state {
+  /* Locally-darkened text tokens — the global --success-text / --muted-text-color
+     fail WCAG 1.4.3 AA contrast against the pill backgrounds (3.42:1 and
+     4.26:1 respectively, below the 4.5:1 floor for normal text). */
+  --claimed-text: #047857;
+  --claimed-text-dim: #065f46;
+  --fully-claimed-text: #374151;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: 7px 10px;
+  min-height: var(--btn-min-height);
+  padding: var(--btn-padding-y) var(--btn-padding-x);
   border: 1.5px solid var(--success-border);
-  border-radius: 8px;
+  border-radius: var(--btn-radius);
   background-color: var(--success-bg);
-  color: var(--success-text);
+  color: var(--claimed-text);
+  font-family: var(--font-roboto-condensed);
+  cursor: pointer;
+}
+
+.claimed-state:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: 2px;
 }
 
 .claimed-state-label {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .claimed-state-undo {
-  background: none;
-  border: none;
-  font-family: var(--font-roboto-condensed);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--muted-text-color);
-  cursor: pointer;
-  padding: 2px 4px;
+  color: var(--claimed-text-dim);
 }
 
-.claimed-state-undo:hover {
-  color: var(--success-text);
-  text-decoration: underline;
+@media (hover: hover) {
+  .claimed-state:hover:not(.claimed-state--fully) {
+    background-color: color-mix(in srgb, var(--success-bg) 85%, var(--claimed-text));
+    border-color: var(--claimed-text);
+  }
+
+  .claimed-state:hover:not(.claimed-state--fully) .claimed-state-undo {
+    color: var(--claimed-text);
+    text-decoration: underline;
+  }
 }
 
 .claimed-state--fully {
   justify-content: center;
   background-color: var(--secondary-background-color);
   border-color: var(--neutral-border-color);
-  color: var(--muted-text-color);
+  color: var(--fully-claimed-text);
+  cursor: default;
 }
 
 .claimed-state--fully .claimed-state-label {
-  color: var(--muted-text-color);
+  color: var(--fully-claimed-text);
 }

@@ -1,6 +1,7 @@
 // ListSelection.tsx — inline chip picker matching the Stage 5 mockup.
 'use client';
 
+import { Chip } from '@/app/ui/components/chip';
 import { FieldError } from '@/app/ui/components/field';
 import { PopoverTrigger } from '@/app/ui/components/popover-trigger';
 import { usePopoverDismiss } from '@/app/ui/hooks/usePopoverDismiss';
@@ -76,20 +77,13 @@ export function ListSelection({
       >
         <div className="if-lp-top">
           {selected.map((s) => (
-            <span key={s.value} className="if-lp-chip">
+            <Chip
+              key={s.value}
+              onRemove={() => remove(s.value)}
+              disabled={isPending}
+            >
               {s.label}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  remove(s.value);
-                }}
-                aria-label={`Remove ${s.label}`}
-                disabled={isPending}
-              >
-                ×
-              </button>
-            </span>
+            </Chip>
           ))}
           <PopoverTrigger
             id={`${name}-trigger`}
@@ -116,6 +110,7 @@ export function ListSelection({
                   className="if-lp-opt"
                   onClick={() => add(o)}
                   role="option"
+                  aria-selected={false}
                 >
                   {o.label}
                 </button>

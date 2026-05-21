@@ -170,23 +170,7 @@ const MOCK_ASPECTS: Array<{ width: number; height: number }> = [
   { width: 480, height: 720 },
 ];
 
-// LoremFlickr only accepts comma-separated keyword tags (letters/digits/dashes).
-// Strip anything else so a query like "red shoes, size 10!" still returns
-// something instead of a 404.
-function toFlickrTags(query: string): string {
-  const cleaned = query
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 3) // too many tags narrows results to nothing
-    .join(',');
-  return cleaned || 'product';
-}
-
 function buildMockResults(query: string, limit: number): ImageSearchResult[] {
-  const tags = toFlickrTags(query);
   const count = Math.min(MOCK_RESULT_COUNT, limit);
 
   return Array.from({ length: count }, (_, i) => {

@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import { LinkButton } from '@/app/ui/components/button';
-import FollowButton from './FollowButton';
+import FollowContainer from './FollowContainer';
 
 function initialsOf(name: string | null | undefined): string {
   if (!name) return '?';
@@ -12,13 +12,11 @@ export default function ProfileHeader({
   user,
   publicListCount,
   viewerId,
-  viewerIsFollowing,
   showFollowButton,
 }: {
   user: { id: string; name: string | null; image: string | null };
   publicListCount: number;
   viewerId: string | null;
-  viewerIsFollowing: boolean;
   showFollowButton: boolean;
 }) {
   const isOwnProfile = viewerId === user.id;
@@ -53,11 +51,11 @@ export default function ProfileHeader({
           <LinkButton href="/settings/connections" variant="secondary">
             Manage connections
           </LinkButton>
-        ) : showFollowButton ? (
-          <FollowButton
-            userId={user.id}
-            userName={user.name}
-            initialFollowing={viewerIsFollowing}
+        ) : showFollowButton && viewerId ? (
+          <FollowContainer
+            ownerId={user.id}
+            ownerName={user.name}
+            viewerId={viewerId}
           />
         ) : null}
       </div>

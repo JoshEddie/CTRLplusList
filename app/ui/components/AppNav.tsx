@@ -35,6 +35,7 @@ export default function AppNav() {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- navigation-triggered side effect (close menu on route change), not derived state
   useEffect(() => setOpen(false), [pathname]);
 
   useEffect(() => {

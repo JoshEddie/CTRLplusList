@@ -2,7 +2,7 @@
 
 import { getItemEditData } from '@/app/actions/items';
 import { ItemStoreTable, ItemTable, ListTable } from '@/lib/types';
-import { useEffect, useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { MdModeEdit } from 'react-icons/md';
@@ -13,6 +13,10 @@ type EditItemData = {
   lists: ListTable[];
 };
 
+// useSyncExternalStore needs a subscribe fn even when the value never changes;
+// returning a noop unsubscribe means the gate is "true on client, false on SSR".
+const subscribeNoop = () => () => {};
+
 export default function EditItemButton({
   itemId,
   user_id,
@@ -22,11 +26,11 @@ export default function EditItemButton({
 }) {
   const [data, setData] = useState<EditItemData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false
+  );
 
   const handleOpen = async () => {
     if (loading || data) return;

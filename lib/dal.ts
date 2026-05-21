@@ -13,6 +13,30 @@ import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 import { cache } from 'react';
 import { ListTable, PurchaseView, UserTable } from './types';
+import {
+  VISIBILITY,
+  fromDb,
+  visibilityDbValues,
+  type ListVisibility,
+} from './visibility';
+
+// DAL is the translation boundary: raw lists.visibility strings are decoded
+// to canonical ListVisibility constants before any row escapes this file.
+function withVisibility<T extends { visibility: string }>(
+  row: T
+): Omit<T, 'visibility'> & { visibility: ListVisibility } {
+  return { ...row, visibility: fromDb(row.visibility) };
+}
+
+function withNestedListVisibility<
+  T extends { list: { visibility: string } & Record<string, unknown> },
+>(
+  row: T
+): Omit<T, 'list'> & {
+  list: Omit<T['list'], 'visibility'> & { visibility: ListVisibility };
+} {
+  return { ...row, list: withVisibility(row.list) };
+}
 
 type RawPurchase = {
   id: string;
@@ -87,14 +111,22 @@ export const getUserIdByEmail: (email: string) => Promise<UserTable | null> =
 export async function getList(id: string) {
   'use cache';
   cacheTag('lists');
+  cacheTag('items');
   try {
     const result = await db.query.lists.findFirst({
       where: eq(lists.id, id),
       with: {
         user: true,
+        // Load only item_id from list_items so the hero can compute item
+        // count via `result.items.length` without a separate DAL call.
+        // Minimal column projection keeps the payload small even for very
+        // large lists.
+        items: {
+          columns: { item_id: true },
+        },
       },
     });
-    return result;
+    return result ? withVisibility(result) : result;
   } catch (error) {
     console.error(`Error fetching list ${id}:`, error);
     throw new Error('Failed to fetch list');
@@ -117,7 +149,7 @@ export async function getLists() {
       },
       orderBy: (lists, { desc }) => [desc(lists.created_at)],
     });
-    return result;
+    return result.map(withVisibility);
   } catch (error) {
     console.error('Error fetching lists:', error);
     throw new Error('Failed to fetch lists');
@@ -141,7 +173,7 @@ export async function getListsByUser(userId: string) {
       },
       orderBy: (lists, { desc }) => [desc(lists.created_at)],
     });
-    return result;
+    return result.map(withVisibility);
   } catch (error) {
     console.error('Error fetching lists:', error);
     throw new Error('Failed to fetch lists');
@@ -338,7 +370,10 @@ export async function getListsSharedByUser(userId: string) {
   try {
     const result = await db.query.lists.findMany({
       where: and(
-        inArray(lists.visibility, ['unlisted', 'public']),
+        inArray(
+          lists.visibility,
+          visibilityDbValues([VISIBILITY.LINK, VISIBILITY.FOLLOWERS])
+        ),
         eq(lists.user_id, userId)
       ),
       with: {
@@ -352,7 +387,7 @@ export async function getListsSharedByUser(userId: string) {
       },
       orderBy: (lists, { desc }) => [desc(lists.created_at)],
     });
-    return result;
+    return result.map(withVisibility);
   } catch (error) {
     console.error('Error fetching lists:', error);
     throw new Error('Failed to fetch lists');
@@ -382,7 +417,7 @@ export async function getBookmarkedListsByUser(userId: string) {
       },
       orderBy: (list_visits, { desc }) => [desc(list_visits.favorited_at)],
     });
-    return result;
+    return result.map(withNestedListVisibility);
   } catch (error) {
     console.error('Error fetching bookmarked lists:', error);
     throw new Error('Failed to fetch bookmarked lists');
@@ -436,7 +471,7 @@ export async function getVisitHistoryByUser(
       limit: opts.limit,
       offset: opts.offset,
     });
-    return result;
+    return result.map(withNestedListVisibility);
   } catch (error) {
     console.error('Error fetching visit history:', error);
     throw new Error('Failed to fetch visit history');
@@ -520,6 +555,21 @@ export async function isFollowing(
   }
 }
 
+export async function viewerHasAnyFollows(viewerId: string): Promise<boolean> {
+  'use cache';
+  cacheTag('user_follows');
+  try {
+    const result = await db.query.user_follows.findFirst({
+      where: eq(user_follows.follower_id, viewerId),
+      columns: { follower_id: true },
+    });
+    return !!result;
+  } catch (error) {
+    console.error('Error checking viewer follow count:', error);
+    throw new Error('Failed to check viewer follow count');
+  }
+}
+
 export async function isBlocked(
   blockerId: string,
   blockedId: string
@@ -547,7 +597,10 @@ export async function getPublicListsByUser(
 ) {
   try {
     const result = await db.query.lists.findMany({
-      where: and(eq(lists.user_id, userId), eq(lists.visibility, 'public')),
+      where: and(
+        eq(lists.user_id, userId),
+        inArray(lists.visibility, visibilityDbValues([VISIBILITY.FOLLOWERS]))
+      ),
       with: {
         user: {
           columns: { id: true, name: true, image: true },
@@ -557,7 +610,7 @@ export async function getPublicListsByUser(
       limit: opts.limit,
       offset: opts.offset,
     });
-    return result;
+    return result.map(withVisibility);
   } catch (error) {
     console.error('Error fetching public lists:', error);
     throw new Error('Failed to fetch public lists');
@@ -592,7 +645,10 @@ export async function getFollowingFeedUsers(viewerId: string) {
       .innerJoin(users, eq(users.id, user_follows.followee_id))
       .leftJoin(
         lists,
-        and(eq(lists.user_id, users.id), eq(lists.visibility, 'public'))
+        and(
+          eq(lists.user_id, users.id),
+          inArray(lists.visibility, visibilityDbValues([VISIBILITY.FOLLOWERS]))
+        )
       )
       .where(eq(user_follows.follower_id, viewerId))
       .groupBy(users.id, user_follows.created_at)
@@ -625,7 +681,12 @@ export async function getProfileForUser(
     const publicListCount = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(lists)
-      .where(and(eq(lists.user_id, userId), eq(lists.visibility, 'public')));
+      .where(
+        and(
+          eq(lists.user_id, userId),
+          inArray(lists.visibility, visibilityDbValues([VISIBILITY.FOLLOWERS]))
+        )
+      );
 
     let viewerIsFollowing = false;
     let viewerIsBlocked = false;
