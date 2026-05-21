@@ -14,6 +14,7 @@ import {
   items,
   list_items,
   list_visits,
+  lists,
   purchases,
   user_follows,
   users,
@@ -68,6 +69,7 @@ const seedUsers: SeedUser[] = [
 type SeedList = {
   id: string;
   name: string;
+  subtitle?: string;
   occasion: string;
   user_id: string;
   visibility: 'private' | 'unlisted' | 'public';
@@ -99,6 +101,36 @@ function hash(s: string): number {
   return h;
 }
 
+// Description pool — mix of short notes and longer paragraphs so layout
+// preview covers single-line, multi-line wrap, and overflow truncation. ~20%
+// of items get an empty description (h % 5 === 0) to keep the empty-state
+// reachable from a fresh seed.
+const DESCRIPTION_POOL = [
+  'Color and finish are flexible — surprise me.',
+  'Already have the small size; looking for the larger one this time around.',
+  'Matte black preferred, but any neutral works.',
+  "Please get the rechargeable version, not battery-powered — we've got a drawer full of AAs already.",
+  'Saw this at a friend\'s place last month and have been thinking about it ever since. Bonus points if it comes in walnut.',
+  'No rush on this one — happy to wait for a sale.',
+  'Open to any brand as long as the reviews are solid.',
+  'The linked one is ideal, but any comparable model is great. Mostly just want something that actually lasts.',
+  'Would love this in cream or sage; nothing too bright.',
+  'For the kitchen remodel — should match the brushed-nickel hardware we already have.',
+  'Quality over quantity here. Rather have one good one than two cheap ones.',
+  'Travel-friendly size if possible — going on a trip in the spring.',
+  'Need this before the move in July if anyone is feeling generous.',
+  'Bonus points for something that\'s dishwasher-safe; I am not a hand-wash person.',
+  'Replacing one that finally gave up after eight years of daily use. Long live the next one.',
+];
+
+// Deterministic description picker: hash item id, ~20% empty, otherwise pick
+// from the pool. Keeps re-seeds stable.
+function descriptionFor(itemId: string): string {
+  const h = hash(itemId);
+  if (h % 5 === 0) return '';
+  return DESCRIPTION_POOL[h % DESCRIPTION_POOL.length];
+}
+
 // Build itemNames for a list: 15–20 items, sliced from ITEM_POOL at a stable
 // offset. Wraps around the pool to support overlap between lists.
 function itemsForList(listId: string): string[] {
@@ -115,20 +147,21 @@ function itemsForList(listId: string): string[] {
 const VIEWER_LIST_TEMPLATES: {
   slug: string;
   name: string;
+  subtitle?: string;
   occasion: string;
   visibility: 'private' | 'unlisted' | 'public';
 }[] = [
   { slug: 'birthday', name: "Test Viewer's Birthday", occasion: 'Birthday', visibility: 'public' },
   { slug: 'housewarming', name: 'Housewarming Wishes', occasion: 'Housewarming', visibility: 'private' },
-  { slug: 'holiday-2026', name: 'Holiday 2026', occasion: 'Holiday', visibility: 'public' },
+  { slug: 'holiday-2026', name: 'Holiday 2026', subtitle: 'Group gift exchange', occasion: 'Holiday', visibility: 'public' },
   { slug: 'anniversary', name: 'Anniversary Picks', occasion: 'Anniversary', visibility: 'unlisted' },
-  { slug: 'wedding-registry', name: 'Wedding Registry', occasion: 'Wedding', visibility: 'public' },
+  { slug: 'wedding-registry', name: 'Wedding Registry', subtitle: 'Brandy Family', occasion: 'Wedding', visibility: 'public' },
   { slug: 'kitchen-upgrade', name: 'Kitchen Upgrade', occasion: 'Just Because', visibility: 'private' },
   { slug: 'fitness-goals', name: 'Fitness Goals', occasion: 'Self-Care', visibility: 'public' },
   { slug: 'home-office', name: 'Home Office Refresh', occasion: 'Just Because', visibility: 'unlisted' },
   { slug: 'reading-stack', name: 'Reading Stack', occasion: 'Just Because', visibility: 'public' },
   { slug: 'camping-trip', name: 'Camping Trip Gear', occasion: 'Adventure', visibility: 'public' },
-  { slug: 'baby-shower', name: 'Baby Shower Wishlist', occasion: 'Baby Shower', visibility: 'public' },
+  { slug: 'baby-shower', name: 'Baby Shower Wishlist', subtitle: "It's a girl!", occasion: 'Baby Shower', visibility: 'public' },
   { slug: 'graduation', name: 'Graduation Picks', occasion: 'Graduation', visibility: 'unlisted' },
   { slug: 'fathers-day', name: "Father's Day Ideas", occasion: 'Holiday', visibility: 'private' },
   { slug: 'mothers-day', name: "Mother's Day Ideas", occasion: 'Holiday', visibility: 'private' },
@@ -141,9 +174,10 @@ const FRIEND_LIST_TEMPLATES: {
   friendSlug: string;
   slug: string;
   name: string;
+  subtitle?: string;
   occasion: string;
 }[] = [
-  { friendSlug: 'alice', slug: 'wedding', name: "Alice's Wedding Registry", occasion: 'Wedding' },
+  { friendSlug: 'alice', slug: 'wedding', name: "Alice's Wedding Registry", subtitle: 'Smith ⋈ Lee · June 2026', occasion: 'Wedding' },
   { friendSlug: 'alice', slug: 'baby', name: 'Baby On The Way', occasion: 'Baby Shower' },
   { friendSlug: 'bob', slug: 'holiday', name: "Bob's Holiday List", occasion: 'Holiday' },
   { friendSlug: 'bob', slug: 'birthday', name: "Bob's Birthday", occasion: 'Birthday' },
@@ -153,10 +187,10 @@ const FRIEND_LIST_TEMPLATES: {
   { friendSlug: 'eve', slug: 'wedding', name: "Eve's Wedding", occasion: 'Wedding' },
   { friendSlug: 'frank', slug: 'holiday', name: "Frank's Holiday Wishes", occasion: 'Holiday' },
   { friendSlug: 'grace', slug: 'birthday', name: "Grace's Birthday", occasion: 'Birthday' },
-  { friendSlug: 'grace', slug: 'self-care', name: "Grace's Self-Care", occasion: 'Self-Care' },
-  { friendSlug: 'hank', slug: 'anniversary', name: "Hank & Spouse's Anniversary", occasion: 'Anniversary' },
+  { friendSlug: 'grace', slug: 'self-care', name: "Grace's Self-Care", subtitle: 'Mostly skincare, no makeup pls', occasion: 'Self-Care' },
+  { friendSlug: 'hank', slug: 'anniversary', name: "Hank & Spouse's Anniversary", subtitle: '10 years!', occasion: 'Anniversary' },
   { friendSlug: 'iris', slug: 'birthday', name: "Iris Turns 25", occasion: 'Birthday' },
-  { friendSlug: 'jack', slug: 'graduation', name: "Jack's Graduation", occasion: 'Graduation' },
+  { friendSlug: 'jack', slug: 'graduation', name: "Jack's Graduation", subtitle: 'Med school, finally', occasion: 'Graduation' },
   { friendSlug: 'jack', slug: 'holiday', name: "Jack's Holiday", occasion: 'Holiday' },
 ];
 
@@ -166,6 +200,7 @@ const seedLists: SeedList[] = [
     return {
       id,
       name: t.name,
+      subtitle: t.subtitle,
       occasion: t.occasion,
       user_id: VIEWER_ID,
       visibility: t.visibility,
@@ -177,6 +212,7 @@ const seedLists: SeedList[] = [
     return {
       id,
       name: t.name,
+      subtitle: t.subtitle,
       occasion: t.occasion,
       user_id: friendId(t.friendSlug),
       visibility: 'public' as const,
@@ -263,19 +299,34 @@ async function main() {
 
   const now = Date.now();
   const sharedAt = new Date(now - 1000 * 60 * 60 * 24 * 14); // 2 weeks ago
-  // Raw SQL — Drizzle 0.45 includes every schema-declared column in generated
-  // INSERTs (including `subtitle`, which may not yet exist in the dev DB if
-  // migration 0002 hasn't been applied). Explicit column list keeps the seed
-  // resilient to schema-vs-DB drift on unrelated columns.
-  for (const l of seedLists) {
-    const shared = l.visibility !== 'private';
-    const sa = shared ? sharedAt : null;
-    await db.execute(sql`
-      INSERT INTO lists (id, name, occasion, user_id, visibility, shared, shared_at)
-      VALUES (${l.id}, ${l.name}, ${l.occasion}, ${l.user_id}, ${l.visibility}, ${shared}, ${sa})
-      ON CONFLICT (id) DO NOTHING
-    `);
-  }
+  // onConflictDoUpdate so reseeds pick up edits to subtitle/visibility on
+  // already-seeded rows (same pattern as items below).
+  await db
+    .insert(lists)
+    .values(
+      seedLists.map((l) => {
+        const shared = l.visibility !== 'private';
+        return {
+          id: l.id,
+          name: l.name,
+          subtitle: l.subtitle ?? null,
+          occasion: l.occasion,
+          user_id: l.user_id,
+          visibility: l.visibility,
+          shared,
+          shared_at: shared ? sharedAt : null,
+        };
+      })
+    )
+    .onConflictDoUpdate({
+      target: lists.id,
+      set: {
+        subtitle: sql`excluded.subtitle`,
+        visibility: sql`excluded.visibility`,
+        shared: sql`excluded.shared`,
+        shared_at: sql`excluded.shared_at`,
+      },
+    });
   console.log(`  lists: ${seedLists.length} upserted`);
 
   // Items + list_items: deterministic IDs derived from list id + position so
@@ -286,39 +337,60 @@ async function main() {
   // Archive ~20% of viewer-owned items so the /items archived filter has
   // content. Fixed reference epoch keeps archived_at stable across reseeds.
   const ARCHIVE_EPOCH = new Date('2026-04-01T00:00:00Z').getTime();
+  // Rotate quantity_limit across positions [0, 1, last] on a 3-list cycle so
+  // every position renders every value (3, null, 1) once per cycle. Lets the
+  // preview surface multi-claim, unlimited, and single-claim layouts at known
+  // positions without manual UI clicking.
+  const QTY_ROTATION: (number | null)[][] = [
+    [3, null, 1], // listIdx % 3 === 0
+    [null, 1, 3], // listIdx % 3 === 1
+    [1, 3, null], // listIdx % 3 === 2
+  ];
   const itemRows: {
     id: string;
     name: string;
+    description: string;
     user_id: string;
     image_url: string;
     archived_at: Date | null;
+    quantity_limit: number | null;
   }[] = [];
   const listItemRows: { list_id: string; item_id: string; position: number }[] = [];
-  for (const list of seedLists) {
+  seedLists.forEach((list, listIdx) => {
+    const rotation = QTY_ROTATION[listIdx % QTY_ROTATION.length];
+    const lastIdx = list.itemNames.length - 1;
     list.itemNames.forEach((name, idx) => {
       const itemId = `${list.id}-item-${idx + 1}`;
       const h = hash(itemId);
       const archive = list.user_id === VIEWER_ID && h % 5 === 0; // ~20% of viewer items
+      let quantity_limit: number | null = 1;
+      if (idx === 0) quantity_limit = rotation[0];
+      else if (idx === 1) quantity_limit = rotation[1];
+      else if (idx === lastIdx) quantity_limit = rotation[2];
       itemRows.push({
         id: itemId,
         name,
+        description: descriptionFor(itemId),
         user_id: list.user_id,
         image_url: `https://picsum.photos/seed/${itemId}/400/400`,
         archived_at: archive ? new Date(ARCHIVE_EPOCH - (h % 30) * 86400000) : null,
+        quantity_limit,
       });
       listItemRows.push({ list_id: list.id, item_id: itemId, position: idx });
     });
-  }
-  // onConflictDoUpdate so re-runs apply new image_url and archived_at to
-  // previously-seeded rows (lets the seed restore archive state after UI drift).
+  });
+  // onConflictDoUpdate so re-runs apply new image_url, archived_at, and
+  // quantity_limit to previously-seeded rows.
   await db
     .insert(items)
     .values(itemRows)
     .onConflictDoUpdate({
       target: items.id,
       set: {
+        description: sql`excluded.description`,
         image_url: sql`excluded.image_url`,
         archived_at: sql`excluded.archived_at`,
+        quantity_limit: sql`excluded.quantity_limit`,
       },
     });
   await db.insert(list_items).values(listItemRows).onConflictDoNothing();
@@ -397,8 +469,10 @@ async function main() {
   }[] = [];
   // Position-based selection per list (rather than global hash) so every list
   // — including small friend lists — gets a guaranteed share. For each list,
-  // mark every Nth item as purchased.
-  for (const list of seedLists) {
+  // mark every Nth item as purchased. Multi-claim and unlimited items receive
+  // multiple purchase rows (fan-out) so partial- and fully-claimed UI states
+  // are reachable from seeded data alone.
+  seedLists.forEach((list, listIdx) => {
     const listItemIds = list.itemNames.map(
       (_, idx) => `${list.id}-item-${idx + 1}`
     );
@@ -412,35 +486,55 @@ async function main() {
       const item = itemRows.find((r) => r.id === itemId);
       if (!item) return;
 
-      // Viewer's archived items get a higher rate (~70%) since archived often
-      // means purchased.
-      const isArchived = !!item.archived_at;
-      const effectiveRatio =
-        item.user_id === VIEWER_ID && isArchived ? 0.7 : purchaseRatio;
-      // Stride-based: every floor(1/ratio)-th item gets purchased.
-      const stride = Math.max(1, Math.round(1 / effectiveRatio));
-      if (idx % stride !== 0) return;
-
-      const h = hash(itemId);
-      const asGuest = h % 8 === 0;
-      let buyerId: string;
-      if (item.user_id === VIEWER_ID) {
-        buyerId = friendIds[h % friendIds.length];
+      // Decide how many purchase rows this item gets.
+      //   qty_limit = 3:       1 (partial) or 3 (fully-claimed), per listIdx parity
+      //   qty_limit = null:    1 (single buyer) or 4 (many buyers), per listIdx parity
+      //   qty_limit = 1:       0 or 1 via existing stride-based ratio
+      let purchaseCount: number;
+      if (item.quantity_limit === 3) {
+        purchaseCount = listIdx % 2 === 0 ? 1 : 3;
+      } else if (item.quantity_limit === null) {
+        purchaseCount = listIdx % 2 === 0 ? 1 : 4;
       } else {
-        const eligible = [VIEWER_ID, ...friendIds].filter(
-          (id) => id !== item.user_id
-        );
-        buyerId = eligible[h % eligible.length];
+        // Viewer's archived items get a higher rate (~70%) since archived often
+        // means purchased.
+        const isArchived = !!item.archived_at;
+        const effectiveRatio =
+          item.user_id === VIEWER_ID && isArchived ? 0.7 : purchaseRatio;
+        const stride = Math.max(1, Math.round(1 / effectiveRatio));
+        purchaseCount = idx % stride === 0 ? 1 : 0;
       }
-      purchaseRows.push({
-        id: `${itemId}-purchase`,
-        item_id: itemId,
-        user_id: asGuest ? null : buyerId,
-        guest_name: asGuest ? GUEST_NAMES[h % GUEST_NAMES.length] : null,
-        purchased_at: new Date(PURCHASE_EPOCH - (h % 60) * 86400000),
-      });
+      if (purchaseCount === 0) return;
+
+      // Eligible buyer pool (owner excluded). Rotate by (h + n) so each
+      // multi-buyer item picks distinct buyers across its purchase rows.
+      const pool =
+        item.user_id === VIEWER_ID
+          ? friendIds
+          : [VIEWER_ID, ...friendIds].filter((id) => id !== item.user_id);
+
+      for (let n = 1; n <= purchaseCount; n++) {
+        const h = hash(`${itemId}-${n}`);
+        const asGuest = h % 8 === 0;
+        const buyerId = pool[(h + n) % pool.length];
+        purchaseRows.push({
+          id: `${itemId}-purchase-${n}`,
+          item_id: itemId,
+          user_id: asGuest ? null : buyerId,
+          guest_name: asGuest ? GUEST_NAMES[h % GUEST_NAMES.length] : null,
+          purchased_at: new Date(PURCHASE_EPOCH - ((h + n) % 60) * 86400000),
+        });
+      }
     });
-  }
+  });
+  // Drop legacy unsuffixed purchase IDs from prior seed versions before
+  // inserting the new -purchase-N rows. Without this, an old -purchase row
+  // would coexist with the new -purchase-1 row on the same item and inflate
+  // claim counts. Scoped to the seed's deterministic ID shape; never touches
+  // user-created purchases (which use UUID-style IDs).
+  await db.execute(
+    sql`DELETE FROM purchases WHERE id LIKE '%-purchase' AND id NOT LIKE '%-purchase-%'`
+  );
   if (purchaseRows.length > 0) {
     await db
       .insert(purchases)
