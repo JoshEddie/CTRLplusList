@@ -1,0 +1,249 @@
+:root {
+  /* Form-field tokens — see openspec/changes/standardize-form-fields design.md D8.
+     Sibling to --neutral-border-color (which has non-form consumers we don't touch).
+     Single size — 44px floor universally. */
+  --field-min-height: var(--WCAG-input-size); /* WCAG 2.5.8 touch target */
+  --field-padding-y: 8px;
+  --field-padding-x: 12px;
+  --field-radius: 8px;
+  --field-font-size: 16px; /* iOS no-auto-zoom threshold */
+  --field-label-font-size: 14px; /* up from 12px for readability */
+
+  --field-border-color: #737373; /* ≥3:1 vs #fff — WCAG 1.4.11 non-text UI */
+  --field-border-color-hover: #4b5563;
+  --field-border-color-focus: var(--primary-color);
+  --field-border-color-error: #c81e1e; /* ≥3:1 vs #fff, distinct hue from default */
+  --field-focus-ring-color: rgba(115, 36, 206, 0.35); /* tinted primary */
+  --field-focus-ring-width: 3px;
+  --field-error-color: #c81e1e; /* ≥4.5:1 vs #fff — WCAG 1.4.3 normal text */
+  --field-placeholder-color: var(
+    --muted-text-color
+  ); /* #6b7280 → ~4.83:1 vs #fff */
+
+  --field-sm-min-height: var(--WCAG-input-size-sm);
+  --field-sm-padding-y: 6px;
+  --field-sm-padding-x: 10px;
+}
+
+.form_field_group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.form_field_label {
+  font-size: var(--field-label-font-size);
+  font-weight: 500;
+  color: var(--neutral-text-color);
+}
+
+/* Required-asterisk color: --field-error-color (loud, visible signal — see design.md Open Q). */
+.form_field_label .required_indicator {
+  color: var(--field-error-color);
+  margin-left: 2px;
+}
+
+.form_field_description {
+  font-size: 13px;
+  color: var(--muted-text-color);
+}
+
+.form_field {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: center;
+  background: transparent;
+  border: 1px solid var(--field-border-color);
+  border-radius: var(--field-radius);
+  min-height: var(--field-min-height);
+  padding: 0 var(--field-padding-x);
+  font-size: var(--field-font-size);
+  transition:
+    border-color 0.15s,
+    background-color 0.15s,
+    box-shadow 0.15s;
+  color: var(--neutral-text-color);
+  width: 100%;
+}
+
+.form_field-sm {
+  min-height: var(--field-sm-min-height);
+  padding: 0 var(--field-sm-padding-x);
+}
+
+.form_field.icon_left {
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+}
+
+.form_field.icon_right {
+  grid-template-columns: 1fr auto;
+  column-gap: 8px;
+}
+
+.form_field:hover:not(.invalid) {
+  border-color: var(--field-border-color-hover);
+}
+
+/* Button-like fields (select wraps a clickable native select) get the same
+   hover treatment as the home-page cards — lilac border, faint background,
+   soft shadow lift — so they read as a press target, not a typing surface.
+   Plain text inputs keep the lighter border-only hover. */
+.form_field:has(.form_field_select):hover:not(.invalid) {
+  border-color: var(--card-border-hover-color);
+  background-color: var(--card-hover-background-color);
+  box-shadow: var(--card-shadow-hover);
+  cursor: pointer;
+}
+
+.form_field:focus-within {
+  border-color: var(--field-border-color-focus);
+  outline: 3px solid var(--field-focus-ring-color);
+}
+
+.form_field.invalid {
+  border-color: var(--field-border-color-error);
+}
+
+.form_field:has(:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--secondary-light-color);
+}
+
+.form_field .field_icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-text-color);
+  font-size: 18px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.form_field:has(.form_field_textarea) {
+  align-items: flex-start;
+  padding-top: var(--field-padding-y);
+  padding-bottom: var(--field-padding-y);
+}
+
+.form_field-sm:has(.form_field_textarea) {
+  align-items: flex-start;
+  padding-top: var(--field-sm-padding-y);
+  padding-bottom: var(--field-sm-padding-y);
+}
+
+.form_field:has(.form_field_textarea) .field_icon {
+  padding-top: 2px;
+}
+
+.form_field .form_field_input,
+.form_field .form_field_select,
+.form_field .form_field_textarea {
+  background: transparent;
+  border: none;
+  height: 100%;
+  width: 100%;
+  outline: none;
+  color: inherit;
+  /* font-family/size set per-property because `font: inherit` doesn't
+     consistently override the UA `<select>` defaults on Safari/iOS. */
+  font-family: inherit;
+  font-size: var(--field-font-size);
+  font-weight: inherit;
+  line-height: 1.2;
+  padding: 0;
+  min-width: 0;
+}
+
+.form_field .form_field_textarea {
+  resize: vertical;
+  min-height: calc(var(--field-min-height) - 2 * var(--field-padding-y));
+  height: auto;
+}
+
+.form_field .form_field_select {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  padding-right: 24px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 20 20' fill='%236b7280'><path d='M5.5 8l4.5 4.5L14.5 8z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0 center;
+}
+
+.form_field .form_field_input::placeholder,
+.form_field .form_field_textarea::placeholder {
+  color: var(--field-placeholder-color);
+}
+
+.field_error {
+  color: var(--field-error-color);
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* CheckboxField — sibling primitive, no FormField wrapper.
+   Label-as-hit-area (≥44px) gives WCAG 2.5.8 even though the box is 24×24. */
+.checkbox_field {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+  user-select: none;
+  font-size: var(--field-font-size);
+  color: var(--neutral-text-color);
+}
+
+.checkbox_field:has(:disabled) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.checkbox_field_box {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border: 1px solid var(--field-border-color);
+  border-radius: 4px;
+  background: #fff;
+  display: inline-grid;
+  place-content: center;
+  cursor: inherit;
+  margin: 0;
+  position: relative;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.checkbox_field_box:hover {
+  border-color: var(--field-border-color-hover);
+}
+
+.checkbox_field_box:checked {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.checkbox_field_box:checked::after {
+  content: '';
+  display: block;
+  width: 14px;
+  height: 14px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23ffffff'><path d='M7.5 13.5l-3-3 1.4-1.4 1.6 1.6 5.6-5.6 1.4 1.4z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.checkbox_field_box:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 var(--field-focus-ring-width) var(--field-focus-ring-color);
+}

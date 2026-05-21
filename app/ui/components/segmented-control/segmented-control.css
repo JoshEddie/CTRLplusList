@@ -1,0 +1,91 @@
+/* Segmented control primitive. Container is .segmented (role=radiogroup),
+   options are .segmented-option (role=radio). Two tones: .tone-light for
+   white-surface contexts, .tone-on-dark for the purple-hero context. */
+
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  border-radius: var(--btn-radius);
+  overflow: hidden;
+  height: var(--field-min-height);
+}
+
+.segmented-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-roboto-condensed);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.segmented-option:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: -2px;
+}
+
+/* Light tone — neutral pill on a light surface, primary-color active fill. */
+
+.segmented.tone-light {
+  border: 1.5px solid var(--card-border-color);
+}
+
+.segmented.tone-light .segmented-option {
+  color: var(--muted-text-color);
+}
+
+@media (hover: hover) {
+  .segmented.tone-light .segmented-option:hover:not(.active) {
+    color: var(--primary-color);
+  }
+}
+
+.segmented.tone-light .segmented-option.active {
+  background-color: var(--primary-color);
+  color: var(--light-color);
+}
+
+.segmented.tone-light .segmented-option.active:focus-visible {
+  outline-color: var(--light-color);
+}
+
+/* On-dark tone — translucent white pill on the purple hero, white-card active. */
+
+.segmented.tone-on-dark {
+  background-color: rgba(255, 255, 255, 0.13);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--btn-radius);
+}
+
+.segmented.tone-on-dark .segmented-option {
+  color: rgba(255, 255, 255, 0.78);
+  border-radius: calc(var(--btn-radius) - 4px);
+}
+
+@media (hover: hover) {
+  .segmented.tone-on-dark .segmented-option:hover:not(.active) {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--light-color);
+  }
+}
+
+.segmented.tone-on-dark .segmented-option.active {
+  background-color: var(--light-color);
+  color: var(--primary-color);
+}
+
+.segmented.tone-on-dark .segmented-option:focus-visible {
+  outline-color: var(--light-color);
+}

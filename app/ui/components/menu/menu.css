@@ -1,0 +1,72 @@
+/* Menu primitive — popover container + menuitem rows.
+   Consolidates the prior .menu-dropdown and .avatar-popover variants.
+   Container is .menu-popover (not .menu) to avoid colliding with the
+   existing page-nav .menu class in global.css. */
+
+.menu-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  min-width: 220px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background-color: var(--light-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  color: var(--primary-text-color);
+  font-family: var(--font-roboto-condensed);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: left;
+  width: 100%;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+  white-space: nowrap;
+}
+
+.menu-item:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) {
+  .menu-item:hover {
+    background-color: var(--secondary-background-color);
+    color: var(--primary-color);
+  }
+}
+
+.menu-item.tone-danger {
+  color: var(--danger-color);
+}
+
+@media (hover: hover) {
+  .menu-item.tone-danger:hover {
+    background-color: var(--danger-color);
+    color: var(--light-color);
+  }
+}
+
+.menu-item[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
