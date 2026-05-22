@@ -58,12 +58,13 @@ export const metadata: Metadata = {
     'apple-mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-title': 'Ctrl+List',
     'format-detection': 'telephone=no',
-    'apple-mobile-web-app-status-bar-style': 'default',
+    'apple-mobile-web-app-status-bar-style': 'black-translucent',
   },
 };
 
 export const viewport: Viewport = {
   interactiveWidget: 'resizes-content',
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
