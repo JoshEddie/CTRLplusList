@@ -37,7 +37,12 @@ export function StoreInputContainer({
         const parsedPrice = store.price ? parseFloat(String(store.price)) : NaN;
         const priceAmount = Number.isFinite(parsedPrice) ? parsedPrice : null;
         return (
-          <div key={index} className="if-store-row">
+          <div
+            key={index}
+            className="if-store-row"
+            role="group"
+            aria-label={`Store ${index + 1}`}
+          >
             <TextField
               label="Store"
               error={err?.name || undefined}
