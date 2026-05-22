@@ -160,6 +160,16 @@
   grid-template-columns: 1fr 130px 1fr;
 }
 
+/* Desktop: cell wrappers are transparent — column headers in .if-store-hd
+   provide the labels, so per-row labels are hidden. */
+.if-store-cell {
+  display: contents;
+}
+
+.if-store-cell-lbl {
+  display: none;
+}
+
 .if-store-rm {
   width: 28px;
   height: 36px;
@@ -204,12 +214,30 @@
 }
 
 @media (max-width: 500px) {
-  .if-store-hd,
+  /* Mobile: the standalone column header would strand "Link" on its own line
+     above the inputs, so hide it and let each cell render its own label. */
+  .if-store-hd {
+    display: none;
+  }
   .if-store-row {
     grid-template-columns: 1fr 110px 28px;
   }
-  .if-store-hd span:nth-child(3),
-  .if-store-row > *:nth-child(3) {
+  .if-stores-single .if-store-row {
+    grid-template-columns: 1fr 110px;
+  }
+  .if-store-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .if-store-cell-lbl {
+    display: block;
+    font-size: var(--field-label-font-size);
+    font-weight: 500;
+    color: var(--neutral-text-color);
+  }
+  .if-store-cell--link {
     grid-column: 1 / -1;
   }
 }
