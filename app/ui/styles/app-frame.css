@@ -1,14 +1,14 @@
 /* App frame — gradient nav + white-card surface. See openspec/changes/redesign-home-and-tokens. */
 
 :root {
-  --app-nav-height: 60px;
+  --app-nav-height: calc(60px + env(safe-area-inset-top));
   --app-surface-bleed-top: 7px;
   --app-sticky-top: calc(var(--app-nav-height) + var(--app-surface-bleed-top));
 }
 
 @media (max-width: 800px) {
   :root {
-    --app-nav-height: 54px;
+    --app-nav-height: calc(54px + env(safe-area-inset-top));
     --app-surface-bleed-top: 5px;
   }
 }
@@ -35,8 +35,8 @@
   top: 0;
   z-index: 10;
   display: flex;
-  height: 60px;
-  padding: 0 20px;
+  height: calc(60px + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) 20px 0;
   background-image: var(--page-frame-gradient);
   flex-shrink: 0;
 }
@@ -53,8 +53,8 @@
 
 @media (max-width: 800px) {
   .app-nav {
-    height: 54px;
-    padding: 0 12px;
+    height: calc(54px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 12px 0;
   }
 }
 
