@@ -444,7 +444,7 @@
       'sort sort sort purchases purchases purchases purchases stores stores price price';
   }
 
-  .hide-grid-toggle .items-toolbar-row {    
+  .hide-grid-toggle .items-toolbar-row {
     grid-template-areas:
       'search search search search search search search search search search search'
       'sort sort sort purchases purchases purchases purchases stores stores price price';
@@ -499,13 +499,16 @@
     display: none;
   }
 
-  /* Filters group transforms into a bottom sheet on mobile. */
+  /* Filters group transforms into a bottom sheet on mobile.
+     `--keyboard-offset` is set by useKeyboardOffset() while the sheet is
+     open; it carries the height of the soft keyboard so the sheet rides
+     above it (fixed positioning ignores the visual viewport on iOS). */
   .items-toolbar-filters-group {
     display: none;
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: var(--keyboard-offset, 0px);
     z-index: 60;
     flex-direction: column;
     gap: 12px;
@@ -515,6 +518,7 @@
     padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
     box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.2);
     max-height: 80vh;
+    max-height: calc(100dvh - var(--keyboard-offset, 0px) - 24px);
     overflow-y: auto;
   }
 
@@ -569,6 +573,14 @@
     left: 0;
     width: 100%;
     max-width: none;
+  }
+
+  /* The Store popover's list panel can be tall; cap it against the space
+     the bottom sheet has left after the keyboard is subtracted, so the
+     list scrolls internally instead of being clipped by the sheet's
+     overflow:auto containing block. */
+  .items-toolbar-filters-group .store-filter-panel {
+    max-height: calc(60dvh - var(--keyboard-offset, 0px));
   }
 
   .items-toolbar-filters-group > .items-toolbar-filters-sheet-done {
