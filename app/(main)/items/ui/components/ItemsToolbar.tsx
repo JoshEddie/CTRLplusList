@@ -7,6 +7,7 @@ import {
   SegmentedControl,
   SegmentedOption,
 } from '@/app/ui/components/segmented-control';
+import { useKeyboardOffset } from '@/app/ui/hooks/useKeyboardOffset';
 import { SortKey } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -119,6 +120,8 @@ export default function ItemsToolbar({
   const view = searchParams?.get('view') === 'list' ? 'list' : 'grid';
 
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  useKeyboardOffset(filtersOpen);
 
   const updateParams = useCallback(
     (patch: Record<string, string | null>) => {
@@ -233,11 +236,12 @@ export default function ItemsToolbar({
     });
   }
   if (priceMin || priceMax) {
-    const label = priceMin && priceMax
-      ? `$${priceMin}–$${priceMax}`
-      : priceMin
-        ? `$${priceMin}+`
-        : `Up to $${priceMax}`;
+    const label =
+      priceMin && priceMax
+        ? `$${priceMin}–$${priceMax}`
+        : priceMin
+          ? `$${priceMin}+`
+          : `Up to $${priceMax}`;
     chips.push({ key: 'price', label, onClear: clearPrice });
   }
 
@@ -250,7 +254,9 @@ export default function ItemsToolbar({
     (priceMin || priceMax ? 1 : 0);
 
   return (
-    <div className={`items-toolbar ${!showGridToggle ? 'hide-grid-toggle' : ''}`}>
+    <div
+      className={`items-toolbar ${!showGridToggle ? 'hide-grid-toggle' : ''}`}
+    >
       <div className="items-toolbar-row">
         <div className="items-search items-toolbar-cell--search">
           <SearchInputControl key={q} initialQ={q} onCommit={commitSearch} />
@@ -310,7 +316,8 @@ export default function ItemsToolbar({
                 value={purchases}
                 onChange={(e) =>
                   updateParams({
-                    purchases: e.target.value === 'hide' ? null : e.target.value,
+                    purchases:
+                      e.target.value === 'hide' ? null : e.target.value,
                     page: null,
                   })
                 }
@@ -393,27 +400,39 @@ export default function ItemsToolbar({
           />
         )}
 
-        {showGridToggle && <div className="items-toolbar-cell--view">
-          <SegmentedControl
-            value={view}
-            onChange={(v) =>
-              updateParams({ view: v === 'grid' ? null : v })
-            }
-            tone="light"
-            aria-label="View toggle"
-          >
-            <SegmentedOption value="grid" aria-label="Grid view" title="Grid view">
-              <MdGridView />
-            </SegmentedOption>
-            <SegmentedOption value="list" aria-label="List view" title="List view">
-              <MdViewList />
-            </SegmentedOption>
-          </SegmentedControl>
-        </div>}
+        {showGridToggle && (
+          <div className="items-toolbar-cell--view">
+            <SegmentedControl
+              value={view}
+              onChange={(v) => updateParams({ view: v === 'grid' ? null : v })}
+              tone="light"
+              aria-label="View toggle"
+            >
+              <SegmentedOption
+                value="grid"
+                aria-label="Grid view"
+                title="Grid view"
+              >
+                <MdGridView />
+              </SegmentedOption>
+              <SegmentedOption
+                value="list"
+                aria-label="List view"
+                title="List view"
+              >
+                <MdViewList />
+              </SegmentedOption>
+            </SegmentedControl>
+          </div>
+        )}
       </div>
 
       {chips.length > 0 && (
-        <div className="items-toolbar-chips" role="region" aria-label="Active filters">
+        <div
+          className="items-toolbar-chips"
+          role="region"
+          aria-label="Active filters"
+        >
           {chips.map((c) => (
             <Chip
               key={c.key}
