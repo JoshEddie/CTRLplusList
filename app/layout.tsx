@@ -1,4 +1,5 @@
 import '@/app/ui/styles/button.css';
+import { ServiceWorkerRegistration } from '@/app/ui/components/ServiceWorkerRegistration';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata, Viewport } from 'next';
@@ -76,6 +77,7 @@ export default function RootLayout({
         className={`${roboto.variable} ${robotoCondensed.variable} ${crimsonPro.variable}`}
       >
         <Toaster position="top-right" />
+        <ServiceWorkerRegistration />
         {children}
         {/* <div className="bottom-line" /> */}
         <SpeedInsights />
