@@ -32,22 +32,19 @@ export function StoreInputContainer({
   const removable = itemForm.stores.length > 1;
   return (
     <div className={`if-stores${removable ? '' : ' if-stores-single'}`}>
-      {itemForm.stores.length > 0 && (
-        <div className="if-store-hd">
-          <span>Store</span>
-          <span>Price</span>
-          <span>Link</span>
-          {removable && <span aria-hidden="true" />}
-        </div>
-      )}
       {itemForm.stores.map((store, index) => {
         const err = itemFormErrors.stores[index];
         const parsedPrice = store.price ? parseFloat(String(store.price)) : NaN;
         const priceAmount = Number.isFinite(parsedPrice) ? parsedPrice : null;
         return (
-          <div key={index} className="if-store-row">
+          <div
+            key={index}
+            className="if-store-row"
+            role="group"
+            aria-label={`Store ${index + 1}`}
+          >
             <TextField
-              aria-label={`Store ${index + 1} name`}
+              label="Store"
               error={err?.name || undefined}
               placeholder="Store name"
               value={store.name || ''}
@@ -55,13 +52,14 @@ export function StoreInputContainer({
               autoComplete="off"
             />
             <PriceField
-              aria-label={`Store ${index + 1} price`}
+              label="Price"
               error={err?.price || undefined}
               amount={priceAmount}
               onChange={(v) => handleStoreChange(index, v.toFixed(2), 'price')}
             />
             <TextField
-              aria-label={`Store ${index + 1} link`}
+              label="Link"
+              className="if-store-link"
               error={err?.link || undefined}
               type="url"
               placeholder="https://..."
