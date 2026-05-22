@@ -304,7 +304,7 @@
 .container--items-library {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--app-sticky-top) - env(safe-area-inset-bottom));
+  height: calc(100vh - var(--app-sticky-top));
   overflow: hidden;
   padding: 24px 44px 0;
   position: relative;
@@ -349,7 +349,7 @@
   right: 0;
   bottom: 0;
   margin: 0;
-  padding: 12px 16px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   background-color: color-mix(in srgb, var(--light-color) 90%, transparent);
   border-top: none;
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
