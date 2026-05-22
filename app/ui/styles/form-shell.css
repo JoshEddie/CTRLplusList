@@ -127,24 +127,14 @@
   color: var(--primary-color);
 }
 
-/* Compact store row grid: Store name | $Price | Link URL | × remove */
+/* Compact store row grid: Store name | $Price | Link URL | × remove.
+   Each cell is a FormField group (label above input), so the row aligns to the
+   top of the labels. The remove button sits in the input row beneath, offset
+   by --store-rm-offset so it lines up with the inputs instead of the labels. */
 .if-stores {
   display: flex;
   flex-direction: column;
-}
-
-.if-store-hd {
-  display: grid;
-  grid-template-columns: 1fr 130px 1fr 28px;
-  gap: 6px;
-  margin-bottom: 4px;
-  padding: 0 2px;
-}
-
-.if-store-hd span {
-  font-size: var(--field-label-font-size);
-  font-weight: 500;
-  color: var(--neutral-text-color);
+  --store-rm-offset: calc(var(--field-label-font-size) * 1.5 + 4px);
 }
 
 .if-store-row {
@@ -155,24 +145,14 @@
   align-items: start;
 }
 
-.if-stores-single .if-store-hd,
 .if-stores-single .if-store-row {
   grid-template-columns: 1fr 130px 1fr;
-}
-
-/* Desktop: cell wrappers are transparent — column headers in .if-store-hd
-   provide the labels, so per-row labels are hidden. */
-.if-store-cell {
-  display: contents;
-}
-
-.if-store-cell-lbl {
-  display: none;
 }
 
 .if-store-rm {
   width: 28px;
   height: 36px;
+  margin-top: var(--store-rm-offset);
   border: 1px solid var(--card-border-color);
   border-radius: 6px;
   background: none;
@@ -214,31 +194,22 @@
 }
 
 @media (max-width: 500px) {
-  /* Mobile: the standalone column header would strand "Link" on its own line
-     above the inputs, so hide it and let each cell render its own label. */
-  .if-store-hd {
-    display: none;
-  }
+  /* Stack the row at narrow widths: Store + Price (+ remove) on row 1,
+     Link URL full-width on row 2. Explicit grid placement keeps the JSX/tab
+     order (Store → Price → Link → Remove) while putting Remove on row 1 col 3. */
   .if-store-row {
     grid-template-columns: 1fr 110px 28px;
   }
   .if-stores-single .if-store-row {
     grid-template-columns: 1fr 110px;
   }
-  .if-store-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  .if-store-cell-lbl {
-    display: block;
-    font-size: var(--field-label-font-size);
-    font-weight: 500;
-    color: var(--neutral-text-color);
-  }
-  .if-store-cell--link {
+  .if-store-link {
     grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .if-store-rm {
+    grid-column: 3;
+    grid-row: 1;
   }
 }
 
