@@ -413,6 +413,21 @@ export async function bookmarkList(list_id: string): Promise<ActionResponse> {
       return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
     }
 
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, list_id),
+      columns: { user_id: true, visibility: true },
+    });
+    if (
+      !list ||
+      (list.user_id !== userId && fromDb(list.visibility) === VISIBILITY.OWNER)
+    ) {
+      return {
+        success: false,
+        message: 'List not viewable',
+        error: 'List not viewable',
+      };
+    }
+
     const now = new Date();
     await db
       .insert(list_visits)
@@ -703,6 +718,26 @@ export async function updatePriority(
   listId: string
 ): Promise<ActionResponse> {
   try {
+    const userId = await authedUserId();
+    if (!userId) {
+      return {
+        success: false,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      };
+    }
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, listId),
+      columns: { user_id: true },
+    });
+    if (!list || list.user_id !== userId) {
+      return {
+        success: false,
+        message: 'Unauthorized - list does not belong to you',
+        error: 'Unauthorized',
+      };
+    }
+
     // Get the positions before and after target position
 
     const itemPositionResult = await db

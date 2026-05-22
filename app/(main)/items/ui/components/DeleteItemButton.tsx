@@ -9,12 +9,10 @@ import toast from 'react-hot-toast';
 
 export default function DeleteItemButton({
   id,
-  userId,
   returnTo,
   onDeleted,
 }: {
   id: string;
-  userId: string;
   returnTo?: string;
   onDeleted?: () => void;
 }) {
@@ -23,7 +21,7 @@ export default function DeleteItemButton({
 
   const handleDeleteItemClick = async (id: string) => {
     try {
-      const result = await toast.promise(deleteItem(id, userId), {
+      const result = await toast.promise(deleteItem(id), {
         loading: 'Deleting',
         success: 'Item deleted successfully',
         error: 'Failed to delete item',
@@ -52,7 +50,7 @@ export default function DeleteItemButton({
         onClose={() => setShowConfirm(false)}
         onConfirm={() => handleDeleteItemClick(id)}
         title="Confirm Delete"
-        message="Are you sure you want to delete this item? This action cannot be undone."
+        message="This will permanently delete the item and all of its purchase claims. This cannot be undone. To hide the item from your list while keeping purchase history, use Archive instead."
         confirmText="Delete"
         cancelText="Cancel"
       />

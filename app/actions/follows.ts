@@ -135,30 +135,31 @@ export async function blockUser(blocked_id: string): Promise<ActionResponse> {
       };
     }
 
-    await db.transaction(async (tx) => {
-      // Remove any existing follows in both directions.
-      await tx
-        .delete(user_follows)
-        .where(
-          and(
-            eq(user_follows.follower_id, viewerId),
-            eq(user_follows.followee_id, blocked_id)
-          )
-        );
-      await tx
-        .delete(user_follows)
-        .where(
-          and(
-            eq(user_follows.follower_id, blocked_id),
-            eq(user_follows.followee_id, viewerId)
-          )
-        );
-      // Upsert the block row.
-      await tx
-        .insert(user_blocks)
-        .values({ blocker_id: viewerId, blocked_id })
-        .onConflictDoNothing();
-    });
+    // Sequential statements, block-first: the neon-http driver does not
+    // support interactive transactions, so cross-statement atomicity comes
+    // from idempotent ordering + DB constraints. Insert the block row first
+    // so a racing followUser is gated by the block-check before the follow
+    // rows are removed. See harden-remaining-server-actions design Decision 2.
+    await db
+      .insert(user_blocks)
+      .values({ blocker_id: viewerId, blocked_id })
+      .onConflictDoNothing();
+    await db
+      .delete(user_follows)
+      .where(
+        and(
+          eq(user_follows.follower_id, viewerId),
+          eq(user_follows.followee_id, blocked_id)
+        )
+      );
+    await db
+      .delete(user_follows)
+      .where(
+        and(
+          eq(user_follows.follower_id, blocked_id),
+          eq(user_follows.followee_id, viewerId)
+        )
+      );
 
     updateTag('user_follows');
     updateTag('user_blocks');

@@ -192,7 +192,6 @@ export default function ItemForm({
             isEditing && item ? (
               <DeleteItemButton
                 id={item.id}
-                userId={user_id}
                 returnTo={returnTo}
                 onDeleted={onClose}
               />

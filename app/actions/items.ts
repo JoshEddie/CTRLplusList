@@ -1,7 +1,14 @@
 'use server';
 
 import { db } from '@/db';
-import { item_stores, items, list_items, purchases, users } from '@/db/schema';
+import {
+  item_stores,
+  items,
+  list_items,
+  lists,
+  purchases,
+  users,
+} from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { getItemById, getListsByUser, getUserIdByEmail } from '@/lib/dal';
 import { isItemViewable } from '@/lib/listAccess';
@@ -449,6 +456,25 @@ async function updateItemStores(
   itemId: string
 ): Promise<void> {
   try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      throw new Error('Unauthorized');
+    }
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      throw new Error('Unauthorized');
+    }
+    const item = await db.query.items.findFirst({
+      where: eq(items.id, itemId),
+      columns: { user_id: true },
+    });
+    if (!item || item.user_id !== sessionUser.id) {
+      throw new Error('Unauthorized');
+    }
+
     // First, get all current store associations for this item
     const currentAssociations = await db
       .select()
@@ -508,11 +534,42 @@ async function updateItemStores(
   }
 }
 
-export async function updateItemLists(
+async function updateItemLists(
   listIds: string[],
   itemId: string
 ): Promise<void> {
   try {
+    const session = await auth();
+    if (!session?.user?.email) {
+      throw new Error('Unauthorized');
+    }
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      throw new Error('Unauthorized');
+    }
+    const item = await db.query.items.findFirst({
+      where: eq(items.id, itemId),
+      columns: { user_id: true },
+    });
+    if (!item || item.user_id !== sessionUser.id) {
+      throw new Error('Unauthorized');
+    }
+    if (listIds.length > 0) {
+      const targetLists = await db
+        .select({ id: lists.id, user_id: lists.user_id })
+        .from(lists)
+        .where(inArray(lists.id, listIds));
+      if (
+        targetLists.length !== listIds.length ||
+        targetLists.some((l) => l.user_id !== sessionUser.id)
+      ) {
+        throw new Error('Unauthorized');
+      }
+    }
+
     // First, get all current list associations for this item
     const currentAssociations = await db
       .select({ list_id: list_items.list_id })
@@ -575,10 +632,34 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
   try {
     // Security check - ensure user is authenticated
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return {
         success: false,
         message: 'Unauthorized access',
+        error: 'Unauthorized',
+      };
+    }
+
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User not found',
+        error: 'Unauthorized',
+      };
+    }
+
+    const existing = await db.query.items.findFirst({
+      where: eq(items.id, data.id),
+      columns: { user_id: true },
+    });
+    if (!existing || existing.user_id !== sessionUser.id) {
+      return {
+        success: false,
+        message: 'Unauthorized - item does not belong to you',
         error: 'Unauthorized',
       };
     }
@@ -696,11 +777,19 @@ export async function archiveItem(
   }
 }
 
-export async function deleteItem(id: string, userId: string) {
+export async function deleteItem(id: string) {
   try {
     // Security check - ensure user is authenticated
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.email) {
+      throw new Error('Unauthorized');
+    }
+
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
       throw new Error('Unauthorized');
     }
 
@@ -710,7 +799,7 @@ export async function deleteItem(id: string, userId: string) {
       columns: { user_id: true },
     });
 
-    if (!item || item.user_id !== userId) {
+    if (!item || item.user_id !== sessionUser.id) {
       throw new Error('Unauthorized - Item does not belong to you');
     }
 

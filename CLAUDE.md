@@ -41,3 +41,21 @@ The app gates every protected page on Google OAuth via NextAuth, which makes it 
 ## /api/image-search auth + rate limit
 
 `GET /api/image-search` requires an authenticated session (401 otherwise) and enforces a per-user in-memory token bucket of 30 requests/minute (429 with `{ error: 'rate_limited' }` when exceeded — distinguishable from upstream `quota_exceeded`). Under the dev bypass the session resolves to `dev-test-viewer`, so the route works during preview-driven testing; the 30/min cap is enough headroom for normal iteration. See [app/api/image-search/route.ts](app/api/image-search/route.ts).
+
+## Database migrations
+
+The migration workflow uses Drizzle Kit against the schema declared under [db/schema/](db/schema/).
+
+**Authoring a migration:**
+
+1. Edit the schema files (e.g. add a column, table, or index).
+2. Generate SQL: `npm run db:generate`. This writes a new `drizzle/NNNN_<slug>.sql` plus a `meta/_journal.json` entry.
+3. **Review the generated SQL before running it.** Drizzle 0.45 occasionally emits over-broad statements (e.g. unnecessary column rewrites) and never adds the safety wrappers we want (pre-flight `DO $$ ... $$` assertions, explicit `ON CONFLICT` clauses, idempotent backfills). Hand-edit the file if needed — see [drizzle/0001_black_legion.sql](drizzle/0001_black_legion.sql) for the conventions (forward-only, no DROPs, pre-flight assertion blocks, inline rollback notes in comments).
+4. Apply locally: `npm run db:migrate`. Then restart the dev server so any `'use cache'`-tagged DAL functions re-fetch.
+5. Re-run `npm run db:seed:dev` if the schema change broke the seed (the seed refuses to run on prod via the same `NODE_ENV` guardrail as the bypass).
+
+**Driver caveat:** the migration runtime uses the same Neon HTTP driver as the app — see the "Database driver: no transactions" section above. **A single migration file cannot wrap multiple statements in `BEGIN ... COMMIT` and expect atomicity across them.** Each `--> statement-breakpoint`-separated chunk runs as its own HTTP round-trip. If you need cross-statement atomicity (e.g. "create constraint only if no violating rows exist"), encode it in a single `DO $$ ... $$` block, or split the migration into two PRs with a soak between them.
+
+**Preserved legacy artifacts:** migration `0001_black_legion.sql` deliberately preserves the pre-1.0 `saved_lists` table and `lists.shared` column for a soak period. Pre-1.0 saves are backfilled into `list_visits` as bookmarks during this migration; the originals stay around until a follow-up migration explicitly drops them. Returning users see a one-time `BookmarkMigrationToast` on `/` explaining the social-model change (share-lists → follow-users).
+
+**Production migrations:** run via `npm run db:migrate` against the prod connection string, after a snapshot. The `drizzle/meta/_journal.json` is the source of truth for which migrations have applied.

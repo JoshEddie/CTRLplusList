@@ -3,9 +3,7 @@
 ## Purpose
 
 TBD - created by archiving change colocate-follow-with-owner-name. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: List pages SHALL expose a follow affordance for non-owner viewers, colocated with the linked owner name
 
 When an authenticated viewer who is not the list owner renders a list with `visibility != 'private'`, the list-detail hero SHALL display a Follow / Following button targeting the list's owner. The button SHALL be a full-size button satisfying WCAG 2.5.5 (44×44 CSS px touch target). The button SHALL be rendered in a byline sub-row of the list hero adjacent to the owner's name (which itself SHALL be rendered as a link to `/user/{owner_id}` on this surface), and SHALL NOT be rendered in the list-hero action row alongside list-actions such as Share and Bookmark. The button SHALL be hidden when the viewer is the owner, when the viewer is unauthenticated, or when the viewer has blocked or been blocked by the owner.
@@ -272,3 +270,31 @@ The `users` table SHALL have a `last_seen_following_at` nullable timestamp. When
 
 - **WHEN** A starts following B for the first time
 - **THEN** A's `last_seen_following_at` is treated as the follow time for badge purposes (i.e. B's pre-existing public lists do NOT show as new). Implementation may achieve this by initializing `last_seen_following_at` to follow time if previously NULL, or by clamping the comparison to `MAX(last_seen_following_at, follow_created_at)`.
+
+### Requirement: Follow-graph mutations SHALL NOT use interactive transactions
+
+Server actions in `app/actions/follows.ts` (`followUser`, `unfollowUser`, `removeFollower`, `blockUser`, `unblockUser`, `markFollowingSeen`) SHALL be implemented as one or more sequential single-statement calls against `db`. They SHALL NOT use `db.transaction(async (tx) => { … })`, SHALL NOT use `SELECT … FOR UPDATE`, and SHALL NOT use any pattern that assumes a multi-statement database session.
+
+This requirement reflects the project-wide constraint documented in `CLAUDE.md`: the DB layer uses `drizzle-orm/neon-http` over Neon's HTTP API, which does not support interactive transactions. Every query is its own HTTP round-trip on its own connection. Code that calls `db.transaction(...)` is broken — either throwing at runtime, or silently degrading to non-atomic execution depending on driver version.
+
+When a follow-graph mutation needs to maintain a cross-statement invariant (e.g. "block-implies-no-follow"), the invariant SHALL be achieved through:
+
+1. **Idempotent ordering** — perform the safer write first (e.g. for `blockUser`, insert the block row before deleting follow rows, so a partial failure leaves the user effectively-blocked rather than effectively-followed).
+2. **DB-level constraints** — `ON CONFLICT DO NOTHING`, composite primary keys, partial unique indexes, or `CHECK` constraints — to backstop races at the database layer.
+3. **Documented residual** — when neither of the above suffices, the residual race SHALL be commented inline at the call site (mirroring the pattern in `app/actions/items.ts` `createPurchase`'s capacity-race comment).
+
+#### Scenario: blockUser succeeds without invoking the driver's transaction API
+
+- **WHEN** an authenticated user invokes `blockUser(otherUserId)`
+- **THEN** the implementation issues sequential single-statement calls (`db.insert(user_blocks)…onConflictDoNothing()`, `db.delete(user_follows)` forward, `db.delete(user_follows)` reverse) and SHALL NOT call `db.transaction(...)` or `tx.*` on any code path
+
+#### Scenario: Partial failure leaves the safer residual state
+
+- **WHEN** `blockUser` issues the block-row insert successfully but a subsequent follow-row delete fails (e.g. network blip mid-sequence)
+- **THEN** the residual database state contains the `user_blocks` row, the `followUser` predicate ("either-direction block prevents follow") correctly treats the relationship as blocked, and a retry of `blockUser` cleans up the leftover follow rows idempotently
+
+#### Scenario: Source-of-truth tag invalidation runs after all writes succeed
+
+- **WHEN** `blockUser` completes all three of its sequential statements without throwing
+- **THEN** both `updateTag('user_follows')` and `updateTag('user_blocks')` are invoked exactly once each; if any statement throws, neither tag SHALL be invalidated on that invocation
+
