@@ -562,25 +562,29 @@
     width: 100%;
   }
 
-  /* The Store and Price popovers anchor to themselves; inside the sheet
-     position the panel above the trigger instead of below, so it doesn't
-     get clipped off-screen at the bottom. */
+  /* Render the nested popovers inline inside the bottom sheet, instead
+     of as absolutely-positioned overlays anchored to their triggers.
+     The float-above pattern collides with the sheet's own overflow:auto
+     containing block: a tall panel's top edge gets clipped above the
+     sheet, and the bottom gets hidden by the keyboard. Inline rendering
+     lets each panel push the sheet's remaining content down, the sheet
+     handles its own vertical scroll, and the keyboard-offset adjusts
+     only the sheet's bottom edge. */
   .items-toolbar-filters-group .store-filter-panel,
   .items-toolbar-filters-group .price-filter-panel {
-    top: auto;
-    bottom: calc(100% + 6px);
-    right: 0;
-    left: 0;
+    position: static;
     width: 100%;
     max-width: none;
+    max-height: none;
+    margin-top: 6px;
   }
 
-  /* The Store popover's list panel can be tall; cap it against the space
-     the bottom sheet has left after the keyboard is subtracted, so the
-     list scrolls internally instead of being clipped by the sheet's
-     overflow:auto containing block. */
-  .items-toolbar-filters-group .store-filter-panel {
-    max-height: calc(60dvh - var(--keyboard-offset, 0px));
+  /* Inside the sheet the store list still needs a cap so it scrolls
+     internally rather than ballooning the sheet beyond the available
+     viewport. The cap shrinks with the keyboard, with a 120px floor
+     so the list never collapses to zero. */
+  .items-toolbar-filters-group .store-filter-list {
+    max-height: max(120px, calc(45dvh - var(--keyboard-offset, 0px)));
   }
 
   .items-toolbar-filters-group > .items-toolbar-filters-sheet-done {
