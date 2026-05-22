@@ -1,8 +1,11 @@
 # item-store-links Specification
 
 ## Purpose
+
 TBD - created by archiving change replace-storelinks-expand-with-popover. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: The store-links row SHALL render in a single line at all times
 
 The chip row on every item card SHALL be exactly one line tall. The card's height SHALL be invariant to the number of stores attached to the item and invariant to whether the extra-stores popover is open or closed. Cards in the same `.item-grid` row SHALL NOT change height when a neighboring card's popover opens.

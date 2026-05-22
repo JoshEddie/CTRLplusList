@@ -61,7 +61,8 @@ export default function EditItemButton({
       >
         <MdModeEdit />
       </button>
-      {mounted && data &&
+      {mounted &&
+        data &&
         createPortal(
           <ItemFormContainer
             user_id={user_id}

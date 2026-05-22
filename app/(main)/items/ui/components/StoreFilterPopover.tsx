@@ -50,7 +50,11 @@ export default function StoreFilterPopover({
         aria-haspopup="dialog"
       />
       {open && (
-        <div className="store-filter-panel" role="dialog" aria-label="Filter by store">
+        <div
+          className="store-filter-panel"
+          role="dialog"
+          aria-label="Filter by store"
+        >
           <SearchField
             placeholder="Search stores..."
             value={query}

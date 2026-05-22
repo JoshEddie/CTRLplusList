@@ -7,7 +7,10 @@ import '@/app/ui/styles/form-shell.css';
 
 type Variant = 'default' | 'wide' | 'split';
 
-function useDismiss(onClose: (() => void) | undefined, closeHref: string | undefined) {
+function useDismiss(
+  onClose: (() => void) | undefined,
+  closeHref: string | undefined
+) {
   const router = useRouter();
   return () => {
     if (onClose) {

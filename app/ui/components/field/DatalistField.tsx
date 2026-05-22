@@ -12,7 +12,14 @@ type DatalistFieldProps = FieldWrapperProps & {
   options: ReactNode;
 } & Omit<
     ComponentPropsWithRef<'input'>,
-    'className' | 'disabled' | 'type' | 'list' | 'id' | 'aria-invalid' | 'aria-required' | 'aria-describedby'
+    | 'className'
+    | 'disabled'
+    | 'type'
+    | 'list'
+    | 'id'
+    | 'aria-invalid'
+    | 'aria-required'
+    | 'aria-describedby'
   >;
 
 export const DatalistField = forwardRef<HTMLInputElement, DatalistFieldProps>(
@@ -29,7 +36,7 @@ export const DatalistField = forwardRef<HTMLInputElement, DatalistFieldProps>(
       options,
       ...inputProps
     },
-    ref,
+    ref
   ) {
     const listId = useId();
     return (
@@ -56,7 +63,7 @@ export const DatalistField = forwardRef<HTMLInputElement, DatalistFieldProps>(
         <datalist id={listId}>{options}</datalist>
       </>
     );
-  },
+  }
 );
 
 DatalistField.displayName = 'DatalistField';

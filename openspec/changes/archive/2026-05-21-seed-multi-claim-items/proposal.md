@@ -19,9 +19,11 @@ Because none of these states appear in seeded data, design/regression review of 
 ## Capabilities
 
 ### New Capabilities
+
 - `dev-seed-coverage`: Defines what UI states the local dev seed must cover so preview-based design review can verify them without manual data setup.
 
 ### Modified Capabilities
+
 <!-- none -->
 
 ## Impact

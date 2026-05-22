@@ -22,9 +22,7 @@ async function authedUserId(): Promise<string | null> {
   return u?.id ?? null;
 }
 
-export async function followUser(
-  followee_id: string
-): Promise<ActionResponse> {
+export async function followUser(followee_id: string): Promise<ActionResponse> {
   try {
     const viewerId = await authedUserId();
     if (!viewerId) {
@@ -123,9 +121,7 @@ export async function removeFollower(
   }
 }
 
-export async function blockUser(
-  blocked_id: string
-): Promise<ActionResponse> {
+export async function blockUser(blocked_id: string): Promise<ActionResponse> {
   try {
     const viewerId = await authedUserId();
     if (!viewerId) {
@@ -173,9 +169,7 @@ export async function blockUser(
   }
 }
 
-export async function unblockUser(
-  blocked_id: string
-): Promise<ActionResponse> {
+export async function unblockUser(blocked_id: string): Promise<ActionResponse> {
   try {
     const viewerId = await authedUserId();
     if (!viewerId) {

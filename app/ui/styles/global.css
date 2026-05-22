@@ -17,7 +17,7 @@
   --muted-text-color: #6b7280;
   --neutral-border-color: #d1d5db;
 
-  --background-color: rgba(255,255,255,0.95);
+  --background-color: rgba(255, 255, 255, 0.95);
   --secondary-background-color: var(--secondary-light-color);
   --third-background-color: var(--third-light-color);
   --primary-text-color: var(--neutral-text-color);
@@ -28,7 +28,11 @@
   --max-width: 1500px;
 
   /* Redesign tokens — see openspec/changes/redesign-home-and-tokens design.md D3 */
-  --page-frame-gradient: linear-gradient(120deg, rgb(37, 25, 78) 0%, rgb(26, 37, 84) 100%);
+  --page-frame-gradient: linear-gradient(
+    120deg,
+    rgb(37, 25, 78) 0%,
+    rgb(26, 37, 84) 100%
+  );
   --heading-text-color: #1a1a2e;
   --subtitle-text-color: #aaaaaa;
   --meta-text-color: #bbbbbb;

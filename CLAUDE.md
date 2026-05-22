@@ -5,6 +5,7 @@
 The DB layer uses `drizzle-orm/neon-http` over Neon's HTTP API. **Interactive transactions are not supported on this driver.** Do not introduce `db.transaction(async (tx) => { … })`, `SELECT … FOR UPDATE`, or any code that assumes a multi-statement session — every query is its own HTTP round-trip with its own connection.
 
 Concrete implications:
+
 - Race conditions that need cross-statement atomicity must be backstopped at the DB layer (unique indexes, partial unique indexes, `ON CONFLICT` clauses), or accepted as residual.
 - Do not propose switching to `drizzle-orm/neon-serverless` / WebSocket Pool without explicit owner approval — it's been considered and declined.
 - If you find code claiming to use a transaction here, it's broken; convert it to single-statement + DB-constraint enforcement instead.
@@ -16,6 +17,7 @@ See [db/index.ts](db/index.ts) for the driver instantiation.
 The app gates every protected page on Google OAuth via NextAuth, which makes it impossible to validate UI changes through the preview tools without a real Google sign-in. A dev-only bypass exists for this:
 
 **To enable:**
+
 1. `npm run db:seed:dev` — idempotent; creates `dev-test-viewer` plus 4 friends (Alice/Bob/Carol/Dave) with mutual + one-way follows, public lists with items, visit history, and bookmarks.
 2. Set `AUTH_BYPASS=true` in `.env.local` (already gitignored).
 3. Start the dev server. Zero-arg `await auth()` calls now return a mock session for `dev-test-viewer` — every protected page renders without sign-in.
@@ -31,6 +33,7 @@ The app gates every protected page on Google OAuth via NextAuth, which makes it 
 **Seeded `quantity_limit` coverage:** every seeded list has overrides at positions 0, 1, and last, rotating `(3, null, 1)` → `(null, 1, 3)` → `(1, 3, null)` across consecutive lists. Multi-claim and unlimited items receive multiple deterministic purchase rows (`${itemId}-purchase-${n}`) so partial-claimed, fully-claimed, and multi-buyer-unlimited UI states are reachable directly from `npm run db:seed:dev` without manual clicking.
 
 **Files:**
+
 - [lib/auth.ts](lib/auth.ts) — wrapped `auth()` export; exports `BYPASS_USER_ID = 'dev-test-viewer'`.
 - [scripts/seed-dev-users.ts](scripts/seed-dev-users.ts) — idempotent; refuses to run on prod; uses raw SQL for `lists` inserts because Drizzle 0.45 generates INSERTs with every schema-declared column.
 - Route-handler / middleware overloads of `auth(req, ctx)` pass through to real NextAuth — production auth path is unchanged.

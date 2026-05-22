@@ -1,8 +1,11 @@
 # home-digest Specification
 
 ## Purpose
+
 TBD - created by archiving change add-following-and-history. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Home page SHALL render four collapsible rails as a digest
 
 The home page (`/`) SHALL render four rails in the following order: **My Lists**, **Following**, **Bookmarks**, **Recently visited**. Each rail SHALL show at most the 5 most-recent entries and SHALL include a **See all** link to a dedicated full-results page. Each rail SHALL be collapsible via a chevron toggle in the rail header.
@@ -198,4 +201,3 @@ When a rail's underlying dataset contains more than 5 entries, the rail body SHA
 
 - **WHEN** the trailing tile renders
 - **THEN** the tile's background is a faint brand-tinted surface (visibly distinct from `--light-color` but quiet enough to feel like a sibling card) and the "+N more →" text uses `--primary-color`
-

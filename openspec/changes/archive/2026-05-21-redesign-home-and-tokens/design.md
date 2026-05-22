@@ -9,6 +9,7 @@ The in-flight gradient brand colors (`--primary-color #7324ce`, `--secondary-col
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Make this the **governing change** for the site-wide visual revamp. Establish the token layer, app frame, and home pattern that every other page consumes.
 - Make the digest the actual home (`/`) and give it a persistent, branded frame so subsequent pages inherit the same chrome without re-deriving values.
 - Capture every non-mappable design value as a named token in `global.css` once, so re-skinning the rest of the site is a token-substitution exercise rather than a re-derivation.
@@ -18,7 +19,8 @@ The in-flight gradient brand colors (`--primary-color #7324ce`, `--secondary-col
 - Define a **staged rollout** for the remaining `(main)/` pages, with explicit checkpoints between stages and flags for which stages will require a dedicated Claude Design session before implementation.
 
 **Non-Goals:**
-- **Skipping** the rest of the site. The revamp is intentionally site-wide; the only question is *when* each page lands, not *whether*. The proposal's "Out of scope" framing in earlier drafts was wrong.
+
+- **Skipping** the rest of the site. The revamp is intentionally site-wide; the only question is _when_ each page lands, not _whether_. The proposal's "Out of scope" framing in earlier drafts was wrong.
 - Implementing every page in this single change. Stages 0–2 (Foundation, App Frame, Home + My Lists) land here; Stages 3–8 are tracked here but their per-page implementation may execute in this change or spin out into follow-up changes depending on the checkpoint decision and whether a Claude Design session is required.
 - Auto-parsing existing list names into `name` + `subtitle`. The migration is purely schema-additive; backfill is left to the user via the edit form.
 - A theme-switching mechanism. The token names are role-named, which keeps the door open, but dark mode is not delivered here.
@@ -31,11 +33,12 @@ The in-flight gradient brand colors (`--primary-color #7324ce`, `--secondary-col
 
 **Decision:** Move `HomePage` (the four-rail digest) to render at `/`. Repurpose the `/lists` URL as the dedicated **My Lists** page. Delete the planned `/lists/all` route and update `seeAllHref` accordingly.
 
-**Why:** The mockup's nav has **Home** as a distinct active tab, and the design chat made it explicit: *"I'm going to convert this page into home and make lists a separate page."* A URL named `/lists` whose primary content is rails of *other* people's lists, bookmarks, and history is a tiny but real lie users will feel. Putting the digest at `/` makes the nav honest and lets `/lists` be the natural destination from the My Lists rail's "See all".
+**Why:** The mockup's nav has **Home** as a distinct active tab, and the design chat made it explicit: _"I'm going to convert this page into home and make lists a separate page."_ A URL named `/lists` whose primary content is rails of _other_ people's lists, bookmarks, and history is a tiny but real lie users will feel. Putting the digest at `/` makes the nav honest and lets `/lists` be the natural destination from the My Lists rail's "See all".
 
 **Alternatives considered:**
-- *Keep digest at `/lists`, create `/lists/all` for My Lists* — the original structure planned by `add-following-and-history`. Rejected: leaves `/lists` semantically misleading, makes the "See all" URL awkward.
-- *Digest at `/home`, `/` is a marketing landing* — rejected: the app is auth-gated; signed-in users land at `/` and there's no marketing landing to preserve. Adds a redirect hop for no benefit.
+
+- _Keep digest at `/lists`, create `/lists/all` for My Lists_ — the original structure planned by `add-following-and-history`. Rejected: leaves `/lists` semantically misleading, makes the "See all" URL awkward.
+- _Digest at `/home`, `/` is a marketing landing_ — rejected: the app is auth-gated; signed-in users land at `/` and there's no marketing landing to preserve. Adds a redirect hop for no benefit.
 
 **Routing detail:** With Next.js App Router, the cleanest placement is `app/(main)/page.tsx` so the digest inherits the `(main)/layout.tsx` frame. `app/page.tsx` is left absent (or is the signed-out fallback if one is added later); auth redirects handle the signed-out case as they do today.
 
@@ -46,8 +49,9 @@ The in-flight gradient brand colors (`--primary-color #7324ce`, `--secondary-col
 **Why:** Every authenticated route already shares `(main)/layout.tsx`, and the frame is invariant across pages — same nav, same white-card-on-gradient. Putting it in the layout makes the chrome free for every existing and future page in the group. The current per-page `<Header>` is unaffected: it occupies the top of the white-card content, exactly where it does today.
 
 **Alternatives considered:**
-- *Render the frame in `MainShell`* — `MainShell` is a client component that branches on `pathname` for the `container--list-details` variant. Adding the nav there pulls more weight into client land than necessary. The layout is a server component and is the right seam.
-- *Render the frame per-page* — would mean duplicating it across `lists/page.tsx`, the new `/`, `/items`, `/purchased`, etc. Rejected as obvious churn.
+
+- _Render the frame in `MainShell`_ — `MainShell` is a client component that branches on `pathname` for the `container--list-details` variant. Adding the nav there pulls more weight into client land than necessary. The layout is a server component and is the right seam.
+- _Render the frame per-page_ — would mean duplicating it across `lists/page.tsx`, the new `/`, `/items`, `/purchased`, etc. Rejected as obvious churn.
 
 ### D3. Token strategy: reuse-first, role-named residue
 
@@ -55,28 +59,32 @@ The in-flight gradient brand colors (`--primary-color #7324ce`, `--secondary-col
 
 **Mockup → existing variable mapping:**
 
-| Mockup value | Role in mockup | Existing var | Action |
-|---|---|---|---|
-| `#7324ce` | brand purple (used by gradient, accents) | `--primary-color` | reuse |
-| `#2264c1` | brand blue (gradient, accents) | `--secondary-color` | reuse |
-| `#ffffff` | card surface | `--light-color` | reuse |
-| `#f5f5f8` | occasion chip background | `--secondary-background-color` (`#f5f5f5`) | reuse (within 2/255) |
+| Mockup value | Role in mockup                           | Existing var                               | Action               |
+| ------------ | ---------------------------------------- | ------------------------------------------ | -------------------- |
+| `#7324ce`    | brand purple (used by gradient, accents) | `--primary-color`                          | reuse                |
+| `#2264c1`    | brand blue (gradient, accents)           | `--secondary-color`                        | reuse                |
+| `#ffffff`    | card surface                             | `--light-color`                            | reuse                |
+| `#f5f5f8`    | occasion chip background                 | `--secondary-background-color` (`#f5f5f5`) | reuse (within 2/255) |
 
 **New tokens (no existing analog):**
 
 ```css
---page-frame-gradient: linear-gradient(120deg, rgb(37, 25, 78) 0%, rgb(26, 37, 84) 100%);
---heading-text-color: #1a1a2e;          /* Crimson Pro titles + card names — distinct from --neutral-text-color (#1f2937) */
---subtitle-text-color: #aaaaaa;          /* card subtitle */
---meta-text-color: #bbbbbb;              /* occasion chip text, chevron */
---date-text-color: #cccccc;              /* card date, empty-state copy */
---divider-color: #f0f0f8;                /* 1px divider between rails */
---card-border-color: #ebebf5;            /* card resting border */
---card-border-hover-color: #d4baf5;      /* card hover border */
---card-hover-background-color: #fafaff;  /* card hover surface */
---card-shadow: 0 2px 8px rgba(0,0,0,0.06);
---card-shadow-hover: 0 6px 24px rgba(0,0,0,0.10);
---surface-shadow: 0 -8px 40px rgba(0,0,0,0.18);  /* white card top shadow */
+--page-frame-gradient: linear-gradient(
+  120deg,
+  rgb(37, 25, 78) 0%,
+  rgb(26, 37, 84) 100%
+);
+--heading-text-color: #1a1a2e; /* Crimson Pro titles + card names — distinct from --neutral-text-color (#1f2937) */
+--subtitle-text-color: #aaaaaa; /* card subtitle */
+--meta-text-color: #bbbbbb; /* occasion chip text, chevron */
+--date-text-color: #cccccc; /* card date, empty-state copy */
+--divider-color: #f0f0f8; /* 1px divider between rails */
+--card-border-color: #ebebf5; /* card resting border */
+--card-border-hover-color: #d4baf5; /* card hover border */
+--card-hover-background-color: #fafaff; /* card hover surface */
+--card-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+--card-shadow-hover: 0 6px 24px rgba(0, 0, 0, 0.1);
+--surface-shadow: 0 -8px 40px rgba(0, 0, 0, 0.18); /* white card top shadow */
 ```
 
 **Why role-named, not scale-named:** Matches the existing convention (`--primary-text-color`, `--contrast-text-color`, `--danger-text-color`). A 3-step muted ramp under scale names (`--muted-1/2/3`) would be flexible but invites misuse; role names lock intent and read clearly at the call site.
@@ -94,8 +102,9 @@ The in-flight gradient brand colors (`--primary-color #7324ce`, `--secondary-col
 **Card widths by breakpoint:** 236px (default), 260px (≥1700px wide outer container), 190px (mobile, when content padding compacts).
 
 **Alternatives considered:**
-- *Responsive grid with `auto-fill, minmax(220px, 1fr)`* — what we have today. Rejected: doesn't match the design; rails of 5 lists wrap to a second row on common widths.
-- *Snap scrolling* — could add `scroll-snap-type: x mandatory` later, but the mockup doesn't ship it. Defer.
+
+- _Responsive grid with `auto-fill, minmax(220px, 1fr)`_ — what we have today. Rejected: doesn't match the design; rails of 5 lists wrap to a second row on common widths.
+- _Snap scrolling_ — could add `scroll-snap-type: x mandatory` later, but the mockup doesn't ship it. Defer.
 
 ### D5. `lists.subtitle` — additive, nullable, no backfill
 
@@ -104,9 +113,10 @@ The in-flight gradient brand colors (`--primary-color #7324ce`, `--secondary-col
 **Why:** The mockup data carries "Brandy Family" / "Josh Family" as a secondary line distinct from the list name. Today users encode the same idea inside the name itself ("Josh's Christmas List 25"). A nullable column lets the UI render cleanly when present without forcing a backfill or asking the user to manually rename every existing list before the change ships.
 
 **Alternatives considered:**
-- *Derive subtitle from owner relationship* — fragile; the value is editorial (e.g. "Brandy Family" isn't necessarily the owner's name).
-- *Auto-parse `name` into `name` + `subtitle`* — heuristic, error-prone, and irreversible without storing the original. Rejected.
-- *Skip subtitle entirely for this change, render name only* — the design specifically requested it ("Taking those Brandy Family, Josh Family details into the subtitle"). Skipping would invalidate part of the design.
+
+- _Derive subtitle from owner relationship_ — fragile; the value is editorial (e.g. "Brandy Family" isn't necessarily the owner's name).
+- _Auto-parse `name` into `name` + `subtitle`_ — heuristic, error-prone, and irreversible without storing the original. Rejected.
+- _Skip subtitle entirely for this change, render name only_ — the design specifically requested it ("Taking those Brandy Family, Josh Family details into the subtitle"). Skipping would invalidate part of the design.
 
 ### D6. Nav active state, mobile collapse
 
@@ -118,16 +128,18 @@ The in-flight gradient brand colors (`--primary-color #7324ce`, `--secondary-col
 
 **Decision:** Implement the visual revamp in eight stages (Foundation → App Frame → Home + My Lists → List Collections → List Interior → Items → Purchased → Settings + Profile → Auth). Each stage ends with a **checkpoint** where the user reviews completed work before the next stage begins. Stages flagged as needing a Claude Design session pause for that design pass before any implementation tasks within the stage start.
 
-**Why staged, not big-bang:** A site-wide redesign touched in a single PR is unreviewable, hard to revert in pieces, and forces design decisions on pages that aren't ready yet (e.g. the list-interior page needs its own design pass and can't just inherit the home pattern). Staging lets the foundation prove out, gives the user a natural point to revise direction, and lets design sessions happen *just-in-time* for the page being worked on.
+**Why staged, not big-bang:** A site-wide redesign touched in a single PR is unreviewable, hard to revert in pieces, and forces design decisions on pages that aren't ready yet (e.g. the list-interior page needs its own design pass and can't just inherit the home pattern). Staging lets the foundation prove out, gives the user a natural point to revise direction, and lets design sessions happen _just-in-time_ for the page being worked on.
 
 **Why a single governing change instead of one change per stage:** The token layer and app-frame requirements are global contracts that every page depends on. Putting them in one change with one set of spec deltas keeps the contract canonical. Implementation work for individual stages may still spin out into separate changes if a stage produces meaningful new spec deltas (e.g. a redesigned list-interior page might introduce a `list-detail-layout` capability of its own); that decision is made at the checkpoint, not in advance.
 
 **Per-stage checkpoint protocol:**
+
 1. Verify previously-completed stages still render correctly (visual smoke pass on already-skinned pages).
 2. Review the next stage's scope. If the stage is flagged "Claude Design session required," open the session before opening any code.
 3. Decide: continue within this change, OR spin the stage out into a new OpenSpec change (and update this change's tasks to mark the stage as deferred).
 
 **Stage-by-stage notes:**
+
 - Stages 0–2 (Foundation, App Frame, Home + My Lists): no design session needed; the design bundle covers them.
 - Stage 3 (List Collections — bookmarks, history, following): likely reuses the home rail card. Design session optional, decided at the Stage 2 checkpoint.
 - Stage 4 (View / Browse — `/lists/[id]`, `/items`, `/items/[id]`, Purchase modal): design session **required**. This stage births the item card/row primitive in the presence of both read contexts (inside a list and in the library) plus the list-as-container chrome and the item detail layout.
@@ -135,7 +147,7 @@ The in-flight gradient brand colors (`--primary-color #7324ce`, `--secondary-col
 - Stages 6–7 (Purchased, Settings + Profile): design session **required** before implementation, but each may reduce to reusing primitives established in earlier stages.
 - Stage 8 (Auth): outside the `(main)/` frame; treatment decided at checkpoint, may be deferred entirely.
 
-**Why Stage 4 / Stage 5 is split by user mode, not URL prefix:** The original sequencing grouped Stage 4 around the `/lists/*` URL tree and Stage 5 around `/items/*`. That cuts against the actual component dependency — `/lists/[id]` renders items via the same primitive `/items` uses, and `/lists/[id]/choose-items` is the items library with a selection state layered on top. Designing the item primitive in `/items` *after* it has already shipped inside `/lists/[id]` either forces double-design or commits Stage 4 to an item treatment that wasn't designed in its library context. Splitting by user mode (view vs. manage) instead means the item primitive is designed once, against both read contexts, and Stage 5 inherits it. List forms (`new`, `edit`) and item forms cluster naturally into the manage stage. The choose-items route lands in Stage 5 because its visual increment over the items library is selection chrome, not a new item primitive.
+**Why Stage 4 / Stage 5 is split by user mode, not URL prefix:** The original sequencing grouped Stage 4 around the `/lists/*` URL tree and Stage 5 around `/items/*`. That cuts against the actual component dependency — `/lists/[id]` renders items via the same primitive `/items` uses, and `/lists/[id]/choose-items` is the items library with a selection state layered on top. Designing the item primitive in `/items` _after_ it has already shipped inside `/lists/[id]` either forces double-design or commits Stage 4 to an item treatment that wasn't designed in its library context. Splitting by user mode (view vs. manage) instead means the item primitive is designed once, against both read contexts, and Stage 5 inherits it. List forms (`new`, `edit`) and item forms cluster naturally into the manage stage. The choose-items route lands in Stage 5 because its visual increment over the items library is selection chrome, not a new item primitive.
 
 ### D8. Sequencing: depends on `add-following-and-history` archival
 
@@ -151,28 +163,32 @@ Production avoided this because pre-redesign list views had no toolbar — just 
 
 **Decision:** Apply two independent, additive fixes scoped to mobile. Both target the items library (`/items`) and the list detail (`/lists/[id]`) since they share `ItemsToolbar` + `.item-grid`.
 
-**A — Lower the 2-col grid breakpoint from 415px → ~340px.** Single CSS change in [app/(main)/items/ui/styles/item.css:15](app/(main)/items/ui/styles/item.css:15). Container-query threshold becomes `min-width: 340px`. On a 390-430px iPhone (surface padding 16-20px each side per the existing mobile rule at item.css:305-309), the `.item-grid-container` width is ~350-394px — comfortably above 340px → 2-col. The 640/890/1300px thresholds for 3/4/6 cols are unchanged.
+**A — Lower the 2-col grid breakpoint from 415px → ~340px.** Single CSS change in [app/(main)/items/ui/styles/item.css:15](<app/(main)/items/ui/styles/item.css:15>). Container-query threshold becomes `min-width: 340px`. On a 390-430px iPhone (surface padding 16-20px each side per the existing mobile rule at item.css:305-309), the `.item-grid-container` width is ~350-394px — comfortably above 340px → 2-col. The 640/890/1300px thresholds for 3/4/6 cols are unchanged.
 
 **B — Collapse the four filter controls behind a "Filters" sheet on mobile (<550px).** The current 3-row toolbar grid (`grid-template-areas` at item.css:353-361) becomes a single row: `[ 🔍 Search… ] [ ⚙ Filters ] [ ⊞ / ☰ view-toggle ]`. Tapping Filters opens a bottom sheet (or expanding inline panel; choose during implementation) containing the Sort, Purchases, Stores, and Price controls — same `<select>` and popover components used today, just relocated. Active non-default filters render as dismissable chips in a sub-row beneath the toolbar so they stay visible (e.g. `[Newest ×] [Amazon ×] [$10–50 ×]`). Tapping a chip clears that one filter; chip-row is hidden when all filters are at defaults.
 
 **Why this combination:**
+
 - A alone doesn't reduce chrome height — only doubles the items-per-screen of what little space remains.
 - B alone reclaims ~120px of toolbar but leaves single-column oversized item cards.
 - Together they restore production-equivalent density on the item grid (2-col) while keeping all the new filtering capability one tap away.
 
 **Why not the alternatives considered:**
-- *Sticky-collapse on scroll* (toolbar shrinks as the user scrolls into the grid) was rejected: the constrained-height flex-column from task 4.5b means the grid scrolls **inside** its container, not the page — there's no page-scroll signal to drive a collapse. Re-architecting around it for this fix is disproportionate.
-- *Removing the "Items" page title bar on mobile* was discussed and deferred; tabs already say "Active (24) / Archived (14)" which carries the page identity, but the title also anchors the `+` add button. Worth revisiting after A+B if more headroom is needed, especially on `/lists/[id]` where the hero is the bigger consumer.
-- *Combining Sort + Purchases into one dropdown* couples two unrelated axes — rejected.
+
+- _Sticky-collapse on scroll_ (toolbar shrinks as the user scrolls into the grid) was rejected: the constrained-height flex-column from task 4.5b means the grid scrolls **inside** its container, not the page — there's no page-scroll signal to drive a collapse. Re-architecting around it for this fix is disproportionate.
+- _Removing the "Items" page title bar on mobile_ was discussed and deferred; tabs already say "Active (24) / Archived (14)" which carries the page identity, but the title also anchors the `+` add button. Worth revisiting after A+B if more headroom is needed, especially on `/lists/[id]` where the hero is the bigger consumer.
+- _Combining Sort + Purchases into one dropdown_ couples two unrelated axes — rejected.
 
 **Pagination-orphan constraint (task 4.1) is preserved:** column counts stay in `{1, 2, 3, 4, 6}` — all factors of the 12/24 page sizes — so the last page can't render with a half-empty row.
 
 **Scope guards:**
+
 - Choose-items page (full-page picker) uses the same `ItemsToolbar`; the filter-sheet treatment applies there too. Confirm during implementation that the change-tracking banner + sticky footer still compose.
 - The Item card primitive must remain legible at ~170px wide (smallest 2-col cell on a ~360px container). Verify the 4:3 image + name + price + store-label pills don't break — the same primitive already renders at similar widths inside home-digest rails on mobile, so this is likely fine but worth a smoke check.
 - Sortable view on `/lists/[id]` (owner-only) uses a row layout, not the grid — A doesn't apply there. B still applies (same toolbar).
 
 **Followups deferred:**
+
 - `/lists/[id]` list-hero compression on mobile (drop the action row to icon-only, smaller title) — bigger conversation, separate decision.
 - Any change to `/items` page header (title + add button) on mobile.
 

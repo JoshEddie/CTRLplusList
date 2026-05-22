@@ -11,7 +11,10 @@ function subscribeLocalStorage(callback: () => void) {
   return () => window.removeEventListener('storage', callback);
 }
 
-function useLocalStorageBool(key: string, defaultValue: boolean): [boolean, (v: boolean) => void] {
+function useLocalStorageBool(
+  key: string,
+  defaultValue: boolean
+): [boolean, (v: boolean) => void] {
   const stored = useSyncExternalStore(
     subscribeLocalStorage,
     () => {

@@ -3,11 +3,7 @@ import User from '../../(auth)/ui/components/User';
 import AppLogo from './AppLogo';
 import AppNav from './AppNav';
 
-export default function AppFrame({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AppFrame({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-frame">
       <header className="app-nav">

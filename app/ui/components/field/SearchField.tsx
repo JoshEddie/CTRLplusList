@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  forwardRef,
-  type ComponentPropsWithRef,
-  type ReactNode,
-} from 'react';
+import { forwardRef, type ComponentPropsWithRef, type ReactNode } from 'react';
 import { MdClose, MdSearch } from 'react-icons/md';
 import './form-field.css';
 import './search-field.css';
@@ -25,7 +21,10 @@ type SearchFieldVariant =
 type SearchFieldProps = SearchFieldOwnProps & InputAttrs & SearchFieldVariant;
 
 export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(
-  function SearchField({ className, onClear, trailing, value, ...inputProps }, ref) {
+  function SearchField(
+    { className, onClear, trailing, value, ...inputProps },
+    ref
+  ) {
     const hasTrailingNode = trailing !== undefined && trailing !== null;
     const hasClearButton =
       onClear !== undefined && value !== undefined && value !== '';
@@ -65,7 +64,7 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(
         )}
       </div>
     );
-  },
+  }
 );
 
 SearchField.displayName = 'SearchField';

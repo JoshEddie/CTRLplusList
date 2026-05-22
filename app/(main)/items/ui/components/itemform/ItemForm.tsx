@@ -220,4 +220,3 @@ function Section({
     </div>
   );
 }
-

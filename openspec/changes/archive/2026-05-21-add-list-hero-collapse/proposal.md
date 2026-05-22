@@ -1,14 +1,15 @@
 ## Why
 
-The redesigned list hero (per the in-flight `redesign-list-hero` change) gives `/lists/[id]` a strong, composed identity panel — but on mobile it still consumes ~50–65% of the viewport on first paint (~380–450px) once you stack the identity card over the controls card. The page's job is to show *items*; the hero is intro material the user has internalized after the first read. No further re-composition can shrink it without hiding information that the spec already deems load-bearing (occasion, title, subtitle, visibility status, item count, byline, primary actions).
+The redesigned list hero (per the in-flight `redesign-list-hero` change) gives `/lists/[id]` a strong, composed identity panel — but on mobile it still consumes ~50–65% of the viewport on first paint (~380–450px) once you stack the identity card over the controls card. The page's job is to show _items_; the hero is intro material the user has internalized after the first read. No further re-composition can shrink it without hiding information that the spec already deems load-bearing (occasion, title, subtitle, visibility status, item count, byline, primary actions).
 
 The right lever is **opt-in collapsibility**: let the user shrink the hero to a one-line strip whenever they want. The expanded state stays untouched (no regression to the redesign's typographic hierarchy); the collapsed state hides everything behind the existing kebab.
 
 **Inherited constraints (preserved by this change):**
+
 - The `following` spec ([openspec/specs/following/spec.md](openspec/specs/following/spec.md)) requires the Follow button to be rendered in a byline sub-row of the list hero adjacent to the owner's name on viewer views. The expanded state continues to satisfy this verbatim. The collapsed state does NOT render a byline sub-row at all — the entire hero compresses to title + kebab — so the placement constraint is vacuously preserved (there is no surface on which Follow could be mis-placed). The Follow action moves into the kebab as a `<MenuItem>` while collapsed.
 - The `list-visibility` spec requires the Private/Shared two-state toggle + "Show in followers' feed" checkbox composition for visibility changes. The expanded state continues to host this via the existing `<VisibilityPicker>` (status pill → popover). In the collapsed state, the visibility status reduces to a `<MenuItem>` row in the kebab labeled with the current state ("Visibility: Private", etc.); selecting it opens the same picker UI (popover or a small dialog — see design). The picker's control composition is unchanged.
 - The `menu-system` spec is the primitive used by `ListActionsMenu`. The collapsed kebab is the SAME `ListActionsMenu` component — this change extends its `items` content, it does NOT introduce a new menu primitive or a parallel kebab.
-- The `redesign-list-hero` change is the *visual composition* this change layers atop. The collapse toggle does not modify any `.list-hero-*` class produced by that change; it adds a wrapper-level state plus a single chevron handle at the bottom edge of the gradient panel.
+- The `redesign-list-hero` change is the _visual composition_ this change layers atop. The collapse toggle does not modify any `.list-hero-*` class produced by that change; it adds a wrapper-level state plus a single chevron handle at the bottom edge of the gradient panel.
 
 ## What Changes
 
@@ -29,9 +30,11 @@ The right lever is **opt-in collapsibility**: let the user shrink the hero to a 
 ## Capabilities
 
 ### New Capabilities
+
 - `list-hero-collapse`: Behavior contract for the collapse affordance — the chevron handle's placement and labeling, the collapsed strip's content composition (title + kebab only), the contextual expansion of `ListActionsMenu`'s item set while collapsed, the URL param naming and `replaceState`-based sync, the `<ShareButton>` normalization of the URL on copy, the default-expanded contract on fresh URLs, and the at-all-widths availability (no breakpoint-gated rendering of the toggle).
 
 ### Modified Capabilities
+
 <!-- None. The collapse behavior is purely additive: it does not change any requirement in
      `following`, `list-visibility`, `menu-system`, `button-system`, or the in-flight
      `list-hero-header` capability. The expanded state continues to render exactly per
@@ -41,10 +44,12 @@ The right lever is **opt-in collapsibility**: let the user shrink the hero to a 
 ## Impact
 
 **Cross-cutting primitives consumed (no primitive modifications):**
+
 - `<Menu>` / `<MenuItem>` / `<MenuLinkItem>` from `menu-system` for the kebab — the same primitives `ListActionsMenu` already uses. The contextual item-set expansion is implemented inside `ListActionsMenu` by reading a new `heroCollapsed: boolean` prop and conditionally rendering the additional items.
 - `<Button variant="on-dark">` from `button-system` for the chevron handle. It's a single icon button with `aria-expanded` / `aria-controls` wiring; no new variant.
 
 **Files touched (estimate):**
+
 - `app/(main)/lists/ui/components/ListDetails.tsx` — currently a server component. A small client shell `HeroCollapseShell.tsx` wraps the existing rendered hero so the toggle / URL sync can live in client land. `ListDetails` stays server-rendered for the expanded content; the shell receives both the expanded tree and the collapsed strip (title + kebab) as `children` / props.
 - `app/(main)/lists/ui/components/HeroCollapseShell.tsx` — new client component. Owns the `useState` seeded from `useSearchParams`, the `history.replaceState` effect on state change, the chevron handle's render, and the switch between expanded children and collapsed strip.
 - `app/(main)/lists/ui/components/ListActionsMenu.tsx` — accepts a new `heroCollapsed?: boolean` prop. When true, prepends Share / Choose items (owner) / Edit (owner) / Bookmark (viewer) / Follow (viewer) / Visibility (owner) items to its item list. The expanded existing kebab items follow.
@@ -56,6 +61,7 @@ The right lever is **opt-in collapsibility**: let the user shrink the hero to a 
 **Server-side rendering nuance:** `useSearchParams()` requires `'use client'`. The toggle and URL-init logic live inside `HeroCollapseShell` (client). The expanded hero tree is server-rendered and passed as `children` — no payload bloat, no auth-context loss.
 
 **Out of scope (separate changes):**
+
 - Auto-collapse-on-scroll or sticky-compact-strip behaviors. The chevron is the only collapse trigger in this change.
 - Cross-device persistence (localStorage / sessionStorage / cookie). URL-only persistence is the deliberate choice here; if user research later shows users want collapse to carry across devices, that's a follow-up change with its own privacy + sync trade-off.
 - CSS transitions / animation on toggle.

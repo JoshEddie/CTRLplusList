@@ -2,7 +2,7 @@
 
 The just-archived `relabel-and-harden-visibility` change rewrote the visibility UI labels (Just me / Private / Shared) but explicitly held the DB enum at `'private' | 'unlisted' | 'public'`. The result is a load-bearing semantic disconnect: the DB value `'private'` now means the UI's **Just me**, while the DB value `'unlisted'` is what the UI now calls **Private**. A future maintainer reading `list.visibility === 'private'` will reasonably interpret it as the UI's "Private" (link-only) and be wrong. The active spec at [openspec/specs/list-visibility/spec.md:14](openspec/specs/list-visibility/spec.md:14) reinforces the trap by pairing every label with its inverted-meaning DB value across six scenarios.
 
-Separately, the "Just me" label reads awkwardly in toast copy ("List is now just me" is a sentence fragment, per the toast requirement at [openspec/specs/list-visibility/spec.md:55](openspec/specs/list-visibility/spec.md:55)) and on first encounter with a list — the label describes a *participant set* rather than the list's *state*. "Hidden" works in both places and telegraphs the actual concealment.
+Separately, the "Just me" label reads awkwardly in toast copy ("List is now just me" is a sentence fragment, per the toast requirement at [openspec/specs/list-visibility/spec.md:55](openspec/specs/list-visibility/spec.md:55)) and on first encounter with a list — the label describes a _participant set_ rather than the list's _state_. "Hidden" works in both places and telegraphs the actual concealment.
 
 Both problems share a root cause: identity strings used for the DB column double as the user-facing vocabulary. Decoupling them — by routing every code reference through a constants module — fixes the immediate bug AND prevents the same trap from recurring when future label revisions land.
 
@@ -45,7 +45,7 @@ This change is **Stage 1 of a three-stage rollout** required by the shared dev/p
 
 - `VisibilityPicker.tsx` option list:
   - Label `Just me` → **`Hidden`**, description unchanged ("Only I can see this list"), icon unchanged (`🔒`), toast `"List is now just me"` → **`"List is now hidden"`**.
-- `ShareButton.tsx` modal copy in [ShareButton.tsx](app/(main)/lists/ui/components/ShareButton.tsx) that currently says "This list is just me. Make private & share?" → **"This list is hidden. Make private & share?"**
+- `ShareButton.tsx` modal copy in [ShareButton.tsx](<app/(main)/lists/ui/components/ShareButton.tsx>) that currently says "This list is just me. Make private & share?" → **"This list is hidden. Make private & share?"**
 
 ### Spec deltas
 
@@ -64,7 +64,7 @@ This change is **Stage 1 of a three-stage rollout** required by the shared dev/p
 
 ### New Capabilities
 
-- *(none)*
+- _(none)_
 
 ### Modified Capabilities
 
@@ -73,31 +73,39 @@ This change is **Stage 1 of a three-stage rollout** required by the shared dev/p
 ## Impact
 
 ### Routes
-- [app/(main)/lists/[id]/page.tsx](app/(main)/lists/[id]/page.tsx) — three string comparisons swap to `VISIBILITY.X` (no behavior change).
+
+- [app/(main)/lists/[id]/page.tsx](<app/(main)/lists/[id]/page.tsx>) — three string comparisons swap to `VISIBILITY.X` (no behavior change).
 
 ### Components
-- [app/(main)/lists/ui/components/VisibilityPicker.tsx](app/(main)/lists/ui/components/VisibilityPicker.tsx) — option list uses constants, "Just me" → "Hidden", toast text update.
-- [app/(main)/lists/ui/components/ShareButton.tsx](app/(main)/lists/ui/components/ShareButton.tsx) — modal copy "just me" → "hidden"; literal swap.
-- [app/(main)/lists/ui/components/HeroCollapsedItems.tsx](app/(main)/lists/ui/components/HeroCollapsedItems.tsx) — literal swap.
-- [app/(main)/lists/ui/components/ListDetails.tsx](app/(main)/lists/ui/components/ListDetails.tsx) — literal swap.
+
+- [app/(main)/lists/ui/components/VisibilityPicker.tsx](<app/(main)/lists/ui/components/VisibilityPicker.tsx>) — option list uses constants, "Just me" → "Hidden", toast text update.
+- [app/(main)/lists/ui/components/ShareButton.tsx](<app/(main)/lists/ui/components/ShareButton.tsx>) — modal copy "just me" → "hidden"; literal swap.
+- [app/(main)/lists/ui/components/HeroCollapsedItems.tsx](<app/(main)/lists/ui/components/HeroCollapsedItems.tsx>) — literal swap.
+- [app/(main)/lists/ui/components/ListDetails.tsx](<app/(main)/lists/ui/components/ListDetails.tsx>) — literal swap.
 
 ### Data layer
-- *New:* [lib/visibility.ts](lib/visibility.ts) — constants, type, decoder, query helper.
+
+- _New:_ [lib/visibility.ts](lib/visibility.ts) — constants, type, decoder, query helper.
 - [lib/dal.ts](lib/dal.ts) — every read returning `visibility` normalizes via `fromDb`; WHERE filters expand via `visibilityDbValues`. Cache tags unchanged (`lists`, `home-rails` etc.).
 - [app/actions/lists.ts](app/actions/lists.ts) — `VisibilitySchema = z.enum(VISIBILITY_VALUES)`; comparisons use constants; `lists.shared` dual-write derivation `next !== VISIBILITY.OWNER` (semantically identical to today's `next !== 'private'`).
 
 ### Scripts
+
 - [scripts/seed-dev-users.ts](scripts/seed-dev-users.ts) — literal swap; seed continues writing legacy DB strings via `VISIBILITY.OWNER = 'private'`.
 
 ### Schema / data
+
 - No DB change in this change. `db/schema.ts` default unchanged. No migration runs.
 
 ### Cross-cutting design systems
-- *(none implicated)*. The picker continues to consume `<Menu>` and `<MenuItemRadio>` from `menu-system`; this change does not touch primitives, only the option array's `label` strings.
+
+- _(none implicated)_. The picker continues to consume `<Menu>` and `<MenuItemRadio>` from `menu-system`; this change does not touch primitives, only the option array's `label` strings.
 
 ### Cache freshness
+
 - No new reads, no new mutations. Existing `revalidateTag('lists')` in `setListVisibility` and existing `cacheTag('lists')` on the affected DAL reads (lines [89](lib/dal.ts:89), [114](lib/dal.ts:114), [137](lib/dal.ts:137), [345](lib/dal.ts:345)) continue to apply unchanged.
 
 ### Follow-up changes (not part of this change)
+
 - **Stage 2 — `flip-visibility-canonical-values`:** flip `VISIBILITY` right-hand sides to `'owner' | 'link' | 'followers'`. Safe to ship because the decoder from Stage 1 — already in production — tolerates both forms. Newly-written rows then use canonical values; existing rows remain legacy.
 - **Stage 3 — `migrate-visibility-db-values`:** run `UPDATE lists SET visibility = CASE ...` to sweep remaining legacy rows; flip the schema default `'private' → 'owner'`; delete the decoder's legacy branches and the `visibilityDbValues` helper.

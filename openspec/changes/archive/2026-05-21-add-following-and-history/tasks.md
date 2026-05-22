@@ -108,10 +108,10 @@
 ## 7. Visibility UI
 
 - [x] 7.1 Create `app/(main)/lists/ui/components/VisibilityPicker.tsx`: two-option **Private / Shared** segmented toggle plus a **"Show in followers' feed"** checkbox (rendered only when Shared). Maps to `setListVisibility(id, 'private' | 'unlisted' | 'public')` per the rules in `specs/list-visibility/spec.md`.
-- [x] 7.2 Replace `<ShareList>` usage in [ListDetails.tsx](app/(main)/lists/ui/components/ListDetails.tsx) (and any other usage site) with `<VisibilityPicker>`.
-- [x] 7.3 Delete [ShareList.tsx](app/(main)/lists/ui/components/ShareList.tsx) and [ShareButton.tsx](app/(main)/lists/ui/components/ShareButton.tsx) (folded into the new picker).
+- [x] 7.2 Replace `<ShareList>` usage in [ListDetails.tsx](<app/(main)/lists/ui/components/ListDetails.tsx>) (and any other usage site) with `<VisibilityPicker>`.
+- [x] 7.3 Delete [ShareList.tsx](<app/(main)/lists/ui/components/ShareList.tsx>) and [ShareButton.tsx](<app/(main)/lists/ui/components/ShareButton.tsx>) (folded into the new picker).
 - [x] 7.4 Update copy: explain each state in a tooltip or helper text ("Only you", "Anyone with link", "Anyone with link + appears in followers' feeds").
-- [x] 7.5 Verify that the `ListPrivate` UI ([app/(main)/lists/ui/components/ListPrivate.tsx](app/(main)/lists/ui/components/ListPrivate.tsx)) handles the `'private'` state correctly (already does for `shared=false` equivalent).
+- [x] 7.5 Verify that the `ListPrivate` UI ([app/(main)/lists/ui/components/ListPrivate.tsx](<app/(main)/lists/ui/components/ListPrivate.tsx>)) handles the `'private'` state correctly (already does for `shared=false` equivalent).
 
 ## 8. Bookmark UI component
 
@@ -153,10 +153,10 @@
 
 ## 11. Home page (digest)
 
-- [x] 11.1 Rewrite [app/(main)/lists/page.tsx](app/(main)/lists/page.tsx) (or replace the file the home route resolves to) as a digest.
+- [x] 11.1 Rewrite [app/(main)/lists/page.tsx](<app/(main)/lists/page.tsx>) (or replace the file the home route resolves to) as a digest.
 - [x] 11.2 Create `app/(main)/lists/ui/components/CollapsibleRail.tsx`: header with chevron toggle, "See all" link, child grid; reads/writes `localStorage` key `home.rail.<name>.open` on client.
 - [x] 11.3 Render four rails: My Lists, Following, Bookmarks, Recently visited. Each: top 5, "See all" → respective full page.
-- [x] 11.4 Delete [SavedLists.tsx](app/(main)/lists/ui/components/SavedLists.tsx) and [SaveButton.tsx](app/(main)/lists/ui/components/SaveButton.tsx) and [SaveContainer.tsx](app/(main)/lists/ui/components/SaveContainer.tsx) — superseded.
+- [x] 11.4 Delete [SavedLists.tsx](<app/(main)/lists/ui/components/SavedLists.tsx>) and [SaveButton.tsx](<app/(main)/lists/ui/components/SaveButton.tsx>) and [SaveContainer.tsx](<app/(main)/lists/ui/components/SaveContainer.tsx>) — superseded.
 - [x] 11.5 Add a one-time migration toast on home: "Saved lists are now Bookmarks." Dismissal stored in `localStorage` key `home.bookmark-migration-toast.dismissed`.
 
 ## 12. CSS

@@ -20,7 +20,7 @@ export const CheckboxField = forwardRef<HTMLInputElement, CheckboxFieldProps>(
         <span>{label}</span>
       </label>
     );
-  },
+  }
 );
 
 CheckboxField.displayName = 'CheckboxField';

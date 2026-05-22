@@ -61,7 +61,8 @@ export function PriceField({
     onChange(next);
   };
 
-  const formatted = amount === null ? '' : PRICE_FORMATTER.format(Math.abs(amount));
+  const formatted =
+    amount === null ? '' : PRICE_FORMATTER.format(Math.abs(amount));
   const display = isNegative ? `-${formatted}` : formatted;
 
   return (

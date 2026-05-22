@@ -1,8 +1,11 @@
 # list-metadata Specification
 
 ## Purpose
+
 TBD - created by archiving change redesign-home-and-tokens. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Lists SHALL support an optional subtitle field
 
 The `lists` table SHALL include a nullable `subtitle` text column. The field SHALL be editable through the list create and update forms. When persisted, the subtitle SHALL render alongside the list name on the home rail card and on any list-card view of the list. When `subtitle IS NULL`, no subtitle slot SHALL be rendered.
@@ -45,4 +48,3 @@ The migration that adds `lists.subtitle` SHALL leave the column NULL for every e
 
 - **WHEN** an existing list (created before this change) is viewed without being edited
 - **THEN** the card renders with name only (no subtitle slot)
-

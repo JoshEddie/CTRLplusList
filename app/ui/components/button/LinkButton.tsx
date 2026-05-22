@@ -17,7 +17,7 @@ type LinkButtonProps = Omit<
 export const LinkButton = forwardRef<HTMLAnchorElement, LinkButtonProps>(
   function LinkButton(
     { variant, size, pressed, className, children, ...rest },
-    ref,
+    ref
   ) {
     const composed = buttonClasses({ variant, size, extra: className });
 
@@ -31,5 +31,5 @@ export const LinkButton = forwardRef<HTMLAnchorElement, LinkButtonProps>(
         {children}
       </Link>
     );
-  },
+  }
 );

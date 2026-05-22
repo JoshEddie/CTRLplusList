@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  ButtonHTMLAttributes,
-  forwardRef,
-  ReactNode,
-} from 'react';
+import { ButtonHTMLAttributes, forwardRef, ReactNode } from 'react';
 import { segmentedOptionClasses } from './segmentedClasses';
 import { useSegmentedContext } from './SegmentedControl';
 
@@ -18,7 +14,7 @@ type SegmentedOptionProps<T extends string> = Omit<
 
 function SegmentedOptionInner<T extends string>(
   { value, children, className, ...rest }: SegmentedOptionProps<T>,
-  ref: React.Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>
 ) {
   const ctx = useSegmentedContext();
   const isActive = ctx.value === value;
@@ -45,5 +41,5 @@ function SegmentedOptionInner<T extends string>(
 export const SegmentedOption = forwardRef(SegmentedOptionInner) as <
   T extends string,
 >(
-  props: SegmentedOptionProps<T> & { ref?: React.Ref<HTMLButtonElement> },
+  props: SegmentedOptionProps<T> & { ref?: React.Ref<HTMLButtonElement> }
 ) => ReturnType<typeof SegmentedOptionInner>;

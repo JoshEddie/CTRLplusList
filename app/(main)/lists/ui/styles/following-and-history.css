@@ -57,7 +57,9 @@
   box-shadow: var(--card-shadow);
   text-decoration: none;
   color: inherit;
-  transition: background-color 0.15s ease, border-color 0.15s ease,
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
     box-shadow 0.15s ease;
 }
 .user-card:hover {
@@ -231,8 +233,11 @@
   cursor: pointer;
   font-size: 10px;
   opacity: 0.7;
-  transition: opacity 0.15s ease, border-color 0.15s ease,
-    background-color 0.15s ease, color 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
   z-index: 1;
 }
 .history-card:hover .history-remove-button {
@@ -477,7 +482,9 @@
   letter-spacing: 0.02em;
   text-align: center;
   text-decoration: none;
-  transition: background-color 0.15s ease, border-color 0.15s ease,
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
     box-shadow 0.15s ease;
 }
 .more-card:hover {
@@ -509,7 +516,9 @@
   box-shadow: var(--card-shadow);
   text-decoration: none;
   color: inherit;
-  transition: background-color 0.15s ease, border-color 0.15s ease,
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
     box-shadow 0.15s ease;
 }
 .list-card:hover {
@@ -661,7 +670,9 @@
   white-space: nowrap;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 .list-collections-tab:hover {
   color: var(--heading-text-color);
@@ -710,14 +721,10 @@
 
 /* The per-page wrapper (.my-lists-page / .bookmarks-page / .history-page /
    .following-page) inherits the flex layout from the container. */
-.container--list-collections
-  > .my-lists-page,
-.container--list-collections
-  > .bookmarks-page,
-.container--list-collections
-  > .history-page,
-.container--list-collections
-  > .following-page {
+.container--list-collections > .my-lists-page,
+.container--list-collections > .bookmarks-page,
+.container--list-collections > .history-page,
+.container--list-collections > .following-page {
   display: flex;
   flex-direction: column;
   flex: 1;

@@ -18,9 +18,11 @@ No existing spec governs the root document, icon set, or service-worker layer (v
 ## Capabilities
 
 ### New Capabilities
+
 - `pwa-shell`: Web App Manifest contents and service-worker scope/registration for installability. Defines (a) what the manifest declares, (b) the precache contract (assets only, never authenticated HTML), (c) the SW lifecycle and kill-switch invariant.
 
 ### Modified Capabilities
+
 _None._ The change touches `app/layout.tsx` (root layout) only to mount the SW registration component; root layout meta is not governed by an active spec. `app-frame` governs `app/(main)/layout.tsx` and is untouched.
 
 ## Impact

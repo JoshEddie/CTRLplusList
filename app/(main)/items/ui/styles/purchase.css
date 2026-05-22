@@ -1,6 +1,6 @@
 /* Claim CTA — full-width purple button sits inside the item card body */
 /* .claim-cta-btn { */
-  /* width: 100%;
+/* width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -78,7 +78,11 @@
 
 @media (hover: hover) {
   .claimed-state:hover:not(.claimed-state--fully) {
-    background-color: color-mix(in srgb, var(--success-bg) 85%, var(--claimed-text));
+    background-color: color-mix(
+      in srgb,
+      var(--success-bg) 85%,
+      var(--claimed-text)
+    );
     border-color: var(--claimed-text);
   }
 

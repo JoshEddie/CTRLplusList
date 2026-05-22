@@ -58,8 +58,7 @@ const BYPASS_USER_IMAGE =
 
 function bypassEnabled(): boolean {
   return (
-    process.env.NODE_ENV !== 'production' &&
-    process.env.AUTH_BYPASS === 'true'
+    process.env.NODE_ENV !== 'production' && process.env.AUTH_BYPASS === 'true'
   );
 }
 

@@ -19,9 +19,11 @@ Replacing the in-row expand with a popover-anchored menu (consuming the `<Menu>`
 ## Capabilities
 
 ### New Capabilities
+
 - `item-store-links`: Defines the visual and accessibility contract for the store-links row on item cards — the single-row no-wrap grid layout, the primary buy-link's stretch behavior, the `+N` menu-trigger behavior, the popover-menu contents, the hover-open-with-grace-collapse interaction, the height-stability invariant (card height never changes with store count or popover open state), and the integration points with the `<Menu>` primitive and `usePopoverDismiss` hook from `menu-system`.
 
 ### Modified Capabilities
+
 <!-- None — the change supersedes pieces of the standardize-buttons in-flight change, not a sealed spec. Referencing comments will be added to that change's proposal.md and tasks.md. -->
 
 ## Impact

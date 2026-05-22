@@ -27,8 +27,7 @@ export default async function Home({
   const sp = await searchParams;
   const purchasesParam =
     typeof sp.purchases === 'string' ? sp.purchases : undefined;
-  const showSpoilers =
-    purchasesParam === 'reveal' || purchasesParam === 'only';
+  const showSpoilers = purchasesParam === 'reveal' || purchasesParam === 'only';
 
   const cookieStore = await cookies();
   const rawPageSize = cookieStore.get('items_page_size')?.value;

@@ -38,7 +38,11 @@ export default async function ListItemsSection({
   const effectiveOwner = isOwner && !previewMode;
 
   return effectiveOwner ? (
-    <SortItemsContainer listId={id} isOwner={true} showSpoilers={showSpoilers} />
+    <SortItemsContainer
+      listId={id}
+      isOwner={true}
+      showSpoilers={showSpoilers}
+    />
   ) : (
     <ItemsContainer
       listId={id}

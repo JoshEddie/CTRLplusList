@@ -9,6 +9,7 @@ Filtering and sorting can be entirely client-side because the page already loads
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Bring choose-items to filter/sort parity with `/items` (search, sort, store filter, price filter).
 - Add a `Show` control unique to choose-items: `All` / `Only on the list` / `Only not on the list`.
 - Drive all toolbar state from URL params so back/forward navigation preserves the user's view.
@@ -16,6 +17,7 @@ Filtering and sorting can be entirely client-side because the page already loads
 - Keep the checkbox `selected: Set<string>` in local React state, unchanged.
 
 **Non-Goals:**
+
 - Two-axis (primary + secondary) sort — deferred to a separate change.
 - Server-side pagination, filtering, or sorting on choose-items — out of scope; the page renders the user's full library client-side.
 - A persistent "Selected: N" counter — useful but deferred; the immediate scope is the toolbar itself.

@@ -32,7 +32,14 @@ function SignedOutMenu() {
         className={`avatar-container ${showMenu ? 'hide' : ''} placeholder`}
         onClick={() => setShowMenu(!showMenu)}
       >
-        <div className={buttonClasses({ variant: 'on-dark', extra: 'avatar placeholder' })}>Sign In</div>
+        <div
+          className={buttonClasses({
+            variant: 'on-dark',
+            extra: 'avatar placeholder',
+          })}
+        >
+          Sign In
+        </div>
       </div>
       <AuthContainer className={`user-menu ${showMenu ? 'show' : ''}`}>
         <Image

@@ -18,6 +18,7 @@ The toggle exposes two affordances depending on state:
 Each affordance SHALL satisfy WCAG 2.5.5 (≥44×44 CSS px touch target) and SHALL expose `aria-expanded` reflecting the current state (`true` when expanded, `false` when collapsed), with accessible name "Collapse list info" when expanded and "Expand list info" when collapsed.
 
 #### Scenario: Owner expanded → collapsed → expanded
+
 - **GIVEN** an authenticated list owner viewing `/lists/[id]` with no `hero` URL param
 - **WHEN** the page first renders
 - **THEN** the hero SHALL render in the expanded state per the `list-hero-header` capability
@@ -29,18 +30,21 @@ Each affordance SHALL satisfy WCAG 2.5.5 (≥44×44 CSS px touch target) and SHA
 - **THEN** the hero SHALL return to the expanded state with `aria-expanded="true"`
 
 #### Scenario: Viewer expanded → collapsed
+
 - **GIVEN** an authenticated non-owner viewing a `'public'` or `'unlisted'` list at `/lists/[id]`
 - **WHEN** the user activates the bottom collapse handle
 - **THEN** the hero SHALL render in the collapsed state (title + chevron + kebab only)
 - **AND** the byline sub-row containing avatar, linked owner name, and Follow button SHALL no longer render on the hero surface
 
 #### Scenario: Toggle renders at all widths
+
 - **GIVEN** a list page rendered at any viewport width (verified at 390px, 800px, 1024px, 1440px)
 - **WHEN** the hero is in either state
 - **THEN** the toggle affordance for that state SHALL be visible and operable
 - **AND** there SHALL NOT be a viewport-width breakpoint at which the affordance is `display: none` or otherwise removed from the DOM
 
 #### Scenario: Collapsed strip click target excludes the kebab
+
 - **GIVEN** the hero is collapsed
 - **WHEN** the user clicks the `ListActionsMenu` kebab (the `⋯` button)
 - **THEN** the kebab menu SHALL open
@@ -53,6 +57,7 @@ When the hero is in the collapsed state, the surface SHALL render only three ele
 The collapsed strip SHALL render inside the same gradient surface used by the expanded hero, preserving the brand-gradient continuity established by the `list-hero-header` capability. The panel's border-radius and outer width SHALL be preserved; only interior height and padding change.
 
 #### Scenario: Collapsed strip content for owner
+
 - **GIVEN** an authenticated list owner viewing `/lists/[id]`
 - **WHEN** the hero is collapsed
 - **THEN** the visible hero content SHALL be exactly: a chevron-down icon, the list title, and the `ListActionsMenu` kebab
@@ -64,6 +69,7 @@ The collapsed strip SHALL render inside the same gradient surface used by the ex
 - **AND** the bottom collapse handle SHALL NOT render
 
 #### Scenario: Collapsed strip content for viewer
+
 - **GIVEN** an authenticated non-owner viewing `/lists/[id]` for a `'public'` or `'unlisted'` list
 - **WHEN** the hero is collapsed
 - **THEN** the visible hero content SHALL be exactly: a chevron-down icon, the list title, and the `ListActionsMenu` kebab
@@ -71,6 +77,7 @@ The collapsed strip SHALL render inside the same gradient surface used by the ex
 - **AND** the Share and Bookmark buttons SHALL NOT render as first-class affordances
 
 #### Scenario: Gradient surface continuity preserved on collapse
+
 - **GIVEN** the hero is collapsed
 - **WHEN** the strip renders
 - **THEN** it SHALL render inside the existing hero gradient surface with shared background and border-radius
@@ -90,21 +97,25 @@ The collapsed hero composes `prependedItems` as follows:
 The contextual prepended items SHALL invoke the same actions as their expanded-state counterparts — i.e., the Share menu item produces the same outcome as `<ShareButton>`, the Bookmark menu item produces the same outcome as `<BookmarkContainer>`, etc.
 
 #### Scenario: Owner kebab in collapsed mode
+
 - **GIVEN** an authenticated list owner viewing `/lists/[id]` with the hero collapsed
 - **WHEN** the user opens the kebab
 - **THEN** the menu SHALL contain (in order): Share, the three Visibility radio rows (Just me / Private / Shared, with the current state checked), Choose items, Edit list, Show/Hide spoilers, Preview as viewer, Delete list
 
 #### Scenario: Viewer kebab in collapsed mode
+
 - **GIVEN** an authenticated non-owner viewing `/lists/[id]` with the hero collapsed
 - **WHEN** the user opens the kebab
 - **THEN** the menu SHALL contain (in order): Share, Bookmark, Follow (or Following), and no owner-only items
 
 #### Scenario: Owner kebab in expanded mode unchanged
+
 - **GIVEN** an authenticated list owner viewing `/lists/[id]` with the hero expanded
 - **WHEN** the user opens the kebab
 - **THEN** the menu SHALL contain only its pre-existing items (Choose items, Edit list, Show/Hide spoilers, Preview as viewer, Delete list) — no Share, no Visibility rows
 
 #### Scenario: Visibility radios in collapsed owner kebab change list visibility
+
 - **GIVEN** an authenticated owner with the hero collapsed and the kebab open
 - **WHEN** the user activates one of the three Visibility radio rows (Just me / Private / Shared)
 - **THEN** `setListVisibility(id, selectedVisibility)` SHALL be invoked exactly as it would from `<VisibilityPicker>` in the expanded state
@@ -112,21 +123,24 @@ The contextual prepended items SHALL invoke the same actions as their expanded-s
 
 ### Requirement: Collapse state SHALL be reflected in the URL via a `hero` search param
 
-The collapsed state SHALL be expressed in the URL as the search param `?hero=closed`. The expanded state SHALL be expressed by the *absence* of the `hero` param. The string `?hero=open` SHALL NOT be used — the open state is signaled exclusively by the param's absence.
+The collapsed state SHALL be expressed in the URL as the search param `?hero=closed`. The expanded state SHALL be expressed by the _absence_ of the `hero` param. The string `?hero=open` SHALL NOT be used — the open state is signaled exclusively by the param's absence.
 
 The initial render of `/lists/[id]` SHALL derive the hero's state from the URL: if `searchParams.hero === 'closed'`, render collapsed; otherwise render expanded.
 
 When the user activates the toggle, the component SHALL update the URL to reflect the new state. Adding `?hero=closed` (on collapse) or removing the `hero` param (on expand) SHALL be done via `window.history.replaceState`. The component SHALL NOT use `window.history.pushState`, `router.push`, or any other API that creates a new history entry on toggle.
 
 #### Scenario: Fresh visit with no param renders expanded
+
 - **WHEN** a user opens `/lists/abc123` with no `hero` search param
 - **THEN** the hero SHALL render in the expanded state
 
 #### Scenario: Visit with `?hero=closed` renders collapsed
+
 - **WHEN** a user opens `/lists/abc123?hero=closed`
 - **THEN** the hero SHALL render in the collapsed state
 
 #### Scenario: Toggle updates the URL
+
 - **GIVEN** a user is on `/lists/abc123` (no `hero` param)
 - **WHEN** the user activates the toggle to collapse
 - **THEN** the browser's URL SHALL update to `/lists/abc123?hero=closed`
@@ -136,16 +150,19 @@ When the user activates the toggle, the component SHALL update the URL to reflec
 - **AND** no new history entry SHALL be created
 
 #### Scenario: Back-button skips toggle interactions
+
 - **GIVEN** a user navigated `/lists → /lists/abc123` and then activated the collapse toggle three times
 - **WHEN** the user presses the browser back button
 - **THEN** the browser SHALL navigate to `/lists` — NOT to any intermediate `?hero` state of `/lists/abc123`
 
 #### Scenario: Page refresh preserves collapsed state
+
 - **GIVEN** the user has collapsed the hero on `/lists/abc123` (URL is now `/lists/abc123?hero=closed`)
 - **WHEN** the user refreshes the page
 - **THEN** the hero SHALL render in the collapsed state on the new page load
 
 #### Scenario: Browser back to a previously-collapsed list restores the state
+
 - **GIVEN** the user is on `/lists/abc123?hero=closed`, clicks a link to `/lists/def456`, then presses the browser back button
 - **WHEN** the back navigation completes
 - **THEN** the URL SHALL be `/lists/abc123?hero=closed`
@@ -158,6 +175,7 @@ The URL written to the clipboard or passed to `navigator.share` from the list-de
 This requirement is satisfied by construction: the Share path builds the URL from `list.id` (e.g., `https://www.ctrlpluslist.com/lists/${list.id}`) rather than from `window.location.href`. Any future change to the Share path SHALL preserve this property.
 
 #### Scenario: Sharing while hero is collapsed
+
 - **GIVEN** an owner is on `/lists/abc123?hero=closed`
 - **WHEN** the owner activates the Share button (whether via the expanded-hero affordance or the collapsed-kebab `<MenuItem>`)
 - **THEN** the URL written to the clipboard (or passed to `navigator.share`) SHALL be the canonical `/lists/abc123` form — with no `hero` param

@@ -33,6 +33,7 @@ The list app's visual context is simpler than the budget app's: every input sits
 ## Goals / Non-Goals
 
 **Goals:**
+
 - WCAG 2.5.8 / 1.4.11 / 1.4.3 / 2.4.11 / 3.3.1 / 1.3.1 / 4.1.2 conformance at AA for every form-field call site.
 - One field system: every text input, textarea, select, and checkbox shares one chrome (border, background, padding, focus, min-height, font-size).
 - **Deviation shouldn't be possible.** The chrome owner is a single `<FormField>` wrapper; children have no chrome of their own; `className` cannot be forwarded to underlying inputs.
@@ -45,6 +46,7 @@ The list app's visual context is simpler than the budget app's: every input sits
 - All call sites migrated within this change — no parallel-system drift allowed to persist.
 
 **Non-Goals:**
+
 - Multi-surface palette (`data-surface="main" | "overlay" | "dark"`). Every field in this app sits on white. If a future on-dark surface arrives, it gets a sibling primitive — not a switch on the existing primitive.
 - An `sm` size opt-out. The 44px floor applies universally. If a layout breaks at 44px (items-toolbar filter sheet, popover internals), the answer is to fix the layout, not the floor. The previous proposal's `sm` size was an opening for drift.
 - Building a custom-styled `<select>` open menu (combobox/listbox primitive). Native is right for this app's scale.
@@ -73,6 +75,7 @@ The list app's visual context is simpler than the budget app's: every input sits
 ```
 
 `<FormField>` renders `<div class="form_field">` with grid-based chrome — border, background, min-height, padding, focus-within ring all live on this div. The grid template switches via class:
+
 - `.form_field` (default): `grid-template-columns: 1fr` — no icon
 - `.form_field.icon_left`: `grid-template-columns: auto 1fr`
 - `.form_field.icon_right`: `grid-template-columns: 1fr auto`
@@ -112,7 +115,7 @@ Field-type wrappers omit `className` from the spread input props:
 
 ```typescript
 type TextFieldProps = FieldWrapperProps &
-  Omit<ComponentPropsWithRef<"input">, "className" | "disabled" | "type">;
+  Omit<ComponentPropsWithRef<'input'>, 'className' | 'disabled' | 'type'>;
 ```
 
 TypeScript prevents the call site from ever passing `className` to the underlying `<input>`. The only `className` accepted is on the wrapping `<FormField>` div — and it's strictly for layout positioning by the parent (`flex: 1` inside a parent flex row, `grid-column: span 2` inside a parent grid). Documentation on the prop says so explicitly.
@@ -130,14 +133,14 @@ Alternative considered: accept `className` on inputs but post-process to strip c
 ```typescript
 const handleChange = (value: string) => {
   // Strip non-digits; treat remaining digits as integer cents
-  const digits = value.replace(/\D/g, "");
-  const cents = Number(digits || "0");
+  const digits = value.replace(/\D/g, '');
+  const cents = Number(digits || '0');
   // Convert to dollars via /100 (decimal placement is automatic)
   const next = cents / 100;
   setAmount(next);
 };
 
-const formatted = amount === null ? "" : formatNumber(amount);
+const formatted = amount === null ? '' : formatNumber(amount);
 ```
 
 The input uses `inputMode="numeric"` (not `"decimal"`) — the budget app comment notes that `inputMode="decimal"` is buggy across mobile browsers. The user types digits; the input formats the displayed string with the decimal in the correct position. No fractional state, no decimal-point cursor management bugs.
@@ -148,13 +151,13 @@ The `$` icon is locked to the left position (US currency convention). Callers ca
 
 ```typescript
 interface PriceFieldProps {
-  amount: number | null;       // dollars (e.g. 12.34)
+  amount: number | null; // dollars (e.g. 12.34)
   onChange: (value: number) => void;
   label?: string;
   error?: string;
   required?: boolean;
   disabled?: boolean;
-  allowNegative?: boolean;     // default false; budget app supports leading "-"
+  allowNegative?: boolean; // default false; budget app supports leading "-"
   id?: string;
   'aria-label'?: string;
 }
@@ -247,17 +250,17 @@ Tokens in `global.css`:
 --field-padding-y: 8px;
 --field-padding-x: 12px;
 --field-radius: 8px;
---field-font-size: 16px;          /* iOS no-auto-zoom threshold */
---field-label-font-size: 14px;    /* up from 12px — WCAG-friendly */
+--field-font-size: 16px; /* iOS no-auto-zoom threshold */
+--field-label-font-size: 14px; /* up from 12px — WCAG-friendly */
 
---field-border-color: #737373;            /* ≥3:1 vs #fff — WCAG 1.4.11 */
+--field-border-color: #737373; /* ≥3:1 vs #fff — WCAG 1.4.11 */
 --field-border-color-hover: #4b5563;
 --field-border-color-focus: var(--primary-color);
 --field-border-color-error: #c81e1e;
 --field-focus-ring-color: rgba(115, 36, 206, 0.35);
 --field-focus-ring-width: 3px;
---field-error-color: #c81e1e;             /* ≥4.5:1 vs #fff — WCAG 1.4.3 */
---field-placeholder-color: var(--muted-text-color);  /* ~4.83:1 */
+--field-error-color: #c81e1e; /* ≥4.5:1 vs #fff — WCAG 1.4.3 */
+--field-placeholder-color: var(--muted-text-color); /* ~4.83:1 */
 ```
 
 Chrome CSS in `app/ui/components/field/form-field.css`:
@@ -265,7 +268,7 @@ Chrome CSS in `app/ui/components/field/form-field.css`:
 ```css
 .form_field {
   display: grid;
-  grid-template-columns: 1fr;   /* default: no icon */
+  grid-template-columns: 1fr; /* default: no icon */
   align-items: center;
   background: transparent;
   border: 1px solid var(--field-border-color);
@@ -273,10 +276,18 @@ Chrome CSS in `app/ui/components/field/form-field.css`:
   min-height: var(--field-min-height);
   padding: 0 var(--field-padding-x);
   font-size: var(--field-font-size);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 }
-.form_field.icon_left  { grid-template-columns: auto 1fr; gap: 8px; }
-.form_field.icon_right { grid-template-columns: 1fr auto; gap: 8px; }
+.form_field.icon_left {
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+}
+.form_field.icon_right {
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
 
 .form_field .form_field_input,
 .form_field .form_field_select,
@@ -312,6 +323,7 @@ If `:focus-visible` discipline matters here later, the migration is one declarat
 The previous proposal allowed `size="sm"` for dense contexts. The first implementation showed that `sm` immediately becomes the contributor's escape valve from any layout pressure — and the toolbar that justified `sm` was itself a layout that needed redesign, not capitulation.
 
 This revision removes the size variant. Every `<FormField>` renders at 44px min-height. If a layout breaks:
+
 - For the items-toolbar (wide horizontal row): the answer is to redesign the toolbar's grid for 44px tall cells.
 - For in-popover dense filter inputs: the popover is allowed to scroll; the inputs stack vertically.
 - For the items-toolbar filter sheet on mobile: it already overflows-y-auto.
@@ -325,6 +337,7 @@ If a real call site emerges that genuinely cannot accommodate 44px (e.g. a futur
 The list app's forms all sit on white surfaces (form-shell modal, list-form modal, item-form modal, items-toolbar filter sheet, store-filter popover, price-filter popover, purchase-modal). The only candidate dark surface is the list-hero translucent-purple region — and the only field-shaped element there is the in-feed visibility checkbox, which is already handled by page-scoped CSS overrides on `<CheckboxField>` (re-coloring the box border, fill, and checkmark for the on-dark context).
 
 The proposal explicitly avoids a `data-surface="main" | "overlay" | "dark"` mechanism. Reasoning:
+
 - It's complexity for one use case (the hero checkbox).
 - Page-scoped overrides for a single odd-context element are appropriate; building primitive-level surface switching for one consumer is overengineering.
 - If a second on-dark surface appears (e.g., a hypothetical inline-edit on the hero itself), that's the moment to introduce a sibling primitive (`<OnDarkTextField>`) or — only then — widen the primitive with `data-surface`.
@@ -377,6 +390,7 @@ This isn't an enforced pattern; it's a convention. Useful so the icon for "name 
 ### Decision 14: Delete the prior implementation's `field/` directory in full
 
 The prior implementation left:
+
 - `app/ui/components/field/Field.tsx` (orchestrator)
 - `app/ui/components/field/TextInput.tsx`, `Textarea.tsx`, `Select.tsx`, `Checkbox.tsx` (primitives with chrome on child)
 - `app/ui/components/field/FieldError.tsx` (with `role="alert"`)

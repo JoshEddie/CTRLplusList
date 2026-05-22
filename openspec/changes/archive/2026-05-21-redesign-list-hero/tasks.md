@@ -19,7 +19,7 @@
 - [x] 3.3 Inside `.list-hero-card-controls`, branch on `isOwner && !previewMode` (owner full controls), `!isOwner && viewer_id && !previewMode` (viewer with byline group + action pair), and `isOwner && previewMode` (preview-mode minimal controls).
 - [x] 3.4 Remove the existing `.list-hero-byline`, `.list-hero-meta`, `.list-hero-chip`, `.list-hero-mi` DOM nodes.
 - [x] 3.5 Remove the `data-variant` attribute on `.list-hero-actions` from the narrow change.
-- [x] 3.6 Compute "*N* items" from items already loaded by the enhanced `getList()` (which now eager-loads `list_items` ids). Pass `itemCount={list.items?.length ?? 0}` from page.tsx.
+- [x] 3.6 Compute "_N_ items" from items already loaded by the enhanced `getList()` (which now eager-loads `list_items` ids). Pass `itemCount={list.items?.length ?? 0}` from page.tsx.
 - [x] 3.7 Add an inline `timeAgo` helper using `Intl.RelativeTimeFormat`. Single format across desktop/mobile ("2 days ago") — verbose is short enough to fit on mobile.
 
 ## 4. CSS rewrite (list.css)
@@ -65,4 +65,4 @@ The following work was implemented in the same working tree but belongs to separ
 - `2026-05-21-relabel-and-harden-visibility` — three-row radio picker (`Just me` / `Private` / `Shared`), `<MenuItemRadio>` primitive addition, noindex/metadata crawler guards. Modifies `list-visibility` and `menu-system`.
 - `extract-visibility-constants` (in-flight) — staged rollout for renaming the on-disk visibility enum values. Layers a translation boundary into the DAL.
 
-This change owns the hero's *visual composition* (cards, zones, eyebrow, identity-zone share-wrapper, controls-card row + button stack, avatar) plus the `popover-trigger-system` `tone` extension. Everything else listed above is consumed by this change but governed elsewhere.
+This change owns the hero's _visual composition_ (cards, zones, eyebrow, identity-zone share-wrapper, controls-card row + button stack, avatar) plus the `popover-trigger-system` `tone` extension. Everything else listed above is consumed by this change but governed elsewhere.

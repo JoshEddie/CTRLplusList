@@ -1,8 +1,11 @@
 # list-collections Specification
 
 ## Purpose
+
 TBD - created by archiving change redesign-home-and-tokens. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: List-collection pages SHALL form a known peer group
 
 The following four routes SHALL be treated as a peer group of "list-collection" pages, each rendering a single way of seeing lists or list-owning users related to the viewer:
@@ -80,4 +83,3 @@ When the viewer is on `/lists/bookmarks`, `/lists/history`, or `/following`, the
 
 - **WHEN** the viewer is on `/lists`, `/lists/new`, or `/lists/[id]`
 - **THEN** the "Lists" global nav pill renders active (the sub-nav also shows "My Lists" as the active tab on `/lists`; list detail and new-list pages do not render a sub-nav)
-

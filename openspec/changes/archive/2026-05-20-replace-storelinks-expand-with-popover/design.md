@@ -17,6 +17,7 @@ A new menu primitive family (`<Menu>`, `<MenuItem>`, `<MenuLinkItem>`, `usePopov
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Card height is invariant to store count and to popover open/close state. No card in any grid row should change height when its neighbor's popover opens.
 - The chip row is always exactly one line tall, regardless of viewport width.
 - Hover-to-reveal is preserved as a desktop affordance — the existing UX of "glance at the chip → extras appear → glance away → they disappear" stays intact.
@@ -25,6 +26,7 @@ A new menu primitive family (`<Menu>`, `<MenuItem>`, `<MenuLinkItem>`, `usePopov
 - Zero parallel popover infrastructure: dismiss (click-outside, Escape, focus return) flows through `usePopoverDismiss` from `menu-system`.
 
 **Non-Goals:**
+
 - Redesigning the popover panel's interior (already specified by `<MenuLinkItem>` from `menu-system`).
 - Changing the primary buy-link's variant, sizing, or color treatment.
 - Reworking the `Purchase` button, claim-counter, or purchased-banner.
@@ -41,13 +43,13 @@ Replace `.storeLinks { display: flex; flex-wrap: wrap; gap: 5px; }` with a CSS g
 ```css
 .storeLinks {
   display: grid;
-  grid-template-columns: 1fr;          /* single store — primary stretches */
+  grid-template-columns: 1fr; /* single store — primary stretches */
   gap: 5px;
   width: 100%;
 }
 
 .storeLinks.has-extras {
-  grid-template-columns: 1fr auto;     /* multi-store — primary stretches, +N hugs */
+  grid-template-columns: 1fr auto; /* multi-store — primary stretches, +N hugs */
 }
 ```
 
@@ -69,14 +71,14 @@ The image-clip and bottom-banner-clip responsibilities move from the container t
 
 .item-image-container {
   /* aspect-ratio: 4/3; overflow: hidden; — UNCHANGED */
-  border-top-left-radius: 10px;        /* NEW */
-  border-top-right-radius: 10px;       /* NEW */
+  border-top-left-radius: 10px; /* NEW */
+  border-top-right-radius: 10px; /* NEW */
 }
 
 .purchased-banner {
   /* existing rules — UNCHANGED */
-  border-bottom-left-radius: 10px;     /* NEW */
-  border-bottom-right-radius: 10px;    /* NEW */
+  border-bottom-left-radius: 10px; /* NEW */
+  border-bottom-right-radius: 10px; /* NEW */
 }
 ```
 
@@ -94,7 +96,14 @@ When `.purchased-banner` is absent (active item, viewer not seeing spoiler), the
 
 ```tsx
 <div className={`storeLinks${extras.length > 0 ? ' has-extras' : ''}`}>
-  <LinkButton variant="primary" size="sm" className="storeLinks-link" href={primary.link} target="_blank" rel="noreferrer">
+  <LinkButton
+    variant="primary"
+    size="sm"
+    className="storeLinks-link"
+    href={primary.link}
+    target="_blank"
+    rel="noreferrer"
+  >
     {primary.name} <MdOpenInNew aria-hidden />
   </LinkButton>
   {extras.length > 0 && (
@@ -106,14 +115,25 @@ When `.purchased-banner` is absent (active item, viewer not seeing spoiler), the
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Show ${extras.length} more store${extras.length === 1 ? '' : 's'}`}
-        onClick={() => setOpen(o => !o)}
+        onClick={() => setOpen((o) => !o)}
         onMouseEnter={cancelCollapseAndOpen}
       >
         +{extras.length}
       </Button>
-      <Menu open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} aria-label="More stores">
-        {extras.map(store => (
-          <MenuLinkItem key={store.name} href={store.link} target="_blank" rel="noreferrer" icon={<MdOpenInNew aria-hidden />}>
+      <Menu
+        open={open}
+        onClose={() => setOpen(false)}
+        anchorRef={anchorRef}
+        aria-label="More stores"
+      >
+        {extras.map((store) => (
+          <MenuLinkItem
+            key={store.name}
+            href={store.link}
+            target="_blank"
+            rel="noreferrer"
+            icon={<MdOpenInNew aria-hidden />}
+          >
             {store.name}
           </MenuLinkItem>
         ))}
@@ -197,16 +217,17 @@ Children are flattened into the outer grid via `.item, .item-info { display: con
 
 **Right-column (col5) is viewer-aware:**
 
-| Viewer state | col5 content |
-|---|---|
-| Owner, no spoilers | edit + archive icons |
-| Owner, with spoilers + claimed | (absorbed — see wide-pill rule below) |
-| Non-owner, unclaimed | "Claim this gift" button |
+| Viewer state                          | col5 content                            |
+| ------------------------------------- | --------------------------------------- |
+| Owner, no spoilers                    | edit + archive icons                    |
+| Owner, with spoilers + claimed        | (absorbed — see wide-pill rule below)   |
+| Non-owner, unclaimed                  | "Claim this gift" button                |
 | Anyone, claimed/fully-claimed/spoiler | (absorbed — wide pill spans cols 3 → 5) |
 
 **Wide claimed-pill rule:** when the row's state is claimed (you/others), fully-claimed, or owner-spoiler, a single `.claimed-state` element gets `grid-column: 3 / -1` so it spans the buy-pill + +N + action slots. The `<StoreLinks>` chip row is already hidden in these states (`showStores={!showPurchased && !showSpoilerInfo}`); the wide pill takes the visual real estate.
 
 **Visual treatment:**
+
 - Wide claimed pill: same `--success-bg` / `--success-border` / `--success-text` as today's `.claimed-state`, but `min-height` matches the tall buy-link pill (~64px) for vertical alignment with the leader-dot row.
 - "You claimed this · Undo" → text label + small right-aligned Undo button.
 - "Claimed by [names]" or "Fully claimed by [names]" — combines state + attribution. Achieved by extending Item.tsx's `fullyClaimedLabel` prop to carry `Claimed by ${claimSummary}` (was just `'Fully claimed'`) and lifting the `isClaimed && !myClaim` branch to NOT render the Undo button.
@@ -215,6 +236,7 @@ Children are flattened into the outer grid via `.item, .item-info { display: con
 **`.purchased-banner` footer is hidden in row view only** (`.item-list .purchased-banner, .sortable-item .purchased-banner { display: none }`). The info is folded into the wide pill. Grid view keeps the banner.
 
 **Tall buy-link pill (page-scoped exception):**
+
 ```css
 .item-list .btn.storeLinks-link,
 .sortable-item .btn.storeLinks-link {
@@ -225,9 +247,11 @@ Children are flattened into the outer grid via `.item, .item-info { display: con
   word-break: break-word;
 }
 ```
+
 Page-scoped override on the design-system primitive. Risk acknowledged (could shadow future `<LinkButton>` changes) but acceptable — the override touches min-height/max-width only; functional changes to LinkButton would still flow through.
 
 **Leader dots:**
+
 ```css
 .item-list .item-price-row,
 .sortable-item .item-price-row {
@@ -243,6 +267,7 @@ Page-scoped override on the design-system primitive. Risk acknowledged (could sh
   margin-bottom: 6px;
 }
 ```
+
 Pseudo-elements are already not in the accessibility tree, so `aria-hidden` isn't needed.
 
 ### Decision 9: Mobile owner-actions strategy (two-stage)
@@ -259,18 +284,25 @@ The kebab is rendered in DOM **for all owner rows** regardless of viewport; CSS 
 
 ```css
 /* default (grid view, large viewports): hide kebab */
-.item-owner-actions-mobile { display: none; }
+.item-owner-actions-mobile {
+  display: none;
+}
 
 /* row view: show kebab only at <400px; hide inline icons */
 @media (max-width: 399px) {
   .item-list .item-owner-actions,
-  .sortable-item .item-owner-actions { display: none; }
+  .sortable-item .item-owner-actions {
+    display: none;
+  }
   .item-list .item-owner-actions-mobile,
-  .sortable-item .item-owner-actions-mobile { display: flex; }
+  .sortable-item .item-owner-actions-mobile {
+    display: flex;
+  }
 }
 ```
 
 The kebab `<Menu>` contains:
+
 - `<MenuLinkItem href={editHref} icon={<MdModeEdit/>}>Edit</MenuLinkItem>`
 - `<MenuItem icon={<MdArchive/>} onClick={archive}>Archive</MenuItem>` (when `showArchiveAction`)
 
@@ -335,15 +367,15 @@ Implementation strategy: page-scoped CSS unification (not a JSX refactor to use 
 
 The shared row's expected children (image, title, price, description, stores) get re-classed in choose-items' JSX to match the shared selectors:
 
-| choose-items existing class | maps to shared class |
-|---|---|
-| `.choose-items-thumb` | image slot (`.item-image-container` equivalent) |
-| `.choose-items-name` | `.itemName` |
-| `.choose-items-price` | `.item-price` |
-| `.choose-items-chips` | `.storeLinks` (the chips are buy-link affordances) |
-| `.choose-items-cb` | leading slot, kept as-is for checkbox visuals |
-| `.choose-items-in-badge`, `.choose-items-archived-badge` | inline siblings of title, kept |
-| `.choose-items-from` | `.item-description` (renders the "FROM xyz" line — folds into description row) |
+| choose-items existing class                              | maps to shared class                                                           |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `.choose-items-thumb`                                    | image slot (`.item-image-container` equivalent)                                |
+| `.choose-items-name`                                     | `.itemName`                                                                    |
+| `.choose-items-price`                                    | `.item-price`                                                                  |
+| `.choose-items-chips`                                    | `.storeLinks` (the chips are buy-link affordances)                             |
+| `.choose-items-cb`                                       | leading slot, kept as-is for checkbox visuals                                  |
+| `.choose-items-in-badge`, `.choose-items-archived-badge` | inline siblings of title, kept                                                 |
+| `.choose-items-from`                                     | `.item-description` (renders the "FROM xyz" line — folds into description row) |
 
 **Description in choose-items**: previously absent from choose-items rows. Added in this change so choose-items matches the items-library row anatomy. Renders on row 3 (full-width below image/title/price) at all viewports.
 

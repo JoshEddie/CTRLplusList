@@ -8,7 +8,7 @@
 
 **Why:** The D9 math assumed only the `.container--items-library` mobile padding (20px ea. side). It missed the `.app-surface-bleed` mobile padding (12px ea. side from `app-frame.css:238`). At a 375px iPhone-SE viewport the inner `.item-grid-container` measures **311px** — below 340 — so 2-col would not engage on the smallest target. 300px lets every iPhone-class device flip to 2-col (311→2-col @ 375; 329→2-col @ 393).
 
-**Trade-off:** Smallest 2-col cell is ~148px wide (was ~170px at 340 threshold). Verified visually that the Item card primitive (4:3 image + name + price + store-label pills) still renders cleanly at that width. If you'd rather restore the 340 number and instead **reduce `.container--items-library` side padding on mobile** from 20px to ~12px, that would also work — a single CSS change in [item.css:306-309](app/(main)/items/ui/styles/item.css:306). Let me know which you prefer.
+**Trade-off:** Smallest 2-col cell is ~148px wide (was ~170px at 340 threshold). Verified visually that the Item card primitive (4:3 image + name + price + store-label pills) still renders cleanly at that width. If you'd rather restore the 340 number and instead **reduce `.container--items-library` side padding on mobile** from 20px to ~12px, that would also work — a single CSS change in [item.css:306-309](<app/(main)/items/ui/styles/item.css:306>). Let me know which you prefer.
 
 ## 2. Choose-items toolbar composition (5b.6) only spot-verified
 

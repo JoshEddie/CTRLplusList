@@ -8,7 +8,7 @@ Today the app expresses loading state in three different ways:
 
 Two structural problems make this expensive to keep in sync:
 
-1. The skeletons hard-code the *pre-redesign* shape of each region — `ListLoading` draws an outlined-pill row + 3-column pulse grid that no longer resembles the home page's horizontally-scrolling rails of `ListCardRow` cards; `ItemLoading` draws a `auto-fill, minmax(350px, 1fr)` grid of 175px tiles which doesn't match the redesigned list-hero items area; `list-loading.css` references `--primary-color` for borders and hard-codes `#ffffff`, both stranded from earlier brand state. Every future redesign is paying a 2× cost to update both the page and the parallel skeleton.
+1. The skeletons hard-code the _pre-redesign_ shape of each region — `ListLoading` draws an outlined-pill row + 3-column pulse grid that no longer resembles the home page's horizontally-scrolling rails of `ListCardRow` cards; `ItemLoading` draws a `auto-fill, minmax(350px, 1fr)` grid of 175px tiles which doesn't match the redesigned list-hero items area; `list-loading.css` references `--primary-color` for borders and hard-codes `#ffffff`, both stranded from earlier brand state. Every future redesign is paying a 2× cost to update both the page and the parallel skeleton.
 2. The `(main)/layout.tsx` Suspense boundary wraps `<MainShell>` itself, so the `ListLoading` skeleton flashes across **every** route in the segment — including pages whose resolved layout looks nothing like a rail (e.g., `/items`, `/settings`).
 
 Active specs that touch any of this:
@@ -22,7 +22,7 @@ Active specs that touch any of this:
 **Goals:**
 
 - One shared `<LoadingIndicator>` primitive that every Suspense fallback and every `loading.tsx` in the app uses.
-- Each fallback renders *inside the natural container of the content being awaited* — a rail's spinner lives inside the rail box, a route segment's spinner fills the page surface, the edit-item form's spinner fills the form area.
+- Each fallback renders _inside the natural container of the content being awaited_ — a rail's spinner lives inside the rail box, a route segment's spinner fills the page surface, the edit-item form's spinner fills the form area.
 - Each variant reserves a sensible min-height so the transition from spinner → resolved content doesn't visibly collapse / jump.
 - Eliminate `ListLoading`, `ItemLoading`, `ItemFormLoading`, and their CSS so there is nothing left to drift.
 - No new design tokens. Reuse `--primary-color` for the spinner stroke.
@@ -40,12 +40,12 @@ Active specs that touch any of this:
 
 Rather than letting each call site pass arbitrary heights, the primitive exposes a `size` prop with a fixed enum:
 
-| `size` | Min-height | Use case |
-|---|---|---|
-| `inline` | `2rem` | A spinner inline with text or a thin row |
-| `rail` | `200px` | Inside a `CollapsibleRail` body (matches a `ListCardRow`'s natural height) |
-| `form` | `400px` | Inside the edit-item form layout |
-| `page` | `60vh` | Inside a route-segment `loading.tsx` that needs to fill the surface |
+| `size`   | Min-height | Use case                                                                   |
+| -------- | ---------- | -------------------------------------------------------------------------- |
+| `inline` | `2rem`     | A spinner inline with text or a thin row                                   |
+| `rail`   | `200px`    | Inside a `CollapsibleRail` body (matches a `ListCardRow`'s natural height) |
+| `form`   | `400px`    | Inside the edit-item form layout                                           |
+| `page`   | `60vh`     | Inside a route-segment `loading.tsx` that needs to fill the surface        |
 
 Named sizes (not numeric props) keep call sites declarative and centralize the layout assumptions so a future redesign of e.g. `ListCardRow` only updates one constant.
 
@@ -94,7 +94,7 @@ The spinner is a 32px (`rail` / `form` / `page`) or 16px (`inline`) circle drawn
 ## Risks / Trade-offs
 
 - **Risk:** Streaming home page renders four spinners at once when nothing is cached → reads as noisy. **Mitigation:** Rail spinners are deliberately quiet (small circle, no pulsing background). In practice rails resolve fast enough that you rarely see more than one or two simultaneously. If real-world feedback says it's noisy, we can lift the boundary up in a follow-up change — but that loses streaming and should be evaluated empirically, not pre-emptively.
-- **Risk:** A `min-height` of `200px` per rail means an empty rail (no data, no error, content resolved) briefly *grows from spinner-height to its real height*. **Mitigation:** Rail empty-states (e.g., "No lists yet. Create your first one.") already render in roughly that vertical space; we'll size the variant to match the empty-state's natural height so the transition is visually quiet.
+- **Risk:** A `min-height` of `200px` per rail means an empty rail (no data, no error, content resolved) briefly _grows from spinner-height to its real height_. **Mitigation:** Rail empty-states (e.g., "No lists yet. Create your first one.") already render in roughly that vertical space; we'll size the variant to match the empty-state's natural height so the transition is visually quiet.
 - **Risk:** `60vh` on `page` size is a lot of surface for short pages. **Mitigation:** It only renders during the (typically sub-second) `loading.tsx` window; once content resolves the value no longer matters.
 - **Trade-off:** Users lose the "your data layout will look roughly like this" preview that skeletons provide. Acceptable: the preview was lying because the skeletons no longer match the resolved layout, and "honest spinner" beats "misleading skeleton."
 - **Risk:** Deleting the legacy skeleton CSS could break a stray import we missed. **Mitigation:** `tsc --noEmit` plus a grep for the deleted symbols (`ListLoading`, `ItemLoading`, `ItemFormLoading`, `list-loading.css`, `item-loading.css`) before merge.

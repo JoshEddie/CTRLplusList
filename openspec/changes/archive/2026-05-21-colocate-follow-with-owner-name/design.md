@@ -1,6 +1,6 @@
 ## Context
 
-`add-following-and-history` introduced the Follow button on the list-detail hero with an inline disclosure note rendered underneath: *"Shares your name and profile picture with the owner."* In practice the placement is awkward — three pills sit in `list-hero-actions` (`Share List`, `Follow {owner}`, `Bookmark`), the disclosure dangles below only the middle pill, and the row's subject-coherence breaks (two pills act on the list, one acts on a user). Beyond aesthetics, the `Follow` ↔ `Bookmark` adjacency invites a misread — many products use *follow* to subscribe to whatever entity the page is about, so a list-page Follow next to Bookmark can read as "follow this list" instead of "follow this user."
+`add-following-and-history` introduced the Follow button on the list-detail hero with an inline disclosure note rendered underneath: _"Shares your name and profile picture with the owner."_ In practice the placement is awkward — three pills sit in `list-hero-actions` (`Share List`, `Follow {owner}`, `Bookmark`), the disclosure dangles below only the middle pill, and the row's subject-coherence breaks (two pills act on the list, one acts on a user). Beyond aesthetics, the `Follow` ↔ `Bookmark` adjacency invites a misread — many products use _follow_ to subscribe to whatever entity the page is about, so a list-page Follow next to Bookmark can read as "follow this list" instead of "follow this user."
 
 The list-hero meta row already shows the owner's name with a person icon, but the name isn't a link. That row is the natural visual anchor for "this list belongs to this user" — the right place to put the Follow affordance.
 
@@ -43,9 +43,9 @@ The disclosure copy itself is correct and worth preserving — following another
 
 **Alternatives considered:**
 
-- *Single meta row with Follow inline.* Forces either shrinking Follow (violates D6) or stretching the row vertically and misaligning the date chip with the date icon. Rejected.
-- *Follow on its own row beneath the action row.* Keeps the action row clean but separates Follow from the name, partially defeating the colocation goal. Rejected.
-- *Move Follow to a `list-hero-side` slot on the right.* Available when the owner views their own list (visibility picker), but for non-owners the side is empty. Could work but breaks alignment with the linked name on the left. Rejected for symmetry.
+- _Single meta row with Follow inline._ Forces either shrinking Follow (violates D6) or stretching the row vertically and misaligning the date chip with the date icon. Rejected.
+- _Follow on its own row beneath the action row._ Keeps the action row clean but separates Follow from the name, partially defeating the colocation goal. Rejected.
+- _Move Follow to a `list-hero-side` slot on the right._ Available when the owner views their own list (visibility picker), but for non-owners the side is empty. Could work but breaks alignment with the linked name on the left. Rejected for symmetry.
 
 ### D2 — Disclosure presentation: one-time confirm dialog
 
@@ -55,7 +55,7 @@ The disclosure copy itself is correct and worth preserving — following another
 >
 > Following someone shares your name and profile picture with them.
 >
-> [ Cancel ]   [ Follow ]
+> [ Cancel ] [ Follow ]
 
 On confirm, the follow proceeds and `users.follow_disclosure_acknowledged_at` is set to `now()`. On cancel, no follow occurs and no acknowledgement is recorded. After acknowledgement, subsequent Follow clicks act immediately with no dialog.
 
@@ -63,10 +63,10 @@ On confirm, the follow proceeds and `users.follow_disclosure_acknowledged_at` is
 
 **Alternatives considered:**
 
-- *Keep inline disclosure, just move it.* Solves the dangling-tail layout issue but doesn't address the "users don't read ambient text" problem. Rejected.
-- *Tooltip on the Follow button (`aria-describedby`).* Improves layout but worsens disclosure — tooltips on touch devices require a hover-equivalent gesture most users don't perform. Rejected.
-- *Show the dialog every time.* Heavy-handed; the disclosure is informational, not transactional. Rejected.
-- *Show the inline note AND the dialog.* Belt-and-suspenders without payoff. Rejected.
+- _Keep inline disclosure, just move it._ Solves the dangling-tail layout issue but doesn't address the "users don't read ambient text" problem. Rejected.
+- _Tooltip on the Follow button (`aria-describedby`)._ Improves layout but worsens disclosure — tooltips on touch devices require a hover-equivalent gesture most users don't perform. Rejected.
+- _Show the dialog every time._ Heavy-handed; the disclosure is informational, not transactional. Rejected.
+- _Show the inline note AND the dialog._ Belt-and-suspenders without payoff. Rejected.
 
 ### D3 — Tracking "first follow": derive from `user_follows` row count
 
@@ -78,9 +78,9 @@ On confirm, the follow proceeds and `users.follow_disclosure_acknowledged_at` is
 
 **Alternatives considered:**
 
-- *Dedicated nullable timestamp column `users.follow_disclosure_acknowledged_at`.* Strictly more precise — survives the unfollow-everyone-then-refollow edge case and would let us later answer "when did this user accept?". Cost: schema migration, new server action `acknowledgeFollowDisclosure()`, DAL plumbing, backfill question for existing users. **Rejected** as overbuilt for the actual ambiguity (one edge-case re-prompt vs. weeks of integration cost). Re-evaluate if the edge case turns out to be common.
-- *`localStorage` flag.* Cheap, but resets on cache clear or new device. A privacy-affecting prompt re-appearing because the user opened a private window is a regression in trust. Rejected.
-- *Store the acknowledgement in the session cookie.* Survives only as long as the session. Rejected.
+- _Dedicated nullable timestamp column `users.follow_disclosure_acknowledged_at`._ Strictly more precise — survives the unfollow-everyone-then-refollow edge case and would let us later answer "when did this user accept?". Cost: schema migration, new server action `acknowledgeFollowDisclosure()`, DAL plumbing, backfill question for existing users. **Rejected** as overbuilt for the actual ambiguity (one edge-case re-prompt vs. weeks of integration cost). Re-evaluate if the edge case turns out to be common.
+- _`localStorage` flag._ Cheap, but resets on cache clear or new device. A privacy-affecting prompt re-appearing because the user opened a private window is a regression in trust. Rejected.
+- _Store the acknowledgement in the session cookie._ Survives only as long as the session. Rejected.
 
 ### D5 — Profile-page Follow disclosure
 
@@ -90,8 +90,8 @@ On confirm, the follow proceeds and `users.follow_disclosure_acknowledged_at` is
 
 **Alternatives considered:**
 
-- *Keep inline disclosure on profile, dialog on list hero.* Two patterns, two test surfaces, easy to drift. Rejected.
-- *Dialog only on list hero; profile-only Follow has no disclosure.* Plausible (profile-page follow is a more deliberate act), but breaks the "first-time follow" semantic — a user who first-follows on a profile page would never see the disclosure. Rejected.
+- _Keep inline disclosure on profile, dialog on list hero._ Two patterns, two test surfaces, easy to drift. Rejected.
+- _Dialog only on list hero; profile-only Follow has no disclosure._ Plausible (profile-page follow is a more deliberate act), but breaks the "first-time follow" semantic — a user who first-follows on a profile page would never see the disclosure. Rejected.
 
 ### D6 — WCAG sizing
 
@@ -142,7 +142,7 @@ On confirm, the follow proceeds and `users.follow_disclosure_acknowledged_at` is
 
 ## Open Questions
 
-- *Which modal primitive does the app already use, and does it satisfy our a11y requirements?* — Audit in tasks step 3.1 before implementing `FollowDisclosureDialog.tsx`. If none exists, build one inline to this change rather than introducing a generic modal abstraction.
-- *Where does the `viewerHasAnyFollows` fetch live?* — A per-render server fetch in `FollowContainer` is correct (the value can flip mid-session, the moment the viewer follows someone). Session caching is *not* appropriate here — it would let a stale `false` persist after a successful follow. A simple `EXISTS` query is cheap.
-- *Mobile layout for the byline sub-row* — at very narrow widths, "Hank Example → [+ Follow Hank Example]" may need to wrap with the Follow button dropping to its own line. Confirm during preview verification.
-- *Verification path for the dialog* — `dev-test-viewer` is seeded with existing follow relationships, so the dialog won't appear for them by default. Verifier options: (a) temporarily delete the seeded `user_follows` rows for `dev-test-viewer` before testing, (b) sign in as one of the other seeded users that has no outbound follows, (c) add a dedicated "zero-follow viewer" to the seed script. Decide during verification.
+- _Which modal primitive does the app already use, and does it satisfy our a11y requirements?_ — Audit in tasks step 3.1 before implementing `FollowDisclosureDialog.tsx`. If none exists, build one inline to this change rather than introducing a generic modal abstraction.
+- _Where does the `viewerHasAnyFollows` fetch live?_ — A per-render server fetch in `FollowContainer` is correct (the value can flip mid-session, the moment the viewer follows someone). Session caching is _not_ appropriate here — it would let a stale `false` persist after a successful follow. A simple `EXISTS` query is cheap.
+- _Mobile layout for the byline sub-row_ — at very narrow widths, "Hank Example → [+ Follow Hank Example]" may need to wrap with the Follow button dropping to its own line. Confirm during preview verification.
+- _Verification path for the dialog_ — `dev-test-viewer` is seeded with existing follow relationships, so the dialog won't appear for them by default. Verifier options: (a) temporarily delete the seeded `user_follows` rows for `dev-test-viewer` before testing, (b) sign in as one of the other seeded users that has no outbound follows, (c) add a dedicated "zero-follow viewer" to the seed script. Decide during verification.

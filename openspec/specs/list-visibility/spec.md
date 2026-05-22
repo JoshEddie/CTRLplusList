@@ -1,8 +1,11 @@
 # list-visibility Specification
 
 ## Purpose
+
 TBD - created by archiving change add-following-and-history. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Lists SHALL have a three-state visibility model
 
 Every list SHALL have a `visibility` value of exactly one of `'private'`, `'unlisted'`, or `'public'`, persisted in `lists.visibility`. A `private` list is visible only to its owner. An `unlisted` list is visible to anyone with the URL but does NOT appear in any feed. A `public` list is visible to anyone with the URL AND appears in the feeds of users who follow the owner.

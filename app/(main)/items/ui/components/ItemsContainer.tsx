@@ -7,10 +7,7 @@ import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import ItemsBrowser from './ItemsBrowser';
 import Items from './Items';
-import {
-  DEFAULT_PAGE_SIZE,
-  PAGE_SIZE_OPTIONS,
-} from './paginationConstants';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from './paginationConstants';
 
 interface ItemsContainerProps {
   listId?: string;

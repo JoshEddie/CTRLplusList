@@ -17,7 +17,13 @@ type TextFieldProps = FieldWrapperProps & {
   className?: string;
 } & Omit<
     ComponentPropsWithRef<'input'>,
-    'className' | 'disabled' | 'type' | 'id' | 'aria-invalid' | 'aria-required' | 'aria-describedby'
+    | 'className'
+    | 'disabled'
+    | 'type'
+    | 'id'
+    | 'aria-invalid'
+    | 'aria-required'
+    | 'aria-describedby'
   >;
 
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
@@ -34,7 +40,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
       className,
       ...inputProps
     },
-    ref,
+    ref
   ) {
     return (
       <FormField
@@ -56,7 +62,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
         />
       </FormField>
     );
-  },
+  }
 );
 
 TextField.displayName = 'TextField';

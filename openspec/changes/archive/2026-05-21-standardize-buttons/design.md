@@ -3,7 +3,7 @@
 Today the app has three parallel button systems plus a vendor-styled fourth:
 
 - **System A**: `.btn` + variant classes (`primary | secondary | danger | nav | outline`). Square 12px padding, 16px font, 6px radius, font-roboto-condensed 500. Mobile (≤1000px) grows to 15/20 padding. Used in ~20+ components.
-- **System B**: `.form-shell-btn-*` (`primary | ghost | delete`). 10/20 padding, 14px font, 8px radius, 600 weight on primary. Mobile *shrinks* to 9/14 padding, 13px font — current WCAG 2.5.8 failure.
+- **System B**: `.form-shell-btn-*` (`primary | ghost | delete`). 10/20 padding, 14px font, 8px radius, 600 weight on primary. Mobile _shrinks_ to 9/14 padding, 13px font — current WCAG 2.5.8 failure.
 - **System C**: page-scoped one-offs — `.list-hero-btn`, `.menu-trigger`, `.bookmark-button`, `.follow-button`, `.choose-items-new-btn`, `.items-page-btn`, `.if-lp-chip button`.
 - **System D**: `.gsi-material-button` (Google sign-in). Vendor brand requirement, out of scope.
 
@@ -18,6 +18,7 @@ This change runs alongside the in-flight `redesign-home-and-tokens` change. We e
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Visual consistency: any "primary" button anywhere in the app produces identical pixels at every viewport.
 - WCAG 2.5.8 compliance for the standard button size at all viewports (44×44 floor).
 - Enforced `:focus-visible` ring on every button using the shared base.
@@ -28,6 +29,7 @@ This change runs alongside the in-flight `redesign-home-and-tokens` change. We e
 - One change that fully solves the problem rather than two changes that solve halves.
 
 **Non-Goals:**
+
 - Restyling `.gsi-material-button` — Google brand asset.
 - Fixing the list-hero `--hero-gradient` vs nav solid-color surface inconsistency. Out of scope; belongs to `redesign-home-and-tokens`.
 - Designing new variants beyond the reconciled set + `link` (see Decision 12).
@@ -48,7 +50,7 @@ Standard buttons get `min-height: 44px; min-width: 44px`. Genuinely-small contex
 
 ### Decision 3: Variant is purely visual; toggle state is a separate orthogonal prop
 
-Variant describes the *skin* (what colors, what surface it's designed against). Toggle state describes the *behavior* (is this a two-state button currently in the pressed state?). They are independent: a bookmark button is "`on-dark` skin + pressed behavior"; a future filter chip could be "`secondary` skin + pressed behavior." Conflating them into a single `variant="toggle"` would have broken the moment a second toggle appeared in a different visual context.
+Variant describes the _skin_ (what colors, what surface it's designed against). Toggle state describes the _behavior_ (is this a two-state button currently in the pressed state?). They are independent: a bookmark button is "`on-dark` skin + pressed behavior"; a future filter chip could be "`secondary` skin + pressed behavior." Conflating them into a single `variant="toggle"` would have broken the moment a second toggle appeared in a different visual context.
 
 API:
 
@@ -80,11 +82,11 @@ Alternative considered: single polymorphic `<Button as="a">` or `asChild`. Rejec
 
 ### Decision 5: Merge `nav` and any list-hero treatment into a single `on-dark` variant
 
-The current `.nav` variant (transparent fill, white border, white text → white fill, primary text on hover) is the correct treatment for any saturated-purple surface in the app. The list-hero bookmark/follow buttons are currently using `.secondary` (light fill) which is visually wrong on a purple background regardless of whether that background is solid or gradient. Merging them under one variant named for the *surface* (`on-dark`) rather than the *location* (`nav`) generalizes naturally: any saturated/dark surface uses it.
+The current `.nav` variant (transparent fill, white border, white text → white fill, primary text on hover) is the correct treatment for any saturated-purple surface in the app. The list-hero bookmark/follow buttons are currently using `.secondary` (light fill) which is visually wrong on a purple background regardless of whether that background is solid or gradient. Merging them under one variant named for the _surface_ (`on-dark`) rather than the _location_ (`nav`) generalizes naturally: any saturated/dark surface uses it.
 
 Naming: `on-dark` over `inverse` (more self-explanatory for a small team) and over `nav`/`hero` (those are page-region names, not design-system names).
 
-The `on-dark` variant is designed against the solid nav purple (`#7324ce`) as the canonical surface. If the list-hero gradient persists *and* contrast at `#7855f0` flags an issue against a 1px white border, the resolution is to fix the surface (within `redesign-home-and-tokens`), not to fork the variant.
+The `on-dark` variant is designed against the solid nav purple (`#7324ce`) as the canonical surface. If the list-hero gradient persists _and_ contrast at `#7855f0` flags an issue against a 1px white border, the resolution is to fix the surface (within `redesign-home-and-tokens`), not to fork the variant.
 
 Alternative considered: keep `nav` and add a separate `on-hero` variant. Rejected — treating the gradient as a fixed constraint validates the very drift this change is fighting. The gradient surface is the same shape of problem as the button drift; we don't compound it.
 
@@ -126,24 +128,26 @@ Alternative considered: add a parallel `aria-pressed`-aware "tone-shifted" treat
 
 ### Decision 12: Add `variant="link"` for text-button affordances
 
-The audit surfaced two call sites that are buttons by behavior but text by appearance: `ImageUrlInput`'s "Can't find a URL? Search for an image" disclosure ([ImageUrlInput.tsx:59-66](app/(main)/items/ui/components/itemform/ImageUrlInput.tsx#L59)) and `CollapsibleRail`'s "See all" link ([CollapsibleRail.tsx:65-69](app/(main)/lists/ui/components/CollapsibleRail.tsx#L65) — currently a raw `<a>`).
+The audit surfaced two call sites that are buttons by behavior but text by appearance: `ImageUrlInput`'s "Can't find a URL? Search for an image" disclosure ([ImageUrlInput.tsx:59-66](<app/(main)/items/ui/components/itemform/ImageUrlInput.tsx#L59>)) and `CollapsibleRail`'s "See all" link ([CollapsibleRail.tsx:65-69](<app/(main)/lists/ui/components/CollapsibleRail.tsx#L65>) — currently a raw `<a>`).
 
 Neither fits any existing variant. `ghost` has a pill shape and a hover fill; these are text affordances that should look like inline links — underline on hover, primary color, no border, no padding-x. Material's design system calls this tier "Text Button"; iOS calls it "Plain Button."
 
 Adding `variant="link"`:
+
 - Background: transparent. Border: none. Padding-x: 0. Color: `var(--primary-color)`.
 - Hover (guarded): underline.
 - Min-touch: WCAG 2.5.8 exemption — text buttons in body copy don't enforce 44×44; they enforce the 24px spacing rule against neighboring targets.
 
 Alternative considered: keep both call sites page-scoped. Rejected — they're the same pattern surfacing twice; absorbing them into the system prevents the same fix being reinvented when a third surfaces.
 
-Alternative considered: model as `<LinkButton variant="link">` only (since both are conceptually navigations). Rejected — `ImageUrlInput`'s case opens a modal, not navigation. The variant is the *visual treatment*, not the element type; both `<Button variant="link">` and `<LinkButton variant="link">` are valid.
+Alternative considered: model as `<LinkButton variant="link">` only (since both are conceptually navigations). Rejected — `ImageUrlInput`'s case opens a modal, not navigation. The variant is the _visual treatment_, not the element type; both `<Button variant="link">` and `<LinkButton variant="link">` are valid.
 
 ### Decision 13: Introduce `<Chip>` as a sibling primitive, not a Button variant
 
 A chip is a **label + remove-×** affordance: two interactive elements wrapped together (the label is sometimes clickable, sometimes not; the × always removes). Two call sites today: `.items-toolbar-chip` (active-filter chips in `ItemsToolbar`) and `.if-lp-chip` (selected-list chips in `ListSelection`).
 
 Modeling this as a Button variant would mean:
+
 - A new variant with a different layout (label + child remove-button inside) — but variants are supposed to be purely visual treatments of a single button (Decision 3).
 - A new prop `onRemove` that only applies to one variant — variant-conditional props are a smell.
 - Conflating a layout primitive (two elements) with a styling primitive (one element).

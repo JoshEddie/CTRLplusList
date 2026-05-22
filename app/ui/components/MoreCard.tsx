@@ -8,7 +8,11 @@ export default function MoreCard({
   href: string;
 }) {
   return (
-    <Link href={href} className="more-card" aria-label={`${moreCount} more — see all`}>
+    <Link
+      href={href}
+      className="more-card"
+      aria-label={`${moreCount} more — see all`}
+    >
       <span className="more-card-text">
         +{moreCount} more <span aria-hidden="true">→</span>
       </span>

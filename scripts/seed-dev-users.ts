@@ -81,18 +81,56 @@ type SeedList = {
 // consecutive entries still looks plausible. Each list takes a deterministic
 // slice (offset by hash of list ID), so reseeds produce the same items.
 const ITEM_POOL = [
-  'Cast-iron skillet', 'Bluetooth speaker', 'Pour-over kettle', 'Linen napkins',
-  'Ceramic planter', 'Wool throw blanket', 'Stand mixer', 'Knife block',
-  'Espresso machine', 'Dutch oven', 'Stroller', 'Crib mobile', 'Baby monitor',
-  'Ski goggles', 'Wool socks', 'Hardcover novel', 'Mechanical keyboard',
-  'Standing desk mat', 'Noise-cancelling headphones', 'Whiskey decanter',
-  'Cigar humidor', 'Leather wallet', 'Aroma diffuser', 'Yoga mat', 'Travel mug',
-  'Card game', 'Cookbook', 'Hand cream', 'Tote bag', 'Bath towels',
-  'Decorative mirror', 'Wine opener', 'Cheese board', 'Picture frames',
-  'Slippers', 'Reading lamp', 'French press', 'Notebook', 'Massage gun',
-  'Air fryer', 'Cocktail shaker', 'Linen sheets', 'Cashmere scarf',
-  'Walking shoes', 'Smart watch', 'Garden tools', 'Pizza stone', 'Tea kettle',
-  'Vinyl record', 'Headphone stand',
+  'Cast-iron skillet',
+  'Bluetooth speaker',
+  'Pour-over kettle',
+  'Linen napkins',
+  'Ceramic planter',
+  'Wool throw blanket',
+  'Stand mixer',
+  'Knife block',
+  'Espresso machine',
+  'Dutch oven',
+  'Stroller',
+  'Crib mobile',
+  'Baby monitor',
+  'Ski goggles',
+  'Wool socks',
+  'Hardcover novel',
+  'Mechanical keyboard',
+  'Standing desk mat',
+  'Noise-cancelling headphones',
+  'Whiskey decanter',
+  'Cigar humidor',
+  'Leather wallet',
+  'Aroma diffuser',
+  'Yoga mat',
+  'Travel mug',
+  'Card game',
+  'Cookbook',
+  'Hand cream',
+  'Tote bag',
+  'Bath towels',
+  'Decorative mirror',
+  'Wine opener',
+  'Cheese board',
+  'Picture frames',
+  'Slippers',
+  'Reading lamp',
+  'French press',
+  'Notebook',
+  'Massage gun',
+  'Air fryer',
+  'Cocktail shaker',
+  'Linen sheets',
+  'Cashmere scarf',
+  'Walking shoes',
+  'Smart watch',
+  'Garden tools',
+  'Pizza stone',
+  'Tea kettle',
+  'Vinyl record',
+  'Headphone stand',
 ];
 
 // Deterministic hash for stable per-list offsets.
@@ -111,7 +149,7 @@ const DESCRIPTION_POOL = [
   'Already have the small size; looking for the larger one this time around.',
   'Matte black preferred, but any neutral works.',
   "Please get the rechargeable version, not battery-powered — we've got a drawer full of AAs already.",
-  'Saw this at a friend\'s place last month and have been thinking about it ever since. Bonus points if it comes in walnut.',
+  "Saw this at a friend's place last month and have been thinking about it ever since. Bonus points if it comes in walnut.",
   'No rush on this one — happy to wait for a sale.',
   'Open to any brand as long as the reviews are solid.',
   'The linked one is ideal, but any comparable model is great. Mostly just want something that actually lasts.',
@@ -120,7 +158,7 @@ const DESCRIPTION_POOL = [
   'Quality over quantity here. Rather have one good one than two cheap ones.',
   'Travel-friendly size if possible — going on a trip in the spring.',
   'Need this before the move in July if anyone is feeling generous.',
-  'Bonus points for something that\'s dishwasher-safe; I am not a hand-wash person.',
+  "Bonus points for something that's dishwasher-safe; I am not a hand-wash person.",
   'Replacing one that finally gave up after eight years of daily use. Long live the next one.',
 ];
 
@@ -139,7 +177,8 @@ function itemsForList(listId: string): string[] {
   const count = 15 + (h % 6); // 15..20
   const offset = h % ITEM_POOL.length;
   const out: string[] = [];
-  for (let i = 0; i < count; i++) out.push(ITEM_POOL[(offset + i) % ITEM_POOL.length]);
+  for (let i = 0; i < count; i++)
+    out.push(ITEM_POOL[(offset + i) % ITEM_POOL.length]);
   return out;
 }
 
@@ -152,21 +191,99 @@ const VIEWER_LIST_TEMPLATES: {
   occasion: string;
   visibility: ListVisibility;
 }[] = [
-  { slug: 'birthday', name: "Test Viewer's Birthday", occasion: 'Birthday', visibility: VISIBILITY.FOLLOWERS },
-  { slug: 'housewarming', name: 'Housewarming Wishes', occasion: 'Housewarming', visibility: VISIBILITY.OWNER },
-  { slug: 'holiday-2026', name: 'Holiday 2026', subtitle: 'Group gift exchange', occasion: 'Holiday', visibility: VISIBILITY.FOLLOWERS },
-  { slug: 'anniversary', name: 'Anniversary Picks', occasion: 'Anniversary', visibility: VISIBILITY.LINK },
-  { slug: 'wedding-registry', name: 'Wedding Registry', subtitle: 'Brandy Family', occasion: 'Wedding', visibility: VISIBILITY.FOLLOWERS },
-  { slug: 'kitchen-upgrade', name: 'Kitchen Upgrade', occasion: 'Just Because', visibility: VISIBILITY.OWNER },
-  { slug: 'fitness-goals', name: 'Fitness Goals', occasion: 'Self-Care', visibility: VISIBILITY.FOLLOWERS },
-  { slug: 'home-office', name: 'Home Office Refresh', occasion: 'Just Because', visibility: VISIBILITY.LINK },
-  { slug: 'reading-stack', name: 'Reading Stack', occasion: 'Just Because', visibility: VISIBILITY.FOLLOWERS },
-  { slug: 'camping-trip', name: 'Camping Trip Gear', occasion: 'Adventure', visibility: VISIBILITY.FOLLOWERS },
-  { slug: 'baby-shower', name: 'Baby Shower Wishlist', subtitle: "It's a girl!", occasion: 'Baby Shower', visibility: VISIBILITY.FOLLOWERS },
-  { slug: 'graduation', name: 'Graduation Picks', occasion: 'Graduation', visibility: VISIBILITY.LINK },
-  { slug: 'fathers-day', name: "Father's Day Ideas", occasion: 'Holiday', visibility: VISIBILITY.OWNER },
-  { slug: 'mothers-day', name: "Mother's Day Ideas", occasion: 'Holiday', visibility: VISIBILITY.OWNER },
-  { slug: 'spring-garden', name: 'Spring Garden', occasion: 'Hobby', visibility: VISIBILITY.FOLLOWERS },
+  {
+    slug: 'birthday',
+    name: "Test Viewer's Birthday",
+    occasion: 'Birthday',
+    visibility: VISIBILITY.FOLLOWERS,
+  },
+  {
+    slug: 'housewarming',
+    name: 'Housewarming Wishes',
+    occasion: 'Housewarming',
+    visibility: VISIBILITY.OWNER,
+  },
+  {
+    slug: 'holiday-2026',
+    name: 'Holiday 2026',
+    subtitle: 'Group gift exchange',
+    occasion: 'Holiday',
+    visibility: VISIBILITY.FOLLOWERS,
+  },
+  {
+    slug: 'anniversary',
+    name: 'Anniversary Picks',
+    occasion: 'Anniversary',
+    visibility: VISIBILITY.LINK,
+  },
+  {
+    slug: 'wedding-registry',
+    name: 'Wedding Registry',
+    subtitle: 'Brandy Family',
+    occasion: 'Wedding',
+    visibility: VISIBILITY.FOLLOWERS,
+  },
+  {
+    slug: 'kitchen-upgrade',
+    name: 'Kitchen Upgrade',
+    occasion: 'Just Because',
+    visibility: VISIBILITY.OWNER,
+  },
+  {
+    slug: 'fitness-goals',
+    name: 'Fitness Goals',
+    occasion: 'Self-Care',
+    visibility: VISIBILITY.FOLLOWERS,
+  },
+  {
+    slug: 'home-office',
+    name: 'Home Office Refresh',
+    occasion: 'Just Because',
+    visibility: VISIBILITY.LINK,
+  },
+  {
+    slug: 'reading-stack',
+    name: 'Reading Stack',
+    occasion: 'Just Because',
+    visibility: VISIBILITY.FOLLOWERS,
+  },
+  {
+    slug: 'camping-trip',
+    name: 'Camping Trip Gear',
+    occasion: 'Adventure',
+    visibility: VISIBILITY.FOLLOWERS,
+  },
+  {
+    slug: 'baby-shower',
+    name: 'Baby Shower Wishlist',
+    subtitle: "It's a girl!",
+    occasion: 'Baby Shower',
+    visibility: VISIBILITY.FOLLOWERS,
+  },
+  {
+    slug: 'graduation',
+    name: 'Graduation Picks',
+    occasion: 'Graduation',
+    visibility: VISIBILITY.LINK,
+  },
+  {
+    slug: 'fathers-day',
+    name: "Father's Day Ideas",
+    occasion: 'Holiday',
+    visibility: VISIBILITY.OWNER,
+  },
+  {
+    slug: 'mothers-day',
+    name: "Mother's Day Ideas",
+    occasion: 'Holiday',
+    visibility: VISIBILITY.OWNER,
+  },
+  {
+    slug: 'spring-garden',
+    name: 'Spring Garden',
+    occasion: 'Hobby',
+    visibility: VISIBILITY.FOLLOWERS,
+  },
 ];
 
 // Friend-owned lists — 1–2 per friend, all public so the viewer can visit
@@ -178,21 +295,100 @@ const FRIEND_LIST_TEMPLATES: {
   subtitle?: string;
   occasion: string;
 }[] = [
-  { friendSlug: 'alice', slug: 'wedding', name: "Alice's Wedding Registry", subtitle: 'Smith ⋈ Lee · June 2026', occasion: 'Wedding' },
-  { friendSlug: 'alice', slug: 'baby', name: 'Baby On The Way', occasion: 'Baby Shower' },
-  { friendSlug: 'bob', slug: 'holiday', name: "Bob's Holiday List", occasion: 'Holiday' },
-  { friendSlug: 'bob', slug: 'birthday', name: "Bob's Birthday", occasion: 'Birthday' },
-  { friendSlug: 'carol', slug: 'graduation', name: "Carol's Graduation", occasion: 'Graduation' },
-  { friendSlug: 'dave', slug: 'birthday', name: "Dave's Big 4-0", occasion: 'Birthday' },
-  { friendSlug: 'eve', slug: 'housewarming', name: "Eve's New Place", occasion: 'Housewarming' },
-  { friendSlug: 'eve', slug: 'wedding', name: "Eve's Wedding", occasion: 'Wedding' },
-  { friendSlug: 'frank', slug: 'holiday', name: "Frank's Holiday Wishes", occasion: 'Holiday' },
-  { friendSlug: 'grace', slug: 'birthday', name: "Grace's Birthday", occasion: 'Birthday' },
-  { friendSlug: 'grace', slug: 'self-care', name: "Grace's Self-Care", subtitle: 'Mostly skincare, no makeup pls', occasion: 'Self-Care' },
-  { friendSlug: 'hank', slug: 'anniversary', name: "Hank & Spouse's Anniversary", subtitle: '10 years!', occasion: 'Anniversary' },
-  { friendSlug: 'iris', slug: 'birthday', name: "Iris Turns 25", occasion: 'Birthday' },
-  { friendSlug: 'jack', slug: 'graduation', name: "Jack's Graduation", subtitle: 'Med school, finally', occasion: 'Graduation' },
-  { friendSlug: 'jack', slug: 'holiday', name: "Jack's Holiday", occasion: 'Holiday' },
+  {
+    friendSlug: 'alice',
+    slug: 'wedding',
+    name: "Alice's Wedding Registry",
+    subtitle: 'Smith ⋈ Lee · June 2026',
+    occasion: 'Wedding',
+  },
+  {
+    friendSlug: 'alice',
+    slug: 'baby',
+    name: 'Baby On The Way',
+    occasion: 'Baby Shower',
+  },
+  {
+    friendSlug: 'bob',
+    slug: 'holiday',
+    name: "Bob's Holiday List",
+    occasion: 'Holiday',
+  },
+  {
+    friendSlug: 'bob',
+    slug: 'birthday',
+    name: "Bob's Birthday",
+    occasion: 'Birthday',
+  },
+  {
+    friendSlug: 'carol',
+    slug: 'graduation',
+    name: "Carol's Graduation",
+    occasion: 'Graduation',
+  },
+  {
+    friendSlug: 'dave',
+    slug: 'birthday',
+    name: "Dave's Big 4-0",
+    occasion: 'Birthday',
+  },
+  {
+    friendSlug: 'eve',
+    slug: 'housewarming',
+    name: "Eve's New Place",
+    occasion: 'Housewarming',
+  },
+  {
+    friendSlug: 'eve',
+    slug: 'wedding',
+    name: "Eve's Wedding",
+    occasion: 'Wedding',
+  },
+  {
+    friendSlug: 'frank',
+    slug: 'holiday',
+    name: "Frank's Holiday Wishes",
+    occasion: 'Holiday',
+  },
+  {
+    friendSlug: 'grace',
+    slug: 'birthday',
+    name: "Grace's Birthday",
+    occasion: 'Birthday',
+  },
+  {
+    friendSlug: 'grace',
+    slug: 'self-care',
+    name: "Grace's Self-Care",
+    subtitle: 'Mostly skincare, no makeup pls',
+    occasion: 'Self-Care',
+  },
+  {
+    friendSlug: 'hank',
+    slug: 'anniversary',
+    name: "Hank & Spouse's Anniversary",
+    subtitle: '10 years!',
+    occasion: 'Anniversary',
+  },
+  {
+    friendSlug: 'iris',
+    slug: 'birthday',
+    name: 'Iris Turns 25',
+    occasion: 'Birthday',
+  },
+  {
+    friendSlug: 'jack',
+    slug: 'graduation',
+    name: "Jack's Graduation",
+    subtitle: 'Med school, finally',
+    occasion: 'Graduation',
+  },
+  {
+    friendSlug: 'jack',
+    slug: 'holiday',
+    name: "Jack's Holiday",
+    occasion: 'Holiday',
+  },
 ];
 
 const seedLists: SeedList[] = [
@@ -356,7 +552,8 @@ async function main() {
     archived_at: Date | null;
     quantity_limit: number | null;
   }[] = [];
-  const listItemRows: { list_id: string; item_id: string; position: number }[] = [];
+  const listItemRows: { list_id: string; item_id: string; position: number }[] =
+    [];
   seedLists.forEach((list, listIdx) => {
     const rotation = QTY_ROTATION[listIdx % QTY_ROTATION.length];
     const lastIdx = list.itemNames.length - 1;
@@ -374,7 +571,9 @@ async function main() {
         description: descriptionFor(itemId),
         user_id: list.user_id,
         image_url: `https://picsum.photos/seed/${itemId}/400/400`,
-        archived_at: archive ? new Date(ARCHIVE_EPOCH - (h % 30) * 86400000) : null,
+        archived_at: archive
+          ? new Date(ARCHIVE_EPOCH - (h % 30) * 86400000)
+          : null,
         quantity_limit,
       });
       listItemRows.push({ list_id: list.id, item_id: itemId, position: idx });
@@ -395,7 +594,9 @@ async function main() {
       },
     });
   await db.insert(list_items).values(listItemRows).onConflictDoNothing();
-  console.log(`  items: ${itemRows.length} upserted, list_items: ${listItemRows.length} upserted`);
+  console.log(
+    `  items: ${itemRows.length} upserted, list_items: ${listItemRows.length} upserted`
+  );
 
   // Item stores — each item gets 1–3 stores with realistic-looking names,
   // prices (stored as text per schema), and links. Deterministic IDs and a
@@ -403,12 +604,36 @@ async function main() {
   // Prices are bare numeric strings — StoreLinks.tsx filters out stores where
   // Number(price) is NaN, and re-adds the `$` at render time.
   const STORE_CATALOG: { name: string; link: string; price: string }[] = [
-    { name: 'Amazon', link: 'https://www.amazon.com/dp/B08EXAMPLE', price: '48.99' },
-    { name: 'Target', link: 'https://www.target.com/p/-/A-12345678', price: '52.00' },
-    { name: 'Williams Sonoma', link: 'https://www.williams-sonoma.com/products/example', price: '79.95' },
-    { name: 'Crate & Barrel', link: 'https://www.crateandbarrel.com/example/s12345', price: '64.00' },
-    { name: 'West Elm', link: 'https://www.westelm.com/products/example-h1234', price: '89.00' },
-    { name: 'Etsy', link: 'https://www.etsy.com/listing/123456789/example', price: '35.50' },
+    {
+      name: 'Amazon',
+      link: 'https://www.amazon.com/dp/B08EXAMPLE',
+      price: '48.99',
+    },
+    {
+      name: 'Target',
+      link: 'https://www.target.com/p/-/A-12345678',
+      price: '52.00',
+    },
+    {
+      name: 'Williams Sonoma',
+      link: 'https://www.williams-sonoma.com/products/example',
+      price: '79.95',
+    },
+    {
+      name: 'Crate & Barrel',
+      link: 'https://www.crateandbarrel.com/example/s12345',
+      price: '64.00',
+    },
+    {
+      name: 'West Elm',
+      link: 'https://www.westelm.com/products/example-h1234',
+      price: '89.00',
+    },
+    {
+      name: 'Etsy',
+      link: 'https://www.etsy.com/listing/123456789/example',
+      price: '35.50',
+    },
   ];
   const storeRows: {
     id: string;
@@ -420,9 +645,7 @@ async function main() {
   }[] = [];
   for (const item of itemRows) {
     // 1–3 stores per item, deterministic by item id hash.
-    const hash = item.id
-      .split('')
-      .reduce((a, c) => a + c.charCodeAt(0), 0);
+    const hash = item.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
     const storeCount = (hash % 3) + 1;
     for (let i = 0; i < storeCount; i++) {
       const store = STORE_CATALOG[(hash + i) % STORE_CATALOG.length];
@@ -551,10 +774,7 @@ async function main() {
   }
   console.log(`  purchases: ${purchaseRows.length} upserted`);
 
-  await db
-    .insert(user_follows)
-    .values(seedFollows)
-    .onConflictDoNothing();
+  await db.insert(user_follows).values(seedFollows).onConflictDoNothing();
   console.log(`  user_follows: ${seedFollows.length} upserted`);
 
   await db

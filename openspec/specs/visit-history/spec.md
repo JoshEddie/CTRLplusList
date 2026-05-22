@@ -1,8 +1,11 @@
 # visit-history Specification
 
 ## Purpose
+
 TBD - created by archiving change add-following-and-history. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Authenticated visits to non-owned non-private lists SHALL be recorded
 
 When an authenticated user renders `/lists/[id]` for a list they do NOT own AND whose visibility is NOT `'private'`, the system SHALL upsert a row into `list_visits` keyed by `(user_id, list_id)`. The upsert SHALL set `last_visited_at = NOW()` and increment `visit_count` (or initialize to 1 on insert). `favorited_at` SHALL be preserved across visits. Recording SHALL be performed server-side on page render; no client beacon is required.

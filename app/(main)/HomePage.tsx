@@ -27,7 +27,11 @@ export default async function HomePage() {
       </CollapsibleRail>
       <div className="home-rail-divider" role="separator" />
 
-      <CollapsibleRail name="following" title="Following" seeAllHref="/following">
+      <CollapsibleRail
+        name="following"
+        title="Following"
+        seeAllHref="/following"
+      >
         <Suspense fallback={<LoadingIndicator size="rail" />}>
           <FollowingRail userId={viewer.id} />
         </Suspense>

@@ -18,7 +18,7 @@ export default function HeroCollapseShell({
 }) {
   const params = useSearchParams();
   const [collapsed, setCollapsed] = useState(
-    params.get(HERO_PARAM) === HERO_CLOSED,
+    params.get(HERO_PARAM) === HERO_CLOSED
   );
 
   // replaceState, not pushState — toggling must not pollute browser history.
@@ -55,10 +55,7 @@ export default function HeroCollapseShell({
             }
           }}
         >
-          <FaChevronDown
-            aria-hidden
-            className="list-hero-collapsed-chevron"
-          />
+          <FaChevronDown aria-hidden className="list-hero-collapsed-chevron" />
           <h1 className="list-hero-collapsed-title">{title}</h1>
           {/* Kebab is an exclusion zone — its clicks must NOT bubble up
               to the strip's expand handler, otherwise opening the menu

@@ -1,8 +1,11 @@
 # list-item-management Specification
 
 ## Purpose
+
 TBD - created by archiving change manage-list-items. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: List owners SHALL access a unified choose-items page from a list
 
 A list owner viewing their own list SHALL see a **Choose items** affordance (button on desktop, kebab menu entry on mobile) that routes to `/lists/[id]/choose-items`. Non-owners SHALL NOT see this affordance, and direct navigation to the route as a non-owner SHALL redirect to `/lists/[id]`.
@@ -249,4 +252,3 @@ Selection state SHALL be reflected on the outer `<label>` via the modifier class
 
 - **WHEN** the user interacts with the picker — applying search/sort/filter, checking/unchecking rows, navigating with the back button, viewing on mobile, clicking the empty-state CTA, clicking "Create new item", or submitting Save changes
 - **THEN** every behavior governed by the other requirements in this capability (toolbar URL params, save diff, selection preservation across filter changes, returnTo plumbing, archived-badge rendering, post-create redirect, empty-state CTA target) SHALL produce identical results to the previous bespoke-row implementation
-

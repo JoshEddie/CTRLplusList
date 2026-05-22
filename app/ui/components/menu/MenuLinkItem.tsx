@@ -26,5 +26,5 @@ export const MenuLinkItem = forwardRef<HTMLAnchorElement, MenuLinkItemProps>(
         {children}
       </Link>
     );
-  },
+  }
 );

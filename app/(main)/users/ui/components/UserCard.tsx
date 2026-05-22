@@ -45,15 +45,16 @@ export default function UserCard({
       </div>
       <div className="user-card-meta">
         <div className="user-card-name">{user.name ?? 'Unnamed'}</div>
-        {!compact && (
-          latestSharedAt ? (
+        {!compact &&
+          (latestSharedAt ? (
             <div className="user-card-sub">
               {newCount > 0 ? `${newCount} new` : 'Active'}
             </div>
           ) : (
-            <div className="user-card-sub user-card-sub-muted">No shared lists</div>
-          )
-        )}
+            <div className="user-card-sub user-card-sub-muted">
+              No shared lists
+            </div>
+          ))}
       </div>
     </Link>
   );

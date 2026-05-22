@@ -9,12 +9,14 @@ Database driver `drizzle-orm/neon-http` is irrelevant to this change (no DB read
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Ship a Web App Manifest sufficient for Android's install prompt and iOS "Add to Home Screen" with correct name, icons, and colors.
 - Register a service worker that precaches **Next-emitted build assets and public icons only** — never HTML — so installability criteria are met without introducing a viewer-identity cache risk.
 - Establish the file shape, build pipeline, and kill-switch SW so a future "add push notifications" change can extend `app/sw.ts` without restructuring.
 - Verify `@serwist/next` works on Next 16.2 in the proposal's task list (peer deps say `next: >=14.0.0` with no upper bound — needs a real build to confirm).
 
 **Non-Goals:**
+
 - HTML route caching of any kind, including stale-while-revalidate for public routes. Deferred to a future change once the cache-tag / SW-cache invalidation story is designed.
 - Offline fallback pages. Deferred — when the app loses network, the network-only SW will surface the browser's default offline UI, which is acceptable for v1.
 - Web Push, VAPID keys, push subscription tables, push handlers in the SW. Push triggers (follow, bookmark-modified, item-purchased) and the opt-in UX (per-follow popup, per-bookmark toggles for new-items vs purchases) belong in a separate change.
@@ -37,11 +39,11 @@ Database driver `drizzle-orm/neon-http` is irrelevant to this change (no DB read
 
 **Choice:** `app/sw.ts` uses `precacheEntries: self.__SW_MANIFEST` (Serwist injects Next's static assets at build time) plus an explicit `additionalPrecacheEntries` list for the manifest and the public icons. **No runtime caching strategies are registered** — `defaultCache` from `@serwist/next/worker` is NOT imported. All navigations and API calls bypass the SW and hit the network.
 
-**Why:** This is the load-bearing decision. HTML responses for protected routes encode the *current viewer's* permissions, bookmark state, purchase claims, and spoiler reveal state. Caching them on the client would let the same browser session serve stale, cross-viewer, or pre-mutation HTML. The server-side `'use cache'` + `cacheTag` system in `lib/dal.ts` is opaque to the SW — there's no client-side hook into `revalidateTag`. By caching only content-hashed JS/CSS/font chunks and the public icon directory, we get installability (a registered SW is enough for Chrome's criteria) without introducing this class of bug.
+**Why:** This is the load-bearing decision. HTML responses for protected routes encode the _current viewer's_ permissions, bookmark state, purchase claims, and spoiler reveal state. Caching them on the client would let the same browser session serve stale, cross-viewer, or pre-mutation HTML. The server-side `'use cache'` + `cacheTag` system in `lib/dal.ts` is opaque to the SW — there's no client-side hook into `revalidateTag`. By caching only content-hashed JS/CSS/font chunks and the public icon directory, we get installability (a registered SW is enough for Chrome's criteria) without introducing this class of bug.
 
 **Alternative considered (cache public marketing pages with SWR):** Rejected for now. The app doesn't currently have a meaningful set of public, viewer-agnostic HTML pages worth caching — even the home digest is personalized.
 
-**Alternative considered (cache public list views for unauthenticated readers):** Rejected for now. Public lists *do* render different HTML for the owner vs. a public visitor vs. a signed-in non-owner; a single cache key per URL would not be safe.
+**Alternative considered (cache public list views for unauthenticated readers):** Rejected for now. Public lists _do_ render different HTML for the owner vs. a public visitor vs. a signed-in non-owner; a single cache key per URL would not be safe.
 
 ### D3. Manifest location: `app/manifest.ts` (Next file convention)
 
@@ -101,8 +103,9 @@ Database driver `drizzle-orm/neon-http` is irrelevant to this change (no DB read
 ### D8. Kill-switch path
 
 **Choice:** The first-ship `app/sw.ts` includes a minimal install/activate hook that:
+
 1. On `activate`, claims clients (`clientsClaim: true`).
-2. Exposes a `'KILL_SW'` message handler that `unregister()`s the registration and deletes all caches, so a *future* code change can ship a single-line update to `sw.ts` that posts that message to itself on install, achieving a remote disable.
+2. Exposes a `'KILL_SW'` message handler that `unregister()`s the registration and deletes all caches, so a _future_ code change can ship a single-line update to `sw.ts` that posts that message to itself on install, achieving a remote disable.
 
 **Why:** Once a SW is registered in a user's browser, a buggy SW can persist past the user's next visit even if we delete `app/sw.ts`. The kill-switch is insurance: shipping it now costs ~10 lines and gives us a recoverable path. Cheap insurance against the worst-case PWA failure mode.
 
@@ -135,5 +138,5 @@ Database driver `drizzle-orm/neon-http` is irrelevant to this change (no DB read
 ## Open Questions
 
 - **Q1:** Should `start_url` be `/` or `/home`? `app/(main)/page.tsx` currently renders the home digest at `/`, so `/` is correct unless we want install to land on a deeper page. Default: `/`. Revisit if home-digest UX argues otherwise during apply.
-- **Q2:** Are there other icon sizes we should include in `manifest.icons` beyond 192 and 512? Chrome's install criteria require at least 192 *and* 512; 144 is sometimes useful for older Android. Default: stick with 192 + 512 (Chrome's minimum + recommended). The other sizes from `appstore-images/` are available if a real device shows aliasing.
+- **Q2:** Are there other icon sizes we should include in `manifest.icons` beyond 192 and 512? Chrome's install criteria require at least 192 _and_ 512; 144 is sometimes useful for older Android. Default: stick with 192 + 512 (Chrome's minimum + recommended). The other sizes from `appstore-images/` are available if a real device shows aliasing.
 - **Q3:** Should we add `screenshots` to the manifest for the richer install UI on Android? It's a polish item; defer unless install conversion looks weak after launch.

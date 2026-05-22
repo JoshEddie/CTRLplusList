@@ -16,10 +16,7 @@ type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function ChooseItemsBody({
-  params,
-  searchParams,
-}: Props) {
+export default async function ChooseItemsBody({ params, searchParams }: Props) {
   const session = await auth();
   if (!session?.user?.email) {
     redirect('/');

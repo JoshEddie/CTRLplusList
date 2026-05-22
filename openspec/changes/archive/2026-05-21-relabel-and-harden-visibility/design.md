@@ -1,12 +1,13 @@
 ## Context
 
-Visibility state in Ctrl+List has three values (`'private' | 'unlisted' | 'public'`), but the picker UI ([VisibilityPicker.tsx](app/(main)/lists/ui/components/VisibilityPicker.tsx)) renders a 2-state segmented control plus a conditional checkbox. The current spec ([list-visibility/spec.md:49](openspec/specs/list-visibility/spec.md:49)) explicitly mandates this shape and codifies its quirks ("Shared → Private clears the feed bit"), which is itself a symptom that the "two axes" are not actually independent.
+Visibility state in Ctrl+List has three values (`'private' | 'unlisted' | 'public'`), but the picker UI ([VisibilityPicker.tsx](<app/(main)/lists/ui/components/VisibilityPicker.tsx>)) renders a 2-state segmented control plus a conditional checkbox. The current spec ([list-visibility/spec.md:49](openspec/specs/list-visibility/spec.md:49)) explicitly mandates this shape and codifies its quirks ("Shared → Private clears the feed bit"), which is itself a symptom that the "two axes" are not actually independent.
 
 Separately, the privacy contract advertised by the word "Private" is incomplete: list IDs are nanoid (unguessable, ~126 bits) and the route returns a placeholder body for non-owners of private lists, but the page still emits a real `<title>` and OG card for any list ID via `generateMetadata`, and there is no `noindex` meta or robots policy anywhere in the app (verified by grep). A URL that leaks into the crawlable web is one Google fetch away from indexing.
 
 This change does both at once because the relabel makes the contract gap acute. Calling the link-only state "Private" raises user expectations that the page is not indexable — and right now it is. Doing the relabel without the noindex would be lying. Doing the noindex without the relabel is fine but loses the linguistic clarity that triggered the rethink.
 
 Constraints inherited from existing specs:
+
 - [list-visibility#shared_at](openspec/specs/list-visibility/spec.md:25) governs `shared_at` semantics — this change does not touch them.
 - [list-visibility](openspec/specs/list-visibility/spec.md:114) mandates the `setListVisibility` dual-write to `lists.shared` — preserved.
 - [menu-system](openspec/specs/menu-system/spec.md) governs the `<Menu>` primitive; a new menu row variant is a spec modification, not a page-scoped class.
@@ -15,6 +16,7 @@ Constraints inherited from existing specs:
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Replace the segmented-control + conditional-checkbox picker with a flat three-item radio menu whose shape matches the underlying 3-state enum.
 - Relabel the three states as **Just me / Private / Shared** with icons 🔒 / 🔗 / 👥. Drop the `· in feed` qualifier from the trigger pill.
 - Enforce the "Private" contract: non-public lists are marked `noindex, nofollow` and their names do not appear in metadata to non-owner viewers (including crawlers).
@@ -22,6 +24,7 @@ Constraints inherited from existing specs:
 - Fix the now-incorrect modal copy on `ShareButton` while we're in there.
 
 **Non-Goals:**
+
 - No data migration. The enum stays `'private' | 'unlisted' | 'public'`.
 - No `robots.txt`, no `sitemap.ts`. Lists are not in any sitemap today; we are not adding them.
 - No change to `setListVisibility`'s signature, dual-write contract, or `shared_at` behavior.
@@ -58,7 +61,7 @@ Constraints inherited from existing specs:
 - **Just me / Link-only / Followers.** Considered. More descriptive but verbose; the icon already disambiguates link-mediated access; everyday English has a perfectly good word ("Private") for the middle state.
 - **Private / Unlisted / Public.** Considered. The conventional triad. Rejected because (a) "Unlisted" is jargon from video platforms that doesn't translate to a wishlist app, and (b) "Public" overpromises discoverability that the app does not provide (no search indexing of feed-broadcast lists by design — `'public'` only surfaces to followers, not strangers).
 
-The relabel also fixes the [ShareButton.tsx:91](app/(main)/lists/ui/components/ShareButton.tsx:91) modal which today says "Make public & share" but actually runs `setListVisibility(id, 'unlisted')` — the old vocabulary couldn't say "make link-only" without inventing a word; the new vocabulary says "Make private & share" which is both shorter and accurate.
+The relabel also fixes the [ShareButton.tsx:91](<app/(main)/lists/ui/components/ShareButton.tsx:91>) modal which today says "Make public & share" but actually runs `setListVisibility(id, 'unlisted')` — the old vocabulary couldn't say "make link-only" without inventing a word; the new vocabulary says "Make private & share" which is both shorter and accurate.
 
 ### Decision 3: Add `<MenuItemRadio>` to `menu-system` as a sibling primitive
 
@@ -74,8 +77,9 @@ The relabel also fixes the [ShareButton.tsx:91](app/(main)/lists/ui/components/S
 
 ### Decision 4: Every list page is noindex; metadata gating is independent
 
-**Choice:** Implement the crawler contract entirely inside `generateMetadata` in [app/(main)/lists/[id]/page.tsx](app/(main)/lists/[id]/page.tsx):
-- **All list pages emit `robots: { index: false, follow: false }`**, regardless of `visibility`. The product has no stranger-discoverability mode — `'public'` (Shared) broadcasts to *followers within the app*, not to web search; `'unlisted'` (Private) is link-only; `'private'` (Just me) is owner-only. Calling any of them "indexable" would contradict the labels the user just picked.
+**Choice:** Implement the crawler contract entirely inside `generateMetadata` in [app/(main)/lists/[id]/page.tsx](<app/(main)/lists/[id]/page.tsx>):
+
+- **All list pages emit `robots: { index: false, follow: false }`**, regardless of `visibility`. The product has no stranger-discoverability mode — `'public'` (Shared) broadcasts to _followers within the app_, not to web search; `'unlisted'` (Private) is link-only; `'private'` (Just me) is owner-only. Calling any of them "indexable" would contradict the labels the user just picked.
 - For non-public lists viewed by **non-owners**: return a generic `title: 'List'` and omit `openGraph` / `twitter` fields entirely so the list name does not appear in head metadata (mitigates leaks via link unfurlers that don't honor `noindex`).
 - For non-public lists viewed by the **owner**: preserve full metadata. The owner pasting their own list URL into iMessage / Slack should still see the OG card. (NextAuth's `auth()` is available inside `generateMetadata` — same session machinery the page already uses.)
 - For `'public'` (Shared): full metadata for everyone — the owner has deliberately broadcast it, link unfurlers should card-up correctly — but the page is still noindex.
@@ -88,9 +92,9 @@ An earlier draft of this design left `'public'` indexable on the assumption that
 
 - **Add `robots.txt` blocking `/lists/*`.** Rejected. `robots.txt` is a hint, not a prohibition; properly-scoped `<meta robots>` per-page is stronger and survives crawlers that ignore robots.txt.
 - **Leave `'public'` indexable.** Rejected (this was the earlier draft). Contradicts the "Shared = with followers" label and gives literal strangers a discovery path the product otherwise doesn't have.
-- **Add a `sitemap.ts` listing only public lists.** Considered as a follow-up but out of scope for this change. We are not actively trying to *help* crawlers find lists; we are just stopping them from indexing them. If "Shared" ever genuinely means "discoverable on the web" (a product change, not a labeling change), a sitemap can opt those lists in then.
+- **Add a `sitemap.ts` listing only public lists.** Considered as a follow-up but out of scope for this change. We are not actively trying to _help_ crawlers find lists; we are just stopping them from indexing them. If "Shared" ever genuinely means "discoverable on the web" (a product change, not a labeling change), a sitemap can opt those lists in then.
 - **Strip metadata for all non-owners regardless of visibility.** Rejected. `'public'` lists are explicitly designed for broadcast within the followers' feed and via direct link-share; the OG card is part of the share affordance.
-- **Show the OG card to owners only.** Considered but flawed — a `'public'` list shared by its owner to a friend who then opens the link should still get a rich preview, because OG cards are rendered server-side based on the crawler's request, not the eventual viewer's identity. The "owner-only metadata" carve-out applies only to *non-public* lists.
+- **Show the OG card to owners only.** Considered but flawed — a `'public'` list shared by its owner to a friend who then opens the link should still get a rich preview, because OG cards are rendered server-side based on the crawler's request, not the eventual viewer's identity. The "owner-only metadata" carve-out applies only to _non-public_ lists.
 
 ### Decision 5: No data or schema migration
 
@@ -115,7 +119,7 @@ The `aria-label` on the trigger keeps the longer description (e.g. `"Visibility:
 
 - **[`generateMetadata` now does an `auth()` call]** → Adds a session lookup to the metadata pass. Mitigation: `auth()` and `getList(id)` are both cached/fast; this runs once per request, not per render. Risk is small but real for cold cache.
 
-- **[Owner-viewing-own-private-list metadata exposure via shared link to crawler-pinging service]** → If an owner pastes a private list URL into a tool that pings the URL (e.g. a link preview unfurler that fetches with no auth cookies), the crawler is *not* the owner, so the gating kicks in and the unfurler gets the generic metadata. This is the intended outcome — but it means an owner sharing their own private-list URL via Slack will not get a rich preview. That is the correct behavior for `'private'` (= just me) and `'unlisted'` (= link-only, you control who sees it; you don't want a preview unfurler caching it).
+- **[Owner-viewing-own-private-list metadata exposure via shared link to crawler-pinging service]** → If an owner pastes a private list URL into a tool that pings the URL (e.g. a link preview unfurler that fetches with no auth cookies), the crawler is _not_ the owner, so the gating kicks in and the unfurler gets the generic metadata. This is the intended outcome — but it means an owner sharing their own private-list URL via Slack will not get a rich preview. That is the correct behavior for `'private'` (= just me) and `'unlisted'` (= link-only, you control who sees it; you don't want a preview unfurler caching it).
 
 - **[Menu primitive's arrow-key navigation may not target `menuitemradio` rows]** → The existing `<Menu>` arrow-nav requirement ([menu-system#arrow-keys](openspec/specs/menu-system/spec.md:50)) speaks of "`<MenuItem>` / `<MenuLinkItem>` rows." Spec delta will broaden this to include `<MenuItemRadio>` rows; implementation may need to update the selector in `Menu.tsx`. Treated as a small implementation chore, not a risk.
 
@@ -123,4 +127,4 @@ The `aria-label` on the trigger keeps the longer description (e.g. `"Visibility:
 
 ## Open Questions
 
-- *(none — all decisions captured above)*
+- _(none — all decisions captured above)_

@@ -4,7 +4,7 @@ The app has two working patterns for server-side authorization side-by-side:
 
 1. **The correct pattern** (`setListVisibility`, `setListItems`, `archiveItem`, `deleteItem`, follows actions): `auth()` → resolve `session.user.email → users.id` → load the target row → reject if `row.user_id !== sessionUser.id` → mutate. These actions are governed by binding "non-owner rejection" SHALLs in `list-visibility/spec.md` and `list-item-management/spec.md`.
 
-2. **The broken pattern** (`createList`, `updateList`, `deleteList`, `createItem`, `createPurchase`): check that *a* session exists, then trust whatever `user_id` arrives on the request payload (or skip the check entirely on update/delete). No active spec governs these entry points today — they were written before the spec system existed and were not migrated.
+2. **The broken pattern** (`createList`, `updateList`, `deleteList`, `createItem`, `createPurchase`): check that _a_ session exists, then trust whatever `user_id` arrives on the request payload (or skip the check entirely on update/delete). No active spec governs these entry points today — they were written before the spec system existed and were not migrated.
 
 The `/api/image-search` route is a third class entirely: a GET endpoint with no `auth()` call that proxies to paid SerpAPI / Serper providers. Anyone who finds the URL can drain the quota.
 

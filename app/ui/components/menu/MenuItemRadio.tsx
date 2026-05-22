@@ -23,7 +23,7 @@ export const MenuItemRadio = forwardRef<HTMLButtonElement, MenuItemRadioProps>(
       onClick,
       ...rest
     },
-    ref,
+    ref
   ) {
     return (
       <button
@@ -52,5 +52,5 @@ export const MenuItemRadio = forwardRef<HTMLButtonElement, MenuItemRadioProps>(
         </span>
       </button>
     );
-  },
+  }
 );

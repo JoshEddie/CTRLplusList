@@ -8,7 +8,7 @@ export const PopoverTrigger = forwardRef<
   PopoverTriggerProps
 >(function PopoverTrigger(
   { icon, label, count, active, tone, className, type = 'button', ...rest },
-  ref,
+  ref
 ) {
   return (
     <button

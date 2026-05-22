@@ -4,7 +4,7 @@
 - [x] 1.2 Validate `item_ids` with `z.array(z.string().min(1))` (allow empty array — represents "remove everything").
 - [x] 1.3 Query current `list_items` for this list; compute `toRemove = existing − incoming` and `toInsert = incoming − existing`.
 - [x] 1.4 If `toRemove.length > 0`: `db.delete(list_items).where(and(eq(list_id, …), inArray(item_id, toRemove)))`.
-- [x] 1.5 If `toInsert.length > 0`: recompute `basePosition = COALESCE(MAX(position) + 65536, 65536)` *after* deletion, then insert each item at `basePosition + i * 65536`.
+- [x] 1.5 If `toInsert.length > 0`: recompute `basePosition = COALESCE(MAX(position) + 65536, 65536)` _after_ deletion, then insert each item at `basePosition + i * 65536`.
 - [x] 1.6 Call `updateTag('items')` and `updateTag('lists')` on success.
 - [x] 1.7 Return `{ success: true, message: "Added N, removed M" }` (or specialized message when N or M is 0; "No changes" when both are 0).
 
@@ -31,10 +31,10 @@
 
 ## 4. Inbound link updates
 
-- [x] 4.1 [app/(main)/lists/ui/components/ListDetails.tsx](app/(main)/lists/ui/components/ListDetails.tsx): change href to `/choose-items`, label to `Choose items`, swap `FaPlus` for `MdChecklist`.
-- [x] 4.2 [app/(main)/lists/ui/components/ListActionsMenu.tsx](app/(main)/lists/ui/components/ListActionsMenu.tsx): same href + label + icon change.
-- [x] 4.3 [app/(main)/lists/ui/components/ListForm.tsx](app/(main)/lists/ui/components/ListForm.tsx): change post-create redirect target to `/choose-items?new=1`.
-- [x] 4.4 [app/(main)/items/ui/components/SortItems.tsx](app/(main)/items/ui/components/SortItems.tsx): update `EmptyListCTA` href to `/choose-items`; label "Choose items"; icon `MdChecklist`.
+- [x] 4.1 [app/(main)/lists/ui/components/ListDetails.tsx](<app/(main)/lists/ui/components/ListDetails.tsx>): change href to `/choose-items`, label to `Choose items`, swap `FaPlus` for `MdChecklist`.
+- [x] 4.2 [app/(main)/lists/ui/components/ListActionsMenu.tsx](<app/(main)/lists/ui/components/ListActionsMenu.tsx>): same href + label + icon change.
+- [x] 4.3 [app/(main)/lists/ui/components/ListForm.tsx](<app/(main)/lists/ui/components/ListForm.tsx>): change post-create redirect target to `/choose-items?new=1`.
+- [x] 4.4 [app/(main)/items/ui/components/SortItems.tsx](<app/(main)/items/ui/components/SortItems.tsx>): update `EmptyListCTA` href to `/choose-items`; label "Choose items"; icon `MdChecklist`.
 
 ## 5. CSS
 

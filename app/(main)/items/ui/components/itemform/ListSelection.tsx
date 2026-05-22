@@ -71,10 +71,7 @@ export function ListSelection({
       <label htmlFor={`${name}-trigger`} className="form_field_label">
         Lists
       </label>
-      <div
-        ref={wrapRef}
-        className={`if-lp${error ? ' if-lp--invalid' : ''}`}
-      >
+      <div ref={wrapRef} className={`if-lp${error ? ' if-lp--invalid' : ''}`}>
         <div className="if-lp-top">
           {selected.map((s) => (
             <Chip
@@ -87,9 +84,7 @@ export function ListSelection({
           ))}
           <PopoverTrigger
             id={`${name}-trigger`}
-            label={
-              selected.length === 0 ? placeholder : 'Add another list…'
-            }
+            label={selected.length === 0 ? placeholder : 'Add another list…'}
             onClick={() => setOpen((o) => !o)}
             disabled={isPending}
             aria-haspopup="listbox"

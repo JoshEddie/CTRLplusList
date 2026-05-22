@@ -1,8 +1,11 @@
 # list-hero-header Specification
 
 ## Purpose
+
 TBD - created by archiving change redesign-list-hero. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: The hero SHALL render as a single continuous gradient panel containing two semantic zones
 
 The list-detail hero SHALL render as one continuous gradient panel (a `.list-hero-grid` container carrying `--hero-gradient` as its sole background) containing two semantic zones — an identity zone (`.list-hero-card-identity`) and a controls zone (`.list-hero-card-controls`). Both zones SHALL be transparent and SHALL NOT carry their own gradient backgrounds. The two zones SHALL be differentiated by their content composition (typography vs. controls), NOT by a visible vertical divider between them at desktop widths.
@@ -124,11 +127,13 @@ The avatar, name, and Follow button SHALL be visually grouped (flex siblings wit
 The controls card's action affordances SHALL be composed as follows:
 
 **Owner view (non-preview):**
+
 - The controls card contains, in DOM order: an action row with Edit list + the `ListActionsMenu` kebab (Edit grows to fill, kebab pulls right at fixed size), followed by the Choose items button as a full-width affordance on its own row.
 - No Share button is rendered inside the controls card on owner views — Share is paired with the visibility picker in the identity zone (per the requirement above).
 - No hairline divider is required inside the owner controls card; the row + button stack reads cleanly without one.
 
 **Viewer view (non-preview, authenticated):**
+
 - Top: byline group (avatar + linked name + Follow) — defined by the requirement above.
 - A hairline divider separates the byline group from the action block.
 - Action block: Share and Bookmark rendered as two equal peer buttons (50/50 width split).
@@ -185,4 +190,3 @@ The existing on-dark `<CheckboxField>` color overrides in `.list-hero-side .visi
 
 - **WHEN** the redesign ships
 - **THEN** no new CSS rule in `app/(main)/lists/ui/styles/list.css` targets `.btn`, `.popover-trigger`, `.segmented`, or `.menu-item` (or their descendants) to override geometry, padding, border-radius, or palette tokens; any required visual adjustments are handled by the consuming primitive's API or by adding a normative variant to the primitive's spec via a separate change
-

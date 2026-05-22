@@ -42,7 +42,7 @@ The primitives in use (`SearchField`, `PopoverTrigger`, `SegmentedControl`) all 
 
 **Choice:** Override `.item-grid` at `@media (max-width: 599px)` to use the same grid-template-columns and gap as `.item-list` (single column, full-width rows). Leave the `?view=` URL param flowing through unchanged.
 
-**Rationale:** The codebase has no `useIsMobile` hook and uses pure CSS media queries throughout ([item.css:343](app/(main)/items/ui/styles/item.css:343), [item.css:438](app/(main)/items/ui/styles/item.css:438)). Adding JS-driven viewport detection just to clamp one component's state would be a new pattern, would require a hydration-safe implementation, and would break SSR consistency. CSS-only:
+**Rationale:** The codebase has no `useIsMobile` hook and uses pure CSS media queries throughout ([item.css:343](<app/(main)/items/ui/styles/item.css:343>), [item.css:438](<app/(main)/items/ui/styles/item.css:438>)). Adding JS-driven viewport detection just to clamp one component's state would be a new pattern, would require a hydration-safe implementation, and would break SSR consistency. CSS-only:
 
 - Preserves the user's desktop `?view=grid` preference across viewport changes (resize → list, resize back → grid).
 - Requires no React tree changes.
@@ -58,7 +58,7 @@ The primitives in use (`SearchField`, `PopoverTrigger`, `SegmentedControl`) all 
 
 **Choice:** Add `.items-toolbar-cell--view { display: none }` at `@media (max-width: 599px)`. Do NOT remove the conditional `{showGridToggle && ...}` rendering in `ItemsToolbar.tsx` — the prop still controls call sites where the toggle is intentionally absent (e.g., the choose-items picker, per existing usage).
 
-**Rationale:** Mirrors the existing pattern at [item.css:403,452](app/(main)/items/ui/styles/item.css:403) — the mobile Filters trigger is `display: none` desktop and `display: inline-flex` mobile. We're doing the exact inverse for the view toggle. Specificity is straightforward (single-class selector).
+**Rationale:** Mirrors the existing pattern at [item.css:403,452](<app/(main)/items/ui/styles/item.css:403>) — the mobile Filters trigger is `display: none` desktop and `display: inline-flex` mobile. We're doing the exact inverse for the view toggle. Specificity is straightforward (single-class selector).
 
 **Spec alignment:** [segmented-control-system spec.md:62](openspec/specs/segmented-control-system/spec.md:62) requires the view toggle to BE a `SegmentedControl tone="light"`. Hiding the cell that contains it does not violate the requirement — the primitive is still mounted and would still render if CSS were stripped. The spec doesn't mandate visibility at every viewport.
 
@@ -90,7 +90,7 @@ Benefits of this simpler approach:
 - No risk of layout thrash when the user dismisses the keyboard with a query active.
 - The filters affordance remains visible and tappable while the user is searching — useful when refining search results with a filter.
 
-**Accessibility:** The `<button>` carries `aria-label="Open filters"` already ([ItemsToolbar.tsx:266](app/(main)/items/ui/components/ItemsToolbar.tsx:266)), which becomes the button's accessible name and takes precedence over visible text-content children. Hiding the `.popover-trigger-label` span via `display: none` has zero accessibility impact — the accessible name is already supplied by `aria-label`.
+**Accessibility:** The `<button>` carries `aria-label="Open filters"` already ([ItemsToolbar.tsx:266](<app/(main)/items/ui/components/ItemsToolbar.tsx:266>)), which becomes the button's accessible name and takes precedence over visible text-content children. Hiding the `.popover-trigger-label` span via `display: none` has zero accessibility impact — the accessible name is already supplied by `aria-label`.
 
 **Spec compliance:** [popover-trigger-system spec.md:74](openspec/specs/popover-trigger-system/spec.md:74) normatively requires the call site to render `<PopoverTrigger icon={<MdTune />} label="Filters" ... />`. This change keeps that call site unchanged — `label="Filters"` is still passed; only the rendered DOM is visually compacted via wrapper-scoped CSS. The primitive spec governs the call-site contract, not visibility decisions made by the wrapping layout.
 
@@ -112,11 +112,11 @@ Benefits of this simpler approach:
 
 **Rationale:** Two viable alternatives exist:
 
-| Approach | Pro | Con |
-|---|---|---|
-| **A. position: absolute on container** (chosen) | DOM unchanged, scoped to mobile media query, container already has fixed height so absolute child sits naturally | Need to add bottom padding to grid container so last row isn't permanently obscured |
-| **B. Move pagination INTO scroller, use position: sticky** | More semantic ("pagination follows content") | Requires React tree restructure (Pagination becomes a child of the scrolling div, not a sibling). Cross-cuts the Items component. |
-| **C. position: fixed to viewport** | Simplest CSS | Bypasses the items-browser-container scope. Would overlap unrelated UI (kebab menu, mobile bottom nav if any). Coupled to app shell. |
+| Approach                                                   | Pro                                                                                                              | Con                                                                                                                                  |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **A. position: absolute on container** (chosen)            | DOM unchanged, scoped to mobile media query, container already has fixed height so absolute child sits naturally | Need to add bottom padding to grid container so last row isn't permanently obscured                                                  |
+| **B. Move pagination INTO scroller, use position: sticky** | More semantic ("pagination follows content")                                                                     | Requires React tree restructure (Pagination becomes a child of the scrolling div, not a sibling). Cross-cuts the Items component.    |
+| **C. position: fixed to viewport**                         | Simplest CSS                                                                                                     | Bypasses the items-browser-container scope. Would overlap unrelated UI (kebab menu, mobile bottom nav if any). Coupled to app shell. |
 
 (A) wins on minimum-blast-radius: zero DOM change, zero React change, zero impact on the choose-items picker or list-details surfaces (which use the same chrome — they get the floating pagination treatment "for free").
 
@@ -144,7 +144,7 @@ The padding-bottom on `.item-grid-container` is the trickiest detail. Pagination
 - **iOS Safari translucent overlay + scrollbar interaction** → On iOS Safari the scroller has no visible scrollbar, so the overlay should look clean. On desktop the change is no-op (media query gates it). No expected regression.
 - **Choose-items picker (`/lists/[id]/choose-items`) shares this chrome** → It already calls `ItemsToolbar` with `showGridToggle={false}` (the picker is list-only). The new mobile rules will simply also hide the view-cell (already hidden by the prop) and apply the search-expand. Verified no regression by reading the picker page.
 - **List-details items section** → Renders the same toolbar + pagination. Gets the floating pagination treatment automatically, which is the intended outcome.
-- **Reversibility** → All changes live in one media-query block in [item.css](app/(main)/items/ui/styles/item.css). Reverting is a single-file diff.
+- **Reversibility** → All changes live in one media-query block in [item.css](<app/(main)/items/ui/styles/item.css>). Reverting is a single-file diff.
 
 ## Migration Plan
 
@@ -157,5 +157,5 @@ Pure presentational change with no data, API, or feature-flag involvement. Deplo
 ## Open Questions
 
 - _Page-size select inside the floating pagination — does the dropdown's panel clip against the viewport bottom on mobile?_ The select is a native `<select>` (per the form-field-system spec), so the dropdown is platform-native and shouldn't clip. Worth a visual check.
-- _Should the pagination overlay also apply at the 600–800px tablet breakpoint?_ Probably not — at that size the page padding shrinks ([item.css:343](app/(main)/items/ui/styles/item.css:343)) but the toolbar still has its tablet 2-row layout, and there's more vertical room. Keep the overlay scoped to ≤599px unless feedback says otherwise.
+- _Should the pagination overlay also apply at the 600–800px tablet breakpoint?_ Probably not — at that size the page padding shrinks ([item.css:343](<app/(main)/items/ui/styles/item.css:343>)) but the toolbar still has its tablet 2-row layout, and there's more vertical room. Keep the overlay scoped to ≤599px unless feedback says otherwise.
 - _Is the 90% alpha the right opacity?_ The user specified 90%. Will visually verify it reads as "content faintly visible underneath" without being so transparent it's hard to read pagination affordances against busy item content. Tunable via a single token.

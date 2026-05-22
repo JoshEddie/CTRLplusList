@@ -5,9 +5,9 @@
 
 ## Context
 
-The items workflow has three mutating client-side flows — **create**, **edit**, and **delete** — each of which currently hardcodes `router.push('/items')` (or a `<Link href="/items">`) on completion. Edit and delete share the same parent route (`app/(main)/items/[id]/page.tsx`); create lives at `/items/new`. The form itself is rendered by `ItemForm`, driven by the `useItemForm` hook ([useItemForm.ts:365](app/(main)/items/ui/components/itemform/useItemForm.ts)).
+The items workflow has three mutating client-side flows — **create**, **edit**, and **delete** — each of which currently hardcodes `router.push('/items')` (or a `<Link href="/items">`) on completion. Edit and delete share the same parent route (`app/(main)/items/[id]/page.tsx`); create lives at `/items/new`. The form itself is rendered by `ItemForm`, driven by the `useItemForm` hook ([useItemForm.ts:365](<app/(main)/items/ui/components/itemform/useItemForm.ts>)).
 
-The callers that link into these flows are now diverse: the edit link on `Item.tsx` fires from both `/items` (where toolbar state is encoded in URL params — `q`, `sort`, `store`, `purchases`, `price_min`, `price_max`, `page`) and `/lists/[id]` (which also uses URL-param toolbar state per [ItemsBrowser.tsx](app/(main)/items/ui/components/ItemsBrowser.tsx)). The "Create new item" link appears from the items page Header, the `EmptyItem` state, and (per the `add-choose-items-toolbar` change) two CTAs inside `ChooseItemsForm`. Every one of these source URLs is meaningful state the user expects to come back to.
+The callers that link into these flows are now diverse: the edit link on `Item.tsx` fires from both `/items` (where toolbar state is encoded in URL params — `q`, `sort`, `store`, `purchases`, `price_min`, `price_max`, `page`) and `/lists/[id]` (which also uses URL-param toolbar state per [ItemsBrowser.tsx](<app/(main)/items/ui/components/ItemsBrowser.tsx>)). The "Create new item" link appears from the items page Header, the `EmptyItem` state, and (per the `add-choose-items-toolbar` change) two CTAs inside `ChooseItemsForm`. Every one of these source URLs is meaningful state the user expects to come back to.
 
 The fix needs one mechanism that works for all six post-action navigations (Back, Update success, Cancel from edit; Back, Create success, Cancel from create; plus delete-success). Anything less leaves a hole.
 
@@ -63,7 +63,7 @@ Helper returns `undefined` on rejection; callers `?? '/items'` for the default. 
 
 ### Decision 3: Source URL is captured client-side via `usePathname` + `useSearchParams`
 
-The link source (`Item.tsx`, `EmptyItem.tsx`, the Header create-link on `/items`, etc) is the only place that knows the full URL state. Server components don't see `searchParams` for the *current* page when they're rendering a *link*, so this has to happen client-side. `Item.tsx` is already a client component; `EmptyItem` and the items Header may need `'use client'` added (or the link split into a tiny client wrapper) — design.md flags this; tasks.md will resolve.
+The link source (`Item.tsx`, `EmptyItem.tsx`, the Header create-link on `/items`, etc) is the only place that knows the full URL state. Server components don't see `searchParams` for the _current_ page when they're rendering a _link_, so this has to happen client-side. `Item.tsx` is already a client component; `EmptyItem` and the items Header may need `'use client'` added (or the link split into a tiny client wrapper) — design.md flags this; tasks.md will resolve.
 
 The serialized form:
 

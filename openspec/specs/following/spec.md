@@ -1,8 +1,11 @@
 # following Specification
 
 ## Purpose
+
 TBD - created by archiving change colocate-follow-with-owner-name. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: List pages SHALL expose a follow affordance for non-owner viewers, colocated with the linked owner name
 
 When an authenticated viewer who is not the list owner renders a list with `visibility != 'private'`, the list-detail hero SHALL display a Follow / Following button targeting the list's owner. The button SHALL be a full-size button satisfying WCAG 2.5.5 (44×44 CSS px touch target). The button SHALL be rendered in a byline sub-row of the list hero adjacent to the owner's name (which itself SHALL be rendered as a link to `/user/{owner_id}` on this surface), and SHALL NOT be rendered in the list-hero action row alongside list-actions such as Share and Bookmark. The button SHALL be hidden when the viewer is the owner, when the viewer is unauthenticated, or when the viewer has blocked or been blocked by the owner.

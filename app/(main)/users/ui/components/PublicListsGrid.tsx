@@ -1,10 +1,6 @@
 import ListCard, { ListCardData } from '@/app/ui/components/ListCard';
 
-export default function PublicListsGrid({
-  lists,
-}: {
-  lists: ListCardData[];
-}) {
+export default function PublicListsGrid({ lists }: { lists: ListCardData[] }) {
   if (lists.length === 0) {
     return <p className="profile-empty">No shared lists yet.</p>;
   }

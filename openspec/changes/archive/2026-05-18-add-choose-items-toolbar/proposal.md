@@ -9,7 +9,7 @@ The `/items` page already solves the same problem with a rich `ItemsToolbar` (se
 - Add a toolbar to the choose-items page with these controls, all reflected in URL params:
   - **Search** — lift the existing local-state `q` input into a URL param so it survives navigation and matches `ItemsToolbar` behavior.
   - **Sort** — single-axis dropdown with the same eight keys as the items page (Newest/Oldest, Name A–Z/Z–A, Store A–Z/Z–A, Price low/high). Default: Newest.
-  - **Show** *(new on this page)* — `All` / `Only on the list` / `Only not on the list`. Default: `All`. URL param: `show`.
+  - **Show** _(new on this page)_ — `All` / `Only on the list` / `Only not on the list`. Default: `All`. URL param: `show`.
   - **Stores** — reuse `StoreFilterPopover` against the user's library store options.
   - **Price** — reuse `PriceFilterPopover` with min/max URL params.
 - Extend `ItemsToolbar` with a new `mode: 'choose'` variant so both pages share one implementation. The `choose` mode shows the new `Show` select, hides the `Purchases` select (not applicable here), and uses `created_desc` as the default sort.

@@ -6,7 +6,13 @@ type DateFieldProps = FieldWrapperProps & {
   className?: string;
 } & Omit<
     ComponentPropsWithRef<'input'>,
-    'className' | 'disabled' | 'type' | 'id' | 'aria-invalid' | 'aria-required' | 'aria-describedby'
+    | 'className'
+    | 'disabled'
+    | 'type'
+    | 'id'
+    | 'aria-invalid'
+    | 'aria-required'
+    | 'aria-describedby'
   >;
 
 export const DateField = forwardRef<HTMLInputElement, DateFieldProps>(
@@ -22,7 +28,7 @@ export const DateField = forwardRef<HTMLInputElement, DateFieldProps>(
       className,
       ...inputProps
     },
-    ref,
+    ref
   ) {
     return (
       <FormField
@@ -44,7 +50,7 @@ export const DateField = forwardRef<HTMLInputElement, DateFieldProps>(
         />
       </FormField>
     );
-  },
+  }
 );
 
 DateField.displayName = 'DateField';

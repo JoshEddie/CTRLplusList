@@ -1,11 +1,11 @@
 ## Why
 
-The list-detail hero today is a single tall purple band that does one job — "tell you what list this is and who made it" — through six independent planes: gradient, title, subtitle, owner icon, date icon, occasion chip, action row, and (for owners) visibility picker. Each plane was tuned independently, so they compete: the title towers over its own metadata, action buttons read louder than the facts they act on, and (for viewer views) ~50% of the band is dead canvas because the visibility picker that fills the right side is owner-only. The in-flight `refine-list-hero-readability` change patched the worst contrast and sizing symptoms but couldn't fix the underlying composition without restructuring the surface. This change tears that down and rebuilds the hero as a *composed* two-card surface: list identity on the left, people-and-actions on the right, with explicit roles for every element.
+The list-detail hero today is a single tall purple band that does one job — "tell you what list this is and who made it" — through six independent planes: gradient, title, subtitle, owner icon, date icon, occasion chip, action row, and (for owners) visibility picker. Each plane was tuned independently, so they compete: the title towers over its own metadata, action buttons read louder than the facts they act on, and (for viewer views) ~50% of the band is dead canvas because the visibility picker that fills the right side is owner-only. The in-flight `refine-list-hero-readability` change patched the worst contrast and sizing symptoms but couldn't fix the underlying composition without restructuring the surface. This change tears that down and rebuilds the hero as a _composed_ two-card surface: list identity on the left, people-and-actions on the right, with explicit roles for every element.
 
 The product priorities reshape what's primary:
 
 - For an **owner**, Share is the most common action (sharing the link is the whole point of making a list). The owner's own identity is redundant — they don't need to see "Alice (you)" on their own list. Visibility deserves a status-pill summary, not a 260px segmented widget eating the right rail.
-- For a **viewer**, the owner *is* the visual anchor (whose registry am I shopping?), and Follow belongs adjacent to that anchor (already a binding requirement of the `following` capability).
+- For a **viewer**, the owner _is_ the visual anchor (whose registry am I shopping?), and Follow belongs adjacent to that anchor (already a binding requirement of the `following` capability).
 
 **Inherited constraints (preserved by this change):**
 
@@ -20,9 +20,9 @@ The product priorities reshape what's primary:
 - **Owner identity removed from owner views.** No avatar, no name, no `FaUser` icon on owner views. The right strip is pure controls.
 - **Viewer byline becomes the people-anchor.** Real 36px avatar (sourced from `users.image` → fall back to our own initials chip if null), linked owner name, Follow button — grouped into one visual block at the top of the right strip.
 - **Eyebrow replaces the inline occasion chip.** The occasion graduates from a small chip wedged into the meta row into an above-title eyebrow label (small-caps, white-on-translucent — same visual vocabulary as the current chip, just relocated).
-- **Status pill replaces the always-visible segmented + checkbox.** A single `<PopoverTrigger>` showing the current visibility ("Private" / "Shared" / "Shared · in feed") opens a popover hosting the *existing* Private/Shared segmented control + "Show in followers' feed" checkbox. No control behavior change.
+- **Status pill replaces the always-visible segmented + checkbox.** A single `<PopoverTrigger>` showing the current visibility ("Private" / "Shared" / "Shared · in feed") opens a popover hosting the _existing_ Private/Shared segmented control + "Show in followers' feed" checkbox. No control behavior change.
 - **Share is owner-primary.** On owner views, Share renders as the largest action affordance at the top of the right strip's action block. On viewer views, Share remains one of two peer actions paired with Bookmark.
-- **Hero footer line.** New small-text line under the title/subtitle group: "*N* items · updated *X* ago." Sourced from items already in the page tree (`items.length`) and `lists.updated_at` (existing column).
+- **Hero footer line.** New small-text line under the title/subtitle group: "_N_ items · updated _X_ ago." Sourced from items already in the page tree (`items.length`) and `lists.updated_at` (existing column).
 - **Action set for owner reduces to three peers + kebab.** Share (primary) at top of action block; Choose items + Edit as a paired secondary row; kebab `⋯` (existing `ListActionsMenu`) as the tertiary affordance.
 - **Left-card flex composition: `space-between`.** Top group (eyebrow + title + subtitle) anchors to the top; footer line anchors to the bottom; the interior flex slack absorbs height differences between owner and viewer right-strip heights so the two cards always land at equal final height.
 
@@ -37,6 +37,7 @@ The product priorities reshape what's primary:
 - `popover-trigger-system`: Add a `tone` prop (`'light' | 'on-dark'`, default `'light'`) to `<PopoverTrigger>` so the primitive can render on saturated dark surfaces (the list hero's gradient card). The existing spec normatively forbids variants — this change relaxes that to allow `tone` specifically, mirroring the pattern already established by `<SegmentedControl tone="on-dark">` in `segmented-control-system`. `active`-state and chevron semantics are unchanged; the addition is purely surface adaptation.
 
 > **Adjacent changes that landed alongside (NOT in redesign-list-hero's scope).** Two follow-on changes layered atop this redesign and have already archived:
+>
 > - `2026-05-21-relabel-and-harden-visibility` — replaced the binary segmented + feed-checkbox picker with a three-row radio menu (`Just me` / `Private` / `Shared`), introduced `<MenuItemRadio>` to the menu primitive, and added crawler-noindex/metadata guards. Modifies `list-visibility` and `menu-system`. Owns the picker's current internals; redesign-list-hero only specifies that a `<VisibilityPicker>` is consumed in the identity zone.
 > - `2026-05-21-add-list-hero-collapse` — added the `HeroCollapseShell` wrapper, the `?hero=closed` URL state, the collapsed strip composition, and the kebab `prependedItems` mechanism. Introduces a new `list-hero-collapse` capability. Layered atop the redesigned hero; this proposal's expanded composition is its expanded state, unchanged.
 
@@ -63,7 +64,7 @@ The product priorities reshape what's primary:
 
 - Hero data is served by `getList(id)`, which this change extends to also eager-load `list_items.item_id` so the hero can compute `itemCount = result.items.length` without a separate DAL call. To match its new payload's invalidation surface, `getList(id)` now carries BOTH `cacheTag('lists')` and `cacheTag('items')`. Existing mutation paths in `app/actions/lists.ts` and `app/actions/items.ts` already call `updateTag('lists')` and `updateTag('items')`, so the hero invalidates correctly on either a list-row or item-row mutation.
 - Avatar source `user.image` is already on the eager-loaded `user` relation — no DAL change.
-- "*X* ago" comes from `lists.updated_at` already on the `getList` response — no DAL change.
+- "_X_ ago" comes from `lists.updated_at` already on the `getList` response — no DAL change.
 - **No new DAL function and no new cache tag.** The coarseness of the existing `'lists'` / `'items'` tags is **out of scope** — a separate `narrow-dal-cache-tags` change is the right home for that perf work.
 
 **Out of scope (separate changes):**

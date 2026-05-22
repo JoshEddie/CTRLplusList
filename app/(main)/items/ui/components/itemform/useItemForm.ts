@@ -60,7 +60,9 @@ export function useItemForm(
     description: initialItem?.description || '',
     image_url: initialItem?.image_url || '',
     quantity_limit:
-      initialItem?.quantity_limit === undefined ? 1 : initialItem.quantity_limit,
+      initialItem?.quantity_limit === undefined
+        ? 1
+        : initialItem.quantity_limit,
     stores: initialItem?.stores?.length
       ? initialItem.stores
       : [{ name: '', link: '', price: '' }],

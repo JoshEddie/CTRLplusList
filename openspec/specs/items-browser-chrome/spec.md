@@ -1,8 +1,11 @@
 # items-browser-chrome Specification
 
 ## Purpose
+
 TBD - created by archiving change compact-items-mobile-chrome. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Items browser chrome scope
 
 The `items-browser-chrome` capability SHALL govern the layout, positioning, and viewport-adaptive behavior of the chrome surrounding the items grid within `ItemsBrowser` — specifically the `.items-toolbar` row, the view-mode rendering of `.item-grid` / `.item-list`, and the `.items-pagination` control. It SHALL apply to every page that mounts `ItemsBrowser`, which today is `.container--items-library` (the `/items` library) and `.container--list-details` (the list-details page items section).
@@ -101,4 +104,3 @@ The `.items-pagination` control SHALL be positioned absolutely at the bottom of 
 
 - **WHEN** the pagination is rendered as a floating overlay
 - **THEN** all pagination buttons (page numbers, prev/next arrows) and the page-size select are clickable/tappable with their existing hit targets and aria-labels per the button-system spec
-

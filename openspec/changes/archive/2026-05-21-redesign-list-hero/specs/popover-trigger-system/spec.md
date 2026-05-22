@@ -2,7 +2,7 @@
 
 ### Requirement: PopoverTrigger has no variant prop
 
-The system SHALL NOT expose a `variant` prop on `<PopoverTrigger>`. Visual variants (primary/secondary/ghost-style families) are an explicit non-feature — the trigger has exactly one *control treatment*: bordered rectangle, optional left icon, label, optional right-side count badge, chevron indicator.
+The system SHALL NOT expose a `variant` prop on `<PopoverTrigger>`. Visual variants (primary/secondary/ghost-style families) are an explicit non-feature — the trigger has exactly one _control treatment_: bordered rectangle, optional left icon, label, optional right-side count badge, chevron indicator.
 
 The system MAY expose a `tone` prop on `<PopoverTrigger>` for **surface adaptation** — the same dimension `<SegmentedControl tone="...">` already covers. `tone` SHALL be limited to `'light' | 'on-dark'`, default `'light'`. `tone` SHALL change only surface colors (background fill, border, text, focus-ring) — NOT geometry, padding, border-radius, chevron treatment, or the count-badge color contract. The `active` boolean continues to be the only modal styling change layered on top of `tone`.
 

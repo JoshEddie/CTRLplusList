@@ -28,7 +28,7 @@ export function useSegmentedContext(): SegmentedContextValue {
   const ctx = useContext(SegmentedContext);
   if (!ctx) {
     throw new Error(
-      '<SegmentedOption> must be rendered inside a <SegmentedControl>',
+      '<SegmentedOption> must be rendered inside a <SegmentedControl>'
     );
   }
   return ctx;
@@ -43,8 +43,15 @@ type SegmentedControlProps<T extends string> = {
 } & Pick<AriaAttributes, 'aria-label' | 'aria-labelledby'>;
 
 function SegmentedControlInner<T extends string>(
-  { value, onChange, tone, children, className, ...aria }: SegmentedControlProps<T>,
-  ref: React.Ref<HTMLDivElement>,
+  {
+    value,
+    onChange,
+    tone,
+    children,
+    className,
+    ...aria
+  }: SegmentedControlProps<T>,
+  ref: React.Ref<HTMLDivElement>
 ) {
   const localRef = useRef<HTMLDivElement | null>(null);
   useImperativeHandle(ref, () => localRef.current as HTMLDivElement);
@@ -62,11 +69,11 @@ function SegmentedControlInner<T extends string>(
         return;
       }
       const options = Array.from(
-        container.querySelectorAll<HTMLElement>('[role="radio"]'),
+        container.querySelectorAll<HTMLElement>('[role="radio"]')
       );
       if (options.length === 0) return;
       const currentIndex = options.findIndex(
-        (o) => o.getAttribute('aria-checked') === 'true',
+        (o) => o.getAttribute('aria-checked') === 'true'
       );
       const forward = e.key === 'ArrowRight' || e.key === 'ArrowDown';
       const nextIndex = forward
@@ -106,5 +113,5 @@ function SegmentedControlInner<T extends string>(
 export const SegmentedControl = forwardRef(SegmentedControlInner) as <
   T extends string,
 >(
-  props: SegmentedControlProps<T> & { ref?: React.Ref<HTMLDivElement> },
+  props: SegmentedControlProps<T> & { ref?: React.Ref<HTMLDivElement> }
 ) => ReturnType<typeof SegmentedControlInner>;

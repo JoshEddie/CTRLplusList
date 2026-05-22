@@ -4,7 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { BsBoxSeam } from 'react-icons/bs';
-import { IoBagCheckOutline, IoHomeOutline, IoReceiptOutline } from 'react-icons/io5';
+import {
+  IoBagCheckOutline,
+  IoHomeOutline,
+  IoReceiptOutline,
+} from 'react-icons/io5';
 import { LuMenu, LuX } from 'react-icons/lu';
 
 const NAV_ITEMS = [
@@ -73,7 +77,9 @@ export default function AppNav() {
             <Link
               key={href}
               href={href}
-              className={active ? 'app-nav-item app-nav-item--active' : 'app-nav-item'}
+              className={
+                active ? 'app-nav-item app-nav-item--active' : 'app-nav-item'
+              }
               aria-current={active ? 'page' : undefined}
             >
               <Icon className="app-nav-item-icon" />

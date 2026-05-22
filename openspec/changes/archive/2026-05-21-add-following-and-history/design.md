@@ -2,8 +2,8 @@
 
 Today the social/curation layer of the app rests on two primitives:
 
-- `lists.shared: boolean` — a list is either private or "anyone with the link can view." Surfaced via the toggle in [ShareList.tsx](app/(main)/lists/ui/components/ShareList.tsx) and the `shareList` action ([app/actions/lists.ts:175](app/actions/lists.ts:175)).
-- `saved_lists(user_id, list_id)` — per-list bookmark. Surfaced via [SaveButton.tsx](app/(main)/lists/ui/components/SaveButton.tsx), the `saveList` / `unsaveList` actions ([app/actions/lists.ts:233](app/actions/lists.ts:233), [app/actions/lists.ts:264](app/actions/lists.ts:264)), and the "Saved Lists" rail on the home page.
+- `lists.shared: boolean` — a list is either private or "anyone with the link can view." Surfaced via the toggle in [ShareList.tsx](<app/(main)/lists/ui/components/ShareList.tsx>) and the `shareList` action ([app/actions/lists.ts:175](app/actions/lists.ts:175)).
+- `saved_lists(user_id, list_id)` — per-list bookmark. Surfaced via [SaveButton.tsx](<app/(main)/lists/ui/components/SaveButton.tsx>), the `saveList` / `unsaveList` actions ([app/actions/lists.ts:233](app/actions/lists.ts:233), [app/actions/lists.ts:264](app/actions/lists.ts:264)), and the "Saved Lists" rail on the home page.
 
 This works for a one-off "I want to remember this list" but fights the grain of an occasion-driven family app where the same person produces a fresh list every cycle. The redesign introduces a person-level relationship (follow) and reframes per-list bookmarks as **history + an explicit pin**.
 
@@ -12,6 +12,7 @@ The change is BREAKING at the schema level. There is no production deployment wi
 ## Goals / Non-Goals
 
 **Goals:**
+
 - A user can follow another user once and automatically see that user's new public lists in their home-page feed.
 - A user can bookmark any list they have access to, and bookmarks survive in history (no hide-on-bookmark surprise).
 - Owners can choose between Private, Unlisted, and Public, with an explicit broadcast moment when going public.
@@ -50,7 +51,7 @@ If an owner explicitly wants a re-broadcast moment, they can flip to `'private'`
 
 **Choice**: Each `saved_lists` row is copied to a `list_visits` row with `favorited_at = NOW()` (or row's original timestamp if we had one — we don't, so NOW() at migration time). `last_visited_at = NOW()`, `visit_count = 0`. The source `saved_lists` rows are left untouched.
 
-**Why**: Existing saves are *explicit user intent* ("I want to keep this") — closer in meaning to bookmark than to "casually visited." Dumping them into raw history loses signal. Promoting to bookmarks preserves user intent.
+**Why**: Existing saves are _explicit user intent_ ("I want to keep this") — closer in meaning to bookmark than to "casually visited." Dumping them into raw history loses signal. Promoting to bookmarks preserves user intent.
 
 **Trade-off**: `visit_count = 0` is a small lie (the user has presumably visited at least once to have saved). Acceptable because visit_count is internal and not surfaced.
 
@@ -73,6 +74,7 @@ If an owner explicitly wants a re-broadcast moment, they can flip to `'private'`
 **Why**: Main and dev share a database. Dropping `lists.shared` would crash main everywhere it queries the `lists` table, not just where it explicitly references the column — Drizzle's typed selects enumerate every declared column. Deferring the drop keeps main fully functional during the soak. The data-copy on forward migration (`visibility = 'unlisted' WHERE shared = true`) plus the dual-write going forward keeps dev's `visibility` view consistent for all writes performed via dev's code path.
 
 **Drift during soak**:
+
 - A write via dev's `setListVisibility` updates both `visibility` and `shared`. Both branches see the same state. ✓
 - A write via main's `shareList(id, true)` updates `shared` only. Dev's `visibility` for that row is stale until someone re-saves via dev's UI.
 - A write via main's `shareList(id, false)` similarly leaves dev's `visibility` stale.
@@ -86,17 +88,20 @@ Stale-on-dev rows are visually inconsistent but not corrupting: dev sees the lis
 ### Decision 5: Visit recording is server-side, on page render, idempotent
 
 **Choice**: `app/(main)/lists/[id]/page.tsx` invokes a server action `recordVisit(list_id)` on render. The action upserts into `list_visits`:
+
 - Insert if no row exists, with `visit_count = 1`, `last_visited_at = NOW()`.
 - Update if a row exists, incrementing `visit_count` and setting `last_visited_at = NOW()`.
 
 No debounce. Every page render counts as a visit.
 
 **Why**:
+
 - Server-side is reliable (no ad-blocker gap, no client-JS dependency).
 - Idempotent on `(user_id, list_id)` so there's exactly one row per pair regardless of visit frequency — no spam in the history UI.
 - Skipping debounce keeps the implementation tiny; `visit_count` is mildly inflated by quick re-renders but it's not surfaced.
 
 **Skip conditions** (all must hold to record):
+
 - Viewer is authenticated.
 - Viewer is **not** the list owner.
 - List visibility allows the viewer to see it (otherwise the page already 404s/redirects before render).
@@ -112,6 +117,7 @@ No debounce. Every page render counts as a visit.
 **Choice**: The list-page secondary CTA is a button labeled **Bookmark** (with `🔖` / `FaBookmark` icon), toggling to **Bookmarked** when active.
 
 **Why**:
+
 - Star is ambiguous between "rate this" and "pin this."
 - Reusing the word "save" causes muscle-memory confusion against the old behavior.
 - Bookmark + bookmark icon is the universal "pin for later" convention (Twitter, browsers, Pocket).
@@ -132,6 +138,7 @@ The "N new" badge gives the recency cue without paying for a separate "What's ne
 ### Decision 9: Symmetric Followers UI; remove vs block are distinct
 
 **Choice**:
+
 - **Remove** deletes the `user_follows` row. The removed user can re-follow.
 - **Block** deletes any existing `user_follows` rows in both directions AND inserts into `user_blocks`. The blocked user cannot follow again until unblocked.
 
@@ -140,6 +147,7 @@ The "N new" badge gives the recency cue without paying for a separate "What's ne
 ### Decision 9a: Block gates URL access while signed in; signed-out access remains intact
 
 **Choice**: When a blocked viewer is **signed in** and navigates to:
+
 - the blocker's list page → redirect to `/lists` (same response as a deleted list)
 - the blocker's profile page → `notFound()` (same response as a non-existent user)
 
@@ -148,24 +156,27 @@ When the blocked viewer is **signed out**, URL access is unchanged. Sign-out is 
 The list-page redirect target is centralized in `lib/listAccess.ts`'s `guardListViewable` helper. Both the list-missing and viewer-blocked branches route through that one helper, so future changes to the response shape (e.g. to a dedicated 404 page that unifies deleted + blocked + private) edit one place.
 
 **Why**:
+
 - The original "blocks affect social graph only" stance left a felt gap: blocking someone did nothing while they were poking around your shared lists in the same browser tab they always use. Casual return-visiting was un-discouraged.
 - The 404/redirect cover is borrowed from how Instagram and (historically) Facebook handle blocked content: make blocked resources indistinguishable from "doesn't exist." A blocked user sees a familiar end state, not a special "BLOCKED" treatment, so confrontation is muted.
 - Parity with existing app idioms keeps the cover honest. Today, a deleted list redirects to `/lists`; a missing user 404s. Blocked = same response per surface = no special tell.
 - Sign-out workaround is acknowledged, not solved. Block is **defense in depth, not a security boundary**. If a list truly needs to be hidden from a specific person, the universal recourse is setting it back to private or deleting it.
 
-**Trade-off**: A blocked user who *does* piece together both surfaces ("their profile is gone AND their list is gone") will suspect. The cover holds at each surface individually but isn't airtight in combination. Acceptable — the friction this adds is real, and the alternative ("BLOCKED" text) is worse.
+**Trade-off**: A blocked user who _does_ piece together both surfaces ("their profile is gone AND their list is gone") will suspect. The cover holds at each surface individually but isn't airtight in combination. Acceptable — the friction this adds is real, and the alternative ("BLOCKED" text) is worse.
 
 ### Decision 9b: Block + connections-page identity polish (full name, follow date, follow disclosure)
 
 > **Note (superseded part):** The follow-disclosure portion of this decision (inline note under the Follow button) was superseded by `colocate-follow-with-owner-name`, which moved the disclosure to a first-follow modal dialog gated on the viewer having any existing follow rows. The full-name storage and connections-page `since` date portions of this decision still stand.
 
 **Choice**:
+
 - Sign-in callback (`lib/auth.ts`) captures `${given_name} ${family_name}` when both are present, instead of trimming to first name only.
 - Casual surfaces (purchase attribution, etc.) continue to derive first-name via `firstNameOf()` in `lib/dal.ts`. The storage change does **not** alter casual display.
 - Connections page rows show the full stored name (helps the owner disambiguate "Josh from college" vs "Josh my cousin") plus a `since` date.
-- The Follow button on list pages renders an inline disclosure note when the viewer is not yet following: *"Shares your name and profile picture with the owner."*
+- The Follow button on list pages renders an inline disclosure note when the viewer is not yet following: _"Shares your name and profile picture with the owner."_
 
 **Why**: Two problems on the connections page were entangled:
+
 1. **Owner-side identity verification**: "Is this Josh-my-friend or Josh-some-stranger?" — image alone isn't enough when display name is just a first name.
 2. **Follower-side disclosure surprise**: a follower might not realize that following exposes their name/picture to the owner.
 
@@ -174,10 +185,11 @@ The full-name storage solves (1) with no display change to casual surfaces — p
 Backfill is lazy: existing users keep their stored first-name-only value until they next sign in. No migration is required, and the connections page is only partially-useful at first (showing first-name-only rows for users who haven't re-authed yet). That partial-usefulness is acceptable for a passive improvement.
 
 **Rejected alternatives**:
+
 - **Follow source** ("followed you via your Birthday 2026 list"): high-signal context, but degrades when the list is deleted. UX would be either "via a deleted list" (clunky) or silently dropping the context (loses signal). Not worth the schema add.
 - **Mutual follows** ("also followed by Mom"): strong social proof, but cold-start problem makes it noise until the graph fills out. Easy to add later.
 - **User-settable display name / bio**: respects follower agency, but most won't bother setting it. Theoretical benefit, practical ~0% adoption at family scale.
-- **Owner-settable private label for each follower**: solves disambiguation permanently, but doesn't help the *first-recognition* moment. Could add later.
+- **Owner-settable private label for each follower**: solves disambiguation permanently, but doesn't help the _first-recognition_ moment. Could add later.
 - **Email exposure**: rejected. Owners get the disambiguation benefit from name + image + date in this context; email would surprise followers and creates a privacy expectation problem.
 
 **Reverses**: Decision implicitly reverses an earlier choice (in pre-OpenSpec code) to store first-name only. That earlier choice was downstream of a different problem — purchase attribution showing full names felt invasive. That problem is independently solved by `firstNameOf()` at the display layer; throwing away storage was overcorrection. Re-storage doesn't change any display surface that was previously first-name-only.
@@ -193,6 +205,7 @@ Backfill is lazy: existing users keep their stored first-name-only value until t
 **Choice**: Each rail (`my-lists`, `following`, `bookmarks`, `recently-visited`) reads/writes `home.rail.<name>.open` in `localStorage`. Default: open. No server persistence; no cross-device sync.
 
 **Why**:
+
 - This is a UI nicety, not user-content state. localStorage is the right surface for it.
 - Cross-device sync would require a JSON column on `users` or a new prefs table — disproportionate cost.
 
@@ -201,6 +214,7 @@ Backfill is lazy: existing users keep their stored first-name-only value until t
 ### Decision 12: Fully additive migration, simple down-migration
 
 **Choice**: One Drizzle migration handles:
+
 1. `ALTER TABLE lists ADD COLUMN visibility text NOT NULL DEFAULT 'private'`
 2. `ALTER TABLE lists ADD COLUMN shared_at timestamp`
 3. `UPDATE lists SET visibility = 'unlisted', shared_at = created_at WHERE shared = true`
@@ -213,6 +227,7 @@ Backfill is lazy: existing users keep their stored first-name-only value until t
 **No DROP statements.** `lists.shared` (Decision 4b) and `saved_lists` (Decision 4a) are both preserved. The migration is fully additive at the schema level, which means main continues to operate against the same database with zero code changes during the soak.
 
 Down-migration:
+
 - Drop `list_visits`, `user_follows`, `user_blocks`.
 - Drop `users.last_seen_following_at`.
 - Drop `lists.visibility` and `lists.shared_at`.

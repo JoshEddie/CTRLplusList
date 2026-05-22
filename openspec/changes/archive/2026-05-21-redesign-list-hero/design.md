@@ -1,6 +1,6 @@
 ## Context
 
-The list-detail hero at `/lists/[id]` is rendered by [ListDetails.tsx](app/(main)/lists/ui/components/ListDetails.tsx) and styled by [app/(main)/lists/ui/styles/list.css](app/(main)/lists/ui/styles/list.css). Today's structure is a single column inside one full-bleed purple gradient band:
+The list-detail hero at `/lists/[id]` is rendered by [ListDetails.tsx](<app/(main)/lists/ui/components/ListDetails.tsx>) and styled by [app/(main)/lists/ui/styles/list.css](<app/(main)/lists/ui/styles/list.css>). Today's structure is a single column inside one full-bleed purple gradient band:
 
 1. Optional preview banner (owner-in-preview-mode)
 2. `.list-hero-row` (flex row containing `.list-hero-info` on the left and the owner-only `.list-hero-side` visibility picker on the right)
@@ -11,6 +11,7 @@ Owner views fill the right rail with the visibility picker (segmented + feed-tog
 The in-flight `refine-list-hero-readability` change introduced the `list-hero-header` capability and patched contrast / sizing / right-aligned-action-row but kept the underlying single-column shape. This change abandons that shape entirely and replaces the capability's contents.
 
 Binding upstream constraints (verified, see proposal):
+
 - `following`: Follow button stays in a byline sub-row colocated with the linked owner name on viewer views.
 - `list-visibility`: Private/Shared binary + "Show in followers' feed" checkbox composition is normative.
 - `popover-trigger-system`: `<PopoverTrigger>` is the only correct primitive for the status pill; no variants.
@@ -31,14 +32,14 @@ Share behavior (locked): desktop = one-tap copy URL. Mobile = native share sheet
 - Viewer views anchor on the owner with a real avatar (36px) and keep Follow next to the name per `following`.
 - Visibility picker shrinks to a status pill (`<PopoverTrigger>`) — full segmented + checkbox lives in the popover body, behavior unchanged.
 - Eyebrow above title replaces the inline occasion chip — same visual vocabulary, better placement.
-- Hero footer line ("*N* items · updated *X* ago") gives a free glance-fact at no DAL cost.
+- Hero footer line ("_N_ items · updated _X_ ago") gives a free glance-fact at no DAL cost.
 - All text in the hero meets WCAG 2.1 AA contrast — as a natural consequence of card layout (gradient under text is more controlled), not a separate floor requirement.
 - Mobile (< 800px) stacks the two cards vertically with a hairline divider; action pairs go 50/50 full-width.
 
 **Non-Goals:**
 
 - No new design-system primitives. (Avatar is a co-located component, not a primitive yet.)
-- No changes to `following`, `list-visibility`, or any cross-cutting primitive spec. We *use* them, we don't modify them.
+- No changes to `following`, `list-visibility`, or any cross-cutting primitive spec. We _use_ them, we don't modify them.
 - No new server-side reads, new cache tags, or DAL changes.
 - No new Token in `global.css` unless an existing token can't carry the value. Eyebrow color, hairline color, and card gradient all map to existing tokens.
 - No copy changes (button labels, status labels) beyond what's mechanically required by repositioning.
@@ -71,11 +72,12 @@ The hero renders as ONE continuous gradient panel containing two semantic zones:
 2. The second build introduced a **single gradient panel + thin vertical divider** between the two zones. Rejected because the divider visually competed with the typography — the affordance "two zones" was already carried by content type alone. The divider added chrome without adding signal.
 3. The shipped decision uses a **single gradient panel with no inter-zone divider**. Typography composition alone differentiates the two zones. White-surface separation moved into the page surrounding the hero, not inside it.
 
-**Rationale:** The gradient is a brand identity, not a structural device. Keeping it continuous preserves that identity. The two-role affordance (identity vs. controls) is signaled by what each zone *contains*, not by a chrome separator.
+**Rationale:** The gradient is a brand identity, not a structural device. Keeping it continuous preserves that identity. The two-role affordance (identity vs. controls) is signaled by what each zone _contains_, not by a chrome separator.
 
 **Alternatives considered and kept rejected:**
-- *No gradient at all (concept C from explore).* Tempting because it eliminates the contrast problem at the source. Rejected because purple is a load-bearing brand element of the surface; removing it makes `/lists/[id]` feel like a different app.
-- *Cards on a gradient.* (Outer band keeps gradient; cards are glass on top.) Re-introduces the contrast problem and adds chrome.
+
+- _No gradient at all (concept C from explore)._ Tempting because it eliminates the contrast problem at the source. Rejected because purple is a load-bearing brand element of the surface; removing it makes `/lists/[id]` feel like a different app.
+- _Cards on a gradient._ (Outer band keeps gradient; cards are glass on top.) Re-introduces the contrast problem and adds chrome.
 
 ### Decision 2: Left card uses `justify-content: space-between`
 
@@ -84,21 +86,23 @@ The left card is a flex column with `justify-content: space-between` — top gro
 **Rationale:** Right card content varies meaningfully between owner (~120px content) and viewer (~96px content), and may grow in the future (e.g., owner-with-collaborators view). A fixed-height left card would either short the taller right card or leave dead space below the viewer right card. `space-between` is a self-balancing primitive — increase right-card content, the left card's interior grows; both finish at equal height.
 
 **Alternatives considered:**
-- *Vertically center left content.* Visually OK but creates a floating-content effect; the footer line ("12 items · updated 2d") reads disconnected from the identity block. Anchoring it to the bottom makes it feel deliberately separate.
-- *Match heights via JS measurement.* Imperative, brittle, breaks on viewport changes.
-- *Equal padding on both cards, accept asymmetric heights.* Looks broken on the surface — the two cards announce themselves as a pair via their shared geometry, so unequal heights read as a bug, not a deliberate compositional choice.
+
+- _Vertically center left content._ Visually OK but creates a floating-content effect; the footer line ("12 items · updated 2d") reads disconnected from the identity block. Anchoring it to the bottom makes it feel deliberately separate.
+- _Match heights via JS measurement._ Imperative, brittle, breaks on viewport changes.
+- _Equal padding on both cards, accept asymmetric heights._ Looks broken on the surface — the two cards announce themselves as a pair via their shared geometry, so unequal heights read as a bug, not a deliberate compositional choice.
 
 ### Decision 3: Eyebrow above title replaces inline occasion chip
 
-The occasion (e.g. "WEDDING", "BABY SHOWER", "BIRTHDAY") graduates from a small chip wedged into the date row into an eyebrow label *above* the title. Visual treatment carries forward the current chip's vocabulary — small-caps, 700 weight, letter-spaced, white-on-translucent — so users who know the existing chip recognize the eyebrow as the same affordance.
+The occasion (e.g. "WEDDING", "BABY SHOWER", "BIRTHDAY") graduates from a small chip wedged into the date row into an eyebrow label _above_ the title. Visual treatment carries forward the current chip's vocabulary — small-caps, 700 weight, letter-spaced, white-on-translucent — so users who know the existing chip recognize the eyebrow as the same affordance.
 
 Eyebrow renders only when `list.occasion` is non-empty.
 
-**Rationale:** Eyebrows are a well-understood typographic pattern for above-title category labels (magazine articles, sections, newspaper subheads). The occasion is a *category*, and putting it above the title matches that mental model. The old chip-in-date-row implicitly read as a tag, which is a weaker signal.
+**Rationale:** Eyebrows are a well-understood typographic pattern for above-title category labels (magazine articles, sections, newspaper subheads). The occasion is a _category_, and putting it above the title matches that mental model. The old chip-in-date-row implicitly read as a tag, which is a weaker signal.
 
 **Alternatives considered:**
-- *Display occasion in the prose subtitle line.* Made sense in the explore-mode "sentence as headline" concept (A) but loses out to the keep-current-vocabulary preference the user expressed. Eyebrow keeps the existing chip aesthetic + relocates.
-- *Drop the occasion chip entirely.* Free real estate but loses categorical context valuable for navigating multiple shared lists.
+
+- _Display occasion in the prose subtitle line._ Made sense in the explore-mode "sentence as headline" concept (A) but loses out to the keep-current-vocabulary preference the user expressed. Eyebrow keeps the existing chip aesthetic + relocates.
+- _Drop the occasion chip entirely._ Free real estate but loses categorical context valuable for navigating multiple shared lists.
 
 ### Decision 4: Visibility picker + Share clustered at the top of the identity zone
 
@@ -106,11 +110,11 @@ The owner's visibility picker renders inside `.list-hero-identity-top`, anchored
 
 **Placement evolution during implementation:**
 
-1. *Original:* pill lived inside the controls zone, above a divider, above secondary actions. Created a right-heavy hero (controls had Share + pill + divider + secondary block ≈ 149px stacked) while the identity zone had only short text rows.
-2. *Second iteration (mid-implementation, prior to user iteration):* moved the pill to the identity zone directly BELOW the subtitle. Rebalanced the row counts but pushed an interactive element into the bottom half of the identity zone, away from the visual "this is the list" cluster at the top.
-3. *Shipped:* pill + Share share a wrapper at the TOP of the identity zone, above the title. The picker's status word and the Share affordance both describe what's actively true about the list socially; pairing them above the title makes them read as the list's social-state header rather than ambient controls.
+1. _Original:_ pill lived inside the controls zone, above a divider, above secondary actions. Created a right-heavy hero (controls had Share + pill + divider + secondary block ≈ 149px stacked) while the identity zone had only short text rows.
+2. _Second iteration (mid-implementation, prior to user iteration):_ moved the pill to the identity zone directly BELOW the subtitle. Rebalanced the row counts but pushed an interactive element into the bottom half of the identity zone, away from the visual "this is the list" cluster at the top.
+3. _Shipped:_ pill + Share share a wrapper at the TOP of the identity zone, above the title. The picker's status word and the Share affordance both describe what's actively true about the list socially; pairing them above the title makes them read as the list's social-state header rather than ambient controls.
 
-**Why pair Share with the picker (not the controls card):** the Share action is *about* the list's visibility — sharing requires a non-private state, and pressing Share on a private list promotes it. Clustering Share with the picker makes that coupling explicit and removes the otherwise-redundant primary control from the controls card.
+**Why pair Share with the picker (not the controls card):** the Share action is _about_ the list's visibility — sharing requires a non-private state, and pressing Share on a private list promotes it. Clustering Share with the picker makes that coupling explicit and removes the otherwise-redundant primary control from the controls card.
 
 **Picker internals (out of this change's scope):** the picker itself was reworked separately by the `2026-05-21-relabel-and-harden-visibility` change — a three-row radio menu (`Just me` / `Private` / `Shared`) using `<MenuItemRadio>`, not the segmented + checkbox originally specified here. This change only specifies that `<VisibilityPicker>` is consumed at the new placement; its labels, icons, and internals are owned by `list-visibility`.
 
@@ -121,17 +125,19 @@ The primitive is extended with a `tone` prop (`'light' | 'on-dark'`, default `'l
 > **Implementation reveal:** the original spec for `popover-trigger-system` normatively forbade variants. Discovered during implementation that the primitive's form-input default visual treatment is unworkable on the hero's gradient card. Resolved by adding `tone` (not `variant`) as a surface-adaptation prop — same pattern that `segmented-control-system` already uses. Spec modification is in scope for this change rather than a separate sequencing step.
 
 Status pill label resolves from the current `visibility` value:
+
 - `'private'` → label "Private"
 - `'unlisted'` → label "Shared"
 - `'public'` → label "Shared · in feed"
 
 A small status dot in the pill's left slot color-codes the state (gray = private, white = shared, brand-color = public).
 
-**Rationale:** The full segmented control consumes ~260px of right-rail width permanently for an action owners take rarely (changing visibility is a once-or-twice-a-list decision, not a per-session one). A pill that *summarizes* the state and *defers* the controls is the standard discoverability/density trade-off for low-frequency controls. `<PopoverTrigger>` is the primitive built for exactly this pattern; using it costs zero design system work.
+**Rationale:** The full segmented control consumes ~260px of right-rail width permanently for an action owners take rarely (changing visibility is a once-or-twice-a-list decision, not a per-session one). A pill that _summarizes_ the state and _defers_ the controls is the standard discoverability/density trade-off for low-frequency controls. `<PopoverTrigger>` is the primitive built for exactly this pattern; using it costs zero design system work.
 
 **Alternatives considered:**
-- *Keep segmented visible, shrink to icons.* Saves some width but loses label legibility; pinned controls for low-frequency actions waste the most valuable rail real estate.
-- *Move to a sidebar / settings drawer.* Discoverability hit too large for a setting visible on every load today.
+
+- _Keep segmented visible, shrink to icons._ Saves some width but loses label legibility; pinned controls for low-frequency actions waste the most valuable rail real estate.
+- _Move to a sidebar / settings drawer._ Discoverability hit too large for a setting visible on every load today.
 
 **Trade-off accepted:** Owners click once more to change visibility. Was always-zero-click, now always-one-click. Worth it for the rail space savings.
 
@@ -142,12 +148,14 @@ Owner views render NO avatar, NO owner name, NO Follow button (there's no one to
 **Rationale:** "Alice (you)" on Alice's own list is redundant. The page already says "MY LISTS" in the nav and the list URL is owner-rooted; reinforcing the owner identity inside the list itself adds zero information.
 
 **Alternatives considered:**
-- *Keep a small "Owned by you" label.* Affirms ownership but the page surface already does that via the editable affordances; the label would just be visual chrome.
-- *Use the owner identity slot for "Owner tools" header.* Section labels for two-button groups are over-structured; the divider does this job.
+
+- _Keep a small "Owned by you" label._ Affirms ownership but the page surface already does that via the editable affordances; the label would just be visual chrome.
+- _Use the owner identity slot for "Owner tools" header._ Section labels for two-button groups are over-structured; the divider does this job.
 
 ### Decision 6: Avatar resolution chain
 
 Viewer-view avatar resolves in three tiers:
+
 1. `user.image` from the eager-loaded `user` relation on `getList(id)`. (Google OAuth populates this with either the user's real photo or Google's own initials-avatar URL.)
 2. Our own initials chip — first letter of `users.name` on a `--primary-color-light` background, white text. Rendered as a 36px circle, sized to match a real avatar.
 3. A generic `<FaUser>` icon on the same circle if `name` is also somehow null (defensive only — `name` is non-null per the auth flow).
@@ -168,17 +176,19 @@ Share's behavior is unchanged: desktop copies URL to clipboard with a toast; mob
 
 ### Decision 8: Hero footer line — "N items · updated X ago"
 
-The left card's footer row reads "*N* items · updated *X*" where:
-- *N* is `items.length` from the items already fetched by the page (no new DAL call).
-- *X* is a relative date string ("2 days ago", "just now", "3 weeks ago") derived from `lists.updated_at`.
+The left card's footer row reads "_N_ items · updated _X_" where:
+
+- _N_ is `items.length` from the items already fetched by the page (no new DAL call).
+- _X_ is a relative date string ("2 days ago", "just now", "3 weeks ago") derived from `lists.updated_at`.
 
 Mobile renders this same line as the bottom of the stacked identity card.
 
 **Rationale:** It's a free glance-fact (no new DB query), and it carries useful information for both owners (am I making progress on this list?) and viewers (is this list active or abandoned?). It also serves a structural role: it's the visual anchor for the left card's bottom edge that lets `space-between` work without the card looking content-light.
 
 **Alternatives considered:**
-- *Skip the footer line.* `space-between` still works if the top group is the only child — slack just lives below it — but the card reads top-heavy.
-- *Owner-only metadata (e.g., "Public · last edited 2d ago").* Owner views care about visibility, but the status pill already shows that. Item count is genuinely useful to owners (how many items have I added?).
+
+- _Skip the footer line._ `space-between` still works if the top group is the only child — slack just lives below it — but the card reads top-heavy.
+- _Owner-only metadata (e.g., "Public · last edited 2d ago")._ Owner views care about visibility, but the status pill already shows that. Item count is genuinely useful to owners (how many items have I added?).
 
 ### Decision 9: Gradient lives on the outer `.list-hero-grid`, zones are transparent
 
@@ -209,8 +219,9 @@ At < 800px, the two cards stop being side-by-side and stack vertically. The whit
 Action pairs (Share/Bookmark for viewer; Choose items/Edit for owner) use `flex: 1 1 0` so they split the available width evenly. Kebab drops to its own row at the bottom-right.
 
 **Alternatives considered:**
-- *Keep two cards stacked.* Two separate gradient panels stacked feels heavy and dated on a phone screen. The hairline divider keeps the two-roles affordance lighter.
-- *Switch to a single-column layout that doesn't visually distinguish the two roles.* Loses the design's main organizing principle.
+
+- _Keep two cards stacked._ Two separate gradient panels stacked feels heavy and dated on a phone screen. The hairline divider keeps the two-roles affordance lighter.
+- _Switch to a single-column layout that doesn't visually distinguish the two roles._ Loses the design's main organizing principle.
 
 ### Decision 11 (rejected): Promote Avatar to a design-system primitive
 
@@ -249,6 +260,6 @@ Rollback: revert the PR.
 ## Open Questions
 
 - **Relative-time format granularity.** "2 days ago" vs "2d ago" vs "May 19". Lean toward verbose ("2 days ago") at desktop and short ("2d ago") at mobile — but this is taste. Final call at implementation.
-- **Should the status pill show the visibility *icon* (lock / share-arrow / globe) in addition to the dot?** Adds glanceability. Risks repeating the segmented control's iconography for diminishing returns. Default = dot only; add icon if the visual review shows the pill reading ambiguously.
+- **Should the status pill show the visibility _icon_ (lock / share-arrow / globe) in addition to the dot?** Adds glanceability. Risks repeating the segmented control's iconography for diminishing returns. Default = dot only; add icon if the visual review shows the pill reading ambiguously.
 - **Mobile: where does the kebab live in the owner's action row?** Options: (a) its own row at the bottom-right (current sketch), or (b) inline with Edit (right-justified inside the Edit row). (a) is cleaner at very narrow widths; (b) is denser. Decide at implementation under real phone widths.
 - **Eyebrow color treatment.** Stay with white-on-translucent (matches current chip)? Or shift to a brand accent (gold/coral on the gradient)? Default = match current chip, but worth a visual-review look.

@@ -11,6 +11,7 @@ The codebase has three parallel row-layout systems for item rows:
 This change closes that gap. The shared row primitive — `<Item />` rendered with `preview` — already exists and is used by the item-form V2 split-pane. The checkbox primitive — `<CheckboxField>` from `form-field-system` — also already exists. The work is composition + deletion, not new primitive design.
 
 **Current state (`.choose-items-row`):**
+
 - `<button aria-pressed>` wrapping the entire row.
 - Inside: hand-rolled `<span>` "checkbox" with conditional `<svg>` checkmark (no real `<input type="checkbox">`).
 - Hand-rolled `.choose-items-chip` / `.choose-items-chip-static` markup that bypasses `<StoreLinks>` and the `+N` popover.
@@ -21,6 +22,7 @@ This change closes that gap. The shared row primitive — `<Item />` rendered wi
 - Hard-coded color literals on `.is-removing` modifiers (`#fff5f5`, `#fee2e2`, `#f87171`) that dodged the Stage 5.7 token migration.
 
 **Target state:**
+
 - `<label class="choose-items-select">` wraps `<CheckboxField label={item.name}>` + `<Item preview />`.
 - All row-shape concerns delegated to `Item` and its shared `.item-list .item-container` CSS.
 - Selection state lives on the `<label>` as additive background-color modifiers (`.is-on`, `.is-removing`) layered on top of the shared row's default.
@@ -31,6 +33,7 @@ This change closes that gap. The shared row primitive — `<Item />` rendered wi
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Bring `/lists/[id]/choose-items` row anatomy to literal parity with the items-library list view at every breakpoint covered by the shared row.
 - Eliminate the bespoke `.choose-items-row` / `.choose-items-chip*` / `.choose-items-thumb*` / `.choose-items-name` / `.choose-items-price*` CSS rules; the row inherits the shared rules.
 - Restore native checkbox a11y via `<CheckboxField>` (already mandated by `form-field-system`).
@@ -39,6 +42,7 @@ This change closes that gap. The shared row primitive — `<Item />` rendered wi
 - Resolve the "Note (deferred)" paragraph in the active `item-store-links` spec.
 
 **Non-Goals:**
+
 - Changing `<Item />`'s contract or any of its existing call sites' rendered output (preview-mode behavior is already what we need — extending it is a Decision below, not a goal).
 - Changing the `.choose-items-pg-hd*` page header chrome (Stage 5.4 work; visually correct as-is).
 - Changing the `.choose-items-sticky-ft*` footer or change-tracking count logic.
@@ -53,13 +57,14 @@ This change closes that gap. The shared row primitive — `<Item />` rendered wi
 
 The picker row is logically `[leading: checkbox] + [shared row body]`. Two natural shapes:
 
-**Option A (chosen)**: outer `<label>` wraps both the checkbox and the unmodified `<Item preview />`. The checkbox sits *outside* `<Item>` in the DOM tree but visually inside the row via grid layout on the `<label>`.
+**Option A (chosen)**: outer `<label>` wraps both the checkbox and the unmodified `<Item preview />`. The checkbox sits _outside_ `<Item>` in the DOM tree but visually inside the row via grid layout on the `<label>`.
 
 **Option B (rejected)**: extend `<Item>` to accept a `leading` slot prop (`leading?: ReactNode`) that renders into a new "col 0" of the grid, analog of how `.sortable-item` adds a drag handle in a wrapping `.sortable-item` element.
 
 A wins because:
+
 - `<Item>` stays exactly as it is — zero risk to existing callers.
-- Mirrors how `.sortable-item` handles its drag handle today (the handle lives in a *wrapping* element, not inside `<Item>`). Symmetry, not divergence.
+- Mirrors how `.sortable-item` handles its drag handle today (the handle lives in a _wrapping_ element, not inside `<Item>`). Symmetry, not divergence.
 - The wrapping element (`<label>`) is semantically required for the checkbox-toggles-on-click behavior; sliding the checkbox inside `<Item>` would force the label boundary inward and complicate the surrounding `<li>` markup.
 
 Trade-off: the grid that places the checkbox in the leading column lives on `.choose-items-select` (the `<label>`), not on `.item-container`. The 5-col shared grid inside `<Item>` is unchanged; the picker's outer grid is a 2-col grid (`auto 1fr`) where col 1 is the checkbox and col 2 is the entire `<Item />`. Two grids nested. Acceptable because (a) the inner shared grid is the source of truth for the item content layout; (b) the outer grid only positions one extra element.
@@ -74,11 +79,11 @@ Trade-off: the grid that places the checkbox in the leading column lives on `.ch
 
 **Option C (rejected)**: extend `<CheckboxField>` with a `hideLabel` or `aria-label`-only prop. This is the "right" long-term answer if more callers need it, but no other caller does today. YAGNI — page-scoped CSS to hide the inner `<span>` is sufficient and keeps the primitive contract intact.
 
-Note: `<CheckboxField>` already wraps in `<label>` internally. So actually we have *nested labels* — the outer row `<label>` and the inner `<CheckboxField>` `<label>`. Browsers permit nested labels but only the innermost has effect for the form control association. This is fine because the inner `<label>` correctly associates the checkbox with the (hidden) `<span>` text; the outer "label" need not be a `<label>` element at all.
+Note: `<CheckboxField>` already wraps in `<label>` internally. So actually we have _nested labels_ — the outer row `<label>` and the inner `<CheckboxField>` `<label>`. Browsers permit nested labels but only the innermost has effect for the form control association. This is fine because the inner `<label>` correctly associates the checkbox with the (hidden) `<span>` text; the outer "label" need not be a `<label>` element at all.
 
 **Revision to D1/D2**: the outer wrapper SHOULD be a `<div class="choose-items-select" onClick={toggle}>`, not a `<label>`. The checkbox handles its own labeling via `<CheckboxField>`. Click-anywhere-on-the-row toggles by virtue of the `<div>`'s `onClick`. Tapping the checkbox itself triggers the native input change. Both paths land in the same state.
 
-But that loses the native "click label toggles input" affordance. Better: keep the outer `<label htmlFor={inputId}>` (use `id` on the input, `htmlFor` on the outer label) — the outermost `<label>` with `htmlFor` matching the input's `id` *does* establish a label-input association even when the input is also wrapped by a closer `<label>`. This gives us click-anywhere-to-toggle without needing JS, and the inner `<CheckboxField>` label still owns the accessible name.
+But that loses the native "click label toggles input" affordance. Better: keep the outer `<label htmlFor={inputId}>` (use `id` on the input, `htmlFor` on the outer label) — the outermost `<label>` with `htmlFor` matching the input's `id` _does_ establish a label-input association even when the input is also wrapped by a closer `<label>`. This gives us click-anywhere-to-toggle without needing JS, and the inner `<CheckboxField>` label still owns the accessible name.
 
 **Final**: outer `<label htmlFor={checkboxId}>` + inner `<CheckboxField id={checkboxId} label={item.name}>` (label text sr-only via page CSS) + `<Item preview />`. The outer label provides click affordance; the inner provides the accessible name.
 
@@ -104,7 +109,7 @@ Today's `.choose-items-row.is-on` / `.choose-items-row.is-removing` are backgrou
 
 The strike-through on the removing-state item name moves from `.choose-items-name.is-strike` (today: applied directly to the JSX-controlled name span) to `.choose-items-select.is-removing .itemName` (CSS-only, no JSX coordination required). Documented as a page-scoped exception in `list.css` adjacent to the `.choose-items-select` rule.
 
-The "IN LIST" badge (`<span class="choose-items-in-badge">In list</span>`) and "archived" badge (`<span class="choose-items-archived-badge">archived</span>`) live *inside* the row. Today they sit alongside the name inside `.choose-items-name`. With `<Item>` rendering the name, they no longer have an in-component injection point.
+The "IN LIST" badge (`<span class="choose-items-in-badge">In list</span>`) and "archived" badge (`<span class="choose-items-archived-badge">archived</span>`) live _inside_ the row. Today they sit alongside the name inside `.choose-items-name`. With `<Item>` rendering the name, they no longer have an in-component injection point.
 
 **Option A (chosen)**: render the badges as siblings of `<Item>` inside the `<label>`, absolute-positioned over the upper-right corner of the row. Adjacent to where the name is, visually grouped with the item identity. Keeps `<Item>` untouched.
 

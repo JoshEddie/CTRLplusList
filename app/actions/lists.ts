@@ -363,7 +363,8 @@ async function authedUserId(): Promise<string | null> {
 export async function recordVisit(list_id: string): Promise<ActionResponse> {
   try {
     const userId = await authedUserId();
-    if (!userId) return { success: true, message: 'Not authenticated; skipped' };
+    if (!userId)
+      return { success: true, message: 'Not authenticated; skipped' };
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, list_id),
@@ -435,9 +436,7 @@ export async function bookmarkList(list_id: string): Promise<ActionResponse> {
   }
 }
 
-export async function unbookmarkList(
-  list_id: string
-): Promise<ActionResponse> {
+export async function unbookmarkList(list_id: string): Promise<ActionResponse> {
   try {
     const userId = await authedUserId();
     if (!userId) {
@@ -448,10 +447,7 @@ export async function unbookmarkList(
       .update(list_visits)
       .set({ favorited_at: null })
       .where(
-        and(
-          eq(list_visits.user_id, userId),
-          eq(list_visits.list_id, list_id)
-        )
+        and(eq(list_visits.user_id, userId), eq(list_visits.list_id, list_id))
       );
 
     updateTag('list_visits');
@@ -479,10 +475,7 @@ export async function clearVisitHistory(opts: {
       await db
         .delete(list_visits)
         .where(
-          and(
-            eq(list_visits.user_id, userId),
-            isNull(list_visits.favorited_at)
-          )
+          and(eq(list_visits.user_id, userId), isNull(list_visits.favorited_at))
         );
       await db
         .update(list_visits)
@@ -530,19 +523,13 @@ export async function removeVisit(list_id: string): Promise<ActionResponse> {
         .update(list_visits)
         .set({ last_visited_at: null })
         .where(
-          and(
-            eq(list_visits.user_id, userId),
-            eq(list_visits.list_id, list_id)
-          )
+          and(eq(list_visits.user_id, userId), eq(list_visits.list_id, list_id))
         );
     } else {
       await db
         .delete(list_visits)
         .where(
-          and(
-            eq(list_visits.user_id, userId),
-            eq(list_visits.list_id, list_id)
-          )
+          and(eq(list_visits.user_id, userId), eq(list_visits.list_id, list_id))
         );
     }
 
@@ -722,10 +709,7 @@ export async function updatePriority(
       .select({ position: list_items.position })
       .from(list_items)
       .where(
-        and(
-          eq(list_items.list_id, listId),
-          eq(list_items.item_id, item_id)
-        )
+        and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
       )
       .limit(1);
 
@@ -733,10 +717,7 @@ export async function updatePriority(
       .select({ position: list_items.position })
       .from(list_items)
       .where(
-        and(
-          eq(list_items.list_id, listId),
-          eq(list_items.item_id, target_id)
-        )
+        and(eq(list_items.list_id, listId), eq(list_items.item_id, target_id))
       )
       .limit(1);
 
@@ -806,10 +787,7 @@ export async function updatePriority(
         .update(list_items)
         .set({ position: new_position })
         .where(
-          and(
-            eq(list_items.list_id, listId),
-            eq(list_items.item_id, item_id)
-          )
+          and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
         );
     }
 

@@ -14,7 +14,13 @@ type SelectFieldProps = FieldWrapperProps & {
   fieldSize?: FormSize;
 } & Omit<
     ComponentPropsWithRef<'select'>,
-    'className' | 'disabled' | 'id' | 'children' | 'aria-invalid' | 'aria-required' | 'aria-describedby'
+    | 'className'
+    | 'disabled'
+    | 'id'
+    | 'children'
+    | 'aria-invalid'
+    | 'aria-required'
+    | 'aria-describedby'
   >;
 
 export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
@@ -33,7 +39,7 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
       fieldSize,
       ...selectProps
     },
-    ref,
+    ref
   ) {
     return (
       <FormField
@@ -63,7 +69,7 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
         </select>
       </FormField>
     );
-  },
+  }
 );
 
 SelectField.displayName = 'SelectField';

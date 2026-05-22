@@ -545,7 +545,9 @@
   background: none;
   border: none;
   color: var(--muted-text-color);
-  font: 500 12px var(--font-roboto-condensed), sans-serif;
+  font:
+    500 12px var(--font-roboto-condensed),
+    sans-serif;
   cursor: pointer;
   padding: 0;
   text-decoration: none;
@@ -570,16 +572,19 @@
   color: var(--primary-color);
 }
 
-
 @media (max-width: 600px) {
-  .choose-items-pg-title { font-size: 20px; }
+  .choose-items-pg-title {
+    font-size: 20px;
+  }
 }
 
 .choose-items-undo {
   background: none;
   border: none;
   color: var(--primary-color);
-  font: 600 13px var(--font-roboto-condensed), sans-serif;
+  font:
+    600 13px var(--font-roboto-condensed),
+    sans-serif;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -793,4 +798,3 @@
     padding: 12px 20px;
   }
 }
-

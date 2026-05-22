@@ -1,6 +1,6 @@
 ## Why
 
-`.choose-items-row` at `/lists/[id]/choose-items` is the last surviving parallel row-layout in the codebase. The archived change `replace-storelinks-expand-with-popover` explicitly scoped the migration of choose-items onto the shared row primitive (proposal §"Choose-items migration"), but at implementation time §13 was pragmatically downscoped to *mobile card-feel + descriptions only* and the literal grid-template / JSX consolidation was **deferred to a focused follow-up change `consolidate-row-layouts`** (the active spec for `item-store-links` even names this change by slug — see the "Note (deferred)" under the choose-items requirement).
+`.choose-items-row` at `/lists/[id]/choose-items` is the last surviving parallel row-layout in the codebase. The archived change `replace-storelinks-expand-with-popover` explicitly scoped the migration of choose-items onto the shared row primitive (proposal §"Choose-items migration"), but at implementation time §13 was pragmatically downscoped to _mobile card-feel + descriptions only_ and the literal grid-template / JSX consolidation was **deferred to a focused follow-up change `consolidate-row-layouts`** (the active spec for `item-store-links` even names this change by slug — see the "Note (deferred)" under the choose-items requirement).
 
 This is that change. Closing the gap removes:
 
@@ -48,31 +48,39 @@ Inherited constraints already binding via active specs:
 ## Impact
 
 ### Components
+
 - **`app/(main)/lists/[id]/choose-items/ChooseItemsForm.tsx`** — significant rewrite of the row JSX (~150 lines simplify to ~30): drop the `<button>` row wrapper, the hand-rolled checkbox `<svg>`, the inline `<img>`/empty-thumb, the name/description/from-label/chips/right-column markup, the `e.stopPropagation()` on chip onClick. Replace with `<label class="choose-items-select">` wrapping `<CheckboxField>` + `<Item preview />`. Toggle state moves from `onClick` to `onChange` on the checkbox input.
 
 ### Styles
+
 - **`app/(main)/lists/ui/styles/list.css`** — delete the ~250 lines of `.choose-items-row` / `.choose-items-cb` / `.choose-items-thumb*` / `.choose-items-main` / `.choose-items-name` / `.choose-items-from` / `.choose-items-description` / `.choose-items-chips*` / `.choose-items-chip*` / `.choose-items-right` / `.choose-items-price*` / `.choose-items-stores-count` rules plus their `@media (max-width: 599px)` and `@media (max-width: 500px)` overrides. Retain `.choose-items-list`, `.choose-items-list > li`, `.choose-items-in-badge`, `.choose-items-archived-badge`, `.choose-items-pg-hd*`, `.choose-items-sticky-ft*`, `.choose-items-count*`, `.choose-items-undo`. Add `.choose-items-select` (the new `<label>` wrapper — `display: block; cursor: pointer; position: relative;`) plus state modifier rules (`.choose-items-select.is-on { background: var(--card-accent-background-color); }`, `.choose-items-select.is-removing { background: var(--remove-bg); }`) and a strike-through rule for the item name inside `.is-removing` rows.
 
 ### Tokens
+
 - **`app/ui/styles/global.css`** — add `--remove-bg` (the tokenized replacement for `#fff5f5`) if visual review confirms a distinct removing-state background is needed. Else reuse `--secondary-background-color` and skip the token addition.
 
 ### Spec deltas (delivered with this change)
+
 - `openspec/changes/consolidate-row-layouts/specs/item-store-links/spec.md` — MODIFIED delta to the existing Requirement "Choose-items SHALL adopt the shared row's visual treatment at mobile and render descriptions" (tightens to full grid-template parity; removes the deferred-note paragraph).
 - `openspec/changes/consolidate-row-layouts/specs/list-item-management/spec.md` — MODIFIED delta adding a new Requirement on choose-items row composition (MUST consume the shared row primitive + `<CheckboxField>`).
 
 ### Primitives consumed (unchanged contracts)
+
 - `<Item preview />` from `app/(main)/items/ui/components/Item.tsx` — already exists; used today by the item-form V2 split-pane preview. The `preview` prop suppresses the modal-and-mutations branch and renders a non-interactive card body. Buy-link chips inside `<StoreLinks>` remain live `<a>` elements (good — picker users wanting to research a store mid-pick can do so without breaking selection state). `<CheckboxField>` from `app/ui/components/field/CheckboxField.tsx` — already exists; `form-field-system` mandates its use for every checkbox.
 - `<StoreLinks>` (and the `+N` `<Menu>` popover) inherit by composition through `<Item>` — no direct consumption from `ChooseItemsForm.tsx`.
 
 ### Cache tags
+
 - No reads or mutations change. `setListItems` server action and its `items` / `lists` cache-tag invalidation are untouched.
 
 ### Risk
-- **Click-target tension on chips**: the buy-link chips inside `<Item preview />` are live `<a target="_blank">`. A user trying to *tap-toggle* an item but landing on a chip will navigate to the store instead. Mitigation: chips inside the picker label are visually small relative to the row, but if user testing shows real misclicks, the fallback is to set `pointer-events: none` on `.choose-items-select .storeLinks a` (the chips remain visible for context but become non-interactive in picker mode). This is a deliberate scope choice — start with live chips since that matches what the items library shows, fall back only if needed.
+
+- **Click-target tension on chips**: the buy-link chips inside `<Item preview />` are live `<a target="_blank">`. A user trying to _tap-toggle_ an item but landing on a chip will navigate to the store instead. Mitigation: chips inside the picker label are visually small relative to the row, but if user testing shows real misclicks, the fallback is to set `pointer-events: none` on `.choose-items-select .storeLinks a` (the chips remain visible for context but become non-interactive in picker mode). This is a deliberate scope choice — start with live chips since that matches what the items library shows, fall back only if needed.
 - **`<Item preview />` not visually tested as a picker-row body**: today `preview` is only used in the item-form modal. Verify the row reads cleanly at every breakpoint covered by the items-library row (≥600px D3, 400–599px M1, <400px M1-kebab — though kebab is owner-actions and won't render in the picker since the picker viewer is by definition the owner of the items but not editing them in this flow). Owner edit/archive icons in col 5 are not relevant in the picker context and should be suppressed via a new `previewActions={false}` (or equivalent) prop on `<Item>` — TBD in design.md.
 - **Strike-through state on the removing label**: today the `<button>` row applies `is-strike` to `.choose-items-name`. In the new shape, the name is rendered by `<Item>` (which doesn't know about removing state). Resolution: apply the strike via the page-scoped `.choose-items-select.is-removing .itemName` selector (additive CSS, no component prop needed). Documented as a page-scoped exception in `list.css`.
 
 ### Out of scope
+
 - Any change to the `.choose-items-pg-hd*` page header (Stage 5.4 work, intentionally preserved).
 - Any change to the `.choose-items-sticky-ft*` footer or the change-tracking count logic (preserved by construction).
 - Any change to URL-driven toolbar behavior or the `setListItems` server action.

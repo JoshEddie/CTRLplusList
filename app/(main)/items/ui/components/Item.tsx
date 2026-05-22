@@ -1,6 +1,10 @@
 'use client';
 
-import { archiveItem, createPurchase, removePurchase } from '@/app/actions/items';
+import {
+  archiveItem,
+  createPurchase,
+  removePurchase,
+} from '@/app/actions/items';
 import { Button } from '@/app/ui/components/button';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
 import { ItemDisplay, PurchaseView } from '@/lib/types';

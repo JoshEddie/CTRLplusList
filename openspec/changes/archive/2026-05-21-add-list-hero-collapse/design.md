@@ -1,15 +1,17 @@
 ## Context
 
-The list-detail hero at `/lists/[id]` is undergoing a composition redesign (`redesign-list-hero`, 35/41 tasks complete) that lands a strong two-card identity-plus-controls layout. That redesign is the *visual* answer to "the hero is poorly composed." This change is the *behavioral* answer to "the hero, even well-composed, is intro material and shouldn't permanently occupy half the mobile viewport."
+The list-detail hero at `/lists/[id]` is undergoing a composition redesign (`redesign-list-hero`, 35/41 tasks complete) that lands a strong two-card identity-plus-controls layout. That redesign is the _visual_ answer to "the hero is poorly composed." This change is the _behavioral_ answer to "the hero, even well-composed, is intro material and shouldn't permanently occupy half the mobile viewport."
 
 Today the redesigned hero on mobile is a stacked single gradient panel: identity card on top (eyebrow + title + subtitle + visibility pill + footer line) and controls card below (Share + secondary actions for owner; byline + Share/Bookmark pair for viewer). On a 670px-tall phone viewport the panel takes ~380–450px depending on owner/viewer state and optional fields. That's a lot of real estate for orientation chrome that the user has internalized after first read.
 
 Earlier exploration discarded three alternatives:
-- *Further redesign to shrink.* The fields the hero shows are all spec-mandated or load-bearing for orientation. The only way to shrink is to hide.
-- *Auto-collapse on scroll.* Substantial design surface (sticky vs not, hysteresis policy, popover-during-scroll interactions). High implementation cost, only marginally better discovery than an explicit affordance. Deferred as v2.
-- *localStorage / cookie persistence across sessions.* Tempting but invites discoverability bugs ("why is my hero hidden on a list I've never seen before?") if the key isn't list-scoped, and accumulating cruft if it is. The chosen URL-param model gives "refresh respects, back-button respects" without persisting beyond the current navigation context.
+
+- _Further redesign to shrink._ The fields the hero shows are all spec-mandated or load-bearing for orientation. The only way to shrink is to hide.
+- _Auto-collapse on scroll._ Substantial design surface (sticky vs not, hysteresis policy, popover-during-scroll interactions). High implementation cost, only marginally better discovery than an explicit affordance. Deferred as v2.
+- _localStorage / cookie persistence across sessions._ Tempting but invites discoverability bugs ("why is my hero hidden on a list I've never seen before?") if the key isn't list-scoped, and accumulating cruft if it is. The chosen URL-param model gives "refresh respects, back-button respects" without persisting beyond the current navigation context.
 
 Binding upstream constraints (verified, see proposal):
+
 - `following`: Follow button colocated with linked owner name in a byline sub-row of the hero. The collapsed state has no byline at all — vacuously satisfied. Follow moves into the kebab while collapsed.
 - `list-visibility`: Private/Shared + feed checkbox composition is normative for the picker. The picker is unchanged; only its entry-point relocates (status pill while expanded, kebab item while collapsed).
 - `menu-system`: `ListActionsMenu` already uses the `<Menu>` / `<MenuItem>` / `<MenuLinkItem>` primitives. This change extends its `items` content conditionally, no new menu primitive.
@@ -19,6 +21,7 @@ Binding upstream constraints (verified, see proposal):
 ## Goals / Non-Goals
 
 **Goals:**
+
 - A single chevron handle on the bottom-center edge of the hero's gradient panel toggles between expanded and collapsed at all widths.
 - Collapsed state is a one-line strip inside the same gradient panel: title (leading) + kebab (trailing). No other content renders.
 - All actions remain reachable when collapsed via the existing `ListActionsMenu` kebab.
@@ -28,11 +31,12 @@ Binding upstream constraints (verified, see proposal):
 - Zero changes to the redesigned expanded layout. Toggle is purely additive.
 
 **Non-Goals:**
+
 - No auto-collapse-on-scroll or sticky behaviors.
 - No cross-session persistence (localStorage / sessionStorage / cookie). URL is the only persistence channel.
 - No animation / CSS transition on toggle. Instant swap.
 - No new design-system primitives. Chevron handle is a page-scoped class on `<Button variant="on-dark">`.
-- No changes to `<VisibilityPicker>`, `<ShareButton>` (other than the URL-normalization one-liner), or the actions available — only the *surface* through which they're reached.
+- No changes to `<VisibilityPicker>`, `<ShareButton>` (other than the URL-normalization one-liner), or the actions available — only the _surface_ through which they're reached.
 - No mobile-only gate. The toggle exists at all widths (see Decision 4).
 
 ## Decisions
@@ -41,9 +45,10 @@ Binding upstream constraints (verified, see proposal):
 
 Earlier exploration weighed three "what stays visible" cuts: title strip only (F1), title + primary action + chevron (F2), and title + kebab (F3). F3 was selected.
 
-**Rationale:** F2 preserves the owner's Share at one-tap depth but introduces a per-persona branch in the collapsed strip (Share for owner, Bookmark for viewer), and obligates a *second* always-visible action region in addition to the kebab. F3 is the cleanest visual answer — a single strip with one trailing kebab handles every persona uniformly. The cost is that Share goes from one-tap (expanded) to two-tap (collapsed: open kebab, tap Share). That cost was explicitly accepted by the user during exploration: the collapse is *opt-in*, so users who depend on one-tap Share simply stay expanded.
+**Rationale:** F2 preserves the owner's Share at one-tap depth but introduces a per-persona branch in the collapsed strip (Share for owner, Bookmark for viewer), and obligates a _second_ always-visible action region in addition to the kebab. F3 is the cleanest visual answer — a single strip with one trailing kebab handles every persona uniformly. The cost is that Share goes from one-tap (expanded) to two-tap (collapsed: open kebab, tap Share). That cost was explicitly accepted by the user during exploration: the collapse is _opt-in_, so users who depend on one-tap Share simply stay expanded.
 
 **Alternatives kept rejected:**
+
 - F1 (title only): No action access while collapsed. Forces re-expand for any interaction; defeats the "compress without losing function" goal.
 - F2 (title + primary action + chevron): Better one-tap depth for the most common action but adds visual complexity to the strip (one persona shows Share, the other shows Bookmark) and creates a second always-visible region competing with the kebab. The clean uniformity of F3 won out.
 
@@ -59,20 +64,22 @@ Press back → /lists/A?hero=closed → renders collapsed ✓
 Press back → /lists ✓
 ```
 
-`replaceState` mutates the current history entry, so no toggle creates a new history checkpoint. Back-button behavior matches user intent: it returns to the previous *page*, not to a previous *UI toggle state* of the same page.
+`replaceState` mutates the current history entry, so no toggle creates a new history checkpoint. Back-button behavior matches user intent: it returns to the previous _page_, not to a previous _UI toggle state_ of the same page.
 
 **Rationale:** Refreshing a list page should preserve the user's collapse choice (it's expensive in tap depth to re-collapse on every refresh). Navigating away and back via a fresh link should reset to expanded (the user is arriving at the list anew). Browser back-button should restore the URL the user last left, including its collapse state. URL + `replaceState` is the only persistence mechanism that satisfies all three at once without introducing client-side storage.
 
 **Alternatives considered:**
-- *`useState` only.* Simpler (~3 lines). Refresh resets. Earlier exploration confirmed the user wanted refresh to respect the choice.
-- *`router.push` / `pushState`.* Each toggle creates a history entry. Tapping the chevron 3 times then pressing back unwinds 3 toggles before leaving the page. Unacceptable UX.
-- *`router.replace`.* Functionally identical to `history.replaceState` for this case, but routes through Next's router, triggering a re-render. `history.replaceState` is a no-op for React state and keeps the toggle perceptually instant.
-- *localStorage / sessionStorage.* Persists too long (across page navigations, across tabs) or in confusing scopes. Particularly bad for the "fresh link to a list I've never seen" case where someone collapsed a different list and the new one inherits collapsed-by-default. URL state is naturally scoped to navigation.
-- *Cookie.* Same issues as localStorage plus a server-side surface area we don't need.
+
+- _`useState` only._ Simpler (~3 lines). Refresh resets. Earlier exploration confirmed the user wanted refresh to respect the choice.
+- _`router.push` / `pushState`._ Each toggle creates a history entry. Tapping the chevron 3 times then pressing back unwinds 3 toggles before leaving the page. Unacceptable UX.
+- _`router.replace`._ Functionally identical to `history.replaceState` for this case, but routes through Next's router, triggering a re-render. `history.replaceState` is a no-op for React state and keeps the toggle perceptually instant.
+- _localStorage / sessionStorage._ Persists too long (across page navigations, across tabs) or in confusing scopes. Particularly bad for the "fresh link to a list I've never seen" case where someone collapsed a different list and the new one inherits collapsed-by-default. URL state is naturally scoped to navigation.
+- _Cookie._ Same issues as localStorage plus a server-side surface area we don't need.
 
 ### Decision 3: Toggle lives in a client shell wrapper, expanded hero stays server-rendered
 
 `ListDetails.tsx` remains a server component. A new client component `HeroCollapseShell` wraps it. The shell:
+
 - Receives the expanded hero tree as `children` and the collapsed-strip props (title + the same `ListActionsMenu` instance configured for `heroCollapsed=true`) as discrete props.
 - Owns `useState`, seeded from `useSearchParams().get('hero') === 'closed'`.
 - Owns the `useEffect` that calls `window.history.replaceState` whenever state changes.
@@ -82,14 +89,16 @@ Press back → /lists ✓
 **Rationale:** `useSearchParams` and `window.history` are client-only APIs. Wrapping the smallest possible part of the tree in `'use client'` preserves server-rendering for the expensive content (the expanded hero with its avatars, byline, visibility picker, etc.). The expanded subtree is passed in as `children`, which Next's client/server bridge handles natively — the server-rendered JSX serializes and the client component just shows or hides it.
 
 **Alternatives considered:**
-- *Convert `ListDetails` to a client component.* Larger client bundle, loses server-side rendering of any expensive children. Worse for first-paint LCP.
-- *Lift collapse state into the page component.* Page is a server component; can't hold React state. Would force the entire page tree client-side.
+
+- _Convert `ListDetails` to a client component._ Larger client bundle, loses server-side rendering of any expensive children. Worse for first-paint LCP.
+- _Lift collapse state into the page component._ Page is a server component; can't hold React state. Would force the entire page tree client-side.
 
 ### Decision 4: Toggle is available at all viewport widths (not mobile-only)
 
 The chevron handle renders at all widths. No `@media` gate on the toggle itself.
 
 **Rationale:** A mobile-only toggle creates a resize footgun:
+
 ```
 1. User on phone collapses → URL = ?hero=closed
 2. Same user opens on iPad landscape (≥800px breakpoint)
@@ -97,6 +106,7 @@ The chevron handle renders at all widths. No `@media` gate on the toggle itself.
    - Page renders collapsed with no way to expand (stranded), OR
    - Page renders expanded, silently ignoring the URL param (overrides user choice)
 ```
+
 Always-available avoids the footgun: the URL param is honored at every width, the toggle is always there to flip it. The desktop hero is well-composed and short (~180px) — the toggle is rarely needed there, but a small chevron at the bottom edge costs near-zero visual weight when unused. Power users on small laptop screens or split-window setups benefit.
 
 **Trade-off accepted:** A small amount of chrome on desktop that most desktop users won't notice or use.
@@ -106,17 +116,20 @@ Always-available avoids the footgun: the URL param is honored at every width, th
 When `heroCollapsed=false` (or omitted), `ListActionsMenu` renders today's item set unchanged (Spoilers toggle, Preview, Delete for owner; Spoilers for viewer when applicable).
 
 When `heroCollapsed=true`, it prepends the actions normally rendered in the controls zone of the expanded hero:
+
 - Owner: Share, Choose items, Edit, Visibility (`<MenuItem>` with current state label, opens existing picker), then existing items.
 - Viewer: Share, Bookmark, Follow / Following, then existing items.
 
 **Rationale:** A single kebab handles both states — no parallel "collapsed kebab" component. The contextual item set mirrors the visible controls zone of the expanded hero, so the user's mental model is "the kebab now contains what the row above me used to show." Visibility is the trickiest: it's a stateful control in expanded mode (status pill → popover). In collapsed mode it becomes a `<MenuItem>` that, when clicked, opens the same picker popover anchored to the kebab item. Implementation detail under "Migration Plan" below.
 
 **Alternative considered:**
-- *Render a separate `<HeroCollapsedActionsMenu>` component.* Duplicates the kebab's keyboard handling, focus management, and visual treatment. `ListActionsMenu`'s contextual items keep one source of truth.
+
+- _Render a separate `<HeroCollapsedActionsMenu>` component._ Duplicates the kebab's keyboard handling, focus management, and visual treatment. `ListActionsMenu`'s contextual items keep one source of truth.
 
 ### Decision 6: `<ShareButton>` strips the `hero` param when copying / sharing
 
 Before invoking `navigator.share` or clipboard write, normalize:
+
 ```ts
 const url = new URL(window.location.href);
 url.searchParams.delete('hero');
@@ -126,7 +139,8 @@ const shareUrl = url.toString();
 **Rationale:** Sharing a `?hero=closed` URL would open the list pre-collapsed for the recipient — bad for first impressions of a list the sharee has never seen. The `hero` param is purely viewer-local UI state, never something the sharer is trying to communicate.
 
 **Alternative considered:**
-- *Don't use `window.location.href` at all; reconstruct from `list.id` and `window.location.origin`.* Cleaner but redundant — the only "extra" param this surface adds is `?hero`. The `preview` and `spoilers` params are owner-only modes that aren't reachable when the share button is enabled (the share button is hidden in preview mode by the existing component). One-line `delete` is fine.
+
+- _Don't use `window.location.href` at all; reconstruct from `list.id` and `window.location.origin`._ Cleaner but redundant — the only "extra" param this surface adds is `?hero`. The `preview` and `spoilers` params are owner-only modes that aren't reachable when the share button is enabled (the share button is hidden in preview mode by the existing component). One-line `delete` is fine.
 
 ### Decision 7: Chevron handle visual placement — bottom-center edge of the gradient panel
 
@@ -137,18 +151,20 @@ The handle is small (≈32×24px), visually quiet (translucent on-dark backgroun
 **Rationale:** Bottom-center edge is the iOS Stocks / Apple Music / drawer-bottom-sheet convention — well understood as "this surface has more state, drag/tap to toggle." Placing it on the trailing edge of the panel (vs. inside the controls zone or above the items grid) communicates "this affordance belongs to the hero, not the items below."
 
 **Alternatives considered:**
-- *Trailing-corner chevron (top-right or bottom-right of the panel).* Crowds the kebab in collapsed mode; visual conflict.
-- *Inline chevron next to the kebab.* Too easy to mistake for a sub-menu trigger; the chevron and kebab need clear semantic distance.
-- *A separate "Hide list info" link / `<Button variant="link">` below the hero.* Heavier visual weight, breaks the gradient-panel containment.
+
+- _Trailing-corner chevron (top-right or bottom-right of the panel)._ Crowds the kebab in collapsed mode; visual conflict.
+- _Inline chevron next to the kebab._ Too easy to mistake for a sub-menu trigger; the chevron and kebab need clear semantic distance.
+- _A separate "Hide list info" link / `<Button variant="link">` below the hero._ Heavier visual weight, breaks the gradient-panel containment.
 
 ### Decision 8: Collapsed strip uses the same gradient panel (no separate compact treatment)
 
-The collapsed strip renders *inside* the same `.list-hero-grid` gradient container. Padding is reduced (collapsed strip is ~48px tall vs. the expanded card's ~380–450px), but the gradient, border-radius, and outer dimensions are unchanged.
+The collapsed strip renders _inside_ the same `.list-hero-grid` gradient container. Padding is reduced (collapsed strip is ~48px tall vs. the expanded card's ~380–450px), but the gradient, border-radius, and outer dimensions are unchanged.
 
 **Rationale:** Brand continuity. Decision 9 of `redesign-list-hero` locked "gradient lives on the outer `.list-hero-grid`, zones are transparent." Keeping the gradient on collapse maintains that decision and visually says "same surface, less content."
 
 **Alternative considered:**
-- *Solid color compact bar.* Lighter visually but loses brand presence on the surface. Re-discovered the same trade-off the redesign already settled.
+
+- _Solid color compact bar._ Lighter visually but loses brand presence on the surface. Re-discovered the same trade-off the redesign already settled.
 
 ### Decision 9: Default is expanded on first visit (no `?hero` param)
 
@@ -157,7 +173,8 @@ When the URL has no `?hero` param, the hero renders expanded. Only `?hero=closed
 **Rationale:** Clean URLs by default. The user's intent ("I want this list expanded") is the absence of a preference, not an explicit one. The `hero` param is only present when the user has actively collapsed.
 
 **Alternative considered:**
-- *Two-value param (`?hero=open` / `?hero=closed`).* Verbose. The "no param = default" convention matches `preview` and `spoilers` on this page.
+
+- _Two-value param (`?hero=open` / `?hero=closed`)._ Verbose. The "no param = default" convention matches `preview` and `spoilers` on this page.
 
 ## Risks / Trade-offs
 

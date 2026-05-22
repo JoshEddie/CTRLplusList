@@ -34,11 +34,6 @@ export default async function ItemFormBody({ params, searchParams }: Props) {
   const lists = await getListsByUser(user.id);
 
   return (
-    <ItemForm
-      user_id={user.id}
-      item={item}
-      lists={lists}
-      returnTo={returnTo}
-    />
+    <ItemForm user_id={user.id} item={item} lists={lists} returnTo={returnTo} />
   );
 }

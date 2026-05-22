@@ -23,7 +23,9 @@
   position: relative;
   background: var(--light-color);
   border-radius: 14px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22), 0 4px 18px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.22),
+    0 4px 18px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -34,8 +36,12 @@
   z-index: 1;
 }
 
-.form-shell-wide  { max-width: 640px; }
-.form-shell-split { max-width: 960px; }
+.form-shell-wide {
+  max-width: 640px;
+}
+.form-shell-split {
+  max-width: 960px;
+}
 
 /* The inner <form> should fill the shell so body can scroll and footer stays pinned. */
 .form-shell > form {
@@ -183,7 +189,9 @@
   border-radius: 8px;
   padding: 9px 14px;
   color: var(--primary-color);
-  font: 600 13px var(--font-roboto-condensed), sans-serif;
+  font:
+    600 13px var(--font-roboto-condensed),
+    sans-serif;
   cursor: pointer;
   width: 100%;
   margin-top: 2px;
@@ -423,8 +431,16 @@
 }
 
 @media (max-width: 600px) {
-  .form-shell-hd     { padding: 14px 18px 12px; }
-  .form-shell-body   { padding: 16px 18px; }
-  .form-shell-ft     { padding: 12px 18px; }
-  .form-shell-title  { font-size: 19px; }
+  .form-shell-hd {
+    padding: 14px 18px 12px;
+  }
+  .form-shell-body {
+    padding: 16px 18px;
+  }
+  .form-shell-ft {
+    padding: 12px 18px;
+  }
+  .form-shell-title {
+    font-size: 19px;
+  }
 }

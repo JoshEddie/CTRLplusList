@@ -13,6 +13,7 @@ The `purchases` table has no per-item uniqueness constraint (`db/schema.ts:164-1
 ## Goals / Non-Goals
 
 **Goals:**
+
 - Every reseeded dev DB contains at least one example of each of the three currently-missing UI states (partial multi-claim, fully-claimed multi-claim, unlimited).
 - Variety distributed across viewer-owned AND friend-owned lists so both authoring (my list) and viewing (friend's list) flows surface the states.
 - Coverage at the **start, second position, and end** of each list — so any position-dependent layout/styling bugs in `Item.tsx`, list-detail rendering, and the choose-items flow are catchable.
@@ -20,6 +21,7 @@ The `purchases` table has no per-item uniqueness constraint (`db/schema.ts:164-1
 - Production safety preserved (`NODE_ENV=production` guard, `dev-*` ID prefix scoping).
 
 **Non-Goals:**
+
 - No changes to `items.quantity_limit` schema, defaults, or DAL logic.
 - No changes to `purchases` schema or uniqueness rules.
 - No changes to production seed paths (there are none — script is dev-only).
@@ -32,18 +34,20 @@ The `purchases` table has no per-item uniqueness constraint (`db/schema.ts:164-1
 For every list (viewer- and friend-owned), apply quantity overrides at three positions. The three values `3`, `null`, and `1` rotate across those positions on a 3-list cycle keyed by `listIdx`:
 
 | `listIdx % 3` | `item[0]` | `item[1]` | `item[last]` |
-|---------------|-----------|-----------|--------------|
+| ------------- | --------- | --------- | ------------ |
 | `0`           | `3`       | `null`    | `1`          |
 | `1`           | `null`    | `1`       | `3`          |
 | `2`           | `1`       | `3`       | `null`       |
 
 **Why this layout:**
+
 - Over any consecutive 3 lists, every position (start, second, last) renders every quantity value. A reviewer paging through lists sees the full matrix without hunting.
-- The `1` rows at these positions are deliberately included so the *layout* of a default-qty item alongside multi-claim/unlimited siblings is also exercised at the boundaries — for example, a `1` item rendered last (which today is the only `last` state in the dataset) gets explicitly visited at one position in each cycle.
+- The `1` rows at these positions are deliberately included so the _layout_ of a default-qty item alongside multi-claim/unlimited siblings is also exercised at the boundaries — for example, a `1` item rendered last (which today is the only `last` state in the dataset) gets explicitly visited at one position in each cycle.
 - Determinism: a reviewer can predict states from list index alone — no need to read the DB.
 - All other positions (`2..last-1`) inherit the schema default of `1`, so the seed still produces mostly-single-claim datasets, matching real-world distribution.
 
 **Edge cases:**
+
 - All current lists are 15-20 items, so `last >= 2` always. If a future template ever produced a 1-item list, `item[0] === item[last]` and `onConflictDoUpdate` resolves the collision by last-write-wins. Acceptable.
 
 **Alternative considered:** randomize by hash. Rejected — hash-based distribution scatters states unpredictably across lists, so a reviewer can't reliably say "open list X and look at position Y." Determinism at known positions is more valuable here than statistical spread.
@@ -89,7 +93,7 @@ Per `CLAUDE.md`, dev preview is the only way to validate UI changes through the 
 ## Risks / Trade-offs
 
 - **[Existing purchase rows with the old ID could survive]** → D3 cleanup query handles it; verification step 1 (full reset) is a belt-and-suspenders fallback.
-- **[Counter inflation if cleanup runs after insert]** → Order matters: cleanup must run *before* the new purchase insert. Document this in tasks.md.
+- **[Counter inflation if cleanup runs after insert]** → Order matters: cleanup must run _before_ the new purchase insert. Document this in tasks.md.
 - **[Visual regression on list-detail pages where item[last] now renders a counter where there was none before]** → Intended — this is exactly what we're trying to surface. Reviewer should screenshot before/after.
 - **[Lists shorter than 2 items would have item[0] === item[last]]** → No such lists today (all are 15-20 items). If a future template adds one, `onConflictDoUpdate` resolves the collision by last-write-wins; visible as a single `qty=null` item at position 0. Acceptable.
 - **[Friend lists are visited by viewer; multi-claim friend items may show as "I already bought one" awkwardly]** → This is realistic and matches prod behavior. No mitigation needed.

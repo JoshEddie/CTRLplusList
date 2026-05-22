@@ -10,7 +10,7 @@ type MenuItemProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
   function MenuItem(
     { icon, tone, className, children, type = 'button', ...rest },
-    ref,
+    ref
   ) {
     return (
       <button
@@ -24,5 +24,5 @@ export const MenuItem = forwardRef<HTMLButtonElement, MenuItemProps>(
         {children}
       </button>
     );
-  },
+  }
 );

@@ -8,8 +8,8 @@ import UserCardGrid from '../users/ui/components/UserCardGrid';
 
 const EMPTY_MESSAGE = (
   <>
-    You aren&apos;t following anyone yet. Visit a shared list and click Follow on
-    the owner to see their new public lists here.
+    You aren&apos;t following anyone yet. Visit a shared list and click Follow
+    on the owner to see their new public lists here.
   </>
 );
 

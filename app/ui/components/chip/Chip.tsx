@@ -17,7 +17,8 @@ export function Chip({
   className,
 }: ChipProps) {
   const label =
-    removeLabel ?? (typeof children === 'string' ? `Remove ${children}` : 'Remove');
+    removeLabel ??
+    (typeof children === 'string' ? `Remove ${children}` : 'Remove');
   return (
     <span className={chipClasses({ extra: className })}>
       {children}

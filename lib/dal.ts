@@ -219,12 +219,7 @@ export async function getItemsByUser(
     return result.map((item) => ({
       ...item,
       hasPurchases: (item.purchases?.length ?? 0) > 0,
-      purchases: sanitizePurchases(
-        item.purchases,
-        userId,
-        true,
-        showSpoilers
-      ),
+      purchases: sanitizePurchases(item.purchases, userId, true, showSpoilers),
     }));
   } catch (error) {
     console.error('Error fetching items:', error);
@@ -637,9 +632,10 @@ export async function getFollowingFeedUsers(viewerId: string) {
         latest_shared_at: sql<Date | null>`MAX(${lists.shared_at})`.as(
           'latest_shared_at'
         ),
-        new_count: sql<number>`COUNT(${lists.id}) FILTER (WHERE ${lists.shared_at} > GREATEST(COALESCE(${users.last_seen_following_at}, ${user_follows.created_at}), ${user_follows.created_at}))`.as(
-          'new_count'
-        ),
+        new_count:
+          sql<number>`COUNT(${lists.id}) FILTER (WHERE ${lists.shared_at} > GREATEST(COALESCE(${users.last_seen_following_at}, ${user_follows.created_at}), ${user_follows.created_at}))`.as(
+            'new_count'
+          ),
       })
       .from(user_follows)
       .innerJoin(users, eq(users.id, user_follows.followee_id))

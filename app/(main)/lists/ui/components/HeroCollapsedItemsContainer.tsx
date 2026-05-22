@@ -48,14 +48,19 @@ export async function HeroCollapsedViewerItems({
   ownerName: string | null;
   viewerId: string;
 }) {
-  const [bookmarked, following, blockedByOwner, blockedByViewer, hasAnyFollows] =
-    await Promise.all([
-      getBookmarkStatus(list.id, viewerId),
-      isFollowing(viewerId, ownerId),
-      isBlocked(ownerId, viewerId),
-      isBlocked(viewerId, ownerId),
-      viewerHasAnyFollows(viewerId),
-    ]);
+  const [
+    bookmarked,
+    following,
+    blockedByOwner,
+    blockedByViewer,
+    hasAnyFollows,
+  ] = await Promise.all([
+    getBookmarkStatus(list.id, viewerId),
+    isFollowing(viewerId, ownerId),
+    isBlocked(ownerId, viewerId),
+    isBlocked(viewerId, ownerId),
+    viewerHasAnyFollows(viewerId),
+  ]);
 
   const showFollow = !blockedByOwner && !blockedByViewer;
 

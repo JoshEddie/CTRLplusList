@@ -66,31 +66,38 @@ Whether each stage lands within this change as additional commits or spins out i
 ## Impact
 
 ### Routes
+
 - `app/(main)/lists/page.tsx` becomes the new **My Lists** full page.
 - The digest moves to `app/(main)/page.tsx` (renders at `/`, inherits the `(main)` layout/frame).
 - `app/(main)/lists/HomePage.tsx` moves alongside the new digest entry point.
 - The string `/lists/all` is replaced with `/lists` everywhere it appears.
 
 ### Layout & shared chrome
+
 - `app/(main)/layout.tsx` gains the gradient nav + white-card frame and renders `MainShell` inside the white surface.
 - `app/(main)/MainShell.tsx` — the `container--list-details` variant continues to work; the frame wraps it.
 
 ### Styles
+
 - `app/ui/styles/global.css` — new tokens added; `body::before` rewritten to consume `--page-frame-gradient`. The transparent brand vars (`--primary-color-transparent`, `--secondary-color-transparent`) are kept.
 - `app/(main)/lists/ui/styles/list.css` and `following-and-history.css` — rail/card styles updated to consume new tokens and the horizontal-scroll layout.
 
 ### Schema
+
 - Drizzle migration adding `lists.subtitle text` (nullable, no default). Existing rows unaffected.
 - `db/schema.ts` — adds the `subtitle` column to the `lists` table definition.
 
 ### Server actions
+
 - The list create/update actions in `app/actions/lists.ts` accept and persist `subtitle`.
 
 ### Component changes
+
 - `app/(main)/lists/ui/components/HomeListCard.tsx` — adds subtitle slot, replaces hover lift with shadow/border tint, swaps to new tokens.
 - `app/(main)/lists/ui/components/rails/*` — switch from grid to horizontal-scrolling row layout.
 - `app/(main)/lists/ui/components/ListForm.tsx` (or equivalent) — adds a subtitle input.
 - New components for the app frame chrome (e.g. `app/ui/components/AppNav.tsx`, `AppLogo.tsx`).
 
 ### Staged rollout artifacts
+
 - This change's `tasks.md` enumerates the staged work for Stages 3–8 as task groupings with explicit checkpoints. Stages that require a Claude Design session reference that requirement as the first task in the group. Whether each later stage executes within this change or spins out as a follow-up is a decision made at the checkpoint.

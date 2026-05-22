@@ -147,9 +147,7 @@ export default async function ListDetails({
         <div className="list-hero-grid">
           <div className="list-hero-card list-hero-card-identity">
             <div className="list-hero-identity-top">
-              <div className="list-hero-share-wrapper">
-                {ownerControls}
-              </div>
+              <div className="list-hero-share-wrapper">{ownerControls}</div>
               <h1 className="list-hero-title">{list.name}</h1>
               {list.subtitle ? (
                 <div className="list-hero-eyebrow-subtitle-wrapper">

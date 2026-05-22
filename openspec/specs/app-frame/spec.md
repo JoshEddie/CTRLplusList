@@ -1,8 +1,11 @@
 # app-frame Specification
 
 ## Purpose
+
 TBD - created by archiving change redesign-home-and-tokens. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: The `(main)` route group SHALL render a persistent app frame around every page
 
 Every route under `app/(main)/` SHALL render inside a shared frame consisting of (a) a gradient navigation bar across the top of the viewport, and (b) a white content surface with rounded top corners floating on the gradient. The frame SHALL be rendered from `app/(main)/layout.tsx` so individual page files do not repeat the chrome. Page-level `<Header>` components SHALL continue to render inside the white surface for page titles and CTAs.
@@ -97,4 +100,3 @@ CSS rules for any component rendered under the `(main)/` route group SHALL resol
 
 - **WHEN** a component needs the brand purple or brand blue
 - **THEN** it references `--primary-color` or `--secondary-color` (the existing tokens), not the literal hex values
-

@@ -8,10 +8,7 @@ import Items from './Items';
 import ItemsToolbar from './ItemsToolbar';
 import Pagination from './Pagination';
 import { compareItems, displayPrice } from './itemFilters';
-import {
-  DEFAULT_PAGE_SIZE,
-  PAGE_SIZE_OPTIONS,
-} from './paginationConstants';
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from './paginationConstants';
 
 type BrowserMode = 'items' | 'list';
 
@@ -119,9 +116,7 @@ export default function ItemsBrowser({
     let result = items;
     if (q) {
       result = result.filter((item) =>
-        `${item.name ?? ''} ${item.description ?? ''}`
-          .toLowerCase()
-          .includes(q)
+        `${item.name ?? ''} ${item.description ?? ''}`.toLowerCase().includes(q)
       );
     }
     if (selectedStores.length > 0) {
@@ -159,10 +154,7 @@ export default function ItemsBrowser({
 
   const totalPages = Math.max(1, Math.ceil(filteredSorted.length / pageSize));
   const page = Math.min(Math.max(1, requestedPage), totalPages);
-  const visible = filteredSorted.slice(
-    (page - 1) * pageSize,
-    page * pageSize
-  );
+  const visible = filteredSorted.slice((page - 1) * pageSize, page * pageSize);
 
   const clearFilters = () => {
     const params = new URLSearchParams(searchParams?.toString() || '');

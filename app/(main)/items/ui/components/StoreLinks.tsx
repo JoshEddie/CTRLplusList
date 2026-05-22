@@ -11,7 +11,7 @@ import '../styles/store-links.css';
 // Used to estimate panel height for placement decisions before render.
 const MENU_ROW_HEIGHT_PX = 36;
 const MENU_PADDING_PX = 12; // .menu-popover padding 6px top/bottom
-const TRIGGER_GAP_PX = 6;   // .menu-popover top/bottom offset
+const TRIGGER_GAP_PX = 6; // .menu-popover top/bottom offset
 
 type Props = {
   item: ItemDisplay;
@@ -42,8 +42,7 @@ export default function StoreLinks({
   );
 
   const sortedStores = useMemo(
-    () =>
-      [...validStores].sort((a, b) => Number(a.price) - Number(b.price)),
+    () => [...validStores].sort((a, b) => Number(a.price) - Number(b.price)),
     [validStores]
   );
 
@@ -78,7 +77,11 @@ export default function StoreLinks({
     let el: HTMLElement | null = trigger.parentElement;
     while (el && el !== document.body) {
       const overflow = getComputedStyle(el).overflowY;
-      if (overflow === 'auto' || overflow === 'scroll' || overflow === 'hidden') {
+      if (
+        overflow === 'auto' ||
+        overflow === 'scroll' ||
+        overflow === 'hidden'
+      ) {
         const r = el.getBoundingClientRect();
         containerTop = r.top;
         containerBottom = r.bottom;
@@ -93,7 +96,7 @@ export default function StoreLinks({
     const roomAbove = tRect.top - containerTop;
     const roomBelow = containerBottom - tRect.bottom;
     setPlacement(
-      roomAbove >= panelHeight || roomAbove >= roomBelow ? 'above' : 'below',
+      roomAbove >= panelHeight || roomAbove >= roomBelow ? 'above' : 'below'
     );
   }, [sortedStores.length]);
 
@@ -102,9 +105,7 @@ export default function StoreLinks({
   }, [open, computePlacement]);
 
   if (!lowestPrice) {
-    return children ? (
-      <div className="item-action-row">{children}</div>
-    ) : null;
+    return children ? <div className="item-action-row">{children}</div> : null;
   }
 
   const primary = lowestPrice;
@@ -114,9 +115,7 @@ export default function StoreLinks({
   return (
     <>
       <div className="item-price-row">
-        <span className="item-price">
-          ${Number(primary.price).toFixed(2)}
-        </span>
+        <span className="item-price">${Number(primary.price).toFixed(2)}</span>
       </div>
       {showStores && (
         <>

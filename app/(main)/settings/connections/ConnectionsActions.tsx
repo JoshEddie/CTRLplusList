@@ -20,7 +20,10 @@ const labels: Record<Action, string> = {
   unblock: 'Unblock',
 };
 
-const fns: Record<Action, (id: string) => Promise<{ success: boolean; message: string }>> = {
+const fns: Record<
+  Action,
+  (id: string) => Promise<{ success: boolean; message: string }>
+> = {
   unfollow: unfollowUser,
   remove: removeFollower,
   block: blockUser,

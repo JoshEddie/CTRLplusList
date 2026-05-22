@@ -21,7 +21,7 @@ type MenuProps = {
 
 export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
   { open, onClose, anchorRef, children, className, ...aria },
-  ref,
+  ref
 ) {
   const localRef = useRef<HTMLDivElement | null>(null);
   useImperativeHandle(ref, () => localRef.current as HTMLDivElement);
@@ -59,8 +59,8 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
     const getItems = () =>
       Array.from(
         container.querySelectorAll<HTMLElement>(
-          '[role^="menuitem"]:not([aria-disabled="true"])',
-        ),
+          '[role^="menuitem"]:not([aria-disabled="true"])'
+        )
       );
 
     const focusAt = (index: number) => {

@@ -32,10 +32,10 @@ _None._ Primitive specs (`segmented-control-system`, `popover-trigger-system`, `
 ## Impact
 
 - **Code**:
-  - [app/(main)/items/ui/styles/item.css](app/(main)/items/ui/styles/item.css) — mobile media-query rules at the existing `@media (max-width: 599px)` block: toolbar grid-template, view-cell `display: none`, `:has()`-based search-expand, item-grid mobile override to use list layout, pagination positioning swap.
-  - [app/(main)/items/ui/components/ItemsToolbar.tsx](app/(main)/items/ui/components/ItemsToolbar.tsx) — no logic changes expected (CSS-only solution). May add a small structural change if the search-expand can't be done cleanly with `:has()`.
-  - [app/(main)/items/ui/components/Items.tsx](app/(main)/items/ui/components/Items.tsx) — possibly add a stable class name or container-id so the mobile CSS override of `.item-grid` → list layout is unambiguous.
-  - [app/(main)/items/ui/components/Pagination.tsx](app/(main)/items/ui/components/Pagination.tsx) — no logic changes; positioning is CSS-only.
+  - [app/(main)/items/ui/styles/item.css](<app/(main)/items/ui/styles/item.css>) — mobile media-query rules at the existing `@media (max-width: 599px)` block: toolbar grid-template, view-cell `display: none`, `:has()`-based search-expand, item-grid mobile override to use list layout, pagination positioning swap.
+  - [app/(main)/items/ui/components/ItemsToolbar.tsx](<app/(main)/items/ui/components/ItemsToolbar.tsx>) — no logic changes expected (CSS-only solution). May add a small structural change if the search-expand can't be done cleanly with `:has()`.
+  - [app/(main)/items/ui/components/Items.tsx](<app/(main)/items/ui/components/Items.tsx>) — possibly add a stable class name or container-id so the mobile CSS override of `.item-grid` → list layout is unambiguous.
+  - [app/(main)/items/ui/components/Pagination.tsx](<app/(main)/items/ui/components/Pagination.tsx>) — no logic changes; positioning is CSS-only.
 - **APIs / data**: none. No server actions, DAL calls, cache tags, or DB schema involved.
 - **Dependencies**: relies on `:has()` selector (Safari 15.4+, Chrome 105+, Firefox 121+). The codebase already uses container queries which require equivalent baselines.
 - **Tests**: visual verification via the dev preview tools using the seeded `dev-test-viewer` bypass.

@@ -69,12 +69,21 @@
 - [x] 11.10 Add mobile kebab JSX in `Item.tsx`: render `<div className="item-owner-actions-mobile">` for owners. Contains a `<Button variant="ghost" size="sm" ref={kebabRef} aria-haspopup="menu" aria-expanded>` opening `<Menu>` with `<MenuLinkItem>` Edit and `<MenuItem>` Archive (only when `showArchiveAction`). Reuse archive handler from existing inline-icon implementation.
 - [x] 11.11 Add CSS to hide kebab by default and show it only in row view at `<400px`:
   ```css
-  .item-owner-actions-mobile { display: none; }
+  .item-owner-actions-mobile {
+    display: none;
+  }
   @media (max-width: 399px) {
     .item-list .item-owner-actions,
-    .sortable-item .item-owner-actions { display: none; }
+    .sortable-item .item-owner-actions {
+      display: none;
+    }
     .item-list .item-owner-actions-mobile,
-    .sortable-item .item-owner-actions-mobile { display: flex; grid-column: 5; grid-row: 1 / 3; align-self: center; }
+    .sortable-item .item-owner-actions-mobile {
+      display: flex;
+      grid-column: 5;
+      grid-row: 1 / 3;
+      align-self: center;
+    }
   }
   ```
 - [x] 11.12 Single-row M1 collapse at `<600px`: remove leader-dot pseudo via `display: none`; stack name+price vertically in col 2; shorten Claim button label from "Claim this gift" to "Claim" at this breakpoint. Implement via CSS media query.
@@ -83,6 +92,7 @@
   - [x] 11.14.1 ≥600px: D3 layout — list view at `/items?view=list` shows two-row content + leader dots + icons. Sortable owner view at `/lists/[ownedId]` same shape with drag handle on the left.
   - [x] 11.14.2 400–599px: M1-icons — single-row content, no leader dots, icons still visible.
   - [x] 11.14.3 <400px: M1-kebab — single-row, kebab opens menu with Edit + Archive. Test owner kebab opens correctly and Edit/Archive both work.
+
 ## 12. Mobile horizontal-card layout (<600px) — supersedes earlier M1-single-row attempt
 
 - [x] 12.1 In `app/(main)/items/ui/styles/item.css`, remove the M1 single-row CSS that compressed the 5-col D3 grid horizontally (`grid-template-rows: auto`, pill `max-width: 110px`, name-description `align-self: start`, etc. inside the `@media (max-width: 599px)` block). Replace with the horizontal-card grid below.

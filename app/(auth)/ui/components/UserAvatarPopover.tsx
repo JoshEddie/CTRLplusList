@@ -39,9 +39,7 @@ export default function UserAvatarPopover({
         aria-label="User menu"
       >
         <div className="avatar-popover-header" role="presentation">
-          <div className="avatar-popover-name">
-            {user.name ?? 'Signed in'}
-          </div>
+          <div className="avatar-popover-name">{user.name ?? 'Signed in'}</div>
           {user.email && (
             <div className="avatar-popover-email">{user.email}</div>
           )}

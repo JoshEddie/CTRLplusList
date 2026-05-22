@@ -75,7 +75,8 @@ export default function ListForm({
       };
     }
 
-    const rawSubtitle = (formData.get('subtitle') as string | null)?.trim() ?? '';
+    const rawSubtitle =
+      (formData.get('subtitle') as string | null)?.trim() ?? '';
     const data = {
       name: formData.get('name') as string,
       subtitle: rawSubtitle === '' ? null : rawSubtitle,

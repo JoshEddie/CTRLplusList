@@ -2,16 +2,16 @@
 
 `standardize-buttons` consolidated the button surface (`<Button>` + `<LinkButton>` + `<Chip>` + tokens + focus/hover/min-touch contract) and explicitly deferred three patterns whose ARIA models and keyboard semantics didn't fit: dropdown menus, segmented controls, and form-input-shaped popover triggers. Today these patterns live as parallel one-off implementations across ~6 wrapper components:
 
-| Wrapper | Pattern | Today's primitive |
-|---|---|---|
-| `ListActionsMenu.tsx` | Action-list popover | `.menu-item` `<Link>` rows + danger `<button>` |
-| `UserAvatarPopover.tsx` | Action-list popover | `.avatar-popover-item` `<Link>` rows + form `<button>` |
-| `VisibilityPicker.tsx` | Segmented control (Private/Shared) | Two `.visibility-option` `<button role="radio">` |
-| `ItemsToolbar.tsx` (view toggle) | Segmented control (grid/list) | Two `.view-toggle-btn` `<button aria-pressed>` |
-| `StoreFilterPopover.tsx` | Form-input-styled popover trigger | `.store-filter-trigger` raw `<button>` |
-| `PriceFilterPopover.tsx` | Form-input-styled popover trigger | `.store-filter-trigger` (reused class) |
-| `ItemsToolbar.tsx` (filters) | Form-input-styled popover trigger | `.items-toolbar-filters-trigger` raw `<button>` |
-| `ListSelection.tsx` (item form) | Form-input-styled popover trigger | `.if-lp-trigger` `<button>` styled as `form-input` |
+| Wrapper                          | Pattern                            | Today's primitive                                      |
+| -------------------------------- | ---------------------------------- | ------------------------------------------------------ |
+| `ListActionsMenu.tsx`            | Action-list popover                | `.menu-item` `<Link>` rows + danger `<button>`         |
+| `UserAvatarPopover.tsx`          | Action-list popover                | `.avatar-popover-item` `<Link>` rows + form `<button>` |
+| `VisibilityPicker.tsx`           | Segmented control (Private/Shared) | Two `.visibility-option` `<button role="radio">`       |
+| `ItemsToolbar.tsx` (view toggle) | Segmented control (grid/list)      | Two `.view-toggle-btn` `<button aria-pressed>`         |
+| `StoreFilterPopover.tsx`         | Form-input-styled popover trigger  | `.store-filter-trigger` raw `<button>`                 |
+| `PriceFilterPopover.tsx`         | Form-input-styled popover trigger  | `.store-filter-trigger` (reused class)                 |
+| `ItemsToolbar.tsx` (filters)     | Form-input-styled popover trigger  | `.items-toolbar-filters-trigger` raw `<button>`        |
+| `ListSelection.tsx` (item form)  | Form-input-styled popover trigger  | `.if-lp-trigger` `<button>` styled as `form-input`     |
 
 Each reimplements its own keyboard handling, click-outside detection, focus model, and visual treatment. Some are accessible (`VisibilityPicker` correctly uses `role="radio"`); some are partially accessible (`ListActionsMenu` has `role="menu"` but no arrow-key navigation); the toggle pair in `ItemsToolbar` uses `aria-pressed` instead of `aria-checked`/`role="radio"`, which is the wrong primitive for a mutually-exclusive choice.
 
@@ -22,6 +22,7 @@ This change builds the missing primitives and re-shapes the wrappers around them
 ## Goals / Non-Goals
 
 **Goals:**
+
 - A11y model correctness: menus get `role="menu"` + arrow-key navigation + Escape + focus return; segmented controls get `role="radiogroup"` + arrow-key navigation (NOT tab); triggers get `aria-haspopup` + `aria-expanded`.
 - Visual consistency: any "menu item" anywhere in the app produces identical pixels; any "segmented control" produces identical pixels; any "popover trigger" produces identical pixels.
 - Wrapper components retain state ownership and orchestration — they shrink (sometimes substantially) but stay as the right home for app-specific logic.
@@ -29,11 +30,12 @@ This change builds the missing primitives and re-shapes the wrappers around them
 - The primitives compose cleanly with `<Button>` / `<LinkButton>` — a `<Menu>` triggered by a `<Button>`, a `<PopoverTrigger>` that opens a popover containing `<Button>` footer actions.
 
 **Non-Goals:**
+
 - Building a `<Listbox>` primitive. Only one current caller (`ListSelection.tsx`'s `.if-lp-opt` rows). Documented forward-reference for if a second appears.
 - Replacing the existing `Modal.tsx` / `ConfirmDialog.tsx` with a `<Dialog>` primitive. Separate concern.
 - Building a `<Tooltip>` primitive. Not in current need.
 - Portal-based popover positioning (escape from `overflow:hidden`). No current caller needs it; all existing popovers live inside their wrapper's DOM subtree and that works.
-- Restyling the popover *bodies* — the panels themselves (search input + checklist for stores, two number inputs for price, listbox rows for list-selection) stay page-scoped. Only the *trigger* is unified.
+- Restyling the popover _bodies_ — the panels themselves (search input + checklist for stores, two number inputs for price, listbox rows for list-selection) stay page-scoped. Only the _trigger_ is unified.
 - Fixing the `.if-lp-opt` listbox options. They stay page-scoped (one caller; not a menu).
 - Anything in the `button-system` contract — that change is sealed.
 
@@ -45,9 +47,9 @@ This change builds the missing primitives and re-shapes the wrappers around them
 
 - Menu: `role="menu"` / `role="menuitem"`. Arrow up/down moves between items. Enter/Space activates. Escape closes + returns focus. Home/End jump.
 - Segmented control: `role="radiogroup"` / `role="radio"`. Arrow keys move between options AND select (a key difference from listbox/menu). Tab moves between the group and the next focusable, not between options.
-- Popover trigger: a single button with `aria-haspopup` + `aria-expanded`. No keyboard model of its own beyond standard button — the popover *body* owns its own keyboard model after open.
+- Popover trigger: a single button with `aria-haspopup` + `aria-expanded`. No keyboard model of its own beyond standard button — the popover _body_ owns its own keyboard model after open.
 
-Folding them into one "popover" primitive would either leak ARIA roles through props (`role={'menu'|'radiogroup'|undefined}`) or force the wrong keyboard model on at least one of them. They share *infrastructure* (click-outside, Escape, focus model), but that's an implementation detail that can be extracted as a hook (`usePopoverDismiss`, see Decision 7) without forcing API conflation.
+Folding them into one "popover" primitive would either leak ARIA roles through props (`role={'menu'|'radiogroup'|undefined}`) or force the wrong keyboard model on at least one of them. They share _infrastructure_ (click-outside, Escape, focus model), but that's an implementation detail that can be extracted as a hook (`usePopoverDismiss`, see Decision 7) without forcing API conflation.
 
 Alternative considered: a single `<Popover>` primitive with role/keyboard-model props. Rejected — see above. The role and keyboard model are the primitive's identity, not a configuration.
 
@@ -61,20 +63,36 @@ Alternative considered: polymorphic `<MenuItem as="a">` / `asChild`. Rejected fo
 
 ### Decision 3: `<Menu>` is a controlled container; the trigger is the caller's choice
 
-`<Menu>` accepts `open: boolean`, `onClose: () => void`, and optionally an `anchorRef` (for positioning). The *trigger* (the button that opens the menu) stays in the wrapper's hands — typically a `<Button variant="on-dark">` for `ListActionsMenu` (kebab three-dot trigger) or a `<button className="avatar-container">` for `UserAvatarPopover` (avatar image). This lets each wrapper own its trigger's visual contract.
+`<Menu>` accepts `open: boolean`, `onClose: () => void`, and optionally an `anchorRef` (for positioning). The _trigger_ (the button that opens the menu) stays in the wrapper's hands — typically a `<Button variant="on-dark">` for `ListActionsMenu` (kebab three-dot trigger) or a `<button className="avatar-container">` for `UserAvatarPopover` (avatar image). This lets each wrapper own its trigger's visual contract.
 
 API:
 
 ```tsx
 <div ref={anchorRef}>
-  <Button variant="on-dark" onClick={() => setOpen(true)} aria-haspopup="menu" aria-expanded={open}>
+  <Button
+    variant="on-dark"
+    onClick={() => setOpen(true)}
+    aria-haspopup="menu"
+    aria-expanded={open}
+  >
     <MdMoreVert />
   </Button>
-  <Menu open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} aria-label="List actions">
-    <MenuLinkItem href={`/lists/${id}/choose-items`} icon={<MdChecklist />}>Choose items</MenuLinkItem>
-    <MenuItem icon={<MdModeEdit />} onClick={openEdit}>Edit list</MenuItem>
+  <Menu
+    open={open}
+    onClose={() => setOpen(false)}
+    anchorRef={anchorRef}
+    aria-label="List actions"
+  >
+    <MenuLinkItem href={`/lists/${id}/choose-items`} icon={<MdChecklist />}>
+      Choose items
+    </MenuLinkItem>
+    <MenuItem icon={<MdModeEdit />} onClick={openEdit}>
+      Edit list
+    </MenuItem>
     ...
-    <MenuItem icon={<MdDeleteForever />} tone="danger" onClick={openDelete}>Delete list</MenuItem>
+    <MenuItem icon={<MdDeleteForever />} tone="danger" onClick={openDelete}>
+      Delete list
+    </MenuItem>
   </Menu>
 </div>
 ```
@@ -90,9 +108,18 @@ Alternative considered: React context with a `useMenuItem()` hook that registers
 ### Decision 5: `<SegmentedControl>` is controlled via `value` / `onChange`, like radio inputs
 
 ```tsx
-<SegmentedControl value={view} onChange={setView} aria-label="View toggle" tone="light">
-  <SegmentedOption value="grid"><MdGridView /> Grid</SegmentedOption>
-  <SegmentedOption value="list"><MdViewList /> List</SegmentedOption>
+<SegmentedControl
+  value={view}
+  onChange={setView}
+  aria-label="View toggle"
+  tone="light"
+>
+  <SegmentedOption value="grid">
+    <MdGridView /> Grid
+  </SegmentedOption>
+  <SegmentedOption value="list">
+    <MdViewList /> List
+  </SegmentedOption>
 </SegmentedControl>
 ```
 
@@ -115,7 +142,15 @@ Alternative considered: borrow `<Button>`'s variant union. Rejected — `<Segmen
 Click-outside detection, Escape-to-close, and focus return are concerns shared by `<Menu>`, both filter popovers, and the list-selection dropdown. The current implementations all re-roll the same `useEffect` + `mousedown` / `keydown` listeners. Extract once at `app/ui/hooks/usePopoverDismiss.ts`.
 
 ```ts
-function usePopoverDismiss({ open, onClose, ref }: { open: boolean; onClose: () => void; ref: RefObject<HTMLElement | null> }): void
+function usePopoverDismiss({
+  open,
+  onClose,
+  ref,
+}: {
+  open: boolean;
+  onClose: () => void;
+  ref: RefObject<HTMLElement | null>;
+}): void;
 ```
 
 Used by `<Menu>` internally and by the wrapper components (filter popovers, list-selection) that still own their own popover body.
@@ -135,8 +170,8 @@ API:
   count={selectedStores.length || undefined}
   active={selectedStores.length > 0}
   open={open}
-  onClick={() => setOpen(o => !o)}
-  aria-haspopup="dialog"  // or "menu"/"listbox" per the popover body
+  onClick={() => setOpen((o) => !o)}
+  aria-haspopup="dialog" // or "menu"/"listbox" per the popover body
 />
 ```
 
@@ -174,6 +209,7 @@ Alternative considered: a `<Popover>` container + `<PopoverContent>` child. Reje
 ## Migration Plan
 
 Sequence:
+
 1. Land `standardize-buttons`.
 2. Build primitives in this change, one at a time: `<Menu>` family → `<SegmentedControl>` family → `<PopoverTrigger>`. Build `usePopoverDismiss` alongside `<Menu>` (first user).
 3. Slice-migrate one wrapper per primitive (e.g. `ListActionsMenu` for `<Menu>`, `VisibilityPicker` for `<SegmentedControl>`, `StoreFilterPopover` for `<PopoverTrigger>`); gut-check keyboard model + visual treatment in preview.

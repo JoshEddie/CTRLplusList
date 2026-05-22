@@ -42,6 +42,7 @@ A 1.0 release is not viable with these holes in place.
 ## Impact
 
 **Code touched:**
+
 - `app/actions/lists.ts` — `createList`, `updateList`, `deleteList` (auth/ownership rewrites; remove `user_id` from `ListSchema`).
 - `app/actions/items.ts` — `createItem`, `createPurchase`, `removePurchase` (auth/ownership rewrites; transaction for purchase; remove `user_id` from `ItemSchema` input contract).
 - `app/api/image-search/route.ts` — add `auth()` + per-user rate-limit + query-length cap.
@@ -49,11 +50,13 @@ A 1.0 release is not viable with these holes in place.
 - Client callers of the affected actions — drop `user_id` from the payloads they construct (ListForm, ItemForm, purchase flow). The session is now the source of truth.
 
 **APIs / contracts:**
+
 - `ListData` and `ItemData` Zod schemas lose their `user_id` field (BREAKING for any out-of-tree caller; in-repo callers must be updated as part of this change).
 - `createPurchase` request shape becomes `{ item_id, guest_name }` — the `user_id` field is removed from the public action signature.
 - `/api/image-search` now returns 401 for unauthenticated callers and 429 for rate-limited callers (in addition to existing 429 on upstream quota exhaustion).
 
 **Not covered by this change (deferred follow-ups):**
+
 - 🟠 Missing reverse-direction indexes on `user_follows.followee_id` and `user_blocks.blocked_id` — separate change.
 - 🟠 Menu primitive focus-stealing on outside click and missing Tab handler — separate change against `menu-system`.
 - 🟠 `PopoverTrigger` missing default `aria-expanded` / `aria-haspopup` — separate change against `popover-trigger-system`.

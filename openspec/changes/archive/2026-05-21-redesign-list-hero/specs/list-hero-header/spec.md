@@ -121,11 +121,13 @@ The avatar, name, and Follow button SHALL be visually grouped (flex siblings wit
 The controls card's action affordances SHALL be composed as follows:
 
 **Owner view (non-preview):**
+
 - The controls card contains, in DOM order: an action row with Edit list + the `ListActionsMenu` kebab (Edit grows to fill, kebab pulls right at fixed size), followed by the Choose items button as a full-width affordance on its own row.
 - No Share button is rendered inside the controls card on owner views — Share is paired with the visibility picker in the identity zone (per the requirement above).
 - No hairline divider is required inside the owner controls card; the row + button stack reads cleanly without one.
 
 **Viewer view (non-preview, authenticated):**
+
 - Top: byline group (avatar + linked name + Follow) — defined by the requirement above.
 - A hairline divider separates the byline group from the action block.
 - Action block: Share and Bookmark rendered as two equal peer buttons (50/50 width split).

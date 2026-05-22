@@ -7,11 +7,13 @@ Most failures are mechanical. The interesting subset is the four `set-state-in-e
 ## Goals / Non-Goals
 
 **Goals:**
+
 - `npm run lint` exits 0 with no errors and no warnings.
 - For each `set-state-in-effect` site, choose between refactor and justified `eslint-disable-next-line` (with a one-line reason comment) — no blanket disables.
 - Preserve behavior. Any incidental bug fixes get called out but the change does not depend on user-visible behavior changes.
 
 **Non-Goals:**
+
 - Upgrading or downgrading `eslint-plugin-react-hooks` or `eslint-config-next`.
 - Refactoring effect-heavy components beyond what the four flagged sites require.
 - Changes to specs/requirements. This is dev-experience cleanup; no spec deltas.
@@ -26,6 +28,7 @@ Most failures are mechanical. The interesting subset is the four `set-state-in-e
 **Why:** This is the canonical React 19 pattern for "am I on the client?" gates. The current `mounted` state exists solely so the `createPortal(..., document.body)` call doesn't run during SSR. `useSyncExternalStore` expresses this without an effect and satisfies the rule honestly.
 
 **Alternatives considered:**
+
 - `'use client'` alone won't help — the file is already a client component; the SSR pass still runs and `document` is undefined.
 - `eslint-disable` would be honest but trains us to ignore the rule for legitimately-rewritable patterns.
 
@@ -36,6 +39,7 @@ Most failures are mechanical. The interesting subset is the four `set-state-in-e
 **Why:** The effect was syncing prop→state, which is the exact anti-pattern the rule targets. `key`-based reset accomplishes the same external-sync intent without an effect.
 
 **Alternatives considered:**
+
 - Fully controlled input keyed to `q` with debounced URL update via ref: cleaner long-term but a bigger refactor; defer.
 - `eslint-disable`: leaves the well-known anti-pattern in place.
 
@@ -52,6 +56,7 @@ Most failures are mechanical. The interesting subset is the four `set-state-in-e
 **Why:** Same anti-pattern as D2. Incidentally fixes a latent bug: today, while the popover is open and the user is typing, an external URL change would stomp their in-progress edit. The `key` approach only resets when the popover content is unmounted/remounted (closed and reopened, or external change), which matches user expectation.
 
 **Alternatives considered:**
+
 - Track an "initialized" ref: error-prone, adds a ref for no readability gain.
 - `eslint-disable`: doesn't address the latent bug.
 
@@ -62,6 +67,7 @@ Most failures are mechanical. The interesting subset is the four `set-state-in-e
 **Why:** Unlike D1–D4, this is not "syncing state from props" — it's responding to a navigation event by closing a transient UI element. The rule is being overly conservative. Refactoring to put `setOpen(false)` on every `<Link>` `onClick` would scatter the concern and miss programmatic navigations (e.g., `router.push`).
 
 **Alternatives considered:**
+
 - Move the close logic into a `useEffect` watching `pathname` via `useSyncExternalStore`: same effect, more ceremony.
 - `Link onClick` approach: doesn't cover programmatic nav; brittle.
 
@@ -80,9 +86,9 @@ Most failures are mechanical. The interesting subset is the four `set-state-in-e
 
 ## Risks / Trade-offs
 
-- **`key`-based resets (D2, D4)** discard local component state on every URL change. For D4 this is desired (fixes the stomp bug); for D2 we should confirm the URL `q` changes only happen on actions that *should* reset the input (back/forward, deep-link, clear button) — manual verification step in tasks.
+- **`key`-based resets (D2, D4)** discard local component state on every URL change. For D4 this is desired (fixes the stomp bug); for D2 we should confirm the URL `q` changes only happen on actions that _should_ reset the input (back/forward, deep-link, clear button) — manual verification step in tasks.
 - **`useSyncExternalStore` for `mounted` (D1)** is a small bundle/perf delta (negligible) and a slight readability cost. Acceptable trade for satisfying the rule honestly.
-- **D5 disable comment** sets a precedent: when adopting a stricter linter, some flagged patterns are legitimate. Mitigation — comment explains *why* per-site; reviewers can audit by grepping for `set-state-in-effect`.
+- **D5 disable comment** sets a precedent: when adopting a stricter linter, some flagged patterns are legitimate. Mitigation — comment explains _why_ per-site; reviewers can audit by grepping for `set-state-in-effect`.
 - **Merge conflicts with five in-flight changes** are likely on `ItemsBrowser.tsx`, `ItemsToolbar.tsx`, `ChooseItemsForm.tsx`, `StoreLinks.tsx`, `ListSelection.tsx`, `AppNav.tsx`. Mitigation — fixes are localized (single-digit lines each); conflicts are mechanical.
 
 ## Migration Plan
