@@ -89,6 +89,10 @@ body {
   color: var(--primary-text-color);
 }
 
+html {
+  background-color: #25194e;
+}
+
 body {
   font-family: var(--font-roboto-condensed);
   -webkit-font-smoothing: antialiased;
