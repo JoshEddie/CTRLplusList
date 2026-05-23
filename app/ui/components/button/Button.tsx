@@ -39,8 +39,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         aria-pressed={pressed === undefined ? undefined : pressed}
         {...rest}
       >
-        {isLoading && <span className="btn-spinner" aria-hidden="true" />}
-        {children}
+        {isLoading ? (
+          <>
+            <span className="btn-spinner" aria-hidden="true" />
+            <span className="sr-only">{children}</span>
+          </>
+        ) : (
+          children
+        )}
       </button>
     );
   }
