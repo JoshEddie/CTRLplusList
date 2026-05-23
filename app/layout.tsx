@@ -77,7 +77,13 @@ export default function RootLayout({
       <body
         className={`${roboto.variable} ${robotoCondensed.variable} ${crimsonPro.variable}`}
       >
-        <Toaster position="top-right" />
+        <Toaster
+          position="top-right"
+          containerStyle={{
+            top: 'calc(16px + env(safe-area-inset-top))',
+            right: 'calc(16px + env(safe-area-inset-right))',
+          }}
+        />
         <ServiceWorkerRegistration />
         {children}
         {/* <div className="bottom-line" /> */}
