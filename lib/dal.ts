@@ -263,6 +263,7 @@ export async function getItemById(id: string, userId: string) {
       user_id: result.user_id,
       created_at: result.created_at,
       updated_at: result.updated_at,
+      archived_at: result.archived_at,
       stores: result.stores,
       lists: lists,
     };

@@ -24,6 +24,7 @@ interface ItemFormProps {
   item?: ItemTable & {
     stores: ItemStoreTable[];
     lists: ListTable[];
+    archived_at?: Date | null;
   };
   lists?: ListTable[];
   user_id: string;
@@ -194,6 +195,7 @@ export default function ItemForm({
                 id={item.id}
                 returnTo={returnTo}
                 onDeleted={onClose}
+                archived={item.archived_at != null}
               />
             ) : undefined
           }

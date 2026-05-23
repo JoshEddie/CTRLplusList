@@ -9,7 +9,11 @@ import { MdModeEdit } from 'react-icons/md';
 import ItemFormContainer from './itemform/ItemFormContainer';
 
 type EditItemData = {
-  item: ItemTable & { stores: ItemStoreTable[]; lists: ListTable[] };
+  item: ItemTable & {
+    stores: ItemStoreTable[];
+    lists: ListTable[];
+    archived_at?: Date | null;
+  };
   lists: ListTable[];
 };
 

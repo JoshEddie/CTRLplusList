@@ -39,3 +39,13 @@
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
+
+/* Three-button (with tertiary "alternative" action): the tertiary spans
+ * both columns on its own row above the Cancel | Confirm pair. The
+ * preserved bottom row keeps the destructive button at the same
+ * size/affordance the user just clicked to open the dialog — no
+ * bait-and-switch — while the full-width tertiary visually nudges toward
+ * the reversible alternative. */
+.confirm-dialog-buttons:has(> :nth-child(3)) > :first-child {
+  grid-column: 1 / -1;
+}
