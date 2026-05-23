@@ -16,7 +16,7 @@ The toast emitted on a successful visibility change SHALL match the destination 
 #### Scenario: Each row carries icon, label, and description
 
 - **WHEN** the visibility menu is rendered
-- **THEN** the Hidden row shows `🔒 Hidden` with description "Only I can see this list"; the Private row shows `🔗 Private` with description "Anyone with the link can view"; the Shared row shows `👥 Shared` with description "Visible to your followers"
+- **THEN** the Hidden row shows `🔒 Hidden` with description "Only you can see this list"; the Private row shows `🔗 Private` with description "Anyone with the link can view"; the Shared row shows `👥 Shared` with description "Visible to your followers"
 
 #### Scenario: Selecting Hidden sets owner-only visibility
 

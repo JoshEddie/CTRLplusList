@@ -19,7 +19,7 @@ export const VISIBILITY_ROWS: readonly VisibilityRow[] = [
   {
     value: VISIBILITY.OWNER,
     label: 'Hidden',
-    description: 'Only I can see this list',
+    description: 'Only you can see this list',
     icon: <FaLock aria-hidden />,
     toast: 'List is now hidden',
   },

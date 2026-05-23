@@ -278,10 +278,7 @@ export default function ChooseItemsForm({
                 const isSelected = selected.has(item.id);
                 const wasIn = initialSet.has(item.id);
                 const removing = wasIn && !isSelected;
-                const isArchived = !!item.archived_at;
                 const checkboxId = `choose-item-${item.id}`;
-                const showInListBadge = wasIn && isSelected;
-                const showAnyBadge = showInListBadge || isArchived;
                 return (
                   <li key={item.id}>
                     <label
@@ -296,29 +293,7 @@ export default function ChooseItemsForm({
                         checked={isSelected}
                         onChange={() => toggle(item.id)}
                       />
-                      {/* Body delegated to the shared row primitive. Passing
-                          user_id makes isOwner=true (the picker viewer always
-                          owns these items — it's their library), which suppresses
-                          the non-owner Claim CTA branch. The `.preview` className
-                          composed by <Item preview> then suppresses owner
-                          edit/archive/kebab cells via the existing rules in
-                          item.css. Result: identical visual to the sortable
-                          owner row, minus the drag handle. */}
                       <Item item={item} user_id={user_id} preview />
-                      {showAnyBadge && (
-                        <span className="choose-items-badges">
-                          {showInListBadge && (
-                            <span className="choose-items-in-badge">
-                              In list
-                            </span>
-                          )}
-                          {isArchived && (
-                            <span className="choose-items-archived-badge">
-                              archived
-                            </span>
-                          )}
-                        </span>
-                      )}
                     </label>
                   </li>
                 );

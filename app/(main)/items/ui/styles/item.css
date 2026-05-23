@@ -848,6 +848,8 @@
   background-color: transparent;
 }
 
+
+
 .item-list .item-container:hover,
 .sortable-item .item-container:hover {
   background-color: var(--card-hover-background-color);
@@ -1110,6 +1112,10 @@
     border: 1px solid var(--card-border-color);
     border-radius: 12px;
     margin-bottom: 10px;
+  }
+
+  .choose-items-select .item-container {
+    border: none;
   }
 
   /* Row hover/divider treatment doesn't apply when rows are cards. */

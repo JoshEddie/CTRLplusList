@@ -14,7 +14,7 @@ The trigger pill SHALL display the currently-selected row's label verbatim (no q
 #### Scenario: Each row carries icon, label, and description
 
 - **WHEN** the visibility menu is rendered
-- **THEN** the Just me row shows `🔒 Just me` with description "Only I can see this list"; the Private row shows `🔗 Private` with description "Anyone with the link can view"; the Shared row shows `👥 Shared` with description "Visible to your followers"
+- **THEN** the Just me row shows `🔒 Just me` with description "Only you can see this list"; the Private row shows `🔗 Private` with description "Anyone with the link can view"; the Shared row shows `👥 Shared` with description "Visible to your followers"
 
 #### Scenario: Selecting Just me sets private
 

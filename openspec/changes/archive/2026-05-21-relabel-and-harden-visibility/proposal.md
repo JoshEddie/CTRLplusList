@@ -15,7 +15,7 @@ This change relabels the visibility UI, restructures the picker as a flat three-
 ### UI relabel + restructure (modifies `list-visibility`)
 
 - Replace the Private/Shared segmented control + conditional feed checkbox with **three flat menu items** in the visibility popover:
-  - 🔒 **Just me** — only I can see this list (maps to `'private'`)
+  - 🔒 **Just me** — only you can see this list (maps to `'private'`)
   - 🔗 **Private** — anyone with the link can view (maps to `'unlisted'`)
   - 👥 **Shared** — visible to your followers (maps to `'public'`)
 - Each item carries icon + label + one-line description; the selected item shows a `✓` at right.

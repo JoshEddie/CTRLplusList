@@ -113,7 +113,7 @@ The `aria-label` on the trigger keeps the longer description (e.g. `"Visibility:
 
 ## Risks / Trade-offs
 
-- **["Just me" reads as informal]** → Some users may expect a more "system" word like "Hidden" or "Private only to me." Mitigation: the icon (🔒) and the per-row description ("Only I can see this list") carry the same meaning; we can revisit if real user feedback shows confusion.
+- **["Just me" reads as informal]** → Some users may expect a more "system" word like "Hidden" or "Private only to me." Mitigation: the icon (🔒) and the per-row description ("Only you can see this list") carry the same meaning; we can revisit if real user feedback shows confusion.
 
 - **["Private" now means link-shareable, contradicting prior label]** → Existing users may have learned that "Private" meant "just me" in the old UI. They may briefly toggle to the new "Private" expecting the same scope. Mitigation: the per-row description in the menu makes the new meaning explicit at the point of choice; toast on change reinforces.
 

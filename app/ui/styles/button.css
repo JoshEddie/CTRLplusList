@@ -132,8 +132,7 @@
 
 @media (hover: hover) {
   .btn.primary:hover {
-    background-color: var(--secondary-color);
-    border-color: var(--secondary-color);
+    background-color: var(--primary-color);
     color: #ffffff;
   }
 

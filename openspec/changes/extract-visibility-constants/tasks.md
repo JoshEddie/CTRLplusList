@@ -24,7 +24,7 @@
 - [x] 4.1 In `app/(main)/lists/[id]/page.tsx`, replace `list.visibility === 'public'`, `list.visibility === 'private' && !isOwner`, and `list.visibility !== 'private'` with `VISIBILITY.X` comparisons.
 - [x] 4.2 In `app/(main)/lists/ui/components/ListDetails.tsx`, replace `visibility !== 'private'` with `visibility !== VISIBILITY.OWNER`.
 - [x] 4.3 In `app/(main)/lists/ui/components/VisibilityPicker.tsx`, replace the option list's `value: 'private' | 'unlisted' | 'public'` literals with `VISIBILITY.OWNER | VISIBILITY.LINK | VISIBILITY.FOLLOWERS`.
-- [x] 4.4 In `VisibilityPicker.tsx`, change the option labeled "Just me" to **"Hidden"** and its toast from "List is now just me" to **"List is now hidden"**. Confirm icon (`🔒`) and description ("Only I can see this list") are unchanged.
+- [x] 4.4 In `VisibilityPicker.tsx`, change the option labeled "Just me" to **"Hidden"** and its toast from "List is now just me" to **"List is now hidden"**. Confirm icon (`🔒`) and description ("Only you can see this list") are unchanged.
 - [x] 4.5 In `app/(main)/lists/ui/components/ShareButton.tsx`, replace `setListVisibility(list.id, 'unlisted')` with `setListVisibility(list.id, VISIBILITY.LINK)`; replace modal copy "This list is just me. Make private & share?" with **"This list is hidden. Make private & share?"**
 - [x] 4.6 In `app/(main)/lists/ui/components/HeroCollapsedItems.tsx`, replace `setListVisibility(list.id, 'unlisted')` with `setListVisibility(list.id, VISIBILITY.LINK)`.
 
@@ -37,7 +37,7 @@
 
 - [x] 6.1 `grep -nE "'(private|unlisted|public|owner|link|followers)'" app/ lib/ scripts/ --include='*.ts' --include='*.tsx'` returns no matches outside `lib/visibility.ts` (excluding any pre-existing unrelated string usages — verify by surrounding context).
 - [x] 6.2 `npm run typecheck` passes (Drizzle row types, `ListVisibility` narrowing). Verified via `npx tsc --noEmit` (no `typecheck` script in package.json).
-- [x] 6.3 Browser preview verified at /lists/dev-list-viewer-housewarming: trigger pill renders `🔒 Hidden` with `aria-label="Visibility: Hidden — Only I can see this list. Click to change."`. Page renders without runtime errors.
+- [x] 6.3 Browser preview verified at /lists/dev-list-viewer-housewarming: trigger pill renders `🔒 Hidden` with `aria-label="Visibility: Hidden — Only you can see this list. Click to change."`. Page renders without runtime errors.
 - [x] 6.4 Modal copy verified in source (ShareButton.tsx primary_text="This list is hidden.").
 - [x] 6.5 `VISIBILITY.LINK === 'unlisted'` in Stage 1, so all `setListVisibility(list.id, VISIBILITY.LINK)` call sites still write the legacy `'unlisted'` DB string verbatim.
 

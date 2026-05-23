@@ -44,7 +44,7 @@ This change is **Stage 1 of a three-stage rollout** required by the shared dev/p
 ### Re-label "Just me" → "Hidden"
 
 - `VisibilityPicker.tsx` option list:
-  - Label `Just me` → **`Hidden`**, description unchanged ("Only I can see this list"), icon unchanged (`🔒`), toast `"List is now just me"` → **`"List is now hidden"`**.
+  - Label `Just me` → **`Hidden`**, description unchanged ("Only you can see this list"), icon unchanged (`🔒`), toast `"List is now just me"` → **`"List is now hidden"`**.
 - `ShareButton.tsx` modal copy in [ShareButton.tsx](<app/(main)/lists/ui/components/ShareButton.tsx>) that currently says "This list is just me. Make private & share?" → **"This list is hidden. Make private & share?"**
 
 ### Spec deltas

@@ -9,7 +9,7 @@
 ## 2. VisibilityPicker rewrite
 
 - [x] 2.1 Open `app/(main)/lists/ui/components/VisibilityPicker.tsx`. Replace the body of the popover (currently `<SegmentedControl>` + conditional `<CheckboxField>`) with a `<Menu>` containing three `<MenuItemRadio>` rows.
-- [x] 2.2 Define the three row configs (an array of `{ value: Visibility, icon, label, description }`) — labels and descriptions per the spec: Just me / 🔒 / "Only I can see this list"; Private / 🔗 / "Anyone with the link can view"; Shared / 👥 / "Visible to your followers". Map activation → existing `apply(next)` helper. The early-return for `next === current` already exists.
+- [x] 2.2 Define the three row configs (an array of `{ value: Visibility, icon, label, description }`) — labels and descriptions per the spec: Just me / 🔒 / "Only you can see this list"; Private / 🔗 / "Anyone with the link can view"; Shared / 👥 / "Visible to your followers". Map activation → existing `apply(next)` helper. The early-return for `next === current` already exists.
 - [x] 2.3 Update the `pillLabel(v)` function to return the single-word label (`"Just me"` / `"Private"` / `"Shared"`) with no `·`-qualifier. The icon comes from `StatusIcon` (already 3-way correct).
 - [x] 2.4 Update the trigger's `aria-label` to include the per-row description (e.g. `` `Visibility: ${pillLabel(current)} — ${describe(current)}. Click to change.` ``). Keep the visible label as just the noun.
 - [x] 2.5 Update the `describe(v)` toast copy: `'private'` → `"List is now just me"`; `'unlisted'` → `"Anyone with the link can view"` (unchanged); `'public'` → `"Visible to your followers"` (unchanged).
