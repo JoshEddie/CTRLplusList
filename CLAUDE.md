@@ -1,5 +1,9 @@
 # Claude notes
 
+## Adding or modifying tests? Read [TESTING.md](TESTING.md) first
+
+Substance rules, forbidden patterns (tautologies, execute-for-coverage, snapshot-only), and the assertion bar all live there. Applies to every test in the repo.
+
 ## Database driver: no transactions
 
 The DB layer uses `drizzle-orm/neon-http` over Neon's HTTP API. **Interactive transactions are not supported on this driver.** Do not introduce `db.transaction(async (tx) => { … })`, `SELECT … FOR UPDATE`, or any code that assumes a multi-statement session — every query is its own HTTP round-trip with its own connection.
