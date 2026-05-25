@@ -16,7 +16,11 @@ const NewList = async () => {
     redirect('/');
   }
 
-  return <ListForm user_id={user.id} />;
+  return (
+    <main className="container">
+      <ListForm />
+    </main>
+  );
 };
 
 export default NewList;

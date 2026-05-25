@@ -1,7 +1,5 @@
-import ItemLoading from "../items/ui/components/ItemLoading";
+import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 
 export default function PurchasedLoading() {
-    return (
-        <ItemLoading />
-    );
+  return <LoadingIndicator size="page" />;
 }

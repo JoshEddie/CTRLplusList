@@ -43,10 +43,14 @@ interface FormErrors {
   lists: string;
 }
 
-export function useItemForm(initialItem?: ItemTable & {
+export function useItemForm(
+  initialItem?: ItemTable & {
     stores: ItemStoreTable[];
     lists: ListTable[];
-  }, user_id?: string) {
+  },
+  returnTo?: string,
+  onSuccess?: () => void
+) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
 
@@ -55,19 +59,20 @@ export function useItemForm(initialItem?: ItemTable & {
     name: initialItem?.name || '',
     description: initialItem?.description || '',
     image_url: initialItem?.image_url || '',
-    quantity_limit: initialItem?.quantity_limit || 1,
+    quantity_limit:
+      initialItem?.quantity_limit === undefined
+        ? 1
+        : initialItem.quantity_limit,
     stores: initialItem?.stores?.length
       ? initialItem.stores
-      : [
-          { name: '', link: '', price: '' },
-        ],
-    lists: initialItem?.lists?.map((list) => {
-      return {
-        value: list.id.toString(),
-        label: list.name,
-      };
-    }) || [],
-    user_id: user_id || '',
+      : [{ name: '', link: '', price: '' }],
+    lists:
+      initialItem?.lists?.map((list) => {
+        return {
+          value: list.id.toString(),
+          label: list.name,
+        };
+      }) || [],
   });
 
   const [errors, setErrors] = useState<FormErrors>({
@@ -75,9 +80,7 @@ export function useItemForm(initialItem?: ItemTable & {
     description: '',
     image_url: '',
     quantity_limit: '',
-    stores: [
-      { name: '', link: '', price: '' },
-    ],
+    stores: [{ name: '', link: '', price: '' }],
     lists: '',
   });
 
@@ -132,8 +135,8 @@ export function useItemForm(initialItem?: ItemTable & {
       }
 
       if (type === 'quantity_limit') {
-        if ((value as number) < 0) {
-          newErrors.quantity_limit = 'Quantity limit must be greater than 0';
+        if (value !== null && (value as number) < 1) {
+          newErrors.quantity_limit = 'Quantity limit must be at least 1';
         } else {
           newErrors.quantity_limit = '';
         }
@@ -228,7 +231,7 @@ export function useItemForm(initialItem?: ItemTable & {
   );
 
   const handleQuantityLimitChange = useCallback(
-    (value: number) => {
+    (value: number | null) => {
       setFormState((prev) => ({ ...prev, quantity_limit: value }));
       setErrors((prev) => ({ ...prev, quantity_limit: '' }));
       debouncedFormValidate(value, 'quantity_limit');
@@ -258,22 +261,27 @@ export function useItemForm(initialItem?: ItemTable & {
     [debouncedStoreValidate, errors, formState.stores]
   );
 
-  const handleStoreAdd = useCallback((index: number) => {
-    const newStores = [...formState.stores];
-    while (index >= newStores.length) {
-      newStores.push({ name: '', link: '', price: '' });
-    }
-    setFormState((prev) => ({ ...prev, stores: newStores }));
-
-    const newErrors = { ...errors };
-      
-      while (index >= (newErrors.stores?.length || 0)) {
-        newErrors.stores = [...(newErrors.stores || []), { name: '', link: '', price: '' }];
+  const handleStoreAdd = useCallback(
+    (index: number) => {
+      const newStores = [...formState.stores];
+      while (index >= newStores.length) {
+        newStores.push({ name: '', link: '', price: '' });
       }
-      
-      setErrors({...errors, stores: newErrors.stores});
-    
-  }, [errors, formState.stores]);
+      setFormState((prev) => ({ ...prev, stores: newStores }));
+
+      const newErrors = { ...errors };
+
+      while (index >= (newErrors.stores?.length || 0)) {
+        newErrors.stores = [
+          ...(newErrors.stores || []),
+          { name: '', link: '', price: '' },
+        ];
+      }
+
+      setErrors({ ...errors, stores: newErrors.stores });
+    },
+    [errors, formState.stores]
+  );
 
   const handleStoreRemove = useCallback(
     (index: number) => {
@@ -282,8 +290,12 @@ export function useItemForm(initialItem?: ItemTable & {
       setFormState((prev) => ({ ...prev, stores: newStores }));
 
       const newErrors = { ...errors };
-      newErrors.stores = newStores.map(() => ({ name: '', link: '', price: '' }));
-      setErrors({...errors, stores: newErrors.stores});
+      newErrors.stores = newStores.map(() => ({
+        name: '',
+        link: '',
+        price: '',
+      }));
+      setErrors({ ...errors, stores: newErrors.stores });
     },
     [errors, formState.stores]
   );
@@ -352,8 +364,13 @@ export function useItemForm(initialItem?: ItemTable & {
           toast.success(
             `Item ${initialItem?.id ? 'updated' : 'created'} successfully`
           );
-          router.push('/items');
-          router.refresh();
+          if (onSuccess) {
+            onSuccess();
+            router.refresh();
+          } else {
+            router.push(returnTo ?? '/items');
+            router.refresh();
+          }
         } else {
           toast.error(result.message || 'An error occurred');
         }
@@ -368,6 +385,8 @@ export function useItemForm(initialItem?: ItemTable & {
       formState,
       initialItem?.id,
       isFormValid,
+      onSuccess,
+      returnTo,
       router,
       validateForm,
       validateStoreField,

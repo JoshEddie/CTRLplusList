@@ -1,35 +1,105 @@
-
-.purchased-by-container {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    row-gap: 0;
-    column-gap: 4px;
-    flex-wrap: wrap;
-    justify-content: start;
-    text-align: left;
-}
-
-.purchased-by {
-    font-weight: 200;
-}
-
-.purchase {
-  display: grid;
-  grid-template-columns: 30px 1fr;
-  padding: 0 8px;
+/* Claim CTA — full-width purple button sits inside the item card body */
+/* .claim-cta-btn { */
+/* width: 100%;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  font-size: 12px;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--primary-color);
+  color: var(--light-color);
+  font-family: var(--font-roboto-condensed);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    transform 0.1s;
 }
 
-.purchase:hover,
-.purchase.purchased {
-  background-color: var(--secondary-color);
-  border-color: var(--secondary-color);
-  color: #ffffff;
+.claim-cta-btn:hover {
+  background-color: var(--primary-color-dark);
 }
 
-.purchase.purchased:hover {
-  background-color: #ffffff;
-  color: var(--secondary-color);
+.claim-cta-btn:active {
+  transform: scale(0.99);
+} */
+
+/* Claimed / Fully-claimed inline state — pill inside the card body. Sized
+   to match the standard button floor so the card footer aligns whether the
+   item is unclaimed (Claim CTA / store-link), claimed (green pill), or
+   fully claimed (gray pill). When claimed by the viewer the entire pill is
+   a button that fires undo; the "Undo" text on the right is a visual hint
+   for the whole click target. */
+.claimed-state {
+  /* Locally-darkened text tokens — the global --success-text / --muted-text-color
+     fail WCAG 1.4.3 AA contrast against the pill backgrounds (3.42:1 and
+     4.26:1 respectively, below the 4.5:1 floor for normal text). */
+  --claimed-text: #047857;
+  --claimed-text-dim: #065f46;
+  --fully-claimed-text: #374151;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--btn-min-height);
+  padding: var(--btn-padding-y) var(--btn-padding-x);
+  border: 1.5px solid var(--success-border);
+  border-radius: var(--btn-radius);
+  background-color: var(--success-bg);
+  color: var(--claimed-text);
+  font-family: var(--font-roboto-condensed);
+  cursor: pointer;
+}
+
+.claimed-state:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: 2px;
+}
+
+.claimed-state-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.claimed-state-undo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--claimed-text-dim);
+}
+
+@media (hover: hover) {
+  .claimed-state:hover:not(.claimed-state--fully) {
+    background-color: color-mix(
+      in srgb,
+      var(--success-bg) 85%,
+      var(--claimed-text)
+    );
+    border-color: var(--claimed-text);
+  }
+
+  .claimed-state:hover:not(.claimed-state--fully) .claimed-state-undo {
+    color: var(--claimed-text);
+    text-decoration: underline;
+  }
+}
+
+.claimed-state--fully {
+  justify-content: center;
+  background-color: var(--secondary-background-color);
+  border-color: var(--neutral-border-color);
+  color: var(--fully-claimed-text);
+  cursor: default;
+}
+
+.claimed-state--fully .claimed-state-label {
+  color: var(--fully-claimed-text);
 }

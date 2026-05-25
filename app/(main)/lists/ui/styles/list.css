@@ -2,219 +2,799 @@
   width: 100%;
 }
 
-.list-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(450px, 100%), 1fr));
-  gap: 12px;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.list-header,
-.list,
-.list-row {
-  width: 100%;
-  position: relative;
-}
-
-.list-row {
-  border: 1px solid var(--primary-color);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.list {
-  text-decoration: none;
+/* ── LIST DETAIL HERO ──
+   Single-panel composition: identity (left) + controls (right) live inside
+   one continuous gradient panel separated by an interior hairline divider.
+   Earlier two-card variant carried the gradient per card, which broke
+   continuity at the white gap — each card showed its own 0%→100% spectrum
+   so the lighter edge of one ran into the darker edge of the next. The
+   divider-inside-one-panel approach keeps the two-role visual affordance
+   without the discontinuity. At <800px the row collapses to a column and
+   the divider switches from vertical to horizontal. */
+.list-hero {
   display: flex;
   flex-direction: column;
-  flex-wrap: nowrap;
-  justify-content: center;
-  gap: 8px;
-  background-color: var(--secondary-background-color);
-  padding: 16px;
-  color: var(--primary-text-color);
+  gap: 14px;
+  flex-shrink: 0;
+  color: var(--light-color);
 }
 
-.list:hover {
-  background-color: var(--secondary-color);
-  color: #ffffff;
-}
-
-.list-cell-details {
+.list-hero-grid {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
+  align-items: stretch;
+  background-image: var(--hero-gradient);
+  /* Top-only rounding — the items toolbar sits flush directly below the
+     hero, so bottom corners stay square to merge cleanly with it.
+     `overflow` deliberately left as `visible` so the kebab dropdown menu
+     can extend past the hero's bottom edge into the items area. */
+  border-radius: 14px 14px 0 0;
 }
 
-@media (max-width: 550px) {
-  .list-cell-details {
+@media (max-width: 800px) {
+  .list-hero-grid {
     flex-direction: column;
-    gap: 8px;
+    border-radius: 12px 12px 0 0;
   }
 }
 
-.list-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  text-decoration: none;
+/* ── Card zones ─────────────────────────────────────────────────────────
+   Cards are transparent regions inside the shared gradient panel. The
+   identity card and controls card are siblings; the controls card carries
+   the divider on its leading edge (left on desktop, top on mobile). */
+.list-hero-card {
+  padding: 22px 24px;
+  padding-bottom: 6px;
+  min-width: 0;
 }
 
-.list-name {
-  font-size: 24px;
-  font-weight: 100;
+@media (max-width: 800px) {
+  .list-hero-card {
+    /* Tighter padding on mobile — without this the hero eats >50% of the
+       viewport, which is too much for a header on a content-first page. */
+    padding: 12px 14px;
+    padding-bottom: 6px;
+  }
+}
+
+.list-hero-card-identity {
+  flex: 1 1 60%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+@media (max-width: 800px) {
+  .list-hero-card-identity {
+    gap: 10px;
+  }
+}
+
+.list-hero-card-controls {
+  flex: 0 1 400px;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (max-width: 800px) {
+  .list-hero-card-controls {
+    flex-basis: auto;
+    max-width: none;
+    gap: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.22);
+  }
+}
+
+/* ── Identity card content ───────────────────────────────────────────── */
+.list-hero-identity-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.list-hero-share-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  min-width: min(320px, 90vw);
+}
+
+.list-hero-eyebrow {
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.17);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--light-color);
+}
+
+.list-hero-title {
   font-family: var(--font-crimson-pro);
+  font-weight: 400;
+  font-size: 28px;
+  color: var(--light-color);
+  margin: 0;
+  line-height: 1.15;
   word-break: break-word;
 }
 
-@media (min-width: 550px) {
-  .list-name {
-    text-align: center;
-    justify-content: center;
+@media (max-width: 800px) {
+  .list-hero-title {
+    font-size: 22px;
   }
 }
 
-.list-header .list-cell {
-  background-color: var(--primary-color);
-  color: #ffffff;
-  font-family: var(--font-crimson-pro);
-  font-size: 18px;
-  letter-spacing: 0.5px;
-  display: grid;
-  align-items: center;
-  padding: 5px 15px;
-}
-
-.delete-list-button {
-  border: none;
-  outline: none;
-  border-radius: 0;
-  cursor: pointer;
-}
-
-.delete-list-button:hover {
-  background-color: #ff0000;
-  color: #ffffff;
-}
-
-.error-message {
-  color: #ff4d4f;
-  font-size: 14px;
-  margin-top: 4px;
-  padding: 4px 0;
-}
-
-.container--list-details .item-grid {
-  background-color: var(--background-color);
-  border-radius: 8px;
-  padding: 20px;
-}
-
-.list-details {
+.list-hero-eyebrow-subtitle-wrapper {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  background-color: var(--background-color);
-  border-radius: 8px;
-  height: min-content;
-  padding: 20px;
-}
-
-.list-shared {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 8px;
-  background-color: var(--third-background-color);
-  border-radius: 20px;
-  padding: 8px 16px;
-  cursor: pointer;
+}
+
+.list-hero-subtitle {
+  /* α=0.92 on --hero-gradient worst-case ≈ 4.6:1 — clears AA 4.5:1. */
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.list-hero-identity-foot {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.3;
+}
+
+/* ── Controls card content ───────────────────────────────────────────── */
+/* Share button (the only direct .btn child of the owner controls card) is
+   the primary affordance — stretches to full card width. Viewer/owner-
+   preview compositions wrap their buttons in .list-hero-action-row, which
+   sizes children separately. */
+.list-hero-card-controls > .btn {
   width: 100%;
-  max-width: 260px;
 }
 
-.list-shared:hover {
-  background-color: var(--primary-color);
-  color: #ffffff;
+/* Status pill (VisibilityPicker) sitting inside the identity zone reads
+   as a status badge that happens to be interactive. It SHOULD content-size,
+   not stretch full-width like the controls-card affordances do. */
+.list-hero-identity-top .visibility-picker {
+  width: auto;
+  align-self: flex-start;
 }
 
+.list-hero-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.22);
+  margin: 4px 0;
+}
+
+.list-hero-byline-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.list-hero-byline-text {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.list-hero-byline-link {
+  color: var(--light-color);
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.list-hero-byline-link:hover,
+.list-hero-byline-link:focus-visible {
+  text-decoration: underline;
+}
+
+.list-hero-action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Action row buttons size to their content + share remaining row width.
+   `flex: 1 1 auto` (not `1 1 0`) so labels like "Choose items" don't wrap
+   to two lines inside narrow buttons — natural text width is the floor.
+   The kebab keeps a fixed size and pulls to the row's end. */
+.list-hero-action-row > .btn,
+.list-hero-action-row > a.btn {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.list-hero-action-row > .list-actions-menu {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/* Kebab inside the hero action row inherits the full `<Button variant="on-dark">`
+   treatment — solid white border, transparent fill, 44px touch floor, pill
+   radius — so it reads as a peer of the Edit list button beside it. No
+   page-scoped override here; the `.menu-trigger` className is preserved
+   only for the menu primitive's anchoring contract. */
+
+/* ── Visibility status pill — popover-body styling ────────────────────────
+   The trigger itself is the PopoverTrigger primitive with tone="on-dark";
+   here we only style (a) the status-dot icon slot and (b) the popover-body
+   panel that opens below the trigger. */
+.visibility-picker {
+  position: relative;
+  width: 100%;
+}
+
+/* Position the Menu primitive's popover to anchor at the trigger's LEFT
+   edge (the status pill lives in the identity zone, left side of hero,
+   so opening rightward keeps the popover on-screen). Also widens the
+   default menu min-width because each row carries a description line. */
+.visibility-picker .menu-popover.visibility-menu {
+  left: 0;
+  right: auto;
+  min-width: min(320px, 90vw);
+}
+
+/* Preview banner inside hero. Sits above the two-card grid; carries its own
+   gradient so the dashed border has something to read against. */
+.list-hero .preview-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background-image: var(--hero-gradient);
+  border: 1.5px dashed rgba(255, 255, 255, 0.4);
+  border-radius: 10px;
+  width: 100%;
+  font-size: 13px;
+  color: var(--light-color);
+  flex-wrap: wrap;
+}
+
+.list-hero .preview-banner > svg {
+  flex-shrink: 0;
+  color: var(--light-color);
+}
+
+.list-hero .preview-banner > span {
+  flex: 1;
+  min-width: 140px;
+}
+
+.list-hero .preview-banner .btn {
+  margin-left: auto;
+}
+
+/* Private-list message (unchanged) */
 .list-private {
   display: flex;
   flex-direction: column;
   gap: 16px;
   align-items: center;
+  padding: 40px 20px;
 }
 
 .list-private h1 {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--font-crimson-pro);
-    font-weight: 100;
-    font-size: 40px;
-}
-
-.list-private p {
-    font-size: 18px;
-}
-
-.list-details .list-title {
-  font-size: 35px;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
-}
-
-.list-details .list-info {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.list-details .list-info-item {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-family: var(--font-crimson-pro);
+  font-weight: 100;
+  font-size: 40px;
 }
 
-.list-details-buttons {
+.list-private p {
+  font-size: 18px;
+}
+
+/* Wrapper for the kebab + menu primitive. .menu-popover and its rows
+   live in app/ui/components/menu/menu.css now. */
+.list-actions-menu {
+  position: relative;
+  display: inline-block;
+}
+
+/* ── HERO COLLAPSE ─────────────────────────────────────────────────────
+   The shell wraps either the full expanded hero or a one-line strip.
+   The chevron handle sits in a fixed-height row below the hero panel
+   so it never overlaps the gradient and never participates in the
+   gradient's rounded-corner clipping. */
+.list-hero-shell {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
 }
 
-@media (min-width: 800px) {
-  .container--list-details {
-    bottom: 16px;
-    padding: 0;
-    grid-template-columns: 250px 1fr;
-  }
+/* Collapsed strip: the WHOLE strip is the expand trigger. Chevron +
+   title sit on the leading edge; the kebab is on the trailing edge
+   inside an exclusion zone (`.list-hero-collapsed-trailing` stops
+   click propagation so kebab interactions don't fire the expand).
+   No bottom handle reserve — the strip itself IS the expand
+   affordance. */
+.list-hero-grid.list-hero-collapsed-strip {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  min-height: 44px;
+}
 
-  .list-details {
-    align-items: start;
-  }
+.list-hero-grid.list-hero-collapsed-strip:hover,
+.list-hero-grid.list-hero-collapsed-strip:focus-visible {
+  background-color: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
 
-  .container--list-details .pageTitle,
-  .container--list-details .listDetails {
-    text-align: left;
-  }
+.list-hero-grid.list-hero-collapsed-strip:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--btn-focus-ring-color);
+}
 
-  .list-details .list-info {
-    flex-direction: column;
-  }
+.list-hero-collapsed-chevron {
+  flex: 0 0 auto;
+  font-size: 16px;
+  color: var(--light-color);
+}
 
-  .container--list-details .list-details-buttons {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr;
-  }
+.list-hero-collapsed-title {
+  font-family: var(--font-crimson-pro);
+  font-weight: 400;
+  font-size: 18px;
+  color: var(--light-color);
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-  .container--list-details .item-grid {
-    overflow: hidden;
-    overflow-y: auto;
+/* Kebab exclusion zone — the kebab and its menu live in here. The
+   element's onClick stopPropagation (set in the TSX) is the seam that
+   keeps kebab interactions from firing the expand. */
+.list-hero-collapsed-trailing {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  /* `cursor: default` overrides the strip's `cursor: pointer` so the
+     pointer doesn't lie about expandability while over the kebab. */
+  cursor: default;
+}
+
+/* Shell is the new gradient surface owner — the gradient is hoisted
+   from `.list-hero-grid` up to here so it spans BOTH the hero panel
+   AND the handle strip at the bottom. This keeps the surface visually
+   continuous (single linear gradient covering everything) without
+   color-matching tricks on a separate tab element.
+
+   The shell also handles the top-rounded / bottom-square border-radius
+   that previously lived on `.list-hero-grid`. The grid itself becomes
+   transparent. */
+.list-hero-shell {
+  position: relative;
+  background-image: var(--hero-gradient);
+  border-radius: 14px 14px 0 0;
+}
+
+@media (max-width: 800px) {
+  .list-hero-shell {
+    border-radius: 12px 12px 0 0;
   }
 }
 
-  
+/* Strip the gradient + radius from the inner grid since the shell
+   now owns them. Cards inside continue to be transparent zones. */
+.list-hero-shell .list-hero-grid {
+  background-image: none;
+  border-radius: 0;
+}
+
+/* Reserve room at the bottom of the hero for the handle strip. The
+   strip is 44px tall to satisfy WCAG 2.5.5 (44×44 CSS px touch
+   target) — the chevron glyph itself is small but the clickable
+   strip spans the full width and 44px height. */
+.list-hero-shell .list-hero {
+  padding-bottom: 44px;
+}
+
+/* Chevron handle — full-width clickable strip across the bottom of
+   the hero. Transparent so the shell gradient shows through. */
+.list-hero-collapse-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 44px;
+  background: transparent;
+  border: none;
+  color: var(--light-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  z-index: 1;
+}
+
+.list-hero-collapse-handle:hover,
+.list-hero-collapse-handle:focus-visible {
+  background-color: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+.list-hero-collapse-handle:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--btn-focus-ring-color);
+}
+
+/* ── List-detail container: fixed-height flex column.
+   The hero + toolbar stay at the top; only the items grid scrolls.
+   This replaces the old 2-column-sidebar layout entirely. */
+.container--list-details {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--app-sticky-top));
+  overflow: hidden;
+  padding: 0;
+  gap: 0;
+  position: relative;
+}
+
+.container--list-details .items-browser {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.container--list-details .items-toolbar {
+  margin: 12px 28px;
+}
+
+.container--list-details .item-grid-container {
+  padding: 16px 28px 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Floating pagination overlay (all viewports). Mirrors the items-library
+   treatment — anchored to .container--list-details so it spans the
+   container's full width and sits flush against its bottom edge.
+   Items scroll under the 90%-alpha background. The desktop
+   `padding: 16px 28px 0` on .item-grid-container above zeroes
+   padding-bottom; this rule re-adds the overlay clearance. */
+.container--list-details .items-pagination {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background-color: color-mix(in srgb, var(--light-color) 90%, transparent);
+  border-top: none;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 1;
+}
+
+.container--list-details .item-grid-container {
+  padding-bottom: var(--items-pagination-overlay-height, 96px);
+}
+
+.container--list-details > .item-grid.sortable {
+  padding: 16px 28px 28px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+@media (max-width: 800px) {
+  .container--list-details .item-grid-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* ===== Choose items page (Stage 5 redesign) ===== */
+
+.choose-items-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 84px;
+}
+
+.choose-items-pg-hd {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 4px 0 4px;
+}
+
+.choose-items-pg-hd-main {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.choose-items-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--muted-text-color);
+  font:
+    500 12px var(--font-roboto-condensed),
+    sans-serif;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.choose-items-back:hover {
+  color: var(--primary-color);
+}
+
+.choose-items-pg-title {
+  font-family: var(--font-crimson-pro), Georgia, serif;
+  font-weight: 300;
+  font-size: 26px;
+  line-height: 1.15;
+  color: var(--heading-text-color);
+  margin: 0;
+}
+
+.choose-items-pg-title em {
+  font-style: italic;
+  color: var(--primary-color);
+}
+
+@media (max-width: 600px) {
+  .choose-items-pg-title {
+    font-size: 20px;
+  }
+}
+
+.choose-items-undo {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font:
+    600 13px var(--font-roboto-condensed),
+    sans-serif;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 0;
+}
+
+.choose-items-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--divider-color);
+}
+
+.choose-items-list > li {
+  border-bottom: 1px solid var(--divider-color);
+}
+
+/* ── CHOOSE-ITEMS ROW (consolidate-row-layouts) ──
+   Outer <label> wrapping a leading <CheckboxField> + <Item preview />.
+   Inner row anatomy (image, name, price, leader-dots, buy-link pill, +N)
+   is owned by the shared row primitive in item.css under
+   `.item-list .item-container` / `.sortable-item .item-container`. The
+   picker contributes only the leading checkbox column and the selection
+   state modifiers — everything else is inherited.
+
+   Outer grid is 2-col (auto 1fr): col 1 is the checkbox; col 2 is the
+   entire <Item /> (which internally renders its own shared 5-col grid).
+   See design.md D1. */
+.choose-items-select {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 12px;
+  padding: 0 14px;
+  cursor: pointer;
+  position: relative;
+}
+
+/* Force the pointer cursor across the inner <Item /> subtree — without
+   this, text inside `.itemName` / `.itemDescription` gets the text
+   I-beam cursor and the image gets the default arrow, breaking the
+   "whole row is clickable" affordance. Buy-link <a> tags inside
+   <StoreLinks> are already pointer by browser default and are
+   unaffected by `cursor: inherit`. */
+.choose-items-select * {
+  cursor: inherit;
+}
+
+/* Compact the inner <CheckboxField>'s <label> inside the picker leading
+   slot. The form-field-system 44×44 floor is satisfied by the OUTER
+   .choose-items-select label (the full row width × row height) — the
+   inner box just needs the visible 24×24 checkbox. See design.md D2. */
+.choose-items-select .checkbox_field {
+  padding: 0;
+  min-height: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The <CheckboxField> renders its label text in a <span>. In the picker,
+   the item name is already shown by <Item />; hide the label span
+   visually but keep it for assistive tech (the checkbox's accessible
+   name SHALL be the item name). See design.md D2. */
+.choose-items-select .checkbox_field > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus ring on the actual checkbox input. If form-field-system already
+   provides a global rule on `.checkbox_field_box:focus-visible`, this
+   override is a no-op — verify and prune at preview time. */
+.choose-items-select .checkbox_field_box:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Hover + selection backgrounds paint the outer <label> so they span
+   BOTH the checkbox column and the .item-container column — hover
+   anywhere on the row highlights the whole row including the checkbox
+   cell. We also neutralize the shared `.item-list .item-container[:hover]`
+   background inside picker rows so it doesn't compete (it would paint
+   only col 2 and leave the checkbox cell unhighlighted). */
+.choose-items-list .item-container,
+.choose-items-list .item-container:hover {
+  background-color: transparent;
+}
+
+.choose-items-select:hover {
+  background-color: var(--card-hover-background-color);
+}
+
+/* Selection tints — chained `:hover` so hovering an is-on / is-removing
+   row keeps its brand tint instead of degrading to the neutral hover
+   color. */
+.choose-items-select.is-on,
+.choose-items-select.is-on:hover {
+  background-color: var(--card-accent-background-color);
+}
+
+.choose-items-select.is-removing,
+.choose-items-select.is-removing:hover {
+  background-color: var(--secondary-background-color);
+}
+
+/* Strike-through on the removing-state item name. Page-scoped CSS
+   reaches into <Item>'s `.itemName` class — documented cross-boundary
+   coupling, see design.md D5. */
+.choose-items-select.is-removing .itemName {
+  text-decoration: line-through;
+  color: var(--muted-text-color);
+}
+
+/* IN-LIST + archived badges, absolutely positioned over the row's
+   top-right corner so they don't disturb the shared row's grid. See
+   design.md D5 Option A (OQ1: revisit placement at preview time). */
+.choose-items-badges {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  display: inline-flex;
+  gap: 6px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.choose-items-in-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  background: rgba(115, 36, 206, 0.12);
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--primary-color);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.choose-items-archived-badge {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  background: var(--third-background-color);
+  color: var(--muted-text-color);
+}
+
+.choose-items-sticky-ft {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 44px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--card-border-color);
+  z-index: 50;
+}
+
+.choose-items-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--heading-text-color);
+}
+
+.choose-items-count-muted {
+  color: var(--muted-text-color);
+  font-weight: 500;
+}
+
+.choose-items-count-diff {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.choose-items-count-added,
+.choose-items-count-removed {
+  color: var(--primary-color);
+}
+
+@media (max-width: 600px) {
+  .choose-items-count-diff {
+    display: none;
+  }
+}
+
+.choose-items-sticky-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+@media (max-width: 800px) {
+  .choose-items-sticky-ft {
+    padding: 12px 20px;
+  }
+}

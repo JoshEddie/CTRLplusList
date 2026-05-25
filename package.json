@@ -1,23 +1,28 @@
 {
   "name": "ctrlpluslist",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
     "format": "prettier --write .",
     "check-format": "prettier --check .",
     "validate": "npm run check-format && npm run lint",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "db:seed:dev": "tsx scripts/seed-dev-users.ts",
+    "db:reset:dev": "tsx scripts/seed-dev-users.ts --reset"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.9.1",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@neondatabase/serverless": "^1.0.0",
+    "@serwist/next": "^9.5.11",
     "@types/bcrypt": "^5.0.2",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
@@ -55,6 +60,7 @@
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.4.0",
     "prettier": "^3.5.3",
+    "serwist": "^9.5.11",
     "tsx": "^4.19.4",
     "typescript": "^5"
   }

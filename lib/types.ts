@@ -1,6 +1,7 @@
 export type ListTable = {
   id: string;
   name: string;
+  subtitle: string | null;
   occasion: string;
   date: Date;
   created_at: Date;
@@ -25,21 +26,39 @@ export type ItemTable = {
   created_at: Date;
   updated_at: Date;
   user_id: string;
-  quantity_limit: number;
+  quantity_limit: number | null;
+  archived_at?: Date | null;
+};
+
+export type PurchaseView = {
+  id: string;
+  by: 'self' | 'other';
+  firstName: string;
 };
 
 export type ItemDisplay = ItemTable & {
   stores?: ItemStoreTable[];
-  purchase?: PurchaseTable | null;
+  purchases?: PurchaseView[];
+  hasPurchases?: boolean;
 };
+
+export type SortKey =
+  | 'list_order'
+  | 'created_desc'
+  | 'created_asc'
+  | 'name_asc'
+  | 'name_desc'
+  | 'store_asc'
+  | 'store_desc'
+  | 'price_asc'
+  | 'price_desc';
 
 export type ItemDetails = {
   id: string;
   name: string;
   description: string;
   image_url?: string | null;
-  quantity_limit: number;
-  user_id: string;
+  quantity_limit: number | null;
   stores: ItemStoreTable[];
   lists: OptionType[];
 };
@@ -62,10 +81,22 @@ export type PurchaseTable = {
   user_id: string | null;
   guest_name: string | null;
   purchased_at: Date;
-  user: { name: string | null; } | null;
+  user: { name: string | null } | null;
 };
 
 export type OptionType = {
   value: string;
   label: string;
 };
+
+export interface ImageSearchResult {
+  link: string;
+  title: string;
+  image: {
+    byteSize: number;
+    contextLink: string;
+    height: number;
+    thumbnailLink: string;
+    width: number;
+  };
+}
