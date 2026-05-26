@@ -78,6 +78,12 @@ const ITEM_ON_VIEWER_OWNER = 'item-on-viewer-owner';
 const ITEM_MULTI_LIST = 'item-on-two-lists';
 // Item not on any list, owned by Dave.
 const ITEM_NO_LISTS = 'item-with-no-list-membership';
+// Item owned by Dave but added to the VIEWER's own private list. Exercises the
+// in-loop `list.user_id === viewerId` branch of `isListViewableForViewer`:
+// outer `viewerId === item.user_id` short-circuit does NOT fire (Dave owns it),
+// so the loop runs; first iteration (Dave's OWNER list) returns false, second
+// iteration (viewer's own list) returns true via the list-owner branch.
+const ITEM_ON_VIEWERS_LIST_OTHER_OWNER = 'item-on-viewers-list-other-owner';
 
 beforeAll(async () => {
   const { db } = await bootPglite();
@@ -156,6 +162,7 @@ beforeAll(async () => {
     { id: ITEM_ON_VIEWER_OWNER, name: 'V', user_id: VIEWER },
     { id: ITEM_MULTI_LIST, name: 'M', user_id: DAVE },
     { id: ITEM_NO_LISTS, name: 'N', user_id: DAVE },
+    { id: ITEM_ON_VIEWERS_LIST_OTHER_OWNER, name: 'O', user_id: DAVE },
   ]);
 
   await db.insert(list_items).values([
@@ -179,6 +186,20 @@ beforeAll(async () => {
     // iteration before the satisfying one.
     { list_id: LIST_DAVE_OWNER, item_id: ITEM_MULTI_LIST, position: 1 },
     { list_id: LIST_ALICE_FOLLOWERS, item_id: ITEM_MULTI_LIST, position: 1 },
+    // ITEM_ON_VIEWERS_LIST_OTHER_OWNER on Dave's OWNER list (no access) AND
+    // viewer's own private list (access via in-loop list-owner branch).
+    // OWNER first so the loop runs a non-satisfying iteration before the
+    // satisfying one — mirrors the ITEM_MULTI_LIST ordering rationale.
+    {
+      list_id: LIST_DAVE_OWNER,
+      item_id: ITEM_ON_VIEWERS_LIST_OTHER_OWNER,
+      position: 2,
+    },
+    {
+      list_id: LIST_VIEWER_OWNER,
+      item_id: ITEM_ON_VIEWERS_LIST_OTHER_OWNER,
+      position: 1,
+    },
   ]);
 });
 
@@ -264,6 +285,12 @@ describe('listAccess', () => {
 
     it('ItemOnPrivateAndFollowersListsViewerFollowsSecondOwner_ReturnsTrue', async () => {
       expect(await isItemViewable(ITEM_MULTI_LIST, VIEWER)).toBe(true);
+    });
+
+    it('ItemOwnedByOtherOnViewersOwnList_ReturnsTrueViaLoopOwnerBranch', async () => {
+      expect(
+        await isItemViewable(ITEM_ON_VIEWERS_LIST_OTHER_OWNER, VIEWER)
+      ).toBe(true);
     });
 
     it('ItemNoListMembershipOwnerIsViewer_ReturnsTrue', async () => {
