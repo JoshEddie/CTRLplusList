@@ -54,6 +54,7 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
   useEffect(() => {
     if (!open) return;
     const container = localRef.current;
+    /* v8 ignore next -- defensive: localRef is always set when the popover DOM has mounted; effect is gated on open. */
     if (!container) return;
 
     const getItems = () =>
@@ -65,6 +66,7 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
 
     const focusAt = (index: number) => {
       const items = getItems();
+      /* v8 ignore next -- defensive: caller (onKey) already short-circuits when items.length === 0, so focusAt is never reached with an empty list. */
       if (items.length === 0) return;
       const i = (index + items.length) % items.length;
       items[i]?.focus();
@@ -74,6 +76,7 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
       const items = getItems();
       if (items.length === 0) return;
       const active = document.activeElement as HTMLElement | null;
+      /* v8 ignore next -- jsdom never resolves document.activeElement to null (falls back to body); the ?: -1 fallback exists for the SSR-style null path. */
       const currentIndex = active ? items.indexOf(active) : -1;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
