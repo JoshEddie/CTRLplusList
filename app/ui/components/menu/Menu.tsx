@@ -66,8 +66,6 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
 
     const focusAt = (index: number) => {
       const items = getItems();
-      /* v8 ignore next -- defensive: caller (onKey) already short-circuits when items.length === 0, so focusAt is never reached with an empty list. */
-      if (items.length === 0) return;
       const i = (index + items.length) % items.length;
       items[i]?.focus();
     };
@@ -76,7 +74,7 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
       const items = getItems();
       if (items.length === 0) return;
       const active = document.activeElement as HTMLElement | null;
-      /* v8 ignore next -- jsdom never resolves document.activeElement to null (falls back to body); the ?: -1 fallback exists for the SSR-style null path. */
+      /* v8 ignore next -- jsdom never resolves document.activeElement to null (falls back to body). The `: -1` fallback exists because the DOM lib types `document.activeElement` as `Element | null`; real browsers always return an element, so the null branch is unreachable in tests. */
       const currentIndex = active ? items.indexOf(active) : -1;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
