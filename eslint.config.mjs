@@ -51,6 +51,12 @@ const eslintConfig = [
       'app/ui/components/field/SearchField.tsx',
       'app/ui/components/field/CheckboxField.tsx',
       'app/ui/components/field/FieldError.tsx',
+      // test-menu-system (sub-proposal 3.4) — locked at universal COVERAGE_FLOOR.
+      'app/ui/components/menu/Menu.tsx',
+      'app/ui/components/menu/MenuItem.tsx',
+      'app/ui/components/menu/MenuItemRadio.tsx',
+      'app/ui/components/menu/MenuLinkItem.tsx',
+      'app/ui/components/menu/menuClasses.ts',
     ],
     plugins: { sonarjs },
     rules: {

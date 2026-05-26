@@ -6,7 +6,7 @@ export function menuItemClasses({
 }: {
   tone?: MenuItemTone;
   extra?: string;
-}): string {
+} = {}): string {
   return ['menu-item', tone === 'danger' && 'tone-danger', extra]
     .filter(Boolean)
     .join(' ');
