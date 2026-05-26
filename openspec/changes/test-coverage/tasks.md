@@ -7,7 +7,7 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 
 ## 2. Pure libs (may draft in parallel with foundation; applies after foundation archives)
 
-- [ ] 2.1 `test-pure-libs` — `lib/visibility.ts`, `lib/listAccess.ts`, `lib/types.ts` (zod validators); app-wide hook `hooks/use-media-query.ts`; pure helpers extracted from primitives that don't require a render harness (e.g., `app/ui/components/button/buttonClasses.ts`). Floors: 95% per file.
+- [x] 2.1 `test-pure-libs` — `lib/visibility.ts`, `lib/listAccess.ts`, `lib/types.ts` (zod validators); app-wide hook `hooks/use-media-query.ts`; pure helpers extracted from primitives that don't require a render harness (e.g., `app/ui/components/button/buttonClasses.ts`). Floors: 95% per file.
 
 ## 3. Primitive families (independent; any order after foundation)
 

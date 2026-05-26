@@ -281,3 +281,149 @@ The `test-coverage` change's `tasks.md` SHALL list each planned test sub-proposa
 - **WHEN** a sub-proposal's audit defers an architectural refactor
 - **THEN** a new checkbox is added to `test-coverage/tasks.md` describing the deferred sub-proposal
 - **AND** the originating sub-proposal's audit task links to the new checkbox by name
+
+### Requirement: Vitest test names SHALL follow `<StateUnderTest>_<ExpectedBehavior>` shape
+
+Every Vitest `it(...)` / `test(...)` name SHALL consist of exactly two parts separated by a single underscore: the state under test (input, scenario, or condition) followed by the expected observable behavior (return value, thrown error, rendered output, persisted state change, or side effect). The unit being tested SHALL NOT appear in the `it()` name — it is carried by the enclosing `describe(...)` (see the describe-structure requirement). The two parts SHALL each be PascalCase with words concatenated (e.g. `InputPrivate`, `ReturnsOwner`, `NullListAuthedViewer`, `RedirectsToLists`). Literal identifiers from the production code (enum values, exported constants, type names, CSS class strings) MAY appear in their native casing within a token (e.g. `ReturnsOWNER` for an `OWNER` enum value, `ReturnsBtnPrimary` for a `'btn primary'` class string). Parameterized / matrix tests MAY interpolate the parameter into either part as long as the resulting string still parses as `<State>_<Behavior>` with a single separating underscore.
+
+The following name templates SHALL fail review as vacuous:
+
+- `should <X>` / `should work` / `should work correctly`
+- `<X> correctly` / `<X> properly` / `<X> as expected`
+- `renders` (without naming what is rendered or asserted)
+- `works` / `basic <X>` / `<X> basics`
+- Any name that does not constrain a specific observable property
+
+**Precision principle:** the structured shape SHALL NOT be used to launder imprecise naming. Both tokens MUST be as specific as the test's assertions. The behavior token SHALL name the specific error class or message text when the assertion is `.toThrow(...)`, the specific return value or shape when the assertion is `.toEqual(...)` / `.toBe(...)`, the specific rendered text or DOM property when the assertion is on the render tree, etc. Bare `Throws` (when the assertion matches a specific message), bare `Returns` / `ReturnsError` (when the assertion matches a specific value), and bare `Renders` (when the assertion matches specific output) SHALL fail review as the structured equivalent of vacuous prose. The state token is held to the same standard: opaque labels like `Garbage`, `Bad`, `Invalid` without an accompanying detail clause SHALL fail review; precise alternatives name what makes the input distinctive (`UnknownInput`, `EmptyString`, `NegativeNumber`, `DateMissingDayComponent`).
+
+This naming rule is complementary to — not a substitute for — the "Tests SHALL assert observable behavior, not execution" requirement: a substantively-asserting test with a vacuous name still fails the naming bar, and a vacuously-asserting test with a structured name still fails the substance bar.
+
+#### Scenario: Two-part shape parses on a single underscore
+
+- **WHEN** a contributor writes `it('InputPrivate_ReturnsOWNER', ...)`
+- **THEN** the name has exactly one underscore separating the state token (`InputPrivate`) from the behavior token (`ReturnsOWNER`)
+- **AND** the name passes the naming bar
+
+#### Scenario: Literal identifier preserves native casing
+
+- **WHEN** a test asserts the production code returns the `OWNER` enum constant
+- **THEN** the name MAY appear as `InputPrivate_ReturnsOWNER` (preserving the enum's native casing)
+- **AND** the name passes review
+
+#### Scenario: Parameterized name interpolates the parameter
+
+- **WHEN** a `for (const variant of VARIANTS)` loop generates names like `it(\`Variant${cap(variant)}DefaultSize_ReturnsBtn${cap(variant)}\`, ...)`
+- **THEN** the resulting strings (`VariantPrimaryDefaultSize_ReturnsBtnPrimary`, `VariantGhostDefaultSize_ReturnsBtnGhost`, ...) each parse as `<State>_<Behavior>`
+- **AND** each name passes review
+
+#### Scenario: Vague template fails review
+
+- **WHEN** a contributor writes `it('should work correctly', ...)`, `it('renders properly', ...)`, or `it('basic navigation', ...)`
+- **THEN** the assertion audit (see the four-audits requirement) flags the test for renaming
+- **AND** the test SHALL be renamed to the `<State>_<Behavior>` shape before the sub-proposal archives
+
+#### Scenario: Structured-but-imprecise name fails review
+
+- **WHEN** a test asserts `expect(() => fromDb('garbage')).toThrow(/Unknown list visibility value/)` AND is named `InputGarbage_Throws`
+- **THEN** the assertion audit flags both tokens for imprecision: `Garbage` is an opaque label that does not name the input's distinguishing property, and `Throws` is a bare behavior token that does not name the asserted error message
+- **AND** the test SHALL be renamed to something like `UnknownInput_ThrowsUnknownVisibilityValueError` (precise state token + precise behavior token matching the assertion's `.toThrow` pattern)
+- **AND WHEN** a test asserts `expect(render).toHaveTextContent('Add item')` AND is named `EmptyList_Renders`
+- **THEN** the audit flags `Renders` as a bare behavior token and the test SHALL be renamed to e.g. `EmptyList_RendersAddItemCallToAction`
+
+#### Scenario: Substance and naming bars are independent
+
+- **WHEN** a test is named `InputPrivate_ReturnsOWNER` but its only assertion is `expect(result).toBeTruthy()`
+- **THEN** the substance bar fails (per the observable-behavior requirement) regardless of the structured name
+- **AND WHEN** a test asserts a specific return value but is named `should decode private correctly`
+- **THEN** the naming bar fails regardless of the substantive assertion
+
+### Requirement: Vitest describe blocks SHALL follow a three-role naming convention
+
+Vitest `describe(...)` blocks play exactly three roles, each with its own naming rule. A given describe block SHALL be exactly one of these roles, and its name SHALL conform to the rule for that role:
+
+1. **Module describe** (outermost, optional) — names the module, component, or file under test in its **natural source casing**, matching how the file/module is named in code: `'visibility'`, `'buttonClasses'`, `'NumericInput'`, `'listAccess'`.
+2. **Function describe** — names a specific exported function or method in its **native identifier casing**, matching how the function is named in code: `'fromDb'`, `'guardListViewable'`, `'visibilityDbValues'`. A function describe MAY appear directly at the top level (collapsing the module layer) when the file covers a single exported function.
+3. **Scenario-family describe** — groups cases by an input or output condition with a **single PascalCase tag**: `'LegacyDbStrings'`, `'UnknownInputs'`, `'WhitespaceContract'`, `'VariantSizeMatrix'`, `'FalsyExtra'`. The tag SHALL contain no spaces, punctuation, or special characters. Underscores MAY separate genuinely distinct concepts (e.g. `'SSR_NoWindow'`) but a single tag is preferred. The tag SHALL name what UNIFIES the grouped cases — the precision principle from the `it()` naming rule extends here. Opaque labels like `'Misc'`, `'Various'`, `'Other'`, or bare `'EdgeCases'` (without naming which edges) SHALL fail review.
+
+Additionally:
+
+- Inner describes (function or scenario-family) SHALL NOT repeat the outer module name (no `describe('utils > formatCurrency', ...)`, no `describe('utils', () => describe('utilsFormatCurrency', ...))`).
+- A test file covering a single exported function MAY collapse to a single top-level `describe(<functionName>, ...)` without an outer module describe.
+- Scenario-family describes are NOT subject to the no-repeat rule because they do not name the unit.
+- Multiple scenario-family describes MAY nest under a function describe (e.g. `describe('fromDb', () => { describe('LegacyDbStrings', ...); describe('UnknownInputs', ...); })`).
+
+#### Scenario: Three-layer nesting follows role rules
+
+- **WHEN** a contributor tests `lib/visibility.ts` which exports `fromDb` and `visibilityDbValues`, and `fromDb` has natural case clusters
+- **THEN** the file uses `describe('visibility', () => { describe('fromDb', () => { describe('LegacyDbStrings', ...); describe('UnknownInputs', ...); }); describe('visibilityDbValues', ...); })`
+- **AND** the module layer (`'visibility'`) uses natural source casing
+- **AND** the function layer (`'fromDb'`, `'visibilityDbValues'`) uses native identifier casing
+- **AND** the scenario-family layer (`'LegacyDbStrings'`, `'UnknownInputs'`) uses single PascalCase tags
+- **AND** no inner describe repeats `'visibility'`
+
+#### Scenario: Single-function file MAY collapse the outer describe
+
+- **WHEN** a test file covers a single exported function (e.g. `buttonClasses.ts` exporting only `buttonClasses`)
+- **THEN** the file MAY use a single top-level `describe('buttonClasses', () => { describe('VariantSizeMatrix', ...); describe('FalsyExtra', ...); })` without an outer file-level describe
+- **AND** the structure passes review
+
+#### Scenario: Prose scenario-family describe fails review
+
+- **WHEN** a contributor writes `describe('variant × size matrix', ...)`, `describe('legacy DB strings', ...)`, or `describe('whitespace contract', ...)`
+- **THEN** the audit flags the describe name for containing spaces, special characters, or non-PascalCase casing
+- **AND** the describe SHALL be renamed to a single PascalCase tag (e.g. `'VariantSizeMatrix'`, `'LegacyDbStrings'`, `'WhitespaceContract'`)
+
+#### Scenario: Vacuous scenario-family describe fails review
+
+- **WHEN** a contributor writes `describe('Misc', ...)`, `describe('Various', ...)`, `describe('Other', ...)`, or bare `describe('EdgeCases', ...)` without naming the specific edge
+- **THEN** the audit flags the describe as failing the precision principle (does not name what unifies the grouped cases)
+- **AND** the describe SHALL be renamed to a tag that names the unifying property (`'FalsyExtra'`, `'EmptyArray'`, `'MaxLengthString'`, etc.) or its cases SHALL be flattened into the parent describe
+
+### Requirement: Playwright test names SHALL follow `<PageOrFlow>_<Action>_<ExpectedOutcome>` shape
+
+Every Playwright `test(...)` name SHALL consist of exactly three PascalCase parts separated by single underscores: the page or user flow under test, the action performed, and the expected observable outcome. Playwright tests SHALL NOT rely on `describe(...)` to carry the page/flow context — the three-part name SHALL be self-contained because Playwright failure output and HTML reports surface the test name without consistent describe-path nesting. Examples that pass: `Dashboard_NavigateToCurrentMonth_ShowsBudgetGroups`, `ListPage_AddItem_AppearsInList`, `SignIn_BypassEnabled_RendersProtectedPage`. Examples that fail: `should sign in`, `basic navigation works`, `list creation`.
+
+#### Scenario: Three-part shape parses on two underscores
+
+- **WHEN** a contributor writes `test('ListPage_AddItem_AppearsInList', ...)`
+- **THEN** the name has exactly two underscores separating page (`ListPage`), action (`AddItem`), and outcome (`AppearsInList`)
+- **AND** the name passes review
+
+#### Scenario: E2E vague template fails review
+
+- **WHEN** a contributor writes `test('should sign in', ...)` or `test('basic navigation works', ...)`
+- **THEN** the assertion audit flags the test for renaming
+- **AND** the test SHALL be renamed to the three-part shape before the sub-proposal archives
+
+#### Scenario: Playwright names do not rely on describe context
+
+- **WHEN** a Playwright spec groups tests under `test.describe('list creation', ...)`
+- **THEN** each `test(...)` name inside SHALL still be a complete three-part `<PageOrFlow>_<Action>_<ExpectedOutcome>` string
+- **AND** removing the surrounding describe SHALL NOT make any test name ambiguous
+
+### Requirement: Pure-libs carve-out SHALL be tested at the 95% per-file floor with complexity locked at error
+
+The pure-libs carve-out — comprising `lib/visibility.ts`, `lib/listAccess.ts`, `hooks/use-media-query.ts`, and `app/ui/components/button/buttonClasses.ts` — SHALL be covered by colocated test files meeting the testing-foundation `Pure logic` per-file floor of 95% line coverage. `lib/types.ts` is type-only (zero executable statements after TS erasure) and SHALL be added to `vitest.config.ts`'s `coverage.exclude` patterns so the report is unambiguous. The `sonarjs/cognitive-complexity` rule SHALL be promoted from `warn` to `error` for the four carve-out files via `eslint.config.mjs` `overrides`. Subsequent sub-proposals that import from any of these four files SHALL inherit the assumption that those modules are tested and complexity-locked, and any future raise of complexity above 15 in those files SHALL fail lint.
+
+#### Scenario: Each carve-out file meets its 95% floor
+
+- **WHEN** `npm test -- --coverage` runs against `main` after this change archives
+- **THEN** the per-file coverage report shows `lib/visibility.ts`, `lib/listAccess.ts`, `hooks/use-media-query.ts`, and `app/ui/components/button/buttonClasses.ts` each at 95% line coverage or higher
+- **AND** the gate passes
+
+#### Scenario: Type-only file is excluded from the report
+
+- **WHEN** the coverage report is generated
+- **THEN** `lib/types.ts` does NOT appear as a file with a coverage percentage
+- **AND** `vitest.config.ts`'s `coverage.exclude` list includes `lib/types.ts`
+
+#### Scenario: Complexity ceiling fails lint in carve-out files
+
+- **WHEN** a contributor edits `lib/listAccess.ts` to raise a function's cognitive complexity to 16
+- **THEN** `npm run lint` reports a `sonarjs/cognitive-complexity` error (not a warning)
+- **AND** the pre-merge `lint` gate fails
+
+#### Scenario: Carve-out tests live colocated
+
+- **WHEN** a contributor opens the carve-out source files
+- **THEN** a `*.test.ts` (for `.ts` source) or `*.test.tsx` (for jsdom-requiring source) file exists alongside each one — at `lib/visibility.test.ts`, `lib/listAccess.test.ts`, `hooks/use-media-query.test.tsx`, and `app/ui/components/button/buttonClasses.test.ts`
