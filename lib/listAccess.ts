@@ -57,11 +57,13 @@ async function isListViewableForViewer(
   const visibility = fromDb(list.visibility);
   if (visibility === VISIBILITY.OWNER) return false;
   if (visibility === VISIBILITY.LINK) return true;
-  if (visibility === VISIBILITY.FOLLOWERS) {
-    if (!viewerId) return false;
-    return isFollowing(viewerId, list.user_id);
-  }
-  return false;
+  // Exhaustiveness: `ListVisibility` is a 3-value union and the two prior
+  // branches consumed OWNER and LINK, so `visibility` is FOLLOWERS here.
+  // No trailing `return false` needed — if `fromDb` ever returns something
+  // outside the union it throws (see visibility.ts), so this path is
+  // statically exhaustive.
+  if (!viewerId) return false;
+  return isFollowing(viewerId, list.user_id);
 }
 
 export async function isItemViewable(
