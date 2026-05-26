@@ -94,6 +94,8 @@ export default defineConfig({
         'app/ui/components/button/buttonClasses.ts': COVERAGE_FLOOR,
         'app/ui/components/button/Button.tsx': COVERAGE_FLOOR,
         'app/ui/components/button/LinkButton.tsx': COVERAGE_FLOOR,
+        'app/ui/components/chip/Chip.tsx': COVERAGE_FLOOR,
+        'app/ui/components/chip/chipClasses.ts': COVERAGE_FLOOR,
       },
     },
   },

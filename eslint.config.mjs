@@ -37,6 +37,9 @@ const eslintConfig = [
       // test-button-system (sub-proposal 3.1) — locked at 90% per-file floor.
       'app/ui/components/button/Button.tsx',
       'app/ui/components/button/LinkButton.tsx',
+      // test-chip-system (sub-proposal 3.2) — locked at universal COVERAGE_FLOOR.
+      'app/ui/components/chip/Chip.tsx',
+      'app/ui/components/chip/chipClasses.ts',
     ],
     plugins: { sonarjs },
     rules: {
