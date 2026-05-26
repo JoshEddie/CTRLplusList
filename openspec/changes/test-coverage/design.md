@@ -181,6 +181,38 @@ Sub-proposals are NOT scaffolded by this change — each is created by `/opsx:pr
 - `test-foundation` MUST archive before any other sub-proposal.
 - All other sub-proposals are independent and MAY be executed in any order, including concurrent drafts.
 
+### D13. Testing-foundation rollup: two-tier (foundation rules accumulate in parent; carve-out bookkeeping stays in archive)
+
+**Rollout-period convention, not a global OpenSpec rule.** The standard `openspec/config.yaml` `context:` rule — *"archived changes' requirements were rolled into the active spec at archive time"* — applies to ordinary standalone changes. This governing change has many sub-proposals contributing `testing-foundation` deltas of two different kinds, and the standard rule produces noise if applied uniformly. The two-tier convention below scopes the rollup behavior to this initiative only.
+
+Sub-proposals contribute `testing-foundation` deltas in one of two shapes:
+
+**Tier 1 — Foundation rules** (the universal contract every test sub-proposal inherits): e.g., `__tests__/` colocation, universal `COVERAGE_FLOOR`, no-backdoor disposition rule, `<State>_<Behavior>` `it()` shape, three-role `describe()` convention, four-audit obligation, assertion-substance bar, complexity gate.
+
+- Land in `openspec/changes/test-coverage/specs/testing-foundation/spec.md` (the parent's accumulator delta).
+- Examples that took this path: `test-foundation-spike`, `test-foundation`, `test-housekeeping`.
+- These DO roll into the active `openspec/specs/testing-foundation/spec.md` — but ONLY when this governing change archives, NOT at each sub-proposal's archive. Until then, the parent's accumulator IS the authoritative source for cross-cutting test conventions.
+
+**Tier 2 — Carve-out bookkeeping** (a record that one specific carve-out completed): e.g., "the chip-system primitive carve-out has landed at `COVERAGE_FLOOR`," "the button-system primitive carve-out has landed at `COVERAGE_FLOOR`," etc.
+
+- Live ONLY in the sub-proposal's own archive directory: `openspec/changes/archive/<sub-proposal>/specs/testing-foundation/spec.md`.
+- Examples that took this path: `test-pure-libs`, `test-button-system`, `test-chip-system`.
+- SHALL NOT be added to `openspec/changes/test-coverage/specs/testing-foundation/spec.md` (no churn in the parent's accumulator every time a sub-proposal lands).
+- SHALL NOT create or modify `openspec/specs/testing-foundation/spec.md` directly (no premature creation of the active spec from a single sub-proposal's slice).
+
+**Why the split.** A "we tested chip" record is meaningful only while this initiative is in flight. After the active spec lands with the universal rules, the carve-out being complete is implied by the rules (universal `COVERAGE_FLOOR` applies everywhere; per-file thresholds in `vitest.config.ts` are the load-bearing artifact). Putting carve-out bookkeeping in the active spec would create permanent noise. Putting it in the parent's accumulator would churn the accumulator every sub-proposal for no downstream gain. The archive-only home for Tier 2 is correct; it preserves the audit trail without polluting either downstream.
+
+**Sub-proposal author checklist before archive:**
+
+1. Identify whether your `testing-foundation` delta is Tier 1 (a foundation rule amendment) or Tier 2 (carve-out bookkeeping).
+2. Tier 1 → update `openspec/changes/test-coverage/specs/testing-foundation/spec.md`. Do NOT create or modify `openspec/specs/testing-foundation/spec.md`.
+3. Tier 2 → keep the delta in your sub-proposal's archive directory only. Do NOT update the parent's accumulator. Do NOT create or modify `openspec/specs/testing-foundation/spec.md`.
+4. Document in your sub-proposal's `proposal.md` and `tasks.md` which tier the delta belongs to, citing this D13.
+
+**Tier 1 vs Tier 2 quick test:** if every future sub-proposal inherits the SHALL by virtue of this change archiving, it's Tier 1. If the SHALL is a record of which carve-out ran (and is informationally redundant once the carve-out completes and the universal floor is in force), it's Tier 2.
+
+**One-shot recovery.** If a sub-proposal accidentally creates `openspec/specs/testing-foundation/spec.md` with only its own delta (as `test-chip-system` initially did), the active spec lands as a stub representing one carve-out — misleading to anyone reading. Recovery: delete the active spec file in a follow-up edit; revert the sub-proposal to Tier 2 archive-only. Discovered in `test-chip-system`'s code review; the active spec creation was reverted before merge.
+
 ## Risks / Trade-offs
 
 [Spec creep: every test reveals an invariant, every invariant becomes a SHALL, specs balloon] → D10's three-part rule (non-obvious, survives reimplementation, protects against real failure mode) keeps trivia out. Each sub-proposal documents non-elevation decisions.

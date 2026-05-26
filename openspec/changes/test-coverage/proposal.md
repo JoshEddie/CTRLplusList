@@ -15,6 +15,7 @@ The pre-merge gate trio (`lint` / `tsc --noEmit` / `build`) encoded in `openspec
 - **NEW** complexity gate: `eslint-plugin-sonarjs` with `cognitive-complexity` at threshold 15. Lands at `warn` in `test-foundation`, promoted to `error` per-file as each sub-proposal cleans its carve-out.
 - **NEW** pre-merge `test` gate alongside the existing `lint` / `tsc --noEmit` / `build` trio. Encoded in `openspec/config.yaml`'s `tasks` rule and consumed by `tasks.md` of every future change.
 - **NEW** seed-as-fixture commitment: the existing `scripts/seed-dev-users.ts` becomes the canonical E2E fixture once the foundation-spike audits gaps and either extends it or adds a parallel `e2e-fixture` seed for negative cases (private lists owned by others, etc.).
+- **NEW** two-tier rollup convention for `testing-foundation` deltas across sub-proposals (rollout-period only; see design D13). Tier 1 (foundation rules) accumulate in `openspec/changes/test-coverage/specs/testing-foundation/spec.md` and roll into the active spec at THIS governing change's archive. Tier 2 (carve-out bookkeeping) live ONLY in the sub-proposal's own archive directory and do NOT propagate. Sub-proposal authors SHALL classify their delta as Tier 1 or Tier 2 in `proposal.md` and `tasks.md` and follow the corresponding rule.
 - This change writes **no test code itself**. It writes the governance and enumerates the sub-proposals.
 
 ## Capabilities
