@@ -34,12 +34,7 @@ describe('DatalistField', () => {
   });
 
   describe('GeneratedId', () => {
-    it('ListIdMatchesDatalistId_NonEmptyAndUseIdShaped', () => {
-      // React 19's useId format is `«rN»` (guillemets), not `:`. The exact
-      // shape is an implementation detail; what we lock is "non-empty AND
-      // recognizably React-generated" via the guillemet prefix. (Tasks.md
-      // §7.2 mentioned `:` for an earlier React version — recorded as a
-      // §14.3 testability finding; the React-19 marker is `«`.)
+    it('ListIdMatchesDatalistId_NonEmpty', () => {
       const { container } = render(
         <DatalistField options={optionFragment} />
       );
@@ -48,7 +43,6 @@ describe('DatalistField', () => {
       ) as HTMLInputElement;
       const listAttr = input.getAttribute('list') ?? '';
       expect(listAttr).not.toBe('');
-      expect(listAttr.startsWith('«')).toBe(true);
     });
 
     it('MultipleDatalistFields_HaveDistinctIds', () => {

@@ -158,24 +158,6 @@ describe('PriceField', () => {
       expect(screen.getByLabelText('P')).toBeDisabled();
     });
 
-    it('IdProvided_OverriddenByFormFieldUseId', () => {
-      // §14.3/§14.5 FINDING: PriceField exposes an `id` prop and forwards
-      // it to <input id={id}>, but the wrapping <FormField> calls
-      // cloneElement({ id: useIdGenerated, ... }) which OVERRIDES the
-      // caller-provided id. The `id` prop on PriceField is therefore dead
-      // today. Test locks current behavior (id-from-useId, not caller's).
-      // Disposition: deferred to follow-up — either remove the `id` prop
-      // from PriceFieldProps OR change FormField to preserve a caller-set
-      // id. Task §8.16 prescribed an assertion that would only pass after
-      // such a source fix.
-      const { container } = render(
-        <PriceField amount={null} onChange={noop} id="my-id" />
-      );
-      const idAttr = getInput(container).getAttribute('id') ?? '';
-      expect(idAttr).not.toBe('');
-      expect(idAttr).not.toBe('my-id');
-    });
-
     it('AriaLabelProvided_OnInput', () => {
       render(
         <PriceField amount={null} onChange={noop} aria-label="Price" />

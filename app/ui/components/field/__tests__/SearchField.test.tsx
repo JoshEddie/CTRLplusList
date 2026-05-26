@@ -87,14 +87,16 @@ describe('SearchField', () => {
       // contract per design D3c is `hasTrailingNode` short-circuits. Bypass
       // the type to verify the runtime precedence.
       const spy = vi.fn();
-      const props = {
-        value: 'abc',
-        onChange: noop,
-        trailing: <span data-testid="t" />,
-        onClear: spy,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any;
-      const { container } = render(<SearchField {...props} />);
+      const { container } = render(
+        // @ts-expect-error — intentionally passes both `trailing` and `onClear`
+        // to verify the runtime branch picks `trailing` when the type would forbid both.
+        <SearchField
+          value="abc"
+          onChange={noop}
+          trailing={<span data-testid="t" />}
+          onClear={spy}
+        />
+      );
       expect(screen.getByTestId('t')).toBeInTheDocument();
       expect(container.querySelector('.search_field_clear')).toBeNull();
       expect(spy).not.toHaveBeenCalled();
