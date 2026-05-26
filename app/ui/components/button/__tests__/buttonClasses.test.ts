@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buttonClasses } from './buttonClasses';
-import { VARIANTS, cap } from './__tests__/test-helpers';
+import { buttonClasses } from '../buttonClasses';
+import { VARIANTS, cap } from './test-helpers';
 
 describe('buttonClasses', () => {
   describe('VariantSizeMatrix', () => {

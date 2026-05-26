@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useMediaQuery } from './use-media-query';
+import { useMediaQuery } from '../use-media-query';
 
 type Listener = (event: { matches: boolean }) => void;
 

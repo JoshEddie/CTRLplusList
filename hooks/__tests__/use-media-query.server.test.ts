@@ -9,7 +9,7 @@
 import { createElement } from 'react';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { useMediaQuery } from './use-media-query';
+import { useMediaQuery } from '../use-media-query';
 
 function Probe({ query }: { query: string }) {
   const matches = useMediaQuery(query);

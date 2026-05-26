@@ -12,6 +12,23 @@ import { defineConfig } from 'vitest/config';
 // `import { db } from '@/db'` fail to resolve under vitest.
 const aliasRoot = { '@': resolve(__dirname, '.') };
 
+// Universal coverage floor — one bar for every enumerated file, no per-file
+// numeric variation (testing-foundation: "Per-file thresholds SHALL reference
+// a single shared COVERAGE_FLOOR constant"). Functions = 100% is non-
+// negotiable: an uninvoked function is a real test gap, not slop. A file that
+// cannot meet the floor MUST close the gap via tests OR `/* v8 ignore */`
+// with a one-line rationale — lowering the floor is not an acceptable
+// disposition. While the parent `test-coverage` change is in flight, only
+// files with landed tests are enumerated below; at parent archive the
+// enumeration deletes and the floor applies universally across
+// `coverage.include`.
+const COVERAGE_FLOOR = {
+  lines: 98,
+  statements: 98,
+  branches: 95,
+  functions: 100,
+} as const;
+
 export default defineConfig({
   test: {
     projects: [
@@ -70,47 +87,13 @@ export default defineConfig({
       ],
       thresholds: {
         perFile: true,
-        // test-pure-libs (sub-proposal 2.1) — Pure-logic class, 95% floor.
-        'lib/visibility.ts': {
-          lines: 95,
-          statements: 95,
-          functions: 95,
-          branches: 80,
-        },
-        'lib/listAccess.ts': {
-          lines: 95,
-          statements: 95,
-          functions: 95,
-          branches: 80,
-        },
-        'hooks/use-media-query.ts': {
-          lines: 95,
-          statements: 90,
-          functions: 80,
-          branches: 50,
-        },
-        'app/ui/components/button/buttonClasses.ts': {
-          lines: 95,
-          statements: 95,
-          functions: 95,
-          branches: 80,
-        },
-        // test-button-system (sub-proposal 3.1) — Primitive-component class,
-        // 90% per-file floor. branches:90 set up-front per design Decision 5
-        // (the standard sets the bar; the code clears it). Adjusted only if
-        // v8 flags an uncoverable branch with a named per-branch rationale.
-        'app/ui/components/button/Button.tsx': {
-          lines: 90,
-          statements: 90,
-          functions: 90,
-          branches: 90,
-        },
-        'app/ui/components/button/LinkButton.tsx': {
-          lines: 90,
-          statements: 90,
-          functions: 90,
-          branches: 90,
-        },
+        'lib/visibility.ts': COVERAGE_FLOOR,
+        'lib/listAccess.ts': COVERAGE_FLOOR,
+        'lib/sqlstate.ts': COVERAGE_FLOOR,
+        'hooks/use-media-query.ts': COVERAGE_FLOOR,
+        'app/ui/components/button/buttonClasses.ts': COVERAGE_FLOOR,
+        'app/ui/components/button/Button.tsx': COVERAGE_FLOOR,
+        'app/ui/components/button/LinkButton.tsx': COVERAGE_FLOOR,
       },
     },
   },

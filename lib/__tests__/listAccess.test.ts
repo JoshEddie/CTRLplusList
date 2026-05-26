@@ -8,7 +8,7 @@ import {
   user_follows,
   users,
 } from '@/db/schema';
-import { bootPglite } from '../test/helpers/db';
+import { bootPglite } from '../../test/helpers/db';
 
 // Holder mutated in `beforeAll` after pglite boots. Static imports of `@/db`
 // from production source (lib/listAccess.ts, lib/dal.ts) read through the
@@ -48,7 +48,7 @@ vi.mock('next/navigation', () => ({
 
 // Import production source AFTER vi.mock hoisting takes effect.
 const { redirect } = await import('next/navigation');
-const { guardListViewable, isItemViewable } = await import('./listAccess');
+const { guardListViewable, isItemViewable } = await import('../listAccess');
 
 // Canonical IDs. The seeded foundation entities are mirrored here so the
 // tests don't depend on running the prod seed script; pglite gets a fresh

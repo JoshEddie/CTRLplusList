@@ -1,5 +1,9 @@
 Each numbered top-level checkbox below represents a sub-proposal — its own OpenSpec change, created with `/opsx:propose <name>` at the time it's started. A checkbox is checked when the corresponding sub-proposal archives via `openspec archive <name>`. This governing change archives only after every sub-proposal below is archived. New sub-proposals discovered mid-flight (per the audit deferral rule in the `testing-foundation` spec) are added here as additional top-level checkboxes.
 
+## 0. Foundation amendments (governance edits to `testing-foundation` discovered mid-flight)
+
+- [x] 0.1 `test-housekeeping` — replaces the in-flight `testing-foundation` colocation requirement (flat → `__tests__/` directory, matching the convention `test-button-system` adopted and `TESTING.md` documents); replaces the tiered per-file coverage table with a single universal floor `lines:98 / statements:98 / branches:95 / functions:100`; adds the no-backdoor disposition rule (write the test OR `/* v8 ignore */` with named rationale — never lower the floor); adds the `COVERAGE_FLOOR` single-constant rule for `vitest.config.ts`. Relocates the six pre-`__tests__/` test files; raises every enumerated file to the new floor.
+
 ## 1. Foundation (sequential — blocks all other sub-proposals)
 
 - [x] 1.1 `test-foundation-spike` — DB-under-test option comparison (pglite vs testcontainers vs Neon branch) with a PoC against one DAL function and one server action; CI provider choice; negative-case audit of `scripts/seed-dev-users.ts`; chosen runner.
@@ -11,7 +15,7 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 
 ## 3. Primitive families (independent; any order after foundation)
 
-- [ ] 3.1 `test-button-system` — `app/ui/components/button/` (Button.tsx, LinkButton.tsx, types.ts, index.ts; `buttonClasses.ts` covered by 2.1). Elevate non-obvious invariants to `button-system` spec.
+- [x] 3.1 `test-button-system` — `app/ui/components/button/` (Button.tsx, LinkButton.tsx, types.ts, index.ts; `buttonClasses.ts` covered by 2.1). Elevate non-obvious invariants to `button-system` spec.
 - [ ] 3.2 `test-chip-system` — `app/ui/components/chip/`. Elevate to chip-system spec if one exists, else create one as part of this proposal.
 - [ ] 3.3 `test-form-field-system` — `app/ui/components/field/`. Elevate to `form-field-system` spec.
 - [ ] 3.4 `test-menu-system` — `app/ui/components/menu/`. Elevate to `menu-system` spec.

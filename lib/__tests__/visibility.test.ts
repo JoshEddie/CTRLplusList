@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { VISIBILITY, fromDb, visibilityDbValues } from './visibility';
+import { VISIBILITY, fromDb, visibilityDbValues } from '../visibility';
 
 describe('visibility', () => {
   describe('fromDb', () => {
