@@ -84,6 +84,8 @@ export default defineConfig({
         '**/types.ts',
         // NOT `**/index.ts` — `db/index.ts` carries runtime (Drizzle init).
         'app/ui/components/*/index.ts',
+        // constant ReactNode table; no executable behavior. See test-form-field-system design D2.
+        'app/ui/components/field/field-icons.tsx',
       ],
       thresholds: {
         perFile: true,
@@ -96,6 +98,16 @@ export default defineConfig({
         'app/ui/components/button/LinkButton.tsx': COVERAGE_FLOOR,
         'app/ui/components/chip/Chip.tsx': COVERAGE_FLOOR,
         'app/ui/components/chip/chipClasses.ts': COVERAGE_FLOOR,
+        'app/ui/components/field/FormField.tsx': COVERAGE_FLOOR,
+        'app/ui/components/field/TextField.tsx': COVERAGE_FLOOR,
+        'app/ui/components/field/TextareaField.tsx': COVERAGE_FLOOR,
+        'app/ui/components/field/SelectField.tsx': COVERAGE_FLOOR,
+        'app/ui/components/field/DateField.tsx': COVERAGE_FLOOR,
+        'app/ui/components/field/DatalistField.tsx': COVERAGE_FLOOR,
+        'app/ui/components/field/PriceField.tsx': COVERAGE_FLOOR,
+        'app/ui/components/field/SearchField.tsx': COVERAGE_FLOOR,
+        'app/ui/components/field/CheckboxField.tsx': COVERAGE_FLOOR,
+        'app/ui/components/field/FieldError.tsx': COVERAGE_FLOOR,
       },
     },
   },
