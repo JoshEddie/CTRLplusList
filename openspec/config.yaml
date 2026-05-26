@@ -91,17 +91,28 @@ rules:
     - |
       Every tasks.md MUST include a pre-merge verification section
       (conventionally the final numbered section, e.g. "## N. Pre-
-      merge") with explicit, separately-checkable tasks for ALL FOUR
+      merge") with explicit, separately-checkable tasks for ALL FIVE
       of the following gates passing clean:
         - `npm run lint` (eslint — zero errors, zero warnings)
         - `npx tsc --noEmit` (typescript — zero errors)
         - `npm run build` (next build — completes successfully,
           including type-check and production bundle)
-        - `npm test` (vitest — zero failing tests)
+        - `npm run test:coverage` (vitest — zero failing tests, with
+          coverage reporting)
+        - `npm run test:e2e` (playwright — zero failing tests)
       These are not optional and not collapsible into a single
       "validate" checkbox — each gate gets its own task so partial
       failure is visible in the checklist. The `build` gate exists in
       addition to `tsc --noEmit` because Next.js' production build
       surfaces issues (route-level type errors, server/client boundary
       violations, missing env at build time, RSC serialization) that
-      `tsc --noEmit` alone does not catch.
+      `tsc --noEmit` alone does not catch. The `test:e2e` gate is
+      author-run locally — CI does not currently run Playwright.
+
+      These gates are run by the author locally before requesting
+      review, against the author's real `.env.local` (CI re-runs
+      lint/tsc/build/test:coverage for defense in depth — `test:e2e`
+      is local-only). Tasks should record local-run results; do not
+      annotate them with CI-environment caveats (e.g. placeholder env
+      vars, missing secrets) — those belong in ci.yml, not in the
+      change record.
