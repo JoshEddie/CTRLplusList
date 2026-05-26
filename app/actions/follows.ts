@@ -194,22 +194,3 @@ export async function unblockUser(blocked_id: string): Promise<ActionResponse> {
   }
 }
 
-export async function markFollowingSeen(): Promise<ActionResponse> {
-  try {
-    const viewerId = await authedUserId();
-    if (!viewerId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
-    }
-
-    await db
-      .update(users)
-      .set({ last_seen_following_at: new Date() })
-      .where(eq(users.id, viewerId));
-
-    updateTag('user_follows');
-    return { success: true, message: 'Marked seen' };
-  } catch (error) {
-    console.error('Error marking following seen:', error);
-    return { success: false, message: 'Failed', error: 'Failed' };
-  }
-}
