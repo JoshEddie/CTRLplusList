@@ -6,13 +6,9 @@
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;  
-  background-color: var(--primary-color);
-  background-image: linear-gradient(
-    120deg,
-    var(--primary-color),
-    var(--secondary-color)
-  );
+  bottom: 0;
+  background-color: #000;
+  background-image: var(--page-frame-gradient);
   background-attachment: fixed;
   z-index: 150;
 }
@@ -33,6 +29,43 @@
   box-shadow: none;
 }
 
+/* Anchored popover for signed-in user menu. Menu container + items are
+   now provided by app/ui/components/menu/menu.css. The header (name +
+   email + divider) remains page-scoped — it's presentation, not a menu item. */
+.avatar-popover-wrap {
+  position: relative;
+}
+.avatar-popover-wrap .avatar-container {
+  /* Override the existing div-as-button: this is now a real <button>. */
+  background: none;
+  border: none;
+  padding: 0;
+  display: block;
+}
+.avatar-popover-header {
+  padding: 8px 12px 6px;
+}
+.avatar-popover-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--primary-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avatar-popover-email {
+  font-size: 0.8rem;
+  color: var(--muted-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avatar-popover-divider {
+  height: 1px;
+  background-color: var(--card-border-color);
+  margin: 4px 0;
+}
+
 .user-menu {
   display: none;
 }
@@ -43,16 +76,16 @@
 }
 
 .auth-container {
-  background-color: var(--background-color);
+  background-color: var(--light-color);
   padding: 40px;
-  border-radius: 8px;
+  border-radius: 14px;
   width: 90%;
   max-width: 400px;
   display: flex;
   gap: 20px;
   flex-direction: column;
   align-items: center;
-  box-shadow: 10px 10px 15px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--surface-shadow);
   position: relative;
 }
 
@@ -75,8 +108,8 @@
   position: absolute;
   top: -10px;
   right: -10px;
-  background-color: var(--primary-text-color);
-  border: 1px solid var(--primary-text-color);
+  background-color: var(--primary-color);
+  border: 1px solid var(--primary-color);
   color: var(--contrast-text-color);
   border-radius: 50%;
   width: 34px;
@@ -91,7 +124,7 @@
 
 .close-button:hover {
   background-color: var(--contrast-text-color);
-  color: var(--primary-text-color);
+  color: var(--primary-color);
 }
 
 .avatar-container {
@@ -146,7 +179,7 @@
 .avatar-container .placeholder {
   width: 90px;
 }
-  
+
 @media (min-width: 600px) {
   .avatar-container.placeholder {
     grid-column: span 2;

@@ -1,0 +1,126 @@
+/* Menu primitive — popover container + menuitem rows.
+   Consolidates the prior .menu-dropdown and .avatar-popover variants.
+   Container is .menu-popover (not .menu) to avoid colliding with the
+   existing page-nav .menu class in global.css. */
+
+.menu-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  min-width: 220px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background-color: var(--light-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  color: var(--primary-text-color);
+  font-family: var(--font-roboto-condensed);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: left;
+  width: 100%;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+  white-space: nowrap;
+}
+
+.menu-item:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) {
+  .menu-item:hover {
+    background-color: var(--secondary-background-color);
+    color: var(--primary-color);
+  }
+}
+
+.menu-item.tone-danger {
+  color: var(--danger-color);
+}
+
+@media (hover: hover) {
+  .menu-item.tone-danger:hover {
+    background-color: var(--danger-color);
+    color: var(--light-color);
+  }
+}
+
+.menu-item[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* MenuItemRadio — radio-tier menu row.
+   Same base .menu-item contract (height, padding, hover, focus-visible);
+   adds an icon slot, a two-line body (label + description), and a
+   trailing ✓ indicator that occupies a stable slot whether checked or not. */
+.menu-item-radio {
+  align-items: flex-start;
+  white-space: normal;
+  gap: 12px;
+}
+
+.menu-item-radio__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.menu-item-radio__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-item-radio__label {
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.menu-item-radio__description {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted-text-color);
+  line-height: 1.35;
+}
+
+.menu-item-radio__indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.menu-item-radio[aria-checked='true'] {
+  background-color: var(--secondary-background-color);
+}

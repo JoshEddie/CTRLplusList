@@ -1,11 +1,11 @@
 'use client';
 
 import { deleteList } from '@/app/actions/lists';
+import { Button } from '@/app/ui/components/button';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { MdDeleteForever } from 'react-icons/md';
 
 export default function DeleteListButton({ id }: { id: string }) {
   const router = useRouter();
@@ -23,10 +23,9 @@ export default function DeleteListButton({ id }: { id: string }) {
 
   return (
     <>
-      <button className="btn danger" onClick={() => setShowConfirm(true)}>
-        <MdDeleteForever />
-        <span className="label mobile-hide">Delete List</span>
-      </button>
+      <Button variant="danger" onClick={() => setShowConfirm(true)}>
+        Delete
+      </Button>
       <ConfirmDialog
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}

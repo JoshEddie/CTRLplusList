@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CTRLplusList
 
-## Getting Started
+A family gift-list app. Owners curate lists of items they want; family members claim
+purchases, bookmark each other's lists, and follow each other so updates surface on
+their home digest. Built on Next.js App Router with NextAuth (Google OAuth), Neon
+Postgres (HTTP driver) + Drizzle, and a Serwist-backed PWA shell.
 
-First, run the development server:
+## Prerequisites
+
+- Node.js — current Active LTS (Node 20+). The CI runtime matches the version
+  declared in `package.json` `engines` (if absent, use the active LTS).
+- A Neon Postgres database (or any Postgres reachable from the Neon HTTP driver).
+- Google OAuth credentials for NextAuth — see
+  https://console.cloud.google.com/apis/credentials.
+
+## Setup
+
+1. Clone and install:
+   ```bash
+   git clone <repo-url>
+   cd list_eddiefamily_com
+   npm install
+   ```
+2. Copy the environment template and fill in real values:
+   ```bash
+   cp .env.example .env.local
+   ```
+   Every key in `.env.example` corresponds to a `process.env.*` reference in the
+   codebase. The file documents required vs optional and accepted values.
+3. Apply schema migrations:
+   ```bash
+   npm run db:migrate
+   ```
+   Review generated SQL before running in any environment other than your own
+   dev database — see `CLAUDE.md` ("Database migrations") for the workflow.
+4. Seed dev data (optional, recommended):
+   ```bash
+   npm run db:seed:dev
+   ```
+   Creates `dev-test-viewer` plus four mutual-follow friends with public lists,
+   items, purchases, and visit history. Idempotent. Refuses to run when
+   `NODE_ENV=production`.
+5. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+   Open http://localhost:3000.
+
+### Dev auth bypass
+
+To validate UI changes through preview tooling without a real Google sign-in,
+set `AUTH_BYPASS=true` in `.env.local` after seeding. Zero-arg `await auth()`
+calls then return a mock session for `dev-test-viewer`. The bypass is refused
+when `NODE_ENV=production`. See `CLAUDE.md` ("Dev auth bypass for preview
+verification").
+
+To reset after local drift:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run db:reset:dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Restart the dev server after seeding or resetting — many DAL functions are
+tagged with `'use cache'` and the seed script runs outside the Next.js
+process.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Build & deploy
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+```
 
-## Learn More
+The `build` script invokes `next build --webpack` — a deliberate Turbopack
+opt-out required by `@serwist/next` 9.5 (the PWA service-worker integration).
+When Serwist supports Turbopack, drop the `--webpack` flag and remove this
+note.
 
-To learn more about Next.js, take a look at the following resources:
+Deployment target is Vercel. The PWA manifest, service worker, and offline
+assets are emitted by Serwist at build time and disabled in dev mode (see
+`next.config.ts`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Workflow & conventions
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `CLAUDE.md` — project conventions, database driver caveats, dev auth bypass,
+  and the database-migration workflow.
+- `openspec/specs/` — active capability specs (the contract surface).
+- `openspec/changes/` — proposals, design notes, and archived changes. The
+  `/opsx:propose`, `/opsx:apply`, and `/opsx:archive` slash commands manage
+  the lifecycle. Architectural decisions for this project live here — there
+  is no separate `docs/adr/` directory.
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See `LICENSE` if present, otherwise contact the maintainer.

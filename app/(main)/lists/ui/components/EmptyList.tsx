@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { LinkButton } from '@/app/ui/components/button';
 import { FaPlus } from 'react-icons/fa';
 
 export default function EmptyList() {
@@ -6,10 +6,10 @@ export default function EmptyList() {
     <div className="empty-list">
       <h3>No lists found</h3>
       <p>Create your first list below.</p>
-      <Link className="btn primary" href="/lists/new">
+      <LinkButton variant="primary" href="/lists/new">
         <FaPlus size={14} />
         Create List
-      </Link>
+      </LinkButton>
     </div>
   );
 }

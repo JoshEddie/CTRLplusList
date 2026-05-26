@@ -1,8 +1,9 @@
 'use client';
 
 import { updatePriority } from '@/app/actions/lists';
-import Empty from '@/app/ui/components/Empty';
+import { LinkButton } from '@/app/ui/components/button';
 import { ItemDisplay } from '@/lib/types';
+import { MdChecklist } from 'react-icons/md';
 import {
   closestCenter,
   DndContext,
@@ -14,16 +15,16 @@ import {
   TouchSensor,
   UniqueIdentifier,
   useSensor,
-  useSensors
+  useSensors,
 } from '@dnd-kit/core';
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  useSortable
+  useSortable,
 } from '@dnd-kit/sortable';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MdOutlineDragHandle } from 'react-icons/md';
 import Item from './Item';
@@ -34,9 +35,36 @@ interface ItemsProps {
   user_id?: string;
 }
 
+function EmptyListCTA({ listId }: { listId: string }) {
+  return (
+    <div className="empty-container">
+      <h3>No items on this list yet</h3>
+      <p>Pick from your item library or create a new one.</p>
+      <LinkButton href={`/lists/${listId}/choose-items`} variant="primary">
+        <MdChecklist size={18} />
+        Choose items
+      </LinkButton>
+    </div>
+  );
+}
+
 export default function SortItems({ items, listId, user_id }: ItemsProps) {
   const router = useRouter();
+  const itemsKey = items
+    .map((i) => {
+      const pkey = (i.purchases ?? [])
+        .map((p) => `${p.id}:${p.firstName}:${p.by}`)
+        .join('|');
+      return `${i.id}[${pkey}]`;
+    })
+    .join(';');
+  const dndId = useId();
   const [itemsState, setItemsState] = useState(items);
+  const [prevItemsKey, setPrevItemsKey] = useState(itemsKey);
+  if (itemsKey !== prevItemsKey) {
+    setPrevItemsKey(itemsKey);
+    setItemsState(items);
+  }
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -83,7 +111,7 @@ export default function SortItems({ items, listId, user_id }: ItemsProps) {
     const result = await updatePriority(
       active.id as string,
       over.id as string,
-      listId,
+      listId
     );
 
     if (!result.success) {
@@ -101,9 +129,10 @@ export default function SortItems({ items, listId, user_id }: ItemsProps) {
   };
 
   return itemsState.length === 0 ? (
-    <Empty type="item" />
+    <EmptyListCTA listId={listId} />
   ) : (
     <DndContext
+      id={dndId}
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
@@ -129,15 +158,15 @@ export default function SortItems({ items, listId, user_id }: ItemsProps) {
         </div>
       </SortableContext>
 
-        <DragOverlay className="sortable-item">
-          {activeId ? (
-              <Item
-                item={itemsState[activeIndex]}
-                className="item-drag-overlay"
-                user_id={user_id}
-              />
-          ) : null}
-        </DragOverlay>
+      <DragOverlay className="sortable-item">
+        {activeId ? (
+          <Item
+            item={itemsState[activeIndex]}
+            className="item-drag-overlay"
+            user_id={user_id}
+          />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }
@@ -155,46 +184,46 @@ export function SortableItem({
   user_id?: string;
   isAnyDragging?: boolean;
 }) {
-  const { 
-    attributes, 
-    listeners, 
-    setNodeRef, 
-    transform, 
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
     transition,
-    isDragging 
+    isDragging,
   } = useSortable({ id });
 
   const style = {
-    transform: transform 
+    transform: transform
       ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
       : undefined,
     transition,
   };
 
   return (
-    <div 
-      ref={setNodeRef} 
-      style={style} 
-      data-dragging={isDragging ? "true" : undefined}
+    <div
+      ref={setNodeRef}
+      style={style}
+      data-dragging={isDragging ? 'true' : undefined}
       {...attributes}
       className={`
         sortable-item 
         ${isDragging ? 'is-dragging' : ''} 
         ${isAnyDragging ? 'drag-active' : ''}
         ${className || ''}
-      `.trim().replace(/\s+/g, ' ')}
+      `
+        .trim()
+        .replace(/\s+/g, ' ')}
     >
-      <div 
-        className="drag-handle" 
+      <button
+        type="button"
+        className="drag-handle"
         {...listeners}
-        aria-label="Drag to reorder"
+        aria-label="Drag to reorder item"
       >
-        <MdOutlineDragHandle size={40} className="drag-handle-icon"/>
-      </div>
-      <Item
-        item={item}
-        user_id={user_id}
-      />
+        <MdOutlineDragHandle size={40} className="drag-handle-icon" />
+      </button>
+      <Item item={item} user_id={user_id} />
     </div>
   );
 }

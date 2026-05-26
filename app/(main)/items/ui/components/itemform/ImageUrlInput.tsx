@@ -1,7 +1,11 @@
-// ImageUrlInput.tsx
 'use client';
 
-import { FormGroup, FormLabel } from '@/app/ui/components/Form/Form';
+import { Button } from '@/app/ui/components/button';
+import { TextField } from '@/app/ui/components/field';
+import { ImageSearchResult } from '@/lib/types';
+import { useState } from 'react';
+import { ImageSearch } from './ImageSearch';
+import './image-search.css';
 
 interface ImageUrlInputProps {
   value?: string | null;
@@ -10,22 +14,52 @@ interface ImageUrlInputProps {
   disabled?: boolean;
 }
 
-export function ImageUrlInput({ value, error, onChange, disabled }: ImageUrlInputProps) {
+export function ImageUrlInput({
+  value,
+  error,
+  onChange,
+  disabled,
+}: ImageUrlInputProps) {
+  const [searchResults, setSearchResults] = useState<ImageSearchResult[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const handleImageSelect = (url: string) => {
+    onChange(url);
+    setIsSearchOpen(false);
+  };
+
   return (
-    <FormGroup>
-      <FormLabel>Image URL</FormLabel>
-      <input
-          type="url"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-          className={`form-input ${error ? 'form-input-error' : ''}`}
-          placeholder="https://example.com/image.jpg"
-          autoComplete="off"
-        />
-      <div className="input-error">
-        {error}
-      </div>
-    </FormGroup>
+    <div>
+      <TextField
+        type="url"
+        label="Image URL"
+        error={error || undefined}
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        placeholder="https://example.com/image.jpg"
+        autoComplete="off"
+      />
+
+      <Button
+        variant="link"
+        onClick={() => setIsSearchOpen(true)}
+        disabled={disabled}
+      >
+        Can&apos;t find a URL? Search for an image
+      </Button>
+
+      <ImageSearch
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        searchResults={searchResults}
+        setSearchResults={setSearchResults}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        onSelectImage={handleImageSelect}
+        disabled={disabled}
+      />
+    </div>
   );
 }

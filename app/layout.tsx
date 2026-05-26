@@ -1,7 +1,8 @@
 import '@/app/ui/styles/button.css';
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
-import type { Metadata } from 'next';
+import { ServiceWorkerRegistration } from '@/app/ui/components/ServiceWorkerRegistration';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
+import type { Metadata, Viewport } from 'next';
 import { Crimson_Pro, Roboto, Roboto_Condensed } from 'next/font/google';
 import { Toaster } from 'react-hot-toast';
 import './ui/styles/global.css';
@@ -57,8 +58,13 @@ export const metadata: Metadata = {
     'apple-mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-title': 'Ctrl+List',
     'format-detection': 'telephone=no',
-    'apple-mobile-web-app-status-bar-style': 'default',
+    'apple-mobile-web-app-status-bar-style': 'black-translucent',
   },
+};
+
+export const viewport: Viewport = {
+  interactiveWidget: 'resizes-content',
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -66,13 +72,19 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html lang="en">
       <body
         className={`${roboto.variable} ${robotoCondensed.variable} ${crimsonPro.variable}`}
       >
-        <Toaster position="top-right" />
+        <Toaster
+          position="top-right"
+          containerStyle={{
+            top: 'calc(16px + env(safe-area-inset-top))',
+            right: 'calc(16px + env(safe-area-inset-right))',
+          }}
+        />
+        <ServiceWorkerRegistration />
         {children}
         {/* <div className="bottom-line" /> */}
         <SpeedInsights />

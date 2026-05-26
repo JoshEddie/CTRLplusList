@@ -1,4 +1,18 @@
+import withSerwistInit from '@serwist/next';
 import type { NextConfig } from 'next';
+
+const isDev = process.env.NODE_ENV === 'development';
+
+const withSerwist = withSerwistInit({
+  swSrc: 'app/sw.ts',
+  swDest: 'public/sw.js',
+  disable: isDev,
+  additionalPrecacheEntries: [
+    { url: '/manifest.webmanifest', revision: null },
+    { url: '/icons/icon-192.png', revision: null },
+    { url: '/icons/icon-512.png', revision: null },
+  ],
+});
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
@@ -32,4 +46,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default isDev ? nextConfig : withSerwist(nextConfig);

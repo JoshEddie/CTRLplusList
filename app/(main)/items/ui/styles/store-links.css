@@ -1,21 +1,138 @@
-.storeLinks,
+/* Price row sits at the top of the card body */
+.item-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 6px;
+}
+
+.item-price {
+  font-family: var(--font-roboto-condensed);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary-color);
+  line-height: 1;
+}
+
+/* Buy-link row. Single-row grid — extras live in a popover, not inline.
+   Single store: one column stretching to fill (primary chip).
+   Multi-store: primary stretches; +N trigger hugs its content. */
+.storeLinks {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  width: 100%;
+}
+
+.storeLinks.has-extras {
+  grid-template-columns: 1fr auto;
+}
+
+/* Store-link chips opt out of the design system's standard variant colors —
+   buy-links carry their own "filled lavender CTA" treatment to signal
+   "leave the page to purchase." Sizing/typography stay at the system's
+   `sm` tier (32px floor, 13px font). Documented exception per
+   openspec/changes/standardize-buttons. */
+.btn.storeLinks-link {
+  background-color: var(--buy-link-bg);
+  border-color: var(--buy-link-border);
+  color: var(--buy-link-text);
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background-color 0.13s ease,
+    border-color 0.13s ease,
+    color 0.13s ease;
+}
+
+@media (hover: hover) {
+  .btn.storeLinks-link:hover {
+    background-color: var(--buy-link-hover-bg);
+    border-color: var(--primary-color);
+    color: var(--buy-link-hover-text);
+  }
+}
+
+/* Anchor wrapper for the +N Button and its <Menu> popover. Position
+   relative so .menu-popover (position:absolute) anchors here, not to
+   the card or the items grid. */
+.storeLinks-more-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Placement is computed at open-time by StoreLinks.tsx (see
+   `computePlacement`). The default `placement-above` overlays the card
+   body — preferred because the chip row sits at the bottom of the card,
+   so a downward-opening panel would be clipped by/cover the card below.
+   `placement-below` is used when there's not enough room above (top-row
+   items in the list view, especially) and falls through to the
+   `.menu-popover` default from menu.css. */
+.storeLinks-more-anchor.placement-above .menu-popover {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+/* Menu rows render as [external-link icon] [store name] [price]. Name
+   stretches to push price to the right edge; price uses the same accent
+   treatment as the card's primary price for visual continuity. */
+.storeLinks-menu-item .storeLinks-menu-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.storeLinks-menu-item .storeLinks-menu-price {
+  flex: 0 0 auto;
+  font-family: var(--font-roboto-condensed);
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.btn.storeLinks-more {
+  background-color: var(--secondary-background-color);
+  border-color: var(--card-border-color);
+  color: var(--muted-text-color);
+  transition:
+    background-color 0.13s ease,
+    border-color 0.13s ease,
+    color 0.13s ease;
+}
+
+@media (hover: hover) {
+  .btn.storeLinks-more:hover {
+    background-color: var(--buy-link-bg);
+    border-color: var(--buy-link-border);
+    color: var(--buy-link-text);
+  }
+}
+
+/* Fade store-links on the item card when the item has been purchased */
+.item.purchased .storeLinks-link,
+.item.purchased .storeLinks-more {
+  opacity: 0.5;
+}
+
+/* Modal store-links (purchase modal) keep their own layout */
 .modal-store-links {
+  display: grid;
+  grid-template-rows: auto;
+  gap: 8px;
   text-align: center;
   width: 100%;
   margin: 0 auto;
 }
 
-.modal-store-links {
-  display: grid;
-  grid-template-rows: auto;
-  gap: 8px;
-}
-
-.storeLinks .btn {
+.modal-store-links .btn {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 4px;
+  padding: 10px;
+}
+
+.modal-store-links .store-name {
+  font-weight: 200;
 }
 
 .stores-show-more {
@@ -34,15 +151,6 @@
   text-decoration: underline;
 }
 
-/* .drag-active .storeLinks,
-.item-drag-overlay .storeLinks {
-  display: none;
-} */
-
-.storeLinks .store-name {
-  font-weight: 200;
-}
-
 .modal-item-name {
   text-align: center;
   margin-bottom: 10px;
@@ -50,4 +158,3 @@
   font-family: var(--font-crimson-pro);
   font-size: 18px;
 }
-    

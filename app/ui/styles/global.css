@@ -1,6 +1,10 @@
 :root {
   --primary-color: #7324ce;
+  --primary-color-dark: #2f233c;
+  --primary-color-light: #cda2ff;
   --secondary-color: #2264c1;
+  --primary-color-transparent: #7324ce7f;
+  --secondary-color-transparent: #2264c17f;
   --light-color: #ffffff;
   --secondary-light-color: #f5f5f5;
   --third-light-color: #e5e5e5;
@@ -9,15 +13,53 @@
   --third-dark-color: #222222;
   --danger-color: #ef4444;
 
-  --background-color: var(--light-color);
+  --neutral-text-color: #1f2937;
+  --muted-text-color: #6b7280;
+  --neutral-border-color: #d1d5db;
+
+  --background-color: rgba(255, 255, 255, 0.95);
   --secondary-background-color: var(--secondary-light-color);
   --third-background-color: var(--third-light-color);
-  --primary-text-color: var(--primary-color);
+  --primary-text-color: var(--neutral-text-color);
   --contrast-text-color: var(--light-color);
   --danger-text-color: var(--danger-color);
   --transparent-overlay: rgba(0, 0, 0, 0.7);
 
   --max-width: 1500px;
+
+  /* Redesign tokens — see openspec/changes/redesign-home-and-tokens design.md D3 */
+  --page-frame-gradient: linear-gradient(
+    120deg,
+    rgb(37, 25, 78) 0%,
+    rgb(26, 37, 84) 100%
+  );
+  --heading-text-color: #1a1a2e;
+  --subtitle-text-color: #aaaaaa;
+  --meta-text-color: #bbbbbb;
+  --date-text-color: #cccccc;
+  --divider-color: #f0f0f8;
+  --card-border-color: #ebebf5;
+  --card-border-hover-color: #d4baf5;
+  --card-hover-background-color: #fafaff;
+  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --card-shadow-hover: 0 6px 24px rgba(0, 0, 0, 0.1);
+  --surface-shadow: 0 -8px 40px rgba(0, 0, 0, 0.18);
+  --card-accent-background-color: #f7f3ff;
+
+  /* Stage 4: list/items view tokens */
+  --hero-gradient: linear-gradient(135deg, #4a35c5 0%, #7855f0 100%);
+  --buy-link-bg: #f0eeff;
+  --buy-link-border: #c4b8ff;
+  --buy-link-text: #5038d0;
+  --buy-link-hover-bg: #e0d8ff;
+  --buy-link-hover-text: #3520a8;
+  --success-bg: #ecfdf3;
+  --success-border: #6ee7b7;
+  --success-text: #059669;
+  --tab-active-color: var(--primary-color);
+
+  --WCAG-input-size: 44px;
+  --WCAG-input-size-sm: 36px;
 }
 
 /* @media (prefers-color-scheme: dark) {
@@ -33,13 +75,13 @@
 } */
 
 @media (max-width: 600px) {
-  body [class*="mobile-hide"] {
+  body [class*='mobile-hide'] {
     display: none;
   }
 }
 
 @media (max-width: 800px) {
-  body [class*="nav-hide"] {
+  body [class*='nav-hide'] {
     display: none;
   }
 }
@@ -49,6 +91,10 @@ body {
   width: 100vw;
   overflow-x: hidden;
   color: var(--primary-text-color);
+}
+
+html {
+  background-color: #25194e;
 }
 
 body {
@@ -67,12 +113,7 @@ body::before {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: var(--primary-color);
-  background-image: linear-gradient(
-    120deg,
-    var(--primary-color),
-    var(--secondary-color)
-  );
+  background-image: var(--page-frame-gradient);
   background-attachment: fixed;
   pointer-events: none;
 }
@@ -83,41 +124,30 @@ body::before {
   margin: 0;
 }
 
-/* This is the visible container with rounded corners */
-.container {
+.sr-only {
   position: absolute;
-  top: 153px;
-  left: 16px;
-  right: 16px;
-  z-index: 1;
-  padding: 20px;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Content well inside the .app-surface. The white surface is the backdrop now,
+   so .container is just inner padding and flow positioning. */
+.container {
+  padding: 32px 44px 0;
   padding-bottom: 36px;
-  max-width: var(--max-width);
-  margin: 0 auto;
 }
 
-/* This is the background that stays fixed */
-.container::before {
-  content: '';
-  position: fixed;
-  top: 149px;
-  left: 16px;
-  right: 16px;
-  bottom: 16px;
-  background-color: var(--background-color);
-  border-radius: 8px;
-  z-index: -1;
-  pointer-events: none;
-  max-width: var(--max-width);
-  margin: 0 auto;
-}
-
-.container:has(.no-user) {
-  top: 93px;
-}
-
-.container:has(.no-user)::before {
-  top: 93px;
+@media (max-width: 800px) {
+  .container {
+    padding: 32px 20px 0;
+    padding-bottom: 36px;
+  }
 }
 
 .header {
@@ -138,6 +168,7 @@ body::before {
   font-family: var(--font-crimson-pro);
   font-weight: 100;
   text-align: left;
+  color: var(--primary-color);
 }
 
 .header .listDetails {
@@ -162,10 +193,11 @@ body::before {
   padding: 16px;
   text-align: left;
   z-index: 50;
+  background-color: #000000;
   background-image: linear-gradient(
     120deg,
-    var(--primary-color),
-    var(--secondary-color)
+    var(--primary-color-transparent),
+    var(--secondary-color-transparent)
   );
   background-attachment: fixed;
   box-sizing: border-box;
@@ -182,11 +214,11 @@ body::before {
   left: 0;
   right: 0;
   height: 16px;
-  background-color: var(--primary-color);
+  background-color: #000000;
   background-image: linear-gradient(
     120deg,
-    var(--primary-color),
-    var(--secondary-color)
+    var(--primary-color-transparent),
+    var(--secondary-color-transparent)
   );
   background-attachment: fixed;
 }
@@ -274,14 +306,6 @@ body::before {
     order: 0;
     grid-column: span 1;
   }
-
-  .container {
-    top: 84px;
-  }
-
-  .container::before {
-    top: 84px;
-  }
 }
 
 @media (min-width: 800px) {
@@ -300,13 +324,8 @@ body::before {
 }
 
 .container--list-details {
-  bottom: 0;
   padding: 0 0 16px;
   display: grid;
   grid-template-columns: 1fr;
   gap: 16px;
-}
-
-.container--list-details::before {
-  display: none;
 }

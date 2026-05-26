@@ -1,0 +1,786 @@
+.follow-disclosure-dialog {
+  margin: auto;
+  background-color: var(--background-color);
+  color: var(--primary-text-color);
+  border: 1px solid var(--primary-color);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  width: min(24rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+}
+.follow-disclosure-dialog::backdrop {
+  background-color: var(--transparent-overlay);
+}
+.follow-disclosure-title {
+  font-family: var(--font-crimson-pro);
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--heading-text-color);
+  margin: 0 0 0.75rem;
+}
+.follow-disclosure-body {
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--primary-text-color);
+  margin: 0 0 1.25rem;
+}
+.follow-disclosure-buttons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+.list-bookmark-indicator {
+  color: var(--primary-color);
+  margin-right: 6px;
+}
+
+/* User card grid + card (re-skin: list-card surface tokens) */
+.user-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.user-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 20px;
+  height: 100%;
+  background-color: var(--light-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+  box-shadow: var(--card-shadow);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.user-card:hover {
+  background-color: var(--card-hover-background-color);
+  border-color: var(--card-border-hover-color);
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* Compact variant: horizontal avatar + name. Used by the home FollowingRail
+   so user cards share the rhythm of the list cards in the row. */
+.user-card--compact {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+}
+.user-card--compact .user-card-avatar {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.user-card--compact .user-card-avatar-initials {
+  font-size: 1.1rem;
+}
+.user-card--compact .user-card-meta {
+  text-align: left;
+  flex: 1;
+  min-width: 0;
+}
+.user-card--compact .user-card-name {
+  font-size: 20px;
+  word-break: break-word;
+}
+.user-card-avatar {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: var(--secondary-background-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.user-card-avatar img,
+.user-card-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.user-card-avatar-initials {
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: var(--primary-color);
+}
+.user-card-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background-color: var(--primary-color);
+  color: var(--light-color);
+  border-radius: 999px;
+  min-width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0 6px;
+}
+.user-card-meta {
+  text-align: center;
+}
+.user-card-name {
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 18px;
+  color: var(--heading-text-color);
+  line-height: 1.2;
+}
+.user-card-sub {
+  font-family: var(--font-roboto-condensed);
+  font-size: 11px;
+  color: var(--meta-text-color);
+}
+.user-card-sub-muted {
+  color: var(--date-text-color);
+}
+
+/* Profile page */
+.profile-page {
+  width: 100%;
+}
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0;
+}
+.profile-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: var(--third-background-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.profile-avatar img,
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.profile-avatar-initials {
+  font-size: 2.5rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+.profile-meta {
+  flex: 1;
+}
+.profile-name {
+  margin: 0;
+  font-family: var(--font-crimson-pro);
+  font-size: 1.75rem;
+}
+.profile-stats {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+.profile-follow-prompt {
+  padding: 12px 16px;
+  background-color: var(--third-background-color);
+  border-left: 4px solid var(--primary-color);
+  border-radius: 4px;
+  margin: 12px 0;
+}
+.profile-empty {
+  padding: 16px 0;
+  color: var(--date-text-color);
+  font-family: var(--font-roboto-condensed);
+}
+
+/* History + bookmarks pages */
+.history-empty,
+.bookmarks-empty {
+  padding: 16px 0;
+  color: var(--date-text-color);
+  font-family: var(--font-roboto-condensed);
+}
+.history-card {
+  position: relative;
+  height: 100%;
+}
+.history-remove-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--light-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 999px;
+  color: var(--meta-text-color);
+  cursor: pointer;
+  font-size: 10px;
+  opacity: 0.7;
+  transition:
+    opacity 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+  z-index: 1;
+}
+.history-card:hover .history-remove-button {
+  opacity: 1;
+}
+.history-remove-button:hover {
+  border-color: var(--card-border-hover-color);
+  color: var(--heading-text-color);
+}
+.history-clear-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.history-clear-modal-inner {
+  background-color: var(--background-color);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 420px;
+  width: calc(100% - 32px);
+}
+.history-clear-modal-hint {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+.history-clear-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ── CONNECTIONS PAGE ──
+   Section headers match the home rail visual register (Crimson Pro,
+   --heading-text-color). Rows look like .item-list rows with bottom
+   dividers between siblings. Sections separated by .home-rail-divider. */
+.connections-page {
+  padding-top: 8px;
+}
+
+.connections-section {
+  padding: 18px 0;
+}
+
+.connections-section h2 {
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 28px;
+  color: var(--heading-text-color);
+  margin: 0 0 12px;
+}
+
+.connections-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.connections-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--card-border-color);
+  transition: background-color 0.13s;
+}
+
+.connections-row:last-child {
+  border-bottom: none;
+}
+
+.connections-row:hover {
+  background-color: var(--card-hover-background-color);
+}
+
+.connections-row-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.connections-link {
+  text-decoration: none;
+  color: var(--heading-text-color);
+  font-family: var(--font-roboto-condensed);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.connections-link:hover {
+  color: var(--primary-color);
+}
+
+.connections-row-since {
+  font-size: 12px;
+  color: var(--meta-text-color);
+  font-family: var(--font-roboto-condensed);
+}
+
+.connections-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.connections-empty {
+  color: var(--meta-text-color);
+  font-size: 14px;
+  padding: 8px 4px 0;
+  margin: 0;
+}
+
+/* Home digest rails */
+.home-digest {
+  display: flex;
+  flex-direction: column;
+}
+.rail {
+  margin: 0;
+  padding: 18px 0;
+}
+.home-rail-divider {
+  height: 1px;
+  background-color: var(--divider-color);
+}
+.rail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 12px;
+}
+.rail-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  padding: 0;
+}
+.rail-title {
+  margin: 0;
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--heading-text-color);
+}
+.rail-chevron {
+  transition: transform 0.18s ease;
+  color: var(--meta-text-color);
+  font-size: 12px;
+}
+.rail-chevron.collapsed {
+  transform: rotate(-90deg);
+}
+.rail-header-extra {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rail-body {
+  padding-top: 4px;
+}
+.rail.collapsed .rail-body {
+  display: none;
+}
+.rail-empty {
+  padding: 12px 0;
+  color: var(--date-text-color);
+  font-family: var(--font-roboto-condensed);
+}
+
+@media (max-width: 800px) {
+  .rail {
+    padding: 12px 0;
+  }
+  .rail-title {
+    font-size: 22px;
+  }
+}
+
+/* Horizontal-scrolling rail row */
+.list-card-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-left: -4px;
+  padding-left: 4px;
+  scrollbar-width: thin;
+}
+.list-card-row-item {
+  flex-shrink: 0;
+  width: 236px;
+}
+@media (min-width: 1700px) {
+  .list-card-row-item {
+    width: 260px;
+  }
+}
+@media (max-width: 800px) {
+  .list-card-row-item {
+    width: 190px;
+  }
+}
+.list-card-row-empty {
+  padding: 14px 0;
+  color: var(--date-text-color);
+  font-family: var(--font-roboto-condensed);
+}
+
+/* "+N more" trailing tile — same dimensions as .list-card / .user-card,
+   distinguished by a faint brand-tinted background and centered copy. */
+.more-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 100%;
+  padding: 18px 20px;
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+  background-color: var(--card-accent-background-color);
+  box-shadow: var(--card-shadow);
+  color: var(--primary-color);
+  font-family: var(--font-roboto-condensed);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.more-card:hover {
+  border-color: var(--card-border-hover-color);
+  box-shadow: var(--card-shadow-hover);
+}
+.more-card-text {
+  white-space: nowrap;
+}
+
+@media (max-width: 800px) {
+  .more-card {
+    padding: 14px 16px;
+    font-size: 13px;
+  }
+}
+
+/* Home card (used in rails and on the My Lists page) */
+.list-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  border-radius: 10px;
+  padding: 18px 20px;
+  height: 100%;
+  background-color: var(--light-color);
+  border: 1px solid var(--card-border-color);
+  box-shadow: var(--card-shadow);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.list-card:hover {
+  background-color: var(--card-hover-background-color);
+  border-color: var(--card-border-hover-color);
+  box-shadow: var(--card-shadow-hover);
+}
+.list-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.list-card-name {
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--heading-text-color);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.list-card-name-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-card-bookmark-indicator {
+  color: var(--primary-color);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.list-card-subtitle {
+  font-family: var(--font-roboto-condensed);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--subtitle-text-color);
+}
+/* Empty-state filler that keeps card heights even across a rail when only some
+   lists have a subtitle. Full-width, light-gray pill matched to the subtitle's
+   text-line height. */
+.list-card-subtitle-placeholder {
+  width: 100%;
+  height: 0.78em;
+  margin: 0.18em 0;
+  border-radius: 3px;
+  background-color: var(--secondary-background-color);
+}
+/* Owner line under the list title on non-viewer rails. Person icon mirrors the
+   hero's owner indicator; its own slot so it never competes with the subtitle
+   or the occasion/date footer. Uses --muted-text-color for WCAG AA contrast. */
+.list-card-byline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-roboto-condensed);
+  font-size: 12px;
+  color: var(--muted-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.list-card-byline > svg {
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.list-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.list-card-occasion {
+  font-family: var(--font-roboto-condensed);
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--meta-text-color);
+  background-color: var(--secondary-background-color);
+  border-radius: 20px;
+  padding: 3px 9px;
+}
+.list-card-date {
+  font-family: var(--font-roboto-condensed);
+  font-size: 11px;
+  color: var(--date-text-color);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+@media (max-width: 800px) {
+  .list-card {
+    gap: 10px;
+    padding: 14px 16px;
+  }
+  .list-card-name {
+    font-size: 18px;
+  }
+}
+
+/* My Lists full page */
+.my-lists-page {
+  width: 100%;
+}
+.my-lists-empty {
+  padding: 16px 0;
+  color: var(--date-text-color);
+  font-family: var(--font-roboto-condensed);
+}
+
+/* Peer sub-nav across the four list-collection pages */
+.list-collections-nav {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--divider-color);
+}
+.list-collections-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-width: 0;
+  flex: 1;
+}
+.list-collections-tabs::-webkit-scrollbar {
+  display: none;
+}
+.list-collections-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 4px 12px;
+  margin: 0 8px;
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--meta-text-color);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.list-collections-tab:hover {
+  color: var(--heading-text-color);
+}
+.list-collections-tab--active {
+  color: var(--heading-text-color);
+  border-bottom-color: var(--primary-color);
+}
+.list-collections-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-bottom: 8px;
+}
+
+@media (max-width: 800px) {
+  .list-collections-tab {
+    font-size: 18px;
+    padding: 8px 4px 10px;
+    margin: 0 6px;
+  }
+}
+
+/* Shared full-page grid of list cards (My Lists, Bookmarks, History) */
+.list-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ── List-collections container (My Lists / Bookmarks / History / Following) ──
+   Fixed-height flex column. The peer tab strip stays at the top; only the
+   card grid scrolls. Matches the architectural pattern used by
+   .container--list-details and .container--items-library. */
+.container--list-collections {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--app-sticky-top));
+  overflow: hidden;
+}
+
+/* The per-page wrapper (.my-lists-page / .bookmarks-page / .history-page /
+   .following-page) inherits the flex layout from the container. */
+.container--list-collections > .my-lists-page,
+.container--list-collections > .bookmarks-page,
+.container--list-collections > .history-page,
+.container--list-collections > .following-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.container--list-collections .list-collections-nav {
+  flex-shrink: 0;
+  margin-bottom: 0;
+  padding-top: 8px;
+  background-color: var(--light-color);
+}
+
+.container--list-collections .list-card-grid,
+.container--list-collections .user-card-grid {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+  padding: 16px 0 16px;
+}
+
+.container--list-collections .my-lists-empty,
+.container--list-collections .profile-empty {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: 16px;
+}
+
+/* One-time migration toast on home */
+.bookmark-migration-toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background-color: var(--third-background-color);
+  border-radius: 6px;
+  margin: 8px 0;
+  font-size: 0.9rem;
+}
+.bookmark-migration-toast-dismiss {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: inherit;
+  padding: 0 6px;
+}
+
+/* Following page */
+.following-page {
+  width: 100%;
+}
+.following-empty {
+  opacity: 0.7;
+}

@@ -1,3 +1,4 @@
+import { TextField } from '@/app/ui/components/field';
 import { BsArrowDownShort, BsArrowUpShort } from 'react-icons/bs';
 
 interface ReorderInputGroupProps {
@@ -35,13 +36,11 @@ export default function ReorderInputGroup({
         <BsArrowUpShort size={30} />
       </button>
       <div className="reorder-input">
-        <input
+        <TextField
           type="number"
           min="1"
-          // max={totalItems}
           placeholder={`${index + 1}`}
           defaultValue={index + 1}
-          className="position-input"
           aria-label={`Current position ${index + 1}, enter new position between 1 and ${totalItems}`}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {

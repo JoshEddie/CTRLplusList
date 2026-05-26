@@ -1,6 +1,12 @@
 import Image from 'next/image';
 
-export default function UserImage({ image, name }: { image: string; name: string }) {
+export default function UserImage({
+  image,
+  name,
+}: {
+  image: string;
+  name: string;
+}) {
   return (
     <Image
       className="avatar"

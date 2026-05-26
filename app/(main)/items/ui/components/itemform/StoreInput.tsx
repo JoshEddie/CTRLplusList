@@ -1,8 +1,5 @@
-import { FormInput, FormLabel } from '@/app/ui/components/Form/Form';
+import { PriceField, TextField } from '@/app/ui/components/field';
 import { ItemDetails } from '@/lib/types';
-import { FaPlus } from 'react-icons/fa';
-import { IoMdRemove } from 'react-icons/io';
-import { LuDollarSign } from 'react-icons/lu';
 
 interface ItemFormErrors {
   name: string;
@@ -32,126 +29,65 @@ export function StoreInputContainer({
   handleStoreAdd: (index: number) => void;
   handleStoreRemove: (index: number) => void;
 }) {
-
+  const removable = itemForm.stores.length > 1;
   return (
-    <>
-      <FormLabel>Stores/Prices</FormLabel>
-      <div className="stores-input-container">
+    <div className={`if-stores${removable ? '' : ' if-stores-single'}`}>
       {itemForm.stores.map((store, index) => {
-          return (
-            <div key={index} className="store-input-wrapper">
-              <StoreInput
-                index={index}
-                itemForm={itemForm}
-                itemFormErrors={itemFormErrors}
-                handleStoreChange={handleStoreChange}
-              />
-              {itemForm.stores.length > 1 && (
-                <button 
-                  type="button" 
-                  className="remove-store-btn"
-                  onClick={() => handleStoreRemove(index)}
-                  aria-label={`Remove store ${index + 1}`}
-                >
-                  <IoMdRemove />
-                </button>
-              )}
-            </div>
-          );
-        })}
-        <button 
-          type="button" 
-          className="add-store-btn"
-          onClick={() => handleStoreAdd(itemForm.stores.length)}
-        >
-          <FaPlus size={18} className="add-store-icon"/>
-          Add Store
-        </button>
-      </div>
-    </>
-  );
-}
-
-interface StoreInputProps {
-  required?: boolean;
-  index: number;
-  itemForm: ItemDetails;
-  itemFormErrors: ItemFormErrors;
-  handleStoreChange: (
-    index: number,
-    value: string | number,
-    type: 'name' | 'price' | 'link'
-  ) => void;
-}
-
-export function StoreInput({
-  required = false,
-  index,
-  itemForm,
-  itemFormErrors,
-  handleStoreChange,
-}: StoreInputProps) {
-  return (
-    <div className="store-input-container">
-      <div className="store-input">
-        <FormLabel>Store {required ? '*' : ''}</FormLabel>
-          <FormInput
-            name="store"
-            value={itemForm.stores[index]?.name || ''}
-            placeholder="Ctrl + List"
-            required={required}
-            onChange={(e) => {
-              handleStoreChange(index, e.target.value, 'name');
-            }}
-            className={
-              itemFormErrors.stores[index]?.name ? 'form-input-error' : ''
-            }
-            autoComplete="off"
-          />
-          <div className="input-error">
-            {itemFormErrors.stores[index]?.name}
-          </div>
-      </div>
-      <div className="store-input">
-        <FormLabel>Price {required ? '*' : ''}</FormLabel>
-          <div className={`price-input-container ${itemFormErrors.stores[index]?.price ? 'form-input-error' : ''}`}>
-            <LuDollarSign size={20} />
-            <FormInput
-              name="price"
-              type="text"
-              inputMode="decimal"
-              value={itemForm.stores[index]?.price || ''}
-              placeholder="0.00"
-              required={required}
-              onChange={(e) => {
-                handleStoreChange(index, e.target.value, 'price');
-              }}
+        const err = itemFormErrors.stores[index];
+        const parsedPrice = store.price ? parseFloat(String(store.price)) : NaN;
+        const priceAmount = Number.isFinite(parsedPrice) ? parsedPrice : null;
+        return (
+          <div
+            key={index}
+            className="if-store-row"
+            role="group"
+            aria-label={`Store ${index + 1}`}
+          >
+            <TextField
+              label="Store"
+              error={err?.name || undefined}
+              placeholder="Store name"
+              value={store.name || ''}
+              onChange={(e) => handleStoreChange(index, e.target.value, 'name')}
               autoComplete="off"
             />
+            <PriceField
+              label="Price"
+              error={err?.price || undefined}
+              amount={priceAmount}
+              onChange={(v) => handleStoreChange(index, v.toFixed(2), 'price')}
+            />
+            <TextField
+              label="Link"
+              className="if-store-link"
+              error={err?.link || undefined}
+              type="url"
+              placeholder="https://..."
+              value={store.link || ''}
+              onChange={(e) => handleStoreChange(index, e.target.value, 'link')}
+              autoComplete="off"
+            />
+            {removable && (
+              <button
+                className="if-store-rm"
+                onClick={() => handleStoreRemove(index)}
+                type="button"
+                title="Remove store"
+                aria-label={`Remove store ${index + 1}`}
+              >
+                ×
+              </button>
+            )}
           </div>
-          <div className="input-error">
-            {itemFormErrors.stores[index]?.price}
-          </div>
-      </div>
-      <div className="store-input">
-        <FormLabel>Link {required ? '*' : ''}</FormLabel>
-          <FormInput
-            name="link"
-            value={itemForm.stores[index]?.link || ''}
-            placeholder="https://CtrlPlusList.com"
-            required={required}
-            onChange={(e) => {
-              handleStoreChange(index, e.target.value, 'link');
-            }}
-            className={
-              itemFormErrors.stores[index]?.link ? 'form-input-error' : ''
-            }
-            autoComplete="off"
-          />
-          <div className="input-error">
-            {itemFormErrors.stores[index]?.link}
-          </div>
-      </div>
+        );
+      })}
+      <button
+        type="button"
+        className="if-add-store"
+        onClick={() => handleStoreAdd(itemForm.stores.length)}
+      >
+        + Add Store
+      </button>
     </div>
   );
 }

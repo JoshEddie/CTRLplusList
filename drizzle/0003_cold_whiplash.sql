@@ -1,0 +1,1 @@
+ALTER TABLE "list_visits" ALTER COLUMN "last_visited_at" DROP NOT NULL;

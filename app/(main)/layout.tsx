@@ -1,16 +1,21 @@
-import { Suspense } from 'react';
-import Menu from '../ui/components/Menu';
-import MainShell from './MainShell';
+import AppFrame from '../ui/components/AppFrame';
+import '../ui/styles/app-frame.css';
 import './items/ui/styles/item.css';
+import './lists/ui/styles/following-and-history.css';
 import './lists/ui/styles/list.css';
+import './users/ui/styles/avatar.css';
 
-export default function MainLayout({ children }: { children: React.ReactNode }) {
+export default function MainLayout({
+  children,
+  modal,
+}: {
+  children: React.ReactNode;
+  modal: React.ReactNode;
+}) {
   return (
-    <>
-      <Menu />
-      <Suspense fallback={<main className="container" />}>
-        <MainShell>{children}</MainShell>
-      </Suspense>
-    </>
+    <AppFrame>
+      {children}
+      {modal}
+    </AppFrame>
   );
 }

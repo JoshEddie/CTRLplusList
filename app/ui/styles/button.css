@@ -1,94 +1,247 @@
+:root {
+  --btn-radius: 8px;
+  --btn-padding-y: 10px;
+  --btn-padding-x: 20px;
+  --btn-font-size: 16px;
+  --btn-font-weight: 500;
+  --btn-min-height: var(--WCAG-input-size);
+  --btn-min-width: var(--WCAG-input-size);
+  --btn-focus-ring-color: var(--primary-color);
+
+  --btn-sm-padding-y: 6px;
+  --btn-sm-padding-x: 10px;
+  --btn-sm-font-size: 14px;
+  --btn-sm-min-height: var(--WCAG-input-size-sm);
+  --btn-sm-min-width: var(--WCAG-input-size-sm);
+
+  /* Chip tier — pill-shaped label + remove-×. Below the sm floor; relies
+     on WCAG 2.5.8 spacing exception (chips are spaced from neighbors via
+     the chip-row gap). */
+  --chip-padding-y: 4px;
+  --chip-padding-x: 10px;
+  --chip-font-size: 12px;
+  --chip-radius: 999px;
+  --chip-gap: 4px;
+}
+
 .btn {
-  border-radius: 8px;
-  padding: 15px;
-  border-style: solid;
-  border-width: 2px;
+  border-radius: var(--btn-radius);
+  padding: var(--btn-padding-y) var(--btn-padding-x);
+  border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
   text-decoration: none;
-  display: flex;
+  display: inline-flex;
   gap: 8px;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: var(--btn-font-size);
   font-family: var(--font-roboto-condensed);
-  font-weight: 500;
-  word-break: break-all;
+  font-weight: var(--btn-font-weight);
+  word-break: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+  line-height: 1.2;
+  min-height: var(--btn-min-height);
+  min-width: var(--btn-min-width);
 }
 
-.primary {
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
-  color: #ffffff;
-}
-
-.primary:hover {
-  background-color: var(--secondary-color);
-  border-color: var(--secondary-color);
-}
-
-.primary:disabled {
+.btn:disabled,
+.btn[aria-disabled='true'] {
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-.secondary {
+.btn:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: 2px;
+}
+
+.btn-sm {
+  padding: var(--btn-sm-padding-y) var(--btn-sm-padding-x);
+  font-size: var(--btn-sm-font-size);
+  min-height: var(--btn-sm-min-height);
+  min-width: var(--btn-sm-min-width);
+}
+
+/* Variants */
+
+.btn.primary {
+  background-color: transparent;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.btn.secondary {
   border-color: var(--third-background-color);
   background-color: var(--third-background-color);
   color: var(--primary-text-color);
 }
 
-.secondary:hover {
-  border-color: var(--secondary-color);
-  background-color: var(--secondary-color);
-  color: #ffffff;
+.btn.ghost {
+  background-color: transparent;
+  color: var(--primary-text-color);
+  border-color: transparent;
 }
 
-.danger {
+.btn.danger {
   background-color: transparent;
   border-color: var(--danger-color);
   color: var(--danger-text-color);
 }
 
-.danger:hover {
-  background-color: var(--danger-color);
-  border-color: var(--danger-color);
-  color: #ffffff;
-}
-
-.nav {
-  background-color: var(--background-color);
-  border-color: var(--background-color);
-  color: var(--primary-text-color);
-}
-
-.nav:hover {
+.btn.on-dark {
   background-color: transparent;
+  border-color: #ffffff;
   color: #ffffff;
 }
 
-.outline {
+.btn.on-dark:focus-visible {
+  outline-color: #ffffff;
+}
+
+/* Link variant — text-button affordance (no border, no background, no
+   horizontal padding, primary-color text). Opts out of the 44px touch
+   floor per WCAG 2.5.8 spacing exception: text buttons inside body copy
+   rely on the surrounding layout's spacing to neighboring targets. */
+
+.btn.link {
   background-color: transparent;
-  color: var(--primary-text-color);
+  border-color: transparent;
+  color: var(--primary-color);
+  padding: 0;
+  min-height: 0;
+  min-width: 0;
+  font-weight: 500;
+  text-decoration: none;
 }
 
-.outline:hover {
-  background-color: var(--secondary-color);
-  border-color: var(--secondary-color);
+/* Pressed state (toggles) */
+
+.btn.on-dark[aria-pressed='true'] {
+  background-color: #ffffff;
+  color: var(--primary-color);
+}
+
+.btn.primary[aria-pressed='true'] {
+  background-color: var(--primary-color);
   color: #ffffff;
 }
 
-@media (max-width: 1000px) {
+/* Hover — guarded so iOS taps don't stick */
 
-  .btn {
-    padding: 15px 20px;
+@media (hover: hover) {
+  .btn.primary:hover {
+    background-color: var(--primary-color);
+    color: #ffffff;
   }
 
-  .mobile-small {
-    font-size: 14px;
-    padding: 10px 20px;
+  .btn.secondary:hover {
+    border-color: var(--secondary-color);
+    background-color: var(--secondary-color);
+    color: #ffffff;
+  }
+
+  .btn.ghost:hover {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+    color: #ffffff;
+  }
+
+  .btn.danger:hover {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+    color: #ffffff;
+  }
+
+  .btn.on-dark:hover {
+    background-color: #ffffff;
+    color: var(--primary-color);
+  }
+
+  .btn.on-dark[aria-pressed='true']:hover {
+    background-color: transparent;
+    color: #ffffff;
+  }
+
+  .btn.primary[aria-pressed='true']:hover {
+    background-color: transparent;
+    color: var(--primary-color);
+  }
+
+  .btn.link:hover {
+    text-decoration: underline;
   }
 }
+
+/* Chip primitive — label + remove-× pair. The chip body is a non-interactive
+   span; only `.chip-remove` is interactive. The remove button reuses the
+   focus-ring and hover-on-touch contract from the button system. */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--chip-gap);
+  padding: var(--chip-padding-y) var(--chip-padding-x);
+  border-radius: var(--chip-radius);
+  background-color: var(--card-accent-background-color);
+  color: var(--primary-color);
+  font-family: var(--font-roboto-condensed);
+  font-size: var(--chip-font-size);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--meta-text-color);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 50%;
+}
+
+.chip-remove:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: 2px;
+}
+
+.chip-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+@media (hover: hover) {
+  .chip-remove:hover:not(:disabled) {
+    color: var(--primary-color);
+  }
+}
+
+/* Loading spinner */
+
+.btn-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: btn-spinner-rotate 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes btn-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Google sign-in (vendor styling — exempt from the unified system) */
 
 .gsi-material-button {
   -moz-user-select: none;
@@ -113,8 +266,14 @@
   padding: 0 12px;
   position: relative;
   text-align: center;
-  -webkit-transition: background-color .218s, border-color .218s, box-shadow .218s;
-  transition: background-color .218s, border-color .218s, box-shadow .218s;
+  -webkit-transition:
+    background-color 0.218s,
+    border-color 0.218s,
+    box-shadow 0.218s;
+  transition:
+    background-color 0.218s,
+    border-color 0.218s,
+    box-shadow 0.218s;
   vertical-align: middle;
   white-space: nowrap;
   width: auto;
@@ -154,8 +313,8 @@
 }
 
 .gsi-material-button .gsi-material-button-state {
-  -webkit-transition: opacity .218s;
-  transition: opacity .218s;
+  -webkit-transition: opacity 0.218s;
+  transition: opacity 0.218s;
   bottom: 0;
   left: 0;
   opacity: 0;
@@ -178,15 +337,19 @@
   opacity: 38%;
 }
 
-.gsi-material-button:not(:disabled):active .gsi-material-button-state, 
+.gsi-material-button:not(:disabled):active .gsi-material-button-state,
 .gsi-material-button:not(:disabled):focus .gsi-material-button-state {
   background-color: #303030;
   opacity: 12%;
 }
 
 .gsi-material-button:not(:disabled):hover {
-  -webkit-box-shadow: 0 1px 2px 0 rgba(60, 64, 67, .30), 0 1px 3px 1px rgba(60, 64, 67, .15);
-  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, .30), 0 1px 3px 1px rgba(60, 64, 67, .15);
+  -webkit-box-shadow:
+    0 1px 2px 0 rgba(60, 64, 67, 0.3),
+    0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  box-shadow:
+    0 1px 2px 0 rgba(60, 64, 67, 0.3),
+    0 1px 3px 1px rgba(60, 64, 67, 0.15);
 }
 
 .gsi-material-button:not(:disabled):hover .gsi-material-button-state {

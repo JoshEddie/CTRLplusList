@@ -1,24 +1,48 @@
 'use server';
 
 import { db } from '@/db';
-import { list_items, lists, saved_lists } from '@/db/schema';
+import { list_items, list_visits, lists, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  sql,
+} from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
-// Define Zod schema for list validation
+import {
+  VISIBILITY,
+  VISIBILITY_VALUES,
+  fromDb,
+  type ListVisibility,
+} from '@/lib/visibility';
+// Define Zod schema for list validation. The actor's user_id is resolved
+// server-side from the session, never accepted from the client payload — see
+// openspec/specs/server-endpoint-authorization.
 const ListSchema = z.object({
   name: z
     .string()
     .min(3, 'Title must be at least 3 characters')
     .max(100, 'Title must be less than 100 characters'),
 
+  subtitle: z
+    .string()
+    .max(120, 'Subtitle must be less than 120 characters')
+    .optional()
+    .nullable()
+    .transform((v) => (v === '' || v == null ? null : v)),
+
   occasion: z.string().optional().nullable(),
 
   date: z.date(),
-
-  user_id: z.string().min(1, 'User ID is required'),
 });
 
 export type ListData = z.infer<typeof ListSchema>;
@@ -33,9 +57,8 @@ export type ActionResponse = {
 
 export async function createList(data: ListData): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -43,7 +66,18 @@ export async function createList(data: ListData): Promise<ActionResponse> {
       };
     }
 
-    // Validate with Zod
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User not found',
+        error: 'Unauthorized',
+      };
+    }
+
     const validationResult = ListSchema.safeParse(data);
     if (!validationResult.success) {
       return {
@@ -54,15 +88,14 @@ export async function createList(data: ListData): Promise<ActionResponse> {
     }
 
     const id = nanoid();
-
-    // Create list with validated data
     const validatedData = validationResult.data;
     await db.insert(lists).values({
       id,
       name: sql`${validatedData.name}`,
+      subtitle: validatedData.subtitle ?? null,
       occasion: sql`${validatedData.occasion}`,
       date: sql`${validatedData.date}`,
-      user_id: sql`${validatedData.user_id}`,
+      user_id: sessionUser.id,
     });
 
     updateTag('lists');
@@ -87,9 +120,8 @@ export async function updateList(
   data: Partial<ListData>
 ): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -97,7 +129,33 @@ export async function updateList(
       };
     }
 
-    // Allow partial validation for updates
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User not found',
+        error: 'Unauthorized',
+      };
+    }
+
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, id),
+      columns: { user_id: true },
+    });
+    if (!list) {
+      return { success: false, message: 'List not found', error: 'Not found' };
+    }
+    if (list.user_id !== sessionUser.id) {
+      return {
+        success: false,
+        message: 'Unauthorized - list does not belong to you',
+        error: 'Unauthorized',
+      };
+    }
+
     const UpdateListSchema = ListSchema.partial();
     const validationResult = UpdateListSchema.safeParse(data);
 
@@ -109,21 +167,29 @@ export async function updateList(
       };
     }
 
-    // Type safe update object with validated data
     const validatedData = validationResult.data;
     const updateData: Record<string, unknown> = {};
 
     if (validatedData.name !== undefined) updateData.name = validatedData.name;
+    if (validatedData.subtitle !== undefined)
+      updateData.subtitle = validatedData.subtitle;
     if (validatedData.occasion !== undefined)
       updateData.occasion = validatedData.occasion;
     if (validatedData.date !== undefined) updateData.date = validatedData.date;
 
-    // Update list
     const result = await db
       .update(lists)
       .set(updateData)
       .where(eq(lists.id, id))
       .returning();
+
+    if (result.length === 0) {
+      return {
+        success: false,
+        message: 'List not found',
+        error: 'Not found',
+      };
+    }
 
     updateTag('lists');
 
@@ -144,9 +210,8 @@ export async function updateList(
 
 export async function deleteList(id: string): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -154,7 +219,33 @@ export async function deleteList(id: string): Promise<ActionResponse> {
       };
     }
 
-    // Delete list
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User not found',
+        error: 'Unauthorized',
+      };
+    }
+
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, id),
+      columns: { user_id: true },
+    });
+    if (!list) {
+      return { success: false, message: 'List not found', error: 'Not found' };
+    }
+    if (list.user_id !== sessionUser.id) {
+      return {
+        success: false,
+        message: 'Unauthorized - list does not belong to you',
+        error: 'Unauthorized',
+      };
+    }
+
     await db.delete(lists).where(eq(lists.id, id));
 
     updateTag('lists');
@@ -170,14 +261,15 @@ export async function deleteList(id: string): Promise<ActionResponse> {
   }
 }
 
-export async function toggleShareList(
+const VisibilitySchema = z.enum(VISIBILITY_VALUES);
+
+export async function setListVisibility(
   id: string,
-  shared: boolean
+  visibility: ListVisibility
 ): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -185,30 +277,246 @@ export async function toggleShareList(
       };
     }
 
-    // Share list
-    await db.update(lists).set({ shared: shared }).where(eq(lists.id, id));
+    const parsed = VisibilitySchema.safeParse(visibility);
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: 'Invalid visibility value',
+        error: 'Validation',
+      };
+    }
+
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      return {
+        success: false,
+        message: 'User not found',
+        error: 'Unauthorized',
+      };
+    }
+
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, id),
+      columns: { user_id: true, visibility: true },
+    });
+    if (!list) {
+      return { success: false, message: 'List not found', error: 'Not found' };
+    }
+    if (list.user_id !== sessionUser.id) {
+      return {
+        success: false,
+        message: 'Unauthorized - list does not belong to you',
+        error: 'Forbidden',
+      };
+    }
+
+    const next = parsed.data;
+    const wasPrivate = fromDb(list.visibility) === VISIBILITY.OWNER;
+    const goingPrivate = next === VISIBILITY.OWNER;
+    // shared_at: set on first private → non-private transition; clear on transition
+    // back to private; preserve on unlisted ↔ public. See design Decision 3.
+    const sharedAtUpdate: { shared_at?: Date | null } = goingPrivate
+      ? { shared_at: null }
+      : wasPrivate
+        ? { shared_at: new Date() }
+        : {};
+
+    // Dual-write the legacy `shared` boolean for main-branch compatibility during
+    // the soak window (see design Decision 4b).
+    await db
+      .update(lists)
+      .set({
+        visibility: next,
+        shared: next !== VISIBILITY.OWNER,
+        ...sharedAtUpdate,
+      })
+      .where(eq(lists.id, id));
 
     updateTag('lists');
 
-    return { success: true, message: 'List shared successfully' };
+    return { success: true, message: 'Visibility updated' };
   } catch (error) {
-    console.error('Error sharing list:', error);
+    console.error('Error updating list visibility:', error);
     return {
       success: false,
-      message: 'An error occurred while sharing the list',
-      error: 'Failed to share list',
+      message: 'An error occurred while updating visibility',
+      error: 'Failed to update visibility',
     };
   }
 }
 
-export async function saveList(
+// --- Visit history + bookmarks ---
+
+async function authedUserId(): Promise<string | null> {
+  const session = await auth();
+  if (!session?.user?.email) return null;
+  const u = await db.query.users.findFirst({
+    where: eq(users.email, session.user.email),
+    columns: { id: true },
+  });
+  return u?.id ?? null;
+}
+
+export async function bookmarkList(list_id: string): Promise<ActionResponse> {
+  try {
+    const userId = await authedUserId();
+    if (!userId) {
+      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+    }
+
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, list_id),
+      columns: { user_id: true, visibility: true },
+    });
+    if (
+      !list ||
+      (list.user_id !== userId && fromDb(list.visibility) === VISIBILITY.OWNER)
+    ) {
+      return {
+        success: false,
+        message: 'List not viewable',
+        error: 'List not viewable',
+      };
+    }
+
+    const now = new Date();
+    await db
+      .insert(list_visits)
+      .values({
+        user_id: userId,
+        list_id,
+        last_visited_at: now,
+        visit_count: 1,
+        favorited_at: now,
+      })
+      .onConflictDoUpdate({
+        target: [list_visits.user_id, list_visits.list_id],
+        set: { favorited_at: now },
+      });
+
+    updateTag('list_visits');
+    return { success: true, message: 'Bookmarked' };
+  } catch (error) {
+    console.error('Error bookmarking list:', error);
+    return { success: false, message: 'Failed to bookmark', error: 'Failed' };
+  }
+}
+
+export async function unbookmarkList(list_id: string): Promise<ActionResponse> {
+  try {
+    const userId = await authedUserId();
+    if (!userId) {
+      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+    }
+
+    await db
+      .update(list_visits)
+      .set({ favorited_at: null })
+      .where(
+        and(eq(list_visits.user_id, userId), eq(list_visits.list_id, list_id))
+      );
+
+    updateTag('list_visits');
+    return { success: true, message: 'Bookmark removed' };
+  } catch (error) {
+    console.error('Error unbookmarking list:', error);
+    return { success: false, message: 'Failed to unbookmark', error: 'Failed' };
+  }
+}
+
+export async function clearVisitHistory(opts: {
+  includeBookmarked: boolean;
+}): Promise<ActionResponse> {
+  try {
+    const userId = await authedUserId();
+    if (!userId) {
+      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+    }
+
+    if (opts.includeBookmarked) {
+      await db.delete(list_visits).where(eq(list_visits.user_id, userId));
+    } else {
+      // Drop non-bookmarked rows outright; for bookmarked rows, null
+      // last_visited_at so the bookmark survives but the row leaves history.
+      await db
+        .delete(list_visits)
+        .where(
+          and(eq(list_visits.user_id, userId), isNull(list_visits.favorited_at))
+        );
+      await db
+        .update(list_visits)
+        .set({ last_visited_at: null })
+        .where(
+          and(
+            eq(list_visits.user_id, userId),
+            isNotNull(list_visits.favorited_at)
+          )
+        );
+    }
+
+    updateTag('list_visits');
+    return { success: true, message: 'History cleared' };
+  } catch (error) {
+    console.error('Error clearing history:', error);
+    return {
+      success: false,
+      message: 'Failed to clear history',
+      error: 'Failed',
+    };
+  }
+}
+
+export async function removeVisit(list_id: string): Promise<ActionResponse> {
+  try {
+    const userId = await authedUserId();
+    if (!userId) {
+      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+    }
+
+    // If the row is bookmarked, clear last_visited_at so it leaves the history
+    // view but the bookmark survives. Otherwise delete the row outright.
+    const row = await db.query.list_visits.findFirst({
+      where: and(
+        eq(list_visits.user_id, userId),
+        eq(list_visits.list_id, list_id)
+      ),
+      columns: { favorited_at: true },
+    });
+    if (!row) return { success: true, message: 'No history row' };
+
+    if (row.favorited_at) {
+      await db
+        .update(list_visits)
+        .set({ last_visited_at: null })
+        .where(
+          and(eq(list_visits.user_id, userId), eq(list_visits.list_id, list_id))
+        );
+    } else {
+      await db
+        .delete(list_visits)
+        .where(
+          and(eq(list_visits.user_id, userId), eq(list_visits.list_id, list_id))
+        );
+    }
+
+    updateTag('list_visits');
+    return { success: true, message: 'Removed from history' };
+  } catch (error) {
+    console.error('Error removing visit:', error);
+    return { success: false, message: 'Failed to remove', error: 'Failed' };
+  }
+}
+
+export async function setListItems(
   list_id: string,
-  user_id: string
+  item_ids: string[]
 ): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
     const session = await auth();
-    if (!session?.user) {
+    if (!session?.user?.email) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -216,49 +524,96 @@ export async function saveList(
       };
     }
 
-    // Save list
-    await db.insert(saved_lists).values({ id: nanoid(), list_id, user_id });
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, list_id),
+      columns: { user_id: true },
+    });
+    if (!list) {
+      return { success: false, message: 'List not found', error: 'Not found' };
+    }
 
-    updateTag('saved_lists');
-
-    return { success: true, message: 'List saved successfully' };
-  } catch (error) {
-    console.error('Error saving list:', error);
-    return {
-      success: false,
-      message: 'An error occurred while saving the list',
-      error: 'Failed to save list',
-    };
-  }
-}
-
-export async function unsaveList(
-  list_id: string,
-  user_id: string
-): Promise<ActionResponse> {
-  try {
-    // Security check - ensure user is authenticated
-    const session = await auth();
-    if (!session?.user) {
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser || sessionUser.id !== list.user_id) {
       return {
         success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
+        message: 'Unauthorized - list does not belong to you',
+        error: 'Forbidden',
       };
     }
 
-    // Unsave list
-    await db.delete(saved_lists).where(and(eq(saved_lists.list_id, list_id), eq(saved_lists.user_id, user_id)));
+    const parsed = z.array(z.string().min(1)).safeParse(item_ids);
+    if (!parsed.success) {
+      return {
+        success: false,
+        message: 'Invalid item selection',
+        error: 'Invalid input',
+      };
+    }
 
-    updateTag('saved_lists');
+    const incomingIds = new Set(parsed.data);
+    const existing = await db
+      .select({ item_id: list_items.item_id })
+      .from(list_items)
+      .where(eq(list_items.list_id, list_id));
+    const existingIds = new Set(existing.map((r) => r.item_id));
 
-    return { success: true, message: 'List unsaved successfully' };
+    const toRemove = [...existingIds].filter((id) => !incomingIds.has(id));
+    const toInsert = [...incomingIds].filter((id) => !existingIds.has(id));
+
+    if (toRemove.length === 0 && toInsert.length === 0) {
+      return { success: true, message: 'No changes' };
+    }
+
+    if (toRemove.length > 0) {
+      await db
+        .delete(list_items)
+        .where(
+          and(
+            eq(list_items.list_id, list_id),
+            inArray(list_items.item_id, toRemove)
+          )
+        );
+    }
+
+    if (toInsert.length > 0) {
+      const baseResult = await db
+        .select({
+          base: sql<number>`COALESCE(MAX(${list_items.position}) + 65536, 65536)`,
+        })
+        .from(list_items)
+        .where(eq(list_items.list_id, list_id))
+        .limit(1);
+      const basePosition = Math.floor(baseResult[0]?.base ?? 65536);
+
+      await db.insert(list_items).values(
+        toInsert.map((item_id, index) => ({
+          list_id,
+          item_id,
+          position: basePosition + index * 65536,
+        }))
+      );
+    }
+
+    updateTag('items');
+    updateTag('lists');
+
+    const parts: string[] = [];
+    if (toInsert.length > 0) parts.push(`Added ${toInsert.length}`);
+    if (toRemove.length > 0) parts.push(`removed ${toRemove.length}`);
+
+    return {
+      success: true,
+      message: parts.join(', '),
+    };
   } catch (error) {
-    console.error('Error unsaving list:', error);
+    console.error('Error setting list items:', error);
     return {
       success: false,
-      message: 'An error occurred while unsaving the list',
-      error: 'Failed to unsave list',
+      message: 'An error occurred while saving items',
+      error: 'Failed to save items',
     };
   }
 }
@@ -317,21 +672,51 @@ export async function updatePriority(
   listId: string
 ): Promise<ActionResponse> {
   try {
+    const userId = await authedUserId();
+    if (!userId) {
+      return {
+        success: false,
+        message: 'Unauthorized',
+        error: 'Unauthorized',
+      };
+    }
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, listId),
+      columns: { user_id: true },
+    });
+    if (!list || list.user_id !== userId) {
+      return {
+        success: false,
+        message: 'Unauthorized - list does not belong to you',
+        error: 'Unauthorized',
+      };
+    }
+
     // Get the positions before and after target position
 
     const itemPositionResult = await db
       .select({ position: list_items.position })
       .from(list_items)
-      .where(eq(list_items.item_id, item_id))
-      .orderBy(desc(list_items.position))
+      .where(
+        and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
+      )
       .limit(1);
 
     const targetPositionResult = await db
       .select({ position: list_items.position })
       .from(list_items)
-      .where(eq(list_items.item_id, target_id))
-      .orderBy(desc(list_items.position))
+      .where(
+        and(eq(list_items.list_id, listId), eq(list_items.item_id, target_id))
+      )
       .limit(1);
+
+    if (!itemPositionResult[0] || !targetPositionResult[0]) {
+      return {
+        success: false,
+        message: 'Item or target not found on this list',
+        error: 'Item or target not found on this list',
+      };
+    }
 
     const itemPosition = itemPositionResult[0].position;
     const targetPosition = targetPositionResult[0].position;
@@ -352,16 +737,8 @@ export async function updatePriority(
         .from(list_items)
         .where(
           and(
-            lt(list_items.position, targetPosition),
-            eq(
-              list_items.position,
-              sql<number>`(
-                SELECT MAX(position) 
-                FROM ${list_items} 
-                WHERE list_id = ${listId} 
-                AND position < ${targetPosition}
-              )`
-            )
+            eq(list_items.list_id, listId),
+            lt(list_items.position, targetPosition)
           )
         )
         .orderBy(desc(list_items.position))
@@ -369,9 +746,9 @@ export async function updatePriority(
 
       if (result.length > 0) {
         const otherBoundary = result[0].position;
-        new_position = (otherBoundary + targetPosition) / 2;
+        new_position = Math.floor((otherBoundary + targetPosition) / 2);
       } else {
-        new_position = targetPosition / 2;
+        new_position = Math.floor(targetPosition / 2);
       }
     } else {
       const result = await db
@@ -379,35 +756,28 @@ export async function updatePriority(
         .from(list_items)
         .where(
           and(
-            gt(list_items.position, targetPosition),
-            eq(
-              list_items.position,
-              sql<number>`(
-                SELECT MIN(position) 
-                FROM ${list_items} 
-                WHERE list_id = ${listId} 
-                AND position > ${targetPosition}
-              )`
-            )
+            eq(list_items.list_id, listId),
+            gt(list_items.position, targetPosition)
           )
         )
-        .orderBy(desc(list_items.position))
+        .orderBy(asc(list_items.position))
         .limit(1);
 
       if (result.length > 0) {
         const otherBoundary = result[0].position;
-        new_position = (otherBoundary + targetPosition) / 2;
+        new_position = Math.floor((otherBoundary + targetPosition) / 2);
       } else {
         new_position = targetPosition + 65536;
       }
     }
 
-    if (new_position) {
+    if (new_position !== undefined && new_position !== itemPosition) {
       await db
         .update(list_items)
         .set({ position: new_position })
-        .where(eq(list_items.item_id, item_id));
-
+        .where(
+          and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
+        );
     }
 
     updateTag('items');

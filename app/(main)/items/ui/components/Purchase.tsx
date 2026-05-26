@@ -1,37 +1,70 @@
 'use client';
 
-import { MdCheckBox, MdCheckBoxOutlineBlank } from 'react-icons/md';
+import { Button } from '@/app/ui/components/button';
+import { MdCheck, MdLock } from 'react-icons/md';
 import '../styles/purchase.css';
 
 type PurchaseProps = {
   purchasedBy: string | undefined;
   handlePurchaseClick: () => void;
   className?: string;
+  disabled?: boolean;
+  fullyClaimedLabel?: string;
 };
 
 export default function Purchase({
   purchasedBy,
   handlePurchaseClick,
   className,
+  disabled,
+  fullyClaimedLabel,
 }: PurchaseProps) {
+  const onClick = disabled ? undefined : handlePurchaseClick;
+  const isClaimed = !!purchasedBy;
+
+  if (disabled) {
+    return (
+      <div
+        className={`claimed-state claimed-state--fully ${className || ''}`}
+        role="status"
+      >
+        <span className="claimed-state-label">
+          <MdLock aria-hidden />
+          {fullyClaimedLabel || 'Fully claimed'}
+        </span>
+      </div>
+    );
+  }
+
+  if (isClaimed) {
+    return (
+      <button
+        type="button"
+        className={`claimed-state ${className || ''}`}
+        onClick={onClick}
+        aria-label="Remove your claim"
+      >
+        <span className="claimed-state-label">
+          <MdCheck aria-hidden />
+          {purchasedBy === 'You'
+            ? 'You claimed this'
+            : `Claimed: ${purchasedBy}`}
+        </span>
+        <span className="claimed-state-undo" aria-hidden>
+          Undo
+        </span>
+      </button>
+    );
+  }
+
   return (
-    <div
-      className={`btn purchase ${purchasedBy ? 'purchased' : ''} ${className || ''}`}
-      onClick={handlePurchaseClick}
+    <Button
+      variant="primary"
+      className="claim-cta-btn"
+      onClick={onClick}
+      aria-label="Claim this item"
     >
-      {purchasedBy ? (
-        <MdCheckBox size={30} className="check-icon" />
-      ) : (
-        <MdCheckBoxOutlineBlank size={30} className="check-icon" />
-      )}
-      {purchasedBy ? (
-        <div className="purchased-by-container">
-          <div>Purchased:</div>
-          <div className="purchased-by">{purchasedBy}</div>
-        </div>
-      ) : (
-        'Purchase'
-      )}
-    </div>
+      Claim this gift
+    </Button>
   );
 }

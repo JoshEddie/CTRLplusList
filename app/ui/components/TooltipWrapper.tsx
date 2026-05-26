@@ -9,17 +9,12 @@ export default function TooltipWrapper({
   showTooltip?: boolean;
   className?: string;
 }) {
-
   return (
     <>
-    <div 
-      className={`tooltip-container ${className || ''}`}
-    >
-      {children}
-      {showTooltip && (
-        <span className="tooltip">{tooltip}</span>
-      )}
-    </div>
+      <div className={`tooltip-container ${className || ''}`}>
+        {children}
+        {showTooltip && <span className="tooltip">{tooltip}</span>}
+      </div>
     </>
   );
 }
