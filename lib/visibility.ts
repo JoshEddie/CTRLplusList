@@ -72,7 +72,7 @@ export function fromDb(raw: string): ListVisibility {
  *
  * Example:
  *   visibilityDbValues([VISIBILITY.LINK, VISIBILITY.FOLLOWERS])
- *   // Stage 1: ['unlisted', 'public', 'link', 'followers']
+ *   // Stage 1: ['unlisted', 'link', 'public', 'followers']
  */
 export function visibilityDbValues(
   values: readonly ListVisibility[]

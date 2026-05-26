@@ -7,7 +7,7 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 
 ## 2. Pure libs (may draft in parallel with foundation; applies after foundation archives)
 
-- [ ] 2.1 `test-pure-libs` — `lib/visibility.ts`, `lib/listAccess.ts`, `lib/types.ts` (zod validators); app-wide hook `hooks/use-media-query.ts`; pure helpers extracted from primitives that don't require a render harness (e.g., `app/ui/components/button/buttonClasses.ts`). Floors: 95% per file.
+- [x] 2.1 `test-pure-libs` — `lib/visibility.ts`, `lib/listAccess.ts`, `lib/types.ts` (zod validators); app-wide hook `hooks/use-media-query.ts`; pure helpers extracted from primitives that don't require a render harness (e.g., `app/ui/components/button/buttonClasses.ts`). Floors: 95% per file.
 
 ## 3. Primitive families (independent; any order after foundation)
 
@@ -52,6 +52,7 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 - [ ] 7.1 Audit every sub-proposal above for completion. For any unchecked: confirm intentional non-goal (and remove with rationale) or complete it.
 - [ ] 7.2 Promote `sonarjs/cognitive-complexity` from `warn` to `error` globally in `eslint.config.mjs` (only the carve-out-promoted files are at `error` until this point; this final step universalizes the gate).
 - [ ] 7.3 Generate a repo-wide coverage report and record it in this change's archive notes as the "all sub-proposals complete" baseline.
+- [ ] 7.4 Reconcile the `openspec/config.yaml` "zero warnings" pre-merge gate with the `sonarjs/cognitive-complexity` warn-globally policy. Per-file carve-out promotion (per the `testing-foundation` spec) leaves global `warn` results outside the promoted files, so every test-* sub-proposal independently rediscovers the conflict (first surfaced in `test-pure-libs` §9.1). Likely resolution: scope the warning-zero gate to "no new warnings introduced by this change" until 7.2 universalizes the rule. SHALL resolve no later than 7.2.
 
 ## 8. Pre-merge
 

@@ -23,6 +23,23 @@ const eslintConfig = [
       'sonarjs/cognitive-complexity': ['warn', 15],
     },
   },
+  // Per-file promotion of `sonarjs/cognitive-complexity` to error for the
+  // test-pure-libs carve-out (sub-proposal 2.1 of test-coverage). Files in
+  // this carve-out are now tested at the 95% per-file floor; the error-level
+  // override locks the complexity ceiling so future edits cannot grow them
+  // past 15 without an explicit per-line disable + reason.
+  {
+    files: [
+      'lib/visibility.ts',
+      'lib/listAccess.ts',
+      'hooks/use-media-query.ts',
+      'app/ui/components/button/buttonClasses.ts',
+    ],
+    plugins: { sonarjs },
+    rules: {
+      'sonarjs/cognitive-complexity': ['error', 15],
+    },
+  },
   {
     files: ['**/*.test.{ts,tsx}'],
     plugins: { vitest },
