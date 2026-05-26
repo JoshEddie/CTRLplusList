@@ -4,10 +4,11 @@ import {
   isValidElement,
   useId,
   type ReactElement,
+  type ReactNode,
 } from 'react';
 import { FieldError } from './FieldError';
 import './form-field.css';
-import type { FormFieldProps } from './types';
+import type { FieldIconPosition, FormFieldProps } from './types';
 
 const KNOWN_CHILD_DISPLAY_NAMES = new Set([
   'TextField',
@@ -23,6 +24,50 @@ interface InjectedChildProps {
   'aria-describedby'?: string;
   'aria-invalid'?: boolean;
   'aria-required'?: boolean;
+}
+
+function warnOnUnknownChild(child: ReactElement) {
+  if (process.env.NODE_ENV !== 'production') {
+    const displayName = (child.type as { displayName?: string }).displayName;
+    if (displayName && !KNOWN_CHILD_DISPLAY_NAMES.has(displayName)) {
+      console.error(
+        `<FormField> received unexpected child <${displayName}>. Use a field-type wrapper (TextField, SelectField, etc.).`
+      );
+    }
+  }
+}
+
+function iconClassFor(hasIcon: boolean, iconPosition: FieldIconPosition) {
+  if (!hasIcon) return '';
+  return iconPosition === 'right' ? 'icon_right' : 'icon_left';
+}
+
+function joinClasses(...tokens: (string | undefined | false)[]) {
+  return tokens.filter(Boolean).join(' ');
+}
+
+function FieldRow({
+  fieldClass,
+  icon,
+  iconPosition,
+  hasIcon,
+  child,
+}: {
+  fieldClass: string;
+  icon: ReactNode;
+  iconPosition: FieldIconPosition;
+  hasIcon: boolean;
+  child: ReactNode;
+}) {
+  const leadingIcon = hasIcon && iconPosition !== 'right';
+  const trailingIcon = hasIcon && iconPosition === 'right';
+  return (
+    <div className={fieldClass}>
+      {leadingIcon && <span className="field_icon">{icon}</span>}
+      {child}
+      {trailingIcon && <span className="field_icon">{icon}</span>}
+    </div>
+  );
 }
 
 /**
@@ -50,20 +95,13 @@ export function FormField({
   const errorId = error ? `${reactId}-error` : undefined;
 
   const describedBy =
-    [descriptionId, errorId].filter(Boolean).join(' ') || undefined;
+    joinClasses(descriptionId, errorId) || undefined;
 
   const child = Children.only(children);
 
   let enrichedChild = child;
   if (isValidElement(child)) {
-    if (process.env.NODE_ENV !== 'production') {
-      const displayName = (child.type as { displayName?: string }).displayName;
-      if (displayName && !KNOWN_CHILD_DISPLAY_NAMES.has(displayName)) {
-        console.error(
-          `<FormField> received unexpected child <${displayName}>. Use a field-type wrapper (TextField, SelectField, etc.).`
-        );
-      }
-    }
+    warnOnUnknownChild(child);
     enrichedChild = cloneElement(child as ReactElement<InjectedChildProps>, {
       id: inputId,
       'aria-describedby': describedBy,
@@ -73,31 +111,15 @@ export function FormField({
   }
 
   const hasIcon = icon !== undefined;
-  const iconClass = hasIcon
-    ? iconPosition === 'right'
-      ? 'icon_right'
-      : 'icon_left'
-    : '';
-  const sizeClass = size === 'sm' ? 'form_field-sm' : '';
-  const invalidClass = error ? 'invalid' : '';
-  const fieldClass = ['form_field', iconClass, invalidClass, sizeClass]
-    .filter(Boolean)
-    .join(' ');
-
-  const fieldRow = (
-    <div className={fieldClass}>
-      {hasIcon && iconPosition !== 'right' && (
-        <span className="field_icon">{icon}</span>
-      )}
-      {enrichedChild}
-      {hasIcon && iconPosition === 'right' && (
-        <span className="field_icon">{icon}</span>
-      )}
-    </div>
+  const fieldClass = joinClasses(
+    'form_field',
+    iconClassFor(hasIcon, iconPosition),
+    error && 'invalid',
+    size === 'sm' && 'form_field-sm'
   );
 
   return (
-    <div className={['form_field_group', className].filter(Boolean).join(' ')}>
+    <div className={joinClasses('form_field_group', className)}>
       {label && (
         <label className="form_field_label" htmlFor={inputId}>
           {label}
@@ -113,7 +135,13 @@ export function FormField({
           {description}
         </p>
       )}
-      {fieldRow}
+      <FieldRow
+        fieldClass={fieldClass}
+        icon={icon}
+        iconPosition={iconPosition}
+        hasIcon={hasIcon}
+        child={enrichedChild}
+      />
       {error && <FieldError id={errorId}>{error}</FieldError>}
     </div>
   );

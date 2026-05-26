@@ -40,6 +40,17 @@ const eslintConfig = [
       // test-chip-system (sub-proposal 3.2) — locked at universal COVERAGE_FLOOR.
       'app/ui/components/chip/Chip.tsx',
       'app/ui/components/chip/chipClasses.ts',
+      // test-form-field-system (sub-proposal 3.3) — locked at universal COVERAGE_FLOOR.
+      'app/ui/components/field/FormField.tsx',
+      'app/ui/components/field/TextField.tsx',
+      'app/ui/components/field/TextareaField.tsx',
+      'app/ui/components/field/SelectField.tsx',
+      'app/ui/components/field/DateField.tsx',
+      'app/ui/components/field/DatalistField.tsx',
+      'app/ui/components/field/PriceField.tsx',
+      'app/ui/components/field/SearchField.tsx',
+      'app/ui/components/field/CheckboxField.tsx',
+      'app/ui/components/field/FieldError.tsx',
     ],
     plugins: { sonarjs },
     rules: {
