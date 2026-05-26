@@ -360,52 +360,6 @@ async function authedUserId(): Promise<string | null> {
   return u?.id ?? null;
 }
 
-export async function recordVisit(list_id: string): Promise<ActionResponse> {
-  try {
-    const userId = await authedUserId();
-    if (!userId)
-      return { success: true, message: 'Not authenticated; skipped' };
-
-    const list = await db.query.lists.findFirst({
-      where: eq(lists.id, list_id),
-      columns: { user_id: true, visibility: true },
-    });
-    if (!list) return { success: true, message: 'List not found; skipped' };
-    if (list.user_id === userId) {
-      return { success: true, message: 'Owner visit; skipped' };
-    }
-    if (fromDb(list.visibility) === VISIBILITY.OWNER) {
-      return { success: true, message: 'Private list; skipped' };
-    }
-
-    await db
-      .insert(list_visits)
-      .values({
-        user_id: userId,
-        list_id,
-        last_visited_at: new Date(),
-        visit_count: 1,
-      })
-      .onConflictDoUpdate({
-        target: [list_visits.user_id, list_visits.list_id],
-        set: {
-          last_visited_at: new Date(),
-          visit_count: sql`${list_visits.visit_count} + 1`,
-        },
-      });
-
-    updateTag('list_visits');
-    return { success: true, message: 'Visit recorded' };
-  } catch (error) {
-    console.error('Error recording visit:', error);
-    return {
-      success: false,
-      message: 'Failed to record visit',
-      error: 'Failed',
-    };
-  }
-}
-
 export async function bookmarkList(list_id: string): Promise<ActionResponse> {
   try {
     const userId = await authedUserId();
