@@ -3,7 +3,7 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 ## 1. Foundation (sequential — blocks all other sub-proposals)
 
 - [x] 1.1 `test-foundation-spike` — DB-under-test option comparison (pglite vs testcontainers vs Neon branch) with a PoC against one DAL function and one server action; CI provider choice; negative-case audit of `scripts/seed-dev-users.ts`; chosen runner.
-- [ ] 1.2 `test-foundation` — install runner + RTL + Playwright + `eslint-plugin-sonarjs`; create `test/fixtures/`, `test/helpers/`, `e2e/`; land CI workflow running the four-gate pre-merge; add `test`/`test:watch`/`test:e2e`/`test:coverage` scripts; configure per-file coverage floors per the testing-foundation spec; land `sonarjs/cognitive-complexity` at threshold 15 severity `warn`; extend or parallel the seed per the spike's audit; edit `openspec/config.yaml` `tasks` rule to add the fourth `test` gate; add header comment to `scripts/seed-dev-users.ts` declaring it versioned-as-fixture.
+- [x] 1.2 `test-foundation` — install runner + RTL + Playwright + `eslint-plugin-sonarjs`; create `test/fixtures/`, `test/helpers/`, `e2e/`; land CI workflow running the four-gate pre-merge; add `test`/`test:watch`/`test:e2e`/`test:coverage` scripts; configure per-file coverage floors per the testing-foundation spec; land `sonarjs/cognitive-complexity` at threshold 15 severity `warn`; extend or parallel the seed per the spike's audit; edit `openspec/config.yaml` `tasks` rule to add the fourth `test` gate; add header comment to `scripts/seed-dev-users.ts` declaring it versioned-as-fixture.
 
 ## 2. Pure libs (may draft in parallel with foundation; applies after foundation archives)
 

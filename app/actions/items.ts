@@ -12,6 +12,7 @@ import {
 import { auth } from '@/lib/auth';
 import { getItemById, getListsByUser, getUserIdByEmail } from '@/lib/dal';
 import { isItemViewable } from '@/lib/listAccess';
+import { sqlstateOf } from '@/lib/sqlstate';
 import { ItemDetails } from '@/lib/types';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -235,8 +236,7 @@ export async function createPurchase(data: {
       // limited item is not closed at the DB layer (neon-http driver does
       // not support interactive transactions, so SELECT … FOR UPDATE is not
       // available). Accepted as a known limitation.
-      const code = (insertError as { code?: string } | null)?.code;
-      if (code === PG_UNIQUE_VIOLATION) {
+      if (sqlstateOf(insertError) === PG_UNIQUE_VIOLATION) {
         return {
           success: false,
           message: 'You have already claimed this item',

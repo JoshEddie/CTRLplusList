@@ -5,6 +5,19 @@
  *
  * Run with: `npm run db:seed:dev`. Safe to re-run — all inserts use
  * deterministic IDs and `.onConflictDoNothing()`. Hard-fails on production.
+ *
+ * --------------------------------------------------------------------------
+ * Seed-as-fixture (testing-foundation capability).
+ *
+ * This file is the canonical E2E fixture. E2E specs assert against the
+ * entities created here (users, lists, items, visits, follows). Any edit
+ * that adds, removes, or changes the identity/visibility of a seeded entity
+ * is a breaking change to the E2E suite — accompany it with a review of
+ * the e2e/ specs that touch the affected entities, in the same change.
+ *
+ * Reset:  npm run db:reset:dev
+ * Apply:  npm run db:seed:dev
+ * --------------------------------------------------------------------------
  */
 import 'dotenv/config';
 import { inArray, sql } from 'drizzle-orm';
@@ -50,6 +63,7 @@ const FRIENDS: { slug: string; first: string; bg: string }[] = [
   { slug: 'hank', first: 'Hank', bg: '#65a30d' },
   { slug: 'iris', first: 'Iris', bg: '#f59e0b' },
   { slug: 'jack', first: 'Jack', bg: '#475569' },
+  { slug: 'kim', first: 'Kim', bg: '#9333ea' },
 ];
 const friendId = (slug: string) => `dev-friend-${slug}`;
 const seedUsers: SeedUser[] = [
@@ -294,6 +308,7 @@ const FRIEND_LIST_TEMPLATES: {
   name: string;
   subtitle?: string;
   occasion: string;
+  visibility?: ListVisibility;
 }[] = [
   {
     friendSlug: 'alice',
@@ -389,6 +404,31 @@ const FRIEND_LIST_TEMPLATES: {
     name: "Jack's Holiday",
     occasion: 'Holiday',
   },
+  // testing-foundation: spike audit additions. These three lists give the
+  // E2E fixture a friend-owned OWNER list, a friend-owned LINK list, and a
+  // new friend (kim) owning a FOLLOWERS list with no list_visits row for
+  // the viewer. dave + jack are existing not-followed-by-viewer friends.
+  {
+    friendSlug: 'dave',
+    slug: 'private-wishlist',
+    name: "Dave's private wishlist",
+    occasion: 'Just Because',
+    visibility: VISIBILITY.OWNER,
+  },
+  {
+    friendSlug: 'jack',
+    slug: 'unlisted-plans',
+    name: "Jack's shared-by-link plans",
+    occasion: 'Just Because',
+    visibility: VISIBILITY.LINK,
+  },
+  {
+    friendSlug: 'kim',
+    slug: 'birthday',
+    name: "Kim's Birthday",
+    occasion: 'Birthday',
+    visibility: VISIBILITY.FOLLOWERS,
+  },
 ];
 
 const seedLists: SeedList[] = [
@@ -412,7 +452,7 @@ const seedLists: SeedList[] = [
       subtitle: t.subtitle,
       occasion: t.occasion,
       user_id: friendId(t.friendSlug),
-      visibility: VISIBILITY.FOLLOWERS,
+      visibility: t.visibility ?? VISIBILITY.FOLLOWERS,
       itemNames: itemsForList(id),
     };
   }),
@@ -426,8 +466,13 @@ type SeedVisit = {
 };
 // Visit every public friend list — gives Recently Visited enough rows (≥15) to
 // force pagination and horizontal scroll. Bookmark every other one so the
-// Bookmarks rail has plenty of content too.
-const seedVisits: SeedVisit[] = FRIEND_LIST_TEMPLATES.map((t, idx) => ({
+// Bookmarks rail has plenty of content too. Kim is excluded per the
+// testing-foundation spike audit: kim must have zero list_visits rows so
+// the "user with no visit history from the viewer" surface is reachable
+// directly from the seed.
+const seedVisits: SeedVisit[] = FRIEND_LIST_TEMPLATES.filter(
+  (t) => t.friendSlug !== 'kim'
+).map((t, idx) => ({
   user_id: VIEWER_ID,
   list_id: `dev-list-${t.friendSlug}-${t.slug}`,
   daysAgo: idx, // 0, 1, 2, … so recency descending matches the template order

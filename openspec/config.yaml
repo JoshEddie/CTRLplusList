@@ -91,12 +91,13 @@ rules:
     - |
       Every tasks.md MUST include a pre-merge verification section
       (conventionally the final numbered section, e.g. "## N. Pre-
-      merge") with explicit, separately-checkable tasks for ALL THREE
+      merge") with explicit, separately-checkable tasks for ALL FOUR
       of the following gates passing clean:
         - `npm run lint` (eslint — zero errors, zero warnings)
         - `npx tsc --noEmit` (typescript — zero errors)
         - `npm run build` (next build — completes successfully,
           including type-check and production bundle)
+        - `npm test` (vitest — zero failing tests)
       These are not optional and not collapsible into a single
       "validate" checkbox — each gate gets its own task so partial
       failure is visible in the checklist. The `build` gate exists in
