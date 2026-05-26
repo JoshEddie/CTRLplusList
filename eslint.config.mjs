@@ -34,6 +34,9 @@ const eslintConfig = [
       'lib/listAccess.ts',
       'hooks/use-media-query.ts',
       'app/ui/components/button/buttonClasses.ts',
+      // test-button-system (sub-proposal 3.1) — locked at 90% per-file floor.
+      'app/ui/components/button/Button.tsx',
+      'app/ui/components/button/LinkButton.tsx',
     ],
     plugins: { sonarjs },
     rules: {

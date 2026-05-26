@@ -20,6 +20,39 @@ Any test you add MUST assert observable behavior — what the production code re
 
 This rule applies to every test in the repo. ESLint enforces the mechanical parts where configured (`vitest/expect-expect`, tautology shortlist); the rest is a manual review bar. The normative statement and the per-sub-proposal assertion audit it pairs with live in the `testing-foundation` capability spec — check `openspec list` for its current location (active in `openspec/changes/test-coverage/specs/testing-foundation/spec.md` until archived, then under `openspec/specs/testing-foundation/spec.md`).
 
+## Test file location
+
+Test files MUST live in a `__tests__/` directory colocated with the module they test — NOT alongside it. The colocation requirement from `testing-foundation` stands (tests stay next to the code they exercise), but the `__tests__/` folder keeps source directory listings focused on production files and groups multiple tests for the same module without polluting the parent directory.
+
+```
+app/ui/components/button/
+├── Button.tsx
+├── LinkButton.tsx
+├── buttonClasses.ts
+├── types.ts
+├── index.ts
+└── __tests__/
+    ├── Button.test.tsx
+    ├── LinkButton.test.tsx
+    ├── buttonClasses.test.ts
+    └── test-helpers.ts        ← test-only helpers go here too
+```
+
+Test-only fixtures and helpers (anything imported only by `*.test.*` files) SHOULD live inside the same `__tests__/` directory as the tests that use them. They MUST be added to `vitest.config.ts`'s `coverage.exclude` so they don't pollute the coverage report.
+
+Vitest's default include globs (`**/*.test.ts`, `**/*.test.tsx`) and the project's coverage `include` (`['lib/**', 'app/**', 'hooks/**']`) match `__tests__/` paths automatically — no config change is needed to adopt this layout for a new test.
+
+```ts
+// ✅ Good — test in __tests__/ imports the production module via `../`
+// app/ui/components/button/__tests__/Button.test.tsx
+import { Button } from '../Button';
+
+// ❌ Bad — test sitting alongside the module
+// app/ui/components/button/Button.test.tsx
+```
+
+The normative statement lives in the `testing-foundation` capability spec alongside the colocation rule.
+
 ## Test naming convention
 
 Test names MUST be self-documenting and structurally consistent — failures should read like spec lines, with a predictable shape per test type. The naming bar and the substance bar (above) are independent: a structured name does not excuse a vacuous assertion, and a substantive assertion does not excuse a vague name.
