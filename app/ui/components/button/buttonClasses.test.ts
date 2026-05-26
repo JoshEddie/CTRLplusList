@@ -1,24 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buttonClasses } from './buttonClasses';
-import type { ButtonVariant } from './types';
-
-const VARIANTS: ButtonVariant[] = [
-  'primary',
-  'secondary',
-  'ghost',
-  'danger',
-  'on-dark',
-  'link',
-];
-
-function cap(variant: ButtonVariant): string {
-  // Normalize variant identifiers so PascalCase token reads cleanly:
-  // 'on-dark' → 'OnDark', 'primary' → 'Primary'.
-  return variant
-    .split('-')
-    .map((p) => p[0].toUpperCase() + p.slice(1))
-    .join('');
-}
+import { VARIANTS, cap } from './__tests__/test-helpers';
 
 describe('buttonClasses', () => {
   describe('VariantSizeMatrix', () => {

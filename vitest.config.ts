@@ -60,11 +60,13 @@ export default defineConfig({
         'app/sw.ts',
         'app/manifest.ts',
         '**/*.test.*',
+        '**/__tests__/**',
         'test/**',
         'e2e/**',
         'app/**/layout.tsx',
-        // type-only — TS erases to nothing at runtime; covered by `tsc --noEmit`.
-        'lib/types.ts',
+        '**/types.ts',
+        // NOT `**/index.ts` — `db/index.ts` carries runtime (Drizzle init).
+        'app/ui/components/*/index.ts',
       ],
       thresholds: {
         perFile: true,
@@ -92,6 +94,22 @@ export default defineConfig({
           statements: 95,
           functions: 95,
           branches: 80,
+        },
+        // test-button-system (sub-proposal 3.1) — Primitive-component class,
+        // 90% per-file floor. branches:90 set up-front per design Decision 5
+        // (the standard sets the bar; the code clears it). Adjusted only if
+        // v8 flags an uncoverable branch with a named per-branch rationale.
+        'app/ui/components/button/Button.tsx': {
+          lines: 90,
+          statements: 90,
+          functions: 90,
+          branches: 90,
+        },
+        'app/ui/components/button/LinkButton.tsx': {
+          lines: 90,
+          statements: 90,
+          functions: 90,
+          branches: 90,
         },
       },
     },
