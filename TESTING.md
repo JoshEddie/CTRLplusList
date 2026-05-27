@@ -20,6 +20,28 @@ Any test you add MUST assert observable behavior — what the production code re
 
 This rule applies to every test in the repo. ESLint enforces the mechanical parts where configured (`vitest/expect-expect`, tautology shortlist); the rest is a manual review bar. The normative statement and the per-sub-proposal assertion audit it pairs with live in the `testing-foundation` capability spec — check `openspec list` for its current location (active in `openspec/changes/test-coverage/specs/testing-foundation/spec.md` until archived, then under `openspec/specs/testing-foundation/spec.md`).
 
+## Coverage ignore annotations require a rationale
+
+Every `/* v8 ignore */` annotation (including `/* v8 ignore next */`, `/* v8 ignore next N */`, `/* v8 ignore start */ … /* v8 ignore stop */`, and the file-level `/* v8 ignore file */`) MUST carry an inline rationale on the same line, after a `--` separator, explaining WHY the region is uncoverable or intentionally excluded. A bare `/* v8 ignore next */` is not acceptable.
+
+The rationale MUST name the specific branch or region being ignored AND the reason it cannot be exercised by a test — e.g. "defensive null-ref guard, unreachable in test env", "platform-specific branch only reached on Windows", "third-party error path we cannot trigger from userspace". Vague rationales like "coverage workaround" or "not testable" are not acceptable; the reader should be able to judge whether the exclusion is still justified after a future refactor.
+
+```ts
+// ✅ Good — names the specific branch and why it's unreachable
+/* v8 ignore next -- defensive null-ref guard; localRef.current is always populated by the time useEffect runs under React 19 + jsdom. */
+if (!container) return;
+
+// ❌ Bad — no rationale
+/* v8 ignore next */
+if (!container) return;
+
+// ❌ Bad — vague rationale that won't survive a future refactor
+/* v8 ignore next -- coverage workaround */
+if (!container) return;
+```
+
+When a coverage gap surfaces, the preference order is (a) write a test, (b) refactor the source to eliminate the awkward branch, (c) `/* v8 ignore */` with a rationale. Option (c) is the last resort — and the rationale is what keeps it from drifting into a silent escape hatch.
+
 ## Test file location
 
 Test files MUST live in a `__tests__/` directory colocated with the module they test — NOT alongside it. The colocation requirement from `testing-foundation` stands (tests stay next to the code they exercise), but the `__tests__/` folder keeps source directory listings focused on production files and groups multiple tests for the same module without polluting the parent directory.

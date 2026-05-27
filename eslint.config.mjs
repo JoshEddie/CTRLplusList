@@ -61,6 +61,10 @@ const eslintConfig = [
       'app/ui/components/popover-trigger/PopoverTrigger.tsx',
       'app/ui/components/popover-trigger/triggerClasses.ts',
       'app/ui/hooks/usePopoverDismiss.ts',
+      // test-segmented-control-system (sub-proposal 3.6) — locked at universal COVERAGE_FLOOR.
+      'app/ui/components/segmented-control/SegmentedControl.tsx',
+      'app/ui/components/segmented-control/SegmentedOption.tsx',
+      'app/ui/components/segmented-control/segmentedClasses.ts',
     ],
     plugins: { sonarjs },
     rules: {

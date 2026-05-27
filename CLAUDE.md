@@ -4,6 +4,10 @@
 
 Substance rules, forbidden patterns (tautologies, execute-for-coverage, snapshot-only), and the assertion bar all live there. Applies to every test in the repo.
 
+## Touching DB queries or schema? Read [DATABASE.md](DATABASE.md) first
+
+Key tripwire: the DB layer uses `drizzle-orm/neon-http`. **Interactive transactions are not supported** — no `db.transaction(...)`, no `SELECT … FOR UPDATE`. Full rationale, migration workflow, and driver caveats live in DATABASE.md.
+
 ## Writing code: 
 
 ### Comments:
@@ -11,18 +15,6 @@ Substance rules, forbidden patterns (tautologies, execute-for-coverage, snapshot
 Default to writing no comments. Only add one when the WHY is non-obvious — a hidden constraint, a subtle invariant, a workaround for a specific bug, behavior that would surprise a reader. If removing the comment wouldn't confuse a future reader, don't write it.
 
 Don't explain WHAT the code does — well-named identifiers already do that. Don't reference the current task, fix, or callers ("used by X", "added for the Y flow", "handles the case from issue #123") — those belong in the PR description and rot as the codebase evolves.
-
-## Database driver: no transactions
-
-The DB layer uses `drizzle-orm/neon-http` over Neon's HTTP API. **Interactive transactions are not supported on this driver.** Do not introduce `db.transaction(async (tx) => { … })`, `SELECT … FOR UPDATE`, or any code that assumes a multi-statement session — every query is its own HTTP round-trip with its own connection.
-
-Concrete implications:
-
-- Race conditions that need cross-statement atomicity must be backstopped at the DB layer (unique indexes, partial unique indexes, `ON CONFLICT` clauses), or accepted as residual.
-- Do not propose switching to `drizzle-orm/neon-serverless` / WebSocket Pool without explicit owner approval — it's been considered and declined.
-- If you find code claiming to use a transaction here, it's broken; convert it to single-statement + DB-constraint enforcement instead.
-
-See [db/index.ts](db/index.ts) for the driver instantiation.
 
 ## Dev auth bypass (for preview verification)
 
@@ -53,21 +45,3 @@ The app gates every protected page on Google OAuth via NextAuth, which makes it 
 ## /api/image-search auth + rate limit
 
 `GET /api/image-search` requires an authenticated session (401 otherwise) and enforces a per-user in-memory token bucket of 30 requests/minute (429 with `{ error: 'rate_limited' }` when exceeded — distinguishable from upstream `quota_exceeded`). Under the dev bypass the session resolves to `dev-test-viewer`, so the route works during preview-driven testing; the 30/min cap is enough headroom for normal iteration. See [app/api/image-search/route.ts](app/api/image-search/route.ts).
-
-## Database migrations
-
-The migration workflow uses Drizzle Kit against the schema declared under [db/schema/](db/schema/).
-
-**Authoring a migration:**
-
-1. Edit the schema files (e.g. add a column, table, or index).
-2. Generate SQL: `npm run db:generate`. This writes a new `drizzle/NNNN_<slug>.sql` plus a `meta/_journal.json` entry.
-3. **Review the generated SQL before running it.** Drizzle 0.45 occasionally emits over-broad statements (e.g. unnecessary column rewrites) and never adds the safety wrappers we want (pre-flight `DO $$ ... $$` assertions, explicit `ON CONFLICT` clauses, idempotent backfills). Hand-edit the file if needed — see [drizzle/0001_black_legion.sql](drizzle/0001_black_legion.sql) for the conventions (forward-only, no DROPs, pre-flight assertion blocks, inline rollback notes in comments).
-4. Apply locally: `npm run db:migrate`. Then restart the dev server so any `'use cache'`-tagged DAL functions re-fetch.
-5. Re-run `npm run db:seed:dev` if the schema change broke the seed (the seed refuses to run on prod via the same `NODE_ENV` guardrail as the bypass).
-
-**Driver caveat:** the migration runtime uses the same Neon HTTP driver as the app — see the "Database driver: no transactions" section above. **A single migration file cannot wrap multiple statements in `BEGIN ... COMMIT` and expect atomicity across them.** Each `--> statement-breakpoint`-separated chunk runs as its own HTTP round-trip. If you need cross-statement atomicity (e.g. "create constraint only if no violating rows exist"), encode it in a single `DO $$ ... $$` block, or split the migration into two PRs with a soak between them.
-
-**Preserved legacy artifacts:** migration `0001_black_legion.sql` deliberately preserves the pre-1.0 `saved_lists` table and `lists.shared` column for a soak period. Pre-1.0 saves are backfilled into `list_visits` as bookmarks during this migration; the originals stay around until a follow-up migration explicitly drops them. Returning users see a one-time `BookmarkMigrationToast` on `/` explaining the social-model change (share-lists → follow-users).
-
-**Production migrations:** run via `npm run db:migrate` against the prod connection string, after a snapshot. The `drizzle/meta/_journal.json` is the source of truth for which migrations have applied.
