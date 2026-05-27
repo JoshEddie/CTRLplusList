@@ -57,6 +57,10 @@ const eslintConfig = [
       'app/ui/components/menu/MenuItemRadio.tsx',
       'app/ui/components/menu/MenuLinkItem.tsx',
       'app/ui/components/menu/menuClasses.ts',
+      // test-popover-trigger-system (sub-proposal 3.5) — locked at universal COVERAGE_FLOOR.
+      'app/ui/components/popover-trigger/PopoverTrigger.tsx',
+      'app/ui/components/popover-trigger/triggerClasses.ts',
+      'app/ui/hooks/usePopoverDismiss.ts',
     ],
     plugins: { sonarjs },
     rules: {
