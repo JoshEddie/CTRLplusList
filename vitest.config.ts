@@ -122,6 +122,7 @@ export default defineConfig({
           COVERAGE_FLOOR,
         'app/ui/components/segmented-control/segmentedClasses.ts':
           COVERAGE_FLOOR,
+        'app/ui/components/LoadingIndicator.tsx': COVERAGE_FLOOR,
       },
     },
   },

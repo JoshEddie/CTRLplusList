@@ -65,6 +65,8 @@ const eslintConfig = [
       'app/ui/components/segmented-control/SegmentedControl.tsx',
       'app/ui/components/segmented-control/SegmentedOption.tsx',
       'app/ui/components/segmented-control/segmentedClasses.ts',
+      // test-loading-indicator-system (sub-proposal 3.7) — locked at universal COVERAGE_FLOOR.
+      'app/ui/components/LoadingIndicator.tsx',
     ],
     plugins: { sonarjs },
     rules: {
