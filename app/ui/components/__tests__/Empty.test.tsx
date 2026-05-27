@@ -120,12 +120,14 @@ describe('Empty', () => {
       expect(cta).toHaveClass('btn', 'primary');
     });
 
-    it('NonPurchase_NoSetter_LinkHref_PluralizedType', () => {
-      const { unmount } = render(<Empty type="item" />);
+    it('NonPurchase_NoSetter_TypeItem_LinkHref_ItemsNew', () => {
+      render(<Empty type="item" />);
       expect(
         screen.getByRole('link', { name: 'Create Item' })
       ).toHaveAttribute('href', '/items/new');
-      unmount();
+    });
+
+    it('NonPurchase_NoSetter_TypeList_LinkHref_ListsNew', () => {
       render(<Empty type="list" />);
       expect(
         screen.getByRole('link', { name: 'Create List' })

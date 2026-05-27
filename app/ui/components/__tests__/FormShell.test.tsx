@@ -234,9 +234,7 @@ describe('FormShell', () => {
           <div>body</div>
         </FormShell>
       );
-      await expect(
-        user.click(screen.getByRole('button', { name: 'Close' }))
-      ).resolves.toBeUndefined();
+      await user.click(screen.getByRole('button', { name: 'Close' }));
       expect(backSpy).not.toHaveBeenCalled();
       expect(pushSpy).not.toHaveBeenCalled();
     });

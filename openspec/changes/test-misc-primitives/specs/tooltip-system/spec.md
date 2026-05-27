@@ -2,14 +2,14 @@
 
 ### Requirement: TooltipWrapper SHALL render a tooltip-container div wrapping its children
 
-The `<TooltipWrapper>` primitive at `app/ui/components/TooltipWrapper.tsx` SHALL render an outer `<div>` with class composed from the template `` `tooltip-container ${className || ''}` ``. The composition SHALL ALWAYS emit the literal token `'tooltip-container'` followed by a single space, then the `className` prop value, OR the empty string when `className` is undefined / falsy. The children prop SHALL render as the first child of the wrapper, BEFORE the conditional tooltip span. The class string composition is exact-string-stable across the prop surface — any future "trim trailing whitespace" or "tidy class composition" refactor MUST update this spec, the source, and the colocated test in the same change.
+The `<TooltipWrapper>` primitive at `app/ui/components/TooltipWrapper.tsx` SHALL render an outer `<div>` whose `className` is exactly the string `"tooltip-container"` when no `className` prop (or an empty/falsy `className`) is provided, OR exactly the string `"tooltip-container <className>"` (base token + single space + prop value) when a truthy `className` is provided. No trailing whitespace is emitted in either case. The children prop SHALL render as the first child of the wrapper, BEFORE the conditional tooltip span. The class string composition is exact-string-stable across the prop surface.
 
-#### Scenario: No className renders wrapper with trailing space
+#### Scenario: No className renders wrapper with base class only
 
 - **WHEN** `<TooltipWrapper>child</TooltipWrapper>` is rendered with no `className` prop
-- **THEN** the outer div's `className` is exactly the string `"tooltip-container "` (note the trailing space; `className || ''` evaluates to `''`, the template literal emits the trailing space)
+- **THEN** the outer div's `className` is exactly the string `"tooltip-container"` (no trailing whitespace)
 
-#### Scenario: With className appended after trailing space
+#### Scenario: With className appended after a single space
 
 - **WHEN** `<TooltipWrapper className="foo">child</TooltipWrapper>` is rendered
 - **THEN** the outer div's `className` is exactly the string `"tooltip-container foo"`
@@ -17,7 +17,7 @@ The `<TooltipWrapper>` primitive at `app/ui/components/TooltipWrapper.tsx` SHALL
 #### Scenario: Empty-string className behaves like undefined
 
 - **WHEN** `<TooltipWrapper className="">child</TooltipWrapper>` is rendered
-- **THEN** the outer div's `className` is exactly the string `"tooltip-container "` (the `||` short-circuit selects `''` regardless of which falsy operand triggered it)
+- **THEN** the outer div's `className` is exactly the string `"tooltip-container"` (the falsy-guard collapses `''` to the no-prop case — no trailing space)
 
 #### Scenario: Children render inside the wrapper
 

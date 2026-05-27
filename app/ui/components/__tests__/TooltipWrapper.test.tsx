@@ -1,9 +1,8 @@
 /* eslint-disable testing-library/no-node-access, testing-library/no-container --
- * `tooltip-system` SHALLs lock exact-string class composition (including the
- * trailing-space wart) and the optional `.tooltip` span's presence/absence.
- * The wrapper and span carry no role or accessible name, so role-based
- * queries cannot reach them; `container.querySelector` is the only way to
- * assert the structural contract.
+ * `tooltip-system` SHALLs lock exact-string class composition and the optional
+ * `.tooltip` span's presence/absence. The wrapper and span carry no role or
+ * accessible name, so role-based queries cannot reach them;
+ * `container.querySelector` is the only way to assert the structural contract.
  */
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -23,17 +22,17 @@ describe('TooltipWrapper', () => {
       expect(wrapper!.className).toContain('tooltip-container');
     });
 
-    it('NoClassName_WrapperClassEndsWithTrailingSpace', () => {
+    it('NoClassName_WrapperClassIsBaseOnly', () => {
       const { container } = render(
         <TooltipWrapper>
           <span>child</span>
         </TooltipWrapper>
       );
       const wrapper = container.querySelector('div')!;
-      expect(wrapper.className).toBe('tooltip-container ');
+      expect(wrapper.className).toBe('tooltip-container');
     });
 
-    it('WithClassName_AppendedAfterTrailingSpace', () => {
+    it('WithClassName_AppendedAfterSingleSpace', () => {
       const { container } = render(
         <TooltipWrapper className="foo">
           <span>child</span>
@@ -50,7 +49,7 @@ describe('TooltipWrapper', () => {
         </TooltipWrapper>
       );
       const wrapper = container.querySelector('div')!;
-      expect(wrapper.className).toBe('tooltip-container ');
+      expect(wrapper.className).toBe('tooltip-container');
     });
   });
 

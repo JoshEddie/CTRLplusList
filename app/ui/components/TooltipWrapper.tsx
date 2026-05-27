@@ -11,7 +11,7 @@ export default function TooltipWrapper({
 }) {
   return (
     <>
-      <div className={`tooltip-container ${className || ''}`}>
+      <div className={['tooltip-container', className].filter(Boolean).join(' ')}>
         {children}
         {showTooltip && <span className="tooltip">{tooltip}</span>}
       </div>

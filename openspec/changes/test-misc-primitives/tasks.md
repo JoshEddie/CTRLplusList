@@ -49,9 +49,9 @@
 ### 3A. WrapperClass — exact-string composition (Decision 3b-1, spec SHALL)
 
 - [x] 3.1 `Default_RendersDivWithTooltipContainerClass`
-- [x] 3.2 `NoClassName_WrapperClassEndsWithTrailingSpace` **Spec SHALL** — `expect(div.className).toBe('tooltip-container ')` (exact string, trailing space preserved by the source template literal).
-- [x] 3.3 `WithClassName_AppendedAfterTrailingSpace` **Spec SHALL** — `expect(div.className).toBe('tooltip-container foo')` for `className="foo"`.
-- [x] 3.4 `EmptyStringClassName_BehavesLikeUndefined` — `expect(div.className).toBe('tooltip-container ')` (the `||` short-circuit selects `''`).
+- [x] 3.2 `NoClassName_WrapperClassIsBaseOnly` **Spec SHALL** — `expect(div.className).toBe('tooltip-container')` (no trailing space; source uses a conditional join instead of the template literal that previously emitted the wart).
+- [x] 3.3 `WithClassName_AppendedAfterSingleSpace` **Spec SHALL** — `expect(div.className).toBe('tooltip-container foo')` for `className="foo"`.
+- [x] 3.4 `EmptyStringClassName_BehavesLikeUndefined` — `expect(div.className).toBe('tooltip-container')` (the falsy guard collapses `''` to the no-prop branch).
 
 ### 3B. Children — render order
 
@@ -139,7 +139,7 @@ Setup: `vi.mock('next/navigation', () => ({ useRouter: () => ({ back: backSpy, p
 
 ### 6.1 Assertion-substance audit (on the new tests)
 
-- [x] 6.1 Walk each new test file end-to-end. Every assertion MUST name observable output (DOM attributes, exact-string classes, callback shapes, spy `mock.invocationCallOrder` comparisons, exact error-message strings). No internal-state assertions, no DOM snapshots, no tautologies. Specifically verify: `IsOpenFalse_RendersNothing` asserts the queryNotFound shape (not "rendered nothing" as an opaque blob); `ConfirmClick_CallsOnConfirmThenOnClose_InThatOrder` asserts BOTH spies AND the invocation-order relation; `NoClassName_WrapperClassEndsWithTrailingSpace` asserts the EXACT string (not `.toContain('tooltip-container')`); `OverlayClickOnChild_DoesNotDismiss` asserts BOTH that `onClose` was NOT called AND that the `useRouter` mocks were NOT called; `UseDismiss_NoOnClose_NoHistory_NoCloseHref_NoOp` asserts the NO-OP shape (both spies untouched + no throw).
+- [x] 6.1 Walk each new test file end-to-end. Every assertion MUST name observable output (DOM attributes, exact-string classes, callback shapes, spy `mock.invocationCallOrder` comparisons, exact error-message strings). No internal-state assertions, no DOM snapshots, no tautologies. Specifically verify: `IsOpenFalse_RendersNothing` asserts the queryNotFound shape (not "rendered nothing" as an opaque blob); `ConfirmClick_CallsOnConfirmThenOnClose_InThatOrder` asserts BOTH spies AND the invocation-order relation; `NoClassName_WrapperClassIsBaseOnly` asserts the EXACT string `'tooltip-container'` (not `.toContain('tooltip-container')`); `OverlayClickOnChild_DoesNotDismiss` asserts BOTH that `onClose` was NOT called AND that the `useRouter` mocks were NOT called; `UseDismiss_NoOnClose_NoHistory_NoCloseHref_NoOp` asserts the NO-OP shape (both spies untouched + no throw).
 
 ### 6.2 Duplication audit (across the four new test files)
 
