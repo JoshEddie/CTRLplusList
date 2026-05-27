@@ -72,6 +72,15 @@ const eslintConfig = [
       'app/ui/components/TooltipWrapper.tsx',
       'app/ui/components/Empty.tsx',
       'app/ui/components/FormShell.tsx',
+      // test-app-frame (sub-proposal 4.1) — locked at universal COVERAGE_FLOOR.
+      'app/ui/components/AppFrame.tsx',
+      'app/ui/components/AppNav.tsx',
+      'app/ui/components/AppMenu.tsx',
+      'app/ui/components/AppLogo.tsx',
+      'app/ui/components/Logo.tsx',
+      'app/ui/components/Header.tsx',
+      'app/ui/components/Nav.tsx',
+      'app/ui/hooks/useKeyboardOffset.ts',
     ],
     plugins: { sonarjs },
     rules: {
