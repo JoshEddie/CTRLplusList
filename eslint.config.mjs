@@ -67,6 +67,11 @@ const eslintConfig = [
       'app/ui/components/segmented-control/segmentedClasses.ts',
       // test-loading-indicator-system (sub-proposal 3.7) — locked at universal COVERAGE_FLOOR.
       'app/ui/components/LoadingIndicator.tsx',
+      // test-misc-primitives (sub-proposal 3.8) — locked at universal COVERAGE_FLOOR.
+      'app/ui/components/ConfirmDialog.tsx',
+      'app/ui/components/TooltipWrapper.tsx',
+      'app/ui/components/Empty.tsx',
+      'app/ui/components/FormShell.tsx',
     ],
     plugins: { sonarjs },
     rules: {

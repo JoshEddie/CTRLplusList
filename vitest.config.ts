@@ -123,6 +123,11 @@ export default defineConfig({
         'app/ui/components/segmented-control/segmentedClasses.ts':
           COVERAGE_FLOOR,
         'app/ui/components/LoadingIndicator.tsx': COVERAGE_FLOOR,
+        // test-misc-primitives (sub-proposal 3.8) — locked at universal COVERAGE_FLOOR.
+        'app/ui/components/ConfirmDialog.tsx': COVERAGE_FLOOR,
+        'app/ui/components/TooltipWrapper.tsx': COVERAGE_FLOOR,
+        'app/ui/components/Empty.tsx': COVERAGE_FLOOR,
+        'app/ui/components/FormShell.tsx': COVERAGE_FLOOR,
       },
     },
   },
