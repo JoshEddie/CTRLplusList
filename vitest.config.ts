@@ -116,6 +116,12 @@ export default defineConfig({
         'app/ui/components/popover-trigger/PopoverTrigger.tsx': COVERAGE_FLOOR,
         'app/ui/components/popover-trigger/triggerClasses.ts': COVERAGE_FLOOR,
         'app/ui/hooks/usePopoverDismiss.ts': COVERAGE_FLOOR,
+        'app/ui/components/segmented-control/SegmentedControl.tsx':
+          COVERAGE_FLOOR,
+        'app/ui/components/segmented-control/SegmentedOption.tsx':
+          COVERAGE_FLOOR,
+        'app/ui/components/segmented-control/segmentedClasses.ts':
+          COVERAGE_FLOOR,
       },
     },
   },
