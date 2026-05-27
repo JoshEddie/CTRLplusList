@@ -129,8 +129,8 @@
 
 ## 7. Apply spec deltas
 
-- [ ] 7.1 **(archive-time)** Merge the four ADDED Requirements (Decisions 3a/3b/3c/3d) from `openspec/changes/test-popover-trigger-system/specs/popover-trigger-system/spec.md` into `openspec/specs/popover-trigger-system/spec.md`. Validate via `openspec validate popover-trigger-system --strict`. No existing requirements modified or removed.
-- [ ] 7.2 **(archive-time)** The carve-out bookkeeping spec at `openspec/changes/test-popover-trigger-system/specs/testing-foundation/spec.md` remains archive-only — does NOT roll into the parent `test-coverage` accumulator and does NOT modify the active `openspec/specs/testing-foundation/spec.md`. Per `test-coverage` design D13 two-tier rollup, this carve-out's `testing-foundation` delta is Tier 2 (archive-only).
+- [x] 7.1 Merged the four ADDED Requirements (Decisions 3a/3b/3c/3d) into `openspec/specs/popover-trigger-system/spec.md`. Validated via `openspec validate popover-trigger-system --strict` — returns "Specification 'popover-trigger-system' is valid". No existing requirements modified or removed.
+- [x] 7.2 The carve-out bookkeeping spec at `openspec/changes/test-popover-trigger-system/specs/testing-foundation/spec.md` stays archive-only — did NOT roll into the parent `test-coverage` accumulator and did NOT modify the active `openspec/specs/testing-foundation/spec.md`. Per `test-coverage` design D13 two-tier rollup, this carve-out's `testing-foundation` delta is Tier 2 (archive-only).
 
 ## 8. Pre-merge
 
