@@ -473,9 +473,14 @@ describe('SegmentedControl', () => {
         </SegmentedControl>
       );
       const group = screen.getByRole('radiogroup');
-      const result = fireEvent.keyDown(group, { key: 'a' });
+      const event = new KeyboardEvent('keydown', {
+        key: 'a',
+        cancelable: true,
+        bubbles: true,
+      });
+      group.dispatchEvent(event);
       expect(onChange).not.toHaveBeenCalled();
-      expect(result).toBe(true);
+      expect(event.defaultPrevented).toBe(false);
     });
 
     it('ArrowRight_FocusMovesToNextOption', () => {
@@ -508,10 +513,13 @@ describe('SegmentedControl', () => {
           <SegmentedOption value="b">B</SegmentedOption>
         </SegmentedControl>
       );
-      const result = fireEvent.keyDown(screen.getByRole('radiogroup'), {
+      const event = new KeyboardEvent('keydown', {
         key: 'ArrowRight',
+        cancelable: true,
+        bubbles: true,
       });
-      expect(result).toBe(false);
+      screen.getByRole('radiogroup').dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
     });
   });
 

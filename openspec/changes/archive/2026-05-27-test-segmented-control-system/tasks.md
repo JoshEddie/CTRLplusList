@@ -85,7 +85,7 @@
 - [x] 3.16 `AriaLabel_ReachesButton`
 - [x] 3.17 `DataTestId_ReachesButton`
 - [x] 3.18 `CustomId_ReachesButton`
-- [x] 3.19 `OmittedProps_NotForwardedAsDomAttributes` (the `Omit<...,'value'|'onChange'|'aria-checked'>` excludes them from the prop type; React does not pass them through as DOM attributes other than the ones the component sets itself — verified by querying that the element's `aria-checked` matches the context-derived value, NOT any prop the test might try to set, and that no `value` HTML attribute appears on the button)
+- [x] 3.19 `ValueProp_BecomesDataValue_NotRawValueAttribute` (locks that the `value` prop — which IS in the prop type — is consumed by the component and surfaced as `data-value`, NOT spread through as a raw `value` HTML attribute on the button; regression-guards a future destructure removal)
 
 ### 3E. ContextThrow — orphan render throws (Decision 3c, spec delta SHALL)
 

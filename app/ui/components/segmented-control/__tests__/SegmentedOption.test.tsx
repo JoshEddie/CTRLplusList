@@ -267,7 +267,7 @@ describe('SegmentedOption', () => {
       );
     });
 
-    it('OmittedProps_NotForwardedAsDomAttributes', () => {
+    it('ValueProp_BecomesDataValue_NotRawValueAttribute', () => {
       render(
         <ProviderHarness value="a">
           <SegmentedOption value="a">A</SegmentedOption>
@@ -275,13 +275,14 @@ describe('SegmentedOption', () => {
       );
       const btn = screen.getByRole('radio', { name: 'A' });
       expect(btn).toHaveAttribute('aria-checked', 'true');
+      expect(btn).toHaveAttribute('data-value', 'a');
       expect(btn).not.toHaveAttribute('value');
-      expect(btn).not.toHaveAttribute('onchange');
     });
   });
 
   describe('ContextThrow', () => {
     it('OrphanRender_ThrowsDescriptiveError', () => {
+      // Suppress React 19's error-boundary log noise; the toThrow below is the load-bearing assertion.
       vi.spyOn(console, 'error').mockImplementation(() => {});
       expect(() =>
         render(<SegmentedOption value="x">label</SegmentedOption>)
