@@ -91,7 +91,13 @@ const eslintConfig = [
     files: ['**/*.test.{ts,tsx}'],
     plugins: { vitest },
     rules: {
-      'vitest/expect-expect': 'error',
+      'vitest/expect-expect': [
+        'error',
+        // Permit named-helper assertions like `expectOnlyActive` /
+        // `expectClosed` — they wrap one or more `expect()` calls and
+        // dedupe shared assertion blocks across sibling tests.
+        { assertFunctionNames: ['expect', 'expect*'] },
+      ],
       'vitest/valid-expect': 'error',
       'vitest/no-standalone-expect': 'error',
     },

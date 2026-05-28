@@ -1,11 +1,11 @@
-/* eslint-disable testing-library/no-node-access, testing-library/no-container --
+/* eslint-disable testing-library/no-node-access --
  * AppNav's contract is the exact DOM (toggle `<button>`, four `<a>` pills with
  * the active-variant class + `aria-current`, the `data-open` flag on
  * `.app-nav-wrap`). Role queries reach buttons and links but cannot read the
  * `data-open` attribute on an unnamed wrapper div; classed descendant queries
  * are required.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { usePathname } from 'next/navigation';
 import { forwardRef } from 'react';
@@ -267,9 +267,7 @@ describe('AppNav', () => {
       render(<AppNav />);
       await user.click(getToggle());
       expect(getWrap()).toHaveAttribute('data-open', 'true');
-      act(() => {
-        fireEvent.mouseDown(document.body);
-      });
+      fireEvent.mouseDown(document.body);
       expect(getWrap()).toHaveAttribute('data-open', 'false');
     });
 
@@ -278,9 +276,7 @@ describe('AppNav', () => {
       render(<AppNav />);
       await user.click(getToggle());
       expect(getWrap()).toHaveAttribute('data-open', 'true');
-      act(() => {
-        fireEvent.keyDown(document, { key: 'Escape' });
-      });
+      fireEvent.keyDown(document, { key: 'Escape' });
       expect(getWrap()).toHaveAttribute('data-open', 'false');
     });
 
@@ -288,9 +284,7 @@ describe('AppNav', () => {
       const user = userEvent.setup();
       render(<AppNav />);
       await user.click(getToggle());
-      act(() => {
-        fireEvent.keyDown(document, { key: 'a' });
-      });
+      fireEvent.keyDown(document, { key: 'a' });
       expect(getWrap()).toHaveAttribute('data-open', 'true');
     });
 
@@ -298,9 +292,7 @@ describe('AppNav', () => {
       const user = userEvent.setup();
       render(<AppNav />);
       await user.click(getToggle());
-      act(() => {
-        fireEvent.mouseDown(getToggle());
-      });
+      fireEvent.mouseDown(getToggle());
       expect(getWrap()).toHaveAttribute('data-open', 'true');
     });
 
@@ -308,9 +300,7 @@ describe('AppNav', () => {
       const user = userEvent.setup();
       render(<AppNav />);
       await user.click(getToggle());
-      act(() => {
-        fireEvent.mouseDown(getPill('Home'));
-      });
+      fireEvent.mouseDown(getPill('Home'));
       expect(getWrap()).toHaveAttribute('data-open', 'true');
     });
   });
@@ -333,7 +323,7 @@ describe('AppNav', () => {
       spy: ReturnType<typeof vi.spyOn>,
       type: 'mousedown' | 'keydown'
     ) {
-      return spy.mock.calls.filter((c) => c[0] === type).length;
+      return spy.mock.calls.filter((c: unknown[]) => c[0] === type).length;
     }
 
     it('Closed_NoDocumentListenersForDismissal', () => {

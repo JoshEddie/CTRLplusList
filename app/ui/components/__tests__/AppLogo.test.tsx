@@ -1,4 +1,4 @@
-/* eslint-disable testing-library/no-node-access, testing-library/no-container --
+/* eslint-disable testing-library/no-node-access --
  * AppLogo's contract is the exact DOM shape (anchor wrapping image with
  * specific classes / attrs / dimensions). Role queries reach the anchor but
  * not the `app-logo-image` class or the `width`/`height`/`fetchpriority`

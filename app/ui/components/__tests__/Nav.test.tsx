@@ -44,7 +44,9 @@ describe('Nav', () => {
     });
 
     it('AuthReturnsNull_RendersNull', async () => {
-      vi.mocked(auth).mockResolvedValue(null);
+      vi.mocked(auth).mockResolvedValue(
+        null as unknown as Awaited<ReturnType<typeof auth>>
+      );
       const tree = await Nav();
       const { container } = render(<>{tree}</>);
       expect(container.querySelector('nav.nav-container')).toBeNull();
