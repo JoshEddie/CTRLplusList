@@ -5,13 +5,13 @@ import { sqlstateOf } from '../../lib/sqlstate';
 import { bootPglite } from './db';
 
 describe('bootPglite', () => {
-  it('returns a drizzle client that can SELECT from users after migration', async () => {
+  it('AfterMigration_SelectUsersReturnsEmpty', async () => {
     const { db } = await bootPglite();
     const rows = await db.select().from(users);
     expect(rows).toEqual([]);
   });
 
-  it('round-trips an inserted user', async () => {
+  it('InsertedUser_RoundTripsOnSelect', async () => {
     const { db } = await bootPglite();
     await db.insert(users).values({ id: 'u1', name: 'Alice' });
     const rows = await db.select().from(users);
@@ -19,7 +19,7 @@ describe('bootPglite', () => {
     expect(rows[0]?.name).toBe('Alice');
   });
 
-  it('enforces the purchases partial unique index with SQLSTATE 23505', async () => {
+  it('DuplicatePurchase_ViolatesPartialUniqueWith23505', async () => {
     const { db } = await bootPglite();
     await db.insert(users).values({ id: 'u1', name: 'Owner' });
     await db.insert(users).values({ id: 'u2', name: 'Buyer' });

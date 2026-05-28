@@ -31,8 +31,8 @@ import { bootPglite } from './setup-pglite';
  * integration tests. E2E (Playwright against `next dev`) gives us the
  * real-runtime confidence for tag invalidation end-to-end.
  */
-describe('DAL query correctness against pglite (cache layer mocked elsewhere)', () => {
-  it('getListsByUser-equivalent query returns only the requesting user’s lists', async () => {
+describe('DalQueryCorrectnessAgainstPglite', () => {
+  it('OwnedAndOthersLists_ReturnsOnlyRequestingUsersLists', async () => {
     const { db } = await bootPglite();
 
     await db.insert(users).values([
@@ -69,7 +69,7 @@ describe('DAL query correctness against pglite (cache layer mocked elsewhere)', 
     expect(mine.map((l) => l.id).sort()).toEqual(['l-1', 'l-2']);
   });
 
-  it('mutation visibility — after insert, a fresh read sees it (no cache between calls)', async () => {
+  it('AfterInsert_FreshReadSeesNewRow', async () => {
     const { db } = await bootPglite();
     await db.insert(users).values({ id: 'u-1', email: 'u1@t.local', name: 'U1' });
 

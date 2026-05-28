@@ -52,7 +52,7 @@ function renderDialog(
 }
 
 describe('FollowDisclosureDialog', () => {
-  it('OpenTrue_CallsShowModal_FocusesConfirm', () => {
+  it('OpenTrue_CallsShowModal-FocusesConfirm', () => {
     renderDialog({ open: true });
     expect(showModal).toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Follow' })).toHaveFocus();
@@ -71,7 +71,7 @@ describe('FollowDisclosureDialog', () => {
     expect(close).toHaveBeenCalled();
   });
 
-  it('Title_ReadsFollowOwnerName_Body_IsDisclosureSentence', () => {
+  it('Open_TitleReadsFollowOwnerName-BodyIsDisclosureSentence', () => {
     const { container } = renderDialog({ open: true, ownerName: 'Carol' });
     expect(container.querySelector('.follow-disclosure-title')).toHaveTextContent(
       'Follow Carol?'

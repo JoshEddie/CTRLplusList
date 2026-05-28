@@ -70,7 +70,7 @@ describe('TooltipWrapper', () => {
   });
 
   describe('ShowTooltip', () => {
-    it('ShowTooltipDefault_True_TooltipSpanRendered', () => {
+    it('ShowTooltipDefaultTrue_TooltipSpanRendered', () => {
       const { container } = render(
         <TooltipWrapper tooltip="hi">
           <span>child</span>
@@ -90,7 +90,7 @@ describe('TooltipWrapper', () => {
       expect(container.querySelector('span.tooltip')).toBeNull();
     });
 
-    it('ShowTooltipTrue_TooltipText_RenderedInsideSpan', () => {
+    it('ShowTooltipTrue_TooltipTextRenderedInsideSpan', () => {
       const { container } = render(
         <TooltipWrapper
           tooltip="Available after the gift is opened"
@@ -106,7 +106,7 @@ describe('TooltipWrapper', () => {
       );
     });
 
-    it('ShowTooltipTrue_NoTooltipProp_SpanRenderedEmpty', () => {
+    it('ShowTooltipTrueNoTooltipProp_SpanRenderedEmpty', () => {
       const { container } = render(
         <TooltipWrapper showTooltip>
           <span>child</span>

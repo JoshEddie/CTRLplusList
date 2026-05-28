@@ -98,7 +98,7 @@ describe('FollowingPage', () => {
     expect(getFollowingFeedUsers).toHaveBeenCalledWith('viewer');
   });
 
-  it('AfterCallback_SingleStatementLastSeenWrite_ThenUpdateTag', async () => {
+  it('AfterCallback_WritesLastSeenBeforeUpdateTag', async () => {
     vi.mocked(auth).mockResolvedValue({
       user: { email: 'x@test.local' },
     } as never);

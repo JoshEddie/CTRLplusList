@@ -140,7 +140,7 @@ describe('getFollowingFeedUsers', () => {
     expect(rows.map((r) => r.id)).toEqual(['b', 'a']);
   });
 
-  it('FolloweeNoPublicLists_LatestNull_NewCountZero', async () => {
+  it('FolloweeNoPublicLists_LatestNull-NewCountZero', async () => {
     await seedUsers(db, [{ id: 'viewer' }, { id: 'a' }]);
     await seedFollow(db, 'viewer', 'a', new Date('2020-01-01'));
 
@@ -150,7 +150,7 @@ describe('getFollowingFeedUsers', () => {
     expect(rows[0].new_count).toBe(0);
   });
 
-  it('NullLastSeen_FollowNewerThanLists_PreexistingListsNotCountedNew', async () => {
+  it('NullLastSeen_PreexistingListsNotCountedNew', async () => {
     await seedUsers(db, [
       { id: 'viewer', last_seen_following_at: null },
       { id: 'a' },

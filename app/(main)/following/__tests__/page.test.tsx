@@ -11,8 +11,8 @@ vi.mock('../FollowingPage', () => ({
   default: () => <div data-testid="following-page" />,
 }));
 
-describe('following/page', () => {
-  it('RendersMainContainerWrappingFollowingPage', () => {
+describe('FollowingPageRoute', () => {
+  it('Render_WrapsFollowingPageInListContainerMain', () => {
     const { container } = render(<Page />);
     const main = container.querySelector('main') as HTMLElement;
     expect(main).toHaveClass('container', 'container--list-collections');

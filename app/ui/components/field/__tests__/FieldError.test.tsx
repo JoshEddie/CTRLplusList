@@ -58,7 +58,7 @@ describe('FieldError', () => {
   });
 
   describe('NoLiveRegionSemantics', () => {
-    it('NoRoleAlertNoAriaLive', () => {
+    it('Rendered_HasNoRoleOrAriaLive', () => {
       const { container } = render(<FieldError>Required</FieldError>);
       const p = container.firstChild as HTMLParagraphElement;
       expect(p.hasAttribute('role')).toBe(false);

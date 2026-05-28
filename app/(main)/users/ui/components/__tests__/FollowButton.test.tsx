@@ -9,7 +9,7 @@ vi.mock('react-icons/fa', () => ({
 }));
 
 describe('FollowButton', () => {
-  it('Following_LabelFollowing_CheckIcon_PressedTrue', () => {
+  it('Following_LabelFollowing-CheckIcon-PressedTrue', () => {
     render(
       <FollowButton
         following
@@ -25,7 +25,7 @@ describe('FollowButton', () => {
     expect(screen.queryByTestId('fa-plus')).not.toBeInTheDocument();
   });
 
-  it('NotFollowingWithName_LabelFollowName_PlusIcon', () => {
+  it('NotFollowingWithName_LabelFollowName-PlusIcon', () => {
     render(
       <FollowButton
         following={false}
@@ -52,7 +52,7 @@ describe('FollowButton', () => {
     expect(screen.getByRole('button')).toHaveTextContent('Follow');
   });
 
-  it('Pending_AriaDisabledTrue_AriaLabelMatchesLabel', () => {
+  it('Pending_AriaDisabledTrue-AriaLabelMatchesLabel', () => {
     render(
       <FollowButton following userName="Bob" pending onClick={vi.fn()} />
     );
@@ -61,7 +61,7 @@ describe('FollowButton', () => {
     expect(button).toHaveAttribute('aria-label', 'Following');
   });
 
-  it('Click_FiresOnClick_RendersThroughButtonVariant', async () => {
+  it('SecondaryVariant_RendersBtnSecondaryClasses-ForwardsClick', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
     render(

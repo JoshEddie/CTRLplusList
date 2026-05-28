@@ -67,7 +67,7 @@ const mainFollow = () => screen.getByRole('button', { name: 'Follow Bob' });
 const mainFollowing = () => screen.getByRole('button', { name: 'Following' });
 
 describe('FollowControls', () => {
-  it('ClickFollow_OptimisticTrue_CallsFollowUser_ToastSuccess_RouterRefresh', async () => {
+  it('ClickFollow_OptimisticFlip-CallsFollowUser-ToastSuccess-RouterRefresh', async () => {
     const user = userEvent.setup();
     vi.mocked(followUser).mockResolvedValue({
       success: true,
@@ -83,7 +83,7 @@ describe('FollowControls', () => {
     expect(router.refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('FollowFails_RevertsToFalse_ToastError', async () => {
+  it('FollowFails_RevertsToFalse-ToastError', async () => {
     const user = userEvent.setup();
     vi.mocked(followUser).mockResolvedValue({
       success: false,
@@ -96,7 +96,7 @@ describe('FollowControls', () => {
     expect(router.refresh).not.toHaveBeenCalled();
   });
 
-  it('ClickUnfollow_OptimisticFalse_CallsUnfollowUser_ToastSuccess', async () => {
+  it('ClickUnfollow_OptimisticFalse-CallsUnfollowUser-ToastSuccess', async () => {
     const user = userEvent.setup();
     vi.mocked(unfollowUser).mockResolvedValue({
       success: true,
@@ -109,7 +109,7 @@ describe('FollowControls', () => {
     expect(toast.success).toHaveBeenCalledWith('Unfollowed');
   });
 
-  it('UnfollowFails_RevertsToTrue_ToastError', async () => {
+  it('UnfollowFails_RevertsToTrue-ToastError', async () => {
     const user = userEvent.setup();
     vi.mocked(unfollowUser).mockResolvedValue({
       success: false,
@@ -140,7 +140,7 @@ describe('FollowControls', () => {
     await waitFor(() => expect(router.refresh).toHaveBeenCalled());
   });
 
-  it('RequireDisclosureAndNotFollowing_ClickOpensDialog_NoActionYet', async () => {
+  it('DisclosureRequired_ClickOpensDialog-NoFollowYet', async () => {
     const user = userEvent.setup();
     const { container } = renderControls({ requireDisclosure: true });
     await user.click(mainFollow());
@@ -176,7 +176,7 @@ describe('FollowControls', () => {
     expect(followUser).not.toHaveBeenCalled();
   });
 
-  it('NullName_FollowSuccess_ToastsUserFallback_DialogUsesThisUser', async () => {
+  it('NullName_DialogSaysThisUser-ToastSaysUser', async () => {
     const user = userEvent.setup();
     vi.mocked(followUser).mockResolvedValue({
       success: true,
@@ -200,7 +200,7 @@ describe('FollowControls', () => {
     );
   });
 
-  it('Following_ClickAlwaysUnfollows_NoDialogGate', async () => {
+  it('Following_UnfollowsWithoutDisclosureGate', async () => {
     const user = userEvent.setup();
     vi.mocked(unfollowUser).mockResolvedValue({
       success: true,

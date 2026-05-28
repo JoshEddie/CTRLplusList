@@ -75,27 +75,27 @@ describe('followUser', () => {
     expect(await followRows()).toHaveLength(1);
   });
 
-  it('SelfFollow_ReturnsInvalid_NoRow', async () => {
+  it('SelfFollow_ReturnsInvalid-NoRow', async () => {
     const res = await actions.followUser(VIEWER.id);
     expect(res.error).toBe('Invalid');
     expect(await followRows()).toHaveLength(0);
   });
 
-  it('BlockedByTarget_ReturnsBlocked_NoRow', async () => {
+  it('BlockedByTarget_ReturnsBlocked-NoRow', async () => {
     await seedBlock(db, TARGET.id, VIEWER.id);
     const res = await actions.followUser(TARGET.id);
     expect(res.error).toBe('Blocked');
     expect(await followRows()).toHaveLength(0);
   });
 
-  it('BlockedViewer_ReturnsBlocked_NoRow', async () => {
+  it('BlockedViewer_ReturnsBlocked-NoRow', async () => {
     await seedBlock(db, VIEWER.id, TARGET.id);
     const res = await actions.followUser(TARGET.id);
     expect(res.error).toBe('Blocked');
     expect(await followRows()).toHaveLength(0);
   });
 
-  it('NoSession_ReturnsUnauthorized_NoRow', async () => {
+  it('NoSession_ReturnsUnauthorized-NoRow', async () => {
     noSession();
     const res = await actions.followUser(TARGET.id);
     expect(res.error).toBe('Unauthorized');
@@ -117,7 +117,7 @@ describe('followUser', () => {
     expect(updateTag).not.toHaveBeenCalled();
   });
 
-  it('InsertThrows_ReturnsFailed_NoUpdateTag', async () => {
+  it('InsertThrows_ReturnsFailed-NoUpdateTag', async () => {
     const res = await actions.followUser('ghost-user-id');
     expect(res.error).toBe('Failed');
     expect(await followRows()).toHaveLength(0);
@@ -145,7 +145,7 @@ describe('unfollowUser', () => {
     expect(res.error).toBe('Unauthorized');
   });
 
-  it('Success_CallsUpdateTagUserFollowsOnce_EarlyReturnDoesNot', async () => {
+  it('UpdateTagContract_FiresOnceOnSuccess-SkippedOnEarlyReturn', async () => {
     await actions.unfollowUser(TARGET.id);
     expect(updateTag.mock.calls).toEqual([['user_follows']]);
     updateTag.mockClear();
@@ -154,7 +154,7 @@ describe('unfollowUser', () => {
     expect(updateTag).not.toHaveBeenCalled();
   });
 
-  it('DeleteThrows_ReturnsFailed_NoUpdateTag', async () => {
+  it('DeleteThrows_ReturnsFailed-NoUpdateTag', async () => {
     vi.spyOn(db, 'delete').mockImplementation(() => {
       throw new Error('boom');
     });
@@ -196,7 +196,7 @@ describe('removeFollower', () => {
     expect(updateTag.mock.calls).toEqual([['user_follows']]);
   });
 
-  it('DeleteThrows_ReturnsFailed_NoUpdateTag', async () => {
+  it('DeleteThrows_ReturnsFailed-NoUpdateTag', async () => {
     vi.spyOn(db, 'delete').mockImplementation(() => {
       throw new Error('boom');
     });
@@ -207,7 +207,7 @@ describe('removeFollower', () => {
 });
 
 describe('blockUser', () => {
-  it('Authed_InsertsBlockRow_AndDeletesBothFollowDirections', async () => {
+  it('Authed_InsertsBlockRow-DeletesBothFollowDirections', async () => {
     await seedFollow(db, VIEWER.id, TARGET.id);
     await seedFollow(db, TARGET.id, VIEWER.id);
     const res = await actions.blockUser(TARGET.id);
@@ -238,7 +238,7 @@ describe('blockUser', () => {
     expect(await blockRows()).toHaveLength(1);
   });
 
-  it('SelfBlock_ReturnsInvalid_NoRows', async () => {
+  it('SelfBlock_ReturnsInvalid-NoRows', async () => {
     const res = await actions.blockUser(VIEWER.id);
     expect(res.error).toBe('Invalid');
     expect(await blockRows()).toHaveLength(0);
@@ -287,7 +287,7 @@ describe('unblockUser', () => {
     expect(updateTag.mock.calls).toEqual([['user_blocks']]);
   });
 
-  it('DeleteThrows_ReturnsFailed_NoUpdateTag', async () => {
+  it('DeleteThrows_ReturnsFailed-NoUpdateTag', async () => {
     vi.spyOn(db, 'delete').mockImplementation(() => {
       throw new Error('boom');
     });
@@ -297,7 +297,7 @@ describe('unblockUser', () => {
   });
 });
 
-describe('no interactive transactions', () => {
+describe('NoInteractiveTransactions', () => {
   it('NoCodePath_UsesTransactionApi', async () => {
     const txSpy = vi.fn();
     (db as unknown as { transaction: unknown }).transaction = txSpy;

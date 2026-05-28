@@ -118,6 +118,27 @@ const eslintConfig = [
       ],
       'vitest/valid-expect': 'error',
       'vitest/no-standalone-expect': 'error',
+      'vitest/valid-title': [
+        'error',
+        {
+          mustMatch: {
+            it: [
+              '^[A-Z][A-Za-z0-9%#]*_[A-Z%][A-Za-z0-9%#]*(-[A-Z][A-Za-z0-9%#]*)*$',
+              'it()/test() titles must match <State>_<Behavior>(-<Behavior>)*: one underscore = the state│behavior boundary, single-token PascalCase state (compound state → nested describe), dash-joined PascalCase behavior facets. See TESTING.md.',
+            ],
+            test: [
+              '^[A-Z][A-Za-z0-9%#]*_[A-Z%][A-Za-z0-9%#]*(-[A-Z][A-Za-z0-9%#]*)*$',
+              'it()/test() titles must match <State>_<Behavior>(-<Behavior>)*: one underscore = the state│behavior boundary, single-token PascalCase state (compound state → nested describe), dash-joined PascalCase behavior facets. See TESTING.md.',
+            ],
+          },
+          mustNotMatch: {
+            describe: [
+              '[^\\w$]',
+              'describe() titles must be identifier/tag form: no whitespace or punctuation (dash is the behavior-facet joiner in it()/test() only). See TESTING.md.',
+            ],
+          },
+        },
+      ],
     },
   },
   {

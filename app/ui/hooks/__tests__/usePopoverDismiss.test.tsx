@@ -138,7 +138,7 @@ describe('usePopoverDismiss', () => {
   });
 
   describe('OutsideClick', () => {
-    it('NullRef_OutsideMousedown_OnCloseNotCalled', () => {
+    it('NullRef_OutsideMousedown-OnCloseNotCalled', () => {
       const onClose = vi.fn();
       renderHook(() => {
         const ref: RefObject<HTMLElement | null> = { current: null };
@@ -154,36 +154,38 @@ describe('usePopoverDismiss', () => {
       expect(onClose).not.toHaveBeenCalled();
     });
 
-    it('PopulatedRef_OutsideMousedown_OnCloseCalled', () => {
-      const onClose = vi.fn();
-      render(<Harness open={true} onClose={onClose} />);
-      const outside = screen.getByTestId('outside');
-      act(() => {
-        outside.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    describe('PopulatedRef', () => {
+      it('OutsideMousedown_OnCloseCalled', () => {
+        const onClose = vi.fn();
+        render(<Harness open={true} onClose={onClose} />);
+        const outside = screen.getByTestId('outside');
+        act(() => {
+          outside.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        });
+        expect(onClose).toHaveBeenCalledTimes(1);
       });
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
 
-    it('PopulatedRef_InsideMousedown_OnCloseNotCalled', () => {
-      const onClose = vi.fn();
-      render(<Harness open={true} onClose={onClose} />);
-      const insideChild = screen.getByTestId('inside-child');
-      act(() => {
-        insideChild.dispatchEvent(
-          new MouseEvent('mousedown', { bubbles: true })
-        );
+      it('InsideMousedown_OnCloseNotCalled', () => {
+        const onClose = vi.fn();
+        render(<Harness open={true} onClose={onClose} />);
+        const insideChild = screen.getByTestId('inside-child');
+        act(() => {
+          insideChild.dispatchEvent(
+            new MouseEvent('mousedown', { bubbles: true })
+          );
+        });
+        expect(onClose).not.toHaveBeenCalled();
       });
-      expect(onClose).not.toHaveBeenCalled();
-    });
 
-    it('PopulatedRef_RefElementItself_OnCloseNotCalled', () => {
-      const onClose = vi.fn();
-      render(<Harness open={true} onClose={onClose} />);
-      const popover = screen.getByTestId('popover');
-      act(() => {
-        popover.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      it('RefElementItself_OnCloseNotCalled', () => {
+        const onClose = vi.fn();
+        render(<Harness open={true} onClose={onClose} />);
+        const popover = screen.getByTestId('popover');
+        act(() => {
+          popover.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        });
+        expect(onClose).not.toHaveBeenCalled();
       });
-      expect(onClose).not.toHaveBeenCalled();
     });
   });
 
@@ -210,7 +212,7 @@ describe('usePopoverDismiss', () => {
       expect(onClose).not.toHaveBeenCalled();
     });
 
-    it('Closed_EscapeDispatched_OnCloseNotCalled', () => {
+    it('Closed_EscapeDispatched-OnCloseNotCalled', () => {
       const onClose = vi.fn();
       render(<Harness open={false} onClose={onClose} />);
       act(() => {

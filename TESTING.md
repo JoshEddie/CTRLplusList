@@ -83,9 +83,17 @@ Test names MUST be self-documenting and structurally consistent — failures sho
 
 ### Vitest (unit, component, integration)
 
-**Shape:** `<StateUnderTest>_<ExpectedBehavior>` — two PascalCase tokens separated by a single underscore. The unit under test is carried by the enclosing `describe(...)`, NOT repeated in the `it()` name.
+**Shape:** `<State>_<Behavior>(-<Behavior>)*` — a **single underscore** marks the one state│behavior boundary.
 
-Literal identifiers from production code (enum values, exported constants, type names, CSS class strings) MAY appear in their native casing within a token. Parameterized tests MAY interpolate the parameter into either part as long as the resulting string still parses as `<State>_<Behavior>` on a single underscore.
+- **State = a single PascalCase token.** Compound state is NOT written in the `it()` name; hoist it into nested `describe(...)` blocks (even if used once). The unit under test is likewise carried by the describe, not repeated in the `it()`.
+- **Behavior = one PascalCase token, or several dash-joined facets** when a single trigger produces multiple observable effects. Order facets primary → secondary; trailing side-effects (toast, refresh, log) come last: `CallsFollowUser-ToastSuccess-RouterRefresh`.
+- Literal identifiers from production code (enum values, constants, type names, CSS class strings) MAY keep native casing within a token (`ReturnsOWNER`). Parameterized tests MAY interpolate the parameter, and `it.each` printf placeholders (`%s`, `%#`) are allowed, as long as the result still parses on the boundary underscore.
+
+**Lint-enforced vs. manual bar.** `eslint-plugin-vitest`'s `vitest/valid-title` (at `error`, in the `**/*.test.{ts,tsx}` block of `eslint.config.mjs`) enforces the mechanical *shape*: the single boundary underscore, single-token state, dash-joined PascalCase behavior facets, no prose, and identifier-form describe titles. A green lint means "structurally valid", NOT "well-named". A regex cannot judge the rest — these stay a manual / review bar:
+
+- **Token role** — a pattern can't tell a State from a Behavior, so `State_State` (two states — should be a `describe`) and `Behavior_Behavior` pass lint. Keep the left token a genuine state.
+- **Precision** (see the precision principle above).
+- **One test = one trigger.** Assert all of a single trigger's effects together (dash-joined); a single-trigger compound is NOT split — splitting only duplicates setup. Split only when a title would span multiple distinct triggers (actions). The discriminator is the number of triggers, not the number of dashes.
 
 ```ts
 // ✅ Good — unit test (utility function)
@@ -112,6 +120,25 @@ describe('guardListViewable', () => {
 for (const variant of VARIANTS) {
   it(`Variant${cap(variant)}DefaultSize_ReturnsBtn${cap(variant)}`, ...)
 }
+
+// ✅ Good — single trigger, multiple effects: dash-joined, side-effects last
+it('ClickFollow_OptimisticFlip-CallsFollowUser-ToastSuccess-RouterRefresh', ...)
+
+// ✅ Good — compound state hoisted into describes, single-token state in it()
+describe('NonPurchase', () => {
+  describe('WithSetter', () => {
+    it('Click_InvokesSetterWithTrue', ...)
+    it('Render_ShowsPrimaryButton', ...)
+  });
+});
+
+// ❌ Bad — compound state in the it() name (second underscore) → use describes
+it('NonPurchase_WithSetter_InvokesSetterWithTrue', ...)
+// ❌ Bad — role confusion: both tokens are state (passes lint, fails review)
+it('NonPurchase_WithSetter', ...)
+// ❌ Bad — single-trigger effects split into separate tests (duplicates setup)
+it('ClickFollow_CallsFollowUser', ...)
+it('ClickFollow_ToastSuccess', ...)   // same click — assert together, dash-joined
 
 // ❌ Bad — vacuous templates
 it('should work correctly', ...)
@@ -144,6 +171,7 @@ Additional rules:
 - **Do NOT repeat** the outer module name inside an inner describe (no `describe('utils > formatCurrency', ...)`, no nested `describe('utils', () => describe('utilsFormatCurrency', ...))`).
 - A test file exporting a single function MAY collapse to a single top-level `describe(<functionName>, ...)` without an outer module describe.
 - Scenario-family describes are NOT subject to the no-repeat rule because they do not name the unit.
+- Describe titles are **lint-enforced** to contain no whitespace or punctuation (identifier/tag form, `[A-Za-z0-9_$]`). The dash is the behavior-facet joiner in `it`/`test` names only — it is not allowed in describe titles. Role correctness (module vs function vs scenario-family) and tag precision remain a manual bar.
 
 ```ts
 // ✅ Good — three layers, each in its own role

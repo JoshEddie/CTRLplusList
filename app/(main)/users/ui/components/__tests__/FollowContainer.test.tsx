@@ -49,7 +49,7 @@ describe('FollowContainer', () => {
     expect(screen.queryByTestId('controls')).not.toBeInTheDocument();
   });
 
-  it('NotBlocked_RendersFollowControls_InitialFollowingFromIsFollowing', async () => {
+  it('NotBlocked_PassesOwnerIdAndIsFollowingToControls', async () => {
     vi.mocked(isFollowing).mockResolvedValue(true);
     render(await FollowContainer(PROPS));
     const controls = screen.getByTestId('controls');

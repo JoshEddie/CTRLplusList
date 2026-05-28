@@ -122,7 +122,7 @@ describe('ConfirmDialog', () => {
   });
 
   describe('ButtonVariants', () => {
-    it('CancelButton_Variant_Ghost', () => {
+    it('CancelButton_VariantGhost', () => {
       render(
         <ConfirmDialog
           isOpen
@@ -138,7 +138,7 @@ describe('ConfirmDialog', () => {
       );
     });
 
-    it('ConfirmButton_Variant_Danger', () => {
+    it('ConfirmButton_VariantDanger', () => {
       render(
         <ConfirmDialog
           isOpen
@@ -190,7 +190,7 @@ describe('ConfirmDialog', () => {
   });
 
   describe('ClickBehavior', () => {
-    it('CancelClick_CallsOnCloseOnce_NotOnConfirmOrTertiary', async () => {
+    it('CancelClick_CallsOnCloseOnce-NotOnConfirmOrTertiary', async () => {
       const user = userEvent.setup();
       const onClose = vi.fn();
       const onConfirm = vi.fn();
@@ -211,7 +211,7 @@ describe('ConfirmDialog', () => {
       expect(tertiaryClick).not.toHaveBeenCalled();
     });
 
-    it('ConfirmClick_CallsOnConfirmThenOnClose_InThatOrder', async () => {
+    it('ConfirmClick_CallsOnConfirmThenOnClose', async () => {
       const user = userEvent.setup();
       const onClose = vi.fn();
       const onConfirm = vi.fn();
@@ -232,7 +232,7 @@ describe('ConfirmDialog', () => {
       );
     });
 
-    it('TertiaryClick_CallsTertiaryOnClickThenOnClose_InThatOrder', async () => {
+    it('TertiaryClick_CallsTertiaryOnClickThenOnClose', async () => {
       const user = userEvent.setup();
       const onClose = vi.fn();
       const tertiaryClick = vi.fn();

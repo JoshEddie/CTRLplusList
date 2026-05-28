@@ -28,7 +28,7 @@ describe('PublicListsGrid', () => {
     expect(screen.queryByTestId('list-card')).not.toBeInTheDocument();
   });
 
-  it('NonEmpty_RendersListRoleWithListCardPerItem_ShowOwnerFalse', () => {
+  it('NonEmpty_RendersListCardPerItem-PassesShowOwnerFalse', () => {
     render(<PublicListsGrid lists={lists} />);
     expect(screen.getByRole('list')).toBeInTheDocument();
     const cards = screen.getAllByTestId('list-card');
