@@ -49,3 +49,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 linear.md
+
+# claude code — per-session ephemeral lock
+.claude/scheduled_tasks.lock

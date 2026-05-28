@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 export function useKeyboardOffset(enabled: boolean): void {
   useEffect(() => {
     if (!enabled) return;
+    /* v8 ignore next -- SSR short-circuit; window is always defined in jsdom. */
     if (typeof window === 'undefined') return;
     const vv = window.visualViewport;
     if (!vv) return;
