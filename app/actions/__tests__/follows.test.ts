@@ -145,10 +145,12 @@ describe('unfollowUser', () => {
     expect(res.error).toBe('Unauthorized');
   });
 
-  it('UpdateTagContract_FiresOnceOnSuccess-SkippedOnEarlyReturn', async () => {
+  it('Success_CallsUpdateTagUserFollowsOnce', async () => {
     await actions.unfollowUser(TARGET.id);
     expect(updateTag.mock.calls).toEqual([['user_follows']]);
-    updateTag.mockClear();
+  });
+
+  it('EarlyReturns_DoNotCallUpdateTag', async () => {
     noSession();
     await actions.unfollowUser(TARGET.id);
     expect(updateTag).not.toHaveBeenCalled();
