@@ -72,7 +72,7 @@ describe('Nav', () => {
       expect(navEl.querySelectorAll('a')).toHaveLength(3);
     });
 
-    it('Authed_FirstLinkButtonIsLists_WithReceiptIcon_AndLabel', async () => {
+    it('Authed_FirstLinkIsListsWithIconAndLabel', async () => {
       const tree = await Nav();
       const { container } = render(<>{tree}</>);
       const navEl = container.querySelector('nav.nav-container')!;
@@ -85,7 +85,7 @@ describe('Nav', () => {
       expect(label!.textContent).toBe('Lists');
     });
 
-    it('Authed_SecondLinkButtonIsItems_WithBoxIcon_AndLabel', async () => {
+    it('Authed_SecondLinkIsItemsWithIconAndLabel', async () => {
       const tree = await Nav();
       const { container } = render(<>{tree}</>);
       const second = container
@@ -98,7 +98,7 @@ describe('Nav', () => {
       );
     });
 
-    it('Authed_ThirdLinkButtonIsPurchased_WithBagIcon_AndLabel', async () => {
+    it('Authed_ThirdLinkIsPurchasedWithIconAndLabel', async () => {
       const tree = await Nav();
       const { container } = render(<>{tree}</>);
       const third = container

@@ -85,60 +85,62 @@ describe('Empty', () => {
       expect(emptyContainer.querySelector('a')).toBeNull();
     });
 
-    it('NonPurchase_WithSetter_RendersButtonWithPrimaryVariant', () => {
-      render(<Empty type="item" setShowNewItem={vi.fn()} />);
-      const cta = screen.getByRole('button', { name: 'Create Item' });
-      expect(cta).toHaveClass('btn', 'primary');
-    });
+    describe('NonPurchase', () => {
+      it('WithSetter_RendersButtonWithPrimaryVariant', () => {
+        render(<Empty type="item" setShowNewItem={vi.fn()} />);
+        const cta = screen.getByRole('button', { name: 'Create Item' });
+        expect(cta).toHaveClass('btn', 'primary');
+      });
 
-    it('NonPurchase_WithSetter_ButtonText_CreateCapitalized', () => {
-      render(<Empty type="item" setShowNewItem={vi.fn()} />);
-      expect(
-        screen.getByRole('button', { name: 'Create Item' })
-      ).toBeInTheDocument();
-    });
+      it('WithSetter_ButtonTextCreateCapitalized', () => {
+        render(<Empty type="item" setShowNewItem={vi.fn()} />);
+        expect(
+          screen.getByRole('button', { name: 'Create Item' })
+        ).toBeInTheDocument();
+      });
 
-    it('NonPurchase_WithSetter_ButtonClick_InvokesSetterWithTrue', async () => {
-      const user = userEvent.setup();
-      const setShowNewItem = vi.fn();
-      render(<Empty type="item" setShowNewItem={setShowNewItem} />);
-      await user.click(screen.getByRole('button', { name: 'Create Item' }));
-      expect(setShowNewItem).toHaveBeenCalledTimes(1);
-      expect(setShowNewItem).toHaveBeenCalledWith(true);
-    });
+      it('WithSetter_ButtonClickInvokesSetterWithTrue', async () => {
+        const user = userEvent.setup();
+        const setShowNewItem = vi.fn();
+        render(<Empty type="item" setShowNewItem={setShowNewItem} />);
+        await user.click(screen.getByRole('button', { name: 'Create Item' }));
+        expect(setShowNewItem).toHaveBeenCalledTimes(1);
+        expect(setShowNewItem).toHaveBeenCalledWith(true);
+      });
 
-    it('NonPurchase_WithSetter_IconRendered', () => {
-      render(<Empty type="item" setShowNewItem={vi.fn()} />);
-      const button = screen.getByRole('button', { name: 'Create Item' });
-      expect(button.querySelector('svg')).not.toBeNull();
-    });
+      it('WithSetter_IconRendered', () => {
+        render(<Empty type="item" setShowNewItem={vi.fn()} />);
+        const button = screen.getByRole('button', { name: 'Create Item' });
+        expect(button.querySelector('svg')).not.toBeNull();
+      });
 
-    it('NonPurchase_NoSetter_RendersLinkButton', () => {
-      render(<Empty type="item" />);
-      const cta = screen.getByRole('link', { name: 'Create Item' });
-      expect(cta.tagName).toBe('A');
-      expect(cta).toHaveClass('btn', 'primary');
-    });
+      it('NoSetter_RendersLinkButton', () => {
+        render(<Empty type="item" />);
+        const cta = screen.getByRole('link', { name: 'Create Item' });
+        expect(cta.tagName).toBe('A');
+        expect(cta).toHaveClass('btn', 'primary');
+      });
 
-    it('NonPurchase_NoSetter_TypeItem_LinkHref_ItemsNew', () => {
-      render(<Empty type="item" />);
-      expect(
-        screen.getByRole('link', { name: 'Create Item' })
-      ).toHaveAttribute('href', '/items/new');
-    });
+      it('NoSetter_TypeItemLinkPointsToItemsNew', () => {
+        render(<Empty type="item" />);
+        expect(
+          screen.getByRole('link', { name: 'Create Item' })
+        ).toHaveAttribute('href', '/items/new');
+      });
 
-    it('NonPurchase_NoSetter_TypeList_LinkHref_ListsNew', () => {
-      render(<Empty type="list" />);
-      expect(
-        screen.getByRole('link', { name: 'Create List' })
-      ).toHaveAttribute('href', '/lists/new');
-    });
+      it('NoSetter_TypeListLinkPointsToListsNew', () => {
+        render(<Empty type="list" />);
+        expect(
+          screen.getByRole('link', { name: 'Create List' })
+        ).toHaveAttribute('href', '/lists/new');
+      });
 
-    it('NonPurchase_NoSetter_LinkText_CreateCapitalized', () => {
-      render(<Empty type="item" />);
-      expect(
-        screen.getByRole('link', { name: 'Create Item' })
-      ).toBeInTheDocument();
+      it('NoSetter_LinkTextCreateCapitalized', () => {
+        render(<Empty type="item" />);
+        expect(
+          screen.getByRole('link', { name: 'Create Item' })
+        ).toBeInTheDocument();
+      });
     });
   });
 

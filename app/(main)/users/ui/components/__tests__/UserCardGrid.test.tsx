@@ -52,7 +52,7 @@ describe('UserCardGrid', () => {
     expect(screen.queryByTestId('user-card')).not.toBeInTheDocument();
   });
 
-  it('NonEmpty_RendersUserCardPerUser_MapsNewCountAndLatestShared', () => {
+  it('NonEmpty_RendersUserCardPerUser-MapsNewCountAndLatestShared', () => {
     render(<UserCardGrid users={users} emptyMessage="x" />);
     const cards = screen.getAllByTestId('user-card');
     expect(cards).toHaveLength(2);

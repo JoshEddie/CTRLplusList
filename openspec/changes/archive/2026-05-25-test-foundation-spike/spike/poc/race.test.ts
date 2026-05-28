@@ -36,8 +36,8 @@ async function seedClaimFixture(db: Awaited<ReturnType<typeof bootPglite>>['db']
   });
 }
 
-describe('partial-unique-index race (purchases_item_user_unique_idx)', () => {
-  it('rejects second concurrent same-user claim with 23505', async () => {
+describe('PartialUniqueIndexRace', () => {
+  it('ConcurrentSameUserClaim_RejectsSecondWith23505', async () => {
     const { db } = await bootPglite();
     await seedClaimFixture(db);
 
@@ -81,7 +81,7 @@ describe('partial-unique-index race (purchases_item_user_unique_idx)', () => {
     expect(cause.code ?? raw.code).toBe(PG_UNIQUE_VIOLATION);
   });
 
-  it('allows two guest claims on the same item (partial index excludes NULL user_id)', async () => {
+  it('TwoGuestClaims_AllowedByPartialIndex', async () => {
     const { db } = await bootPglite();
     await seedClaimFixture(db);
 
@@ -109,7 +109,7 @@ describe('partial-unique-index race (purchases_item_user_unique_idx)', () => {
     expect(rows).toHaveLength(2);
   });
 
-  it('ON CONFLICT DO NOTHING on the same partial unique key absorbs the duplicate', async () => {
+  it('OnConflictDoNothing_AbsorbsDuplicate', async () => {
     const { db, client } = await bootPglite();
     await seedClaimFixture(db);
 

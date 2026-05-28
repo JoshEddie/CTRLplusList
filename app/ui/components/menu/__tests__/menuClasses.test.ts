@@ -25,7 +25,7 @@ describe('menuItemClasses', () => {
       );
     });
 
-    it('ToneDangerPlusExtra_BothAppended_InOrder', () => {
+    it('ToneDangerPlusExtra_AppendsBothInOrder', () => {
       expect(menuItemClasses({ tone: 'danger', extra: 'foo' })).toBe(
         'menu-item tone-danger foo'
       );

@@ -41,7 +41,7 @@ function renderHeader(
 }
 
 describe('ProfileHeader', () => {
-  it('HasImage_RendersPriorityImage_FetchPriorityHigh', () => {
+  it('HasImage_RendersSizedImageWithHighFetchPriority', () => {
     const { container } = renderHeader({ user: { ...user, image: 'a.png' } });
     const img = container.querySelector('img') as HTMLImageElement;
     expect(img).toHaveAttribute('src', 'a.png');

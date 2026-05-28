@@ -82,7 +82,7 @@ describe('AppMenu', () => {
       });
     });
 
-    it('Menu_AsyncResolution_RenderedTreeIsStable', async () => {
+    it('Menu_RenderedTreeIsStableAfterAsyncResolution', async () => {
       const tree = await AppMenu();
       const { container } = render(<>{tree}</>);
       const menu = container.querySelector('.menu') as HTMLElement;

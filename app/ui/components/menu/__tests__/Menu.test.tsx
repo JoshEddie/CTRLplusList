@@ -392,7 +392,7 @@ describe('Menu', () => {
       expect(document.activeElement).toBe(third);
     });
 
-    it('ArrowDown_FocusOutsideMenu_StartsAtFirst', () => {
+    it('FocusOutsideMenu_ArrowDownStartsAtFirst', () => {
       renderThreeItems();
       const items = screen.getAllByRole('menuitem');
       // Initial-focus effect put focus on items[0]; move focus off the menu
@@ -526,7 +526,7 @@ describe('Menu', () => {
       expect(disabledCalls.length).toBe(0);
     });
 
-    it('Open_NoItems_FocusNotCalled', () => {
+    it('OpenNoItems_FocusNotCalled', () => {
       render(
         <Menu open={true} onClose={vi.fn()} aria-label="x">
           {null}

@@ -103,7 +103,7 @@ describe('MenuLinkItem', () => {
       );
     });
 
-    it('MatchesMenuItemClassString', () => {
+    it('Rendered_MatchesMenuItemClassString', () => {
       const { container: linkContainer } = render(
         <MenuLinkItem href="/x" tone="danger" className="foo">
           X

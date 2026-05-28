@@ -151,7 +151,7 @@ describe('SegmentedControl', () => {
   });
 
   describe('ContextProvision', () => {
-    it('ChildOption_ReadsValueFromContext_RendersAriaCheckedTrue', () => {
+    it('SelectedOption_AriaCheckedTrue', () => {
       render(
         <SegmentedControl
           value="a"
@@ -169,7 +169,7 @@ describe('SegmentedControl', () => {
       );
     });
 
-    it('ChildOption_ReadsValueFromContext_RendersAriaCheckedFalse', () => {
+    it('UnselectedOption_AriaCheckedFalse', () => {
       render(
         <SegmentedControl
           value="a"
@@ -423,7 +423,7 @@ describe('SegmentedControl', () => {
       expect(onChange).toHaveBeenCalledWith('a');
     });
 
-    it('ArrowRight_OnLastOption_WrapsToFirst', () => {
+    it('LastOption_ArrowRightWrapsToFirst', () => {
       const onChange = vi.fn();
       render(
         <SegmentedControl
@@ -441,7 +441,7 @@ describe('SegmentedControl', () => {
       expect(onChange).toHaveBeenCalledWith('a');
     });
 
-    it('ArrowLeft_OnFirstOption_WrapsToLast', () => {
+    it('FirstOption_ArrowLeftWrapsToLast', () => {
       const onChange = vi.fn();
       render(
         <SegmentedControl
@@ -524,7 +524,7 @@ describe('SegmentedControl', () => {
   });
 
   describe('KeyboardEdgeCases', () => {
-    it('NoCheckedOption_ArrowRight_SelectsFirst', () => {
+    it('NoCheckedOption_ArrowRightSelectsFirst', () => {
       const onChange = vi.fn();
       render(
         <SegmentedControl
@@ -545,7 +545,7 @@ describe('SegmentedControl', () => {
       expect(onChange).toHaveBeenCalledWith('a');
     });
 
-    it('NoCheckedOption_ArrowLeft_SelectsSecondToLast', () => {
+    it('NoCheckedOption_ArrowLeftSelectsSecondToLast', () => {
       const onChange = vi.fn();
       render(
         <SegmentedControl
@@ -563,7 +563,7 @@ describe('SegmentedControl', () => {
       expect(onChange).toHaveBeenCalledWith('b');
     });
 
-    it('EmptyOptions_ArrowRight_NoOnChange', () => {
+    it('EmptyOptions_ArrowRightNoOnChange', () => {
       const onChange = vi.fn();
       render(
         <SegmentedControl
@@ -579,7 +579,7 @@ describe('SegmentedControl', () => {
       expect(onChange).not.toHaveBeenCalled();
     });
 
-    it('SyntheticOptionWithoutDataValue_ArrowRight_NoOnChange', () => {
+    it('SyntheticOptionWithoutDataValue_ArrowRightNoOnChange', () => {
       const onChange = vi.fn();
       const { container } = render(
         <SegmentedControl

@@ -98,7 +98,7 @@ afterEach(() => {
 
 describe('useKeyboardOffset', () => {
   describe('ShortCircuits', () => {
-    it('EnabledFalse_NoListenersAttached_NoCssVariable', () => {
+    it('EnabledFalse_NoListenersAttached-NoCssVariable', () => {
       render(<Harness enabled={false} />);
       expect(vv.addEventListener).not.toHaveBeenCalled();
       expect(rafSpy).not.toHaveBeenCalled();
@@ -107,7 +107,7 @@ describe('useKeyboardOffset', () => {
       ).toBe('');
     });
 
-    it('EnabledTrueButNoVisualViewport_NoListenersAttached_NoCssVariable', () => {
+    it('EnabledTrueButNoVisualViewport_NoListenersAttached-NoCssVariable', () => {
       Object.defineProperty(window, 'visualViewport', {
         value: undefined,
         configurable: true,
@@ -228,7 +228,7 @@ describe('useKeyboardOffset', () => {
       ).toBe('');
     });
 
-    it('Unmount_WhileEnabled_CleansUpRafListenersCssVariable', () => {
+    it('WhileEnabled_UnmountCleansUpRafListenersCssVariable', () => {
       const { unmount } = render(<Harness enabled={true} />);
       flushRaf();
       unmount();
@@ -246,7 +246,7 @@ describe('useKeyboardOffset', () => {
       ).toBe('');
     });
 
-    it('Unmount_WhenNotEnabled_DoesNothing', () => {
+    it('WhenNotEnabled_UnmountDoesNothing', () => {
       const { unmount } = render(<Harness enabled={false} />);
       unmount();
       expect(cancelSpy).not.toHaveBeenCalled();

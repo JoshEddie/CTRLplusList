@@ -60,14 +60,14 @@ describe('AppNav', () => {
       expect(anchors).toHaveLength(4);
     });
 
-    it('HomeItem_HasHrefRoot_AndIcon', () => {
+    it('HomeItem_HasRootHref-HasIcon', () => {
       render(<AppNav />);
       const home = getPill('Home');
       expect(home).toHaveAttribute('href', '/');
       expect(home.querySelector('svg.app-nav-item-icon')).not.toBeNull();
     });
 
-    it('ListsItem_HasHrefLists_AndIcon', () => {
+    it('ListsItem_HasListsHref-HasIcon', () => {
       setPathname('/foo');
       render(<AppNav />);
       const lists = getPill('Lists');
@@ -75,7 +75,7 @@ describe('AppNav', () => {
       expect(lists.querySelector('svg.app-nav-item-icon')).not.toBeNull();
     });
 
-    it('ItemsItem_HasHrefItems_AndIcon', () => {
+    it('ItemsItem_HasItemsHref-HasIcon', () => {
       setPathname('/foo');
       render(<AppNav />);
       const items = getPill('Items');
@@ -83,7 +83,7 @@ describe('AppNav', () => {
       expect(items.querySelector('svg.app-nav-item-icon')).not.toBeNull();
     });
 
-    it('PurchasedItem_HasHrefPurchased_AndIcon', () => {
+    it('PurchasedItem_HasPurchasedHref-HasIcon', () => {
       setPathname('/foo');
       render(<AppNav />);
       const purchased = getPill('Purchased');
@@ -120,7 +120,7 @@ describe('AppNav', () => {
       }
     }
 
-    it('PathnameRoot_HomePillActive_OthersInactive', () => {
+    it('PathnameRoot_OnlyHomePillActive', () => {
       setPathname('/');
       render(<AppNav />);
       expectOnlyActive('Home');
@@ -197,26 +197,28 @@ describe('AppNav', () => {
   });
 
   describe('ToggleButton', () => {
-    it('Default_ToggleClosed_AriaLabelOpenMenu_AriaExpandedFalse', () => {
-      render(<AppNav />);
-      const toggle = getToggle();
-      expect(toggle).toHaveAttribute('aria-label', 'Open menu');
-      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    describe('Default', () => {
+      it('ToggleClosed_AriaLabelOpenMenu-AriaExpandedFalse', () => {
+        render(<AppNav />);
+        const toggle = getToggle();
+        expect(toggle).toHaveAttribute('aria-label', 'Open menu');
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      });
+
+      it('ToggleClosed_LuMenuIconRendered', () => {
+        render(<AppNav />);
+        const toggle = getToggle();
+        const svg = toggle.querySelector('svg');
+        expect(svg).not.toBeNull();
+      });
+
+      it('Toggle_AriaHaspopupMenu', () => {
+        render(<AppNav />);
+        expect(getToggle()).toHaveAttribute('aria-haspopup', 'menu');
+      });
     });
 
-    it('Default_ToggleClosed_LuMenuIconRendered', () => {
-      render(<AppNav />);
-      const toggle = getToggle();
-      const svg = toggle.querySelector('svg');
-      expect(svg).not.toBeNull();
-    });
-
-    it('Default_ToggleAriaHaspopupMenu', () => {
-      render(<AppNav />);
-      expect(getToggle()).toHaveAttribute('aria-haspopup', 'menu');
-    });
-
-    it('ToggleClick_OpensMenu_AriaExpandedTrue_AriaLabelCloseMenu_LuXIcon_DataOpenTrue', async () => {
+    it('ToggleClick_OpensMenu-AriaExpandedTrue-AriaLabelCloseMenu', async () => {
       const user = userEvent.setup();
       render(<AppNav />);
       await user.click(getToggle());
@@ -227,7 +229,7 @@ describe('AppNav', () => {
       expect(toggle.querySelector('svg')).not.toBeNull();
     });
 
-    it('ToggleClickAgain_ClosesMenu_StateRestored', async () => {
+    it('ToggleClickAgain_ClosesMenu-StateRestored', async () => {
       const user = userEvent.setup();
       render(<AppNav />);
       await user.click(getToggle());
@@ -240,7 +242,7 @@ describe('AppNav', () => {
   });
 
   describe('AutoClose', () => {
-    it('Open_PathnameChanges_MenuCloses', async () => {
+    it('Open_PathnameChanges-MenuCloses', async () => {
       const user = userEvent.setup();
       setPathname('/');
       const { rerender } = render(<AppNav />);
@@ -252,7 +254,7 @@ describe('AppNav', () => {
       expect(getToggle()).toHaveAttribute('aria-label', 'Open menu');
     });
 
-    it('Open_OutsideMousedown_MenuCloses', async () => {
+    it('Open_OutsideMousedown-MenuCloses', async () => {
       const user = userEvent.setup();
       render(<AppNav />);
       await user.click(getToggle());
@@ -261,7 +263,7 @@ describe('AppNav', () => {
       expect(getWrap()).toHaveAttribute('data-open', 'false');
     });
 
-    it('Open_EscapeKeydownOnDocument_MenuCloses', async () => {
+    it('Open_EscapeKeydownOnDocument-MenuCloses', async () => {
       const user = userEvent.setup();
       render(<AppNav />);
       await user.click(getToggle());
@@ -270,7 +272,7 @@ describe('AppNav', () => {
       expect(getWrap()).toHaveAttribute('data-open', 'false');
     });
 
-    it('Open_NonEscapeKeydown_MenuStaysOpen', async () => {
+    it('Open_NonEscapeKeydown-MenuStaysOpen', async () => {
       const user = userEvent.setup();
       render(<AppNav />);
       await user.click(getToggle());
@@ -278,7 +280,7 @@ describe('AppNav', () => {
       expect(getWrap()).toHaveAttribute('data-open', 'true');
     });
 
-    it('Open_MousedownOnToggleButton_MenuStaysOpen', async () => {
+    it('Open_MousedownOnToggleButton-MenuStaysOpen', async () => {
       const user = userEvent.setup();
       render(<AppNav />);
       await user.click(getToggle());
@@ -286,7 +288,7 @@ describe('AppNav', () => {
       expect(getWrap()).toHaveAttribute('data-open', 'true');
     });
 
-    it('Open_MousedownOnPillInsideWrap_MenuStaysOpen', async () => {
+    it('Open_MousedownOnPillInsideWrap-MenuStaysOpen', async () => {
       const user = userEvent.setup();
       render(<AppNav />);
       await user.click(getToggle());
@@ -341,7 +343,7 @@ describe('AppNav', () => {
       expect(countMatching(removeSpy, 'keydown')).toBe(1);
     });
 
-    it('Unmount_WhileOpen_DocumentListenersDetached', async () => {
+    it('UnmountWhileOpen_DocumentListenersDetached', async () => {
       const user = userEvent.setup();
       const { unmount } = render(<AppNav />);
       await user.click(getToggle());
@@ -359,7 +361,7 @@ describe('AppNav', () => {
       expect(getWrap()).toHaveAttribute('data-open', 'false');
     });
 
-    it('Open_PathnameUnchangedRerender_MenuStaysOpen', async () => {
+    it('Open_PathnameUnchangedRerender-MenuStaysOpen', async () => {
       const user = userEvent.setup();
       setPathname('/');
       const { rerender } = render(<AppNav />);

@@ -188,7 +188,7 @@ describe('SegmentedOption', () => {
   });
 
   describe('ClickBehavior', () => {
-    it('InactiveOption_Click_FiresOnChangeWithValue', async () => {
+    it('InactiveOption_ClickFiresOnChangeWithValue', async () => {
       const onChange = vi.fn();
       const user = userEvent.setup();
       render(
@@ -202,7 +202,7 @@ describe('SegmentedOption', () => {
       expect(onChange).toHaveBeenCalledWith('b');
     });
 
-    it('ActiveOption_Click_StillFiresOnChange', async () => {
+    it('ActiveOption_ClickStillFiresOnChange', async () => {
       const onChange = vi.fn();
       const user = userEvent.setup();
       render(
@@ -267,7 +267,7 @@ describe('SegmentedOption', () => {
       );
     });
 
-    it('ValueProp_BecomesDataValue_NotRawValueAttribute', () => {
+    it('ValueProp_BecomesDataValue-NotRawValueAttribute', () => {
       render(
         <ProviderHarness value="a">
           <SegmentedOption value="a">A</SegmentedOption>

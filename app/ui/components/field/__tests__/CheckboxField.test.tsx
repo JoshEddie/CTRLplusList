@@ -54,7 +54,7 @@ describe('CheckboxField', () => {
       expect(screen.getByRole('checkbox')).toBeChecked();
     });
 
-    it('OnChangeForwarded', async () => {
+    it('Clicked_FiresOnChange', async () => {
       const spy = vi.fn();
       render(<CheckboxField label="x" onChange={spy} />);
       await userEvent.click(screen.getByRole('checkbox'));

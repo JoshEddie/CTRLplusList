@@ -100,14 +100,14 @@ describe('PriceField', () => {
   });
 
   describe('AllowNegativeFalse', () => {
-    it('AllowNegativeFalse_InputWithMinus_OnChangeIsPositive', () => {
+    it('InputWithMinus_OnChangeStripsToPositive', () => {
       const spy = vi.fn();
       const { container } = render(<PriceField amount={null} onChange={spy} />);
       fireEvent.change(getInput(container), { target: { value: '-1234' } });
       expect(spy.mock.calls.at(-1)?.[0]).toBe(12.34);
     });
 
-    it('AllowNegativeFalse_InputWithMinus_DisplayHasNoMinus', () => {
+    it('RenderedPositive_DisplayHasNoMinus', () => {
       // Controlled re-render with the value returned by the same parsing
       // pathway. After the change call returns 12.34, asserting that
       // formatting that as the displayed amount has no leading '-'.
