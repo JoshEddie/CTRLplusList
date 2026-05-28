@@ -1,12 +1,18 @@
-## ADDED Requirements
+# spec-review Specification
+
+## Purpose
+
+TBD - created by archiving change add-spec-review-skill. Update Purpose after archive.
+
+## Requirements
 
 ### Requirement: Invocation and scope resolution
 
-The skill SHALL be invokable as `/spec-review` with an optional argument that is a change name, a PR reference, or a diff source. When invoked with no argument, the skill SHALL review the current branch diffed against `main`.
+The skill SHALL be invokable as `/spec-review` with an optional argument that is a change name, a PR reference, or a diff source. When invoked with no argument, the skill SHALL review the current branch diffed against `dev`.
 
-#### Scenario: No argument defaults to branch vs main
+#### Scenario: No argument defaults to branch vs dev
 - **WHEN** a user runs `/spec-review` with no argument on a feature branch
-- **THEN** the skill computes the diff of the current branch against `main` and uses that as the review scope
+- **THEN** the skill computes the diff of the current branch against `dev` and uses that as the review scope
 
 #### Scenario: Explicit PR reference
 - **WHEN** a user runs `/spec-review <PR>` with a pull-request reference

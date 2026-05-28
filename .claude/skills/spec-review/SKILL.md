@@ -36,7 +36,7 @@ This is the team's **only** review gate: a spec-driven PR is reviewed once, afte
 /spec-review [change-name | PR | diff]
 ```
 
-- **No argument** → review the current branch diffed against `main`.
+- **No argument** → review the current branch diffed against `dev`.
 - **`<change-name>`** → an active OpenSpec change name; used directly as the contract-audit target without auto-detection.
 - **`<PR>`** → a pull-request reference; the diff is fetched via `gh`.
 - **`<diff>`** → an explicit diff source (e.g. `--staged`, `--local`, a ref range).

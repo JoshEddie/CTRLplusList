@@ -1,11 +1,11 @@
 ## 1. Skill scaffold and metadata
 
 - [x] 1.1 Create `.claude/skills/spec-review/SKILL.md` with frontmatter: `name: spec-review`, an `argument-hint: "<change-name | PR | diff>"`, and a `description` that triggers on spec-driven PR review and names its two differentiators (CLAUDE.md + supporting-doc audit, OpenSpec contract audit).
-- [x] 1.2 Write the usage block: `/spec-review [change-name | PR | diff]`, documenting that no argument = current branch vs `main`, and that the skill is output-only (no PR posting in this version).
+- [x] 1.2 Write the usage block: `/spec-review [change-name | PR | diff]`, documenting that no argument = current branch vs `dev`, and that the skill is output-only (no PR posting in this version).
 
 ## 2. Phase 0 — scope and change resolution (spec: Invocation; Change resolution)
 
-- [x] 2.1 Document diff acquisition for each invocation form: no-arg → branch vs `main`; PR ref → `gh pr diff`; explicit diff source. Verifiable: each form maps to a concrete command.
+- [x] 2.1 Document diff acquisition for each invocation form: no-arg → branch vs `dev`; PR ref → `gh pr diff`; explicit diff source. Verifiable: each form maps to a concrete command.
 - [x] 2.2 Document change auto-detection using `openspec list --json` + commit messages + diffed `openspec/changes/*/specs/**` paths; specify branch name is NOT a primary signal (cite the `issue-69` ↔ `enforce-test-title-lint` mismatch).
 - [x] 2.3 Document the ambiguity branch (>1 plausible change → ask user via AskUserQuestion) and the no-match branch (ask user via AskUserQuestion whether to proceed with no contract audit or name a change to review against; on proceed-without, continue with standard + convention phases only).
 

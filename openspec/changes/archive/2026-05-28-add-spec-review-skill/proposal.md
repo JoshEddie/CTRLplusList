@@ -4,7 +4,7 @@ The team's PR reviews currently lean on the external `engineering:code-review` p
 
 ## What Changes
 
-- Add a new project skill at `.claude/skills/spec-review/SKILL.md`, invokable as `/spec-review [change-name | PR | diff]` (no arg = current branch vs `main`).
+- Add a new project skill at `.claude/skills/spec-review/SKILL.md`, invokable as `/spec-review [change-name | PR | diff]` (no arg = current branch vs `dev`).
 - The skill is **self-contained** — it does not sub-call or take a runtime dependency on the external `engineering:code-review` plugin. The standard review dimensions (security, performance, correctness, maintainability) are inlined as a sub-agent brief (provenance is recorded in design.md, not as a coupling note in the skill body — D1).
 - **Multi-agent orchestration**: the skill spawns parallel sub-agents — a standard-review agent, a convention-audit agent, and a contract-audit agent — then consolidates their findings into one report.
 - **Convention audit (Feature 1)**: always audits against `CLAUDE.md`, and *follows the doc-pointers declared in `CLAUDE.md`* when the diff hits their trigger (e.g. test files → `TESTING.md`, DB schema/queries → `DATABASE.md`). The pointer-following is generic, not a hardcoded filename list, so new docs added to `CLAUDE.md` are picked up automatically.
