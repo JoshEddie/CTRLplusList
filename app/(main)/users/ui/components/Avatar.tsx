@@ -2,12 +2,7 @@
 
 import { useState } from 'react';
 import { FaUser } from 'react-icons/fa';
-
-function initialsOf(name: string | null | undefined): string {
-  if (!name) return '';
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase() ?? '').join('');
-}
+import { initialsOf } from '../utils';
 
 export default function Avatar({
   src,
@@ -33,6 +28,7 @@ export default function Avatar({
         // 3rd-party Google URL set is open-ended, so the optimizer config
         // would need every origin whitelisted. Defer to native <img> here.
         <img
+          /* v8 ignore next -- showImage guarantees src is a non-empty string here; the `?? undefined` is a type-narrowing fallback unreachable at runtime. */
           src={src ?? undefined}
           alt=""
           width={size}

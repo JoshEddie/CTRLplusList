@@ -137,6 +137,25 @@ export default defineConfig({
         'app/ui/components/Header.tsx': COVERAGE_FLOOR,
         'app/ui/components/Nav.tsx': COVERAGE_FLOOR,
         'app/ui/hooks/useKeyboardOffset.ts': COVERAGE_FLOOR,
+        // test-following (sub-proposal 4.2) — locked at universal COVERAGE_FLOOR.
+        // No `lib/dal.ts` entry: it is a multi-capability aggregate whose
+        // file-level floor is deferred (Tier 2 requirement) until the
+        // data-layer carve-outs that share it collectively cover it.
+        'app/actions/follows.ts': COVERAGE_FLOOR,
+        'app/(main)/users/ui/utils.ts': COVERAGE_FLOOR,
+        'app/(main)/users/ui/components/Avatar.tsx': COVERAGE_FLOOR,
+        'app/(main)/users/ui/components/FollowButton.tsx': COVERAGE_FLOOR,
+        'app/(main)/users/ui/components/FollowContainer.tsx': COVERAGE_FLOOR,
+        'app/(main)/users/ui/components/FollowControls.tsx': COVERAGE_FLOOR,
+        'app/(main)/users/ui/components/FollowDisclosureDialog.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/users/ui/components/FollowPrompt.tsx': COVERAGE_FLOOR,
+        'app/(main)/users/ui/components/ProfileHeader.tsx': COVERAGE_FLOOR,
+        'app/(main)/users/ui/components/PublicListsGrid.tsx': COVERAGE_FLOOR,
+        'app/(main)/users/ui/components/UserCard.tsx': COVERAGE_FLOOR,
+        'app/(main)/users/ui/components/UserCardGrid.tsx': COVERAGE_FLOOR,
+        'app/(main)/following/FollowingPage.tsx': COVERAGE_FLOOR,
+        'app/(main)/following/page.tsx': COVERAGE_FLOOR,
       },
     },
   },

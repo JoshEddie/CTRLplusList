@@ -1,11 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-
-function initialsOf(name: string | null | undefined): string {
-  if (!name) return '?';
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase() ?? '').join('') || '?';
-}
+import { initialsOf } from '../utils';
 
 export default function UserCard({
   user,
@@ -34,7 +29,7 @@ export default function UserCard({
           />
         ) : (
           <span className="user-card-avatar-initials">
-            {initialsOf(user.name)}
+            {initialsOf(user.name) || '?'}
           </span>
         )}
         {newCount > 0 && (

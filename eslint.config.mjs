@@ -81,6 +81,24 @@ const eslintConfig = [
       'app/ui/components/Header.tsx',
       'app/ui/components/Nav.tsx',
       'app/ui/hooks/useKeyboardOffset.ts',
+      // test-following (sub-proposal 4.2) — locked at universal COVERAGE_FLOOR.
+      // lib/dal.ts is intentionally omitted: it aggregates many capabilities'
+      // reads in one file, so its file-level complexity promotion is deferred
+      // until the data-layer carve-outs that share it collectively cover it.
+      'app/actions/follows.ts',
+      'app/(main)/users/ui/utils.ts',
+      'app/(main)/users/ui/components/Avatar.tsx',
+      'app/(main)/users/ui/components/FollowButton.tsx',
+      'app/(main)/users/ui/components/FollowContainer.tsx',
+      'app/(main)/users/ui/components/FollowControls.tsx',
+      'app/(main)/users/ui/components/FollowDisclosureDialog.tsx',
+      'app/(main)/users/ui/components/FollowPrompt.tsx',
+      'app/(main)/users/ui/components/ProfileHeader.tsx',
+      'app/(main)/users/ui/components/PublicListsGrid.tsx',
+      'app/(main)/users/ui/components/UserCard.tsx',
+      'app/(main)/users/ui/components/UserCardGrid.tsx',
+      'app/(main)/following/FollowingPage.tsx',
+      'app/(main)/following/page.tsx',
     ],
     plugins: { sonarjs },
     rules: {

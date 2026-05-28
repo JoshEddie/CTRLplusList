@@ -1,12 +1,7 @@
 import Image from 'next/image';
 import { LinkButton } from '@/app/ui/components/button';
 import FollowContainer from './FollowContainer';
-
-function initialsOf(name: string | null | undefined): string {
-  if (!name) return '?';
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase() ?? '').join('') || '?';
-}
+import { initialsOf } from '../utils';
 
 export default function ProfileHeader({
   user,
@@ -36,7 +31,7 @@ export default function ProfileHeader({
           />
         ) : (
           <span className="profile-avatar-initials">
-            {initialsOf(user.name)}
+            {initialsOf(user.name) || '?'}
           </span>
         )}
       </div>
