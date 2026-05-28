@@ -427,3 +427,31 @@ The pure-libs carve-out — comprising `lib/visibility.ts`, `lib/listAccess.ts`,
 
 - **WHEN** a contributor opens the carve-out source files
 - **THEN** a `*.test.ts` (for `.ts` source) or `*.test.tsx` (for jsdom-requiring source) file exists alongside each one — at `lib/visibility.test.ts`, `lib/listAccess.test.ts`, `hooks/use-media-query.test.tsx`, and `app/ui/components/button/buttonClasses.test.ts`
+
+### Requirement: DAL reads and server actions SHALL be integration-tested against a migrated pglite instance via a shared harness
+
+DAL functions (`lib/dal.ts`) and server actions (`app/actions/*.ts`) SHALL be tested under the **node** vitest project against a real migrated database, not against mocked query builders. Tier classification: **Tier 1** (per `test-coverage` design D13) — this requirement is a cross-cutting data-layer test contract, not carve-out bookkeeping, and was first established by the `test-following` sub-proposal (4.2).
+
+DAL functions (`lib/dal.ts`) and server actions (`app/actions/*.ts`) run under the **node** vitest project (`*.test.ts`) against a real, migrated in-process Postgres provided by `bootPglite()` (`test/helpers/db.ts`), NOT against mocked query builders. The test SHALL:
+
+1. Boot a fresh migrated pglite instance per test (isolating rows, not just files) and module-mock `@/db` so the module-under-test's `import { db } from '@/db'` resolves to that instance.
+2. Apply `mockNextCache()` (`test/helpers/next-cache.ts`) so the `'use cache'` directive's `cacheTag(...)` calls are no-ops and `updateTag` / `revalidateTag` are spies whose calls can be asserted.
+3. Mock `@/lib/auth`'s `auth()` to control the viewer session — this is the NextAuth network boundary the foundation already permits mocking.
+
+Tests SHALL assert observable database state (rows present / absent / counted) and the cache-tag side effects (`updateTag` called on the success path, NOT called on early-return or error paths), per the assertion-substance bar. A module whose static `@/db` import cannot be cleanly swapped MAY introduce a minimal `getDb()` indirection in the source as a testability refactor (per the refactor-authority requirement) rather than lowering the coverage floor.
+
+#### Scenario: A server action is tested against pglite with cache-tag assertions
+
+- **WHEN** a server-action test boots pglite, mocks `@/db` to it, mocks `auth()` to a viewer session, and invokes the action
+- **THEN** the test asserts the resulting row state in pglite AND asserts the `updateTag(...)` spy was called exactly on the success path and not on the unauthorized / validation-failure / DB-error paths
+- **AND** the test does NOT mock the Drizzle query builder
+
+#### Scenario: A `'use cache'` DAL read runs under the node project
+
+- **WHEN** a DAL read carrying the `'use cache'` directive is invoked from a node-project test after `mockNextCache()`
+- **THEN** the function body executes against pglite, `cacheTag(...)` is a no-op, and the returned rows are asserted against the seeded fixture
+
+#### Scenario: Downstream data-layer carve-outs inherit the harness
+
+- **WHEN** a later data-layer sub-proposal (e.g. home-digest, list-item-management, list-visibility, server-endpoint-authorization, visit-history, user-actions) tests a DAL read or server action
+- **THEN** it uses this pglite + `mockNextCache()` + auth-boundary-mock pattern rather than re-deriving a data-layer test strategy
