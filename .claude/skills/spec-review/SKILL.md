@@ -68,13 +68,13 @@ If `gh` is unavailable for a PR reference, degrade: ask the user for a diff sour
 Unless the user named a change explicitly, auto-detect using these signals, strongest first:
 
 #### Diffed spec paths
-- any `openspec/changes/<name>/specs/**` or `openspec/changes/<name>/**` paths in the diff name the change directly. Strongest signal.
+- any `openspec/changes/<name>/**` paths in the diff name the change directly. Strongest signal. This also covers a **premature archive** (D13 Type 1): when the PR includes the `openspec archive` move, the diff adds `openspec/changes/archive/*-<name>/**`, which names the change even though `openspec list` won't.
 
 #### Commit messages
 - `git log main..HEAD` often references the change slug or issue.
 
 #### `openspec list --json`
-- enumerate active changes to match against the above.
+- enumerate active changes to match against the above. Note this is **active-only** — a premature-archived change won't appear here, so rely on the diffed archive paths above for that case.
 
 **The branch name is NOT a primary signal.** Branch names and change slugs diverge in this repo — e.g. branch `issue-69` implemented change `enforce-test-title-lint`. Only use the branch name as a weak tiebreaker, never as the deciding factor.
 
@@ -93,7 +93,7 @@ Ask the user via the **AskUserQuestion** tool whether to
 - (a) proceed with no contract audit
 - (b) name the change to review against. 
 
-On (a), skip the contract audit and run only the standard-review and convention-audit phases, noting it in the scope line. On (b), use the named change as the contract-audit target — note that since auto-detection (0b) only scans active changes, the named change is **commonly an already-archived one**; the contract-audit brief handles reading from `archive/` in that case.
+On (a), skip the contract audit and run only the standard-review and convention-audit phases, noting it in the scope line; the verdict reads `no archive gate (contract audit skipped)`. On (b), use the named change as the contract-audit target — the named change is **commonly an already-merged archived one**; the contract-audit brief classifies it (active / Type 1 / Type 2) and reads from `archive/` as needed.
 
 ---
 
@@ -177,14 +177,14 @@ Known pointers at time of writing (re-derive from `CLAUDE.md` each run — this 
 
 A diff that adds or changes behavior but touches **no** test files is itself a red flag — it usually means code is being merged without coverage. Do not silently skip the test audit in that case:
 
-- read `TESTING.md` and judge whether the changed behavior warranted a test;
-- if it did, surface a maintainability finding (`behavior changed with no test added/updated`), citing the untested code;
-- only skip the test audit when the diff changes nothing testable (docs, comments, pure config/styling).
+- Read `TESTING.md` and judge whether the changed behavior warranted a test;
+- If it did, surface a maintainability finding (`behavior changed with no test added/updated`), citing the untested code;
+- Only skip the test audit when the diff changes nothing testable (docs, comments, pure config/styling).
 
 A passing coverage gate is **not** proof the behavior is tested — it can be gamed. Also flag, as maintainability findings:
 
-- new coverage-suppression directives (`/* c8 ignore … */`, `/* v8 ignore … */`, `/* istanbul ignore … */`) placed over real behavior instead of testing it;
-- code commented out or deleted to drop it from the coverage denominator rather than being refactored or tested.
+- New coverage-suppression directives (`/* c8 ignore … */`, `/* v8 ignore … */`, `/* istanbul ignore … */`) placed over real behavior instead of testing it;
+- Code commented out or deleted to drop it from the coverage denominator rather than being refactored or tested.
 
 The fix for these is a test or a genuine refactor — not an ignore hint or a commented-out block. Treat a new ignore directive on non-trivial logic as Major unless it is justified inline (e.g. a genuinely unreachable defensive branch).
 
@@ -194,10 +194,32 @@ The fix for these is a test or a genuine refactor — not an ignore hint or a co
 
 Skip this agent entirely if Phase 0c resolved to no change.
 
-Read the resolved change's `tasks.md`, `design.md`, and `specs/**/spec.md` from its directory:
+Read the resolved change's `tasks.md`, `design.md`, and `specs/**/spec.md` from its directory. First classify the change by its position relative to the spec-sync (archive) step — this sets how findings may be reconciled (see "Reconciliation latitude" below).
 
-- **Auto-detected or active named change** → read from `openspec/changes/<name>/`. An auto-detected change SHALL come from the active directory only — never substitute an `archive/` copy for an auto-detected match, since the normal pre-archive review must audit the live artifacts.
-- **Explicitly-named archived change** → archived dirs are date-prefixed, so locate it by matching the suffix: `openspec/changes/archive/*-<name>/` (e.g. `archive/2026-05-21-add-following-and-history/`). This is the expected path when a PR is reviewed after its change was already archived: auto-detection (Phase 0b, active-only) finds nothing, the user names the change via the Phase 0c prompt, and the contract audit runs against the archived spec.
+### Locate and classify the resolved change
+
+#### Active
+
+`openspec/changes/<name>/` with no archive move. The normal pre-archive flow; read from there. An auto-detected change SHALL come from the active directory only — never substitute an `archive/` copy for an auto-detected match.
+
+#### Type 1 — premature archive
+
+The change lives under `openspec/changes/archive/*-<name>/` (date-prefixed, e.g. `archive/2026-05-21-add-following-and-history/`) and that archive dir is introduced by the diff — i.e. the `openspec archive` move is part of *this* PR and the dir is absent on the base branch. Its spec delta was synced *inside this PR*.
+
+#### Type 2 — merged archive
+
+The change lives under `openspec/changes/archive/*-<name>/` and already exists on the base branch (the diff does not add it). Its spec delta is canonical. This is the expected path when a PR is reviewed after its change was already merged-and-archived.
+
+#### Discriminate Type 1 from Type 2 with git
+
+Check against the diff's base (`<base>` = the PR base branch for a `<PR>` invocation, else `main`, else the left side of an explicit range):
+
+```bash
+# Type 2 (merged) if the archive dir exists on the base; Type 1 (premature) if added by the diff.
+git cat-file -e "<base>:openspec/changes/archive/<dir>/proposal.md" 2>/dev/null && echo "Type 2 (merged)" || echo "Type 1 (premature)"
+```
+
+Equivalently, the archive path shows as `A` in `git diff --name-status <base>...HEAD` ⇒ Type 1.
 
 ### Report mismatches direction-neutral (D12)
 
@@ -205,7 +227,19 @@ A pre-archive review is auditing a change whose `tasks.md`/`design.md`/`spec.md`
 
 For every contract finding below: state it as "X and the implementation disagree" (not "code violates X"), and propose **both** resolution directions — amend the implementation, **or** amend/relax the task or spec. Disposition is unchanged (`Fix now` still means "reconcile in this PR"); D12 only widens *how* it may be reconciled.
 
-**Exception:** when reviewing against an explicitly-named **already-archived** change (Phase 0c archive path), the archived spec *is* the fixed contract — apply the directional "implementation must conform to the spec" framing instead, and do not offer "amend the spec".
+**Exception:** when reviewing against an **already-merged** archived change (Type 2 above), the canonical spec *is* the fixed contract — apply the directional "implementation must conform to the spec" framing instead, and do not offer "amend the spec". A change archived *within this PR* (Type 1) keeps the neutral framing but caps reconciliation — see below.
+
+### Reconciliation latitude by archive state (D13)
+
+How far past the spec-sync step the change sits caps what a finding's reconciliation may touch. The governing rule: **you may hand-edit the spec only to the degree the edit wouldn't have needed the sync you are now bypassing** — pure wording is sync-neutral, a changed/added/removed SHALL is not.
+
+| State | Framing | In-PR reconciliation |
+| --- | --- | --- |
+| **Active** | neutral (D12) | edit either side freely; the archive step's sync reconciles spec↔canonical later |
+| **Type 1 — premature** | neutral (D12) | **minor only**: wording/clarity fixes, or fixes affecting only the code being merged. A changed/added/removed SHALL **cannot** be hand-patched (it would bypass the sync that already ran in this PR) — block and route to a fresh `propose→archive` cycle |
+| **Type 2 — merged** | directional — code must conform | **no spec-side edits**: conform the code (`Fix now`) **or** open a fresh proposal (`File issue`); block until resolved |
+
+For Type 2, never propose amending the merged spec to make a finding go away — that bypasses spec-sync; changing canonical requires its own proposal cycle. "Block + needs a fresh proposal" is not a fourth disposition — it is a `Request changes` verdict whose reconciliation is a `File issue` (new cycle) rather than an in-PR edit.
 
 ### The three contract checks
 
@@ -215,7 +249,7 @@ For every task marked `[x]` in `tasks.md`, confirm matching real work exists in 
 
 #### Design/spec conformance
 
-Confirm completed work conforms to the SHALL requirements in `design.md` and `specs/**/spec.md`. Contradiction → **conformance mismatch finding**, citing the specific SHALL — neutrally for an active change (propose changing the code or amending the SHALL), directionally for an archived spec (code must conform).
+Confirm completed work conforms to the SHALL requirements in `design.md` and `specs/**/spec.md`. Contradiction → **conformance mismatch finding**, citing the specific SHALL — neutrally for an active or Type-1 (premature) change (propose changing the code or amending the SHALL, capped at sync-neutral edits for Type 1), directionally for a Type-2 (merged) archived spec (code must conform).
 
 #### Scope creep
 
@@ -223,7 +257,7 @@ Confirm no behavior was added that no task and no spec requirement documents. Un
 
 ### Validation
 
-Run `openspec validate <name> --strict` and report any failures as contract findings. This resolves **active** changes only; for an explicitly-named archived change the command cannot resolve it — skip validation and note it as not-applicable in the report rather than reporting a failure.
+Run `openspec validate <name> --strict` and report any failures as contract findings. This resolves **active** changes only; for any archived change (Type 1 or Type 2) the command cannot resolve it — skip validation and note it as not-applicable in the report rather than reporting a failure.
 
 ---
 
@@ -256,7 +290,7 @@ Emit a single report in **exactly this order** — do not reorder, omit, or add 
 - <short bullets>
 
 ## Verdict
-<Approve | Request changes> — <clear to archive | not yet clear to archive (blockers: …) | already archived>
+<Approve | Request changes> — <clear to archive | not yet clear to archive (blockers: …) | not yet clear — needs a fresh propose→archive cycle | already archived | blocked — violates merged spec <name>; needs implementation conformance or a fresh proposal | no archive gate (contract audit skipped)>
 
 ---
 Would you like me to enter OpenSpec explore mode to investigate these findings — recommend which to fix, and weigh how each fix would land (pros/cons)?
@@ -320,15 +354,25 @@ The verdict line is `Approve` or `Request changes`, followed by the clear-to-arc
 
 So a clean-but-noted review approves. Severity does not change this — a `Minor` `Fix now` still blocks (D8: cost/size never gate inclusion), and a `Critical`-looking item dispositioned `Drop` does not (it was adjudicated a non-issue).
 
-The change is **clear to archive only when ALL** of:
+The archive-gate line depends on the change's state (D13):
+
+#### Active or Type-1 (premature) change
+
+The clear-to-archive gate applies (a Type-1 change becomes canonical on merge). It is clear to archive only when ALL of:
 
 - every `tasks.md` item is `[x]`, **and**
-- `openspec validate <name> --strict` passes, **and**
+- `openspec validate <name> --strict` passes — for a Type-1 archive the CLI cannot resolve the archived name, so note validate N/A (it ran before the in-PR archive), **and**
 - no open false-complete or conformance findings remain.
 
-Otherwise state **not yet clear to archive** and list the blocking items explicitly.
+Otherwise state **not yet clear to archive** and list the blocking items. A Type-1 finding whose only reconciliation is a significant spec change is blocking: state `not yet clear — needs a fresh propose→archive cycle`.
 
-When the contract audit ran against an **already-archived** change, the clear-to-archive gate is moot — state `already archived` instead of a clear-to-archive line, and give the verdict purely on whether the diff conforms to the archived contract.
+#### Type-2 (merged) change
+
+The clear-to-archive gate is moot; state `already archived` and give the verdict purely on whether the diff conforms to the canonical contract. An open conformance violation forces `Request changes` and reads `blocked — violates merged spec <name>; needs implementation conformance or a fresh proposal`.
+
+#### No contract audit (Phase 0c proceed-without)
+
+There is no change to gate; state `no archive gate (contract audit skipped)`. The verdict is determined solely by the standard/convention dispositions.
 
 ---
 

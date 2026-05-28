@@ -96,9 +96,9 @@ The contract-audit phase SHALL identify the related OpenSpec change by auto-dete
 
 The contract-audit phase SHALL read the resolved change's `tasks.md`, `design.md`, and `specs/**/spec.md`. When the change was resolved by auto-detection it SHALL be read from the active `openspec/changes/<name>/` directory and SHALL NOT be substituted by an `openspec/changes/archive/` copy. When the user explicitly names a change that exists only under `openspec/changes/archive/` (e.g. a PR reviewed after its change was archived), the skill SHALL read that change from its date-prefixed archive directory `openspec/changes/archive/*-<name>/`. For the resolved change it SHALL verify that every task marked complete (`[x]`) in `tasks.md` corresponds to real work present in the diff or codebase, that the completed work conforms to `design.md` and `specs/**/spec.md`, and that no behavior was added that no task or spec documents (undocumented scope creep).
 
-When a contract check surfaces a disagreement between the implementation and the change's own `tasks.md`/`design.md`/`spec.md`, the skill SHALL report it as a mismatch without presuming which artifact is the defect, because in a not-yet-archived change the spec and the implementation were authored together and are equally provisional. The proposed resolution SHALL name both directions — amend the implementation, or amend/relax the task or spec — and the user adjudicates which side is correct. This neutral framing applies to an active (pre-archive) change; when the review runs against an explicitly-named already-archived change the archived spec is the fixed contract and the skill SHALL apply the directional "implementation must conform to the spec" framing instead.
+When a contract check surfaces a disagreement between the implementation and the change's own `tasks.md`/`design.md`/`spec.md`, the skill SHALL report it as a mismatch without presuming which artifact is the defect, because in a not-yet-archived change the spec and the implementation were authored together and are equally provisional. The proposed resolution SHALL name both directions — amend the implementation, or amend/relax the task or spec — and the user adjudicates which side is correct. This neutral framing applies to an active (pre-archive) change and to a premature archive (see "Archive state governs reconciliation latitude"); when the review runs against an already-merged archived change the canonical spec is the fixed contract and the skill SHALL apply the directional "implementation must conform to the spec" framing instead.
 
-It SHALL run `openspec validate <name> --strict` for an active change and report failures; for an archived change, which the CLI cannot resolve by name, it SHALL skip validation and note it as not-applicable rather than reporting a failure.
+It SHALL run `openspec validate <name> --strict` for an active change and report failures; for any archived change (premature or merged), which the CLI cannot resolve by name, it SHALL skip validation and note it as not-applicable rather than reporting a failure.
 
 #### Scenario: Task marked complete without matching work is flagged
 - **WHEN** a `tasks.md` item is marked `[x]` but the described work is absent from the diff and codebase
@@ -108,9 +108,9 @@ It SHALL run `openspec validate <name> --strict` for an active change and report
 - **WHEN** completed work conflicts with a SHALL requirement in `design.md` or `specs/**/spec.md`
 - **THEN** the skill flags the implementation↔spec mismatch citing the requirement, without presuming the spec is correct, and proposes both resolution directions (change the implementation, or amend the spec)
 
-#### Scenario: Mismatch against an archived spec is directional
-- **WHEN** the review runs against an explicitly-named already-archived change and the implementation conflicts with the archived spec
-- **THEN** the skill treats the archived spec as the fixed contract and flags the implementation as the side that must conform
+#### Scenario: Mismatch against a merged archived spec is directional
+- **WHEN** the review runs against an already-merged archived change (its archive directory already exists on the diff's base branch) and the implementation conflicts with the canonical spec
+- **THEN** the skill treats the canonical spec as the fixed contract and flags the implementation as the side that must conform
 
 #### Scenario: Undocumented behavior is flagged as scope creep
 - **WHEN** the diff introduces behavior not covered by any task or spec requirement
@@ -122,7 +122,27 @@ It SHALL run `openspec validate <name> --strict` for an active change and report
 
 #### Scenario: Explicitly-named archived change reads the archive
 - **WHEN** the user explicitly names a change that exists only under `openspec/changes/archive/`
-- **THEN** the contract audit reads it from `openspec/changes/archive/*-<name>/`, skips `openspec validate`, and reports the verdict against the archived contract without a clear-to-archive line
+- **THEN** the contract audit reads it from `openspec/changes/archive/*-<name>/` and skips `openspec validate`
+
+### Requirement: Archive state governs reconciliation latitude
+
+When the resolved change is located under `openspec/changes/archive/`, the skill SHALL determine whether that archive directory is introduced by the diff under review or already present on the diff's base branch, and SHALL set the contract-audit framing accordingly. An archive directory added by the diff (absent on the base branch) is a premature archive whose spec delta has already been synced within the PR; an archive directory already present on the base branch is a merged archive whose spec delta is canonical.
+
+For a premature archive the skill SHALL apply the direction-neutral framing of an active change, but SHALL restrict in-PR reconciliation to sync-neutral edits — wording or clarity fixes to the spec, or fixes affecting only the code being merged. When reconciling a mismatch would add, remove, or materially alter a SHALL requirement, the skill SHALL NOT propose hand-editing the archived artifacts, SHALL require a fresh propose→archive cycle, and SHALL block the PR.
+
+For a merged archive the skill SHALL treat the canonical spec as the fixed contract: the implementation must conform. A conformance violation SHALL be resolved only by conforming the implementation or by opening a fresh change proposal, never by editing the merged spec in this PR, and SHALL block the PR until resolved.
+
+#### Scenario: Premature archive allows sync-neutral reconciliation
+- **WHEN** the resolved change's archive directory is added by the diff and a contract mismatch can be reconciled by a wording fix or a code-only change
+- **THEN** the skill proposes that reconciliation as `Fix now` under direction-neutral framing
+
+#### Scenario: Premature archive blocks a significant spec change
+- **WHEN** the resolved change's archive directory is added by the diff and reconciling a mismatch would add, remove, or materially alter a SHALL requirement
+- **THEN** the skill does not propose hand-editing the archived spec, requires a fresh propose→archive cycle, and blocks the PR
+
+#### Scenario: Merged archive requires conformance or a fresh proposal
+- **WHEN** the resolved change's archive directory already exists on the diff's base branch and the implementation conflicts with the canonical spec
+- **THEN** the skill offers only conforming the implementation or opening a fresh proposal, never editing the merged spec, and blocks the PR
 
 ### Requirement: Consolidated report with a defined output contract and a clear-to-archive verdict
 
@@ -132,7 +152,7 @@ Severity SHALL use the text labels `Critical` / `Major` / `Minor` with no emojis
 
 The verdict SHALL be `Request changes` when at least one open finding is dispositioned `Fix now`, and `Approve` otherwise. Findings dispositioned `File issue` or `Drop` SHALL NOT, on their own, cause a `Request changes` verdict — the verdict is determined by dispositions, not by the count of findings. Severity SHALL NOT override the disposition: a `Minor` `Fix now` blocks and a higher-severity finding adjudicated `Drop` does not.
 
-The verdict SHALL also state whether the change is clear to archive. The change SHALL be reported clear to archive only when all `tasks.md` items are complete, `openspec validate <name> --strict` passes, and the contract audit found no unresolved conformance or false-complete findings.
+The verdict SHALL also state the archive-gate outcome appropriate to the resolved change's state. For an active or premature-archive change the change SHALL be reported clear to archive only when all `tasks.md` items are complete, validation passes (or is not-applicable for a premature archive), and the contract audit found no unresolved conformance or false-complete findings; otherwise the verdict SHALL state it is not yet clear to archive and list the blockers. For a merged-archive change the clear-to-archive gate is moot and the verdict SHALL state `already archived`; an open conformance violation against a merged archive SHALL force `Request changes` and state the PR is blocked pending implementation conformance or a fresh proposal. When the contract audit was skipped (no related change), the verdict SHALL state that no archive gate applies and be determined solely by the standard and convention dispositions.
 
 #### Scenario: Output follows the fixed order and style
 - **WHEN** the skill emits its report
@@ -153,6 +173,14 @@ The verdict SHALL also state whether the change is clear to archive. The change 
 #### Scenario: Not clear to archive when contract findings exist
 - **WHEN** any false-complete, conformance, or validation finding remains open
 - **THEN** the verdict states the change is not yet clear to archive and lists the blocking findings
+
+#### Scenario: No archive gate when contract audit was skipped
+- **WHEN** the user proceeded without a contract audit because no related change was found
+- **THEN** the verdict states no archive gate applies and is determined solely by the standard and convention dispositions
+
+#### Scenario: Merged-archive violation blocks pending a fresh proposal
+- **WHEN** the review runs against a merged archive and an implementation-vs-spec conformance violation is open
+- **THEN** the verdict is `Request changes` and states the PR is blocked pending implementation conformance or a fresh change proposal
 
 ### Requirement: Optional explore-mode handoff
 
