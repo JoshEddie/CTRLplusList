@@ -1,35 +1,9 @@
 import { render, screen } from '@testing-library/react';
-import type { ImgHTMLAttributes } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import Logo from '../Logo';
 
-type MockImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
-  src: string;
-  alt: string;
-  width: number;
-  height: number;
-  priority?: boolean;
-};
-vi.mock('next/image', () => ({
-  default: function MockImage({
-    priority,
-    width,
-    height,
-    src,
-    alt,
-    ...rest
-  }: MockImageProps) {
-    return (
-      <img
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        fetchPriority={priority ? 'high' : 'auto'}
-        {...rest}
-      />
-    );
-  },
+vi.mock('next/image', async () => ({
+  default: (await import('./test-helpers')).MockNextImage,
 }));
 
 describe('Logo', () => {

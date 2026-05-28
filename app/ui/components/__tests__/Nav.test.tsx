@@ -5,8 +5,6 @@
  * `<nav>` container or its class; classed descendant queries are required.
  */
 import { render, screen } from '@testing-library/react';
-import { forwardRef } from 'react';
-import type { AnchorHTMLAttributes, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
 import Nav from '../Nav';
@@ -15,21 +13,8 @@ vi.mock('@/lib/auth', () => ({
   auth: vi.fn(),
 }));
 
-type MockLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
-  href: string;
-  children?: ReactNode;
-};
-vi.mock('next/link', () => ({
-  default: forwardRef<HTMLAnchorElement, MockLinkProps>(function MockLink(
-    { children, href, ...rest },
-    ref
-  ) {
-    return (
-      <a ref={ref} href={href} {...rest}>
-        {children}
-      </a>
-    );
-  }),
+vi.mock('next/link', async () => ({
+  default: (await import('./test-helpers')).MockNextLink,
 }));
 
 const fixtureSession = {

@@ -6,8 +6,6 @@
  * are the only path.
  */
 import { render, screen } from '@testing-library/react';
-import { forwardRef } from 'react';
-import type { AnchorHTMLAttributes, ImgHTMLAttributes, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import AppFrame from '../AppFrame';
 
@@ -19,50 +17,12 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
-type MockLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
-  href: string;
-  children?: ReactNode;
-};
-vi.mock('next/link', () => ({
-  default: forwardRef<HTMLAnchorElement, MockLinkProps>(function MockLink(
-    { children, href, ...rest },
-    ref
-  ) {
-    return (
-      <a ref={ref} href={href} {...rest}>
-        {children}
-      </a>
-    );
-  }),
+vi.mock('next/link', async () => ({
+  default: (await import('./test-helpers')).MockNextLink,
 }));
 
-type MockImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
-  src: string;
-  alt: string;
-  width: number;
-  height: number;
-  priority?: boolean;
-};
-vi.mock('next/image', () => ({
-  default: function MockImage({
-    priority,
-    width,
-    height,
-    src,
-    alt,
-    ...rest
-  }: MockImageProps) {
-    return (
-      <img
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        fetchPriority={priority ? 'high' : 'auto'}
-        {...rest}
-      />
-    );
-  },
+vi.mock('next/image', async () => ({
+  default: (await import('./test-helpers')).MockNextImage,
 }));
 
 describe('AppFrame', () => {

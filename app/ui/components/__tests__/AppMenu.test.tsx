@@ -5,8 +5,6 @@
  * are the only way to assert composition.
  */
 import { render, waitFor } from '@testing-library/react';
-import { forwardRef } from 'react';
-import type { AnchorHTMLAttributes, ImgHTMLAttributes, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
 import AppMenu from '../AppMenu';
@@ -28,50 +26,12 @@ vi.mock('../Nav', () => ({
   default: () => <nav className="nav-container" data-testid="nav-stub" />,
 }));
 
-type MockLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
-  href: string;
-  children?: ReactNode;
-};
-vi.mock('next/link', () => ({
-  default: forwardRef<HTMLAnchorElement, MockLinkProps>(function MockLink(
-    { children, href, ...rest },
-    ref
-  ) {
-    return (
-      <a ref={ref} href={href} {...rest}>
-        {children}
-      </a>
-    );
-  }),
+vi.mock('next/link', async () => ({
+  default: (await import('./test-helpers')).MockNextLink,
 }));
 
-type MockImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
-  src: string;
-  alt: string;
-  width: number;
-  height: number;
-  priority?: boolean;
-};
-vi.mock('next/image', () => ({
-  default: function MockImage({
-    priority,
-    width,
-    height,
-    src,
-    alt,
-    ...rest
-  }: MockImageProps) {
-    return (
-      <img
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        fetchPriority={priority ? 'high' : 'auto'}
-        {...rest}
-      />
-    );
-  },
+vi.mock('next/image', async () => ({
+  default: (await import('./test-helpers')).MockNextImage,
 }));
 
 const fixtureSession = {

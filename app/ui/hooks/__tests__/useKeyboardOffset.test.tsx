@@ -87,6 +87,11 @@ afterEach(() => {
   }
   if (originalInner) {
     Object.defineProperty(window, 'innerHeight', originalInner);
+  } else {
+    // No original descriptor — drop the own-property installed by setInnerHeight
+    // so jsdom's prototype getter (default 768) takes over again. Mirrors the
+    // visualViewport fallback above.
+    Reflect.deleteProperty(window, 'innerHeight');
   }
   document.documentElement.style.removeProperty('--keyboard-offset');
 });

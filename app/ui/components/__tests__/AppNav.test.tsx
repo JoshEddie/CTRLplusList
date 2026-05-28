@@ -8,8 +8,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { usePathname } from 'next/navigation';
-import { forwardRef } from 'react';
-import type { AnchorHTMLAttributes, ReactNode } from 'react';
 import {
   afterEach,
   beforeEach,
@@ -24,21 +22,8 @@ vi.mock('next/navigation', () => ({
   usePathname: vi.fn(),
 }));
 
-type MockLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
-  href: string;
-  children?: ReactNode;
-};
-vi.mock('next/link', () => ({
-  default: forwardRef<HTMLAnchorElement, MockLinkProps>(function MockLink(
-    { children, href, ...rest },
-    ref
-  ) {
-    return (
-      <a ref={ref} href={href} {...rest}>
-        {children}
-      </a>
-    );
-  }),
+vi.mock('next/link', async () => ({
+  default: (await import('./test-helpers')).MockNextLink,
 }));
 
 function setPathname(p: string) {
@@ -49,8 +34,13 @@ function getWrap(): HTMLElement {
   return document.querySelector('.app-nav-wrap') as HTMLElement;
 }
 
+// The toggle's accessible name is exactly "Open menu" when closed and
+// "Close menu" when open; the anchored regex prevents collision with any
+// future button that happens to contain the substring "menu".
 function getToggle(): HTMLButtonElement {
-  return screen.getByRole('button', { name: /menu/i }) as HTMLButtonElement;
+  return screen.getByRole('button', {
+    name: /^(Open|Close) menu$/,
+  }) as HTMLButtonElement;
 }
 
 function getPill(label: string): HTMLAnchorElement {

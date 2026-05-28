@@ -5,62 +5,15 @@
  * attribute set we lock; classed descendant queries are the only path.
  */
 import { render, screen } from '@testing-library/react';
-import { forwardRef } from 'react';
-import type { AnchorHTMLAttributes, ImgHTMLAttributes, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import AppLogo from '../AppLogo';
 
-// Mock `next/link` per the menu-system precedent: Next 15's <Link> reads
-// AppRouterContext for prefetching; in jsdom with no provider, render() throws.
-type MockLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> & {
-  href: string;
-  children?: ReactNode;
-};
-vi.mock('next/link', () => ({
-  default: forwardRef<HTMLAnchorElement, MockLinkProps>(function MockLink(
-    { children, href, ...rest },
-    ref
-  ) {
-    return (
-      <a ref={ref} href={href} {...rest}>
-        {children}
-      </a>
-    );
-  }),
+vi.mock('next/link', async () => ({
+  default: (await import('./test-helpers')).MockNextLink,
 }));
 
-// Mock `next/image` to map the production prop surface (`priority`,
-// `width`, `height`) to native `<img>` attributes (`fetchpriority="high"`,
-// `width`, `height`). This is the documented translation; the real
-// next/image performs the same mapping but adds a Next-internal optimization
-// pipeline that is not observable in jsdom.
-type MockImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
-  src: string;
-  alt: string;
-  width: number;
-  height: number;
-  priority?: boolean;
-};
-vi.mock('next/image', () => ({
-  default: function MockImage({
-    priority,
-    width,
-    height,
-    src,
-    alt,
-    ...rest
-  }: MockImageProps) {
-    return (
-      <img
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        fetchPriority={priority ? 'high' : 'auto'}
-        {...rest}
-      />
-    );
-  },
+vi.mock('next/image', async () => ({
+  default: (await import('./test-helpers')).MockNextImage,
 }));
 
 describe('AppLogo', () => {
