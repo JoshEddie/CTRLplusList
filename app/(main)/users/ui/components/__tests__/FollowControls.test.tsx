@@ -77,7 +77,9 @@ describe('FollowControls', () => {
     await user.click(mainFollow());
     expect(mainFollowing()).toBeInTheDocument();
     await waitFor(() => expect(followUser).toHaveBeenCalledWith(USER_ID));
-    await waitFor(() => expect(toast.success).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith('Following Bob')
+    );
     expect(router.refresh).toHaveBeenCalledTimes(1);
   });
 

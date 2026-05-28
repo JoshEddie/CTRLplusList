@@ -46,7 +46,7 @@ describe('getFollowingByUser', () => {
     expect(byId.b).toEqual({ id: 'b', name: 'Bob', image: null });
   });
 
-  it('OrdersByCreatedAtDesc', async () => {
+  it('MultipleFollows_OrderedByCreatedAtDesc', async () => {
     await seedUsers(db, [{ id: 'viewer' }, { id: 'a' }, { id: 'b' }]);
     await seedFollow(db, 'viewer', 'a', new Date('2020-01-01'));
     await seedFollow(db, 'viewer', 'b', new Date('2022-01-01'));
@@ -78,7 +78,7 @@ describe('getFollowersOfUser', () => {
     });
   });
 
-  it('OrdersByCreatedAtDesc', async () => {
+  it('MultipleFollowers_OrderedByCreatedAtDesc', async () => {
     await seedUsers(db, [{ id: 'owner' }, { id: 'a' }, { id: 'b' }]);
     await seedFollow(db, 'a', 'owner', new Date('2020-01-01'));
     await seedFollow(db, 'b', 'owner', new Date('2022-01-01'));
@@ -129,7 +129,7 @@ describe('getFollowingFeedUsers', () => {
     expect(typeof rows[0].new_count).toBe('number');
   });
 
-  it('OrdersByMaxSharedAtDesc', async () => {
+  it('FolloweesWithLists_OrderedByMaxSharedAtDesc', async () => {
     await seedUsers(db, [{ id: 'viewer' }, { id: 'a' }, { id: 'b' }]);
     await seedFollow(db, 'viewer', 'a', new Date('2020-01-01'));
     await seedFollow(db, 'viewer', 'b', new Date('2020-01-01'));
@@ -174,7 +174,7 @@ describe('isFollowing', () => {
 });
 
 describe('isBlocked', () => {
-  it('DirectionalTrueFalse', async () => {
+  it('TrueInBlockDirection_FalseInReverse', async () => {
     await seedUsers(db, [{ id: 'viewer' }, { id: 'a' }]);
     await seedBlock(db, 'viewer', 'a');
     expect(await dal.isBlocked('viewer', 'a')).toBe(true);

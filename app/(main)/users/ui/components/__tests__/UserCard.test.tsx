@@ -20,7 +20,7 @@ vi.mock('next/image', async () => ({
 const baseUser = { id: 'u1', name: 'Alice', image: null as string | null };
 
 describe('UserCard', () => {
-  it('LinksToUserIdRoute', () => {
+  it('Default_LinksToUserIdRoute', () => {
     render(<UserCard user={baseUser} />);
     expect(screen.getByRole('link')).toHaveAttribute('href', '/user/u1');
   });

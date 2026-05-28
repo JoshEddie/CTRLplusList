@@ -57,17 +57,19 @@ describe('FollowContainer', () => {
     expect(controls).toHaveAttribute('data-following', 'true');
   });
 
-  it('RequireDisclosure_IsNegationOfViewerHasAnyFollows', async () => {
+  it('ViewerHasNoFollows_RequireDisclosureTrue', async () => {
     vi.mocked(viewerHasAnyFollows).mockResolvedValue(false);
     render(await FollowContainer(PROPS));
     expect(screen.getByTestId('controls')).toHaveAttribute(
       'data-require',
       'true'
     );
+  });
 
+  it('ViewerHasFollows_RequireDisclosureFalse', async () => {
     vi.mocked(viewerHasAnyFollows).mockResolvedValue(true);
     render(await FollowContainer(PROPS));
-    expect(screen.getAllByTestId('controls')[1]).toHaveAttribute(
+    expect(screen.getByTestId('controls')).toHaveAttribute(
       'data-require',
       'false'
     );
