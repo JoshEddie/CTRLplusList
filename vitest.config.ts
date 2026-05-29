@@ -198,6 +198,12 @@ export default defineConfig({
         'app/ui/components/ListCardRow.tsx': COVERAGE_FLOOR,
         'app/ui/components/MoreCard.tsx': COVERAGE_FLOOR,
         'app/ui/components/ListCollectionsNav.tsx': COVERAGE_FLOOR,
+        // test-list-hero-header (sub-proposal 4.7) — locked at universal COVERAGE_FLOOR.
+        // lib/visibility.ts already enumerated above (from 2.1); the new
+        // resolveListVisibility export is covered by the same floor.
+        'app/(main)/lists/ui/components/ListDetails.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/ShareButton.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/EditListAction.tsx': COVERAGE_FLOOR,
       },
     },
   },

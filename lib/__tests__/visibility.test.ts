@@ -1,5 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { VISIBILITY, fromDb, visibilityDbValues } from '../visibility';
+import type { ListTable } from '@/lib/types';
+import {
+  VISIBILITY,
+  fromDb,
+  resolveListVisibility,
+  visibilityDbValues,
+} from '../visibility';
+
+function listRow(overrides: Partial<ListTable & { visibility?: string }> = {}) {
+  return {
+    id: 'l1',
+    name: 'L',
+    subtitle: null,
+    occasion: '',
+    date: new Date(0),
+    created_at: new Date(0),
+    updated_at: new Date(0),
+    user_id: 'u1',
+    shared: false,
+    ...overrides,
+  };
+}
 
 describe('visibility', () => {
   describe('fromDb', () => {
@@ -73,6 +94,32 @@ describe('visibility', () => {
         'private',
         'owner',
       ]);
+    });
+  });
+
+  describe('resolveListVisibility', () => {
+    it('ExplicitVisibilityColumn_DecodesViaFromDb', () => {
+      expect(resolveListVisibility(listRow({ visibility: 'unlisted' }))).toBe(
+        VISIBILITY.LINK
+      );
+    });
+
+    it('NoVisibilitySharedTrue_ReturnsLINK', () => {
+      expect(resolveListVisibility(listRow({ shared: true }))).toBe(
+        VISIBILITY.LINK
+      );
+    });
+
+    it('NoVisibilitySharedFalse_ReturnsOWNER', () => {
+      expect(resolveListVisibility(listRow({ shared: false }))).toBe(
+        VISIBILITY.OWNER
+      );
+    });
+
+    it('ColumnSetSharedTrue_DecodesColumnIgnoringShared', () => {
+      expect(
+        resolveListVisibility(listRow({ visibility: 'private', shared: true }))
+      ).toBe(VISIBILITY.OWNER);
     });
   });
 });

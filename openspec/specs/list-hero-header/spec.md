@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change redesign-list-hero. Update Purpose after archive.
+The `list-hero-header` capability defines the composition of the list-detail hero panel — the single continuous gradient banner at the top of a list page. It specifies which elements render, in what DOM order, and for which viewer class (owner, authenticated viewer, owner-in-preview): the identity zone (visibility/share cluster, title, occasion eyebrow, subtitle, item-count/updated footer) and the controls zone (owner action row + "Choose items", or viewer byline + Share/Bookmark, or the preview action row). It also owns the WCAG 2.1 AA contrast contract for all hero text against the gradient. The internal behavior of the affordances it places (the visibility picker, avatar/Follow, bookmark, collapse shell, kebab menu) is delegated to their owning capabilities; this capability governs only their placement and the hero's own owner/viewer/preview branching.
 
 ## Requirements
 
@@ -72,11 +72,14 @@ When the list's current visibility is NOT `'private'`, the `<ShareButton>` SHALL
 
 The visibility picker SHALL NOT be rendered inside the controls zone after this change.
 
+Exactly one `.list-hero-share-wrapper` element SHALL render on owner non-preview views, and it SHALL be the direct container of the `<VisibilityPicker>` (and `<ShareButton>` when applicable). On viewer views and on owner preview views, NO `.list-hero-share-wrapper` element SHALL render in the hero at all — neither a populated one nor an empty placeholder. (This forbids a redundant outer wrapper or an empty `.list-hero-share-wrapper` left in `.list-hero-identity-top` when the picker is hidden.)
+
 #### Scenario: Owner sees visibility picker + Share above the title on a shared list
 
 - **WHEN** the owner views their own list (non-preview) with `visibility = 'public'`
 - **THEN** `.list-hero-identity-top` contains, in DOM order: a `.list-hero-share-wrapper` containing `<VisibilityPicker>` and `<ShareButton>`; then the title; then (if applicable) the eyebrow + subtitle wrapper
 - **AND** the controls card does NOT contain `<VisibilityPicker>`
+- **AND** exactly one `.list-hero-share-wrapper` element exists in the hero
 
 #### Scenario: Private list omits the Share button next to the picker
 
@@ -87,6 +90,11 @@ The visibility picker SHALL NOT be rendered inside the controls zone after this 
 
 - **WHEN** a non-owner views the list, OR the owner views the list in preview mode
 - **THEN** no `<VisibilityPicker>` is rendered anywhere in the hero
+
+#### Scenario: No empty share-wrapper on viewer or preview views
+
+- **WHEN** a non-owner views the list, OR the owner views the list in preview mode
+- **THEN** NO `.list-hero-share-wrapper` element is present in the rendered hero (not a populated one, and not an empty placeholder inside `.list-hero-identity-top`)
 
 ### Requirement: Owner views SHALL NOT render the owner identity inside the hero
 
