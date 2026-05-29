@@ -204,6 +204,13 @@ export default defineConfig({
         'app/(main)/lists/ui/components/ListDetails.tsx': COVERAGE_FLOOR,
         'app/(main)/lists/ui/components/ShareButton.tsx': COVERAGE_FLOOR,
         'app/(main)/lists/ui/components/EditListAction.tsx': COVERAGE_FLOOR,
+        // test-list-hero-collapse (sub-proposal 4.8) — locked at universal COVERAGE_FLOOR.
+        'app/(main)/lists/ui/components/HeroCollapseShell.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/HeroCollapsedItems.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/HeroCollapsedItemsContainer.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/ListActionsMenu.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/visibility-rows.tsx': COVERAGE_FLOOR,
       },
     },
   },

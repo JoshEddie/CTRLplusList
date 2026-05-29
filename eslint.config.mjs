@@ -135,6 +135,12 @@ const eslintConfig = [
       'app/(main)/lists/ui/components/ListDetails.tsx',
       'app/(main)/lists/ui/components/ShareButton.tsx',
       'app/(main)/lists/ui/components/EditListAction.tsx',
+      // test-list-hero-collapse (sub-proposal 4.8) — locked at universal COVERAGE_FLOOR.
+      'app/(main)/lists/ui/components/HeroCollapseShell.tsx',
+      'app/(main)/lists/ui/components/HeroCollapsedItems.tsx',
+      'app/(main)/lists/ui/components/HeroCollapsedItemsContainer.tsx',
+      'app/(main)/lists/ui/components/ListActionsMenu.tsx',
+      'app/(main)/lists/ui/components/visibility-rows.tsx',
     ],
     plugins: { sonarjs },
     rules: {
