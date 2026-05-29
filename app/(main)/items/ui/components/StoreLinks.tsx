@@ -70,6 +70,7 @@ export default function StoreLinks({
   // especially relevant for top-row items in the list view.
   const computePlacement = useCallback(() => {
     const trigger = triggerRef.current;
+    /* v8 ignore next -- defensive: triggerRef is always set when the trigger has mounted; the effect that calls this is gated on `open`, which only becomes true while the trigger Button is rendered. */
     if (!trigger) return;
     const tRect = trigger.getBoundingClientRect();
     let containerTop = 0;
