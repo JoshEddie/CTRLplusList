@@ -20,7 +20,7 @@ classification". This brief tells you how to *apply* the state you were given.
 
 ## Framing depends on the state
 
-- **`active` or `Type 1 premature`** → **direction-neutral (D12).** The
+- **`active` or `Type 1 premature`** → **direction-neutral.** The
   `tasks.md`/`design.md`/`spec.md` and the implementation were authored together
   and are equally provisional. Report a disagreement as a **mismatch** — do NOT
   presume the spec is correct and the code is the defect. State it as "X and the
@@ -51,7 +51,7 @@ specific SHALL, framed per the state above.
 Confirm no behavior was added that no task and no spec requirement documents.
 Undocumented → **scope-creep finding**: resolve by removing the behavior or
 documenting it in a task/spec. (Silently shipping undocumented behavior erodes
-the spec as source of truth just as much as an unmet requirement — D6.)
+the spec as source of truth just as much as an unmet requirement.)
 
 ## Worked mismatch findings
 

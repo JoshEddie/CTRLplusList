@@ -13,6 +13,7 @@ cut it. Do not restate any shared contract from group 1.
 - [x] 2.1 Create the standard-review brief as a bundled leaf file; move its dimensions and false-positive guard out of `SKILL.md`, then expand with few-shot worked findings (per dimension, in the output shape) and calibration pairs for false-positive-prone categories (e.g. N+1, race conditions, missing tests)
 - [x] 2.2 Create the convention-audit brief as a bundled leaf file; move the CLAUDE.md doc-pointer logic, missing-test rule, and coverage-gaming rule, then expand with a worked example of generic pointer derivation (parse "Read X first" → gate on trigger) and concrete coverage-gaming examples in this repo's idiom
 - [x] 2.3 Create the contract-audit brief as a bundled leaf file; move the direction-neutral framing and three contract checks, referencing (not copying) the archive-state data and git classification walk single-sourced in 1.2/`SKILL.md` per D3 (the orchestrator classifies once in Phase 0 and passes the state down, so the brief applies the given state rather than re-deriving it), then expand with worked mismatch findings in both neutral and directional framings — this brief is the priority for expansion
+- [x] 2.4 Seed the repo root `CLAUDE.md` with an `Abstraction (DRY · KISS · coupling)` section holding the DRY/KISS/coupling rules the standard-review brief's maintainability lane defers to, and point that brief at the section by name (single-source the rules in `CLAUDE.md` rather than restating them in the brief)
 
 ## 3. Rewire orchestration to pointer delivery
 

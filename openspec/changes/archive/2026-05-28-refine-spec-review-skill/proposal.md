@@ -38,6 +38,12 @@ not separately-invocable skills.
 - `SKILL.md` retains only the orchestrator's job: dispatch, Phase 0, the
   finding-shape contract, consolidation, and the verdict / clear-to-archive
   logic.
+- Seed the repo root `CLAUDE.md` with an `Abstraction (DRY · KISS · coupling)`
+  section holding the DRY/KISS/coupling rules the expanded standard-review brief
+  defers to for its maintainability lane. Single-sourcing these in `CLAUDE.md`
+  (rather than restating them in the brief) keeps the brief lean and reuses the
+  convention doc the review already reads — it is a prerequisite of the brief's
+  lane-split, not a separate concern.
 
 The change touches two distinct layers. The **output contract** — invocation,
 audited dimensions, the fixed report shape (section order, finding-table columns,
@@ -63,9 +69,12 @@ _None._
 
 ## Impact
 
-- Skill files only, under `.claude/skills/spec-review/`: `SKILL.md` plus three
+- Skill files under `.claude/skills/spec-review/`: `SKILL.md` plus three
   new bundled brief files and (per design) a shared finding-shape / archive-state
-  reference. No application code, DB schema/queries, UI primitives, server
+  reference.
+- Repo root `CLAUDE.md`: one added `Abstraction (DRY · KISS · coupling)` section
+  that the standard-review brief's maintainability lane defers to (see "What
+  Changes"). No application code, DB schema/queries, UI primitives, server
   reads, or cache tags are touched — the cross-cutting design-system and
   cache-tag rules do not apply to this change.
 - Active spec touched: `openspec/specs/spec-review/spec.md` (one requirement
