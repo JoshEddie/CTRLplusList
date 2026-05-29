@@ -22,11 +22,11 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 - [x] 3.5 `test-popover-trigger-system` — `app/ui/components/popover-trigger/` and component-scoped hook `app/ui/hooks/usePopoverDismiss.ts`. Elevate to `popover-trigger-system` spec.
 - [x] 3.6 `test-segmented-control-system` — `app/ui/components/segmented-control/`. Elevate to `segmented-control-system` spec.
 - [x] 3.7 `test-loading-indicator-system` — `app/ui/components/LoadingIndicator.tsx` and `app/ui/components/loading-indicator.css` testable behavior. Elevate to `loading-indicator-system` spec.
-- [ ] 3.8 `test-misc-primitives` — `ConfirmDialog.tsx`, `TooltipWrapper.tsx`, `Empty.tsx`, `FormShell.tsx`. Creates minimal family specs for each as part of this proposal. Strict cap: a fifth genuinely-ungoverned primitive gets its own sub-proposal added below, not added to this bucket.
+- [x] 3.8 `test-misc-primitives` — `ConfirmDialog.tsx`, `TooltipWrapper.tsx`, `Empty.tsx`, `FormShell.tsx`. Creates minimal family specs for each as part of this proposal. Strict cap: a fifth genuinely-ungoverned primitive gets its own sub-proposal added below, not added to this bucket.
 
 ## 4. Capability flows (independent; any order after foundation)
 
-- [ ] 4.1 `test-app-frame` — DAL/action/UI covering `app-frame` capability, including `AppFrame.tsx`, `AppNav.tsx`, `AppMenu.tsx`, `AppLogo.tsx`, `Logo.tsx`, `Header.tsx`, `Nav.tsx`, component-scoped hook `app/ui/hooks/useKeyboardOffset.ts`.
+- [x] 4.1 `test-app-frame` — DAL/action/UI covering `app-frame` capability, including `AppFrame.tsx`, `AppNav.tsx`, `AppMenu.tsx`, `AppLogo.tsx`, `Logo.tsx`, `Header.tsx`, `Nav.tsx`, component-scoped hook `app/ui/hooks/useKeyboardOffset.ts`.
 - [x] 4.2 `test-following` — DAL `getFollowing*` / `getFollowers*`, `app/actions/follows.ts`, page UI under `app/(main)/following/` and `app/(main)/users/`. Race: follow/unfollow toggle dupes (partial unique index backstop).
 - [x] 4.3 `test-home-digest` — DAL reads powering `app/(main)/HomePage.tsx`, page UI, recency sorting.
 - [x] 4.4 `test-item-store-links` — store-links UI and any associated reads; covers `item-store-links` capability.
