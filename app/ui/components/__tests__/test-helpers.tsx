@@ -4,6 +4,20 @@ import type {
   ImgHTMLAttributes,
   ReactNode,
 } from 'react';
+import type { ListCardData } from '../ListCard';
+
+// Shared `ListCardData` fixture for ListCard.test.tsx and ListCardRow.test.tsx.
+// The fixed `date` is pinned so both files' UTC-date expectations stay aligned;
+// override it per test to exercise the `timeZone: 'UTC'` contract.
+export function makeList(overrides: Partial<ListCardData> = {}): ListCardData {
+  return {
+    id: 'list-1',
+    name: 'Birthday Wishlist',
+    occasion: 'Birthday',
+    date: new Date('2025-06-15T12:00:00Z'),
+    ...overrides,
+  };
+}
 
 type MockNextLinkProps = Omit<
   AnchorHTMLAttributes<HTMLAnchorElement>,
