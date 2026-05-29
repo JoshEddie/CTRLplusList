@@ -6,7 +6,7 @@ import {
   displayPrice,
 } from '@/app/(main)/items/ui/components/itemFilters';
 import ItemFormContainer from '@/app/(main)/items/ui/components/itemform/ItemFormContainer';
-import ItemsToolbar from '@/app/(main)/items/ui/components/ItemsToolbar';
+import ItemsToolbar from '@/app/(main)/items/ui/components/itemsToolbar';
 import { setListItems } from '@/app/actions/lists';
 import { Button, LinkButton } from '@/app/ui/components/button';
 import { CheckboxField } from '@/app/ui/components/field/CheckboxField';

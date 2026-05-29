@@ -16,20 +16,20 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 ## 3. Primitive families (independent; any order after foundation)
 
 - [x] 3.1 `test-button-system` — `app/ui/components/button/` (Button.tsx, LinkButton.tsx, types.ts, index.ts; `buttonClasses.ts` covered by 2.1). Elevate non-obvious invariants to `button-system` spec.
-- [ ] 3.2 `test-chip-system` — `app/ui/components/chip/`. Elevate to chip-system spec if one exists, else create one as part of this proposal.
-- [ ] 3.3 `test-form-field-system` — `app/ui/components/field/`. Elevate to `form-field-system` spec.
-- [ ] 3.4 `test-menu-system` — `app/ui/components/menu/`. Elevate to `menu-system` spec.
-- [ ] 3.5 `test-popover-trigger-system` — `app/ui/components/popover-trigger/` and component-scoped hook `app/ui/hooks/usePopoverDismiss.ts`. Elevate to `popover-trigger-system` spec.
-- [ ] 3.6 `test-segmented-control-system` — `app/ui/components/segmented-control/`. Elevate to `segmented-control-system` spec.
-- [ ] 3.7 `test-loading-indicator-system` — `app/ui/components/LoadingIndicator.tsx` and `app/ui/components/loading-indicator.css` testable behavior. Elevate to `loading-indicator-system` spec.
+- [x] 3.2 `test-chip-system` — `app/ui/components/chip/`. Elevate to chip-system spec if one exists, else create one as part of this proposal.
+- [x] 3.3 `test-form-field-system` — `app/ui/components/field/`. Elevate to `form-field-system` spec.
+- [x] 3.4 `test-menu-system` — `app/ui/components/menu/`. Elevate to `menu-system` spec.
+- [x] 3.5 `test-popover-trigger-system` — `app/ui/components/popover-trigger/` and component-scoped hook `app/ui/hooks/usePopoverDismiss.ts`. Elevate to `popover-trigger-system` spec.
+- [x] 3.6 `test-segmented-control-system` — `app/ui/components/segmented-control/`. Elevate to `segmented-control-system` spec.
+- [x] 3.7 `test-loading-indicator-system` — `app/ui/components/LoadingIndicator.tsx` and `app/ui/components/loading-indicator.css` testable behavior. Elevate to `loading-indicator-system` spec.
 - [ ] 3.8 `test-misc-primitives` — `ConfirmDialog.tsx`, `TooltipWrapper.tsx`, `Empty.tsx`, `FormShell.tsx`. Creates minimal family specs for each as part of this proposal. Strict cap: a fifth genuinely-ungoverned primitive gets its own sub-proposal added below, not added to this bucket.
 
 ## 4. Capability flows (independent; any order after foundation)
 
 - [ ] 4.1 `test-app-frame` — DAL/action/UI covering `app-frame` capability, including `AppFrame.tsx`, `AppNav.tsx`, `AppMenu.tsx`, `AppLogo.tsx`, `Logo.tsx`, `Header.tsx`, `Nav.tsx`, component-scoped hook `app/ui/hooks/useKeyboardOffset.ts`.
-- [ ] 4.2 `test-following` — DAL `getFollowing*` / `getFollowers*`, `app/actions/follows.ts`, page UI under `app/(main)/following/` and `app/(main)/users/`. Race: follow/unfollow toggle dupes (partial unique index backstop).
-- [ ] 4.3 `test-home-digest` — DAL reads powering `app/(main)/HomePage.tsx`, page UI, recency sorting.
-- [ ] 4.4 `test-item-store-links` — store-links UI and any associated reads; covers `item-store-links` capability.
+- [x] 4.2 `test-following` — DAL `getFollowing*` / `getFollowers*`, `app/actions/follows.ts`, page UI under `app/(main)/following/` and `app/(main)/users/`. Race: follow/unfollow toggle dupes (partial unique index backstop).
+- [x] 4.3 `test-home-digest` — DAL reads powering `app/(main)/HomePage.tsx`, page UI, recency sorting.
+- [x] 4.4 `test-item-store-links` — store-links UI and any associated reads; covers `item-store-links` capability.
 - [ ] 4.5 `test-items-browser-chrome` — items browser chrome under `app/(main)/items/`.
 - [ ] 4.6 `test-list-collections` — `list-collections` capability + `ListCard.tsx`, `ListCardRow.tsx`, `MoreCard.tsx`, `ListCollectionsNav.tsx` page-UI.
 - [ ] 4.7 `test-list-hero-header` — `list-hero-header` capability including contrast invariants.
@@ -41,6 +41,9 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 - [ ] 4.13 `test-server-endpoint-authorization` — **HIGH stakes**: every server action and API route is authorized for every caller class (owner / authenticated non-owner / unauthenticated). Aligns with the in-flight `harden-remaining-server-actions` change.
 - [ ] 4.14 `test-visit-history` — `visit-history` capability + visit dedupe race (partial unique index backstop).
 - [ ] 4.15 `test-user-actions` — `app/actions/user.ts` and any user-settings UI under `app/(main)/settings/` / `app/(main)/user/`. Carve-out determined at proposal time.
+- [ ] 4.16 `test-items-price-filter` — `PriceFilterPopover.tsx` against the existing `items-price-filter` spec. Deferred boundary from `test-items-browser-chrome` §9.6.
+- [ ] 4.17 `test-items-store-filter` — `StoreFilterPopover.tsx`; create/elevate a `store-filter` family spec. Deferred boundary from `test-items-browser-chrome` §9.6.
+- [ ] 4.18 `test-items-library-shell` — `ItemsContainer.tsx`, `ItemsPage.tsx`, `app/(main)/items/page.tsx`, `app/(main)/items/loading.tsx`; coordinate the `redirect()`-on-unauthenticated paths with §4.13. Deferred boundary from `test-items-browser-chrome` §9.6.
 
 ## 5. API routes (independent; after foundation)
 

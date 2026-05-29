@@ -111,6 +111,21 @@ const eslintConfig = [
       'app/(main)/lists/ui/components/BookmarkMigrationToast.tsx',
       // test-item-store-links (sub-proposal 4.4) — locked at universal COVERAGE_FLOOR.
       'app/(main)/items/ui/components/StoreLinks.tsx',
+      // test-items-browser-chrome (sub-proposal 4.5) — locked at universal COVERAGE_FLOOR.
+      'app/(main)/items/ui/components/ItemsBrowser.tsx',
+      // ItemsToolbar split into a co-located itemsToolbar/ module during the
+      // complexity-audit refactor (9.3); complexity locked across the split.
+      'app/(main)/items/ui/components/itemsToolbar/ItemsToolbar.tsx',
+      'app/(main)/items/ui/components/itemsToolbar/FiltersSheet.tsx',
+      'app/(main)/items/ui/components/itemsToolbar/PurchasesSelect.tsx',
+      'app/(main)/items/ui/components/itemsToolbar/SearchInputControl.tsx',
+      'app/(main)/items/ui/components/itemsToolbar/utils.ts',
+      'app/(main)/items/ui/components/itemsToolbar/toolbarConstants.ts',
+      'app/(main)/items/ui/components/Items.tsx',
+      'app/(main)/items/ui/components/Pagination.tsx',
+      'app/(main)/items/ui/components/PageSizeSelect.tsx',
+      'app/(main)/items/ui/components/itemFilters.ts',
+      'app/(main)/items/ui/components/paginationConstants.ts',
     ],
     plugins: { sonarjs },
     rules: {

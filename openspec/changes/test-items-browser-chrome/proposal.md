@@ -16,15 +16,22 @@ Inherited constraints surfaced by spec-grep:
 
 ## Carve-out boundary
 
-**IN the carve-out (7 executable files):**
+**IN the carve-out (12 executable files):**
+
+The carve-out began as 7 files. During apply, `ItemsToolbar.tsx` measured cognitive-complexity 32 (the proposal estimated ~8–12); the complexity audit (9.3) disposed of it by decomposing it **in-place** into a co-located `itemsToolbar/` module (single-file refactor authority; behavior preserved by the new tests). The final file set:
 
 - `app/(main)/items/ui/components/ItemsBrowser.tsx` — the filter → sort → paginate orchestrator (the heaviest logic in the carve-out).
-- `app/(main)/items/ui/components/ItemsToolbar.tsx` — toolbar chrome: search-field debounce commit, the filters sheet open/close (close button, scrim click, Escape), the active-filter chip row, the filter-count badge, the sort / purchases / show selects, and the grid/list view toggle.
 - `app/(main)/items/ui/components/Items.tsx` — the view-mode wrapper that renders `.item-grid` vs `.item-list`.
 - `app/(main)/items/ui/components/Pagination.tsx` — the pagination control and its `buildRange` windowing helper.
 - `app/(main)/items/ui/components/PageSizeSelect.tsx` — the page-size `SelectField`.
 - `app/(main)/items/ui/components/itemFilters.ts` — `compareItems`, `displayPrice`, `firstStoreName` (pure sort/price-derivation logic).
 - `app/(main)/items/ui/components/paginationConstants.ts` — `DEFAULT_PAGE_SIZE`, `PAGE_SIZE_OPTIONS` (pure constants; covered transitively, enumerated for the floor).
+- `app/(main)/items/ui/components/itemsToolbar/ItemsToolbar.tsx` — the toolbar orchestrator: URL-param wiring, the filters-sheet open/close state + Escape listener, search-commit wiring, the chip row, view toggle.
+- `app/(main)/items/ui/components/itemsToolbar/FiltersSheet.tsx` — the filters sheet (sort / purchases / show selects, store + price popovers, close/done), presentational.
+- `app/(main)/items/ui/components/itemsToolbar/PurchasesSelect.tsx` — the mode-aware purchases `SelectField`, presentational.
+- `app/(main)/items/ui/components/itemsToolbar/SearchInputControl.tsx` — the debounced search field, presentational.
+- `app/(main)/items/ui/components/itemsToolbar/utils.ts` — `buildQueryUrl`, `patchedParams`, `toggledStoreParams`, `sortOptionsFor`, `priceChipLabel`, `countActiveFilters`, `buildChips` (pure helpers).
+- `app/(main)/items/ui/components/itemsToolbar/toolbarConstants.ts` — `SORT_LABELS`, `SORT_KEYS_BY_MODE`, the purchases/show label tables (pure data; named `toolbarConstants` rather than `constants` to avoid vite's Node-builtin `constants` resolver collision). The module's `types.ts` is type-only (coverage-excluded) and `index.ts` is a re-export barrel.
 
 **DEFERRED (with rationale — not this carve-out):**
 

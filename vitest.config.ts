@@ -82,8 +82,9 @@ export default defineConfig({
         'e2e/**',
         'app/**/layout.tsx',
         '**/types.ts',
-        // NOT `**/index.ts` — `db/index.ts` carries runtime (Drizzle init).
-        'app/ui/components/*/index.ts',
+        // App-side `index.ts` files are pure re-export barrels. Scoped to `app/**`
+        // rather than `**/index.ts` so `db/index.ts` (Drizzle init, carries runtime) stays covered.
+        'app/**/index.ts',
         // constant ReactNode table; no executable behavior. See test-form-field-system design D2.
         'app/ui/components/field/field-icons.tsx',
       ],
@@ -172,6 +173,26 @@ export default defineConfig({
           COVERAGE_FLOOR,
         // test-item-store-links (sub-proposal 4.4) — locked at universal COVERAGE_FLOOR.
         'app/(main)/items/ui/components/StoreLinks.tsx': COVERAGE_FLOOR,
+        // test-items-browser-chrome (sub-proposal 4.5) — locked at universal COVERAGE_FLOOR.
+        'app/(main)/items/ui/components/ItemsBrowser.tsx': COVERAGE_FLOOR,
+        // ItemsToolbar split into a co-located itemsToolbar/ module during the
+        // complexity-audit refactor (9.3); each executable unit is floored.
+        'app/(main)/items/ui/components/itemsToolbar/ItemsToolbar.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemsToolbar/FiltersSheet.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemsToolbar/PurchasesSelect.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemsToolbar/SearchInputControl.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemsToolbar/utils.ts': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemsToolbar/toolbarConstants.ts':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/Items.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/Pagination.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/PageSizeSelect.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemFilters.ts': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/paginationConstants.ts': COVERAGE_FLOOR,
       },
     },
   },

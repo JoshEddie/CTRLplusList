@@ -5,7 +5,7 @@ import { ItemDisplay, SortKey } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import Items from './Items';
-import ItemsToolbar from './ItemsToolbar';
+import ItemsToolbar from './itemsToolbar';
 import Pagination from './Pagination';
 import { compareItems, displayPrice } from './itemFilters';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from './paginationConstants';
