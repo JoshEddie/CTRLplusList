@@ -109,6 +109,8 @@ const eslintConfig = [
       'app/(main)/lists/ui/components/rails/utils.ts',
       'app/(main)/lists/ui/components/CollapsibleRail.tsx',
       'app/(main)/lists/ui/components/BookmarkMigrationToast.tsx',
+      // test-item-store-links (sub-proposal 4.4) — locked at universal COVERAGE_FLOOR.
+      'app/(main)/items/ui/components/StoreLinks.tsx',
     ],
     plugins: { sonarjs },
     rules: {

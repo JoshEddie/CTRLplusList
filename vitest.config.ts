@@ -170,6 +170,8 @@ export default defineConfig({
         'app/(main)/lists/ui/components/CollapsibleRail.tsx': COVERAGE_FLOOR,
         'app/(main)/lists/ui/components/BookmarkMigrationToast.tsx':
           COVERAGE_FLOOR,
+        // test-item-store-links (sub-proposal 4.4) — locked at universal COVERAGE_FLOOR.
+        'app/(main)/items/ui/components/StoreLinks.tsx': COVERAGE_FLOOR,
       },
     },
   },
