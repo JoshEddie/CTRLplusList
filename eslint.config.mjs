@@ -99,6 +99,16 @@ const eslintConfig = [
       'app/(main)/users/ui/components/UserCardGrid.tsx',
       'app/(main)/following/FollowingPage.tsx',
       'app/(main)/following/page.tsx',
+      // test-home-digest (sub-proposal 4.3) — locked at universal COVERAGE_FLOOR.
+      'app/(main)/HomePage.tsx',
+      'app/(main)/page.tsx',
+      'app/(main)/lists/ui/components/rails/MyListsRail.tsx',
+      'app/(main)/lists/ui/components/rails/FollowingRail.tsx',
+      'app/(main)/lists/ui/components/rails/BookmarksRail.tsx',
+      'app/(main)/lists/ui/components/rails/RecentlyVisitedRail.tsx',
+      'app/(main)/lists/ui/components/rails/utils.ts',
+      'app/(main)/lists/ui/components/CollapsibleRail.tsx',
+      'app/(main)/lists/ui/components/BookmarkMigrationToast.tsx',
     ],
     plugins: { sonarjs },
     rules: {

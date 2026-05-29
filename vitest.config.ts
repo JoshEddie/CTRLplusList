@@ -156,6 +156,20 @@ export default defineConfig({
         'app/(main)/users/ui/components/UserCardGrid.tsx': COVERAGE_FLOOR,
         'app/(main)/following/FollowingPage.tsx': COVERAGE_FLOOR,
         'app/(main)/following/page.tsx': COVERAGE_FLOOR,
+        // test-home-digest (sub-proposal 4.3) — locked at universal COVERAGE_FLOOR.
+        // No `lib/dal.ts` entry (Decision 7): its per-file floor is deferred
+        // until the data-layer carve-outs that share it collectively cover it.
+        'app/(main)/HomePage.tsx': COVERAGE_FLOOR,
+        'app/(main)/page.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/rails/MyListsRail.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/rails/FollowingRail.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/rails/BookmarksRail.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/rails/RecentlyVisitedRail.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/rails/utils.ts': COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/CollapsibleRail.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/ui/components/BookmarkMigrationToast.tsx':
+          COVERAGE_FLOOR,
       },
     },
   },

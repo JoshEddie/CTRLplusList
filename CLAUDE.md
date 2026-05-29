@@ -38,6 +38,11 @@ Don't explain WHAT the code does — well-named identifiers already do that. Don
 
 - Extract single-caller helpers to keep files lean — extraction for readability is the norm, not over-abstraction, and doesn't need justifying.
 
+#### Where extracted helpers live
+
+- Small, generic, or pure helpers go in a **co-located `utils.ts`** for that directory (create it if absent) — not in their own single-purpose file. `capRail` lives in `app/(main)/lists/ui/components/rails/utils.ts`, following `app/(main)/users/ui/utils.ts` (`initialsOf`).
+- Reserve a descriptively-named standalone module for a genuine domain/capability concept (`lib/dal.ts`, `lib/visibility.ts`, `lib/listAccess.ts`). `utils.ts` is for the small stuff, not a dumping ground for domain logic.
+
 #### Worked example: `Button` / `LinkButton`
 
 One small trio in `app/ui/components/button/` shows the first three forces at once:

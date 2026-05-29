@@ -5,6 +5,7 @@ import { useSyncExternalStore } from 'react';
 const KEY = 'home.bookmark-migration-toast.dismissed';
 
 function subscribe(callback: () => void) {
+  /* v8 ignore next -- SSR short-circuit; window is always defined in jsdom. */
   if (typeof window === 'undefined') return () => {};
   window.addEventListener('storage', callback);
   return () => window.removeEventListener('storage', callback);

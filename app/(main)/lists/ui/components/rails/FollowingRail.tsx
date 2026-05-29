@@ -1,11 +1,11 @@
 import UserCard from '@/app/(main)/users/ui/components/UserCard';
 import MoreCard from '@/app/ui/components/MoreCard';
 import { getFollowingFeedUsers } from '@/lib/dal';
+import { capRail } from './utils';
 
 export default async function FollowingRail({ userId }: { userId: string }) {
   const all = await getFollowingFeedUsers(userId);
-  const users = all.slice(0, 5);
-  const moreCount = Math.max(0, all.length - users.length);
+  const { shown: users, moreCount } = capRail(all);
 
   if (users.length === 0) {
     return <div className="list-card-row-empty">Not following anyone yet.</div>;
