@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change add-following-and-history. Update Purpose after archive.
+The home digest is the authenticated landing view at `/`. It composes a one-time bookmark-migration toast above four collapsible, recency-capped rails — **My Lists**, **Following**, **Bookmarks**, and **Recently visited** — each showing at most the 5 most-recent entries with a **See all** link to its dedicated full-results page and a trailing "+N more" tile when more entries exist. Each rail's collapsed/expanded state persists per-rail in `localStorage`. The view gives a returning user a fast, scannable overview of their own lists, the people they follow, their saved lists, and their recent activity without leaving the home page.
 
 ## Requirements
 
