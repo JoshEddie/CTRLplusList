@@ -126,6 +126,11 @@ const eslintConfig = [
       'app/(main)/items/ui/components/PageSizeSelect.tsx',
       'app/(main)/items/ui/components/itemFilters.ts',
       'app/(main)/items/ui/components/paginationConstants.ts',
+      // test-list-collections (sub-proposal 4.6) — locked at universal COVERAGE_FLOOR.
+      'app/ui/components/ListCard.tsx',
+      'app/ui/components/ListCardRow.tsx',
+      'app/ui/components/MoreCard.tsx',
+      'app/ui/components/ListCollectionsNav.tsx',
     ],
     plugins: { sonarjs },
     rules: {

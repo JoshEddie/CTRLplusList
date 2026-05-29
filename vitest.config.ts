@@ -193,6 +193,11 @@ export default defineConfig({
         'app/(main)/items/ui/components/PageSizeSelect.tsx': COVERAGE_FLOOR,
         'app/(main)/items/ui/components/itemFilters.ts': COVERAGE_FLOOR,
         'app/(main)/items/ui/components/paginationConstants.ts': COVERAGE_FLOOR,
+        // test-list-collections (sub-proposal 4.6) — locked at universal COVERAGE_FLOOR.
+        'app/ui/components/ListCard.tsx': COVERAGE_FLOOR,
+        'app/ui/components/ListCardRow.tsx': COVERAGE_FLOOR,
+        'app/ui/components/MoreCard.tsx': COVERAGE_FLOOR,
+        'app/ui/components/ListCollectionsNav.tsx': COVERAGE_FLOOR,
       },
     },
   },
