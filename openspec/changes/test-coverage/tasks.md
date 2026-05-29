@@ -30,8 +30,8 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 - [x] 4.2 `test-following` — DAL `getFollowing*` / `getFollowers*`, `app/actions/follows.ts`, page UI under `app/(main)/following/` and `app/(main)/users/`. Race: follow/unfollow toggle dupes (partial unique index backstop).
 - [x] 4.3 `test-home-digest` — DAL reads powering `app/(main)/HomePage.tsx`, page UI, recency sorting.
 - [x] 4.4 `test-item-store-links` — store-links UI and any associated reads; covers `item-store-links` capability.
-- [ ] 4.5 `test-items-browser-chrome` — items browser chrome under `app/(main)/items/`.
-- [ ] 4.6 `test-list-collections` — `list-collections` capability + `ListCard.tsx`, `ListCardRow.tsx`, `MoreCard.tsx`, `ListCollectionsNav.tsx` page-UI.
+- [x] 4.5 `test-items-browser-chrome` — items browser chrome under `app/(main)/items/`.
+- [x] 4.6 `test-list-collections` — `list-collections` capability + `ListCard.tsx`, `ListCardRow.tsx`, `MoreCard.tsx`, `ListCollectionsNav.tsx` page-UI.
 - [ ] 4.7 `test-list-hero-header` — `list-hero-header` capability including contrast invariants.
 - [ ] 4.8 `test-list-hero-collapse` — `list-hero-collapse` capability behavior.
 - [ ] 4.9 `test-list-item-management` — `app/actions/items.ts`, `app/actions/lists.ts`, item-management UI. **HIGH stakes**: claim under `quantity_limit` race (partial unique index backstop), reorder via `@dnd-kit/sortable`. MAY split mid-flight into `-part-1` (CRUD + reorder) and `-part-2` (claim flow + races).
