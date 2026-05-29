@@ -16,6 +16,36 @@ Default to writing no comments. Only add one when the WHY is non-obvious — a h
 
 Don't explain WHAT the code does — well-named identifiers already do that. Don't reference the current task, fix, or callers ("used by X", "added for the Y flow", "handles the case from issue #123") — those belong in the PR description and rot as the codebase evolves.
 
+### Abstraction (DRY · KISS · coupling):
+
+#### Duplication (DRY)
+
+- Extract duplicated, identical-by-design logic into one home on sight — don't ask whether to, the answer is yes.
+- Keep copies apart only when you can name them as different concepts that will change for different reasons; code that merely looks alike is not a duplication to merge.
+- Leave three trivial similar lines alone — three similar lines is better than a premature abstraction.
+
+#### Over-generality (KISS)
+
+- Don't build generality for cases that don't exist yet — parameters, flags, or branches with no current caller are dead code except when planned for imminent future use.
+- Don't tear down a clean, working, tested abstraction just because it's more general than strictly needed; once it exists and is covered, stripping it is risk for no live defect.
+
+#### Fragile coupling
+
+- When a shared abstraction's callers diverge, split it back into separate concepts — don't bolt on flags, params, or branches so one thing can serve all of them.
+- Coupling between callers that are genuinely one concept meant to change together is the abstraction doing its job.
+
+#### Extraction for leanness
+
+- Extract single-caller helpers to keep files lean — extraction for readability is the norm, not over-abstraction, and doesn't need justifying.
+
+#### Worked example: `Button` / `LinkButton`
+
+One small trio in `app/ui/components/button/` shows the first three forces at once:
+
+- **DRY** — the only thing the two genuinely share, the visual styling, lives in `buttonClasses()`; neither component re-implements it.
+- **Fragile coupling** — they stay separate components instead of collapsing into one polymorphic thing behind an `as`/`href` flag, because the concepts diverge: `Button` is a `<button>` (`ButtonHTMLAttributes` + `type`), `LinkButton` is a Next `<Link>` (`AnchorHTMLAttributes` + `LinkProps`).
+- **KISS** — each carries only the props its concept needs: `Button` has `isLoading`/`disabled`, `LinkButton` doesn't — a link can't load or be disabled, so adding them "for symmetry" would be generality for a caller that doesn't exist.
+
 ## Dev auth bypass (for preview verification)
 
 The app gates every protected page on Google OAuth via NextAuth, which makes it impossible to validate UI changes through the preview tools without a real Google sign-in. A dev-only bypass exists for this:
