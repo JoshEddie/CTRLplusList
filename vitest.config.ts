@@ -143,6 +143,11 @@ export default defineConfig({
         // file-level floor is deferred (Tier 2 requirement) until the
         // data-layer carve-outs that share it collectively cover it.
         'app/actions/follows.ts': COVERAGE_FLOOR,
+        // test-list-item-management (sub-proposal 4.9) — locked at universal
+        // COVERAGE_FLOOR. Whole-file ownership for both action files; downstream
+        // carve-outs (4.4 / 4.6 / 4.11 / 4.13 / 4.14) inherit these entries.
+        'app/actions/items.ts': COVERAGE_FLOOR,
+        'app/actions/lists.ts': COVERAGE_FLOOR,
         'app/(main)/users/ui/utils.ts': COVERAGE_FLOOR,
         'app/(main)/users/ui/components/Avatar.tsx': COVERAGE_FLOOR,
         'app/(main)/users/ui/components/FollowButton.tsx': COVERAGE_FLOOR,
