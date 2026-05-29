@@ -131,6 +131,10 @@ const eslintConfig = [
       'app/ui/components/ListCardRow.tsx',
       'app/ui/components/MoreCard.tsx',
       'app/ui/components/ListCollectionsNav.tsx',
+      // test-list-hero-header (sub-proposal 4.7) — locked at universal COVERAGE_FLOOR.
+      'app/(main)/lists/ui/components/ListDetails.tsx',
+      'app/(main)/lists/ui/components/ShareButton.tsx',
+      'app/(main)/lists/ui/components/EditListAction.tsx',
     ],
     plugins: { sonarjs },
     rules: {

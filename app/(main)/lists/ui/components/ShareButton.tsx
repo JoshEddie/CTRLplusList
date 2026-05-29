@@ -6,7 +6,7 @@ import PurchaseFlow from '@/app/(main)/items/ui/components/purchasemodal/Purchas
 import { setListVisibility } from '@/app/actions/lists';
 import { Button } from '@/app/ui/components/button';
 import { ListTable } from '@/lib/types';
-import { VISIBILITY, fromDb } from '@/lib/visibility';
+import { VISIBILITY, resolveListVisibility } from '@/lib/visibility';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -47,12 +47,7 @@ export default function ShareButton({ list }: { list: ListTable }) {
     }
   };
 
-  const rawVisibility = (list as { visibility?: string }).visibility;
-  const visibility = rawVisibility
-    ? fromDb(rawVisibility)
-    : list.shared
-      ? VISIBILITY.LINK
-      : VISIBILITY.OWNER;
+  const visibility = resolveListVisibility(list);
   const isPrivate = visibility === VISIBILITY.OWNER;
 
   const handleShareClick = async () => {

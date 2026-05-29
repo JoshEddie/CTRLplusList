@@ -19,6 +19,8 @@
  * even though they look unreachable today.
  */
 
+import type { ListTable } from '@/lib/types';
+
 export const VISIBILITY = {
   OWNER: 'private', // Stage 2 → 'owner'
   LINK: 'unlisted', // Stage 2 → 'link'
@@ -87,4 +89,18 @@ export function visibilityDbValues(
     }
   }
   return out;
+}
+
+/**
+ * Resolve a list's effective visibility: prefer the explicit `visibility`
+ * column (decoded via `fromDb`), falling back to the legacy `shared` boolean
+ * (`shared` → link-only, otherwise owner-only). Both the hero and the share
+ * affordance derive visibility this way; keeping it in one place stops the
+ * two call sites from drifting.
+ */
+export function resolveListVisibility(
+  list: ListTable & { visibility?: string }
+): ListVisibility {
+  if (list.visibility) return fromDb(list.visibility);
+  return list.shared ? VISIBILITY.LINK : VISIBILITY.OWNER;
 }
