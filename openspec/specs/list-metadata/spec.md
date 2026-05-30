@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change redesign-home-and-tokens. Update Purpose after archive.
+The `list-metadata` capability owns the optional `lists.subtitle` field: a single nullable text column on the `lists` table, editable through the list create and edit forms, and rendered alongside the list name on the list-card views (home rail / My Lists) and the list-hero view (`ListDetails`). It defines the subtitle's persistence contract (normalization to NULL, the 120-character cap, and the omitted-vs-cleared distinction on partial updates) and its render contract (subtitle text when present; a non-text `aria-hidden` placeholder spacer on cards and no node in the hero when absent).
 
 ## Requirements
 
