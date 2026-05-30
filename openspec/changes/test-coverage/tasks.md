@@ -32,10 +32,10 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 - [x] 4.4 `test-item-store-links` — store-links UI and any associated reads; covers `item-store-links` capability.
 - [x] 4.5 `test-items-browser-chrome` — items browser chrome under `app/(main)/items/`.
 - [x] 4.6 `test-list-collections` — `list-collections` capability + `ListCard.tsx`, `ListCardRow.tsx`, `MoreCard.tsx`, `ListCollectionsNav.tsx` page-UI.
-- [ ] 4.7 `test-list-hero-header` — `list-hero-header` capability including contrast invariants.
-- [ ] 4.8 `test-list-hero-collapse` — `list-hero-collapse` capability behavior.
+- [x] 4.7 `test-list-hero-header` — `list-hero-header` capability including contrast invariants.
+- [x] 4.8 `test-list-hero-collapse` — `list-hero-collapse` capability behavior.
 - [ ] 4.9 `test-list-item-management` — **split mid-flight into actions + UI**; this §4.9 checkbox flips only when BOTH sub-changes archive. **HIGH stakes**: claim under `quantity_limit` race (partial unique index backstop), reorder via `@dnd-kit/sortable`.
-  - [ ] 4.9a `test-list-item-management` — `app/actions/items.ts`, `app/actions/lists.ts` (server actions: claim flow + races, reorder/rebalance, CRUD). Issue #48.
+  - [x] 4.9a `test-list-item-management` — `app/actions/items.ts`, `app/actions/lists.ts` (server actions: claim flow + races, reorder/rebalance, CRUD). Issue #48.
   - [ ] 4.9b `test-list-item-management-ui` — item-management UI (choose-items page, item form, purchase modal, delete-confirmation dialog, archive affordance, `@dnd-kit/sortable` reorder surface). Issue #83.
 - [ ] 4.10 `test-list-metadata` — `list-metadata` capability (2 requirements; expected small).
 - [ ] 4.11 `test-list-visibility` — **HIGH stakes**: three-state visibility (private | unlisted | public) enforcement in DAL and server actions. Privacy-leak class of bug.
