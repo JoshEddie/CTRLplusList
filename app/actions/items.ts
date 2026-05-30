@@ -453,8 +453,8 @@ async function updateItemStores(
   itemId: string
 ): Promise<void> {
   try {
-    /* v8 ignore start -- defense-in-depth: re-resolves and re-checks the session that createItem/updateItem already verified before calling this helper; unreachable through the public surface */
     const session = await auth();
+    /* v8 ignore next 3 -- defense-in-depth: createItem/updateItem already verified this session before calling the helper; unreachable via the public surface */
     if (!session?.user?.email) {
       throw new Error('Unauthorized');
     }
@@ -462,6 +462,7 @@ async function updateItemStores(
       where: eq(users.email, session.user.email),
       columns: { id: true },
     });
+    /* v8 ignore next 3 -- defense-in-depth: the caller already resolved this user; unreachable via the public surface */
     if (!sessionUser) {
       throw new Error('Unauthorized');
     }
@@ -469,10 +470,10 @@ async function updateItemStores(
       where: eq(items.id, itemId),
       columns: { user_id: true },
     });
+    /* v8 ignore next 3 -- defense-in-depth: createItem/updateItem already verified item ownership before calling the helper; unreachable via the public surface */
     if (!item || item.user_id !== sessionUser.id) {
       throw new Error('Unauthorized');
     }
-    /* v8 ignore stop */
 
     // First, get all current store associations for this item
     const currentAssociations = await db
