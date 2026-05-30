@@ -20,7 +20,9 @@ function useDismiss(
     // Intercepted-route modals: prefer history-back so the @modal slot
     // unmounts back to default. Fall back to a hard navigation if we
     // were opened directly (no history entry to pop).
-    if (typeof window !== 'undefined' && window.history.length > 1) {
+    /* v8 ignore next 2 -- SSR guard; window always defined under jsdom; the branch is a Next.js safety net. */
+    if (typeof window === 'undefined') return;
+    if (window.history.length > 1) {
       router.back();
       return;
     }

@@ -3,9 +3,7 @@
 ## Purpose
 
 TBD - created by archiving change standardize-buttons. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: Shared button design tokens
 
 The system SHALL expose button visual properties as CSS custom properties in `app/ui/styles/global.css` so that every button style file consumes the same source of truth. Tokens MUST cover at minimum: radius, padding (x and y), font size, font weight, minimum height, minimum width, and focus-ring color. Token names MUST use the `--btn-` prefix to avoid collisions with other in-flight token work.
@@ -205,30 +203,6 @@ The system SHALL ensure every button whose visible content is an icon (no render
 - **WHEN** assistive tech reads the icon-only bookmark button
 - **THEN** the button is announced with a state-aware descriptive name (e.g. "Bookmark list" vs "Remove bookmark") AND the pressed state is announced via `aria-pressed` per the toggle-state requirement
 
-### Requirement: Removable chips share the button focus/touch contract via `<Chip>` primitive
-
-The system SHALL provide a sibling `<Chip>` primitive at `app/ui/components/chip/Chip.tsx` for label + remove-× affordances (selected-item chips, active-filter chips). `<Chip>` is a separate component, not a `<Button>` variant — its rendered DOM contains two interactive concerns (a label container and a remove-button child), and conflating those with a single-button styling primitive would violate the orthogonality of variant-as-visual (Decision 3). `<Chip>` MUST consume `buttonClasses()` internals so its focus indicator, hover-on-touch guard, and minimum touch target contract match the rest of the button system.
-
-#### Scenario: Active-filter chip renders in the items toolbar
-
-- **WHEN** the items toolbar has active filters and renders chips for them
-- **THEN** each chip is rendered as `<Chip onRemove={c.onClear}>{c.label}</Chip>`; clicking the × removes the filter; the remove-button has `aria-label="Remove {label}"`
-
-#### Scenario: Selected-list chip renders in the item-form list picker
-
-- **WHEN** the item form's list picker has selected lists
-- **THEN** each selected list is rendered as a `<Chip onRemove={() => remove(s.value)}>{s.label}</Chip>`; the page-scoped `.if-lp-chip` class is no longer referenced
-
-#### Scenario: Chip's focus and touch contract matches buttons
-
-- **WHEN** a keyboard user tabs to the × of any chip
-- **THEN** a focus indicator appears that meets the same WCAG 1.4.11 contrast contract as `<Button>` focus indicators, sized via the same `--btn-xs-*` token surface
-
-#### Scenario: Legacy chip class definitions are removed
-
-- **WHEN** the codebase is grepped for `.items-toolbar-chip` or `.if-lp-chip` in CSS files after migration
-- **THEN** no definitions remain; the `<Chip>` primitive owns the chip visual surface
-
 ### Requirement: Vendor sign-in button is excluded from the unified system
 
 The system SHALL leave the `.gsi-material-button` (Google Sign-In) styling unchanged, as it is a vendor brand requirement.
@@ -237,3 +211,4 @@ The system SHALL leave the `.gsi-material-button` (Google Sign-In) styling uncha
 
 - **WHEN** the auth flow renders the Google Sign-In button
 - **THEN** it retains its existing `.gsi-material-button` styling and is exempt from the `--btn-*` token surface, the 44px floor, and the call-site migration rule
+

@@ -6,7 +6,7 @@ interface HeaderProps {
 
 export default function Header({ title, className, children }: HeaderProps) {
   return (
-    <div className={`header ${className}`}>
+    <div className={className ? `header ${className}` : 'header'}>
       <div className="pageTitleContainer">
         <div className="pageTitle">{title}</div>
       </div>

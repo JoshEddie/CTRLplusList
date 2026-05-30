@@ -43,6 +43,29 @@ export async function guardListViewable<T extends { user_id: string }>(
  *
  * Items not on any list are owner-only.
  */
+// Per-list viewability decision. Split out from `isItemViewable` to keep the
+// outer function under the cognitive-complexity ceiling enforced for this
+// carve-out by eslint.config.mjs. Returns:
+//   - `true`  → list satisfies viewability (short-circuit the loop)
+//   - `false` → list does not satisfy; caller continues to next candidate
+async function isListViewableForViewer(
+  list: { user_id: string; visibility: string },
+  viewerId: string | null
+): Promise<boolean> {
+  if (viewerId && list.user_id === viewerId) return true;
+  if (viewerId && (await isBlocked(list.user_id, viewerId))) return false;
+  const visibility = fromDb(list.visibility);
+  if (visibility === VISIBILITY.OWNER) return false;
+  if (visibility === VISIBILITY.LINK) return true;
+  // Exhaustiveness: `ListVisibility` is a 3-value union and the two prior
+  // branches consumed OWNER and LINK, so `visibility` is FOLLOWERS here.
+  // No trailing `return false` needed — if `fromDb` ever returns something
+  // outside the union it throws (see visibility.ts), so this path is
+  // statically exhaustive.
+  if (!viewerId) return false;
+  return isFollowing(viewerId, list.user_id);
+}
+
 export async function isItemViewable(
   itemId: string,
   viewerId: string | null
@@ -76,16 +99,7 @@ export async function isItemViewable(
     );
 
   for (const list of candidateLists) {
-    if (viewerId && list.user_id === viewerId) return true;
-    if (viewerId && (await isBlocked(list.user_id, viewerId))) continue;
-    const visibility = fromDb(list.visibility);
-    if (visibility === VISIBILITY.OWNER) continue;
-    if (visibility === VISIBILITY.LINK) return true;
-    if (visibility === VISIBILITY.FOLLOWERS) {
-      if (!viewerId) continue;
-      if (await isFollowing(viewerId, list.user_id)) return true;
-      continue;
-    }
+    if (await isListViewableForViewer(list, viewerId)) return true;
   }
   return false;
 }

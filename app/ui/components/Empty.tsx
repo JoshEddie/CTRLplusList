@@ -23,17 +23,18 @@ export default function Empty({
     <div className="empty-container">
       <h3>{title}</h3>
       <p>{description}</p>
-      {type !== 'purchase' && setShowNewItem ? (
-        <Button variant="primary" onClick={() => setShowNewItem(true)}>
-          <FaPlus size={14} />
-          Create {typeCap}
-        </Button>
-      ) : (
-        <LinkButton href={`/${type}s/new`} variant="primary">
-          <FaPlus size={14} />
-          Create {typeCap}
-        </LinkButton>
-      )}
+      {type !== 'purchase' &&
+        (setShowNewItem ? (
+          <Button variant="primary" onClick={() => setShowNewItem(true)}>
+            <FaPlus size={14} />
+            Create {typeCap}
+          </Button>
+        ) : (
+          <LinkButton href={`/${type}s/new`} variant="primary">
+            <FaPlus size={14} />
+            Create {typeCap}
+          </LinkButton>
+        ))}
     </div>
   );
 }

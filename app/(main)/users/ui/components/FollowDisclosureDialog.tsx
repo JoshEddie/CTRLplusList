@@ -20,6 +20,7 @@ export default function FollowDisclosureDialog({
 
   useEffect(() => {
     const dialog = dialogRef.current;
+    /* v8 ignore next -- defensive null-ref guard; dialogRef.current is always populated by the time the effect runs under React 19 + jsdom, so this branch is unreachable in tests. */
     if (!dialog) return;
     if (open && !dialog.open) {
       dialog.showModal();

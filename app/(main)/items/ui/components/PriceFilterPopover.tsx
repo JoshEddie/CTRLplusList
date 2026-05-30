@@ -73,10 +73,9 @@ function PriceFilterPanel({
 
   // Live-clear: the moment the pair becomes valid, drop the error so the
   // user sees instant feedback. Also resets the gate so the next inversion
-  // requires its own debounce fire before re-surfacing.
-  useEffect(() => {
-    if (!inverted && errorShown) setErrorShown(false);
-  }, [inverted, errorShown]);
+  // requires its own debounce fire before re-surfacing. Derived during
+  // render (React 19 pattern) to avoid an effect-and-cascading-render cycle.
+  if (!inverted && errorShown) setErrorShown(false);
 
   // Trailing-edge debounce: once the user has stopped typing for
   // DEBOUNCE_MS, either commit (valid) or surface the error (invalid).
