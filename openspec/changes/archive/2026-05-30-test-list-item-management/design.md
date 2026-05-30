@@ -86,9 +86,15 @@ vi.mock('@/db', () => ({
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 mockNextCache(); // updateTag / revalidateTag become vi.fn()
 
-beforeEach(async () => {
-  const { db } = await bootPglite();
+beforeAll(async () => {
+  const { db } = await bootPglite(); // one full-migration boot per file
   dbHolder.db = db;
+});
+
+beforeEach(async () => {
+  vi.restoreAllMocks(); // drop per-test db spies before they leak
+  await dbHolder.db.execute(sql`TRUNCATE TABLE ... CASCADE`);
+  // reseed the per-file baseline (users, etc.)
   vi.mocked(auth).mockReset();
 });
 ```
@@ -98,7 +104,7 @@ Key points:
 - **`@/db` is mocked, not the DAL.** The testing-foundation "DAL functions are not mocked from action tests" rule is satisfied: `getItemById`, `getListsByUser`, `getUserIdByEmail`, and `isItemViewable` run their real query logic against pglite because they too import `@/db` (the same mock). The mock replaces the *Neon network client*, which is the legitimate DB boundary — analogous to mocking the NextAuth network boundary, not an internal module.
 - **`@/lib/auth` is the network boundary.** `auth()` is mocked to return a fixture `Session` (`{ user: { email, name } }`), `null`, or a session whose email matches no seeded user (to exercise the `user not found` branches). No OAuth handshake occurs.
 - **`next/cache` is mocked** because `updateTag` / `cacheTag` are Next compiler constructs that no-op (or throw) under raw vitest; the mock makes `updateTag` a `vi.fn()` so success-path tests assert `expect(updateTag).toHaveBeenCalledWith('items')` etc. (the spike's `dal-cache.test.ts` documents this as the chosen approach for tag-invalidation assertions).
-- **Fresh DB per test.** `bootPglite()` is called in `beforeEach`, giving each test an isolated in-memory Postgres with migrations applied. This is the dominant per-test cost (per the spike); where a `describe` block shares an immutable fixture, setup may be lifted to a `beforeEach` that re-seeds, but the DB instance is never shared across tests to avoid cross-test state leakage. Concurrency-race tests (the `Promise.allSettled` claim cases) use a single booted DB within one test.
+- **Per-test isolation via boot-once-per-file + TRUNCATE-reseed.** The invariant is that no test observes another test's rows; the boot *mechanism* is an implementation detail chosen for suite health. `bootPglite()` (a full migration set) is the dominant per-test cost, and running it per test (≈135 boots) turned the parallel-fork suite into a boot storm that intermittently starved hooks and flaked unrelated tests. So each file boots pglite **once** in `beforeAll` and resets state between tests in `beforeEach` with `TRUNCATE … CASCADE` + reseed (plus `vi.restoreAllMocks()` so per-test `db` spies don't leak) — preserving the same isolation a per-test boot gives, without the storm. Concurrency-race tests (the `Promise.allSettled` claim cases) run their racing calls against the one booted DB within a single test.
 
 **Alternatives considered:**
 

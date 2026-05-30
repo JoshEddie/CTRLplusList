@@ -86,6 +86,9 @@ const eslintConfig = [
       // reads in one file, so its file-level complexity promotion is deferred
       // until the data-layer carve-outs that share it collectively cover it.
       'app/actions/follows.ts',
+      // test-list-item-management (sub-proposal 4.9) — complexity locked at error.
+      'app/actions/items.ts',
+      'app/actions/lists.ts',
       'app/(main)/users/ui/utils.ts',
       'app/(main)/users/ui/components/Avatar.tsx',
       'app/(main)/users/ui/components/FollowButton.tsx',
