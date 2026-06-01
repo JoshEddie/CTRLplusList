@@ -76,8 +76,16 @@ unless it is justified inline (e.g. a genuinely unreachable defensive branch).
   excluded from the coverage denominator, with no replacement test.
 - FLAG: behavior moved into a commented-out block "to revisit" while its caller
   still ships.
-- DON'T FLAG: an ignore hint on a genuinely unreachable defensive branch
-  (e.g. an exhaustive-switch `default` that throws) that is justified inline.
+- FLAG: a `/* v8 ignore */` over a **redundant guard** — a guard re-testing a
+  condition an earlier guard/branch in the same function already decided
+  (CLAUDE.md `Redundant guards`). The ignore suppresses coverage on code that is
+  dead, not unreachable; the fix is remove + restructure, never ignore. This is
+  coverage-gaming — the ignore is doing the job a deletion should. Tell: the
+  rationale cites the function's own earlier code ("the guard above already redirects…").
+- DON'T FLAG: an ignore on a genuine defensive branch whose condition turns on an
+  invariant established *outside* the function (framework lifecycle, platform, a
+  third-party/DB contract — e.g. an exhaustive-switch `default` that throws),
+  justified inline.
 
 ### Test-substance examples (per TESTING.md)
 

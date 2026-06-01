@@ -4,7 +4,7 @@ argument-hint: "<change-name | PR | diff>"
 description: Review a spec-driven PR/diff before archiving its OpenSpec change. Differentiators over a generic code review - (1) audits the diff against CLAUDE.md and the supporting docs it points to (TESTING.md, DATABASE.md), and (2) audits the diff against the related OpenSpec change's task-completion and design/spec contract, doubling as a pre-archive readiness gate. Use when reviewing a feature branch or PR that implements an OpenSpec change.
 metadata:
   author: list_eddiefamily
-  version: '1.1'
+  version: '1.2'
 ---
 
 # /spec-review
@@ -47,7 +47,7 @@ Each review phase runs as its own sub-agent against a **bundled brief file** in 
 - **`<PR>`** → a pull-request reference; the diff is fetched via `gh`.
 - **`<diff>`** → an explicit diff source (e.g. `--staged`, `--local`, a ref range).
 
-**Output-only.** This version writes its report to the session. It does **not** post comments to the PR. CI owns build/typecheck/lint — this skill does not run them.
+**Output-only.** This version writes its report to the session. It does **not** post comments to the PR. CI owns build/typecheck/lint — this skill does not *run* them. For a `<PR>` invocation it does, however, *read* the CI result via `gh` (see "Check CI status" after the agents return): a red CI is a Critical `Fix now` blocker on its own, independent of how `tasks.md` is checked off — CI is ground truth, the checkboxes are not.
 
 ---
 
@@ -177,6 +177,25 @@ Each agent's prompt is assembled by the orchestrator from three parts:
 
 After all agents return, **consolidate** their findings into the single report defined under "Consolidated report" below.
 
+### Check CI status (PR invocations)
+
+Do this **after** the agents return, not in Phase 0 — by deferring it to here, CI has had the whole review duration to run, so it is usually finished (or nearly so) and rarely holds up the verdict. It feeds the archive gate, which is computed at the very end anyway.
+
+For a `<PR>` invocation, read the PR's check-run rollup:
+
+```bash
+gh pr checks <PR>                              # human-readable pass/fail/pending per check
+gh pr view <PR> --json statusCheckRollup       # machine-readable; inspect each check's conclusion
+```
+
+Read CI every time, regardless of how `tasks.md` is checked off — CI is ground truth, the checkboxes are not. Three outcomes:
+
+- **CI green** → no CI finding. Any task the change deferred to CI (e.g. a `[~]` "verified by GitHub PR CI" gate) is thereby confirmed.
+- **CI red** → raise an open **`Fix now` (Critical)** finding citing the failing check(s), and block the archive gate. This holds whether or not any task is marked complete — a failing build/test/lint the change is responsible for must be fixed in *this* PR.
+- **CI still pending** (or no PR / `gh` unavailable) → state CI as **unverified** in the verdict; do not claim clear-to-archive on its basis, and note CI must be re-checked (and any red result fixed) before archiving.
+
+A non-PR invocation has no CI to read — state CI as unverified rather than assuming it passed.
+
 ---
 
 ## Consolidated report — fixed output contract
@@ -278,11 +297,12 @@ The archive-gate line depends on the change's state (see "Archive-state classifi
 
 The clear-to-archive gate applies (a Type-1 change becomes canonical on merge). It is clear to archive only when ALL of:
 
-- every `tasks.md` item is `[x]`, **and**
+- **CI is green** (from the "Check CI status" step, PR invocations) — red CI blocks regardless of checkbox state; pending/unverified CI cannot satisfy the gate, **and**
+- every `tasks.md` item is `[x]` (a `[~]` gate deferred to CI counts only once that CI is confirmed green above), **and**
 - `openspec validate <name> --strict` passes — for a Type-1 archive the CLI cannot resolve the archived name, so note validate N/A (it ran before the in-PR archive), **and**
 - no open false-complete or conformance findings remain.
 
-Otherwise state **not yet clear to archive** and list the blocking items. A Type-1 finding whose only reconciliation is a significant spec change is blocking: state `not yet clear — needs a fresh propose→archive cycle`.
+Otherwise state **not yet clear to archive** and list the blocking items — including red CI (a blocker) or pending/unverified CI (re-check CI before archiving). A Type-1 finding whose only reconciliation is a significant spec change is blocking: state `not yet clear — needs a fresh propose→archive cycle`.
 
 #### Type-2 (merged) change
 
