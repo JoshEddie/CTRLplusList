@@ -223,6 +223,15 @@ export default defineConfig({
         // test-pwa-shell (sub-proposal 4.12) — locked at universal COVERAGE_FLOOR.
         'app/manifest.ts': COVERAGE_FLOOR,
         'app/ui/components/ServiceWorkerRegistration.tsx': COVERAGE_FLOOR,
+        // test-visit-history (sub-proposal 4.14) — locked at universal COVERAGE_FLOOR.
+        // `app/actions/lists.ts` is already enumerated above (whole-file, from
+        // 4.9); this carve-out's three visit-history functions are covered under
+        // that gate. `lib/dal.ts` stays deferred (multi-capability aggregate; its
+        // visit-history reads' per-function coverage is recorded in this change's
+        // tasks.md §7.5 / Decision 2).
+        'app/(main)/lists/ui/components/BookmarkButton.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/history/HistoryActions.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/history/HistoryCard.tsx': COVERAGE_FLOOR,
       },
     },
   },
