@@ -159,6 +159,8 @@ const eslintConfig = [
       'app/(main)/lists/history/HistoryCard.tsx',
       // test-items-price-filter (sub-proposal 4.16) — complexity locked at error.
       'app/(main)/items/ui/components/PriceFilterPopover.tsx',
+      // test-items-store-filter (sub-proposal 4.17) — complexity locked at error.
+      'app/(main)/items/ui/components/StoreFilterPopover.tsx',
     ],
     plugins: { sonarjs },
     rules: {
