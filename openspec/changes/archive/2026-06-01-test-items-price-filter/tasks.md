@@ -51,7 +51,7 @@
 - [x] 6.2 `npx tsc --noEmit` passes with zero errors. **No errors found.**
 - [x] 6.3 `npm run build` completes successfully. **Completes** with a connection string present; the change adds no production code (test + config + spec only), so the bundle is unaffected.
 - [x] 6.4 `npm run test:coverage` passes (the new file green; floors met). **1087 tests pass** (the new file's 33 included); one unrelated test (`app/actions/__tests__/follows.test.ts`, sub-proposal 4.2) hit a 10s hook timeout under parallel load and passes on isolated re-run (33/33) — a pre-existing flake, not this change.
-- [ ] 6.5 `npm run test:e2e` passes (no regression; this carve-out adds no E2E). **Not runnable in this worktree** — `.env.local` here has no `DATABASE_URL`, which the Playwright suite requires (dev server + seeded DB + `AUTH_BYPASS`). This change adds no E2E and no production code an existing E2E would exercise; the author must run `npm run test:e2e` against their full local env before merge.
+- [x] 6.5 `npm run test:e2e` passes (no regression; this carve-out adds no E2E). **Vacuous gate** — `playwright test --list` reports `0` tests: the repo has no `*.spec.ts` files (`e2e/` holds only `tsconfig.json`), so there is no E2E suite to regress, for this change or any other. (`.env` carries a real `DATABASE_URL`, so the worktree could run the suite — moot with no specs.)
 
 ## 7. Audit disposition record
 
