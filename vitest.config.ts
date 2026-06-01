@@ -234,6 +234,8 @@ export default defineConfig({
         'app/(main)/lists/history/HistoryCard.tsx': COVERAGE_FLOOR,
         // test-items-price-filter (sub-proposal 4.16) — locked at universal COVERAGE_FLOOR.
         'app/(main)/items/ui/components/PriceFilterPopover.tsx': COVERAGE_FLOOR,
+        // test-items-store-filter (sub-proposal 4.17) — locked at universal COVERAGE_FLOOR.
+        'app/(main)/items/ui/components/StoreFilterPopover.tsx': COVERAGE_FLOOR,
       },
     },
   },
