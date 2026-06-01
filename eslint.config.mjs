@@ -89,6 +89,10 @@ const eslintConfig = [
       // test-list-item-management (sub-proposal 4.9) — complexity locked at error.
       'app/actions/items.ts',
       'app/actions/lists.ts',
+      // test-server-endpoint-authorization (sub-proposal 4.13) — complexity
+      // locked at error. items.ts / lists.ts / follows.ts are owned above.
+      'app/actions/user.ts',
+      'app/api/image-search/route.ts',
       'app/(main)/users/ui/utils.ts',
       'app/(main)/users/ui/components/Avatar.tsx',
       'app/(main)/users/ui/components/FollowButton.tsx',

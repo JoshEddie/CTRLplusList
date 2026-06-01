@@ -20,6 +20,7 @@ vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 const VIEWER = { id: 'viewer', email: 'viewer@test.local' };
 const TARGET = { id: 'target', email: 'target@test.local' };
+const THIRD = { id: 'third', email: 'third@test.local' };
 
 let db: TestDb;
 let actions: typeof import('@/app/actions/follows');
@@ -46,7 +47,7 @@ beforeEach(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
-  await seedUsers(db, [VIEWER, TARGET]);
+  await seedUsers(db, [VIEWER, TARGET, THIRD]);
   actions = await import('@/app/actions/follows');
   ({ updateTag } = (await import('next/cache')) as unknown as {
     updateTag: ReturnType<typeof vi.fn>;
@@ -185,6 +186,23 @@ describe('removeFollower', () => {
     const res = await actions.removeFollower(TARGET.id);
     expect(res.success).toBe(true);
     expect(await followRows()).toHaveLength(0);
+  });
+
+  it('OnlySeversEdgeWhereActorIsFollowee_LeavesThirdPartyEdgeIntact', async () => {
+    // server-endpoint-authorization SHALL: removeFollower(B) deletes only the
+    // (follower=B, followee=actor) edge. An edge from B to a third user C —
+    // where the actor is not the followee — must survive, so a caller cannot
+    // sever follow relationships between two other users.
+    await seedFollow(db, TARGET.id, VIEWER.id);
+    await seedFollow(db, TARGET.id, THIRD.id);
+    const res = await actions.removeFollower(TARGET.id);
+    expect(res.success).toBe(true);
+    expect(await followRows()).toEqual([
+      expect.objectContaining({
+        follower_id: TARGET.id,
+        followee_id: THIRD.id,
+      }),
+    ]);
   });
 
   it('NoSession_ReturnsUnauthorized', async () => {
