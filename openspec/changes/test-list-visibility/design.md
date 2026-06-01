@@ -7,6 +7,8 @@ Sub-proposal 4.11 of `test-coverage`, HIGH-stakes (privacy-leak class). The pare
 
 Both functions sit in **multi-owner files**. `app/actions/lists.ts` also exports `createList` / `updateList` / `deleteList` / `setListItems` / `updatePriority` (owned by §4.9 `test-list-item-management`) and `bookmarkList` / `unbookmarkList` / `clearVisitHistory` / `removeVisit` (owned by §4.14 `test-visit-history`). `page.tsx` also exports the default `ListPage` component (owned by the list-page render carve-out). The established harness for server-side integration tests is `lib/__tests__/listAccess.test.ts`: boot pglite in `beforeAll`, `vi.mock('@/db')` through a getter holder, `vi.mock('next/cache')`, `vi.mock('next/navigation')`; the node vitest project picks up `*.test.ts`.
 
+> **Post-rebase reconciliation (onto `dev`).** This design describes the **pre-rebase plan** and is retained as the decision record. When this carve-out was rebased onto `dev`, sibling §4.9 `test-list-item-management` had already landed `app/actions/__tests__/lists.test.ts` (with a `setListVisibility` block) and **enumerated `app/actions/lists.ts`** in `vitest.config.ts` `thresholds`. The operative outcome: this carve-out **merged its stronger `setListVisibility` tests into `lists.test.ts`** (deleting the planned standalone file), reused §4.9's canonical `test-helpers.seedList` (reverting its own `seedFollowGraph.seedList` addition), and kept `generateMetadata` as the sole standalone test. The deferred-enumeration convention below (D1) was thereby **realized by §4.9 for `app/actions/lists.ts`** and remains pending only for `page.tsx`. See `proposal.md` "Post-rebase reconciliation" and `tasks.md` §9 for the full reconciliation.
+
 ## Goals / Non-Goals
 
 **Goals**
@@ -28,6 +30,8 @@ Both functions sit in **multi-owner files**. `app/actions/lists.ts` also exports
 ## Decisions
 
 ### Decision 1: Multi-owner files get function-scoped tests now, deferred per-file config-enumeration later. This carve-out establishes the convention.
+
+> **Post-rebase update:** the convention held, but the timeline collapsed. §4.9 `test-list-item-management` landed first on `dev`, covered the bulk of `app/actions/lists.ts`, and enumerated it at the `COVERAGE_FLOOR` — i.e. §4.9 *was* the "lands the last/largest slice" enumerator for that file. This carve-out therefore adds no enumeration of its own for `lists.ts`; it keeps `setListVisibility` at the floor by merging its tests into §4.9's `lists.test.ts`. The decision's reasoning below (why 4.11 would not unilaterally enumerate a co-owned file) remains the rationale; only `page.tsx` enumeration is still outstanding.
 
 The universal `COVERAGE_FLOOR` is enforced **per file** by vitest (`thresholds.perFile = true`); `eslint.config.mjs`'s `sonarjs/cognitive-complexity = error` override is likewise **per file glob**. Every prior carve-out (primitive families, app-frame) owned **whole files**, so "enumerate the file at the floor" and "promote the file to complexity-error" were lossless. 4.11 is the first carve-out whose natural unit is a **single function inside a file co-owned by other sub-proposals**. Adding `app/actions/lists.ts` to `vitest.config.ts` thresholds would impose the `functions:100 / lines:98` floor on `createList`, `updateList`, … (un-written, owned by §4.9/§4.14) — failing the gate or forcing 4.11 to test code outside its carve-out. Promoting the whole file to complexity-error would lock sibling functions this carve-out never reviewed.
 
