@@ -170,7 +170,7 @@ describe('Page', () => {
   });
 
   describe('DualLoad', () => {
-    it('Render_LoadsActiveAndArchivedSetsIndependently', async () => {
+    it('Render_ReadsAndForwardsActiveAndArchivedSets', async () => {
       render(await callPage());
       expect(getItemsByUser).toHaveBeenCalledWith(
         'viewer',

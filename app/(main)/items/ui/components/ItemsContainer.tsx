@@ -29,22 +29,16 @@ export default async function ItemsContainer({
     ? await getUserIdByEmail(session.user.email)
     : null;
 
-  if (!listId && !user) {
-    redirect('/');
-  }
-
   if (listId) {
     items = await getItemsByListId(listId, {
       viewerId: viewerId ?? user?.id,
       isOwner: isListOwner ?? false,
       showSpoilers: showSpoilers ?? false,
     });
-  } else {
-    /* v8 ignore next 3 -- unreachable: the `!listId && !user` guard above already redirects when there is no viewer in this (no-listId) branch; retained to narrow `user` to non-null for `user.id`. */
-    if (!user) {
-      redirect('/');
-    }
+  } else if (user) {
     items = await getItemsByUser(user.id);
+  } else {
+    redirect('/');
   }
 
   const firstLastInitial = viewerDisplayName(user?.name);

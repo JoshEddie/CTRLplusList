@@ -153,8 +153,10 @@ describe('ItemsContainer', () => {
       expect(fallback.type).toBe(LoadingIndicator);
       expect(fallback.props.size).toBe('page');
     });
+  });
 
-    it('ViewerDisplay_FirstLastInitialReachesChild', async () => {
+  describe('ViewerDisplay', () => {
+    it('FirstLastInitial_ReachesChild', async () => {
       render(await ItemsContainer({}));
       expect(screen.getByTestId('items')).toHaveAttribute(
         'data-user-name',
