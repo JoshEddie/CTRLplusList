@@ -28,16 +28,38 @@ beforeEach(() => {
 });
 
 describe('signInUser', () => {
-  it('Invoked_DelegatesToGoogleProvider', async () => {
+  it('Invoked_DelegatesToSignInWithGoogleProvider', async () => {
     await signInUser();
-    expect(signIn).toHaveBeenCalledWith('google');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google');
+  });
+
+  it('Invoked_DoesNotCallSignOutOrRedirect', async () => {
+    await signInUser();
+    expect(signOut).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
   });
 });
 
 describe('signOutUser', () => {
-  it('Invoked_SignsOutWithoutRedirectThenRedirectsToSignIn', async () => {
+  it('Invoked_CallsSignOutWithRedirectFalse', async () => {
     await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
-    expect(signOut).toHaveBeenCalledWith({ redirect: false });
-    expect(redirect).toHaveBeenCalledWith('/sign-in');
+    expect(signOut).toHaveBeenCalledExactlyOnceWith({ redirect: false });
+  });
+
+  it('Invoked_RedirectsToSignIn', async () => {
+    await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
+    expect(redirect).toHaveBeenCalledExactlyOnceWith('/sign-in');
+  });
+
+  it('Invoked_ClearsSessionBeforeRedirect', async () => {
+    await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
+    expect(vi.mocked(signOut).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(redirect).mock.invocationCallOrder[0],
+    );
+  });
+
+  it('Invoked_DoesNotCallSignIn', async () => {
+    await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
+    expect(signIn).not.toHaveBeenCalled();
   });
 });
