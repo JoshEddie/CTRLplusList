@@ -75,7 +75,6 @@ export default defineConfig({
         '**/*.d.ts',
         'drizzle/**',
         'app/sw.ts',
-        'app/manifest.ts',
         '**/*.test.*',
         '**/__tests__/**',
         'test/**',
@@ -216,6 +215,9 @@ export default defineConfig({
           COVERAGE_FLOOR,
         'app/(main)/lists/ui/components/ListActionsMenu.tsx': COVERAGE_FLOOR,
         'app/(main)/lists/ui/components/visibility-rows.tsx': COVERAGE_FLOOR,
+        // test-pwa-shell (sub-proposal 4.12) — locked at universal COVERAGE_FLOOR.
+        'app/manifest.ts': COVERAGE_FLOOR,
+        'app/ui/components/ServiceWorkerRegistration.tsx': COVERAGE_FLOOR,
       },
     },
   },
