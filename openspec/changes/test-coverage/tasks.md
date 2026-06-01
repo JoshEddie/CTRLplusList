@@ -41,8 +41,8 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 - [x] 4.11 `test-list-visibility` — **HIGH stakes**: three-state visibility (private | unlisted | public) enforcement in DAL and server actions. Privacy-leak class of bug.
 - [x] 4.12 `test-pwa-shell` — `app/manifest.ts` shape, `ServiceWorkerRegistration.tsx`. Service worker (`app/sw.ts`) is excluded from unit coverage; covered by 6.2.
 - [x] 4.13 `test-server-endpoint-authorization` — **HIGH stakes**: every server action and API route is authorized for every caller class (owner / authenticated non-owner / unauthenticated). Aligns with the in-flight `harden-remaining-server-actions` change.
-- [ ] 4.14 `test-visit-history` — `visit-history` capability + visit dedupe race (partial unique index backstop).
-- [ ] 4.15 `test-user-actions` — `app/actions/user.ts` and any user-settings UI under `app/(main)/settings/` / `app/(main)/user/`. Carve-out determined at proposal time.
+- [x] 4.14 `test-visit-history` — `visit-history` capability + visit dedupe race (partial unique index backstop).
+- [x] 4.15 `test-user-actions` — `app/actions/user.ts` and any user-settings UI under `app/(main)/settings/` / `app/(main)/user/`. Carve-out determined at proposal time.
 - [ ] 4.16 `test-items-price-filter` — `PriceFilterPopover.tsx` against the existing `items-price-filter` spec. Deferred boundary from `test-items-browser-chrome` §9.6.
 - [ ] 4.17 `test-items-store-filter` — `StoreFilterPopover.tsx`; create/elevate a `store-filter` family spec. Deferred boundary from `test-items-browser-chrome` §9.6.
 - [ ] 4.18 `test-items-library-shell` — `ItemsContainer.tsx`, `ItemsPage.tsx`, `app/(main)/items/page.tsx`, `app/(main)/items/loading.tsx`; coordinate the `redirect()`-on-unauthenticated paths with §4.13. Deferred boundary from `test-items-browser-chrome` §9.6.
