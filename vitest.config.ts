@@ -147,6 +147,11 @@ export default defineConfig({
         // carve-outs (4.4 / 4.6 / 4.11 / 4.13 / 4.14) inherit these entries.
         'app/actions/items.ts': COVERAGE_FLOOR,
         'app/actions/lists.ts': COVERAGE_FLOOR,
+        // test-server-endpoint-authorization (sub-proposal 4.13) — locked at
+        // universal COVERAGE_FLOOR. items.ts / lists.ts / follows.ts are owned
+        // by sibling carve-outs (4.9 / 4.2); these two files are new here.
+        'app/actions/user.ts': COVERAGE_FLOOR,
+        'app/api/image-search/route.ts': COVERAGE_FLOOR,
         'app/(main)/users/ui/utils.ts': COVERAGE_FLOOR,
         'app/(main)/users/ui/components/Avatar.tsx': COVERAGE_FLOOR,
         'app/(main)/users/ui/components/FollowButton.tsx': COVERAGE_FLOOR,

@@ -42,6 +42,31 @@ if (!container) return;
 
 When a coverage gap surfaces, the preference order is (a) write a test, (b) refactor the source to eliminate the awkward branch, (c) `/* v8 ignore */` with a rationale. Option (c) is the last resort — and the rationale is what keeps it from drifting into a silent escape hatch.
 
+### A small source change often beats an ignore — even when the code is good
+
+Option (b) does not require the branch to be *bad*. The trap is good production code that is merely expensive to reach: an LRU cap that only evicts after N entries, a retry that only fires after a timeout, a guard keyed off a hardcoded constant. Reaching for `/* v8 ignore */` here pulls working code out of the regression net precisely where a future edit could silently break it.
+
+Before ignoring, ask whether a small change makes the code reachable from a test **without changing what production does**. Turning a hardcoded constant into a config value — read from env, defaulting to the same number — is the canonical move: the test sets it low and exercises the branch in a few calls, while production keeps the original default.
+
+```ts
+// ❌ Reflexive ignore — the eviction is good code, just costly to reach (needs 500 entries)
+const CACHE_MAX_ENTRIES = 500;
+/* v8 ignore next 3 -- eviction needs 500 cached entries, unreachable in a test */
+if (cache.size >= CACHE_MAX_ENTRIES) {
+  /* evict oldest */
+}
+
+// ✅ Make the bound a real config knob; the test sets it to 2 and drives eviction in 3 calls
+const CACHE_MAX_ENTRIES = Number(process.env.CACHE_MAX_ENTRIES) || 500;
+if (cache.size >= CACHE_MAX_ENTRIES) {
+  /* evict oldest */
+}
+```
+
+The seam must be a **genuine** config or behavior surface, not a test-only backdoor. A tunable cache bound is a real ops knob and behaves identically whether prod or a test sets it; `if (process.env.NODE_ENV === 'test') skipAuth()` is a forbidden backdoor (see the no-backdoor rule). If the only seam you could add would be a test-only branch, don't add it — fall through to (c).
+
+Reserve `/* v8 ignore */` for code that is genuinely unreachable (a defensive guard a correct caller can never trip) or truly external (a third-party error path you cannot provoke). "Hard to set up" is a signal to push harder on (a) or (b), not a reason for (c).
+
 ## Test file location
 
 Test files MUST live in a `__tests__/` directory colocated with the module they test — NOT alongside it. The colocation requirement from `testing-foundation` stands (tests stay next to the code they exercise), but the `__tests__/` folder keeps source directory listings focused on production files and groups multiple tests for the same module without polluting the parent directory.
