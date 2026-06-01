@@ -208,6 +208,18 @@ describe('ProviderSuccessAndCache', () => {
     expect(body.provider).toBe('serpapi');
     expect(body.items).toHaveLength(2);
     expect(body.items[0].link).toBe('https://img/o.png');
+    // The second result is the empty `{}` upstream row: every field falls back.
+    expect(body.items[1]).toEqual({
+      link: '',
+      title: '',
+      image: {
+        byteSize: 0,
+        contextLink: '',
+        height: 0,
+        thumbnailLink: '',
+        width: 0,
+      },
+    });
   });
 
   it('SerperValidQuery_ReturnsItemsAndProvider', async () => {
@@ -223,6 +235,18 @@ describe('ProviderSuccessAndCache', () => {
     const body = await r.json();
     expect(body.provider).toBe('serper');
     expect(body.items).toHaveLength(2);
+    // The second result is the empty `{}` upstream row: every field falls back.
+    expect(body.items[1]).toEqual({
+      link: '',
+      title: '',
+      image: {
+        byteSize: 0,
+        contextLink: '',
+        height: 0,
+        thumbnailLink: '',
+        width: 0,
+      },
+    });
   });
 
   it('MockValidQuery_ReturnsMockItems-NoFetch', async () => {
@@ -314,7 +338,7 @@ describe('ProviderSuccessAndCache', () => {
 });
 
 describe('ProviderSelection', () => {
-  it('MockNamedInProvidersList_ChecksIsConfigured', async () => {
+  it('MockNamedInProvidersList_ResolvesToMock', async () => {
     // Naming mock in the priority list routes it through the configured-filter,
     // exercising mockProvider.isConfigured (unlike the USE_MOCK shortcut).
     const GET = await loadRoute({ IMAGE_SEARCH_PROVIDERS: 'mock' });
