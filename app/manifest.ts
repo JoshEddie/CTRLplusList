@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'ctrl+List',
-    short_name: 'ctrl+List',
+    name: 'Ctrl+List',
+    short_name: 'Ctrl+List',
     description: 'Create and share your lists with friends and family',
     id: '/',
     start_url: '/',

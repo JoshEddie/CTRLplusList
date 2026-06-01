@@ -144,6 +144,9 @@ const eslintConfig = [
       'app/(main)/lists/ui/components/HeroCollapsedItemsContainer.tsx',
       'app/(main)/lists/ui/components/ListActionsMenu.tsx',
       'app/(main)/lists/ui/components/visibility-rows.tsx',
+      // test-pwa-shell (sub-proposal 4.12) — locked at universal COVERAGE_FLOOR.
+      'app/manifest.ts',
+      'app/ui/components/ServiceWorkerRegistration.tsx',
     ],
     plugins: { sonarjs },
     rules: {
