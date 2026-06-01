@@ -32,7 +32,7 @@ Bound by:
 - No coverage of the auth-UI consumers (`SignInButton`, `SignOutButton`, `AuthButtons`, `UserAvatarPopover`) — E2E territory (6.1) per `proposal.md`'s carve-out boundary.
 - No coverage of `app/(main)/settings/connections/**` (owned by 4.2 `test-following`) or `app/(main)/user/[id]/**` (4.2 / 4.6).
 - No real OAuth handshake. `signIn` / `signOut` are mocked at the `@/lib/auth` boundary per `testing-foundation`'s NextAuth allowance.
-- No assertion on the thrown `NEXT_REDIRECT` sentinel. `next/navigation`'s `redirect` is mocked to a no-op spy so the test can assert its argument (Decision 2).
+- No coupling to Next's internal `NEXT_REDIRECT` sentinel encoding. `next/navigation`'s `redirect` is mocked to throw a tagged local `RedirectSignal` (mirroring the production throw without depending on its undocumented `digest` format); each `signOutUser` test asserts the target via `rejects.toThrow` (Decision 2).
 
 ## Decisions
 
@@ -51,11 +51,15 @@ Bound by:
 
 ```ts
 vi.mock('@/lib/auth', () => ({ signIn: vi.fn(), signOut: vi.fn() }));
-vi.mock('next/navigation', () => ({ redirect: vi.fn() }));
+vi.mock('next/navigation', () => ({
+  redirect: vi.fn((target: string) => {
+    throw new RedirectSignal(target);
+  }),
+}));
 ```
 
 - **`@/lib/auth`** — `testing-foundation`'s "Tests SHALL NOT call rate-limited external services" requirement explicitly names "NextAuth Google OAuth" as a network boundary to mock; `signIn` / `signOut` are the NextAuth handshake entry points re-exported from `@/lib/auth`. Mocking them IS mocking at the NextAuth boundary, NOT mocking an internal application module.
-- **`next/navigation`'s `redirect`** — a Next.js framework control-flow primitive. In production it throws a `NEXT_REDIRECT` sentinel that the framework intercepts to perform the navigation; if left unmocked, that throw would abort the test before any assertion. Mocking it to a no-op spy is the documented pattern for asserting the redirect *target* without the sentinel; this parallels the NextAuth-boundary allowance (a framework boundary, not an internal app module).
+- **`next/navigation`'s `redirect`** — a Next.js framework control-flow primitive. In production it throws a `NEXT_REDIRECT` sentinel that the framework intercepts to perform the navigation; if left unmocked, that throw would abort the test before any assertion. The mock mirrors that behavior by throwing a tagged local `RedirectSignal` carrying the target, which each `signOutUser` test catches via `rejects.toThrow(/__redirect:\/sign-in__/)` — asserting both the target and that execution aborts at `redirect`, without coupling to Next's internal sentinel encoding. This parallels the NextAuth-boundary allowance (a framework boundary, not an internal app module).
 
 Assertions (observable behavior, per the substance bar):
 
@@ -64,7 +68,7 @@ Assertions (observable behavior, per the substance bar):
 
 **Alternatives considered:**
 
-- *Leave `redirect` unmocked and catch the thrown `NEXT_REDIRECT`, then inspect its `digest`.* Rejected — couples the test to Next's internal sentinel encoding (`NEXT_REDIRECT;replace;/sign-in;...`), which is undocumented and version-fragile. Mocking the spy and asserting its argument is robust and reads as the contract.
+- *Leave `redirect` unmocked and catch the real thrown `NEXT_REDIRECT`, then inspect its `digest`.* Rejected — couples the test to Next's internal sentinel encoding (`NEXT_REDIRECT;replace;/sign-in;...`), which is undocumented and version-fragile. Throwing a tagged local `RedirectSignal` and asserting its target is robust and reads as the contract.
 - *Mock `next-auth` directly instead of `@/lib/auth`.* Rejected — `@/lib/auth` is the module the source under test actually imports `signIn` / `signOut` from; mocking the real import path is more targeted and matches the file's dependency graph. (Same reasoning as `test-app-frame` Decision 2 for `auth`.)
 
 ### Decision 3: The latent invariants are tested but NOT elevated to a capability spec.
@@ -88,7 +92,7 @@ Both functions are pure delegations with zero branches. They are fully testable 
 
 ## Risks / Trade-offs
 
-- **`next/navigation` `redirect` mock vs. real throw behavior.** Mocking `redirect` to a no-op means the test does NOT verify that production control-flow actually *stops* at the `redirect()` call (in production, `redirect` throws and nothing after it runs). → Accepted: in `signOutUser` there is no code after `redirect('/sign-in')`, so the no-throw mock does not mask any unreachable post-redirect logic. The contract under test is "which target," not "does Next abort" — the latter is Next's own guarantee, not this action's behavior.
+- **`next/navigation` `redirect` mock — throwing vs. real abort.** The mock throws a tagged local `RedirectSignal` rather than Next's real `NEXT_REDIRECT`, so the test verifies that execution aborts at `redirect('/sign-in')` (nothing after it runs) without coupling to Next's sentinel encoding. → Accepted: in `signOutUser` there is no code after `redirect('/sign-in')` anyway, so the throw both proves the abort contract and asserts the target. The fidelity gap (local sentinel vs. real `NEXT_REDIRECT`) is immaterial — the action's contract is the target and the ordering, not Next's interception mechanism.
 - **No relevant capability spec for the sign-out destination invariant.** The `/sign-in` post-sign-out target is a real contract with no spec home (Decision 3). → Accepted: it is regression-locked by the test; elevation is deferred to a potential future `user-account` capability rather than forced into an ill-fitting spec.
 - **`UserAvatarPopover` is ungoverned.** → Accepted as an observation for the §7.1 close-out audit (Decision 4); not fixed here because it is outside this carve-out's source.
 - **`toHaveBeenCalledExactlyOnceWith` availability.** This matcher exists in Vitest 3+/4 (the repo runs vitest 4.x). → If unavailable for any reason, fall back to `expect(fn).toHaveBeenCalledTimes(1)` + `expect(fn).toHaveBeenCalledWith(...)`; same assertion strength. Recorded as a §audit fallback.

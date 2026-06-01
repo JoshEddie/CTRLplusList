@@ -11,8 +11,8 @@
 ### 2A. ModuleMocks — framework boundaries stubbed
 
 - [x] 2.1 `vi.mock('@/lib/auth', () => ({ signIn: vi.fn(), signOut: vi.fn() }))` at file top (NextAuth boundary, per testing-foundation allowance).
-- [x] 2.2 `vi.mock('next/navigation', () => ({ redirect: vi.fn() }))` at file top (Next routing control-flow primitive — mocked to a no-op spy so the `NEXT_REDIRECT` sentinel does not abort the test; see design Decision 2).
-- [x] 2.3 `beforeEach(() => vi.clearAllMocks())` so call counts and `invocationCallOrder` are per-test.
+- [x] 2.2 `vi.mock('next/navigation', ...)` at file top with `redirect` mocked to throw a tagged `RedirectSignal` sentinel (mirroring the production `NEXT_REDIRECT` throw; 4.13's authoritative mock, merged per §7). Each `signOutUser` test catches it via `rejects.toThrow(/__redirect:\/sign-in__/)`, asserting the target and that execution aborts at `redirect`; see design Decision 2.
+- [x] 2.3 `beforeEach` resets per-mock — `mockReset()` on `signIn`/`signOut`, `mockClear()` on `redirect` — so call counts and `invocationCallOrder` are per-test. `redirect` uses `mockClear` (not `mockReset`) to preserve its throwing implementation, which every `signOutUser` test depends on.
 
 ### 2B. signInUser — provider delegation
 
