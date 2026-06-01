@@ -232,6 +232,8 @@ export default defineConfig({
         'app/(main)/lists/ui/components/BookmarkButton.tsx': COVERAGE_FLOOR,
         'app/(main)/lists/history/HistoryActions.tsx': COVERAGE_FLOOR,
         'app/(main)/lists/history/HistoryCard.tsx': COVERAGE_FLOOR,
+        // test-items-price-filter (sub-proposal 4.16) — locked at universal COVERAGE_FLOOR.
+        'app/(main)/items/ui/components/PriceFilterPopover.tsx': COVERAGE_FLOOR,
       },
     },
   },
