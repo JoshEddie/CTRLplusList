@@ -294,44 +294,217 @@ describe('deleteList', () => {
 });
 
 describe('setListVisibility', () => {
-  it('InvalidEnum_ReturnsValidation', async () => {
-    const res = await actions.setListVisibility(
-      'L',
-      'bogus' as unknown as ListVisibility
-    );
-    expect(res.error).toBe('Validation');
-  });
+  // dev code never reads `shared`, and `shared_at` is only observable in the
+  // row — so transitions and the dual-write are asserted by reading 'L' back.
+  const findL = async () => (await listRows()).find((l) => l.id === 'L');
 
-  it('NonExistent_ReturnsNotFound', async () => {
-    const res = await actions.setListVisibility('nope', 'public');
-    expect(res.error).toBe('Not found');
-  });
-
-  it('NonOwner_ReturnsForbidden', async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id });
-    asOther();
-    const res = await actions.setListVisibility('L', 'public');
-    expect(res.error).toBe('Forbidden');
-  });
-
-  describe('SharedAtTransitions', () => {
-    it('PrivateToPublic_SetsSharedAt-SetsSharedTrue-CallsUpdateTagLists', async () => {
+  describe('AuthGuards', () => {
+    it('NoSession_ReturnsUnauthorized-RowUnchanged', async () => {
       await seedList(db, {
         id: 'L',
         user_id: OWNER.id,
         visibility: 'private',
+        shared: false,
         shared_at: null,
       });
+      noSession();
+
       const res = await actions.setListVisibility('L', 'public');
-      expect(res.success).toBe(true);
-      const row = (await listRows()).find((l) => l.id === 'L');
-      expect(row?.visibility).toBe('public');
-      expect(row?.shared).toBe(true);
-      expect(row?.shared_at).toBeInstanceOf(Date);
-      expect(updateTag).toHaveBeenCalledWith('lists');
+
+      expect(res).toMatchObject({ success: false, error: 'Unauthorized' });
+      const row = await findL();
+      expect(row?.visibility).toBe('private');
+      expect(row?.shared).toBe(false);
+      expect(row?.shared_at).toBeNull();
+      expect(updateTag).not.toHaveBeenCalled();
     });
 
-    it('PublicToPrivate_ClearsSharedAt-SetsSharedFalse', async () => {
+    it('UnknownEmail_ReturnsUnauthorized-RowUnchanged', async () => {
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'private',
+        shared: false,
+        shared_at: null,
+      });
+      asGhost();
+
+      const res = await actions.setListVisibility('L', 'public');
+
+      expect(res).toMatchObject({ success: false, error: 'Unauthorized' });
+      expect((await findL())?.visibility).toBe('private');
+      expect(updateTag).not.toHaveBeenCalled();
+    });
+
+    it('NonOwner_ReturnsForbidden-RowUnchanged', async () => {
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'private',
+        shared: false,
+        shared_at: null,
+      });
+      asOther();
+
+      const res = await actions.setListVisibility('L', 'public');
+
+      expect(res).toMatchObject({ success: false, error: 'Forbidden' });
+      const row = await findL();
+      expect(row?.visibility).toBe('private');
+      expect(row?.shared).toBe(false);
+      expect(row?.shared_at).toBeNull();
+      expect(updateTag).not.toHaveBeenCalled();
+    });
+
+    it('NonExistentId_ReturnsNotFound', async () => {
+      const res = await actions.setListVisibility('nope', 'public');
+
+      expect(res).toMatchObject({ success: false, error: 'Not found' });
+      expect(updateTag).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('FailClosedValidation', () => {
+    it('OutOfEnumValue_ReturnsValidation-RowUnchanged', async () => {
+      const T = new Date('2020-01-01T00:00:00.000Z');
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'unlisted',
+        shared: true,
+        shared_at: T,
+      });
+
+      // 'owner' is a future-canonical string the action must still reject in
+      // Stage 1 — the typed signature is erased at the server-action boundary.
+      const res = await actions.setListVisibility(
+        'L',
+        'owner' as unknown as ListVisibility
+      );
+
+      expect(res).toMatchObject({ success: false, error: 'Validation' });
+      const row = await findL();
+      expect(row?.visibility).toBe('unlisted');
+      expect(row?.shared).toBe(true);
+      expect(row?.shared_at?.toISOString()).toBe(T.toISOString());
+      expect(updateTag).not.toHaveBeenCalled();
+    });
+
+    it('EmptyStringValue_ReturnsValidation', async () => {
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'private',
+        shared: false,
+        shared_at: null,
+      });
+
+      const res = await actions.setListVisibility(
+        'L',
+        '' as unknown as ListVisibility
+      );
+
+      expect(res).toMatchObject({ success: false, error: 'Validation' });
+      expect(updateTag).not.toHaveBeenCalled();
+    });
+
+    it('InvalidValueAndUnknownId_ReturnsValidation-NotNotFound', async () => {
+      const res = await actions.setListVisibility(
+        'nope',
+        'admin' as unknown as ListVisibility
+      );
+
+      // Validation fails closed before the existence lookup, so the unknown id
+      // never surfaces as 'Not found'.
+      expect(res).toMatchObject({ success: false, error: 'Validation' });
+      expect(updateTag).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('SharedAtTransitions', () => {
+    it('PrivateToUnlisted_SetsSharedAtFresh-SharedTrue', async () => {
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'private',
+        shared: false,
+        shared_at: null,
+      });
+
+      const before = Date.now();
+      const res = await actions.setListVisibility('L', 'unlisted');
+      const after = Date.now();
+
+      expect(res.success).toBe(true);
+      const row = await findL();
+      expect(row?.visibility).toBe('unlisted');
+      expect(row?.shared).toBe(true);
+      const t = row?.shared_at?.getTime();
+      expect(t).toBeGreaterThanOrEqual(before);
+      expect(t).toBeLessThanOrEqual(after);
+    });
+
+    it('PrivateToPublic_SetsSharedAtFresh-SharedTrue', async () => {
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'private',
+        shared: false,
+        shared_at: null,
+      });
+
+      const before = Date.now();
+      const res = await actions.setListVisibility('L', 'public');
+      const after = Date.now();
+
+      expect(res.success).toBe(true);
+      const row = await findL();
+      expect(row?.visibility).toBe('public');
+      expect(row?.shared).toBe(true);
+      const t = row?.shared_at?.getTime();
+      expect(t).toBeGreaterThanOrEqual(before);
+      expect(t).toBeLessThanOrEqual(after);
+    });
+
+    it('UnlistedToPublic_PreservesSharedAt-SharedTrue', async () => {
+      const T = new Date('2021-06-15T00:00:00.000Z');
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'unlisted',
+        shared: true,
+        shared_at: T,
+      });
+
+      const res = await actions.setListVisibility('L', 'public');
+
+      expect(res.success).toBe(true);
+      const row = await findL();
+      expect(row?.visibility).toBe('public');
+      expect(row?.shared).toBe(true);
+      expect(row?.shared_at?.toISOString()).toBe(T.toISOString());
+    });
+
+    it('PublicToUnlisted_PreservesSharedAt-SharedTrue', async () => {
+      const T = new Date('2021-06-15T00:00:00.000Z');
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'public',
+        shared: true,
+        shared_at: T,
+      });
+
+      const res = await actions.setListVisibility('L', 'unlisted');
+
+      expect(res.success).toBe(true);
+      const row = await findL();
+      expect(row?.visibility).toBe('unlisted');
+      expect(row?.shared).toBe(true);
+      expect(row?.shared_at?.toISOString()).toBe(T.toISOString());
+    });
+
+    it('PublicToPrivate_ClearsSharedAt-SharedFalse', async () => {
       await seedList(db, {
         id: 'L',
         user_id: OWNER.id,
@@ -339,52 +512,130 @@ describe('setListVisibility', () => {
         shared: true,
         shared_at: new Date('2020-01-01'),
       });
+
       const res = await actions.setListVisibility('L', 'private');
+
       expect(res.success).toBe(true);
-      const row = (await listRows()).find((l) => l.id === 'L');
+      const row = await findL();
       expect(row?.visibility).toBe('private');
       expect(row?.shared).toBe(false);
       expect(row?.shared_at).toBeNull();
     });
 
-    it('UnlistedToPublic_PreservesSharedAt', async () => {
-      const original = new Date('2021-06-15T00:00:00.000Z');
+    it('UnlistedToPrivate_ClearsSharedAt-SharedFalse', async () => {
       await seedList(db, {
         id: 'L',
         user_id: OWNER.id,
         visibility: 'unlisted',
         shared: true,
-        shared_at: original,
+        shared_at: new Date('2020-01-01'),
       });
-      const res = await actions.setListVisibility('L', 'public');
+
+      const res = await actions.setListVisibility('L', 'private');
+
       expect(res.success).toBe(true);
-      const row = (await listRows()).find((l) => l.id === 'L');
+      const row = await findL();
+      expect(row?.visibility).toBe('private');
+      expect(row?.shared).toBe(false);
+      expect(row?.shared_at).toBeNull();
+    });
+
+    it('PublicPrivatePublicCycle_SecondSharedAtIsFresh', async () => {
+      const T1 = new Date('2020-01-01T00:00:00.000Z');
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'public',
+        shared: true,
+        shared_at: T1,
+      });
+
+      await actions.setListVisibility('L', 'private');
+      expect((await findL())?.shared_at).toBeNull();
+
+      const before = Date.now();
+      await actions.setListVisibility('L', 'public');
+      const after = Date.now();
+
+      const row = await findL();
       expect(row?.visibility).toBe('public');
-      expect(row?.shared_at?.toISOString()).toBe(original.toISOString());
+      const t = row?.shared_at?.getTime();
+      expect(t).toBeGreaterThan(T1.getTime());
+      expect(t).toBeGreaterThanOrEqual(before);
+      expect(t).toBeLessThanOrEqual(after);
+    });
+
+    it('PrivateToPrivate_NoSpuriousSharedAt', async () => {
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'private',
+        shared: false,
+        shared_at: null,
+      });
+
+      const res = await actions.setListVisibility('L', 'private');
+
+      expect(res.success).toBe(true);
+      const row = await findL();
+      expect(row?.visibility).toBe('private');
+      expect(row?.shared).toBe(false);
+      expect(row?.shared_at).toBeNull();
     });
   });
 
-  describe('AuthGuards', () => {
-    it('NoSession_ReturnsUnauthorized', async () => {
-      noSession();
+  describe('SuccessShapeAndRevalidation', () => {
+    it('ValidTransition_ReturnsVisibilityUpdated', async () => {
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'private',
+        shared: false,
+        shared_at: null,
+      });
+
       const res = await actions.setListVisibility('L', 'public');
-      expect(res.error).toBe('Unauthorized');
+
+      expect(res).toEqual({ success: true, message: 'Visibility updated' });
     });
 
-    it('UnknownEmail_ReturnsUnauthorized', async () => {
-      asGhost();
-      const res = await actions.setListVisibility('L', 'public');
-      expect(res.error).toBe('Unauthorized');
-    });
-  });
+    it('ValidTransition_CallsUpdateTagListsOnce', async () => {
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'private',
+        shared: false,
+        shared_at: null,
+      });
 
-  it('UpdateThrows_ReturnsFailedToUpdateVisibility', async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id });
-    vi.spyOn(db, 'update').mockImplementation(() => {
-      throw new Error('boom');
+      await actions.setListVisibility('L', 'public');
+
+      expect(updateTag.mock.calls).toEqual([['lists']]);
     });
-    const res = await actions.setListVisibility('L', 'public');
-    expect(res.error).toBe('Failed to update visibility');
+
+    it('UpdateThrows_ReturnsFailed-NoUpdateTag', async () => {
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'private',
+        shared: false,
+        shared_at: null,
+      });
+      vi.spyOn(db, 'update').mockImplementation(() => {
+        throw new Error('boom');
+      });
+
+      const res = await actions.setListVisibility('L', 'public');
+
+      expect(res).toMatchObject({
+        success: false,
+        error: 'Failed to update visibility',
+      });
+      const row = await findL();
+      expect(row?.visibility).toBe('private');
+      expect(row?.shared_at).toBeNull();
+      expect(updateTag).not.toHaveBeenCalled();
+    });
   });
 });
 
