@@ -2,27 +2,17 @@ import { auth } from '@/lib/auth';
 import { getItemsByListId, getItemsByUser, getUserIdByEmail } from '@/lib/dal';
 import { ItemDisplay } from '@/lib/types';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import ItemsBrowser from './ItemsBrowser';
 import Items from './Items';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from './paginationConstants';
+import { readItemsPageSize, viewerDisplayName } from '../../utils';
 
 interface ItemsContainerProps {
   listId?: string;
   isListOwner?: boolean;
   viewerId?: string;
   showSpoilers?: boolean;
-}
-
-async function readPageSizeCookie(): Promise<number> {
-  const store = await cookies();
-  const raw = store.get('items_page_size')?.value;
-  const parsed = raw ? parseInt(raw, 10) : NaN;
-  return PAGE_SIZE_OPTIONS.includes(parsed as 12 | 24 | 48 | 96)
-    ? parsed
-    : DEFAULT_PAGE_SIZE;
 }
 
 export default async function ItemsContainer({
@@ -50,20 +40,17 @@ export default async function ItemsContainer({
       showSpoilers: showSpoilers ?? false,
     });
   } else {
+    /* v8 ignore next 3 -- unreachable: the `!listId && !user` guard above already redirects when there is no viewer in this (no-listId) branch; retained to narrow `user` to non-null for `user.id`. */
     if (!user) {
       redirect('/');
     }
     items = await getItemsByUser(user.id);
   }
 
-  const firstLastName: string[] = user?.name ? user.name.split(' ') : [];
-  const firstLastInitial =
-    firstLastName.length > 1
-      ? `${firstLastName[0]} ${firstLastName[1]?.[0]}`
-      : firstLastName[0];
+  const firstLastInitial = viewerDisplayName(user?.name);
 
   if (listId) {
-    const initialPageSize = await readPageSizeCookie();
+    const initialPageSize = await readItemsPageSize();
     return (
       <Suspense fallback={<LoadingIndicator size="page" />}>
         <ItemsBrowser

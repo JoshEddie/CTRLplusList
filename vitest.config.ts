@@ -202,6 +202,12 @@ export default defineConfig({
         'app/(main)/items/ui/components/PageSizeSelect.tsx': COVERAGE_FLOOR,
         'app/(main)/items/ui/components/itemFilters.ts': COVERAGE_FLOOR,
         'app/(main)/items/ui/components/paginationConstants.ts': COVERAGE_FLOOR,
+        // test-items-library-shell (sub-proposal 4.18) — locked at universal COVERAGE_FLOOR.
+        'app/(main)/items/page.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/loading.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/utils.ts': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/ItemsContainer.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/ItemsPage.tsx': COVERAGE_FLOOR,
         // test-list-collections (sub-proposal 4.6) — locked at universal COVERAGE_FLOOR.
         'app/ui/components/ListCard.tsx': COVERAGE_FLOOR,
         'app/ui/components/ListCardRow.tsx': COVERAGE_FLOOR,
