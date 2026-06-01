@@ -151,6 +151,12 @@ const eslintConfig = [
       // test-pwa-shell (sub-proposal 4.12) — locked at universal COVERAGE_FLOOR.
       'app/manifest.ts',
       'app/ui/components/ServiceWorkerRegistration.tsx',
+      // test-visit-history (sub-proposal 4.14) — locked at universal COVERAGE_FLOOR.
+      // app/actions/lists.ts already promoted above (whole-file, from 4.9);
+      // lib/dal.ts stays at global `warn` (multi-capability aggregate, deferred).
+      'app/(main)/lists/ui/components/BookmarkButton.tsx',
+      'app/(main)/lists/history/HistoryActions.tsx',
+      'app/(main)/lists/history/HistoryCard.tsx',
     ],
     plugins: { sonarjs },
     rules: {

@@ -23,9 +23,8 @@ export default function BookmarkButton({
     const next = !bookmarked;
     setBookmarked(next);
     startTransition(async () => {
-      const result = next
-        ? await bookmarkList(listId)
-        : await unbookmarkList(listId);
+      const action = next ? bookmarkList : unbookmarkList;
+      const result = await action(listId);
       if (!result.success) {
         setBookmarked(!next);
         toast.error(result.message);
