@@ -29,6 +29,11 @@ Don't explain WHAT the code does — well-named identifiers already do that. Don
 - Don't build generality for cases that don't exist yet — parameters, flags, or branches with no current caller are dead code except when planned for imminent future use.
 - Don't tear down a clean, working, tested abstraction just because it's more general than strictly needed; once it exists and is covered, stripping it is risk for no live defect.
 
+#### Redundant guards
+
+- Don't re-test a condition your own earlier control flow already decided. A guard (`if (cond) redirect()/return/throw`) whose condition is already excluded by an upstream guard or branch in the same function is dead code — remove it and let any narrowing flow from the existing control flow (merge or move the upstream guard, early-return). Never paper over it with a `/* v8 ignore */`.
+- This is NOT a defensive guard, whose condition turns on an invariant established outside the function (framework lifecycle, platform, a third-party/DB contract) the compiler can't prove — that one is legitimate. Tell: a rationale that cites the function's own earlier code ("the guard above already redirects…") is the redundant kind.
+
 #### Fragile coupling
 
 - When a shared abstraction's callers diverge, split it back into separate concepts — don't bolt on flags, params, or branches so one thing can serve all of them.

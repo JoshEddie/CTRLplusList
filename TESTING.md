@@ -65,7 +65,9 @@ if (cache.size >= CACHE_MAX_ENTRIES) {
 
 The seam must be a **genuine** config or behavior surface, not a test-only backdoor. A tunable cache bound is a real ops knob and behaves identically whether prod or a test sets it; `if (process.env.NODE_ENV === 'test') skipAuth()` is a forbidden backdoor (see the no-backdoor rule). If the only seam you could add would be a test-only branch, don't add it — fall through to (c).
 
-Reserve `/* v8 ignore */` for code that is genuinely unreachable (a defensive guard a correct caller can never trip) or truly external (a third-party error path you cannot provoke). "Hard to set up" is a signal to push harder on (a) or (b), not a reason for (c).
+Reserve `/* v8 ignore */` for code that is genuinely unreachable (a defensive guard whose condition turns on an invariant established *outside* the function — framework lifecycle, platform, a third-party/DB contract — the compiler can't prove) or truly external (a third-party error path you cannot provoke). "Hard to set up" is a signal to push harder on (a) or (b), not a reason for (c).
+
+An ignore over a **redundant guard** is never valid (b), not (c). A redundant guard re-tests a condition the function's own earlier control flow already decided — an upstream guard or branch that already excluded the case (see `Redundant guards` in [CLAUDE.md](CLAUDE.md)). It is dead code, not unreachable code: the fix is to remove it and let any narrowing flow from the existing control flow, never to ignore it. **Tell:** a rationale that cites the function's own earlier code ("the guard above already redirects…") is describing a redundant guard. Contrast the legitimate defensive guard above, whose invariant is external and so can never name a local cause.
 
 ## Test file location
 

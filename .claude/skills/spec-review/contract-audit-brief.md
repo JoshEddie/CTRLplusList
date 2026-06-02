@@ -42,6 +42,13 @@ For every task marked `[x]` in `tasks.md`, confirm matching real work exists in
 the diff or codebase. Absent → **mismatch finding** (Critical/Major): either the
 work is missing, or the task should not be `[x]` / should be reworded or dropped.
 
+A `[~]` task explicitly deferred to CI (e.g. a build/typecheck/lint gate the
+change records as "verified by GitHub PR CI") is **not** a false-complete — do
+not flag it as missing work. Instead, surface it in your return as a
+"deferred-to-CI" gate so the orchestrator can confirm it against the actual
+check run (the orchestrator reads CI after the agents return; you do not). Judge
+only whether the deferral itself is reasonable for the work in scope.
+
 ### Design/spec conformance
 Confirm completed work conforms to the SHALL requirements in `design.md` and
 `specs/**/spec.md`. Contradiction → **conformance mismatch finding**, citing the

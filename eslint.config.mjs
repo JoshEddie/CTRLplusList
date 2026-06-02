@@ -133,6 +133,12 @@ const eslintConfig = [
       'app/(main)/items/ui/components/PageSizeSelect.tsx',
       'app/(main)/items/ui/components/itemFilters.ts',
       'app/(main)/items/ui/components/paginationConstants.ts',
+      // test-items-library-shell (sub-proposal 4.18) — locked at universal COVERAGE_FLOOR.
+      'app/(main)/items/page.tsx',
+      'app/(main)/items/loading.tsx',
+      'app/(main)/items/utils.ts',
+      'app/(main)/items/ui/components/ItemsContainer.tsx',
+      'app/(main)/items/ui/components/ItemsPage.tsx',
       // test-list-collections (sub-proposal 4.6) — locked at universal COVERAGE_FLOOR.
       'app/ui/components/ListCard.tsx',
       'app/ui/components/ListCardRow.tsx',
