@@ -26,6 +26,6 @@ This is a Tier-2 carve-out bookkeeping record per the parent `test-coverage` des
 
 #### Scenario: Elevated UI invariants are regression-locked
 
-- **WHEN** a future change breaks one of this carve-out's elevated UI invariants — the purchase modal sends a client-supplied `user_id`, the guest flow claims with an empty name, the drag-reorder handler dispatches the wrong `target_id` or skips the optimistic reorder, or the image-search modal conflates `rate_limited` and `quota_exceeded`
+- **WHEN** a future change breaks one of this carve-out's elevated UI invariants — the purchase modal sends a client-supplied `user_id`, the guest flow claims with an empty name, the drag-reorder handler dispatches the wrong `target_id` or skips the optimistic reorder, or the image-search modal surfaces a capacity error (HTTP 429 / `quota_exceeded`) as a generic load failure, or vice versa
 - **THEN** the corresponding colocated test fails with an assertion naming the specific contract break
 - **AND** the `test` pre-merge gate fails

@@ -55,6 +55,12 @@ describe('storePriceError', () => {
     expect(storePriceError('abc', store())).toBe('Invalid price format 00.00');
   });
 
+  it('NonNumericWithSibling_ReportsFormatErrorNotRequired', () => {
+    expect(storePriceError('abc', store({ name: 'Amazon' }))).toBe(
+      'Invalid price format 00.00'
+    );
+  });
+
   it('EmptyPriceWithNameOrLink_RequiresPrice', () => {
     expect(storePriceError('', store({ name: 'Amazon' }))).toBe(
       'Price is required when store name and/or link is provided'
