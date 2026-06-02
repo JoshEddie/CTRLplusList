@@ -17,6 +17,7 @@ import { ImageResultsViewer } from './ImageResultsViewer';
 // pattern for SSR-safe client detection (same approach as use-media-query.ts).
 const subscribeNoop = () => () => {};
 const getClientSnapshot = () => true;
+/* v8 ignore next -- getServerSnapshot is only invoked by React during server-side rendering; the jsdom client test env always resolves getClientSnapshot. */
 const getServerSnapshot = () => false;
 
 interface ImageSearchProps {

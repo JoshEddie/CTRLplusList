@@ -5,6 +5,7 @@ import { ItemDetails, ItemStoreTable, ItemTable, ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { storeLinkError, storeNameError, storePriceError } from './utils';
 
 const useDebounce = <T extends (...args: never[]) => void>(
   callback: T,
@@ -84,25 +85,6 @@ export function useItemForm(
     lists: '',
   });
 
-  const isValidHttpUrl = (url: string): { url: string; error?: string } => {
-    try {
-      if (url.match(/^https?:\/\//i)) {
-        const urlObj = new URL(url);
-        if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-          return { url, error: 'http:// is missing' };
-        }
-        return { url: urlObj.toString() };
-      }
-      return { url, error: 'http:// is missing' };
-    } catch (e) {
-      console.error(e);
-      return {
-        url,
-        error: 'Please verify the link (i.e. https://example.com)',
-      };
-    }
-  };
-
   const validateForm = useCallback(
     async (
       value?: string | number | null,
@@ -148,51 +130,17 @@ export function useItemForm(
   );
 
   const validateStoreField = useCallback(
-    (
-      index: number,
-      value: string | number,
-      type: 'name' | 'price' | 'link'
-    ) => {
+    (index: number, value: string | number, type: 'name' | 'price' | 'link') => {
       const newErrors = { ...errors };
       newErrors.stores[index] = { name: '', link: '', price: '' };
+      const store = formState.stores[index];
 
       if (type === 'name') {
-        if (
-          !value &&
-          (formState.stores[index].link || formState.stores[index].price)
-        ) {
-          newErrors.stores[index].name =
-            'Store name required when price or link is added';
-        }
-      }
-
-      if (type === 'price') {
-        if (value && !value.toString().match(/^\$?[0-9]+(\.[0-9][0-9]?)?$/)) {
-          value = value.toString().replace(/[^.0-9]/gi, '');
-          newErrors.stores[index].price = 'Invalid price format 00.00';
-        }
-        if (
-          !value &&
-          (formState.stores[index].name || formState.stores[index].link)
-        ) {
-          newErrors.stores[index].price =
-            'Price is required when store name and/or link is provided';
-        }
-      }
-
-      if (type === 'link') {
-        if (value) {
-          const formatted = isValidHttpUrl(value.toString());
-          if (formatted.error) {
-            newErrors.stores[index].link = `Invalid URL: ${formatted.error}`;
-          }
-        } else if (
-          !value &&
-          (formState.stores[index].name || formState.stores[index].price)
-        ) {
-          newErrors.stores[index].link =
-            'Link is required when store name and/or price is provided';
-        }
+        newErrors.stores[index].name = storeNameError(value, store);
+      } else if (type === 'price') {
+        newErrors.stores[index].price = storePriceError(value, store);
+      } else {
+        newErrors.stores[index].link = storeLinkError(value, store);
       }
 
       setErrors(newErrors);

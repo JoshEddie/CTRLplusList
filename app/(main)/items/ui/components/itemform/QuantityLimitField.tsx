@@ -40,7 +40,7 @@ export function QuantityLimitField({
         name="quantity_limit"
         min={1}
         step={1}
-        value={isUnlimited ? '' : (value ?? 1)}
+        value={value === null ? '' : value}
         onChange={handleNumberChange}
         disabled={isPending || isUnlimited}
         placeholder="Unlimited"

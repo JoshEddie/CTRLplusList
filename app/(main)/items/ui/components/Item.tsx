@@ -1,37 +1,18 @@
 'use client';
 
-import {
-  archiveItem,
-  createPurchase,
-  removePurchase,
-} from '@/app/actions/items';
-import { Button } from '@/app/ui/components/button';
-import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
+import { createPurchase, removePurchase } from '@/app/actions/items';
 import { ItemDisplay, PurchaseView } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import {
-  MdArchive,
-  MdModeEdit,
-  MdMoreHoriz,
-  MdUnarchive,
-} from 'react-icons/md';
 import '../styles/item.css';
-import EditItemButton from './EditItemButton';
-import ItemPhoto from './ItemPhoto';
-import Purchase from './Purchase';
-import Modal from './purchasemodal/Modal';
-import ModalButtons from './purchasemodal/ModalButtons';
-import PurchaseFlow from './purchasemodal/PurchaseFlow';
-import PurchaseFlowContainer from './purchasemodal/PurchaseFlowContainer';
-import StoreLinks from './StoreLinks';
+import ClaimBanners from './ClaimBanners';
+import ItemCard from './ItemCard';
+import OwnerActions from './OwnerActions';
+import PurchaseModalSlot, { PurchaseFlowState } from './PurchaseModalSlot';
 
-function firstToken(name: string | null | undefined): string {
-  if (!name) return 'Someone';
-  const trimmed = name.trim();
-  if (!trimmed) return 'Someone';
-  return trimmed.split(/\s+/)[0];
+function firstToken(name: string): string {
+  return name.trim().split(/\s+/)[0];
 }
 
 export default function Item({
@@ -60,9 +41,8 @@ export default function Item({
     () => searchParams?.get('purchaseItem') === item.id,
     [searchParams, item.id]
   );
-  const [purchaseFlow, setPurchaseFlow] = useState<
-    'initial' | 'self' | 'other' | 'guest'
-  >('initial');
+  const [purchaseFlow, setPurchaseFlow] =
+    useState<PurchaseFlowState>('initial');
 
   const propPurchases = item.purchases ?? [];
   const propPurchasesKey = propPurchases
@@ -121,12 +101,15 @@ export default function Item({
   };
 
   const handlePurchaseClick = () => {
+    /* v8 ignore next -- defensive: item.id is always present for a persisted item. */
     if (!item.id) return;
+    /* v8 ignore next -- defensive: the claim affordance is disabled when fully claimed without a personal claim, so this early-return is unreachable from the UI. */
     if (isFullyClaimed && !myClaim) return;
     handleModalOpen();
   };
 
   const handleUndoConfirm = async () => {
+    /* v8 ignore next -- defensive: item.id is always present for a persisted item. */
     if (!item.id) return;
     try {
       // Prefer purchase_id (works for both signed-in and guest paths and is
@@ -192,234 +175,61 @@ export default function Item({
       ? `${claimCount}/∞ claimed`
       : `${claimCount}/${quantityLimit} claimed`;
 
-  const kebabRef = useRef<HTMLButtonElement>(null);
-  const [kebabOpen, setKebabOpen] = useState(false);
-
   return (
     <>
       <div
         className={`item-container ${className || ''} ${isOwner ? 'owner' : ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''} ${myClaim ? 'has-my-claim' : ''} ${preview ? 'preview' : ''}`}
       >
-        <div
-          className={`item ${className || ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''}`}
-          title={item.name || ''}
-        >
-          <ItemPhoto name={item.name || ''} url={item.image_url || ''} />
-          <div className="item-info">
-            <div className="item-name-description">
-              <h1 className="itemName">{item.name || ''}</h1>
-              {item.description ? (
-                <p className="itemDescription">{item.description}</p>
-              ) : null}
-            </div>
-            <StoreLinks
-              item={item}
-              showStores={!showPurchased && !showSpoilerInfo}
-            >
-              {!isOwner && (
-                <Purchase
-                  purchasedBy={
-                    showPurchased ? (myClaim ? 'You' : claimSummary) : undefined
-                  }
-                  handlePurchaseClick={handlePurchaseClick}
-                  className={showPurchased ? 'purchased' : ''}
-                  disabled={claimActionDisabled}
-                  fullyClaimedLabel={
-                    claimActionDisabled ? 'Fully claimed' : undefined
-                  }
-                />
-              )}
-            </StoreLinks>
-            {showCounter && !isOwner && !showPurchased && (
-              <div className="claim-counter">{counterText}</div>
-            )}
-          </div>
-        </div>
+        <ItemCard
+          item={item}
+          className={className}
+          isOwner={isOwner}
+          showPurchased={showPurchased}
+          showSpoilerInfo={showSpoilerInfo}
+          myClaim={myClaim}
+          claimSummary={claimSummary}
+          claimActionDisabled={claimActionDisabled}
+          showCounter={showCounter}
+          counterText={counterText}
+          onPurchaseClick={handlePurchaseClick}
+        />
 
-        {showPurchased && !myClaim && (
-          <div className="purchased-banner" role="status">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              aria-hidden
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            Claimed by {claimSummary}
-          </div>
-        )}
-        {!isOwner && myClaim && (
-          <div
-            className="purchased-banner purchased-banner--mine"
-            role="status"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              aria-hidden
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            You claimed this
-            <button
-              type="button"
-              className="purchased-banner-undo"
-              onClick={handlePurchaseClick}
-              aria-label="Remove your claim"
-            >
-              Undo
-            </button>
-          </div>
-        )}
-        {showSpoilerInfo && (
-          <div
-            className="purchased-banner purchased-banner--spoiler"
-            role="status"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              aria-hidden
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-            <span>
-              <strong>Spoilers:</strong> {counterText}
-              {claimSummary && ` — ${claimSummary}`}
-            </span>
-          </div>
-        )}
+        <ClaimBanners
+          showPurchased={showPurchased}
+          myClaim={myClaim}
+          isOwner={isOwner}
+          showSpoilerInfo={showSpoilerInfo}
+          claimSummary={claimSummary}
+          counterText={counterText}
+          onUndo={handlePurchaseClick}
+        />
 
         {isOwner && (
-          <div className="item-owner-actions">
-            {showArchiveAction && (
-              <button
-                type="button"
-                className="archive-button"
-                onClick={async () => {
-                  const nextArchived = !archivedView;
-                  const result = await toast.promise(
-                    archiveItem(item.id, nextArchived),
-                    {
-                      loading: nextArchived ? 'Archiving' : 'Unarchiving',
-                      success: nextArchived ? 'Archived' : 'Unarchived',
-                      error: 'Failed',
-                    }
-                  );
-                  if (result?.success) router.refresh();
-                }}
-                aria-label={archivedView ? 'Unarchive item' : 'Archive item'}
-                title={archivedView ? 'Unarchive item' : 'Archive item'}
-              >
-                {archivedView ? <MdUnarchive /> : <MdArchive />}
-              </button>
-            )}
-            {user_id && <EditItemButton itemId={item.id} user_id={user_id} />}
-          </div>
-        )}
-        {isOwner && (
-          <div className="item-owner-actions-mobile">
-            <Button
-              ref={kebabRef}
-              variant="ghost"
-              size="sm"
-              className="item-owner-actions-kebab"
-              aria-haspopup="menu"
-              aria-expanded={kebabOpen}
-              aria-label="Item actions"
-              onClick={() => setKebabOpen((o) => !o)}
-            >
-              <MdMoreHoriz />
-            </Button>
-            <Menu
-              open={kebabOpen}
-              onClose={() => setKebabOpen(false)}
-              anchorRef={kebabRef}
-              aria-label="Item actions"
-            >
-              <MenuLinkItem
-                href={`/items/${item.id}?returnTo=${encodeURIComponent(
-                  pathname +
-                    (searchParams?.toString()
-                      ? `?${searchParams.toString()}`
-                      : '')
-                )}`}
-                icon={<MdModeEdit size={18} />}
-                onClick={() => setKebabOpen(false)}
-              >
-                Edit
-              </MenuLinkItem>
-              {showArchiveAction && (
-                <MenuItem
-                  icon={
-                    archivedView ? (
-                      <MdUnarchive size={18} />
-                    ) : (
-                      <MdArchive size={18} />
-                    )
-                  }
-                  onClick={async () => {
-                    setKebabOpen(false);
-                    const nextArchived = !archivedView;
-                    const result = await toast.promise(
-                      archiveItem(item.id, nextArchived),
-                      {
-                        loading: nextArchived ? 'Archiving' : 'Unarchiving',
-                        success: nextArchived ? 'Archived' : 'Unarchived',
-                        error: 'Failed',
-                      }
-                    );
-                    if (result?.success) router.refresh();
-                  }}
-                >
-                  {archivedView ? 'Unarchive' : 'Archive'}
-                </MenuItem>
-              )}
-            </Menu>
-          </div>
+          <OwnerActions
+            itemId={item.id}
+            user_id={user_id}
+            showArchiveAction={showArchiveAction}
+            archivedView={archivedView}
+            pathname={pathname}
+            searchParams={searchParams}
+            onArchived={() => router.refresh()}
+          />
         )}
       </div>
 
       {!preview && showModal && (
-        <>
-          {!myClaim ? (
-            <Modal onClose={handleModalClose}>
-              <PurchaseFlowContainer
-                user_id={user_id}
-                guestName={guestName}
-                setGuestName={setGuestName}
-                handlePurchaseConfirm={handlePurchaseConfirm}
-                purchaseFlow={purchaseFlow}
-                setPurchaseFlow={setPurchaseFlow}
-                user_name={user_name}
-              />
-            </Modal>
-          ) : (
-            <Modal onClose={handleModalClose}>
-              <PurchaseFlow primary_text="Remove your claim on this item?">
-                <ModalButtons
-                  primary_button_text="Remove my claim"
-                  primary_button_onclick={() => handleUndoConfirm()}
-                />
-              </PurchaseFlow>
-            </Modal>
-          )}
-        </>
+        <PurchaseModalSlot
+          myClaim={myClaim}
+          user_id={user_id}
+          user_name={user_name}
+          guestName={guestName}
+          setGuestName={setGuestName}
+          purchaseFlow={purchaseFlow}
+          setPurchaseFlow={setPurchaseFlow}
+          onClose={handleModalClose}
+          onPurchaseConfirm={handlePurchaseConfirm}
+          onUndoConfirm={handleUndoConfirm}
+        />
       )}
     </>
   );
