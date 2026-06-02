@@ -242,6 +242,46 @@ export default defineConfig({
         'app/(main)/items/ui/components/PriceFilterPopover.tsx': COVERAGE_FLOOR,
         // test-items-store-filter (sub-proposal 4.17) — locked at universal COVERAGE_FLOOR.
         'app/(main)/items/ui/components/StoreFilterPopover.tsx': COVERAGE_FLOOR,
+        // test-list-item-management-ui (sub-proposal 4.9b) — locked at universal COVERAGE_FLOOR.
+        'app/(main)/lists/[id]/choose-items/page.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/[id]/choose-items/ChooseItemsBody.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/[id]/choose-items/ChooseItemsForm.tsx': COVERAGE_FLOOR,
+        'app/(main)/lists/[id]/choose-items/utils.ts': COVERAGE_FLOOR,
+        'app/(main)/lists/[id]/ListItemsSection.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/[id]/page.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/[id]/ItemFormBody.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemform/ItemFormContainer.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemform/ItemForm.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemform/useItemForm.ts': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemform/utils.ts': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemform/ItemNameInput.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemform/StoreInput.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemform/ListSelection.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemform/QuantityLimitField.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemform/ImageUrlInput.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemform/ImageSearch.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/itemform/ImageResultsViewer.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/purchasemodal/Modal.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/purchasemodal/PurchaseFlow.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/purchasemodal/ModalButtons.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/purchasemodal/PurchaseFlowContainer.tsx':
+          COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/DeleteItemButton.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/Item.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/ItemCard.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/ClaimBanners.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/OwnerActions.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/PurchaseModalSlot.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/SortItems.tsx': COVERAGE_FLOOR,
+        'app/(main)/items/ui/components/SortItemsContainer.tsx': COVERAGE_FLOOR,
       },
     },
   },
