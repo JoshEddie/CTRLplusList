@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { bootPglite } from '@/test/helpers/db';
+import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 
@@ -18,11 +18,15 @@ vi.mock('@/db', () => ({
 let db: TestDb;
 let dal: typeof import('@/lib/dal');
 
-beforeEach(async () => {
+beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
   dal = await import('@/lib/dal');
+});
+
+beforeEach(async () => {
+  await resetDb(db);
 });
 
 describe('getUserIdByEmail', () => {

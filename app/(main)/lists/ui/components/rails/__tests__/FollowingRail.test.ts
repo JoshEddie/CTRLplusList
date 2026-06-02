@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import UserCard from '@/app/(main)/users/ui/components/UserCard';
 import MoreCard from '@/app/ui/components/MoreCard';
-import { bootPglite } from '@/test/helpers/db';
+import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import {
   seedFollow,
@@ -24,11 +24,15 @@ vi.mock('@/db', () => ({
 let db: TestDb;
 let FollowingRail: typeof import('../FollowingRail').default;
 
-beforeEach(async () => {
+beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
   FollowingRail = (await import('../FollowingRail')).default;
+});
+
+beforeEach(async () => {
+  await resetDb(db);
   await seedUsers(db, [{ id: 'viewer' }]);
 });
 

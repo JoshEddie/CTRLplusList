@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { user_blocks, user_follows } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { bootPglite } from '@/test/helpers/db';
+import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedBlock, seedFollow, seedUsers } from '@/test/helpers/seedFollowGraph';
 
@@ -43,15 +43,21 @@ async function blockRows() {
   return db.select().from(user_blocks);
 }
 
-beforeEach(async () => {
+beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
-  await seedUsers(db, [VIEWER, TARGET, THIRD]);
   actions = await import('@/app/actions/follows');
   ({ updateTag } = (await import('next/cache')) as unknown as {
     updateTag: ReturnType<typeof vi.fn>;
   });
+});
+
+beforeEach(async () => {
+  // db is shared per-file, so restore spies first or they leak between tests.
+  vi.restoreAllMocks();
+  await resetDb(db);
+  await seedUsers(db, [VIEWER, TARGET, THIRD]);
   updateTag.mockClear();
   asViewer();
 });

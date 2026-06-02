@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { auth } from '@/lib/auth';
-import { bootPglite } from '@/test/helpers/db';
+import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 import BookmarkMigrationToast from '../lists/ui/components/BookmarkMigrationToast';
@@ -34,11 +34,15 @@ vi.mock('@/db', () => ({
 let db: TestDb;
 let HomePage: typeof import('../HomePage').default;
 
-beforeEach(async () => {
+beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
   HomePage = (await import('../HomePage')).default;
+});
+
+beforeEach(async () => {
+  await resetDb(db);
   redirectMock.mockClear();
 });
 

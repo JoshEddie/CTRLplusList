@@ -1,9 +1,9 @@
 import { sql } from 'drizzle-orm';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { list_visits } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { bootPglite } from '@/test/helpers/db';
+import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 import { seedList, seedVisit } from '@/test/helpers/seedVisitGraph';
@@ -64,10 +64,20 @@ async function recordVisit(user_id: string, list_id: string) {
     });
 }
 
-beforeEach(async () => {
+beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
+  actions = await import('@/app/actions/lists');
+  ({ updateTag } = (await import('next/cache')) as unknown as {
+    updateTag: ReturnType<typeof vi.fn>;
+  });
+});
+
+beforeEach(async () => {
+  // db is shared per-file, so restore spies first or they leak between tests.
+  vi.restoreAllMocks();
+  await resetDb(db);
   await seedUsers(db, [VIEWER, OWNER]);
   await seedList(db, {
     id: PUBLIC_LIST,
@@ -84,10 +94,6 @@ beforeEach(async () => {
     id: OWN_PRIVATE_LIST,
     user_id: VIEWER.id,
     visibility: 'private',
-  });
-  actions = await import('@/app/actions/lists');
-  ({ updateTag } = (await import('next/cache')) as unknown as {
-    updateTag: ReturnType<typeof vi.fn>;
   });
   updateTag.mockClear();
   asViewer();
