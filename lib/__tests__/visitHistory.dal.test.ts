@@ -30,8 +30,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  // db is shared across tests now: restore per-test `db.query` spies, reset
-  // rows, and reseed so each case starts from a clean, freshly seeded database.
+  // db is shared per-file, so restore spies first or they leak between tests.
   vi.restoreAllMocks();
   await resetDb(db);
   await seedUsers(db, [

@@ -27,9 +27,9 @@ export const SCHEMA_TABLES = (Object.values(schema) as unknown[]).filter(
 const TABLE_NAMES = SCHEMA_TABLES.map((table) => getTableName(table));
 
 // Booting + replaying every migration is the dominant per-test cost (2.4–5.0s);
-// under `pool: 'forks'` doing it per `it()` starves hooks and flakes the suite
-// (issue #97). Boot ONCE PER FILE (in `beforeAll`) and reset rows between tests
-// with `resetDb` — never call `bootPglite` inside an `it()` or `beforeEach`.
+// under `pool: 'forks'` doing it per `it()` starves hooks and flakes the suite.
+// Boot ONCE PER FILE (in `beforeAll`) and reset rows between tests with
+// `resetDb` — never call `bootPglite` inside an `it()` or `beforeEach`.
 export async function bootPglite() {
   const raw = new PGlite();
   await raw.waitReady;
