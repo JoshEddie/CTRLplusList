@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ListCardRow from '@/app/ui/components/ListCardRow';
 import { list_visits, lists } from '@/db/schema';
-import { bootPglite } from '@/test/helpers/db';
+import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 
@@ -20,11 +20,15 @@ vi.mock('@/db', () => ({
 let db: TestDb;
 let BookmarksRail: typeof import('../BookmarksRail').default;
 
-beforeEach(async () => {
+beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
   BookmarksRail = (await import('../BookmarksRail')).default;
+});
+
+beforeEach(async () => {
+  await resetDb(db);
   await seedUsers(db, [{ id: 'viewer' }, { id: 'owner', name: 'Olive' }]);
 });
 

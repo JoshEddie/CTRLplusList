@@ -1,17 +1,16 @@
 import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { bootPglite } from '../../test/helpers/db';
+import { bootPglite, resetDb } from '../../test/helpers/db';
 import { lists, users } from '../schema';
 
-async function seedOwner(db: Awaited<ReturnType<typeof bootPglite>>['db']) {
+let db: Awaited<ReturnType<typeof bootPglite>>['db'];
+
+async function seedOwner() {
   await db.insert(users).values({ id: 'u1', name: 'Owner' });
 }
 
-async function readSubtitle(
-  db: Awaited<ReturnType<typeof bootPglite>>['db'],
-  id: string
-) {
+async function readSubtitle(id: string) {
   const rows = await db
     .select({ subtitle: lists.subtitle })
     .from(lists)
@@ -19,23 +18,28 @@ async function readSubtitle(
   return rows[0]?.subtitle;
 }
 
+beforeAll(async () => {
+  ({ db } = await bootPglite());
+});
+
+beforeEach(async () => {
+  await resetDb(db);
+  await seedOwner();
+});
+
 describe('subtitle', () => {
   describe('NoBackfill', () => {
     it('InsertOmittingSubtitle_ColumnIsNull', async () => {
-      const { db } = await bootPglite();
-      await seedOwner(db);
       await db
         .insert(lists)
         .values({ id: 'l1', name: 'Christmas', occasion: 'Christmas', user_id: 'u1' });
 
-      expect(await readSubtitle(db, 'l1')).toBeNull();
+      expect(await readSubtitle('l1')).toBeNull();
     });
   });
 
   describe('RoundTrip', () => {
     it('InsertWithSubtitle_RoundTripsOnSelect', async () => {
-      const { db } = await bootPglite();
-      await seedOwner(db);
       await db.insert(lists).values({
         id: 'l1',
         name: 'Christmas',
@@ -44,12 +48,10 @@ describe('subtitle', () => {
         subtitle: 'Brandy Family',
       });
 
-      expect(await readSubtitle(db, 'l1')).toBe('Brandy Family');
+      expect(await readSubtitle('l1')).toBe('Brandy Family');
     });
 
     it('UpdateSubtitle_PersistsNewValue', async () => {
-      const { db } = await bootPglite();
-      await seedOwner(db);
       await db.insert(lists).values({
         id: 'l1',
         name: 'Christmas',
@@ -63,14 +65,12 @@ describe('subtitle', () => {
         .set({ subtitle: 'Josh Family' })
         .where(eq(lists.id, 'l1'));
 
-      expect(await readSubtitle(db, 'l1')).toBe('Josh Family');
+      expect(await readSubtitle('l1')).toBe('Josh Family');
     });
   });
 
   describe('ClearToNull', () => {
     it('UpdateSubtitleToNull_ClearsStoredValue', async () => {
-      const { db } = await bootPglite();
-      await seedOwner(db);
       await db.insert(lists).values({
         id: 'l1',
         name: 'Christmas',
@@ -81,7 +81,7 @@ describe('subtitle', () => {
 
       await db.update(lists).set({ subtitle: null }).where(eq(lists.id, 'l1'));
 
-      expect(await readSubtitle(db, 'l1')).toBeNull();
+      expect(await readSubtitle('l1')).toBeNull();
     });
   });
 });

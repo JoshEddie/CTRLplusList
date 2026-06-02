@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import MoreCard from '@/app/ui/components/MoreCard';
 import HistoryCard from '@/app/(main)/lists/history/HistoryCard';
 import { list_visits, lists } from '@/db/schema';
-import { bootPglite } from '@/test/helpers/db';
+import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 
@@ -26,12 +26,16 @@ let db: TestDb;
 let dal: typeof import('@/lib/dal');
 let RecentlyVisitedRail: typeof import('../RecentlyVisitedRail').default;
 
-beforeEach(async () => {
+beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
   dal = await import('@/lib/dal');
   RecentlyVisitedRail = (await import('../RecentlyVisitedRail')).default;
+});
+
+beforeEach(async () => {
+  await resetDb(db);
   await seedUsers(db, [{ id: 'viewer' }, { id: 'owner', name: 'Olive' }]);
 });
 

@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { bootPglite } from '@/test/helpers/db';
+import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 import { seedList, seedVisit } from '@/test/helpers/seedVisitGraph';
@@ -22,15 +22,22 @@ const OTHER = { id: 'other', email: 'other@test.local' };
 let db: TestDb;
 let dal: typeof import('@/lib/dal');
 
-beforeEach(async () => {
+beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
+  dal = await import('@/lib/dal');
+});
+
+beforeEach(async () => {
+  // db is shared across tests now: restore per-test `db.query` spies, reset
+  // rows, and reseed so each case starts from a clean, freshly seeded database.
+  vi.restoreAllMocks();
+  await resetDb(db);
   await seedUsers(db, [
     { id: VIEWER.id, name: 'Viewer', email: VIEWER.email },
     { id: OTHER.id, name: 'Olivia Owner', email: OTHER.email },
   ]);
-  dal = await import('@/lib/dal');
 });
 
 describe('getBookmarkedListsByUser', () => {

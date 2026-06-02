@@ -1,10 +1,10 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { list_items, list_visits, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import type { ListVisibility } from '@/lib/visibility';
-import { bootPglite } from '@/test/helpers/db';
+import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 
@@ -87,9 +87,7 @@ beforeEach(async () => {
   // Restore any per-test db spies (db is shared across tests now) and reset the
   // auth mock, then start each case from a clean, freshly seeded database.
   vi.restoreAllMocks();
-  await db.execute(
-    sql`TRUNCATE TABLE "user", lists, items, list_items, item_stores, purchases, list_visits CASCADE`
-  );
+  await resetDb(db);
   await seedUsers(db, [OWNER, OTHER]);
   updateTag.mockClear();
   asOwner();
