@@ -5,7 +5,6 @@ import {
   list_items,
   lists,
   user_blocks,
-  user_follows,
   users,
 } from '@/db/schema';
 import { bootPglite } from '../../test/helpers/db';
@@ -54,35 +53,32 @@ const { guardListViewable, isItemViewable } = await import('../listAccess');
 // tests don't depend on running the prod seed script; pglite gets a fresh
 // schema and we insert the rows needed for every viewability axis.
 const VIEWER = 'dev-test-viewer';
-const ALICE = 'dev-friend-alice'; // mutual follow with viewer
+const ALICE = 'dev-friend-alice'; // owns a public list
 const DAVE = 'dev-friend-dave'; // not followed; owns the OWNER list
 const JACK = 'dev-friend-jack'; // not followed; owns the LINK list
-const KIM = 'dev-friend-kim'; // not followed; owns a FOLLOWERS list
 const CAROL = 'dev-friend-carol'; // not followed; will block viewer in setup
 
 const LIST_DAVE_OWNER = 'list-dave-owner';
 const LIST_JACK_LINK = 'list-jack-link';
-const LIST_KIM_FOLLOWERS = 'list-kim-followers';
 const LIST_ALICE_FOLLOWERS = 'list-alice-followers';
 const LIST_CAROL_FOLLOWERS = 'list-carol-followers';
 const LIST_VIEWER_OWNER = 'list-viewer-owner';
 
 const ITEM_ON_DAVE_OWNER = 'item-on-dave-owner';
 const ITEM_ON_JACK_LINK = 'item-on-jack-link';
-const ITEM_ON_KIM_FOLLOWERS = 'item-on-kim-followers';
 const ITEM_ON_ALICE_FOLLOWERS = 'item-on-alice-followers';
 const ITEM_ON_CAROL_FOLLOWERS = 'item-on-carol-followers';
 const ITEM_ON_VIEWER_OWNER = 'item-on-viewer-owner';
 // Item membership of multiple lists: present on Dave's OWNER list (no access)
-// AND on Alice's FOLLOWERS list (access via mutual follow). Owned by Dave.
+// AND on Alice's public list (access via public visibility). Owned by Dave.
 const ITEM_MULTI_LIST = 'item-on-two-lists';
 // Item not on any list, owned by Dave.
 const ITEM_NO_LISTS = 'item-with-no-list-membership';
 // Item owned by Dave but added to the VIEWER's own private list. Exercises the
-// in-loop `list.user_id === viewerId` branch of `isListViewableForViewer`:
-// outer `viewerId === item.user_id` short-circuit does NOT fire (Dave owns it),
-// so the loop runs; first iteration (Dave's OWNER list) returns false, second
-// iteration (viewer's own list) returns true via the list-owner branch.
+// in-loop `list.user_id === viewerId` branch of `isItemViewable`: the outer
+// `viewerId === item.user_id` short-circuit does NOT fire (Dave owns it), so
+// the loop runs; the first iteration (Dave's OWNER list) does not grant access,
+// the second (viewer's own list) returns true via the in-loop owner branch.
 const ITEM_ON_VIEWERS_LIST_OTHER_OWNER = 'item-on-viewers-list-other-owner';
 
 beforeAll(async () => {
@@ -94,13 +90,7 @@ beforeAll(async () => {
     { id: ALICE, name: 'Alice' },
     { id: DAVE, name: 'Dave' },
     { id: JACK, name: 'Jack' },
-    { id: KIM, name: 'Kim' },
     { id: CAROL, name: 'Carol' },
-  ]);
-
-  await db.insert(user_follows).values([
-    { follower_id: VIEWER, followee_id: ALICE },
-    { follower_id: ALICE, followee_id: VIEWER },
   ]);
 
   // Carol blocks viewer — used by §3.4 and §3.15.
@@ -122,13 +112,6 @@ beforeAll(async () => {
       occasion: 'Just Because',
       user_id: JACK,
       visibility: 'unlisted',
-    },
-    {
-      id: LIST_KIM_FOLLOWERS,
-      name: "Kim's followers",
-      occasion: 'Birthday',
-      user_id: KIM,
-      visibility: 'public',
     },
     {
       id: LIST_ALICE_FOLLOWERS,
@@ -156,7 +139,6 @@ beforeAll(async () => {
   await db.insert(items).values([
     { id: ITEM_ON_DAVE_OWNER, name: 'D', user_id: DAVE },
     { id: ITEM_ON_JACK_LINK, name: 'J', user_id: JACK },
-    { id: ITEM_ON_KIM_FOLLOWERS, name: 'K', user_id: KIM },
     { id: ITEM_ON_ALICE_FOLLOWERS, name: 'A', user_id: ALICE },
     { id: ITEM_ON_CAROL_FOLLOWERS, name: 'C', user_id: CAROL },
     { id: ITEM_ON_VIEWER_OWNER, name: 'V', user_id: VIEWER },
@@ -168,7 +150,6 @@ beforeAll(async () => {
   await db.insert(list_items).values([
     { list_id: LIST_DAVE_OWNER, item_id: ITEM_ON_DAVE_OWNER, position: 0 },
     { list_id: LIST_JACK_LINK, item_id: ITEM_ON_JACK_LINK, position: 0 },
-    { list_id: LIST_KIM_FOLLOWERS, item_id: ITEM_ON_KIM_FOLLOWERS, position: 0 },
     {
       list_id: LIST_ALICE_FOLLOWERS,
       item_id: ITEM_ON_ALICE_FOLLOWERS,
@@ -180,8 +161,8 @@ beforeAll(async () => {
       position: 0,
     },
     { list_id: LIST_VIEWER_OWNER, item_id: ITEM_ON_VIEWER_OWNER, position: 0 },
-    // ITEM_MULTI_LIST is on Dave's OWNER list (no access) AND Alice's FOLLOWERS
-    // list (access via mutual follow). Order matters for the loop-continue
+    // ITEM_MULTI_LIST is on Dave's OWNER list (no access) AND Alice's public
+    // list (access via public visibility). Order matters for the loop-continue
     // branch: insert OWNER first so the function exercises a non-satisfying
     // iteration before the satisfying one.
     { list_id: LIST_DAVE_OWNER, item_id: ITEM_MULTI_LIST, position: 1 },
@@ -267,23 +248,19 @@ describe('listAccess', () => {
       expect(await isItemViewable(ITEM_ON_JACK_LINK, VIEWER)).toBe(true);
     });
 
-    it('FollowersListViewerNotFollowingOwner_ReturnsFalse', async () => {
-      expect(await isItemViewable(ITEM_ON_KIM_FOLLOWERS, VIEWER)).toBe(false);
-    });
-
-    it('FollowersListViewerFollowingOwner_ReturnsTrue', async () => {
+    it('PublicListAuthedViewer_ReturnsTrue', async () => {
       expect(await isItemViewable(ITEM_ON_ALICE_FOLLOWERS, VIEWER)).toBe(true);
     });
 
-    it('FollowersListAnonymousViewer_ReturnsFalse', async () => {
-      expect(await isItemViewable(ITEM_ON_ALICE_FOLLOWERS, null)).toBe(false);
+    it('PublicListAnonymousViewer_ReturnsTrue', async () => {
+      expect(await isItemViewable(ITEM_ON_ALICE_FOLLOWERS, null)).toBe(true);
     });
 
     it('OwnerBlockedViewer_ReturnsFalse', async () => {
       expect(await isItemViewable(ITEM_ON_CAROL_FOLLOWERS, VIEWER)).toBe(false);
     });
 
-    it('ItemOnPrivateAndFollowersListsViewerFollowsSecondOwner_ReturnsTrue', async () => {
+    it('ItemOnPrivateAndPublicListsOtherOwner_ReturnsTrue', async () => {
       expect(await isItemViewable(ITEM_MULTI_LIST, VIEWER)).toBe(true);
     });
 
