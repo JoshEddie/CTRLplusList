@@ -21,6 +21,11 @@ vi.mock('@/db', () => ({
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 const USER_EMAIL = 'searcher@test.local';
+const USER_B_EMAIL = 'searcher-b@test.local';
+
+// Mirrors RATE_LIMIT_WINDOW_MS in route.ts (not exported). Used to advance fake
+// timers past the bucket window so the reset path (`bucket.resetAt <= now`) runs.
+const RATE_LIMIT_WINDOW_MS = 60_000;
 
 const IMAGE_ENV_KEYS = [
   'IMAGE_SEARCH_USE_MOCK',
@@ -145,6 +150,60 @@ describe('RateLimit', () => {
     expect(await limited.json()).toEqual({ error: 'rate_limited' });
     // The 31st request is rejected before spending provider quota.
     expect(fetchMock).toHaveBeenCalledTimes(30);
+  });
+
+  it('AfterWindowElapsed_BudgetResets-RequestProceeds', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(0));
+    try {
+      const GET = await loadRoute({
+        IMAGE_SEARCH_PROVIDERS: 'serpapi',
+        SERPAPI_API_KEY: 'k',
+      });
+      const reauth = await import('@/lib/auth');
+      vi.mocked(reauth.auth).mockResolvedValue(sessionFor(USER_EMAIL));
+      fetchMock.mockResolvedValue(res(200, serpapiBody));
+      for (let i = 0; i < 30; i++) {
+        const ok = await GET(req(`reset-${i}`));
+        expect(ok.status).toBe(200);
+      }
+      expect((await GET(req('reset-30'))).status).toBe(429);
+      expect(fetchMock).toHaveBeenCalledTimes(30);
+
+      // Advance past the bucket window: resetAt <= now, so the budget refills
+      // and the next request proceeds instead of staying throttled forever.
+      vi.setSystemTime(new Date(RATE_LIMIT_WINDOW_MS + 1));
+      const afterReset = await GET(req('reset-after'));
+      expect(afterReset.status).toBe(200);
+      expect(fetchMock).toHaveBeenCalledTimes(31);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('OtherUserExhausted_IndependentBudget-RequestProceeds', async () => {
+    await holder.db
+      .insert(users)
+      .values({ id: 'searcher-b', email: USER_B_EMAIL });
+    const GET = await loadRoute({
+      IMAGE_SEARCH_PROVIDERS: 'serpapi',
+      SERPAPI_API_KEY: 'k',
+    });
+    const reauth = await import('@/lib/auth');
+    fetchMock.mockResolvedValue(res(200, serpapiBody));
+
+    // User A exhausts their 30-request budget.
+    vi.mocked(reauth.auth).mockResolvedValue(sessionFor(USER_EMAIL));
+    for (let i = 0; i < 30; i++) await GET(req(`a-${i}`));
+    expect((await GET(req('a-30'))).status).toBe(429);
+    expect(fetchMock).toHaveBeenCalledTimes(30);
+
+    // User B's first request is unaffected — the bucket is keyed per users.id,
+    // so a global counter would 429 here instead of reaching the provider.
+    vi.mocked(reauth.auth).mockResolvedValue(sessionFor(USER_B_EMAIL));
+    const bFirst = await GET(req('b-0'));
+    expect(bFirst.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(31);
   });
 });
 
