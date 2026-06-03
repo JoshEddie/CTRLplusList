@@ -57,19 +57,16 @@ const VIEWER = 'dev-test-viewer';
 const ALICE = 'dev-friend-alice'; // mutual follow with viewer
 const DAVE = 'dev-friend-dave'; // not followed; owns the OWNER list
 const JACK = 'dev-friend-jack'; // not followed; owns the LINK list
-const KIM = 'dev-friend-kim'; // not followed; owns a FOLLOWERS list
 const CAROL = 'dev-friend-carol'; // not followed; will block viewer in setup
 
 const LIST_DAVE_OWNER = 'list-dave-owner';
 const LIST_JACK_LINK = 'list-jack-link';
-const LIST_KIM_FOLLOWERS = 'list-kim-followers';
 const LIST_ALICE_FOLLOWERS = 'list-alice-followers';
 const LIST_CAROL_FOLLOWERS = 'list-carol-followers';
 const LIST_VIEWER_OWNER = 'list-viewer-owner';
 
 const ITEM_ON_DAVE_OWNER = 'item-on-dave-owner';
 const ITEM_ON_JACK_LINK = 'item-on-jack-link';
-const ITEM_ON_KIM_FOLLOWERS = 'item-on-kim-followers';
 const ITEM_ON_ALICE_FOLLOWERS = 'item-on-alice-followers';
 const ITEM_ON_CAROL_FOLLOWERS = 'item-on-carol-followers';
 const ITEM_ON_VIEWER_OWNER = 'item-on-viewer-owner';
@@ -94,7 +91,6 @@ beforeAll(async () => {
     { id: ALICE, name: 'Alice' },
     { id: DAVE, name: 'Dave' },
     { id: JACK, name: 'Jack' },
-    { id: KIM, name: 'Kim' },
     { id: CAROL, name: 'Carol' },
   ]);
 
@@ -124,13 +120,6 @@ beforeAll(async () => {
       visibility: 'unlisted',
     },
     {
-      id: LIST_KIM_FOLLOWERS,
-      name: "Kim's followers",
-      occasion: 'Birthday',
-      user_id: KIM,
-      visibility: 'public',
-    },
-    {
       id: LIST_ALICE_FOLLOWERS,
       name: "Alice's followers",
       occasion: 'Wedding',
@@ -156,7 +145,6 @@ beforeAll(async () => {
   await db.insert(items).values([
     { id: ITEM_ON_DAVE_OWNER, name: 'D', user_id: DAVE },
     { id: ITEM_ON_JACK_LINK, name: 'J', user_id: JACK },
-    { id: ITEM_ON_KIM_FOLLOWERS, name: 'K', user_id: KIM },
     { id: ITEM_ON_ALICE_FOLLOWERS, name: 'A', user_id: ALICE },
     { id: ITEM_ON_CAROL_FOLLOWERS, name: 'C', user_id: CAROL },
     { id: ITEM_ON_VIEWER_OWNER, name: 'V', user_id: VIEWER },
@@ -168,7 +156,6 @@ beforeAll(async () => {
   await db.insert(list_items).values([
     { list_id: LIST_DAVE_OWNER, item_id: ITEM_ON_DAVE_OWNER, position: 0 },
     { list_id: LIST_JACK_LINK, item_id: ITEM_ON_JACK_LINK, position: 0 },
-    { list_id: LIST_KIM_FOLLOWERS, item_id: ITEM_ON_KIM_FOLLOWERS, position: 0 },
     {
       list_id: LIST_ALICE_FOLLOWERS,
       item_id: ITEM_ON_ALICE_FOLLOWERS,
@@ -267,16 +254,12 @@ describe('listAccess', () => {
       expect(await isItemViewable(ITEM_ON_JACK_LINK, VIEWER)).toBe(true);
     });
 
-    it('FollowersListViewerNotFollowingOwner_ReturnsFalse', async () => {
-      expect(await isItemViewable(ITEM_ON_KIM_FOLLOWERS, VIEWER)).toBe(false);
-    });
-
-    it('FollowersListViewerFollowingOwner_ReturnsTrue', async () => {
+    it('PublicListAuthedViewer_ReturnsTrue', async () => {
       expect(await isItemViewable(ITEM_ON_ALICE_FOLLOWERS, VIEWER)).toBe(true);
     });
 
-    it('FollowersListAnonymousViewer_ReturnsFalse', async () => {
-      expect(await isItemViewable(ITEM_ON_ALICE_FOLLOWERS, null)).toBe(false);
+    it('PublicListAnonymousViewer_ReturnsTrue', async () => {
+      expect(await isItemViewable(ITEM_ON_ALICE_FOLLOWERS, null)).toBe(true);
     });
 
     it('OwnerBlockedViewer_ReturnsFalse', async () => {

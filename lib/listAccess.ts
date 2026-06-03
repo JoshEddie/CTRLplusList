@@ -2,7 +2,7 @@ import { db } from '@/db';
 import { items, list_items, lists } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
-import { isBlocked, isFollowing } from './dal';
+import { isBlocked } from './dal';
 import { VISIBILITY, fromDb } from './visibility';
 
 /**
@@ -36,36 +36,14 @@ export async function guardListViewable<T extends { user_id: string }>(
  * list whose id they guessed. Mirrors the access predicate used by the
  * `/lists/[id]` render path:
  *   - owner: always viewable
- *   - followers-only / public list: viewable to followers (and to anyone for
- *     unlisted lists, since unlisted is link-shareable)
+ *   - public / unlisted list: viewable by anyone — both are link-open. The
+ *     follow relationship governs feed discovery, not claim access, so a guest
+ *     or any non-follower can view (and therefore claim) items on a public list
  *   - private list: only the owner
- *   - any list whose owner has blocked the viewer: not viewable
+ *   - any list whose owner has blocked the viewer: not viewable (block wins)
  *
  * Items not on any list are owner-only.
  */
-// Per-list viewability decision. Split out from `isItemViewable` to keep the
-// outer function under the cognitive-complexity ceiling enforced for this
-// carve-out by eslint.config.mjs. Returns:
-//   - `true`  → list satisfies viewability (short-circuit the loop)
-//   - `false` → list does not satisfy; caller continues to next candidate
-async function isListViewableForViewer(
-  list: { user_id: string; visibility: string },
-  viewerId: string | null
-): Promise<boolean> {
-  if (viewerId && list.user_id === viewerId) return true;
-  if (viewerId && (await isBlocked(list.user_id, viewerId))) return false;
-  const visibility = fromDb(list.visibility);
-  if (visibility === VISIBILITY.OWNER) return false;
-  if (visibility === VISIBILITY.LINK) return true;
-  // Exhaustiveness: `ListVisibility` is a 3-value union and the two prior
-  // branches consumed OWNER and LINK, so `visibility` is FOLLOWERS here.
-  // No trailing `return false` needed — if `fromDb` ever returns something
-  // outside the union it throws (see visibility.ts), so this path is
-  // statically exhaustive.
-  if (!viewerId) return false;
-  return isFollowing(viewerId, list.user_id);
-}
-
 export async function isItemViewable(
   itemId: string,
   viewerId: string | null
@@ -99,7 +77,9 @@ export async function isItemViewable(
     );
 
   for (const list of candidateLists) {
-    if (await isListViewableForViewer(list, viewerId)) return true;
+    if (viewerId && list.user_id === viewerId) return true;
+    if (viewerId && (await isBlocked(list.user_id, viewerId))) continue;
+    if (fromDb(list.visibility) !== VISIBILITY.OWNER) return true;
   }
   return false;
 }

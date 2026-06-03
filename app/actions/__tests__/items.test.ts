@@ -6,7 +6,7 @@ import { auth } from '@/lib/auth';
 import type { ItemDetails } from '@/lib/types';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import { seedBlock, seedUsers } from '@/test/helpers/seedFollowGraph';
 
 import {
   seedItem,
@@ -702,6 +702,35 @@ describe('createPurchase', () => {
       await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'private' });
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+      asOther();
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+      });
+      expect(res.error).toBe('Item not found');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('GuestOnPublicList_InsertsNullUserIdAndGuestName', async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
+      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+      noSession();
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: 'Aunt May',
+      });
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toEqual([
+        expect.objectContaining({ user_id: null, guest_name: 'Aunt May' }),
+      ]);
+    });
+
+    it('BlockedCallerOnPublicList_ReturnsItemNotFound-NoRow', async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+      await seedBlock(db, OWNER.id, OTHER.id);
       asOther();
       const res = await actions.createPurchase({
         item_id: 'I',

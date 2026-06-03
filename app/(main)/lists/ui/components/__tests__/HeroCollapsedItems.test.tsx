@@ -280,7 +280,9 @@ describe('VisibilityMenuItems', () => {
     expect(row('Private')).toHaveAttribute('aria-checked', 'true');
     expect(setListVisibility).toHaveBeenCalledWith('list-1', VISIBILITY.LINK);
     await waitFor(() =>
-      expect(toast.success).toHaveBeenCalledWith('Anyone with the link can view')
+      expect(toast.success).toHaveBeenCalledWith(
+        'Only people with the link can view'
+      )
     );
   });
 

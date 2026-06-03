@@ -26,16 +26,16 @@ export const VISIBILITY_ROWS: readonly VisibilityRow[] = [
   {
     value: VISIBILITY.LINK,
     label: 'Private',
-    description: 'Anyone with the link can view',
+    description: 'Only people with the link can view',
     icon: <FaLink aria-hidden />,
-    toast: 'Anyone with the link can view',
+    toast: 'Only people with the link can view',
   },
   {
     value: VISIBILITY.FOLLOWERS,
     label: 'Shared',
-    description: 'Visible to your followers',
+    description: 'Anyone with the link — plus your followers see it in their feed',
     icon: <FaUsers aria-hidden />,
-    toast: 'Visible to your followers',
+    toast: 'Shared — your followers can now find it',
   },
 ];
 

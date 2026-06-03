@@ -43,9 +43,9 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 - [x] 4.13 `test-server-endpoint-authorization` — **HIGH stakes**: every server action and API route is authorized for every caller class (owner / authenticated non-owner / unauthenticated). Aligns with the in-flight `harden-remaining-server-actions` change.
 - [x] 4.14 `test-visit-history` — `visit-history` capability + visit dedupe race (partial unique index backstop).
 - [x] 4.15 `test-user-actions` — `app/actions/user.ts` and any user-settings UI under `app/(main)/settings/` / `app/(main)/user/`. Carve-out determined at proposal time.
-- [ ] 4.16 `test-items-price-filter` — `PriceFilterPopover.tsx` against the existing `items-price-filter` spec. Deferred boundary from `test-items-browser-chrome` §9.6.
-- [ ] 4.17 `test-items-store-filter` — `StoreFilterPopover.tsx`; create/elevate a `store-filter` family spec. Deferred boundary from `test-items-browser-chrome` §9.6.
-- [ ] 4.18 `test-items-library-shell` — `ItemsContainer.tsx`, `ItemsPage.tsx`, `app/(main)/items/page.tsx`, `app/(main)/items/loading.tsx`; coordinate the `redirect()`-on-unauthenticated paths with §4.13. Deferred boundary from `test-items-browser-chrome` §9.6.
+- [x] 4.16 `test-items-price-filter` — `PriceFilterPopover.tsx` against the existing `items-price-filter` spec. Deferred boundary from `test-items-browser-chrome` §9.6.
+- [x] 4.17 `test-items-store-filter` — `StoreFilterPopover.tsx`; create/elevate a `store-filter` family spec. Deferred boundary from `test-items-browser-chrome` §9.6.
+- [x] 4.18 `test-items-library-shell` — `ItemsContainer.tsx`, `ItemsPage.tsx`, `app/(main)/items/page.tsx`, `app/(main)/items/loading.tsx`; coordinate the `redirect()`-on-unauthenticated paths with §4.13. Deferred boundary from `test-items-browser-chrome` §9.6.
 
 ## 5. API routes (independent; after foundation)
 
@@ -54,6 +54,7 @@ Each numbered top-level checkbox below represents a sub-proposal — its own Ope
 ## 6. End-to-end (after capability flows are established enough to assert against)
 
 - [ ] 6.1 `test-e2e-critical-flows` — Playwright suite against `AUTH_BYPASS=true` + seeded DB. Flows: sign-in (with bypass), create list, add items, set visibility, share, friend claim with spoiler hiding, owner sees claim. AuthPage sign-in UI covered here.
+  - REQUIRED FLOW (flagged by `fix-guest-claim-shared-lists`, GitHub #88): a logged-out **guest** successfully claims an item on a **public** ("Shared") list — the planned friend-claim flow under-covers this, since friends follow the owner and a guest does not. The guest-claim path was the exact regression that change fixed; the e2e suite SHALL pin it so it cannot silently break again.
 - [ ] 6.2 `test-e2e-pwa-offline` — Playwright PWA install detection, offline list view, service worker registration. Recent regressions (PWA top-bar, safe-area padding, pagination) inform the test set.
 
 ## 7. Governance close-out

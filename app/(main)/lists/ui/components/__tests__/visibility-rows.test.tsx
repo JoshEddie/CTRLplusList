@@ -29,14 +29,15 @@ describe('visibilityRows', () => {
         expect.objectContaining({
           value: VISIBILITY.LINK,
           label: 'Private',
-          description: 'Anyone with the link can view',
-          toast: 'Anyone with the link can view',
+          description: 'Only people with the link can view',
+          toast: 'Only people with the link can view',
         }),
         expect.objectContaining({
           value: VISIBILITY.FOLLOWERS,
           label: 'Shared',
-          description: 'Visible to your followers',
-          toast: 'Visible to your followers',
+          description:
+            'Anyone with the link — plus your followers see it in their feed',
+          toast: 'Shared — your followers can now find it',
         }),
       ]);
       for (const row of VISIBILITY_ROWS) {
