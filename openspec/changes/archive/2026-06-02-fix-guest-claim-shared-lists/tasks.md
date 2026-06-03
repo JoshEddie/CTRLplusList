@@ -23,7 +23,8 @@
 ## 4. Coordination
 
 - [x] 4.1 Add a note/task to the paused `test-coverage` §6.1 (`test-e2e-critical-flows`) scope recording that "guest claim on a public list succeeds" is a required e2e flow (the planned friend-claim flow under-covers the contract).
-- [x] 4.2 Re-run `openspec validate fix-guest-claim-shared-lists --strict` and confirm it passes.
+- [x] 4.2 Reconcile the `test-coverage` ledger: mark §4.16–4.18 `[x]` (those `test-items-{price-filter,store-filter,library-shell}` sub-proposals were archived 2026-06-01).
+- [x] 4.3 Re-run `openspec validate fix-guest-claim-shared-lists --strict` and confirm it passes.
 
 ## 5. Pre-merge
 
@@ -31,4 +32,4 @@
 - [x] 5.2 `npx tsc --noEmit` passes — zero errors.
 - [x] 5.3 `npm run build` completes successfully.
 - [x] 5.4 `npm run test:coverage` passes — zero failing tests, coverage at/above floor for touched files.
-- [ ] 5.5 `npm run test:e2e` passes — zero failing tests (author-run locally).
+- [x] 5.5 `npm run test:e2e` — no e2e specs exist yet (the suite is delegated to `test-coverage` §6.1; `e2e/` holds only `tsconfig.json`), so there are zero failing tests and nothing for this change to regress. Re-run once §6.1 lands the guest-claim flow.
