@@ -1,7 +1,9 @@
 /**
  * Idempotent dev-only seed. Creates the bypass test viewer plus a small social
  * graph (mutual + one-way follows, public lists with items, visit history, and
- * bookmarks) so the home-page rails have content when AUTH_BYPASS=true.
+ * bookmarks) so the home-page rails have content in local mode (USE_PG_DRIVER=1,
+ * which routes the app at the localhost Docker Postgres AND bypasses auth — see
+ * lib/auth.ts and CLAUDE.md "Local dev + e2e").
  *
  * Run with: `npm run db:seed:dev`. Safe to re-run — all inserts use
  * deterministic IDs and `.onConflictDoNothing()`. Hard-fails on production.

@@ -56,30 +56,33 @@ One small trio in `app/ui/components/button/` shows the first three forces at on
 - **Fragile coupling** — they stay separate components instead of collapsing into one polymorphic thing behind an `as`/`href` flag, because the concepts diverge: `Button` is a `<button>` (`ButtonHTMLAttributes` + `type`), `LinkButton` is a Next `<Link>` (`AnchorHTMLAttributes` + `LinkProps`).
 - **KISS** — each carries only the props its concept needs: `Button` has `isLoading`/`disabled`, `LinkButton` doesn't — a link can't load or be disabled, so adding them "for symmetry" would be generality for a caller that doesn't exist.
 
-## Dev auth bypass (for preview verification)
+## Local dev + e2e auth bypass (via `USE_PG_DRIVER`)
 
-The app gates every protected page on Google OAuth via NextAuth, which makes it impossible to validate UI changes through the preview tools without a real Google sign-in. A dev-only bypass exists for this:
+The app gates every protected page on Google OAuth via NextAuth, which makes it impossible to validate UI changes through the preview tools without a real Google sign-in. "Local mode" — a localhost Docker Postgres **plus** synthesized sessions (no real OAuth) — is entered with a single flag, `USE_PG_DRIVER=1`. The same flag points the DB driver at local Postgres (see [db/index.ts](db/index.ts)) and turns off real auth (see [lib/auth.ts](lib/auth.ts)); it is the same flag the e2e servers set. **Docker is a prerequisite** (Docker Desktop on macOS — `dev:local` auto-starts it).
 
-**To enable:**
+**To run locally bypassed:**
 
-1. `npm run db:seed:dev` — idempotent; creates `dev-test-viewer` plus 4 friends (Alice/Bob/Carol/Dave) with mutual + one-way follows, public lists with items, visit history, and bookmarks.
-2. Set `AUTH_BYPASS=true` in `.env.local` (already gitignored).
-3. Start the dev server. Zero-arg `await auth()` calls now return a mock session for `dev-test-viewer` — every protected page renders without sign-in.
+1. `npm run dev:local` — brings up the localhost Postgres sidecar (`docker-compose.e2e.yml`), applies schema via `drizzle-kit push`, seeds `dev-test-viewer` plus the friend graph (idempotent), then starts `next dev` with `USE_PG_DRIVER=1`. Every protected page renders as `dev-test-viewer` with no sign-in.
+2. Nothing to hand-set: the localhost `DATABASE_URL` lives once in `e2e/.env` (committed, non-secret — only `*.local` env files hold secrets and are gitignored, per the `.env*.local` convention) and is shared by the scripts, `docker-compose.e2e.yml`, and `e2e/helpers/constants.ts`.
 
-**To disable:** remove the env var (or set `AUTH_BYPASS=false`). No code change needed.
+**Choosing the session identity (`BYPASS_SESSION_USER`):** orthogonal to the bypass. Unset ⇒ the default `dev-test-viewer` session; the literal `guest` ⇒ `auth()` resolves to `null` (logged out); any other seeded id ⇒ a session for that id. The two e2e Playwright projects use exactly this: `authenticated` leaves it unset, `guest` sets it to `guest`.
 
-**To reset after drift:** `npm run db:reset:dev` — wipes everything owned by the seeded users (including UI-created rows under `dev-test-viewer`) via cascade, then re-seeds the baseline. Use this when local testing has accumulated stray lists/items/purchases and you want a clean slate.
+**To return to real auth:** run plain `npm run dev` (no `USE_PG_DRIVER`) — Neon + real Google sign-in, exactly as production. This is also the deployed Vercel configuration.
+
+**To reset after drift:** `npm run db:reset:dev` against the local DB — wipes everything owned by the seeded users (including UI-created rows under `dev-test-viewer`) via cascade, then re-seeds the baseline. Use this when local testing has accumulated stray lists/items/purchases and you want a clean slate.
 
 **After seeding/resetting, restart the dev server** — many DAL functions (`getListsByUser`, etc.) are tagged with `'use cache'` and only invalidate when the app calls `revalidateTag`. The seed script runs outside the Next.js process and can't bump tags, so cached results stay stale until the server restarts.
 
-**Hard guardrail:** the bypass refuses to activate when `NODE_ENV === 'production'`, even with `AUTH_BYPASS=true`. See `bypassEnabled()` in [lib/auth.ts](lib/auth.ts).
+**Hard guardrail:** the bypass is scoped to a localhost DB by the `USE_PG_DRIVER` boot guard in [db/index.ts](db/index.ts) — if `USE_PG_DRIVER=1` is ever set with a non-localhost `DATABASE_URL` (e.g. on Vercel), the app refuses to boot: a loud outage, never a silent bypass or data leak. On Vercel the flag is unset, so production stays neon-http + real auth. This positive localhost requirement replaces the former `NODE_ENV !== 'production'` check.
 
-**Seeded `quantity_limit` coverage:** every seeded list has overrides at positions 0, 1, and last, rotating `(3, null, 1)` → `(null, 1, 3)` → `(1, 3, null)` across consecutive lists. Multi-claim and unlimited items receive multiple deterministic purchase rows (`${itemId}-purchase-${n}`) so partial-claimed, fully-claimed, and multi-buyer-unlimited UI states are reachable directly from `npm run db:seed:dev` without manual clicking.
+**Seeded `quantity_limit` coverage:** every seeded list has overrides at positions 0, 1, and last, rotating `(3, null, 1)` → `(null, 1, 3)` → `(1, 3, null)` across consecutive lists. Multi-claim and unlimited items receive multiple deterministic purchase rows (`${itemId}-purchase-${n}`) so partial-claimed, fully-claimed, and multi-buyer-unlimited UI states are reachable directly from the seed without manual clicking.
 
 **Files:**
 
-- [lib/auth.ts](lib/auth.ts) — wrapped `auth()` export; exports `BYPASS_USER_ID = 'dev-test-viewer'`.
-- [scripts/seed-dev-users.ts](scripts/seed-dev-users.ts) — idempotent; refuses to run on prod; uses raw SQL for `lists` inserts because Drizzle 0.45 generates INSERTs with every schema-declared column.
+- [db/index.ts](db/index.ts) — `USE_PG_DRIVER` driver-switch (postgres-js vs neon-http) + the localhost boot guard.
+- [lib/auth.ts](lib/auth.ts) — bypass keyed on `USE_PG_DRIVER`; the `BYPASS_SESSION_USER` selector; exports `BYPASS_USER_ID = 'dev-test-viewer'` and `GUEST_SESSION_USER = 'guest'`.
+- [scripts/seed-dev-users.ts](scripts/seed-dev-users.ts) — idempotent; refuses to run on prod; upserts every table via Drizzle `.insert().onConflictDoUpdate()` so reseeds pick up edits.
+- [scripts/setup-e2e-db.sh](scripts/setup-e2e-db.sh) / [scripts/dev-local.sh](scripts/dev-local.sh) / [scripts/test-e2e.sh](scripts/test-e2e.sh) — Docker bring-up + schema + seed; `dev:local` and `test:e2e` wrap them.
 - Route-handler / middleware overloads of `auth(req, ctx)` pass through to real NextAuth — production auth path is unchanged.
 
 ## /api/image-search auth + rate limit

@@ -56,4 +56,82 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm test -- --coverage
+      - run: npm run test:coverage
+
+  # Per-PR e2e (fork-safe, no secrets). Reuses the same docker-compose.e2e.yml +
+  # e2e/.env + seed-as-fixture path the local `npm run test:e2e` uses, so CI
+  # reproduces the local run exactly. Playwright builds the production bundle
+  # once and starts the two `next start` servers (authenticated + guest).
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
+  # Pre-promote gate (trusted branches only): validates that the committed
+  # migrations *replay* via `drizzle-kit migrate` onto a copy-on-write branch of
+  # the PRODUCTION Neon project, then re-seeds the fixture and smoke-reads
+  # through the production neon-http driver. This is the sole CI guard for
+  # migration-replay-against-the-real-schema and neon-http driver divergence. It
+  # is NOT a proof the manual prod SQL apply is safe (design Decision 7 scope
+  # boundary). Skipped — not failed — when the Neon secret is unavailable
+  # (e.g. fork PRs). Production data and schema are never mutated (the branch is
+  # copy-on-write and deleted afterward).
+  pre-promote-migrate:
+    if: >-
+      (github.event_name == 'push' && (github.ref_name == 'dev' || (startsWith(github.ref_name, '1.') && endsWith(github.ref_name, '.x'))))
+      || (github.event_name == 'pull_request' && (github.base_ref == 'dev' || (startsWith(github.base_ref, '1.') && endsWith(github.base_ref, '.x'))))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Check for the Neon secret (skip the gate on forks)
+        id: guard
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: |
+          if [ -z "$NEON_API_KEY" ] || [ -z "$NEON_PROJECT_ID" ]; then
+            echo "active=false" >> "$GITHUB_OUTPUT"
+            echo "Neon secrets unavailable — skipping the pre-promote migration gate."
+          else
+            echo "active=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create an ephemeral branch of the production Neon project
+        if: steps.guard.outputs.active == 'true'
+        id: neon-branch
+        uses: neondatabase/create-branch-action@v5
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_name: ci-pre-promote-${{ github.run_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+      - name: Replay committed migrations against the branch
+        if: steps.guard.outputs.active == 'true'
+        env:
+          DATABASE_URL: ${{ steps.neon-branch.outputs.db_url }}
+        run: npx drizzle-kit migrate
+      - name: Re-seed the fixture and smoke-read through the neon-http driver
+        if: steps.guard.outputs.active == 'true'
+        env:
+          # USE_PG_DRIVER deliberately unset ⇒ the production neon-http driver.
+          DATABASE_URL: ${{ steps.neon-branch.outputs.db_url }}
+        run: |
+          npm run db:reset:dev
+          npx tsx scripts/ci/neon-driver-smoke.ts
+      - name: Delete the ephemeral Neon branch
+        if: ${{ always() && steps.guard.outputs.active == 'true' }}
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch: ci-pre-promote-${{ github.run_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}

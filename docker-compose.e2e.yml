@@ -1,0 +1,27 @@
+# E2E / local-dev Postgres sidecar. Credentials are interpolated from e2e/.env
+# (committed, NON-SECRET, localhost-bound), so always invoke with
+# `--env-file e2e/.env` — the helper scripts and CI do. Keeping the values in
+# e2e/.env (not inline here) means the connection string has one home shared by
+# the scripts, this file, and e2e/helpers/constants.ts.
+services:
+  e2e-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - '${E2E_DB_PORT}:5432'
+    healthcheck:
+      # `$$` escapes Compose interpolation so the container's own env expands
+      # at runtime inside the healthcheck shell.
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - e2e-network
+
+networks:
+  e2e-network:
+    driver: bridge
