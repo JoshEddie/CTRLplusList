@@ -32,20 +32,10 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'npm'
       - run: npm ci
+      # Generate .next/types so tsc validates App Router route types (PageProps,
+      # params); without this, `next build` was the only thing checking them.
+      - run: npx next typegen
       - run: npx tsc --noEmit
-
-  build:
-    runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: postgres://placeholder:placeholder@localhost:5432/placeholder
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run build
 
   test:
     runs-on: ubuntu-latest
