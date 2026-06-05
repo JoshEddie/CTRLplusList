@@ -30,9 +30,10 @@ const baseServerEnv = {
 export default defineConfig({
   testDir: './e2e',
   testIgnore: ['**/helpers/**'],
-  // Build the production bundle once; each project's webServer below only runs
-  // `next start`, so the bundle is not rebuilt per mode (design Decision 4).
-  globalSetup: './e2e/helpers/global-setup.ts',
+  // The production bundle is built ONCE by scripts/test-e2e.sh before Playwright
+  // starts — NOT in globalSetup. Playwright launches each webServer (`next
+  // start`) during plugin setup, before globalSetup runs, so a build here would
+  // race the servers that need it (design Decision 4).
 
   // One server process per mode against a shared DB: serialize so parallel
   // workers can't interleave writes, and so each server's in-memory tag store

@@ -65,8 +65,11 @@ a guest need **separate server processes**:
 | `authenticated` | 3100 | _(unset)_             | `dev-test-viewer` | `*.auth.spec.ts`  |
 | `guest`         | 3101 | `guest`               | none            | `*.guest.spec.ts` |
 
-`e2e/helpers/global-setup.ts` runs `next build` **once**; each project's
-`webServer` then only runs `next start`. `workers: 1` / `fullyParallel: false`
+`scripts/test-e2e.sh` runs `next build` **once** before Playwright starts; each
+project's `webServer` then only runs `next start`. The build lives in the script
+(not `globalSetup`) because Playwright starts the `webServer` during plugin setup
+— before `globalSetup` runs — so a build there would race the servers that need
+it and fail on a clean tree / in CI. `workers: 1` / `fullyParallel: false`
 because the two servers share one DB and each holds its own in-memory tag store.
 
 > **Cross-process freshness is NOT guaranteed.** A write on one server is not

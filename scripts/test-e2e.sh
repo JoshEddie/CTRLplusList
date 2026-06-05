@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# Brings up the localhost e2e Postgres (schema + seed), then runs Playwright,
-# which builds the production bundle once and starts the two `next start`
-# servers (see playwright.config.ts). Pass -c/--cleanup to tear the DB down
-# afterward; any remaining args pass through to `playwright test`.
+# Brings up the localhost e2e Postgres (schema + seed), builds the production
+# bundle once, then runs Playwright, which starts the two `next start` servers
+# (see playwright.config.ts). The build lives HERE — before Playwright — because
+# Playwright starts the webServer (`next start`) during plugin setup, BEFORE it
+# runs globalSetup. A build wired into globalSetup therefore races the server
+# that needs it and loses on a clean tree / in CI (no prebuilt `.next` to fall
+# back on). Pass -c/--cleanup to tear the DB down afterward; any remaining args
+# pass through to `playwright test`.
 #
 #   npm run test:e2e            # keep the DB up after the run
 #   npm run test:e2e:clean      # tear the DB down afterward (--cleanup)
@@ -35,6 +39,13 @@ if [[ "$CLEANUP" -eq 1 ]]; then
   }
   trap cleanup EXIT
 fi
+
+echo ""
+echo "🏗️  Building the production bundle (next start needs it before Playwright launches the servers)..."
+# DATABASE_URL is exported into this shell by setup-e2e-db.sh (sourced above);
+# USE_PG_DRIVER=1 matches the runtime servers so the built bundle and the
+# `next start` env agree (db/index.ts localhost guard, auth bypass).
+USE_PG_DRIVER=1 DATABASE_URL="$DATABASE_URL" npm run build
 
 echo ""
 echo "🎭 Running the Playwright e2e suite..."
