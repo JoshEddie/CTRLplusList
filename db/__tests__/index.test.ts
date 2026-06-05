@@ -25,7 +25,7 @@ describe('dbDriverSwitch', () => {
     vi.stubEnv('USE_PG_DRIVER', '1');
     vi.stubEnv('DATABASE_URL', 'postgresql://u:p@db.example.com:5432/prod');
 
-    await expect(import('./index')).rejects.toThrow(/localhost/i);
+    await expect(import('../index')).rejects.toThrow(/localhost/i);
     expect(pgClient).not.toHaveBeenCalled();
     expect(neonClient).not.toHaveBeenCalled();
   });
@@ -36,7 +36,7 @@ describe('dbDriverSwitch', () => {
     vi.stubEnv('USE_PG_DRIVER', '1');
     vi.stubEnv('DATABASE_URL', 'postgresql://u:p@localhost.attacker.com:5432/db');
 
-    await expect(import('./index')).rejects.toThrow(/localhost/i);
+    await expect(import('../index')).rejects.toThrow(/localhost/i);
     expect(pgClient).not.toHaveBeenCalled();
     expect(neonClient).not.toHaveBeenCalled();
   });
@@ -45,7 +45,7 @@ describe('dbDriverSwitch', () => {
     vi.stubEnv('USE_PG_DRIVER', '1');
     vi.stubEnv('DATABASE_URL', 'postgresql://u:p@localhost:5434/test?sslmode=disable');
 
-    const mod = await import('./index');
+    const mod = await import('../index');
 
     expect(pgClient).toHaveBeenCalledWith(
       'postgresql://u:p@localhost:5434/test?sslmode=disable'
@@ -59,7 +59,7 @@ describe('dbDriverSwitch', () => {
     vi.stubEnv('USE_PG_DRIVER', '');
     vi.stubEnv('DATABASE_URL', 'postgresql://u:p@ep-prod.neon.tech/main');
 
-    const mod = await import('./index');
+    const mod = await import('../index');
 
     expect(neonClient).toHaveBeenCalledWith(
       'postgresql://u:p@ep-prod.neon.tech/main'

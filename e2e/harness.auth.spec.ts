@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 // dev-test-viewer session. Visiting the protected home page renders the
 // signed-in avatar menu (UserAvatarPopover, gated on a real session) with no
 // sign-in step — end-to-end proof the bypass produces a session through the
-// production `next start` server. Flow assertions belong to 6.1, not here.
+// production `next start` server. Flow assertions belong in the dedicated flow specs, not here.
 test('Home_AuthenticatedViewerVisits_RendersSignedInAvatarWithoutSignIn', async ({
   page,
 }) => {

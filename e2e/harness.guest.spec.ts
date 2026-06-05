@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test';
 // list is URL-open to anyone, so the unauthenticated caller sees the list
 // (the seeded `dev-list-viewer-anniversary` is VISIBILITY.LINK) while the
 // signed-out "Sign In" affordance confirms no session is present. Flow
-// assertions belong to 6.1, not here.
+// assertions belong in the dedicated flow specs, not here.
 test('PublicList_GuestOpensLinkListByUrl_RendersWithoutSession', async ({
   page,
 }) => {

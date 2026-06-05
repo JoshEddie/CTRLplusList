@@ -581,7 +581,7 @@ Continuous integration SHALL run the Playwright e2e suite in two tiers: (1) a **
 
 #### Scenario: Pre-promote gate validates migrations against the production schema
 
-- **WHEN** a push targets a promotion branch (e.g. `dev` or a `1.*.x` release branch) with the Neon API secret available
+- **WHEN** a push targets a promotion branch (e.g. `dev` or a `release-*.*.x` release branch) with the Neon API secret available
 - **THEN** CI creates an ephemeral branch of the production Neon project, runs `drizzle-kit migrate` against it, then re-seeds the test fixture and reads through the `neon-http` driver, and deletes the branch
 - **AND** a migration that fails to replay against the production schema, or a read that fails through the production driver, fails the gate
 - **AND** production data and schema are never mutated

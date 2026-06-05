@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 async function loadAuth() {
-  return import('./auth');
+  return import('../auth');
 }
 
 describe('authBypass', () => {

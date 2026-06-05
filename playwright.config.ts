@@ -15,7 +15,7 @@ import {
 // Shared production-server env for both modes. USE_PG_DRIVER=1 routes the app
 // at the localhost Docker Postgres AND turns on the auth bypass (db/index.ts,
 // lib/auth.ts); NODE_ENV=production + `next start` keeps the `'use cache'` /
-// revalidateTag layer live (design Decision 3). The stubbed OAuth creds/secret
+// revalidateTag layer live. The stubbed OAuth creds/secret
 // let the production server boot — real Google is never negotiated under the
 // bypass.
 const baseServerEnv = {
@@ -33,11 +33,11 @@ export default defineConfig({
   // The production bundle is built ONCE by scripts/test-e2e.sh before Playwright
   // starts — NOT in globalSetup. Playwright launches each webServer (`next
   // start`) during plugin setup, before globalSetup runs, so a build here would
-  // race the servers that need it (design Decision 4).
+  // race the servers that need it.
 
   // One server process per mode against a shared DB: serialize so parallel
   // workers can't interleave writes, and so each server's in-memory tag store
-  // stays intact across a file (design Decision 4).
+  // stays intact across a file.
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,

@@ -25,7 +25,7 @@ export const E2E_DATABASE_URL = e2eEnv.DATABASE_URL;
 // Per-mode app server ports + base URLs. Only Playwright consumes these, so
 // TypeScript is their home (the DB port lives in e2e/.env because the scripts
 // and compose need it too). Two ports because the process-wide auth bypass
-// needs one `next start` per mode — see design Decision 4. Non-secrets.
+// needs one `next start` per mode. Non-secrets.
 export const AUTH_PORT = 3100;
 export const GUEST_PORT = 3101;
 export const AUTH_BASE_URL = `http://localhost:${AUTH_PORT}`;

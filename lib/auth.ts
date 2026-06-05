@@ -84,8 +84,8 @@ const BYPASS_EXPIRES = '2099-01-01T00:00:00.000Z';
 
 // The default identity (`dev-test-viewer`) carries the full display fields the
 // preview UI expects; any other seeded id gets a minimal session (display
-// fields are resolved by the flow that introduces that identity — see design
-// Decision 2). `guest` is handled by the caller (⇒ null), never reaching here.
+// fields are resolved by the flow that introduces that identity). `guest` is
+// handled by the caller (⇒ null), never reaching here.
 function synthesizeSession(userId: string) {
   if (userId === BYPASS_USER_ID) {
     return {
