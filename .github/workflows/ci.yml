@@ -73,6 +73,19 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      # On failure the suite retains a trace, screenshot, and error-context.md
+      # per test under test-results/ (playwright.config.ts). The CI reporter is
+      # 'github' (annotations only), so without this upload those artifacts are
+      # discarded with the runner — leaving no way to see what actually rendered
+      # at the point of failure.
+      - name: Upload Playwright artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
 
   # Pre-promote gate (trusted branches only): validates that the committed
   # migrations *replay* via `drizzle-kit migrate` onto a copy-on-write branch of
