@@ -2,6 +2,9 @@
   "name": "ctrlpluslist",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "dev:local": "bash scripts/dev-local.sh",
