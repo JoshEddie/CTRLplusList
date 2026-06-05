@@ -1,12 +1,12 @@
 ## Context
 
-Sub-proposal 6.1 of `test-coverage` — authors the critical-flow e2e specs. The e2e **execution model** (local Docker DB target, `next start` production server, bypass-on / bypass-off two-project harness, CI tiers) is owned by **6.0 `test-e2e-foundation`** ([#102](https://github.com/JoshEddie/CTRLplusList/issues/102)); this design covers only the **flow-authoring** decisions — which surfaces each spec drives, what it asserts, and how the fixtures are sourced. Where a decision depends on a harness property, it references 6.0 rather than re-deciding it.
+Sub-proposal 6.1 of `test-coverage` — authors the critical-flow e2e specs. The e2e **execution model** (local Docker DB target, `next start` production server, the two-project harness — authenticated viewer / logged-out guest, CI tiers) is owned by **6.0 `test-e2e-foundation`** ([#102](https://github.com/JoshEddie/CTRLplusList/issues/102)); this design covers only the **flow-authoring** decisions — which surfaces each spec drives, what it asserts, and how the fixtures are sourced. Where a decision depends on a harness property, it references 6.0 rather than re-deciding it.
 
-Flows to cover (parent §6.1): sign-in surface + bypass session, create list, add items, set visibility, share, friend claim with spoiler hiding, owner sees claim, and the **REQUIRED** logged-out-guest claim on a public list ([#88](https://github.com/JoshEddie/CTRLplusList/issues/88) pin).
+Flows to cover (parent §6.1): sign-in surface + bypass session, create list, add items, set visibility, share, signed-in non-owner claim with spoiler hiding, owner sees claim, and the **REQUIRED** logged-out-guest claim on a public list ([#88](https://github.com/JoshEddie/CTRLplusList/issues/88) pin). (Parent §6.1 names this the "friend claim" flow; the claimant's defining trait is being signed in — a follower is incidental — so the spec is named `signed-in-claim`.)
 
 Binding facts confirmed from source:
 
-- **`AUTH_BYPASS` is process-wide** ([lib/auth.ts:59](../../../lib/auth.ts) `bypassEnabled()`) — no per-request seam, so an authenticated viewer and a logged-out guest need separate server modes. **6.0 provides** those two modes as two Playwright projects; 6.1 assigns each spec to the mode it needs.
+- **The session bypass is process-wide** ([lib/auth.ts:76](../../../lib/auth.ts) `bypassEnabled()`, keyed on `USE_PG_DRIVER`) — no per-request seam, so an authenticated viewer and a logged-out guest need separate server processes, differentiated by `BYPASS_SESSION_USER` (unset ⇒ seeded `dev-test-viewer`; the literal `guest` ⇒ `auth()` resolves to null). **6.0 provides** those two modes as two Playwright projects (`authenticated` / `guest`, routed by `*.auth.spec.ts` / `*.guest.spec.ts`); 6.1 assigns each spec to the mode it needs.
 - **Public lists are URL-accessible to anyone** (`list-visibility`; `guardListViewable` allows any caller when `fromDb(visibility) !== VISIBILITY.OWNER`) — the guest-claim surface and the [#88](https://github.com/JoshEddie/CTRLplusList/issues/88) regression class.
 - **Spoiler hiding is owner- and reveal-gated** — `?spoilers=1` honored only for the owner ([ListHeroSection.tsx:31](../../../app/(main)/lists/[id]/ListHeroSection.tsx)); `sanitizePurchases` ([lib/dal.ts:55](../../../lib/dal.ts)): owner-no-spoilers → `[]`, owner-spoilers → first names, non-owner → first names.
 - **Guest claim path** = `createPurchase` with `user_id: null` + `guest_name`, via the modal's "continue as guest" branch (`?purchaseItem=<id>` → `"Purchase as Guest"`).
@@ -17,7 +17,7 @@ Binding facts confirmed from source:
 **Goals:**
 
 - Prove each parent-§6.1 flow works through the running app against the seeded DB, driving real user-visible affordances and asserting observable outcomes.
-- Pin the [#88](https://github.com/JoshEddie/CTRLplusList/issues/88) guest-claim regression with a spec that runs with no session (under 6.0's bypass-off project).
+- Pin the [#88](https://github.com/JoshEddie/CTRLplusList/issues/88) guest-claim regression with a spec that runs with no session (under 6.0's `guest` project).
 - Elevate the flow set into the `e2e-critical-flows` capability spec so dropping a flow is a spec violation.
 
 **Non-Goals:**
@@ -32,7 +32,7 @@ Binding facts confirmed from source:
 
 ### Decision 1 — Assign each spec to the harness session mode it needs (mechanism owned by 6.0)
 
-6.0 provides two projects: `authenticated` (bypass on → seeded `dev-test-viewer`) and `guest` (bypass off → no session). 6.1 routes its specs: `guest-claim` and the sign-in-surface assertion → `guest`; `list-lifecycle`, `owner-spoiler`, `friend-claim`, and the bypass-renders-protected-page assertion → `authenticated`. The *why two modes exist* (process-wide bypass) and *how they run* (two webServers / `next start`) are 6.0's decisions, recorded there; 6.1 only consumes the project split.
+6.0 provides two projects: `authenticated` (`BYPASS_SESSION_USER` unset → seeded `dev-test-viewer`) and `guest` (`BYPASS_SESSION_USER=guest` → `auth()` resolves to null, a logged-out caller). Both run under `USE_PG_DRIVER=1`; what differs is the session selector, not whether the bypass is engaged. 6.1 routes its specs: `guest-claim` and the sign-in-surface assertion → `guest`; `list-lifecycle`, `owner-spoiler`, `signed-in-claim`, and the bypass-renders-protected-page assertion → `authenticated`. The *why two modes exist* (process-wide bypass) and *how they run* (two webServers / `next start`) are 6.0's decisions, recorded there; 6.1 only consumes the project split.
 
 **Alternative considered:** 6.1 builds its own two-server config inline. **Rejected:** that is exactly the harness duplication the 6.0 carve-out exists to prevent (and would diverge from 6.2's harness). Per the parent's §6.0 split, execution model lives in 6.0.
 
@@ -44,7 +44,7 @@ Binding facts confirmed from source:
 
 ### Decision 3 — Seed negative-case audit drives fixture strategy; prefer build-own-state
 
-Required fixtures: (a) a viewer-owned list carrying a claim (owner-spoiler); (b) a friend-owned **Shared** list with a not-at-capacity item the viewer can claim (friend-claim); (c) a public **Shared** list with a guest-claimable item (guest-claim). The seed places purchases by position/hash (`${itemId}-purchase-${n}`, `asGuest = hash % 8 === 0`), which does not guarantee a *specific* target under a stable selector. Disposition, in priority order:
+Required fixtures: (a) a viewer-owned list carrying a claim (owner-spoiler); (b) a friend-owned **Shared** list with a not-at-capacity item the viewer can claim (signed-in-claim); (c) a public **Shared** list with a guest-claimable item (guest-claim). The seed places purchases by position/hash (`${itemId}-purchase-${n}`, `asGuest = hash % 8 === 0`), which does not guarantee a *specific* target under a stable selector. Disposition, in priority order:
 
 1. **Build-own-state** where the flow already creates it (`list-lifecycle` creates its own list+items+visibility — zero seed dependency; the default).
 2. **Defensive runtime selection** for read-only fixtures: locate "a friend-owned Shared list with an item not at capacity" / "a viewer-owned item showing a claim" at runtime rather than hardcoding a position.
@@ -54,7 +54,7 @@ The audit + outcome are recorded in `tasks.md`. The seed *infrastructure* (compo
 
 ### Decision 4 — Owner-sees-claim is proven on seeded data, independent of any live guest claim
 
-The bypass fixes the authenticated identity to `dev-test-viewer`, so the suite cannot log in *as a friend-owner* to watch a guest's claim land. The `owner-spoiler` spec instead runs as the viewer-owner against a **viewer-owned** list carrying a claim (Decision 3): default view hides it (`sanitizePurchases → []`), `?spoilers=1` reveals the first name. The `friend-claim` spec covers the other observer — an authenticated **non-owner** seeing their own claim ("You"). Together they pin both observers of the spoiler mechanism using only state each server can produce. Cross-user owner-observes-guest is a Non-Goal (Decision 2).
+The bypass fixes the authenticated identity to `dev-test-viewer`, so the suite cannot log in *as a friend-owner* to watch a guest's claim land. The `owner-spoiler` spec instead runs as the viewer-owner against a **viewer-owned** list carrying a claim (Decision 3): default view hides it (`sanitizePurchases → []`), `?spoilers=1` reveals the first name. The `signed-in-claim` spec covers the other observer — an authenticated **non-owner** seeing their own claim ("You"). Together they pin both observers of the spoiler mechanism using only state each server can produce. Cross-user owner-observes-guest is a Non-Goal (Decision 2).
 
 ### Decision 5 — Drive real UI affordances by role/label/aria, not internal selectors
 
@@ -62,7 +62,7 @@ Tests target user-visible affordances: the `"Sign in with Google"` button; `List
 
 ### Decision 6 — Sign-in surface is asserted, OAuth is never completed
 
-`auth` (guest project) navigates to `/sign-in`, asserts the AuthPage UI renders (logo + `"Sign in with Google"`), and stops — no click-through to Google. The bypass-on half (authenticated project) asserts a protected page renders as Test Viewer with no sign-in. Honors testing-foundation's "NextAuth is not invoked against real Google" while covering both "AuthPage sign-in UI" and "sign-in (with bypass)".
+`auth` (guest project) navigates to `/sign-in`, asserts the AuthPage UI renders (logo + `"Sign in with Google"`), and stops — no click-through to Google. The authenticated half (the `authenticated` project) asserts a protected page renders as Test Viewer with no sign-in. Honors testing-foundation's "NextAuth is not invoked against real Google" while covering both "AuthPage sign-in UI" and "sign-in (with bypass)".
 
 ### Decision 7 — `e2e-critical-flows` is a new capability spec (flow contract), distinct from the foundation
 
@@ -71,17 +71,17 @@ Tests target user-visible affordances: the `"Sign in with Google"` button; `List
 ## Risks / Trade-offs
 
 - **[Seed reshuffle breaks hardcoded fixtures]** → Decision 3 prefers build-own-state + defensive selection; any hardcoded target is guaranteed by a seed extension carrying the review-coupling note.
-- **[Guest/friend claim hits `quantity_limit` capacity on a seeded item]** → defensive selection (3.2) or a guaranteed-unlimited seeded item (3.3) ensures the target accepts a fresh claim.
+- **[Guest/signed-in claim hits `quantity_limit` capacity on a seeded item]** → defensive selection (3.2) or a guaranteed-unlimited seeded item (3.3) ensures the target accepts a fresh claim.
 - **[Shared dev DB pollution across re-runs]** → create-state specs use per-run-unique names and assert on what they just created; `npm run db:reset:dev` restores baseline; no spec asserts global counts. (The cleaner answer — ephemeral local DB per run — is 6.0's to provide.)
 - **[6.0 not yet landed when 6.1 is applied]** → 6.1's specs are authored to the harness contract; if the harness is absent, 6.0 is a hard prerequisite, not work to duplicate here. Apply order: 6.0 then 6.1.
-- **[A real non-test gap surfaces during authoring]** → recorded in `tasks.md` and spun into a new sub-proposal per the audit-deferral rule, not fixed in this test-only carve-out.
+- **[A real non-test gap surfaces during authoring]** → recorded in `tasks.md` and spun into a new sub-proposal per the audit-deferral rule, not fixed in this test-only carve-out. **(Overridden by owner decision for three small, single-source, production-safe defects the specs surfaced — all fixed and folded in here, see `tasks.md` §5b:** (1) `createPurchase` discarded an authenticated "Someone else" claim's typed name and misattributed it to the caller — fixed with MODIFIED deltas to `list-item-management` + `server-endpoint-authorization`; (2) `createList` passed a `Date` through an `sql` template that postgres-js rejects, breaking dev:local list-creation — fixed to pass the Date directly; (3) `/sign-in` was prerendered with the build-time bypass session — fixed with a per-route `connection()` dynamic opt-in. **One deferred follow-up:** the *complete* fix for (3) — making the local-mode bypass `auth()` dynamic so the whole class of auth-gated prerendered pages (e.g. `/`) renders per-server — touches the `lib/auth.ts` foundation seam and is left to a focused `test-e2e-foundation` hardening change; the per-route opt-in covers every page the current guest specs reach.)
 
 ## Migration Plan
 
 Test-only, additive; no production deploy. Order (assumes 6.0 harness available):
 
 1. Run the seed negative-case audit (Decision 3); record dispositions in `tasks.md`; extend the seed only if required.
-2. Author specs in dependency order: `auth` → `list-lifecycle` → `owner-spoiler` → `friend-claim` → `guest-claim`, assigning each to its harness project (Decision 1) and extracting shared helpers to `test/helpers/e2e/` on the second duplication.
+2. Author specs in dependency order: `auth` → `list-lifecycle` → `owner-spoiler` → `signed-in-claim` → `guest-claim`, assigning each to its harness project (Decision 1) and extracting shared helpers to `test/helpers/e2e/` on the second duplication.
 3. Write the `e2e-critical-flows` spec and the archive-only `testing-foundation` delta.
 4. Run the five-gate pre-merge plus `test:e2e` (under the 6.0 harness); record results.
 

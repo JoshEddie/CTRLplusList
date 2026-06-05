@@ -132,43 +132,66 @@ export type ActionResponse = {
   error?: string;
 };
 
+// Resolve who a createPurchase claim is authorized AS vs stored AS. An
+// authenticated caller supplying a non-empty guest_name is recording a claim
+// "on behalf of" that named third party ("Someone else"): it is authorized by
+// their session (callerUserId) but stored as a guest claim (actorUserId NULL,
+// guestName set) so the claim belongs to the named person, not the caller. A
+// self-claim (no guest_name) is stored under the caller's own id. No user_id is
+// ever taken from the payload — the third party is a free-text name, never an
+// account.
+async function resolveClaimIdentity(
+  rawGuestName: string | null
+): Promise<
+  | { callerUserId: string | null; actorUserId: string | null; guestName: string | null }
+  | { error: ActionResponse }
+> {
+  const session = await auth();
+  const trimmed = rawGuestName?.trim() ?? '';
+  if (session?.user?.email) {
+    const sessionUser = await db.query.users.findFirst({
+      where: eq(users.email, session.user.email),
+      columns: { id: true },
+    });
+    if (!sessionUser) {
+      return {
+        error: { success: false, message: 'User not found', error: 'Unauthorized' },
+      };
+    }
+    return trimmed
+      ? { callerUserId: sessionUser.id, actorUserId: null, guestName: trimmed }
+      : { callerUserId: sessionUser.id, actorUserId: sessionUser.id, guestName: null };
+  }
+  if (!trimmed) {
+    return {
+      error: {
+        success: false,
+        message: 'Cannot identify which claim to add',
+        error: 'Missing identity',
+      },
+    };
+  }
+  return { callerUserId: null, actorUserId: null, guestName: trimmed };
+}
+
 export async function createPurchase(data: {
   item_id: string;
   guest_name: string | null;
 }): Promise<ActionResponse> {
   try {
-    const session = await auth();
-
-    let actorUserId: string | null = null;
-    let guestName: string | null = null;
-    if (session?.user?.email) {
-      const sessionUser = await db.query.users.findFirst({
-        where: eq(users.email, session.user.email),
-        columns: { id: true },
-      });
-      if (!sessionUser) {
-        return {
-          success: false,
-          message: 'User not found',
-          error: 'Unauthorized',
-        };
-      }
-      actorUserId = sessionUser.id;
-    } else {
-      const trimmed = data.guest_name?.trim() ?? '';
-      if (!trimmed) {
-        return {
-          success: false,
-          message: 'Cannot identify which claim to add',
-          error: 'Missing identity',
-        };
-      }
-      guestName = trimmed;
+    const identity = await resolveClaimIdentity(data.guest_name);
+    if ('error' in identity) {
+      return identity.error;
     }
+    // callerUserId authorizes the request (the viewability/block gate below);
+    // actorUserId + guestName are what we STORE for the claim.
+    const { callerUserId, actorUserId, guestName } = identity;
 
     // Gate by viewability: items on lists the caller can't see are unclaimable.
-    // Indistinguishable from a missing item on purpose.
-    const viewable = await isItemViewable(data.item_id, actorUserId);
+    // Indistinguishable from a missing item on purpose. Gated on the
+    // authenticated caller (not the stored attribution) so a blocked caller
+    // cannot slip a claim through the on-behalf path.
+    const viewable = await isItemViewable(data.item_id, callerUserId);
     if (!viewable) {
       return {
         success: false,

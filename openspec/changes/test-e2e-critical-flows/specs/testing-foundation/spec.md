@@ -12,13 +12,13 @@ The seed negative-case audit for THIS carve-out's fixtures SHALL be recorded wit
 
 - **WHEN** this change archives
 - **THEN** `e2e/` contains the critical-flow specs (sign-in surface + bypass, list lifecycle, owner spoiler, friend claim, guest claim)
-- **AND** each spec runs under the foundation harness session mode (bypass-enabled or bypass-disabled) its flow requires
+- **AND** each spec runs under the foundation harness session mode (authenticated or logged-out) its flow requires
 - **AND** this carve-out did NOT reshape the harness execution model, DB target, or CI
 
 #### Scenario: Guest-claim pin runs unauthenticated
 
 - **WHEN** the guest-claim spec executes
-- **THEN** it runs under the bypass-disabled mode with no injected session
+- **THEN** it runs under the logged-out session mode with no injected session
 - **AND** a regression re-blocking unauthenticated claims on public lists fails the spec
 
 #### Scenario: No unit-coverage change
