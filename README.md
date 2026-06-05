@@ -46,13 +46,17 @@ Postgres (HTTP driver) + Drizzle, and a Serwist-backed PWA shell.
    ```
    Open http://localhost:3000.
 
-### Dev auth bypass
+### Local dev auth bypass
 
 To validate UI changes through preview tooling without a real Google sign-in,
-set `AUTH_BYPASS=true` in `.env.local` after seeding. Zero-arg `await auth()`
-calls then return a mock session for `dev-test-viewer`. The bypass is refused
-when `NODE_ENV=production`. See `CLAUDE.md` ("Dev auth bypass for preview
-verification").
+run `npm run dev:local` instead of `npm run dev`. It sets `USE_PG_DRIVER=1`,
+which points the app at a localhost Docker Postgres **and** synthesizes
+sessions (no real OAuth) — zero-arg `await auth()` then returns a mock session
+for `dev-test-viewer`. The `BYPASS_SESSION_USER` env var selects the identity
+(`guest` ⇒ no session; any other seeded id ⇒ that user). Docker is a
+prerequisite. The bypass is scoped to a localhost `DATABASE_URL` by a boot
+guard in `db/index.ts`, so it can never activate against a hosted database.
+See `CLAUDE.md` ("Local dev + e2e auth bypass").
 
 To reset after local drift:
 

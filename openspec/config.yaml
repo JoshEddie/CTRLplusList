@@ -107,12 +107,15 @@ rules:
       surfaces issues (route-level type errors, server/client boundary
       violations, missing env at build time, RSC serialization) that
       `tsc --noEmit` alone does not catch. The `test:e2e` gate is
-      author-run locally — CI does not currently run Playwright.
+      author-run locally and ALSO re-run by CI per-PR (a fork-safe
+      Postgres-sidecar job runs the Playwright suite against the same
+      docker-compose + seed-as-fixture path — see the `testing-foundation`
+      capability and ci.yml).
 
       These gates are run by the author locally before requesting
-      review, against the author's real `.env.local` (CI re-runs
-      lint/tsc/build/test:coverage for defense in depth — `test:e2e`
-      is local-only). Tasks should record local-run results; do not
+      review, against the author's real `.env.local`; CI re-runs all
+      five (lint/tsc/build/test:coverage, plus the e2e suite per-PR) for
+      defense in depth. Tasks should record local-run results; do not
       annotate them with CI-environment caveats (e.g. placeholder env
       vars, missing secrets) — those belong in ci.yml, not in the
       change record.

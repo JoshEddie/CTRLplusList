@@ -1,7 +1,9 @@
 /**
  * Idempotent dev-only seed. Creates the bypass test viewer plus a small social
  * graph (mutual + one-way follows, public lists with items, visit history, and
- * bookmarks) so the home-page rails have content when AUTH_BYPASS=true.
+ * bookmarks) so the home-page rails have content in local mode (USE_PG_DRIVER=1,
+ * which routes the app at the localhost Docker Postgres AND bypasses auth — see
+ * lib/auth.ts and CLAUDE.md "Local dev + e2e").
  *
  * Run with: `npm run db:seed:dev`. Safe to re-run — all inserts use
  * deterministic IDs and `.onConflictDoNothing()`. Hard-fails on production.
@@ -841,7 +843,15 @@ async function main() {
   console.log('[seed-dev-users] Done.');
 }
 
-main().catch((err) => {
-  console.error('[seed-dev-users] Failed:', err);
-  process.exit(1);
-});
+// Exit explicitly: under USE_PG_DRIVER=1 the postgres-js pool keeps an open
+// connection, so Node would otherwise hang after `main()` resolves instead of
+// returning — which deadlocks `npm run test:e2e` (the e2e setup seeds before
+// Playwright runs). All writes are awaited inside `main()`, so exiting here is
+// safe. (The neon-http path has no persistent pool and would exit on its own;
+// this just makes it unconditional. Mirrors scripts/ci/neon-driver-smoke.ts.)
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error('[seed-dev-users] Failed:', err);
+    process.exit(1);
+  });
