@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Shared e2e / local-dev database bring-up. Checks Docker, starts the localhost
-# Postgres sidecar, waits until it is healthy, applies the schema via
-# `drizzle-kit push`, and seeds the canonical fixture — all against the
-# single-source localhost DATABASE_URL in e2e/.env. Sourced by dev-local.sh
-# and test-e2e.sh (it exports the e2e/.env values into the caller's shell).
+# Shared e2e / local-dev database bring-up: Docker + schema only. Checks Docker,
+# starts the localhost Postgres sidecar, waits until it is healthy, and applies
+# the schema via `drizzle-kit push` — all against the single-source localhost
+# DATABASE_URL in e2e/.env. Sourced by dev-local.sh and test-e2e.sh (it exports
+# the e2e/.env values into the caller's shell). The DATA-STATE step is the
+# caller's: dev-local seeds (preserves UI-created rows), test-e2e resets to a
+# deterministic fixture — keeping it out of here means a shared reset can never
+# wipe a developer's local work.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -66,6 +69,3 @@ echo "✅ Postgres is ready."
 
 echo "🗄️  Applying schema (drizzle-kit push)..."
 DATABASE_URL="$DATABASE_URL" npx drizzle-kit push
-
-echo "🌱 Seeding the canonical fixture..."
-USE_PG_DRIVER=1 DATABASE_URL="$DATABASE_URL" npm run db:seed:dev

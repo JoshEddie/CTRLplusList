@@ -1,8 +1,10 @@
-import ListCard from '@/app/ui/components/ListCard';
 import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
+import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { auth } from '@/lib/auth';
-import { getListsByUser, getUserIdByEmail } from '@/lib/dal';
+import { getUserIdByEmail } from '@/lib/dal';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
+import MyListsGrid from './ui/components/MyListsGrid';
 import NewListButton from './ui/components/NewListButton';
 
 export default async function MyListsPage() {
@@ -11,25 +13,15 @@ export default async function MyListsPage() {
   const viewer = await getUserIdByEmail(session.user.email);
   if (!viewer) redirect('/');
 
-  const lists = await getListsByUser(viewer.id);
-
   return (
     <div className="my-lists-page">
       <ListCollectionsNav>
         <NewListButton />
       </ListCollectionsNav>
 
-      {lists.length === 0 ? (
-        <p className="my-lists-empty">No lists yet. Create your first one.</p>
-      ) : (
-        <ul className="list-card-grid" role="list">
-          {lists.map((list) => (
-            <li key={list.id}>
-              <ListCard list={list} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <Suspense fallback={<LoadingIndicator size="page" />}>
+        <MyListsGrid userId={viewer.id} />
+      </Suspense>
     </div>
   );
 }

@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
       - run: npm ci
       - run: npm run lint
@@ -29,23 +29,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
       - run: npm ci
+      # Generate .next/types so tsc validates App Router route types (PageProps,
+      # params); without this, `next build` was the only thing checking them.
+      - run: npx next typegen
       - run: npx tsc --noEmit
-
-  build:
-    runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: postgres://placeholder:placeholder@localhost:5432/placeholder
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run build
 
   test:
     runs-on: ubuntu-latest
@@ -53,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
       - run: npm ci
       - run: npm run test:coverage
@@ -68,11 +58,24 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      # On failure the suite retains a trace, screenshot, and error-context.md
+      # per test under test-results/ (playwright.config.ts). The CI reporter is
+      # 'github' (annotations only), so without this upload those artifacts are
+      # discarded with the runner — leaving no way to see what actually rendered
+      # at the point of failure.
+      - name: Upload Playwright artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
 
   # Pre-promote gate (trusted branches only): validates that the committed
   # migrations *replay* via `drizzle-kit migrate` onto a copy-on-write branch of
@@ -92,7 +95,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
       - run: npm ci
       - name: Check for the Neon secret (skip the gate on forks)

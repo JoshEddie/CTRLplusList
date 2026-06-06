@@ -138,9 +138,10 @@ export default function Item({
     user_purchase: boolean = false
   ) => {
     try {
-      // user_purchase: signed-in self-claim — server resolves user from session.
-      // !user_purchase: guest path — supply guest_name. Server ignores
-      // guest_name when the caller has a session.
+      // user_purchase: signed-in self-claim — server resolves the actor from the
+      // session, no name supplied. Otherwise supply guest_name: the unauth guest
+      // path, or a signed-in caller marking a claim on behalf of a named other
+      // person ("Someone else") — both record a named guest claim server-side.
       const payload =
         user_purchase && user_id
           ? { item_id: item.id || '', guest_name: null }

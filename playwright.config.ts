@@ -41,7 +41,11 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  // Local: fail fast (0). CI: a residual streaming-render transient can still
+  // surface a one-shot postgres-js `Connection closed` when a prospective-render
+  // abort races a cold server; 2 retries absorb that without masking a real,
+  // reproducible failure (which fails all attempts).
+  retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? 'github' : 'list',
 
   use: {

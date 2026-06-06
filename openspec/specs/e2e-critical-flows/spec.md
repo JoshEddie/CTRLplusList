@@ -1,5 +1,9 @@
-## ADDED Requirements
+# e2e-critical-flows Specification
 
+## Purpose
+
+TBD - created by archiving change test-e2e-critical-flows. Update Purpose after archive.
+## Requirements
 ### Requirement: Critical user flows SHALL be covered by an end-to-end test
 
 The repository SHALL maintain a Playwright end-to-end suite under `e2e/` that exercises each of the following user flows through the running application, against the seeded development database. Each flow SHALL be covered by at least one spec that drives real user-visible affordances (by role, accessible name, label, or visible text) and asserts an observable outcome — rendered content, persisted state reflected on reload, or navigation — NOT mere execution. Removing or disabling coverage of any listed flow SHALL be a violation of this requirement.
@@ -7,12 +11,12 @@ The repository SHALL maintain a Playwright end-to-end suite under `e2e/` that ex
 The covered flows SHALL be:
 
 1. **Sign-in surface** — the AuthPage sign-in UI renders its sign-in affordance.
-2. **Sign-in via bypass** — with `AUTH_BYPASS=true`, a protected page renders for the seeded viewer without a sign-in step.
+2. **Sign-in via bypass** — under the local-mode session bypass (`USE_PG_DRIVER=1`, session selector unset), a protected page renders for the seeded viewer without a sign-in step.
 3. **Create list** — a list is created through the list-creation form.
 4. **Add items** — items are attached to a list through the choose-items surface.
 5. **Set visibility** — a list's visibility is changed through the visibility picker.
 6. **Share** — the share affordance is reachable for a non-hidden list.
-7. **Friend (authenticated non-owner) claims an item with spoiler hiding** — a follower of the owner claims an item and sees their own claim; the owner's default (no-spoiler) view of a claimed item hides the claim.
+7. **Signed-in (authenticated non-owner) claims an item with spoiler hiding** — a signed-in viewer who is not the owner claims an item — whether marking it as their own purchase ("I purchased it") or on behalf of someone else ("Someone else") — and sees their own claim; the owner's default (no-spoiler) view of a claimed item hides the claim. (Being a follower of the owner is incidental — any caller may view/claim a non-Hidden list; what distinguishes this from flow 9 is the signed-in vs logged-out session.)
 8. **Owner sees a claim** — the owner's spoiler-enabled view reveals a claim that the default view hides.
 9. **Guest (logged-out) claims an item on a public list** — REQUIRED; see the dedicated requirement below.
 
@@ -24,7 +28,7 @@ The covered flows SHALL be:
 
 #### Scenario: Bypass session renders a protected page
 
-- **WHEN** the suite navigates to a protected page with `AUTH_BYPASS=true`
+- **WHEN** the suite navigates to a protected page under the local-mode session bypass (seeded-viewer session)
 - **THEN** the page renders for the seeded viewer ("Test Viewer") without any sign-in step
 
 #### Scenario: Owner lifecycle arc is covered
@@ -45,7 +49,7 @@ The covered flows SHALL be:
 
 ### Requirement: A logged-out guest SHALL be able to claim an item on a public list
 
-The suite SHALL pin the guest-claim regression ([issue #88](https://github.com/JoshEddie/CTRLplusList/issues/88)). A caller with NO active session SHALL be able to open a public ("Shared", `visibility = 'public'`) list by URL, claim an item through the purchase modal's guest path (a guest-name entry followed by the guest-purchase confirmation), and observe the claim reflected on the item after reload. This flow SHALL run with the auth bypass DISABLED so the caller is genuinely unauthenticated; it SHALL NOT be satisfied by a mocked or bypassed session.
+The suite SHALL pin the guest-claim regression ([issue #88](https://github.com/JoshEddie/CTRLplusList/issues/88)). A caller with NO active session SHALL be able to open a public ("Shared", `visibility = 'public'`) list by URL, claim an item through the purchase modal's guest path (a guest-name entry followed by the guest-purchase confirmation), and observe the claim reflected on the item after reload. This flow SHALL run with no authenticated session present — the request resolves to a logged-out caller (`auth()` returns null) and the resulting purchase is recorded with no user — and it SHALL NOT be satisfied by an injected or seeded user session standing in for the guest.
 
 #### Scenario: Guest views a public list without signing in
 
@@ -62,22 +66,22 @@ The suite SHALL pin the guest-claim regression ([issue #88](https://github.com/J
 #### Scenario: Guest-claim pin runs without a session
 
 - **WHEN** the guest-claim spec executes
-- **THEN** it runs against a server with the auth bypass disabled (no `dev-test-viewer` session is injected)
+- **THEN** it runs against a server where no session is injected — the request resolves to a logged-out caller (`auth()` returns null)
 - **AND** a future regression that re-blocks unauthenticated claims on public lists fails this spec
 
 ### Requirement: Critical-flow specs SHALL run under the foundation harness in the session mode each flow requires
 
-The critical-flow specs SHALL run under the e2e execution harness established by the `test-e2e-foundation` carve-out, which provides a bypass-ENABLED session mode (the authenticated seeded viewer) and a bypass-DISABLED session mode (a logged-out guest, and the real sign-in surface). Each spec SHALL be assigned to the mode its flow requires; this capability SHALL NOT redefine the harness mechanics (server configuration, DB target, CI) — those are the foundation's contract. Because the harness runs the modes as separate server processes whose caches do not cross-invalidate, each spec SHALL assert only state its own server produced or that the seed established, and SHALL NOT depend on a write made under one mode being observed under the other.
+The critical-flow specs SHALL run under the e2e execution harness established by the `test-e2e-foundation` carve-out, which provides an authenticated session mode (the seeded viewer) and a logged-out session mode (no session injected — `auth()` resolves to null — exposing the real sign-in surface and the unauthenticated guest path). Each spec SHALL be assigned to the mode its flow requires; this capability SHALL NOT redefine the harness mechanics (server configuration, DB target, CI) — those are the foundation's contract. Because the harness runs the modes as separate server processes whose caches do not cross-invalidate, each spec SHALL assert only state its own server produced or that the seed established, and SHALL NOT depend on a write made under one mode being observed under the other.
 
-#### Scenario: Authenticated flows run under the bypass-enabled mode
+#### Scenario: Authenticated flows run under the authenticated session mode
 
 - **WHEN** a spec covering create/add/visibility/share/friend-claim/owner-spoiler runs
-- **THEN** it runs under the bypass-enabled mode and resolves to the seeded `dev-test-viewer` session
+- **THEN** it runs under the authenticated session mode and resolves to the seeded `dev-test-viewer` session
 
-#### Scenario: Guest and sign-in-surface flows run under the bypass-disabled mode
+#### Scenario: Guest and sign-in-surface flows run under the logged-out session mode
 
 - **WHEN** the guest-claim spec or the sign-in-surface assertion runs
-- **THEN** it runs under the bypass-disabled mode with no injected session
+- **THEN** it runs under the logged-out session mode with no injected session
 
 #### Scenario: No spec depends on cross-process cache propagation
 
@@ -87,7 +91,7 @@ The critical-flow specs SHALL run under the e2e execution harness established by
 
 ### Requirement: E2E tests SHALL NOT complete real external authentication or call rate-limited services
 
-The suite SHALL NOT complete a real Google OAuth handshake, nor call any external service that imposes a quota, charges per call, or requires interactive credentials. The sanctioned stand-in for an authenticated session is the `AUTH_BYPASS` mechanism; the sign-in surface is asserted at the affordance level only.
+The suite SHALL NOT complete a real Google OAuth handshake, nor call any external service that imposes a quota, charges per call, or requires interactive credentials. The sanctioned stand-in for an authenticated session is the local-mode session bypass (`USE_PG_DRIVER=1`, synthesizing the seeded-viewer session); the sign-in surface is asserted at the affordance level only.
 
 #### Scenario: OAuth is never completed
 

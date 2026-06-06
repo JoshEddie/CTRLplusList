@@ -94,7 +94,7 @@ export async function createList(data: ListData): Promise<ActionResponse> {
       name: sql`${validatedData.name}`,
       subtitle: validatedData.subtitle ?? null,
       occasion: sql`${validatedData.occasion}`,
-      date: sql`${validatedData.date}`,
+      date: validatedData.date,
       user_id: sessionUser.id,
     });
 

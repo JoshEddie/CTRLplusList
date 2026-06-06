@@ -97,7 +97,7 @@ Because the bypass is process-wide (no per-request seam), an authenticated viewe
 
 ### Requirement: The local e2e database SHALL be schema-applied by `drizzle-kit push` and populated by the canonical seed-as-fixture
 
-The Docker e2e database SHALL receive its schema via `drizzle-kit push` (schema derived directly from `db/schema.ts`, no migration replay), and SHALL be populated by invoking the canonical seed (`scripts/seed-dev-users.ts`) through the same `USE_PG_DRIVER` path (`USE_PG_DRIVER=1 DATABASE_URL=<local> ...`) so the seed reaches the local DB via the one driver-switch. The container's credentials SHALL be committed, non-secret, localhost-bound test values.
+The Docker e2e database SHALL receive its schema via `drizzle-kit push` (schema derived directly from `db/schema.ts`, no migration replay), and SHALL be populated by invoking the canonical seed (`scripts/seed-dev-users.ts`) through the same `USE_PG_DRIVER` path (`USE_PG_DRIVER=1 DATABASE_URL=<local> ...`) so the seed reaches the local DB via the one driver-switch. Before the e2e suite runs, the database SHALL be reset to the canonical fixture — `db:reset:dev`, which cascade-wipes seeded-owned rows then reseeds — so every run starts from a byte-identical known state regardless of any prior run's writes on a persisted database. The shared bring-up (`setup-e2e-db.sh`) SHALL apply schema only and SHALL NOT itself reset: the data-state step belongs to each caller, so `dev:local` seeds without wiping (preserving UI-created rows; reset there stays the explicit `db:reset:dev` opt-in) while `test:e2e` resets. The container's credentials SHALL be committed, non-secret, localhost-bound test values.
 
 #### Scenario: Schema applied from source via push
 
@@ -111,9 +111,21 @@ The Docker e2e database SHALL receive its schema via `drizzle-kit push` (schema 
 - **THEN** the seeded fixture rows are written to the local Postgres
 - **AND** no separate test-only DB client is required to seed it
 
+#### Scenario: The e2e suite starts from a deterministic reset
+
+- **WHEN** the e2e run is prepared (`test:e2e`)
+- **THEN** the database is reset to the canonical fixture (cascade wipe + reseed) before any spec executes
+- **AND** the starting state does not depend on rows written by a prior run on a persisted database
+
+#### Scenario: Local dev bring-up preserves UI-created rows
+
+- **WHEN** `dev:local` brings up the local database
+- **THEN** it seeds the canonical fixture without wiping
+- **AND** rows a developer created through the UI survive the restart (reset stays the explicit `db:reset:dev` opt-in)
+
 ### Requirement: CI SHALL run e2e in a fork-safe per-PR tier and a secret-bearing pre-promote migration tier
 
-Continuous integration SHALL run the Playwright e2e suite in two tiers: (1) a **per-PR** job that stands up a local Postgres sidecar, applies schema via `drizzle-kit push`, seeds the fixture, and runs the suite using only committed non-secret test credentials — so it runs on fork pull requests; and (2) a **pre-promote** job on trusted branches that creates an **ephemeral branch of the production Neon project** (copy-on-write — production data and schema are never mutated, and the branch is deleted afterward), runs `drizzle-kit migrate` against that branch, then resets and re-seeds the canonical test fixture onto it and exercises a representative set of DAL reads through the **production `neon-http` driver** (`USE_PG_DRIVER` unset). Branching production rather than a from-scratch database is deliberate: it validates the pending migrations against production's *actual* applied-migration state and schema, catching a migration production is missing or hand-applied drift that a clean database cannot surface; seeding test data first ensures CI never reads real users' production data. This tier is the sole CI guard for migration-replay correctness against the real schema and for production-driver (`neon-http`) divergence. It validates migration *replay* via `drizzle-kit migrate`; it SHALL NOT be construed as validating the production migration-apply mechanism itself (e.g. a manual SQL run against production), which uses a different apply path and is outside this capability's scope. It requires a Neon API secret and SHALL be skipped where that secret is unavailable (e.g. fork PRs). Once the per-PR tier exists, the descriptive note in `openspec/config.yaml` and this capability stating "CI does not currently run Playwright" SHALL be corrected.
+Continuous integration SHALL run the Playwright e2e suite in two tiers: (1) a **per-PR** job that stands up a local Postgres sidecar, applies schema via `drizzle-kit push`, resets to the canonical fixture (cascade wipe + reseed), and runs the suite using only committed non-secret test credentials — so it runs on fork pull requests; and (2) a **pre-promote** job on trusted branches that creates an **ephemeral branch of the production Neon project** (copy-on-write — production data and schema are never mutated, and the branch is deleted afterward), runs `drizzle-kit migrate` against that branch, then resets and re-seeds the canonical test fixture onto it and exercises a representative set of DAL reads through the **production `neon-http` driver** (`USE_PG_DRIVER` unset). Branching production rather than a from-scratch database is deliberate: it validates the pending migrations against production's *actual* applied-migration state and schema, catching a migration production is missing or hand-applied drift that a clean database cannot surface; seeding test data first ensures CI never reads real users' production data. This tier is the sole CI guard for migration-replay correctness against the real schema and for production-driver (`neon-http`) divergence. It validates migration *replay* via `drizzle-kit migrate`; it SHALL NOT be construed as validating the production migration-apply mechanism itself (e.g. a manual SQL run against production), which uses a different apply path and is outside this capability's scope. It requires a Neon API secret and SHALL be skipped where that secret is unavailable (e.g. fork PRs). Once the per-PR tier exists, the descriptive note in `openspec/config.yaml` and this capability stating "CI does not currently run Playwright" SHALL be corrected.
 
 #### Scenario: Per-PR e2e runs without secrets
 

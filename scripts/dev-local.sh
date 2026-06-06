@@ -11,5 +11,9 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/setup-e2e-db.sh"
 
 echo ""
+echo "🌱 Seeding the canonical fixture (preserves any rows created via the UI)..."
+USE_PG_DRIVER=1 DATABASE_URL="$DATABASE_URL" npm run db:seed:dev
+
+echo ""
 echo "🚀 Starting next dev in local mode (USE_PG_DRIVER=1)..."
 USE_PG_DRIVER=1 DATABASE_URL="$DATABASE_URL" exec next dev

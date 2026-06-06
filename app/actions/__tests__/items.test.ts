@@ -627,19 +627,38 @@ describe('getItemEditData', () => {
 
 describe('createPurchase', () => {
   describe('IdentityContract', () => {
-    it('Authed_UsesSessionUserId-DiscardsGuestName', async () => {
+    it('AuthedSelfClaim_UsesSessionUserId-NullGuestName', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });
       await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
 
       const res = await actions.createPurchase({
         item_id: 'I',
-        guest_name: 'Ignored',
+        guest_name: null,
       });
       expect(res.success).toBe(true);
-      const rows = await purchaseRows('I');
-      expect(rows).toEqual([
+      expect(await purchaseRows('I')).toEqual([
         expect.objectContaining({ user_id: OWNER.id, guest_name: null }),
+      ]);
+      expect(updateTag).toHaveBeenCalledWith('items');
+    });
+
+    it('AuthedOnBehalf_RecordsNamedGuestClaim', async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id });
+      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+
+      // A signed-in caller marking a claim on behalf of a named other person
+      // ("Someone else") records it as that named guest (user_id NULL) — the
+      // typed name is honored, not the caller's own identity. Trimmed, mirroring
+      // the guest path.
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: '  Aunt May  ',
+      });
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toEqual([
+        expect.objectContaining({ user_id: null, guest_name: 'Aunt May' }),
       ]);
       expect(updateTag).toHaveBeenCalledWith('items');
     });
@@ -735,6 +754,23 @@ describe('createPurchase', () => {
       const res = await actions.createPurchase({
         item_id: 'I',
         guest_name: null,
+      });
+      expect(res.error).toBe('Item not found');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('BlockedCallerOnBehalf_ReturnsItemNotFound-NoRow', async () => {
+      // The on-behalf path stores a guest claim (user_id NULL) but is still
+      // authorized as the authenticated caller, so a blocked caller cannot use
+      // it to slip a claim past the block.
+      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+      await seedBlock(db, OWNER.id, OTHER.id);
+      asOther();
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: 'Aunt May',
       });
       expect(res.error).toBe('Item not found');
       expect(await purchaseRows('I')).toHaveLength(0);

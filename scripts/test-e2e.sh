@@ -41,6 +41,10 @@ if [[ "$CLEANUP" -eq 1 ]]; then
 fi
 
 echo ""
+echo "🌱 Resetting to the canonical fixture (wipe + reseed) so every run starts from byte-identical state..."
+USE_PG_DRIVER=1 DATABASE_URL="$DATABASE_URL" npm run db:reset:dev
+
+echo ""
 echo "🏗️  Building the production bundle (next start needs it before Playwright launches the servers)..."
 # DATABASE_URL is exported into this shell by setup-e2e-db.sh (sourced above);
 # USE_PG_DRIVER=1 matches the runtime servers so the built bundle and the
