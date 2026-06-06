@@ -22,7 +22,7 @@ Binding facts confirmed from source:
 
 **Non-Goals:**
 
-- The e2e execution model — DB target, `next start` vs `next dev`, the two-server mechanics, CI jobs, the `testing-foundation` Tier-1 execution additions. All **6.0**.
+- The e2e execution model *design* — DB target, `next start` vs `next dev`, the two-server mechanics, the e2e CI tiers, the `testing-foundation` Tier-1 execution additions. All **6.0**. (Operational CI/harness *hardening* of the existing jobs was folded into this PR by owner decision — Decision 8 / tasks §5c — distinct from reshaping that design.)
 - The full authorization caller-class matrix (4.13) and PWA/offline e2e (6.2).
 - Cross-user, cross-process observation (a guest claims on the guest server, the *real* friend-owner observes it on the authenticated server) — Decision 2 / Decision 4.
 - Real Google OAuth (forbidden); the sign-in surface is asserted at the affordance level only.
@@ -67,6 +67,16 @@ Tests target user-visible affordances: the `"Sign in with Google"` button; `List
 ### Decision 7 — `e2e-critical-flows` is a new capability spec (flow contract), distinct from the foundation
 
 `testing-foundation` (+ 6.0's Tier-1 additions) owns *how* e2e runs; `e2e-critical-flows` owns *which flows must stay covered*. Keeping them separate means a future edit that drops a flow violates `e2e-critical-flows` without touching the execution model, and vice versa. This is the e2e analogue of the primitive-family specs (3.x).
+
+### Decision 8 — Folded-in CI/harness hardening; the type gate is centralized and process-only
+
+Getting the suite green in CI surfaced harness/CI work beyond the §5b product fixes. By owner decision it was folded into this PR (mirroring the §5b override) rather than spun out — `tasks.md` §5c enumerates the set. This is operational hardening of the **existing** jobs, not a reshape of the e2e execution model (tiers, two-server, build-once stay 6.0's); the one piece that *is* an execution-model property — the per-suite DB reset for rerun determinism — was elevated to a 6.0 SHALL rather than recorded only here.
+
+The decision worth stating as such is **where type-correctness is enforced**. Before: the CI `typecheck` job ran `tsc --noEmit` with no `next typegen`, so App Router route types (`PageProps`/`params`) went unchecked there and were validated only by an in-build type check that ran *three times* — the standalone `build` job, the e2e tier's `next build`, and Vercel. After: a single authoritative gate — the `typecheck` job runs `next typegen` + `tsc --noEmit` (now covering route types) — and `next.config.ts` sets `ignoreBuildErrors: true` so the builds stop re-checking. The standalone `build` job is dropped as redundant: `next build` still runs on every PR in the e2e tier (config-faithful) and on Vercel (production-faithful), so build/bundle breakage is still caught; only the duplicate placeholder-DB build is gone. One fast type gate replaces three slow in-build copies, and route-type coverage is *gained*, not lost.
+
+The trade-off this accepts: with no required status checks (no branch protection / rulesets on `dev`/`main`) and `ignoreBuildErrors` applied to Vercel's build too, **nothing mechanically blocks a type error from merging** — the `typecheck` job runs on every PR but is advisory, so enforcement is *process-only* (read it before merge). Accepted for a solo-maintained repo where CI is watched per-PR. The clean upgrade, should the team grow, is a ruleset requiring `typecheck` (and the other checks), which would re-arm a mechanism strictly better than the old triple in-build check; deliberately not done here.
+
+**Alternative — keep builds type-checking (drop `ignoreBuildErrors`). Rejected:** restores the triple type-check this consolidates, is slower, and still wouldn't cover route types without `next typegen` in the gate anyway.
 
 ## Risks / Trade-offs
 

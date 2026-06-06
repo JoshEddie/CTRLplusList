@@ -13,8 +13,7 @@ import type { Locator, Page } from '@playwright/test';
 //
 // The `.item-container` / `.claim-counter` class hooks select the FIXTURE; the
 // specs' assertions target user-visible text, per the suite's "drive real
-// affordances" rule. Shared by the signed-in-claim and guest-claim specs and
-// so extracted here per the testing-foundation second-duplication rule.
+// affordances" rule.
 export function firstClaimableSingleItem(page: Page): Locator {
   return page
     .locator('.item-container')

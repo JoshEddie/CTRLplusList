@@ -13,7 +13,7 @@ Every Next.js server action under `app/actions/**` that writes to a user-owned r
 
 Server actions SHALL NOT accept a `user_id` field on their input payloads or Zod schemas. If a payload Zod schema previously declared `user_id`, that field SHALL be removed; clients SHALL NOT need to construct it.
 
-Guest write paths (currently only `createPurchase` when the caller is unauthenticated AND `guest_name` is provided) SHALL be enumerated in the action's spec by name and SHALL scope writes to a guest-identity field that the caller could not have guessed for a third party (e.g. `guest_name` paired with an out-of-band `purchase_id` for subsequent edits).
+Guest write paths (currently only `createPurchase` when a non-empty `guest_name` is provided — by an unauthenticated caller, OR by an authenticated caller recording a claim on behalf of a named third party) SHALL be enumerated in the action's spec by name and SHALL scope writes to a guest-identity field (`guest_name`) that the caller could not have guessed for a third party (e.g. `guest_name` paired with an out-of-band `purchase_id` for subsequent edits). On such a path the stored row's `user_id` SHALL be NULL — the named third party is a free-text label, never an account — so the "no client user_id" rule is preserved: an authenticated on-behalf caller is still authorized via their session, but the claim they record is attributed to the named guest, not to any user account.
 
 #### Scenario: Authenticated mutation uses session identity
 
@@ -29,6 +29,11 @@ Guest write paths (currently only `createPurchase` when the caller is unauthenti
 
 - **WHEN** an unauthenticated caller invokes a server action that writes to a user-owned resource AND that action is not listed in the guest write paths clause
 - **THEN** the action returns `{ success: false, error: 'Unauthorized' }` without performing any database write
+
+#### Scenario: Authenticated caller records a claim on behalf of a named third party
+
+- **WHEN** an authenticated caller invokes the enumerated guest write path `createPurchase({ item_id, guest_name: '<name>' })` for an item it is authorized to view
+- **THEN** the action authorizes the request using the caller's session identity, inserts a `purchases` row with `user_id = NULL` and `guest_name = '<name>'`, and no `user_id` is taken from the payload
 
 ### Requirement: Server actions SHALL verify resource ownership before update or delete
 
