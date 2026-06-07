@@ -92,6 +92,12 @@ export default defineConfig({
         'lib/visibility.ts': COVERAGE_FLOOR,
         'lib/listAccess.ts': COVERAGE_FLOOR,
         'lib/sqlstate.ts': COVERAGE_FLOOR,
+        // test-dal-remainder (sub-proposal 9.1) — the DAL read aggregate and the
+        // auth bypass surface, now whole-covered. Resolves the §7.7 / §7.10
+        // multi-capability-shared-file deferral (the notes removed from the
+        // 4.2 / 4.3 / 4.14 blocks below).
+        'lib/dal.ts': COVERAGE_FLOOR,
+        'lib/auth.ts': COVERAGE_FLOOR,
         'hooks/use-media-query.ts': COVERAGE_FLOOR,
         'app/ui/components/button/buttonClasses.ts': COVERAGE_FLOOR,
         'app/ui/components/button/Button.tsx': COVERAGE_FLOOR,
@@ -138,9 +144,6 @@ export default defineConfig({
         'app/ui/components/Nav.tsx': COVERAGE_FLOOR,
         'app/ui/hooks/useKeyboardOffset.ts': COVERAGE_FLOOR,
         // test-following (sub-proposal 4.2) — locked at universal COVERAGE_FLOOR.
-        // No `lib/dal.ts` entry: it is a multi-capability aggregate whose
-        // file-level floor is deferred (Tier 2 requirement) until the
-        // data-layer carve-outs that share it collectively cover it.
         'app/actions/follows.ts': COVERAGE_FLOOR,
         // test-list-item-management (sub-proposal 4.9) — locked at universal
         // COVERAGE_FLOOR. Whole-file ownership for both action files; downstream
@@ -167,8 +170,6 @@ export default defineConfig({
         'app/(main)/following/FollowingPage.tsx': COVERAGE_FLOOR,
         'app/(main)/following/page.tsx': COVERAGE_FLOOR,
         // test-home-digest (sub-proposal 4.3) — locked at universal COVERAGE_FLOOR.
-        // No `lib/dal.ts` entry (Decision 7): its per-file floor is deferred
-        // until the data-layer carve-outs that share it collectively cover it.
         'app/(main)/HomePage.tsx': COVERAGE_FLOOR,
         'app/(main)/page.tsx': COVERAGE_FLOOR,
         'app/(main)/lists/ui/components/rails/MyListsRail.tsx': COVERAGE_FLOOR,
@@ -232,9 +233,7 @@ export default defineConfig({
         // test-visit-history (sub-proposal 4.14) — locked at universal COVERAGE_FLOOR.
         // `app/actions/lists.ts` is already enumerated above (whole-file, from
         // 4.9); this carve-out's three visit-history functions are covered under
-        // that gate. `lib/dal.ts` stays deferred (multi-capability aggregate; its
-        // visit-history reads' per-function coverage is recorded in this change's
-        // tasks.md §7.5 / Decision 2).
+        // that gate. `lib/dal.ts` is now enumerated above (test-dal-remainder 9.1).
         'app/(main)/lists/ui/components/BookmarkButton.tsx': COVERAGE_FLOOR,
         'app/(main)/lists/history/HistoryActions.tsx': COVERAGE_FLOOR,
         'app/(main)/lists/history/HistoryCard.tsx': COVERAGE_FLOOR,

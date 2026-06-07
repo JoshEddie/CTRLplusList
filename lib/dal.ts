@@ -53,12 +53,11 @@ function firstNameOf(name: string | null | undefined): string {
 }
 
 function sanitizePurchases(
-  raw: RawPurchase[] | undefined,
+  raw: RawPurchase[],
   viewerId: string | undefined,
   isOwner: boolean,
   showSpoilers: boolean = false
 ): PurchaseView[] {
-  if (!raw) return [];
   if (isOwner && !showSpoilers) return [];
   if (isOwner && showSpoilers) {
     // Owner with spoilers: reveal claimer first names (owner can't claim own items)
@@ -218,7 +217,7 @@ export async function getItemsByUser(
 
     return result.map((item) => ({
       ...item,
-      hasPurchases: (item.purchases?.length ?? 0) > 0,
+      hasPurchases: item.purchases.length > 0,
       purchases: sanitizePurchases(item.purchases, userId, true, showSpoilers),
     }));
   } catch (error) {
@@ -248,11 +247,12 @@ export async function getItemById(id: string, userId: string) {
       return result;
     }
 
-    const lists: (ListTable & { position: number })[] =
-      result.list_items?.map((li) => ({
+    const lists: (ListTable & { position: number })[] = result.list_items.map(
+      (li) => ({
         ...li.list,
         position: li.position,
-      })) || [];
+      })
+    );
 
     const newResult = {
       id: result.id,
@@ -696,7 +696,7 @@ export async function getProfileForUser(
 
     return {
       ...user,
-      publicListCount: Number(publicListCount[0]?.count ?? 0),
+      publicListCount: Number(publicListCount[0].count),
       viewerIsFollowing,
       viewerIsBlocked,
       blockedByViewer,

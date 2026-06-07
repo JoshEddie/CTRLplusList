@@ -32,6 +32,10 @@ const eslintConfig = [
     files: [
       'lib/visibility.ts',
       'lib/listAccess.ts',
+      // test-dal-remainder (sub-proposal 9.1) — DAL read aggregate + auth bypass,
+      // now whole-covered, so the complexity ceiling is promoted to error.
+      'lib/dal.ts',
+      'lib/auth.ts',
       'hooks/use-media-query.ts',
       'app/ui/components/button/buttonClasses.ts',
       // test-button-system (sub-proposal 3.1) — locked at 90% per-file floor.
@@ -82,9 +86,6 @@ const eslintConfig = [
       'app/ui/components/Nav.tsx',
       'app/ui/hooks/useKeyboardOffset.ts',
       // test-following (sub-proposal 4.2) — locked at universal COVERAGE_FLOOR.
-      // lib/dal.ts is intentionally omitted: it aggregates many capabilities'
-      // reads in one file, so its file-level complexity promotion is deferred
-      // until the data-layer carve-outs that share it collectively cover it.
       'app/actions/follows.ts',
       // test-list-item-management (sub-proposal 4.9) — complexity locked at error.
       'app/actions/items.ts',
@@ -157,9 +158,7 @@ const eslintConfig = [
       // test-pwa-shell (sub-proposal 4.12) — locked at universal COVERAGE_FLOOR.
       'app/manifest.ts',
       'app/ui/components/ServiceWorkerRegistration.tsx',
-      // test-visit-history (sub-proposal 4.14) — locked at universal COVERAGE_FLOOR.
       // app/actions/lists.ts already promoted above (whole-file, from 4.9);
-      // lib/dal.ts stays at global `warn` (multi-capability aggregate, deferred).
       'app/(main)/lists/ui/components/BookmarkButton.tsx',
       'app/(main)/lists/history/HistoryActions.tsx',
       'app/(main)/lists/history/HistoryCard.tsx',

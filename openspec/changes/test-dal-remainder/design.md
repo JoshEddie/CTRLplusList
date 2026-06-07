@@ -41,11 +41,21 @@ Each new `.test.ts` mirrors `dal.following.test.ts`: `mockNextCache()` at module
 
 *Alternative rejected:* a bespoke per-test boot or mocking the Drizzle query builder — both violate the Tier-1 "not mocked, real test database, boot once per file" contract.
 
-### Decision 2: One `dal.remainder.test.ts`, refactored only if the audit demands it
+### Decision 2: Split the DAL tests by entity under a `dal.<thing>.test.ts` scheme
 
-Start with a single `lib/__tests__/dal.remainder.test.ts` holding a top-level `describe` per read (the three-role convention: function-describe per read, scenario-family describes for matrices like the `sanitizePurchases` viewer/owner/spoiler combinations and the `getItemsByUser` filter matrix). One file keeps the shared list/item/purchase seed setup in one place and the boot cost to a single `bootPglite()`. If the duplication audit finds the item-seed setup is **also** needed by a future carve-out (or grows unwieldy), extract a `seedItemGraph` helper into `test/helpers/` per the shared-fixture rule; otherwise keep it inline. `lib/auth.ts` gets its own `lib/__tests__/auth.test.ts` (it does not need PGlite for the bypass paths and has a different mock surface).
+**Revised at apply-time** per the operator's naming-consistency directive: instead of one process-named `dal.remainder.test.ts`, the DAL tests are split by entity so every file sorts together and its name says what it covers (the operator's rule: "everything should either be `dal.test.ts` or be specific about which part it tests"). The pre-existing inconsistent names are folded into the same scheme:
 
-*Alternative rejected:* a file-per-read fan-out — multiplies `bootPglite()` cost and scatters the shared item-seed fixture for no readability gain at this size.
+- `lib/__tests__/dal.user.test.ts` — `getUserById`, `getUserIdByEmail` (absorbed from the deleted `getUserIdByEmail.test.ts`), `getProfileForUser`.
+- `lib/__tests__/dal.list.test.ts` — `getList`, `getLists`, `getListsByUser`, `getListsSharedByUser`, `getPublicListsByUser`.
+- `lib/__tests__/dal.item.test.ts` — `getItemsByUser`, `getItemById`, `getItemsByPurchased`, `getItemsByListId`, and the `firstNameOf` / `sanitizePurchases` projection (three-role convention: function-describe per read, scenario-family describes for the `sanitizePurchases` viewer/owner/spoiler matrix and the `getItemsByUser` filter matrix).
+- `lib/__tests__/dal.following.test.ts` — existing social-graph file, **extended** with `getBlockedByUser` (blocks already lived here via `isBlocked`) and the `catch` error-path backfill for every read it owns.
+- `lib/__tests__/dal.visit-history.test.ts` — **renamed** from `visitHistory.dal.test.ts` for scheme consistency (content unchanged; it already carries its own error paths).
+
+Each read's `catch` error path lives in its own topical file (next to the read), so the §2.14 backfill needs no cross-file pointer comments. Because the list/item/purchase seed setup is now shared by 2+ files, the §5.1 duplication audit's extraction trigger fires: the inline seed graph is extracted to `test/helpers/seedItemGraph.ts` (`seedList`/`seedItem`/`seedListItem`/`seedStore`/`seedPurchase`). `lib/auth.ts` keeps its own `lib/__tests__/auth.test.ts` (no PGlite; different mock surface) — extended here with the callback and pass-through tests.
+
+*Trade-off accepted:* the split multiplies `bootPglite()` to one boot per file (vs. a single boot for one combined file). The operator explicitly accepted this for naming clarity; the per-file boot cost matches every other DAL test file already in the suite.
+
+*Alternative rejected:* one combined `dal.remainder.test.ts` — a single boot, but a process-relative name that carries no meaning once the coverage initiative is archived, and inconsistent with the `dal.<thing>.test.ts` siblings.
 
 ### Decision 3: Cover read error paths via `vi.spyOn` rejection — for the twelve AND the sibling-covered reads
 

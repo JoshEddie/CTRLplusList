@@ -31,6 +31,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  // db is shared per-file, so restore spies first or they leak between tests.
+  vi.restoreAllMocks();
   await resetDb(db);
 });
 
@@ -192,5 +194,88 @@ describe('viewerHasAnyFollows', () => {
     expect(await dal.viewerHasAnyFollows('viewer')).toBe(false);
     await seedFollow(db, 'viewer', 'a');
     expect(await dal.viewerHasAnyFollows('viewer')).toBe(true);
+  });
+});
+
+describe('getBlockedByUser', () => {
+  it('BlockedRows_OrderedByCreatedAtDesc-IncludesBlockedJoin', async () => {
+    await seedUsers(db, [
+      { id: 'blocker' },
+      { id: 'x', name: 'Xena', image: 'x.png' },
+      { id: 'y', name: 'Yara', image: null },
+    ]);
+    await seedBlock(db, 'blocker', 'x', new Date('2020-01-01'));
+    await seedBlock(db, 'blocker', 'y', new Date('2022-01-01'));
+
+    const rows = await dal.getBlockedByUser('blocker');
+    expect(rows.map((r) => r.blocked_id)).toEqual(['y', 'x']);
+    expect(rows[1].blocked).toEqual({ id: 'x', name: 'Xena', image: 'x.png' });
+  });
+});
+
+// Each read's `catch` re-throw — uncovered by the happy-path tests above but
+// required by the whole-file per-file branch floor (test-dal-remainder §2.14).
+describe('ReadErrorPaths', () => {
+  it('FollowingQueryThrows_RejectsWithFetchFollowingError', async () => {
+    vi.spyOn(db.query.user_follows, 'findMany').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(dal.getFollowingByUser('viewer')).rejects.toThrow(
+      'Failed to fetch following'
+    );
+  });
+
+  it('FollowersQueryThrows_RejectsWithFetchFollowersError', async () => {
+    vi.spyOn(db.query.user_follows, 'findMany').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(dal.getFollowersOfUser('owner')).rejects.toThrow(
+      'Failed to fetch followers'
+    );
+  });
+
+  it('IsFollowingQueryThrows_RejectsWithCheckFollowStatusError', async () => {
+    vi.spyOn(db.query.user_follows, 'findFirst').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(dal.isFollowing('viewer', 'a')).rejects.toThrow(
+      'Failed to check follow status'
+    );
+  });
+
+  it('ViewerHasAnyFollowsQueryThrows_RejectsWithCheckViewerFollowCountError', async () => {
+    vi.spyOn(db.query.user_follows, 'findFirst').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(dal.viewerHasAnyFollows('viewer')).rejects.toThrow(
+      'Failed to check viewer follow count'
+    );
+  });
+
+  it('IsBlockedQueryThrows_RejectsWithCheckBlockStatusError', async () => {
+    vi.spyOn(db.query.user_blocks, 'findFirst').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(dal.isBlocked('viewer', 'a')).rejects.toThrow(
+      'Failed to check block status'
+    );
+  });
+
+  it('BlockedQueryThrows_RejectsWithFetchBlockedUsersError', async () => {
+    vi.spyOn(db.query.user_blocks, 'findMany').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(dal.getBlockedByUser('blocker')).rejects.toThrow(
+      'Failed to fetch blocked users'
+    );
+  });
+
+  it('FollowingFeedQueryThrows_RejectsWithFetchFollowingFeedUsersError', async () => {
+    vi.spyOn(db, 'select').mockImplementationOnce(() => {
+      throw new Error('boom');
+    });
+    await expect(dal.getFollowingFeedUsers('viewer')).rejects.toThrow(
+      'Failed to fetch following feed users'
+    );
   });
 });
