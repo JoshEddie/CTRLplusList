@@ -531,16 +531,19 @@ export async function getBlockedByUser(userId: string) {
   }
 }
 
-export async function isFollowing(
-  followerId: string,
-  followeeId: string
-): Promise<boolean> {
+export async function isFollowing({
+  userId,
+  followeeId,
+}: {
+  userId: string;
+  followeeId: string;
+}): Promise<boolean> {
   'use cache';
   cacheTag('user_follows');
   try {
     const result = await db.query.user_follows.findFirst({
       where: and(
-        eq(user_follows.follower_id, followerId),
+        eq(user_follows.follower_id, userId),
         eq(user_follows.followee_id, followeeId)
       ),
     });
@@ -566,16 +569,19 @@ export async function viewerHasAnyFollows(viewerId: string): Promise<boolean> {
   }
 }
 
-export async function isBlocked(
-  blockerId: string,
-  blockedId: string
-): Promise<boolean> {
+export async function hasBlocked({
+  userId,
+  blockedId,
+}: {
+  userId: string;
+  blockedId: string;
+}): Promise<boolean> {
   'use cache';
   cacheTag('user_blocks');
   try {
     const result = await db.query.user_blocks.findFirst({
       where: and(
-        eq(user_blocks.blocker_id, blockerId),
+        eq(user_blocks.blocker_id, userId),
         eq(user_blocks.blocked_id, blockedId)
       ),
     });
@@ -689,9 +695,18 @@ export async function getProfileForUser(
     let viewerIsBlocked = false;
     let blockedByViewer = false;
     if (viewerId && viewerId !== userId) {
-      viewerIsFollowing = await isFollowing(viewerId, userId);
-      viewerIsBlocked = await isBlocked(userId, viewerId);
-      blockedByViewer = await isBlocked(viewerId, userId);
+      viewerIsFollowing = await isFollowing({
+        userId: viewerId,
+        followeeId: userId,
+      });
+      viewerIsBlocked = await hasBlocked({
+        userId,
+        blockedId: viewerId,
+      });
+      blockedByViewer = await hasBlocked({
+        userId: viewerId,
+        blockedId: userId,
+      });
     }
 
     return {

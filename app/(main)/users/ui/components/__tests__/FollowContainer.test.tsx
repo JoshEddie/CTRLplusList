@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { isBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/dal';
+import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/dal';
 import FollowContainer from '../FollowContainer';
 
 vi.mock('@/lib/dal', () => ({
   isFollowing: vi.fn(),
-  isBlocked: vi.fn(),
+  hasBlocked: vi.fn(),
   viewerHasAnyFollows: vi.fn(),
 }));
 
@@ -28,22 +28,24 @@ const PROPS = { ownerId: 'owner', ownerName: 'Owner', viewerId: 'viewer' };
 
 beforeEach(() => {
   vi.mocked(isFollowing).mockResolvedValue(false);
-  vi.mocked(isBlocked).mockResolvedValue(false);
+  vi.mocked(hasBlocked).mockResolvedValue(false);
   vi.mocked(viewerHasAnyFollows).mockResolvedValue(true);
 });
 
 describe('FollowContainer', () => {
   it('BlockedByOwner_ReturnsNull', async () => {
-    vi.mocked(isBlocked).mockImplementation(
-      async (blocker, blocked) => blocker === 'owner' && blocked === 'viewer'
+    vi.mocked(hasBlocked).mockImplementation(
+      async ({ userId, blockedId }) =>
+        userId === 'owner' && blockedId === 'viewer'
     );
     render(await FollowContainer(PROPS));
     expect(screen.queryByTestId('controls')).not.toBeInTheDocument();
   });
 
   it('BlockedByViewer_ReturnsNull', async () => {
-    vi.mocked(isBlocked).mockImplementation(
-      async (blocker, blocked) => blocker === 'viewer' && blocked === 'owner'
+    vi.mocked(hasBlocked).mockImplementation(
+      async ({ userId, blockedId }) =>
+        userId === 'viewer' && blockedId === 'owner'
     );
     render(await FollowContainer(PROPS));
     expect(screen.queryByTestId('controls')).not.toBeInTheDocument();

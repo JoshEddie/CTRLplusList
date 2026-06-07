@@ -9,7 +9,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getBookmarkStatus,
-  isBlocked,
+  hasBlocked,
   isFollowing,
   viewerHasAnyFollows,
 } from '@/lib/dal';
@@ -24,7 +24,7 @@ import {
 vi.mock('@/lib/dal', () => ({
   getBookmarkStatus: vi.fn(),
   isFollowing: vi.fn(),
-  isBlocked: vi.fn(),
+  hasBlocked: vi.fn(),
   viewerHasAnyFollows: vi.fn(),
 }));
 
@@ -87,7 +87,7 @@ beforeEach(() => {
   });
   vi.mocked(getBookmarkStatus).mockResolvedValue(false);
   vi.mocked(isFollowing).mockResolvedValue(false);
-  vi.mocked(isBlocked).mockResolvedValue(false);
+  vi.mocked(hasBlocked).mockResolvedValue(false);
   vi.mocked(viewerHasAnyFollows).mockResolvedValue(true);
 });
 
@@ -126,7 +126,7 @@ describe('HeroCollapsedOwnerItems', () => {
     await HeroCollapsedOwnerItems({ list, visibility: VISIBILITY.OWNER });
     expect(getBookmarkStatus).not.toHaveBeenCalled();
     expect(isFollowing).not.toHaveBeenCalled();
-    expect(isBlocked).not.toHaveBeenCalled();
+    expect(hasBlocked).not.toHaveBeenCalled();
     expect(viewerHasAnyFollows).not.toHaveBeenCalled();
   });
 });
@@ -148,9 +148,9 @@ describe('HeroCollapsedViewerItems', () => {
   });
 
   it('OwnerBlocksViewer_SuppressesFollow-KeepsShareBookmark', async () => {
-    vi.mocked(isBlocked).mockImplementation(
-      async (blocker: string, blocked: string) =>
-        blocker === OWNER_ID && blocked === VIEWER_ID
+    vi.mocked(hasBlocked).mockImplementation(
+      async ({ userId, blockedId }) =>
+        userId === OWNER_ID && blockedId === VIEWER_ID
     );
     render(await HeroCollapsedViewerItems(viewerProps));
     expect(
@@ -165,9 +165,9 @@ describe('HeroCollapsedViewerItems', () => {
   });
 
   it('ViewerBlocksOwner_SuppressesFollow', async () => {
-    vi.mocked(isBlocked).mockImplementation(
-      async (blocker: string, blocked: string) =>
-        blocker === VIEWER_ID && blocked === OWNER_ID
+    vi.mocked(hasBlocked).mockImplementation(
+      async ({ userId, blockedId }) =>
+        userId === VIEWER_ID && blockedId === OWNER_ID
     );
     render(await HeroCollapsedViewerItems(viewerProps));
     expect(

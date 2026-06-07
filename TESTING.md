@@ -20,6 +20,45 @@ Any test you add MUST assert observable behavior — what the production code re
 
 This rule applies to every test in the repo. ESLint enforces the mechanical parts where configured (`vitest/expect-expect`, tautology shortlist); the rest is a manual review bar. The normative statement and the per-sub-proposal assertion audit it pairs with live in the `testing-foundation` capability spec — check `openspec list` for its current location (active in `openspec/changes/test-coverage/specs/testing-foundation/spec.md` until archived, then under `openspec/specs/testing-foundation/spec.md`).
 
+## Shared setup belongs in a fixture, not duplicated or merged away
+
+When sibling tests need the *same* Arrange (identical seed, mocks, render), hoist it into the enclosing `describe`'s `beforeEach`. Do NOT copy the setup inline into each test, and do NOT collapse distinct triggers into one multi-assert test just to write the setup once. Both shortcuts are wrong, in opposite directions:
+
+- **Duplicated inline setup** violates DRY (see [CLAUDE.md](CLAUDE.md)) — the same seed pasted into N bodies drifts and rots.
+- **Merging the triggers** violates one-test = one-trigger (see *Test naming convention → Vitest*) and forfeits failure isolation: the first failed `expect` aborts the test, so a regression in the first trigger hides whether the rest still hold.
+
+A `beforeEach` resolves both: setup is written once, each trigger stays its own test (granular spec-line name, independent pass/fail), and the shared world is named at the top of the block. A test's identity is its Act + Assert, not its Arrange — shared Arrange is a fixture concern, never a reason to fuse two triggers.
+
+Use `beforeEach`, not `beforeAll`, for any state a test reads as fresh — DB rows especially. This repo's DB tests reset the database in a file-level `beforeEach`, so a `beforeAll` seed is wiped before the first test runs; more broadly, `beforeAll` couples tests through shared mutable state and leaks one test's writes into the next. Reserve `beforeAll` for immutable, expensive-to-build resources (a booted in-memory DB, a compiled bundle).
+
+```ts
+// ❌ Duplicated Arrange across siblings
+it('UserFollows_ReturnsTrue', async () => {
+  await seedUsers(db, [{ id: 'alice' }, { id: 'bob' }]);
+  await seedFollow(db, 'alice', 'bob');
+  expect(await isFollowing({ userId: 'alice', followeeId: 'bob' })).toBe(true);
+});
+it('UserDoesNotFollowBack_ReturnsFalse', async () => {
+  await seedUsers(db, [{ id: 'alice' }, { id: 'bob' }]); // same Arrange, copied
+  await seedFollow(db, 'alice', 'bob');
+  expect(await isFollowing({ userId: 'bob', followeeId: 'alice' })).toBe(false);
+});
+
+// ✅ One fixture; distinct triggers stay distinct tests
+describe('isFollowing', () => {
+  beforeEach(async () => {
+    await seedUsers(db, [{ id: 'alice' }, { id: 'bob' }, { id: 'carol' }]);
+    await seedFollow(db, 'alice', 'bob');
+  });
+  it('UserFollows_ReturnsTrue', async () =>
+    expect(await isFollowing({ userId: 'alice', followeeId: 'bob' })).toBe(true));
+  it('UserDoesNotFollowBack_ReturnsFalse', async () =>
+    expect(await isFollowing({ userId: 'bob', followeeId: 'alice' })).toBe(false));
+});
+```
+
+Threshold: CLAUDE.md's "leave three trivial similar lines alone" applies — a single shared line across two tests can stay inline. Hoist when the shared Arrange is non-trivial or three-plus tests key off it, where the `beforeEach` also documents the shared world.
+
 ## Coverage ignore annotations require a rationale
 
 Every `/* v8 ignore */` annotation (including `/* v8 ignore next */`, `/* v8 ignore next N */`, `/* v8 ignore start */ … /* v8 ignore stop */`, and the file-level `/* v8 ignore file */`) MUST carry an inline rationale on the same line, after a `--` separator, explaining WHY the region is uncoverable or intentionally excluded. A bare `/* v8 ignore next */` is not acceptable.
