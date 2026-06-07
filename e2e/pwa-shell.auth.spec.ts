@@ -3,11 +3,10 @@ import { awaitServiceWorkerActive } from '../test/helpers/e2e/utils';
 
 // PWA shell: service worker registration, the install-detection surface, and
 // the kill-switch. Runs only against the production-build server — Serwist is
-// disabled in development, so this suite is the first automated home for the
-// pwa-shell runtime scenarios that were previously DevTools-manual.
+// disabled in development.
 
 // Flow: visiting any route registers /sw.js at the origin root and the page
-// becomes controlled without a reload (clientsClaim — probed in tasks.md §1.2).
+// becomes controlled without a reload (clientsClaim).
 test('PwaShell_VisitAnyRoute_RegistersServiceWorkerAtRootScope', async ({
   page,
 }) => {

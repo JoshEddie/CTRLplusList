@@ -25,8 +25,8 @@ export function firstClaimableSingleItem(page: Page): Locator {
 
 // Waits until the service worker registered by the current page is active AND
 // controlling it, returning the registration scope. `app/sw.ts` sets
-// `clientsClaim`, so the first visit is claimed without a reload (probed:
-// tasks.md §1.2); both waits are observable conditions, never sleeps.
+// `clientsClaim`, so the first visit is claimed without a reload; both waits
+// are observable conditions, never sleeps.
 export async function awaitServiceWorkerActive(page: Page): Promise<string> {
   const scope = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.ready;

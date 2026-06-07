@@ -4,8 +4,8 @@ import { expect, test, type Page } from '@playwright/test';
 // 4f3a7b0→dae2301, 8b038fc): under viewport-fit=cover the app must keep its
 // chrome clear of the notch and home-indicator zones. Desktop Chromium
 // resolves env(safe-area-inset-*) to 0px, so each spec produces a real inset
-// via the CDP Emulation.setSafeAreaInsetsOverride (probed in tasks.md §1.3)
-// and asserts the computed styles respond — render-level, not stylesheet-text.
+// via the CDP Emulation.setSafeAreaInsetsOverride and asserts the computed
+// styles respond — render-level, not stylesheet-text.
 
 const TOP_INSET = 47;
 const BOTTOM_INSET = 34;
@@ -33,7 +33,7 @@ function navMetrics(page: Page) {
 // Regressions 4f2225d (nav under the notch) + 8b038fc (toasts under the
 // status bar): a nonzero top inset grows the nav's padding/height and pushes
 // the toast container down by the same amount. The toast container renders
-// with zero live toasts (probed §1.5), located by its inline env() style.
+// with zero live toasts, located by its inline env() style.
 test('PwaSafeArea_NonzeroTopInset_GrowsNavAndToastOffset', async ({ page }) => {
   await page.goto('/');
   const toaster = page.locator('div[style*="safe-area-inset-top"]');
