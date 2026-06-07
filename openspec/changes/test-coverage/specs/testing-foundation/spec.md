@@ -246,6 +246,23 @@ Invariants that fail any of (a), (b), (c) SHALL remain tested but SHALL NOT be a
 - **THEN** the sub-proposal does NOT add this as a SHALL to the `button-system` spec
 - **AND** the audit task records non-elevation with rationale ("derivable from name/type")
 
+### Requirement: Drift-correcting spec deltas SHALL reach canonical via the standard archive-time rollup
+
+When a test sub-proposal's tests enforce a source behavior that contradicts an existing capability spec (spec drift), the correction SHALL be authored in the sub-proposal's own `changes/<name>/specs/<capability>/spec.md` delta — which is the source of truth and the artifact reviewers read during the change — and SHALL reach the active `openspec/specs/<capability>/spec.md` through the standard OpenSpec archive-time rollup, NOT by an apply-time write to the active spec ahead of archive. This is the single ratified convention for the program (per `test-coverage` design D13 and §7.11): it matches the OpenSpec tooling default, the `test-app-frame` precedent (commit `c2f3e19`), and the majority of sub-proposals, and it avoids the error-prone "Sync anyway vs Archive now" operator branch that an early apply-time write forces at archive. `test-visit-history`'s apply-time write (its §9.1) is recorded as a one-off divergence the program does NOT adopt going forward. Tier classification: **Tier 1** — this is a cross-cutting authoring convention, not carve-out bookkeeping.
+
+#### Scenario: A drift correction is deferred to archive-time rollup
+
+- **WHEN** a sub-proposal discovers the active spec contradicts shipped source the new tests lock, and authors the corrected requirement in its `changes/<name>/specs/<capability>/spec.md`
+- **THEN** the active `openspec/specs/<capability>/spec.md` is NOT edited during apply
+- **AND** the correction lands in the active spec only when the sub-proposal archives, via the standard rollup
+- **AND** `openspec validate <capability> --strict` passes against the sub-proposal's delta
+
+#### Scenario: Close-out reconciliation patches assigned to already-archived sub-proposals
+
+- **WHEN** a drift item is owned by a sub-proposal that has already archived without correcting it (so no in-flight `changes/<name>/specs/` delta exists to carry it), and the governing `test-coverage` change applies the fix as a close-out patch
+- **THEN** the governing change MAY edit the active capability spec directly as a close-out reconciliation, recording the edit in its `tasks.md`
+- **AND** this direct edit is the close-out exception, not a license for in-flight sub-proposals to write canonical at apply-time
+
 ### Requirement: Foundation work SHALL be split into a spike and an implementation phase
 
 The first test sub-proposal SHALL be `test-foundation-spike`. Its deliverables SHALL include: (1) a written comparison of DB-under-test options (pglite, testcontainers, Neon branch) on speed, fidelity to `drizzle-orm/neon-http`, CI cost, and local-dev ergonomics; (2) a working proof-of-concept against one DAL function and one server action demonstrating the recommended approach; (3) the seed-fixture negative-case audit per the seed-as-fixture requirement; (4) the CI provider choice. The second sub-proposal SHALL be `test-foundation`, which lands the chosen runner, fixtures, helpers, CI configuration, the seed extension or parallel fixture, the `sonarjs` plugin at `warn`, the `npm test` script, and the `openspec/config.yaml` `tasks` rule edit. No other test sub-proposal SHALL begin implementation work until `test-foundation` archives, except that drafting MAY proceed in parallel.

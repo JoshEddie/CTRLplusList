@@ -171,7 +171,7 @@ export async function getListsByUser(userId: string) {
           },
         },
       },
-      orderBy: (lists, { desc }) => [desc(lists.created_at)],
+      orderBy: (lists, { desc }) => [desc(lists.updated_at)],
     });
     return result.map(withVisibility);
   } catch (error) {

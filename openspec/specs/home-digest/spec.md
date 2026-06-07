@@ -52,19 +52,19 @@ The **My Lists** rail SHALL show the viewer's owned lists ordered by `updated_at
 - **WHEN** the user navigates to `/lists`
 - **THEN** the page's `<Header>` contains a "+ New List" button linking to `/lists/new`
 
-### Requirement: Following rail SHALL show user cards sorted by recency of their latest public list
+### Requirement: Following rail SHALL show user cards sorted by recency of their latest followers-visible list
 
-The **Following** rail SHALL show user cards (avatar + name) for users the viewer follows, sorted by `MAX(shared_at)` over each followee's `'public'` lists in descending order. Users with no `'public'` lists are sorted last by name. Each card SHALL show a "N new" badge if N > 0 (per the `last_seen_following_at` rule in the `following` capability). The card SHALL link to `/u/[id]`. A **See all** link in the rail header SHALL route to `/following`.
+The **Following** rail SHALL show user cards (avatar + name) for users the viewer follows, sorted by `MAX(shared_at)` over each followee's **followers-visible** lists in descending order. A followers-visible list is one whose visibility is `VISIBILITY.FOLLOWERS` — the canonical state `getFollowingFeedUsers` filters via `visibilityDbValues([VISIBILITY.FOLLOWERS])`, which matches the persisted DB encodings `'public'` (current) and `'followers'` (post-Stage-2-rename). Users with no followers-visible lists are sorted last by name. Each card SHALL show a "N new" badge if N > 0 (per the `last_seen_following_at` rule in the `following` capability). The card SHALL link to `/u/[id]`. A **See all** link in the rail header SHALL route to `/following`.
 
 #### Scenario: Active followee sorted first
 
-- **WHEN** viewer follows users A and B; A's most recent public list has `shared_at = T1`, B's has `shared_at = T2 < T1`
+- **WHEN** viewer follows users A and B; A's most recent followers-visible list has `shared_at = T1`, B's has `shared_at = T2 < T1`
 - **THEN** A's card precedes B's in the Following rail
 
-#### Scenario: Followee with no public lists
+#### Scenario: Followee with no followers-visible lists
 
-- **WHEN** viewer follows user C who has no `'public'` lists
-- **THEN** C's card appears in the rail (sorted after followees with public lists) with no "N new" badge
+- **WHEN** viewer follows user C who has no followers-visible lists
+- **THEN** C's card appears in the rail (sorted after followees with followers-visible lists) with no "N new" badge
 
 #### Scenario: See all link
 
