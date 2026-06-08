@@ -65,7 +65,8 @@
 - [x] 8.1 `list-metadata` delta (`specs/list-metadata/spec.md`) — the ADDED form dispatch+navigation requirement; reaches canonical via archive-time rollup (no apply-time write to the active spec, per §7.11).
 - [x] 8.2 `list-visibility` delta (`specs/list-visibility/spec.md`) — the ADDED `VisibilityPicker` optimistic-apply/rollback requirement; archive-time rollup.
 - [x] 8.3 `testing-foundation` delta (`specs/testing-foundation/spec.md`) — Tier-2 carve-out bookkeeping (whole-file coverage + enumeration of the form-UI files; the `ListHeroSection` real-vs-mirror closure); archive-only per design D13. `openspec validate test-list-create-edit-form --strict` passes.
-- [ ] 8.4 **On archive** (at `/opsx:archive`): flip `test-coverage/tasks.md` §9.2 to `[x]`. §7.2 / §7.3 (global complexity promotion + final coverage baseline) remain blocked on §9.3–§9.5 still being open — this sub-proposal alone does not clear them.
+- [x] 8.4 **On archive** (at `/opsx:archive`): flip `test-coverage/tasks.md` §9.2 to `[x]`. §7.2 / §7.3 (global complexity promotion + final coverage baseline) remain blocked on §9.3–§9.5 still being open — this sub-proposal alone does not clear them.
+  - **DONE (2026-06-08):** `test-coverage/tasks.md` §9.2 flipped to `[x]` with a landed/archived note. §7.2 / §7.3 stay blocked on §9.3–§9.5 (still open), as stated.
 
 ## 9. Pre-merge (four-gate)
 
