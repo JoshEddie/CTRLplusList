@@ -23,6 +23,11 @@ const eslintConfig = [
       'sonarjs/cognitive-complexity': ['warn', 15],
     },
   },
+  {
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'error',
+    },
+  },
   // Per-file promotion of `sonarjs/cognitive-complexity` to error for the
   // test-pure-libs carve-out (sub-proposal 2.1 of test-coverage). Files in
   // this carve-out are now tested at the 95% per-file floor; the error-level

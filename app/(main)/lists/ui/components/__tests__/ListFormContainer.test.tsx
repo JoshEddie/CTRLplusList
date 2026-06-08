@@ -32,7 +32,7 @@ vi.mock('../ListForm', () => ({
 }));
 
 describe('ListFormContainer', () => {
-  it('Props_ForwardsListIsEditingToListForm', () => {
+  it('Editing_ForwardsListAndEditingFlagToListForm', () => {
     render(
       <ListFormContainer
         list={makeList({ id: 'l5' })}

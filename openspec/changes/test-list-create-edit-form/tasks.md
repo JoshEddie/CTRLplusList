@@ -52,6 +52,8 @@
 
 - [x] 6.1 `vitest.config.ts`: add every covered file to per-file `thresholds` at `COVERAGE_FLOOR` under a `// test-list-create-edit-form (sub-proposal 9.2) — locked at universal COVERAGE_FLOOR.` comment (do NOT enumerate the deleted `ListHeader.tsx`).
 - [x] 6.2 `eslint.config.mjs`: add the same paths to the per-file `sonarjs/cognitive-complexity = error` array under the matching comment. `npx eslint <files>` reports no issues after any §5.4 extraction.
+- [x] 6.3 `eslint.config.mjs`: promote `@typescript-eslint/no-unused-vars` from the Next preset's `warn` to a **global `error`** with **no** `^_` ignore pattern (an exemption is just the lazy fix for a red build — rename `x` to `_x` — and is worse than the warning because it looks enforced; the `args: after-used` default still permits a genuinely-needed leading positional parameter). This surfaced three dead `vi.fn` spy params (`_config`/`_row`/`_table`) in `ListHeroSection.test.tsx`'s `dbSpy`; disposed by **removal**, not underscore-silencing — the call-arg types moved onto the `vi.fn<…>()` generics, preserving the `mock.calls[0][0]` type-safety with zero unused bindings.
+  - **Result:** `npx eslint .` → 0 errors (the 2 unrelated pre-existing warnings remain — `Avatar.tsx` img-element, `seed-dev-users.ts` complexity); `npx tsc --noEmit` clean; `ListHeroSection.test.tsx` 10/10.
 
 ## 7. Coverage validation
 

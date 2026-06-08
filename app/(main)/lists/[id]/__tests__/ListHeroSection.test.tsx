@@ -6,7 +6,7 @@ import { getList, getUserById, getUserIdByEmail } from '@/lib/dal';
 import { updateTag } from 'next/cache';
 import ListHeroSection from '../ListHeroSection';
 
-// Decision 4: capture the deferred `after()` callback instead of discarding it,
+// Capture the deferred `after()` callback instead of discarding it,
 // so the real visit-recording block can be invoked and asserted.
 const afterCbs = vi.hoisted(() => [] as Array<() => unknown>);
 vi.mock('next/server', () => ({
@@ -15,23 +15,26 @@ vi.mock('next/server', () => ({
   },
 }));
 
-// Decision 4b: assert the upsert payload via a `@/db` insert-chain spy.
+// Spy the `@/db` insert chain rather than seeding PGlite — assert the upsert
+// payload shape, not DB semantics.
 const dbSpy = vi.hoisted(() => {
-  const onConflictDoUpdate = vi.fn(
-    (_config?: {
+  const onConflictDoUpdate = vi.fn<
+    (config?: {
       target: unknown;
       set: { last_visited_at: unknown; visit_count: unknown };
-    }) => Promise.resolve(undefined)
-  );
-  const values = vi.fn(
-    (_row?: {
+    }) => Promise<undefined>
+  >(() => Promise.resolve(undefined));
+  const values = vi.fn<
+    (row?: {
       user_id: string;
       list_id: string;
       last_visited_at: Date;
       visit_count: number;
-    }) => ({ onConflictDoUpdate })
-  );
-  const insert = vi.fn((_table?: unknown) => ({ values }));
+    }) => { onConflictDoUpdate: typeof onConflictDoUpdate }
+  >(() => ({ onConflictDoUpdate }));
+  const insert = vi.fn<(table?: unknown) => { values: typeof values }>(() => ({
+    values,
+  }));
   return { insert, values, onConflictDoUpdate };
 });
 vi.mock('@/db', () => ({ db: { insert: dbSpy.insert } }));

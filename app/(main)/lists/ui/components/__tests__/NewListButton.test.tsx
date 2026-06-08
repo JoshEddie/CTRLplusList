@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 describe('NewListButton', () => {
-  it('Default_ClosedWithPrimaryNewListTrigger', () => {
+  it('Default_RendersBtnPrimaryTrigger-MobileHideLabel-Closed', () => {
     render(<NewListButton />);
     const button = screen.getByRole('button', { name: 'New List' });
     expect(button).toHaveClass('btn', 'primary');
@@ -26,7 +26,7 @@ describe('NewListButton', () => {
     expect(screen.queryByTestId('list-form-container')).not.toBeInTheDocument();
   });
 
-  it('SecondaryVariantWithLabel_TriggerReflectsProps', () => {
+  it('SecondaryVariantWithLabel_RendersBtnSecondaryTrigger-MobileHideLabel', () => {
     render(<NewListButton variant="secondary" label="Add list" />);
     const button = screen.getByRole('button', { name: 'Add list' });
     expect(button).toHaveClass('btn', 'secondary');
