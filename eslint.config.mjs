@@ -23,6 +23,11 @@ const eslintConfig = [
       'sonarjs/cognitive-complexity': ['warn', 15],
     },
   },
+  {
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'error',
+    },
+  },
   // Per-file promotion of `sonarjs/cognitive-complexity` to error for the
   // test-pure-libs carve-out (sub-proposal 2.1 of test-coverage). Files in
   // this carve-out are now tested at the 95% per-file floor; the error-level
@@ -197,6 +202,21 @@ const eslintConfig = [
       'app/(main)/items/ui/components/PurchaseModalSlot.tsx',
       'app/(main)/items/ui/components/SortItems.tsx',
       'app/(main)/items/ui/components/SortItemsContainer.tsx',
+      // test-list-create-edit-form (sub-proposal 9.2) — locked at universal COVERAGE_FLOOR.
+      'app/(main)/lists/ui/components/ListForm.tsx',
+      'app/(main)/lists/ui/components/ListFormContainer.tsx',
+      'app/(main)/lists/ui/components/NewListButton.tsx',
+      'app/(main)/lists/ui/components/VisibilityPicker.tsx',
+      'app/(main)/lists/ui/components/DeleteListButton.tsx',
+      'app/(main)/lists/ui/components/ListPrivate.tsx',
+      'app/(main)/lists/ui/components/EmptyList.tsx',
+      'app/(main)/lists/new/page.tsx',
+      'app/(main)/lists/new/loading.tsx',
+      'app/(main)/lists/[id]/edit/page.tsx',
+      'app/(main)/lists/[id]/edit/EditListBody.tsx',
+      'app/(main)/lists/[id]/ListHeroSection.tsx',
+      'app/(main)/lists/[id]/page.tsx',
+      'app/(main)/lists/[id]/loading.tsx',
     ],
     plugins: { sonarjs },
     rules: {
