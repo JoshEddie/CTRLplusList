@@ -318,7 +318,7 @@ describe('getBlockedByUser', () => {
 });
 
 // Each read's `catch` re-throw — uncovered by the happy-path tests above but
-// required by the whole-file per-file branch floor (test-dal-remainder §2.14).
+// required by the whole-file per-file branch floor.
 describe('ReadErrorPaths', () => {
   it('FollowingQueryThrows_RejectsWithFetchFollowingError', async () => {
     vi.spyOn(db.query.user_follows, 'findMany').mockRejectedValueOnce(

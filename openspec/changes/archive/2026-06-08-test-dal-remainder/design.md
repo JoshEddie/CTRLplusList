@@ -29,9 +29,9 @@ Constraints: `drizzle-orm/neon-http` forbids interactive transactions (irrelevan
 
 - Re-testing reads already covered by sibling carve-outs (the six following/block reads, the three visit-history reads, `getUserIdByEmail`). They are inherited; the new file-level gate simply now protects them too.
 - Testing any **mutation** / server action — owned and already covered by the action carve-outs (4.9 `items.ts`/`lists.ts`, 4.2 `follows.ts`). This carve-out is reads + auth only.
-- Changing any DAL behavior. The only source edit is the `lib/auth.ts` callback extraction (Decision 4), a behavior-preserving move.
+- Changing any DAL **runtime** behavior. The source edits are the `lib/auth.ts` callback extraction (Decision 4) and the `isFollowing`/`hasBlocked` named-parameter reshape (Decision 9) — both behavior-preserving moves.
 - Splitting `lib/dal.ts` into per-capability modules or adopting per-function coverage tooling — §7.7 explicitly rejected both in favor of whole-file enumeration.
-- Cross-file refactors. Any audit finding that spans files outside the carve-out is deferred as a new sibling sub-proposal per the four-audit rule.
+- Cross-file refactors, **except the caller migration that the Decision 9 named-parameter reshape necessarily entails** (documented as part of that one refactor, not a separate finding). Any *audit finding* that spans files outside the carve-out is still deferred as a new sibling sub-proposal per the four-audit rule.
 
 ## Decisions
 
@@ -90,6 +90,14 @@ This applies **equally to the reads the sibling carve-outs already cover** — `
 ### Decision 8: Enumerate both files at `COVERAGE_FLOOR`; promote both to complexity `error`; delete the deferral comments
 
 Add `'lib/dal.ts': COVERAGE_FLOOR` and `'lib/auth.ts': COVERAGE_FLOOR` to `vitest.config.ts` `thresholds`, and delete the three "No `lib/dal.ts` entry … deferred" comments (from the 4.2 / 4.3 / 4.14 blocks) since the deferral is now resolved. Add both files to the `eslint.config.mjs` per-file `sonarjs/cognitive-complexity = error` array under a `test-dal-remainder (sub-proposal 9.1)` comment. `npx eslint lib/dal.ts lib/auth.ts` reports zero issues at HEAD, so neither promotion introduces a lint failure. This is the concrete §7.10 enumeration and the §7.7 resolution.
+
+### Decision 9: Reshape `isFollowing` / `hasBlocked` to a named-parameter object (apply-time ergonomic refactor)
+
+Discovered while writing the §2.14 error-path backfill for the social-graph reads: the positional signatures `isFollowing(followerId, followeeId)` and `isBlocked(blockerId, blockedId)` are an id-swap footgun. Their callers pass the **same two ids in opposite order on adjacent lines** — `isBlocked(ownerId, viewerId)` then `isBlocked(viewerId, ownerId)` in `getProfileForUser`, `HeroCollapsedItemsContainer`, and `FollowContainer` — on a security-sensitive block-direction check where a swap silently inverts the result. Reshape both to a single named-object parameter, and rename `isBlocked` → `hasBlocked` (active voice — `hasBlocked({ userId, blockedId })` reads "has `userId` blocked `blockedId`", and `userId` is the acting subject in both): `isFollowing({ userId, followeeId })`, `hasBlocked({ userId, blockedId })`. Behavior-preserving (identical Drizzle `where` mapping; verified zero stale `isBlocked` refs repo-wide), fully migrated across the three production callers (`lib/listAccess.ts`, `HeroCollapsedItemsContainer.tsx`, `FollowContainer.tsx`) plus their component tests.
+
+This is the **second** in-carve-out testability/ergonomics refactor, alongside the Decision 4 auth-callback extraction, and is the same category as Decision 2 — an apply-time change made on the operator's directive and recorded here rather than deferred. It is the one documented exception to the cross-file-refactor Non-Goal: the caller migration is part of *this* refactor, not a separate audit finding.
+
+*Alternative rejected:* defer to a sibling sub-proposal — the change is active and the fix is done, tested, and CI-green; re-proposing a behavior-preserving footgun fix is ceremony for no functional gain. *Alternative rejected:* keep the reshape but not the rename — the rename is what makes the block direction unambiguous at the call site.
 
 ## Risks / Trade-offs
 
