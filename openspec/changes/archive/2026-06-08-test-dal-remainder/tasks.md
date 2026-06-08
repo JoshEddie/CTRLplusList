@@ -1,0 +1,63 @@
+## 1. Test scaffolding (PGlite read harness)
+
+- [x] 1.1 Split the DAL tests by entity under the `dal.<thing>.test.ts` scheme (operator naming directive — see design Decision 2): new `lib/__tests__/dal.user.test.ts`, `dal.list.test.ts`, `dal.item.test.ts`; the existing `dal.following.test.ts` extended; `visitHistory.dal.test.ts` renamed to `dal.visit-history.test.ts`; `getUserIdByEmail.test.ts` folded into `dal.user.test.ts`. Each uses the established harness: `mockNextCache()` at module top, a `vi.hoisted` holder + `vi.mock('@/db', () => ({ get db() { return holder.db } }))`, `bootPglite()` in `beforeAll`, `vi.restoreAllMocks()` + `resetDb(db)` in `beforeEach`, and `dal = await import('@/lib/dal')` after the mock is wired (mirror `dal.following.test.ts`).
+- [x] 1.2 Extract the shared list/item/purchase seed into `test/helpers/seedItemGraph.ts` (`seedList`/`seedItem`/`seedListItem`/`seedStore`/`seedPurchase`, db-first-arg per the helper convention). The §5.1 duplication-audit extraction trigger fired once the entity split gave the seed graph 2+ consumers (`dal.list`/`dal.item`/`dal.user`).
+
+## 2. `lib/dal.ts` read coverage
+
+- [x] 2.1 `getUserById` — found row; not-found `null`; `catch` returns `null` (forced query error via `vi.spyOn(db, 'select')`), asserting it does NOT throw. (`dal.user.test.ts`)
+- [x] 2.2 `getList` — single list with `user` join + `items` count projection; not-found (`undefined`); `catch` re-throws `'Failed to fetch list'`. (`dal.list.test.ts`)
+- [x] 2.3 `getLists` — all lists ordered `created_at DESC`; visibility decoded via `withVisibility`; user projection; `catch` re-throws. (`dal.list.test.ts`)
+- [x] 2.4 `getListsByUser` — a user's lists ordered **`updated_at DESC`** (created_at/updated_at deliberately disagree so a regression to `created_at` flips the order and fails); `user` column projection; excludes other users; `catch` re-throws. (`dal.list.test.ts`)
+- [x] 2.5 `getItemsByUser` — the `filter` matrix (`active` default / `archived` / `all`) over `archived_at`; `created_at DESC`; `hasPurchases` flag; store ordering; the owner spoiler branch (`showSpoilers` false → `[]`, true → first-name `other` rows); `catch` re-throws raw. (`dal.item.test.ts`)
+- [x] 2.6 `getItemById` — `list_items`→`list` reshape into `lists[]` with `position`; store ordering; not-found (`undefined`); `catch` re-throws raw. (`dal.item.test.ts`)
+- [x] 2.7 `getItemsByPurchased` — the `!userId` early-return (`[]`); rows ordered `purchased_at DESC`; the non-owner `sanitizePurchases` branch (`self` vs `other`); `catch` re-throws raw. (`dal.item.test.ts`)
+- [x] 2.8 `getItemsByListId` — membership ordered `position ASC`; the full viewer/owner/spoiler matrix of `sanitizePurchases` (incl. a guest claim driving the non-owner `?? guest_name` fallback); `catch` re-throws `'Failed to fetch items'`. (`dal.item.test.ts`)
+- [x] 2.9 `getListsSharedByUser` — `LINK`+`FOLLOWERS` filter for a user, `created_at DESC`, excludes owner-only; `catch` re-throws (see §5.1 dead-code disposition). (`dal.list.test.ts`)
+- [x] 2.10 `getBlockedByUser` — blocked rows with `blocked` join, `created_at DESC`; `catch` re-throws. (`dal.following.test.ts` — blocks live with the social graph alongside `isBlocked`)
+- [x] 2.11 `getPublicListsByUser` — FOLLOWERS-only filter; `shared_at DESC`; `limit`/`offset` pagination; user projection; `catch` re-throws. (`dal.list.test.ts`)
+- [x] 2.12 `getProfileForUser` — unknown user → `null`; `publicListCount` aggregate; viewer-relationship composition (`viewerIsFollowing` / `viewerIsBlocked` / `blockedByViewer`) including the `viewerId == null` and `viewerId === userId` short-circuits; `catch` re-throws. (`dal.user.test.ts`)
+- [x] 2.13 `firstNameOf` branch completion via `getItemsByUser` owner+spoilers: null name (guest with no guest_name), empty string, whitespace-only (all → `'Someone'`), multi-word (first token), and a named guest (`?? guest_name`). (`dal.item.test.ts`)
+- [x] 2.14 **Whole-file branch backfill** — each sibling-covered read's `catch` error path added next to it in its topical file (`getFollowingByUser`/`getFollowersOfUser`/`isFollowing`/`viewerHasAnyFollows`/`isBlocked`/`getFollowingFeedUsers` in `dal.following.test.ts`; `getUserIdByEmail` in `dal.user.test.ts`). The entity split means the error path sits beside the read, so no cross-file pointer comments are needed; the siblings' happy paths are not duplicated. Visit-history reads' `catch` paths were already covered by their own file.
+- [x] 2.15 Coverage-driven gap close: `lib/dal.ts` reaches **100% lines / statements / branches / functions** with **zero `/* v8 ignore */`**. Of the five branches that remained red after the reads landed, one (`p.user?.name ?? p.guest_name` in the non-owner projection) was a real, coverable behavior — covered by a guest-claim test. The other four (`if (!raw)`, `item.purchases?.length ?? 0`, `result.list_items?.map(...) || []`, `publicListCount[0]?.count ?? 0`) were **redundant** nullish/optional operators that TypeScript already proves dead: Drizzle types the `with:` relations and the `COUNT(*)` aggregate as non-nullable, and `sanitizePurchases`' param had been over-widened to `| undefined`. Per TESTING.md's (b)-before-(c) preference they were removed by a behavior-preserving refactor (narrow the param to `RawPurchase[]`; drop the redundant `?.`/`??`/`||`), `tsc`-verified equivalent — not ignored.
+- [x] 2.16 **Named-parameter ergonomic refactor (Decision 9)** — reshaped `isFollowing(followerId, followeeId)` → `isFollowing({ userId, followeeId })` and renamed `isBlocked(blockerId, blockedId)` → `hasBlocked({ userId, blockedId })` to remove the id-swap footgun on the adjacent same-args-opposite-order block-direction calls. Migrated the three production callers (`lib/listAccess.ts`, `HeroCollapsedItemsContainer.tsx`, `FollowContainer.tsx`, plus `getProfileForUser` internally) and their component tests. Behavior-preserving (identical Drizzle `where` mapping; zero stale `isBlocked` refs repo-wide); `tsc` / lint / test green.
+
+## 3. `lib/auth.ts` coverage + testability refactor
+
+- [x] 3.1 Refactor: extract the inline `signIn` / `jwt` / `session` callbacks to named exports (`signInCallback` / `jwtCallback` / `sessionCallback`), typed via `NonNullable<NextAuthConfig['callbacks'][...]>`, and reference them in the `NextAuth({ callbacks })` config — behavior-preserving move (Decision 4).
+- [x] 3.2 The bypass-surface tests already live in `lib/__tests__/auth.test.ts` (a prior carve-out) using `vi.mock('next-auth', …)` to a stub returning `{ handlers, signIn, signOut, auth: <stub> }`, plus `@/db`/Google/adapter mocks. Extended here rather than recreated.
+- [x] 3.3 Bypass surface covered (pre-existing): `auth()` zero-arg with `USE_PG_DRIVER=1` → default `dev-test-viewer` session; `BYPASS_SESSION_USER='guest'` → `null`; another seeded id → minimal `{ user: { id } }` session; `synthesizeSession` both branches; env stubbed via `vi.stubEnv` and restored.
+- [x] 3.4 Added the `auth(req, ctx)` pass-through test: call the overload with stub args, assert the stubbed `nextAuth.auth` was invoked with them (covers the `args.length > 0` branch by assertion — no `/* v8 ignore */`).
+- [x] 3.5 Added the callback tests: `signInCallback` for the three Google profile shapes (given+family → full name, given-only → given name, neither → unchanged) returning `true`; `jwtCallback` updates `token.name` only on `trigger === 'update'`; `sessionCallback` passes the session through.
+- [x] 3.6 `lib/auth.ts` reaches **100% lines / statements / branches / functions** — no residual gap, so no `/* v8 ignore */` was needed.
+
+## 4. Enumeration + complexity promotion
+
+- [x] 4.1 `vitest.config.ts`: added `'lib/dal.ts': COVERAGE_FLOOR` and `'lib/auth.ts': COVERAGE_FLOOR` to per-file `thresholds`; removed the three "No `lib/dal.ts` entry … deferred" notes (the 4.2 / 4.3 / 4.14 blocks).
+- [x] 4.2 `eslint.config.mjs`: added `lib/dal.ts` and `lib/auth.ts` to the per-file `sonarjs/cognitive-complexity = error` array under a `test-dal-remainder (sub-proposal 9.1)` comment, and removed the matching deferral notes. `npx eslint lib/dal.ts lib/auth.ts` reports no issues.
+
+## 5. Four audits + invariant elevation (recorded BEFORE coverage validation)
+
+- [x] 5.1 **Duplication audit** — `getListsSharedByUser` has zero non-test production callers (grep of `app/`/`lib/`); disposition: **cover it** (Decision 7) and flag potential removal as an operator follow-up — NOT removed on this change's authority. The item-seed setup was **extracted** to `test/helpers/seedItemGraph.ts` (the entity split created 2+ consumers). A pre-existing list-seed overlap remains across `seedItemGraph`/`seedVisitGraph`/`seedFollowGraph` (three small, cohesive fixture modules); consolidation is a possible follow-up, not done here (avoids churning archived carve-outs' helpers).
+- [x] 5.2 **Complexity audit** — every function in `lib/dal.ts` and `lib/auth.ts` is < 15; `sonarjs/cognitive-complexity` at `error` passes clean. The `lib/auth.ts` callback extraction (§3.1) lowered, not raised, per-function complexity. No per-line disable was needed.
+- [x] 5.3 **Testability audit** — the `lib/auth.ts` callback extraction (§3.1) is one of two in-carve-out testability/ergonomics refactors (the other is the Decision 9 `isFollowing`/`hasBlocked` named-parameter reshape, §2.16). The `auth()` pass-through is covered by a real assertion via the `next-auth` boundary mock (Decision 4 / §3.4). **This change adds zero `/* v8 ignore */`**: the four candidate branches in `lib/dal.ts` were redundant operators TypeScript proves dead, so they were removed by a behavior-preserving refactor (§2.15) per TESTING.md's (b)-before-(c) preference rather than ignored.
+- [x] 5.4 **Assertion audit** — every new test asserts an observable behavior (exact return value, thrown error message, or projected row shape); no tautologies or execute-for-coverage. Ordering tests assert the exact id sequence; the `getListsByUser` test names `updated_at DESC` so a regression to `created_at` fails loudly; sanitizer tests assert exact `{ id, by, firstName }` projections (never full name/email/id).
+- [x] 5.5 **Invariant elevation** — ELEVATED the purchase-spoiler read-projection invariant to `list-item-management` (Decision 5; `specs/list-item-management/spec.md`). Recorded NON-elevation of the FOLLOWERS-only visibility filter (already governed by `list-visibility` — Decision 6) and the `getListsByUser` sort (already a `home-digest` SHALL; regression-locked by test, not re-specced).
+- [x] 5.6 **Convention codified** — the shared-setup-in-a-fixture rule the §5.1 duplication audit applied (extracting `test/helpers/seedItemGraph.ts`; using a `seedClaimedItem()` helper over a one-size `beforeEach`) was written up as a new `TESTING.md` section ("Shared setup belongs in a fixture, not duplicated or merged away") so the convention outlives this carve-out.
+
+## 6. Coverage validation
+
+- [x] 6.1 **Acceptance criterion** — with `'lib/dal.ts'` and `'lib/auth.ts'` added to `thresholds` (§4.1), `npm run test:coverage` passes the `perFile` gate with zero "does not meet" errors: both files at `lines 100% / statements 100% / branches 100% / functions 100%` (≥ the `98/98/95/100` floor). Full suite: 153 files / 1937 tests green.
+
+## 7. Specs + governance bookkeeping
+
+- [x] 7.1 `list-item-management` delta (`specs/list-item-management/spec.md`) authored; `openspec validate test-dal-remainder --strict` passes. The ADDED requirement reaches canonical via archive-time rollup (no apply-time write to the active spec, per §7.11).
+- [x] 7.2 `testing-foundation` carve-out delta (`specs/testing-foundation/spec.md`) authored — Tier-2 bookkeeping (whole-file coverage + enumeration) plus the Tier-1 §7.7 / §7.10 resolution; archive-only / archive-time rollup per D13.
+- [x] 7.3 **On archive** (done at `/opsx:archive`, 2026-06-08): flipped `test-coverage/tasks.md` §9.1 to `[x]`; flipped parent §7.10 to `[x]` (`lib/dal.ts` was the last shared file, now enumerated at `COVERAGE_FLOOR` + complexity `error`) and recorded the landing on the already-`[x]` §7.7. Parent §7.2 (global complexity promotion) and §7.3 (final repo-wide coverage baseline) remain **blocked**, not unblocked: both wait on all of §9, and §9.2–§9.5 are still open — this sub-proposal alone does not clear them.
+
+## 8. Pre-merge (four-gate)
+
+- [x] 8.1 `npm run lint` passes — 0 errors, no new warnings (the 2 warnings are pre-existing in `Avatar.tsx` / `seed-dev-users.ts`, untouched here).
+- [x] 8.2 `npx tsc --noEmit` passes with zero errors.
+- [x] 8.3 `npm run build` completes successfully.
+- [x] 8.4 `npm run test:coverage` (full vitest suite) passes — all suites green, including the new/renamed files.

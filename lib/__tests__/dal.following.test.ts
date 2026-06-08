@@ -31,80 +31,106 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  // db is shared per-file, so restore spies first or they leak between tests.
+  vi.restoreAllMocks();
   await resetDb(db);
 });
 
 describe('getFollowingByUser', () => {
   it('ViewerFollowsTwo_ReturnsFolloweesWithUserJoin', async () => {
     await seedUsers(db, [
-      { id: 'viewer' },
-      { id: 'a', name: 'Alice', image: 'a.png' },
-      { id: 'b', name: 'Bob', image: null },
+      { id: 'follower' },
+      { id: 'followeeA', name: 'Alice', image: 'a.png' },
+      { id: 'followeeB', name: 'Bob', image: null },
     ]);
-    await seedFollow(db, 'viewer', 'a');
-    await seedFollow(db, 'viewer', 'b');
+    await seedFollow(db, 'follower', 'followeeA');
+    await seedFollow(db, 'follower', 'followeeB');
 
-    const rows = await dal.getFollowingByUser('viewer');
+    const rows = await dal.getFollowingByUser('follower');
     const byId = Object.fromEntries(rows.map((r) => [r.followee.id, r.followee]));
-    expect(byId.a).toEqual({ id: 'a', name: 'Alice', image: 'a.png' });
-    expect(byId.b).toEqual({ id: 'b', name: 'Bob', image: null });
+    expect(byId.followeeA).toEqual({
+      id: 'followeeA',
+      name: 'Alice',
+      image: 'a.png',
+    });
+    expect(byId.followeeB).toEqual({
+      id: 'followeeB',
+      name: 'Bob',
+      image: null,
+    });
   });
 
   it('MultipleFollows_OrderedByCreatedAtDesc', async () => {
-    await seedUsers(db, [{ id: 'viewer' }, { id: 'a' }, { id: 'b' }]);
-    await seedFollow(db, 'viewer', 'a', new Date('2020-01-01'));
-    await seedFollow(db, 'viewer', 'b', new Date('2022-01-01'));
+    await seedUsers(db, [
+      { id: 'follower' },
+      { id: 'followeeA' },
+      { id: 'followeeB' },
+    ]);
+    await seedFollow(db, 'follower', 'followeeA', new Date('2020-01-01'));
+    await seedFollow(db, 'follower', 'followeeB', new Date('2022-01-01'));
 
-    const rows = await dal.getFollowingByUser('viewer');
-    expect(rows.map((r) => r.followee_id)).toEqual(['b', 'a']);
+    const rows = await dal.getFollowingByUser('follower');
+    expect(rows.map((r) => r.followee_id)).toEqual(['followeeB', 'followeeA']);
   });
 
   it('FollowsNoOne_ReturnsEmptyArray', async () => {
-    await seedUsers(db, [{ id: 'viewer' }]);
-    expect(await dal.getFollowingByUser('viewer')).toEqual([]);
+    await seedUsers(db, [{ id: 'follower' }]);
+    expect(await dal.getFollowingByUser('follower')).toEqual([]);
   });
 });
 
 describe('getFollowersOfUser', () => {
   it('HasFollowers_ReturnsFollowersWithJoin', async () => {
     await seedUsers(db, [
-      { id: 'owner' },
-      { id: 'a', name: 'Alice', image: 'a.png' },
+      { id: 'followee' },
+      { id: 'follower', name: 'Alice', image: 'a.png' },
     ]);
-    await seedFollow(db, 'a', 'owner');
+    await seedFollow(db, 'follower', 'followee');
 
-    const rows = await dal.getFollowersOfUser('owner');
+    const rows = await dal.getFollowersOfUser('followee');
     expect(rows).toHaveLength(1);
     expect(rows[0].follower).toEqual({
-      id: 'a',
+      id: 'follower',
       name: 'Alice',
       image: 'a.png',
     });
   });
 
   it('MultipleFollowers_OrderedByCreatedAtDesc', async () => {
-    await seedUsers(db, [{ id: 'owner' }, { id: 'a' }, { id: 'b' }]);
-    await seedFollow(db, 'a', 'owner', new Date('2020-01-01'));
-    await seedFollow(db, 'b', 'owner', new Date('2022-01-01'));
+    await seedUsers(db, [
+      { id: 'followee' },
+      { id: 'followerA' },
+      { id: 'followerB' },
+    ]);
+    await seedFollow(db, 'followerA', 'followee', new Date('2020-01-01'));
+    await seedFollow(db, 'followerB', 'followee', new Date('2022-01-01'));
 
-    const rows = await dal.getFollowersOfUser('owner');
-    expect(rows.map((r) => r.follower_id)).toEqual(['b', 'a']);
+    const rows = await dal.getFollowersOfUser('followee');
+    expect(rows.map((r) => r.follower_id)).toEqual(['followerB', 'followerA']);
   });
 
   it('NoFollowers_ReturnsEmptyArray', async () => {
-    await seedUsers(db, [{ id: 'owner' }]);
-    expect(await dal.getFollowersOfUser('owner')).toEqual([]);
+    await seedUsers(db, [{ id: 'followee' }]);
+    expect(await dal.getFollowersOfUser('followee')).toEqual([]);
   });
 });
 
 describe('getFollowingFeedUsers', () => {
   it('FolloweeWithPublicLists_LatestSharedAtIsMax', async () => {
-    await seedUsers(db, [{ id: 'viewer' }, { id: 'a' }]);
-    await seedFollow(db, 'viewer', 'a', new Date('2020-01-01'));
-    await seedPublicList(db, { id: 'l1', user_id: 'a', shared_at: new Date('2021-01-01') });
-    await seedPublicList(db, { id: 'l2', user_id: 'a', shared_at: new Date('2021-06-01') });
+    await seedUsers(db, [{ id: 'follower' }, { id: 'followee' }]);
+    await seedFollow(db, 'follower', 'followee', new Date('2020-01-01'));
+    await seedPublicList(db, {
+      id: 'l1',
+      user_id: 'followee',
+      shared_at: new Date('2021-01-01'),
+    });
+    await seedPublicList(db, {
+      id: 'l2',
+      user_id: 'followee',
+      shared_at: new Date('2021-06-01'),
+    });
 
-    const rows = await dal.getFollowingFeedUsers('viewer');
+    const rows = await dal.getFollowingFeedUsers('follower');
     expect(rows).toHaveLength(1);
     expect(String(rows[0].latest_shared_at)).toContain('2021-06-01');
   });
@@ -113,42 +139,66 @@ describe('getFollowingFeedUsers', () => {
     // The query joins `users` on followee_id, so last_seen_following_at in the
     // GREATEST filter is the followee's value.
     await seedUsers(db, [
-      { id: 'viewer' },
-      { id: 'a', last_seen_following_at: new Date('2021-03-01') },
+      { id: 'follower' },
+      { id: 'followee', last_seen_following_at: new Date('2021-03-01') },
     ]);
-    await seedFollow(db, 'viewer', 'a', new Date('2020-01-01'));
-    await seedPublicList(db, { id: 'old', user_id: 'a', shared_at: new Date('2021-01-01') });
-    await seedPublicList(db, { id: 'new', user_id: 'a', shared_at: new Date('2021-06-01') });
+    await seedFollow(db, 'follower', 'followee', new Date('2020-01-01'));
+    await seedPublicList(db, {
+      id: 'old',
+      user_id: 'followee',
+      shared_at: new Date('2021-01-01'),
+    });
+    await seedPublicList(db, {
+      id: 'new',
+      user_id: 'followee',
+      shared_at: new Date('2021-06-01'),
+    });
 
-    const rows = await dal.getFollowingFeedUsers('viewer');
+    const rows = await dal.getFollowingFeedUsers('follower');
     expect(rows[0].new_count).toBe(1);
   });
 
   it('NewCount_CoercedToNumber', async () => {
-    await seedUsers(db, [{ id: 'viewer' }, { id: 'a' }]);
-    await seedFollow(db, 'viewer', 'a', new Date('2020-01-01'));
-    await seedPublicList(db, { id: 'l1', user_id: 'a', shared_at: new Date('2021-01-01') });
+    await seedUsers(db, [{ id: 'follower' }, { id: 'followee' }]);
+    await seedFollow(db, 'follower', 'followee', new Date('2020-01-01'));
+    await seedPublicList(db, {
+      id: 'l1',
+      user_id: 'followee',
+      shared_at: new Date('2021-01-01'),
+    });
 
-    const rows = await dal.getFollowingFeedUsers('viewer');
+    const rows = await dal.getFollowingFeedUsers('follower');
     expect(typeof rows[0].new_count).toBe('number');
   });
 
   it('FolloweesWithLists_OrderedByMaxSharedAtDesc', async () => {
-    await seedUsers(db, [{ id: 'viewer' }, { id: 'a' }, { id: 'b' }]);
-    await seedFollow(db, 'viewer', 'a', new Date('2020-01-01'));
-    await seedFollow(db, 'viewer', 'b', new Date('2020-01-01'));
-    await seedPublicList(db, { id: 'la', user_id: 'a', shared_at: new Date('2021-01-01') });
-    await seedPublicList(db, { id: 'lb', user_id: 'b', shared_at: new Date('2022-01-01') });
+    await seedUsers(db, [
+      { id: 'follower' },
+      { id: 'followeeA' },
+      { id: 'followeeB' },
+    ]);
+    await seedFollow(db, 'follower', 'followeeA', new Date('2020-01-01'));
+    await seedFollow(db, 'follower', 'followeeB', new Date('2020-01-01'));
+    await seedPublicList(db, {
+      id: 'la',
+      user_id: 'followeeA',
+      shared_at: new Date('2021-01-01'),
+    });
+    await seedPublicList(db, {
+      id: 'lb',
+      user_id: 'followeeB',
+      shared_at: new Date('2022-01-01'),
+    });
 
-    const rows = await dal.getFollowingFeedUsers('viewer');
-    expect(rows.map((r) => r.id)).toEqual(['b', 'a']);
+    const rows = await dal.getFollowingFeedUsers('follower');
+    expect(rows.map((r) => r.id)).toEqual(['followeeB', 'followeeA']);
   });
 
   it('FolloweeNoPublicLists_LatestNull-NewCountZero', async () => {
-    await seedUsers(db, [{ id: 'viewer' }, { id: 'a' }]);
-    await seedFollow(db, 'viewer', 'a', new Date('2020-01-01'));
+    await seedUsers(db, [{ id: 'follower' }, { id: 'followee' }]);
+    await seedFollow(db, 'follower', 'followee', new Date('2020-01-01'));
 
-    const rows = await dal.getFollowingFeedUsers('viewer');
+    const rows = await dal.getFollowingFeedUsers('follower');
     expect(rows).toHaveLength(1);
     expect(rows[0].latest_shared_at).toBeNull();
     expect(rows[0].new_count).toBe(0);
@@ -156,41 +206,180 @@ describe('getFollowingFeedUsers', () => {
 
   it('NullLastSeen_PreexistingListsNotCountedNew', async () => {
     await seedUsers(db, [
-      { id: 'viewer', last_seen_following_at: null },
-      { id: 'a' },
+      { id: 'follower', last_seen_following_at: null },
+      { id: 'followee' },
     ]);
-    await seedFollow(db, 'viewer', 'a', new Date('2022-01-01'));
-    await seedPublicList(db, { id: 'old', user_id: 'a', shared_at: new Date('2021-01-01') });
+    await seedFollow(db, 'follower', 'followee', new Date('2022-01-01'));
+    await seedPublicList(db, {
+      id: 'old',
+      user_id: 'followee',
+      shared_at: new Date('2021-01-01'),
+    });
 
-    const rows = await dal.getFollowingFeedUsers('viewer');
+    const rows = await dal.getFollowingFeedUsers('follower');
     expect(rows[0].new_count).toBe(0);
     expect(String(rows[0].latest_shared_at)).toContain('2021-01-01');
   });
 });
 
 describe('isFollowing', () => {
-  it('TrueWhenRowExists_FalseWhenAbsent', async () => {
-    await seedUsers(db, [{ id: 'viewer' }, { id: 'a' }]);
-    await seedFollow(db, 'viewer', 'a');
-    expect(await dal.isFollowing('viewer', 'a')).toBe(true);
-    expect(await dal.isFollowing('a', 'viewer')).toBe(false);
+  beforeEach(async () => {
+    await seedUsers(db, [{ id: 'alice' }, { id: 'bob' }, { id: 'carol' }]);
+    await seedFollow(db, 'alice', 'bob');
+  });
+
+  it('UserFollows_ReturnsTrue', async () => {
+    expect(await dal.isFollowing({ userId: 'alice', followeeId: 'bob' })).toBe(
+      true
+    );
+  });
+
+  it('UserDoesNotFollowBack_ReturnsFalse', async () => {
+    expect(await dal.isFollowing({ userId: 'bob', followeeId: 'alice' })).toBe(
+      false
+    );
+  });
+
+  it('UserFollowsSomeoneElse_ReturnsFalse', async () => {
+    expect(
+      await dal.isFollowing({ userId: 'alice', followeeId: 'carol' })
+    ).toBe(false);
+  });
+
+  it('TargetFollowedBySomeoneElse_ReturnsFalse', async () => {
+    expect(await dal.isFollowing({ userId: 'carol', followeeId: 'bob' })).toBe(
+      false
+    );
   });
 });
 
-describe('isBlocked', () => {
-  it('TrueInBlockDirection_FalseInReverse', async () => {
-    await seedUsers(db, [{ id: 'viewer' }, { id: 'a' }]);
-    await seedBlock(db, 'viewer', 'a');
-    expect(await dal.isBlocked('viewer', 'a')).toBe(true);
-    expect(await dal.isBlocked('a', 'viewer')).toBe(false);
+describe('hasBlocked', () => {
+  beforeEach(async () => {
+    await seedUsers(db, [{ id: 'alice' }, { id: 'bob' }, { id: 'carol' }]);
+    await seedBlock(db, 'alice', 'bob');
+  });
+
+  it('UserBlocks_ReturnsTrue', async () => {
+    expect(await dal.hasBlocked({ userId: 'alice', blockedId: 'bob' })).toBe(
+      true
+    );
+  });
+
+  it('UserHasNotBlockedBack_ReturnsFalse', async () => {
+    expect(await dal.hasBlocked({ userId: 'bob', blockedId: 'alice' })).toBe(
+      false
+    );
+  });
+
+  it('UserBlocksSomeoneElse_ReturnsFalse', async () => {
+    expect(
+      await dal.hasBlocked({ userId: 'alice', blockedId: 'carol' })
+    ).toBe(false);
+  });
+
+  it('TargetBlockedBySomeoneElse_ReturnsFalse', async () => {
+    expect(await dal.hasBlocked({ userId: 'carol', blockedId: 'bob' })).toBe(
+      false
+    );
   });
 });
 
 describe('viewerHasAnyFollows', () => {
-  it('TrueWhenAtLeastOne_FalseWhenZero', async () => {
-    await seedUsers(db, [{ id: 'viewer' }, { id: 'a' }]);
-    expect(await dal.viewerHasAnyFollows('viewer')).toBe(false);
-    await seedFollow(db, 'viewer', 'a');
-    expect(await dal.viewerHasAnyFollows('viewer')).toBe(true);
+  it('NoFollows_ReturnsFalse', async () => {
+    await seedUsers(db, [{ id: 'follower' }, { id: 'followee' }]);
+    expect(await dal.viewerHasAnyFollows('follower')).toBe(false);
+  });
+
+  it('HasFollows_ReturnsTrue', async () => {
+    await seedUsers(db, [{ id: 'follower' }, { id: 'followee' }]);
+    await seedFollow(db, 'follower', 'followee');
+    expect(await dal.viewerHasAnyFollows('follower')).toBe(true);
+  });
+});
+
+describe('getBlockedByUser', () => {
+  it('BlockedRows_OrderedByCreatedAtDesc-IncludesBlockedJoin', async () => {
+    await seedUsers(db, [
+      { id: 'blocker' },
+      { id: 'blockedX', name: 'Xena', image: 'x.png' },
+      { id: 'blockedY', name: 'Yara', image: null },
+    ]);
+    await seedBlock(db, 'blocker', 'blockedX', new Date('2020-01-01'));
+    await seedBlock(db, 'blocker', 'blockedY', new Date('2022-01-01'));
+
+    const rows = await dal.getBlockedByUser('blocker');
+    expect(rows.map((r) => r.blocked_id)).toEqual(['blockedY', 'blockedX']);
+    expect(rows[1].blocked).toEqual({
+      id: 'blockedX',
+      name: 'Xena',
+      image: 'x.png',
+    });
+  });
+});
+
+// Each read's `catch` re-throw — uncovered by the happy-path tests above but
+// required by the whole-file per-file branch floor.
+describe('ReadErrorPaths', () => {
+  it('FollowingQueryThrows_RejectsWithFetchFollowingError', async () => {
+    vi.spyOn(db.query.user_follows, 'findMany').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(dal.getFollowingByUser('follower')).rejects.toThrow(
+      'Failed to fetch following'
+    );
+  });
+
+  it('FollowersQueryThrows_RejectsWithFetchFollowersError', async () => {
+    vi.spyOn(db.query.user_follows, 'findMany').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(dal.getFollowersOfUser('followee')).rejects.toThrow(
+      'Failed to fetch followers'
+    );
+  });
+
+  it('IsFollowingQueryThrows_RejectsWithCheckFollowStatusError', async () => {
+    vi.spyOn(db.query.user_follows, 'findFirst').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(
+      dal.isFollowing({ userId: 'alice', followeeId: 'bob' })
+    ).rejects.toThrow('Failed to check follow status');
+  });
+
+  it('ViewerHasAnyFollowsQueryThrows_RejectsWithCheckViewerFollowCountError', async () => {
+    vi.spyOn(db.query.user_follows, 'findFirst').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(dal.viewerHasAnyFollows('follower')).rejects.toThrow(
+      'Failed to check viewer follow count'
+    );
+  });
+
+  it('HasBlockedQueryThrows_RejectsWithCheckBlockStatusError', async () => {
+    vi.spyOn(db.query.user_blocks, 'findFirst').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(
+      dal.hasBlocked({ userId: 'alice', blockedId: 'bob' })
+    ).rejects.toThrow('Failed to check block status');
+  });
+
+  it('BlockedQueryThrows_RejectsWithFetchBlockedUsersError', async () => {
+    vi.spyOn(db.query.user_blocks, 'findMany').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(dal.getBlockedByUser('blocker')).rejects.toThrow(
+      'Failed to fetch blocked users'
+    );
+  });
+
+  it('FollowingFeedQueryThrows_RejectsWithFetchFollowingFeedUsersError', async () => {
+    vi.spyOn(db, 'select').mockImplementationOnce(() => {
+      throw new Error('boom');
+    });
+    await expect(dal.getFollowingFeedUsers('follower')).rejects.toThrow(
+      'Failed to fetch following feed users'
+    );
   });
 });

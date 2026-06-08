@@ -53,12 +53,11 @@ function firstNameOf(name: string | null | undefined): string {
 }
 
 function sanitizePurchases(
-  raw: RawPurchase[] | undefined,
+  raw: RawPurchase[],
   viewerId: string | undefined,
   isOwner: boolean,
   showSpoilers: boolean = false
 ): PurchaseView[] {
-  if (!raw) return [];
   if (isOwner && !showSpoilers) return [];
   if (isOwner && showSpoilers) {
     // Owner with spoilers: reveal claimer first names (owner can't claim own items)
@@ -218,7 +217,7 @@ export async function getItemsByUser(
 
     return result.map((item) => ({
       ...item,
-      hasPurchases: (item.purchases?.length ?? 0) > 0,
+      hasPurchases: item.purchases.length > 0,
       purchases: sanitizePurchases(item.purchases, userId, true, showSpoilers),
     }));
   } catch (error) {
@@ -248,11 +247,12 @@ export async function getItemById(id: string, userId: string) {
       return result;
     }
 
-    const lists: (ListTable & { position: number })[] =
-      result.list_items?.map((li) => ({
+    const lists: (ListTable & { position: number })[] = result.list_items.map(
+      (li) => ({
         ...li.list,
         position: li.position,
-      })) || [];
+      })
+    );
 
     const newResult = {
       id: result.id,
@@ -531,16 +531,19 @@ export async function getBlockedByUser(userId: string) {
   }
 }
 
-export async function isFollowing(
-  followerId: string,
-  followeeId: string
-): Promise<boolean> {
+export async function isFollowing({
+  userId,
+  followeeId,
+}: {
+  userId: string;
+  followeeId: string;
+}): Promise<boolean> {
   'use cache';
   cacheTag('user_follows');
   try {
     const result = await db.query.user_follows.findFirst({
       where: and(
-        eq(user_follows.follower_id, followerId),
+        eq(user_follows.follower_id, userId),
         eq(user_follows.followee_id, followeeId)
       ),
     });
@@ -566,16 +569,19 @@ export async function viewerHasAnyFollows(viewerId: string): Promise<boolean> {
   }
 }
 
-export async function isBlocked(
-  blockerId: string,
-  blockedId: string
-): Promise<boolean> {
+export async function hasBlocked({
+  userId,
+  blockedId,
+}: {
+  userId: string;
+  blockedId: string;
+}): Promise<boolean> {
   'use cache';
   cacheTag('user_blocks');
   try {
     const result = await db.query.user_blocks.findFirst({
       where: and(
-        eq(user_blocks.blocker_id, blockerId),
+        eq(user_blocks.blocker_id, userId),
         eq(user_blocks.blocked_id, blockedId)
       ),
     });
@@ -689,14 +695,23 @@ export async function getProfileForUser(
     let viewerIsBlocked = false;
     let blockedByViewer = false;
     if (viewerId && viewerId !== userId) {
-      viewerIsFollowing = await isFollowing(viewerId, userId);
-      viewerIsBlocked = await isBlocked(userId, viewerId);
-      blockedByViewer = await isBlocked(viewerId, userId);
+      viewerIsFollowing = await isFollowing({
+        userId: viewerId,
+        followeeId: userId,
+      });
+      viewerIsBlocked = await hasBlocked({
+        userId,
+        blockedId: viewerId,
+      });
+      blockedByViewer = await hasBlocked({
+        userId: viewerId,
+        blockedId: userId,
+      });
     }
 
     return {
       ...user,
-      publicListCount: Number(publicListCount[0]?.count ?? 0),
+      publicListCount: Number(publicListCount[0].count),
       viewerIsFollowing,
       viewerIsBlocked,
       blockedByViewer,

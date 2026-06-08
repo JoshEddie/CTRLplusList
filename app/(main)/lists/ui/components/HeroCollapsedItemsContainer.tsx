@@ -1,6 +1,6 @@
 import {
   getBookmarkStatus,
-  isBlocked,
+  hasBlocked,
   isFollowing,
   viewerHasAnyFollows,
 } from '@/lib/dal';
@@ -56,9 +56,9 @@ export async function HeroCollapsedViewerItems({
     hasAnyFollows,
   ] = await Promise.all([
     getBookmarkStatus(list.id, viewerId),
-    isFollowing(viewerId, ownerId),
-    isBlocked(ownerId, viewerId),
-    isBlocked(viewerId, ownerId),
+    isFollowing({ userId: viewerId, followeeId: ownerId }),
+    hasBlocked({ userId: ownerId, blockedId: viewerId }),
+    hasBlocked({ userId: viewerId, blockedId: ownerId }),
     viewerHasAnyFollows(viewerId),
   ]);
 

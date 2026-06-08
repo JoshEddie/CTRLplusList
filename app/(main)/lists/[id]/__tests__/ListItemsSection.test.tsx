@@ -1,14 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
-import { getList, getUserIdByEmail, isBlocked } from '@/lib/dal';
+import { getList, getUserIdByEmail, hasBlocked } from '@/lib/dal';
 import ListItemsSection from '../ListItemsSection';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/dal', () => ({
   getList: vi.fn(),
   getUserIdByEmail: vi.fn(),
-  isBlocked: vi.fn(),
+  hasBlocked: vi.fn(),
   isFollowing: vi.fn(),
 }));
 // guardListViewable (lib/listAccess) statically imports `@/db`, which calls
@@ -66,7 +66,7 @@ beforeEach(() => {
     id: 'u1',
     name: 'Owner',
   } as never);
-  vi.mocked(isBlocked).mockResolvedValue(false as never);
+  vi.mocked(hasBlocked).mockResolvedValue(false as never);
   vi.mocked(getList).mockResolvedValue({
     id: 'l1',
     user_id: 'u1',
@@ -139,7 +139,7 @@ describe('ListItemsSection', () => {
         id: 'u2',
         name: 'Viewer',
       } as never);
-      vi.mocked(isBlocked).mockResolvedValue(true as never);
+      vi.mocked(hasBlocked).mockResolvedValue(true as never);
       await expect(ListItemsSection(props('l1'))).rejects.toThrow(
         'REDIRECT:/lists'
       );

@@ -2,7 +2,7 @@ import { db } from '@/db';
 import { items, list_items, lists } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
-import { isBlocked } from './dal';
+import { hasBlocked } from './dal';
 import { VISIBILITY, fromDb } from './visibility';
 
 /**
@@ -22,7 +22,10 @@ export async function guardListViewable<T extends { user_id: string }>(
   if (!list) {
     redirect(viewerId ? '/lists' : '/');
   }
-  if (viewerId && (await isBlocked(list.user_id, viewerId))) {
+  if (
+    viewerId &&
+    (await hasBlocked({ userId: list.user_id, blockedId: viewerId }))
+  ) {
     redirect('/lists');
   }
   return list;
@@ -78,7 +81,11 @@ export async function isItemViewable(
 
   for (const list of candidateLists) {
     if (viewerId && list.user_id === viewerId) return true;
-    if (viewerId && (await isBlocked(list.user_id, viewerId))) continue;
+    if (
+      viewerId &&
+      (await hasBlocked({ userId: list.user_id, blockedId: viewerId }))
+    )
+      continue;
     if (fromDb(list.visibility) !== VISIBILITY.OWNER) return true;
   }
   return false;

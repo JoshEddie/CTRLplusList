@@ -1,4 +1,4 @@
-import { isBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/dal';
+import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/dal';
 import type { ButtonVariant } from '@/app/ui/components/button';
 import FollowControls from './FollowControls';
 
@@ -15,9 +15,9 @@ export default async function FollowContainer({
 }) {
   const [following, blockedByOwner, blockedByViewer, hasAnyFollows] =
     await Promise.all([
-      isFollowing(viewerId, ownerId),
-      isBlocked(ownerId, viewerId),
-      isBlocked(viewerId, ownerId),
+      isFollowing({ userId: viewerId, followeeId: ownerId }),
+      hasBlocked({ userId: ownerId, blockedId: viewerId }),
+      hasBlocked({ userId: viewerId, blockedId: ownerId }),
       viewerHasAnyFollows(viewerId),
     ]);
   if (blockedByOwner || blockedByViewer) return null;

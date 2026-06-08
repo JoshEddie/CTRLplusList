@@ -74,4 +74,95 @@ describe('authBypass', () => {
     expect(session?.user?.id).toBe('real-google-user');
     expect(session?.user?.id).not.toBe(BYPASS_USER_ID);
   });
+
+  it('BypassOnWithRequestArgs_PassesThroughToRealNextAuth', async () => {
+    // args.length > 0 (route-handler/middleware overload) bypasses the bypass:
+    // even with the flag on, auth(req, ctx) must delegate to real NextAuth.
+    vi.stubEnv('USE_PG_DRIVER', '1');
+    realAuth.mockReturnValue('REAL_HANDLER_RESULT');
+
+    const { auth } = await loadAuth();
+    const req = { url: 'http://localhost/api' };
+    const ctx = { params: {} };
+    const result = (auth as unknown as (...a: unknown[]) => unknown)(req, ctx);
+
+    expect(realAuth).toHaveBeenCalledWith(req, ctx);
+    expect(result).toBe('REAL_HANDLER_RESULT');
+  });
+});
+
+describe('signInCallback', () => {
+  it('GivenAndFamilyName_SetsFullDisplayName', async () => {
+    const { signInCallback } = await loadAuth();
+    const user = { name: 'Default' };
+
+    const ok = await signInCallback({
+      user,
+      profile: { given_name: 'Ada', family_name: 'Lovelace' },
+    });
+
+    expect(ok).toBe(true);
+    expect(user.name).toBe('Ada Lovelace');
+  });
+
+  it('GivenNameOnly_SetsGivenName', async () => {
+    const { signInCallback } = await loadAuth();
+    const user = { name: 'Default' };
+
+    await signInCallback({ user, profile: { given_name: 'Ada' } });
+
+    expect(user.name).toBe('Ada');
+  });
+
+  it('NeitherName_LeavesUserNameUnchanged', async () => {
+    const { signInCallback } = await loadAuth();
+    const user = { name: 'Default' };
+
+    const ok = await signInCallback({ user, profile: {} });
+
+    expect(ok).toBe(true);
+    expect(user.name).toBe('Default');
+  });
+});
+
+describe('jwtCallback', () => {
+  it('TriggerUpdate_CopiesSessionNameToToken', async () => {
+    const { jwtCallback } = await loadAuth();
+    const token = { name: 'old' };
+
+    const result = jwtCallback({
+      token,
+      user: {},
+      trigger: 'update',
+      session: { user: { name: 'new' } },
+    });
+
+    expect(result).toBe(token);
+    expect(token.name).toBe('new');
+  });
+
+  it('NoUpdateTrigger_LeavesTokenNameUnchanged', async () => {
+    const { jwtCallback } = await loadAuth();
+    const token = { name: 'old' };
+
+    jwtCallback({ token, user: {}, trigger: 'signIn' });
+
+    expect(token.name).toBe('old');
+  });
+});
+
+describe('sessionCallback', () => {
+  it('AnySession_ReturnsSessionUnchanged', async () => {
+    const { sessionCallback } = await loadAuth();
+    const session = {
+      user: { id: 'u1', name: 'Alice' },
+      expires: '2099-01-01T00:00:00.000Z',
+    };
+
+    const result = await sessionCallback({
+      session,
+    } as Parameters<typeof sessionCallback>[0]);
+
+    expect(result).toBe(session);
+  });
 });
