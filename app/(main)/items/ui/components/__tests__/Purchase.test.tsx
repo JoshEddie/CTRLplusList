@@ -36,15 +36,21 @@ describe('Purchase', () => {
   });
 
   describe('Claimed', () => {
-    it('PurchasedByYou_RendersYouClaimedThisWithUndo-ClickCallsHandler', () => {
-      const handleClick = vi.fn();
-      render(<Purchase purchasedBy="You" handlePurchaseClick={handleClick} />);
+    it('PurchasedByYou_RendersYouClaimedThisWithUndo', () => {
+      render(<Purchase purchasedBy="You" handlePurchaseClick={vi.fn()} />);
       const button = screen.getByRole('button', {
         name: 'Remove your claim',
       });
       expect(button).toHaveTextContent('You claimed this');
       expect(button).toHaveTextContent('Undo');
-      fireEvent.click(button);
+    });
+
+    it('UndoClick_CallsHandlerOnce', () => {
+      const handleClick = vi.fn();
+      render(<Purchase purchasedBy="You" handlePurchaseClick={handleClick} />);
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Remove your claim' })
+      );
       expect(handleClick).toHaveBeenCalledTimes(1);
     });
 
@@ -65,14 +71,21 @@ describe('Purchase', () => {
   });
 
   describe('Unclaimed', () => {
-    it('NoPurchaser_RendersClaimCta-ClickCallsHandler', () => {
+    it('NoPurchaser_RendersClaimCta', () => {
+      render(
+        <Purchase purchasedBy={undefined} handlePurchaseClick={vi.fn()} />
+      );
+      expect(
+        screen.getByRole('button', { name: 'Claim this item' })
+      ).toHaveTextContent('Claim this gift');
+    });
+
+    it('CtaClick_CallsHandlerOnce', () => {
       const handleClick = vi.fn();
       render(
         <Purchase purchasedBy={undefined} handlePurchaseClick={handleClick} />
       );
-      const cta = screen.getByRole('button', { name: 'Claim this item' });
-      expect(cta).toHaveTextContent('Claim this gift');
-      fireEvent.click(cta);
+      fireEvent.click(screen.getByRole('button', { name: 'Claim this item' }));
       expect(handleClick).toHaveBeenCalledTimes(1);
     });
   });

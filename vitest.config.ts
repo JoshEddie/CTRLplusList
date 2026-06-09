@@ -87,8 +87,9 @@ export default defineConfig({
         'app/changelog/releases.ts',
         // pure re-export of NextAuth's handlers — a framework barrel with no logic;
         // the bypass/session behavior behind it is covered by lib/auth.ts tests.
-        // Directory glob because `[...nextauth]` would parse as a character class.
-        'app/api/auth/**',
+        // `*` matches the literal `[...nextauth]` segment, which written directly
+        // would parse as a character class.
+        'app/api/auth/*/route.ts',
       ],
       thresholds: {
         perFile: true,

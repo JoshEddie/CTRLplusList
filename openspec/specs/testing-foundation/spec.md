@@ -121,7 +121,7 @@ Coverage SHALL be measured and enforced per file, not as a layer or repo-wide ag
 
 The `functions: 100%` floor is non-negotiable: an uninvoked exported function is a real test gap, not slop. Dead code SHALL be deleted, not protected by a lower floor.
 
-Files excluded from coverage enforcement (informational only): `*.d.ts`; generated drizzle artifacts under `drizzle/`; `app/sw.ts`; test files themselves and their `__tests__/` siblings (matched by `**/__tests__/**`); barrel `index.ts` re-exports of zero runtime behavior (matched by `app/ui/components/*/index.ts` — NOT a global `**/index.ts`, which would silently exclude `db/index.ts` and other top-level index modules that carry runtime); type-only `**/types.ts`; layout files without branching logic. The narrow scope of the index-barrel exclude is invariant: a `**/index.ts` exclude SHALL NOT be introduced.
+Files excluded from coverage enforcement (informational only): `*.d.ts`; generated drizzle artifacts under `drizzle/`; `app/sw.ts`; test files themselves and their `__tests__/` siblings (matched by `**/__tests__/**`); barrel `index.ts` re-exports of zero runtime behavior (matched by `app/**/index.ts` — scoped to `app/`, NOT a global `**/index.ts`, which would silently exclude `db/index.ts` and other top-level index modules that carry runtime; every `index.ts` under `app/` is by convention a pure re-export, and the review bar is that it stays one); type-only `**/types.ts`; layout files without branching logic; constant-data modules holding only literal data with no executable behavior (`app/ui/components/field/field-icons.tsx`, `app/changelog/releases.ts`); the NextAuth framework barrel `app/api/auth/[...nextauth]/route.ts` (matched by `app/api/auth/*/route.ts` — a pure re-export of NextAuth's handlers whose behavior is covered via `lib/auth.ts` tests). The app scope of the index-barrel exclude is invariant: a global `**/index.ts` exclude SHALL NOT be introduced.
 
 While the parent `test-coverage` change is in flight, the per-file threshold list in `vitest.config.ts` MAY enumerate only files with landed tests (so files in untested carve-outs do not fail the gate they have no opportunity to pass). When the parent `test-coverage` change archives, the per-file enumeration SHALL be removed and the floor SHALL apply universally across `coverage.include` — at that point, every file in `coverage.include` (subject to `coverage.exclude`) is gated against the universal floor.
 
@@ -154,16 +154,16 @@ Each test sub-proposal SHALL enforce the coverage floor on every file in its dec
 - **THEN** the per-file enumeration in `vitest.config.ts` is removed
 - **AND** the universal floor applies to every file matched by `coverage.include` and not excluded by `coverage.exclude`
 
-#### Scenario: Index-barrel exclude is narrow
+#### Scenario: Index-barrel exclude is app-scoped
 
 - **WHEN** a contributor proposes adding `**/index.ts` to `coverage.exclude`
 - **THEN** the proposal is rejected
-- **AND** the only acceptable index-barrel exclude is `app/ui/components/*/index.ts` (zero-runtime re-exports under the primitive-family convention)
+- **AND** the only acceptable index-barrel exclude is `app/**/index.ts` (app-side `index.ts` files are zero-runtime re-export barrels by convention)
 - **AND** `db/index.ts` (which carries Drizzle init) is NOT excluded
 
 ### Requirement: Files SHALL meet the universal floor via tests or annotated excludes — never a lowered floor
 
-A file enumerated in `vitest.config.ts`'s per-file thresholds SHALL meet the universal floor (`lines: 98, statements: 98, branches: 95, functions: 100`). When a region of source is genuinely uncoverable (e.g., a defensive `throw` on an unreachable branch, an SSR-only fallback that cannot execute in jsdom, a `try/catch` whose `catch` block guards against a condition the runtime contract forbids), the disposition SHALL be exactly one of:
+A file matched by `coverage.include` and not excluded by `coverage.exclude` SHALL meet the universal floor (`lines: 98, statements: 98, branches: 95, functions: 100`). When a region of source is genuinely uncoverable (e.g., a defensive `throw` on an unreachable branch, an SSR-only fallback that cannot execute in jsdom, a `try/catch` whose `catch` block guards against a condition the runtime contract forbids), the disposition SHALL be exactly one of:
 
 - **(a)** Write the test that exercises the region; OR
 - **(b)** Mark the region with `/* v8 ignore next */` (or `/* v8 ignore start */ … /* v8 ignore stop */` for multi-line regions) and an immediately-preceding one-line comment naming the specific reason the region is uncoverable.
@@ -197,7 +197,7 @@ Lowering the floor for a file (or class of files) SHALL NOT be an acceptable dis
 
 ### Requirement: Per-file thresholds SHALL reference a single shared COVERAGE_FLOOR constant
 
-`vitest.config.ts` SHALL define exactly one coverage-floor object — `const COVERAGE_FLOOR = { lines: 98, statements: 98, branches: 95, functions: 100 } as const;` — at module scope. Every per-file entry in `test.coverage.thresholds` SHALL reference this constant by identity (the object reference, not a copy). Per-file numeric variation SHALL NOT exist: a contributor reading the config SHALL be able to answer "what is the bar" in one read.
+`vitest.config.ts` SHALL define exactly one coverage-floor object — `const COVERAGE_FLOOR = { lines: 98, statements: 98, branches: 95, functions: 100 } as const;` — at module scope. `test.coverage.thresholds` SHALL apply this constant universally by spreading it alongside `perFile: true` (`thresholds: { perFile: true, ...COVERAGE_FLOOR }`); per-file threshold entries SHALL NOT exist. Per-file numeric variation SHALL NOT exist: a contributor reading the config SHALL be able to answer "what is the bar" in one read.
 
 If a future need arises to vary thresholds by file (e.g., a file class with a documented exception), the variation SHALL be introduced as a SECOND named constant with a comment naming the exception's rationale — never as inline numeric overrides scattered across the threshold list.
 
@@ -205,7 +205,7 @@ If a future need arises to vary thresholds by file (e.g., a file class with a do
 
 - **WHEN** a contributor reads `vitest.config.ts`
 - **THEN** exactly one `COVERAGE_FLOOR` (or named-variant) constant is visible at module scope
-- **AND** every per-file threshold entry reads as `'<path>': COVERAGE_FLOOR,`
+- **AND** the `thresholds` block reads as `{ perFile: true, ...COVERAGE_FLOOR }` with no per-file entries
 
 #### Scenario: Inline numeric override rejected
 
@@ -213,10 +213,10 @@ If a future need arises to vary thresholds by file (e.g., a file class with a do
 - **THEN** the PR is rejected at review
 - **AND** the contributor either (a) writes the tests/annotations needed to use `COVERAGE_FLOOR` or (b) introduces a named-exception constant with a rationale comment
 
-#### Scenario: Adding a new tested file
+#### Scenario: Adding a new tested file requires no config edit
 
-- **WHEN** a future sub-proposal lands tests for `app/actions/lists.ts`
-- **THEN** the sub-proposal adds exactly one line to `vitest.config.ts`: `'app/actions/lists.ts': COVERAGE_FLOOR,`
+- **WHEN** a future change lands tests for `app/actions/lists.ts`
+- **THEN** no `vitest.config.ts` edit is needed — the universal floor already gates the file via `coverage.include`
 - **AND** the contributor makes no judgment call on threshold values
 
 ### Requirement: Tests SHALL assert observable behavior, not execution

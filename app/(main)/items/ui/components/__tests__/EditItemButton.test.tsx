@@ -38,21 +38,35 @@ describe('EditItemButton', () => {
     ).not.toContain('item-form');
   });
 
-  it('ClickLoadSucceeds_PortalsItemFormIntoDocumentBody', async () => {
-    vi.mocked(getItemEditData).mockResolvedValue(editData as never);
-    render(<EditItemButton itemId="i1" user_id="u1" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
-    const form = await screen.findByTestId('item-form');
-    expect(document.body).toContainElement(form);
-    expect(getItemEditData).toHaveBeenCalledWith('i1');
-  });
+  describe('LoadSucceeds', () => {
+    const renderWithLoadSuccess = () => {
+      vi.mocked(getItemEditData).mockResolvedValue(editData as never);
+      render(<EditItemButton itemId="i1" user_id="u1" />);
+    };
 
-  it('FormOnClose_RemovesPortaledForm', async () => {
-    vi.mocked(getItemEditData).mockResolvedValue(editData as never);
-    render(<EditItemButton itemId="i1" user_id="u1" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
-    fireEvent.click(await screen.findByTestId('item-form'));
-    expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
+    it('Click_PortalsItemFormIntoDocumentBody', async () => {
+      renderWithLoadSuccess();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+      const form = await screen.findByTestId('item-form');
+      expect(document.body).toContainElement(form);
+      expect(getItemEditData).toHaveBeenCalledWith('i1');
+    });
+
+    it('FormOnClose_RemovesPortaledForm', async () => {
+      renderWithLoadSuccess();
+      fireEvent.click(screen.getByRole('button', { name: 'Edit item' }));
+      fireEvent.click(await screen.findByTestId('item-form'));
+      expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
+    });
+
+    it('ClickAfterFormOpen_DoesNotRefetch', async () => {
+      renderWithLoadSuccess();
+      const button = screen.getByRole('button', { name: 'Edit item' });
+      fireEvent.click(button);
+      await screen.findByTestId('item-form');
+      fireEvent.click(button);
+      expect(getItemEditData).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('ClickWhileLoadPending_DoesNotRefetch', async () => {
@@ -67,16 +81,6 @@ describe('EditItemButton', () => {
     expect(getItemEditData).toHaveBeenCalledTimes(1);
     resolveLoad(editData);
     await screen.findByTestId('item-form');
-  });
-
-  it('ClickAfterFormOpen_DoesNotRefetch', async () => {
-    vi.mocked(getItemEditData).mockResolvedValue(editData as never);
-    render(<EditItemButton itemId="i1" user_id="u1" />);
-    const button = screen.getByRole('button', { name: 'Edit item' });
-    fireEvent.click(button);
-    await screen.findByTestId('item-form');
-    fireEvent.click(button);
-    expect(getItemEditData).toHaveBeenCalledTimes(1);
   });
 
   it('LoadReturnsNull_ShowsCouldNotLoadItemToast-NoForm', async () => {
