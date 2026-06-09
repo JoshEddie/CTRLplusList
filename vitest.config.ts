@@ -137,12 +137,20 @@ export default defineConfig({
         // test-app-frame (sub-proposal 4.1) — locked at universal COVERAGE_FLOOR.
         'app/ui/components/AppFrame.tsx': COVERAGE_FLOOR,
         'app/ui/components/AppNav.tsx': COVERAGE_FLOOR,
-        'app/ui/components/AppMenu.tsx': COVERAGE_FLOOR,
         'app/ui/components/AppLogo.tsx': COVERAGE_FLOOR,
-        'app/ui/components/Logo.tsx': COVERAGE_FLOOR,
         'app/ui/components/Header.tsx': COVERAGE_FLOOR,
-        'app/ui/components/Nav.tsx': COVERAGE_FLOOR,
         'app/ui/hooks/useKeyboardOffset.ts': COVERAGE_FLOOR,
+        // test-account-auth-ui (sub-proposal 9.3) — locked at universal COVERAGE_FLOOR.
+        // The old-chrome cluster (AppMenu/Logo/Nav, formerly floored under 4.1)
+        // was deleted as dead code; their entries are removed above.
+        'app/(auth)/ui/components/User.tsx': COVERAGE_FLOOR,
+        'app/(auth)/ui/components/UserMenu.tsx': COVERAGE_FLOOR,
+        'app/(auth)/ui/components/UserAvatarPopover.tsx': COVERAGE_FLOOR,
+        'app/(auth)/ui/components/UserImage.tsx': COVERAGE_FLOOR,
+        'app/(auth)/ui/components/SignInPage.tsx': COVERAGE_FLOOR,
+        'app/(auth)/ui/components/SignInButton.tsx': COVERAGE_FLOOR,
+        'app/(auth)/ui/components/AuthContainer.tsx': COVERAGE_FLOOR,
+        'app/(auth)/sign-in/page.tsx': COVERAGE_FLOOR,
         // test-following (sub-proposal 4.2) — locked at universal COVERAGE_FLOOR.
         'app/actions/follows.ts': COVERAGE_FLOOR,
         // test-list-item-management (sub-proposal 4.9) — locked at universal
