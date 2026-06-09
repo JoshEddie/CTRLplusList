@@ -22,7 +22,7 @@ Don't explain WHAT the code does — well-named identifiers already do that. Don
 
 - Extract duplicated, identical-by-design logic into one home on sight — don't ask whether to, the answer is yes.
 - Keep copies apart only when you can name them as different concepts that will change for different reasons; code that merely looks alike is not a duplication to merge.
-- Leave three trivial similar lines alone — three similar lines is better than a premature abstraction.
+- The exception is the genuinely trivial: a shared line or two with no structure can stay inline — three similar lines beats a premature abstraction. But *trivial* is the bar, not the copy count. Weigh three forces: **weight** (a line or two can stay; a typed factory, multi-field literal, or anything with branching extracts), **drift hazard** (extract when one copy can fall behind **silently** — still compiles, still passes, but now means something different; inline is fine when divergence fails loudly or doesn't matter), and **count** (three or more extracts even when trivial — but count only escalates, it never overrides weight or drift). Two copies is a judgment call on those forces, not an always-or-never: a heavy or drift-prone unit earns one home even at two.
 
 #### Over-generality (KISS)
 

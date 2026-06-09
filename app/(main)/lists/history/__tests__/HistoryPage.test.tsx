@@ -2,11 +2,10 @@ import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ListCardData } from '@/app/ui/components/ListCard';
 import { auth } from '@/lib/auth';
 import { getUserIdByEmail, getVisitHistoryByUser } from '@/lib/dal';
-import type { HistoryRowData } from '../HistoryCard';
 import HistoryPage from '../HistoryPage';
+import { makeRow } from './test-helpers';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/dal', () => ({
@@ -32,17 +31,6 @@ vi.mock('../HistoryActions', () => ({
 vi.mock('../HistoryCard', () => ({
   default: () => <div data-testid="history-card" />,
 }));
-
-function makeRow(overrides: Partial<HistoryRowData> = {}): HistoryRowData {
-  return {
-    user_id: 'viewer',
-    list_id: 'l1',
-    last_visited_at: new Date('2021-01-01'),
-    favorited_at: null,
-    list: { id: 'l1' } as ListCardData,
-    ...overrides,
-  };
-}
 
 beforeEach(() => {
   vi.clearAllMocks();

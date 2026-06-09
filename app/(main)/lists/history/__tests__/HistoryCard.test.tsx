@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ListCardData } from '@/app/ui/components/ListCard';
-import HistoryCard, { HistoryRowData } from '../HistoryCard';
+import HistoryCard from '../HistoryCard';
+import { makeRow } from './test-helpers';
 
 vi.mock('@/app/ui/components/ListCard', () => ({
   default: (props: { bookmarked?: boolean; showOwner?: boolean }) => (
@@ -18,17 +18,6 @@ vi.mock('../HistoryActions', () => ({
     <button type="button" data-testid="remove-visit" data-list-id={listId} />
   ),
 }));
-
-function makeRow(overrides: Partial<HistoryRowData> = {}): HistoryRowData {
-  return {
-    user_id: 'viewer',
-    list_id: 'l1',
-    last_visited_at: new Date('2021-01-01'),
-    favorited_at: null,
-    list: { id: 'l1' } as ListCardData,
-    ...overrides,
-  };
-}
 
 describe('HistoryCard', () => {
   it('FavoritedRow_PassesBookmarkedTrueToListCard', () => {

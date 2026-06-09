@@ -1,23 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ListCardData } from '@/app/ui/components/ListCard';
-import BookmarksList, { BookmarkRowData } from '../BookmarksList';
+import BookmarksList from '../BookmarksList';
+import { makeRow } from './test-helpers';
 
 vi.mock('@/app/ui/components/ListCard', () => ({
   default: (props: { showOwner?: boolean }) => (
     <div data-testid="list-card" data-show-owner={String(props.showOwner)} />
   ),
 }));
-
-function makeRow(overrides: Partial<BookmarkRowData> = {}): BookmarkRowData {
-  return {
-    user_id: 'viewer',
-    list_id: 'l1',
-    list: { id: 'l1' } as ListCardData,
-    ...overrides,
-  };
-}
 
 describe('BookmarksList', () => {
   describe('Empty', () => {
@@ -29,7 +20,7 @@ describe('BookmarksList', () => {
   });
 
   describe('Populated', () => {
-    it('Rows_RendersGridWithOneItemPerRow', () => {
+    it('Rows_RendersGridWithOneItemPerRow-ForwardsShowOwnerToEachCard', () => {
       render(
         <BookmarksList
           rows={[makeRow({ list_id: 'l1' }), makeRow({ list_id: 'l2' })]}
@@ -37,14 +28,10 @@ describe('BookmarksList', () => {
       );
       expect(screen.getByRole('list')).toHaveClass('list-card-grid');
       expect(screen.getAllByRole('listitem')).toHaveLength(2);
-      expect(screen.getAllByTestId('list-card')).toHaveLength(2);
-    });
-
-    it('Rows_PassesShowOwnerToEachCard', () => {
-      render(<BookmarksList rows={[makeRow()]} />);
-      expect(screen.getByTestId('list-card')).toHaveAttribute(
-        'data-show-owner',
-        'true'
+      const cards = screen.getAllByTestId('list-card');
+      expect(cards).toHaveLength(2);
+      cards.forEach((card) =>
+        expect(card).toHaveAttribute('data-show-owner', 'true')
       );
     });
   });

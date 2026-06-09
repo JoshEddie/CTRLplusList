@@ -57,7 +57,7 @@ describe('isFollowing', () => {
 });
 ```
 
-Threshold: CLAUDE.md's "leave three trivial similar lines alone" applies — a single shared line across two tests can stay inline. Hoist when the shared Arrange is non-trivial or three-plus tests key off it, where the `beforeEach` also documents the shared world.
+Threshold: this is CLAUDE.md's duplication judgment (weight · drift · count), and it governs both placements — a `beforeEach` when the sharers live in one file, a colocated `__tests__/test-helpers.tsx` when they span files. A single shared line can stay inline; extract when the Arrange is non-trivial, when three-plus tests key off it, or when it would **drift silently**. Fixtures lean toward extract earlier than ordinary code: a stale fixture doesn't fail, it makes a test pass while quietly exercising the wrong thing — so a typed, multi-field factory reused even twice is usually worth one home. (A typed factory is partly self-policing — TypeScript breaks every copy when the *shape* changes — but **value** drift, a changed default, is silent and uncaught: that's the hazard.)
 
 ## Coverage ignore annotations require a rationale
 
@@ -126,7 +126,7 @@ app/ui/components/button/
     └── test-helpers.ts        ← test-only helpers go here too
 ```
 
-Test-only fixtures and helpers (anything imported only by `*.test.*` files) SHOULD live inside the same `__tests__/` directory as the tests that use them. They MUST be added to `vitest.config.ts`'s `coverage.exclude` so they don't pollute the coverage report.
+Test-only fixtures and helpers (anything imported only by `*.test.*` files) SHOULD live inside the same `__tests__/` directory as the tests that use them. Kept there, the `**/__tests__/**` and `**/*.test.*` entries already in `vitest.config.ts`'s `coverage.exclude` keep them out of the coverage report automatically — no per-file exclude entry is needed. A helper placed *outside* a `__tests__/` directory MUST be excluded explicitly.
 
 Vitest's default include globs (`**/*.test.ts`, `**/*.test.tsx`) and the project's coverage `include` (`['lib/**', 'app/**', 'hooks/**']`) match `__tests__/` paths automatically — no config change is needed to adopt this layout for a new test.
 

@@ -1,11 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ListCardData } from '@/app/ui/components/ListCard';
 import { auth } from '@/lib/auth';
 import { getBookmarkedListsByUser, getUserIdByEmail } from '@/lib/dal';
 import BookmarksPage from '../BookmarksPage';
-import type { BookmarkRowData } from '../BookmarksList';
+import { makeRow } from './test-helpers';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/dal', () => ({
@@ -28,15 +27,6 @@ vi.mock('@/app/ui/components/ListCard', () => ({
     <div data-testid="list-card" data-show-owner={String(props.showOwner)} />
   ),
 }));
-
-function makeRow(overrides: Partial<BookmarkRowData> = {}): BookmarkRowData {
-  return {
-    user_id: 'viewer',
-    list_id: 'l1',
-    list: { id: 'l1' } as ListCardData,
-    ...overrides,
-  };
-}
 
 beforeEach(() => {
   vi.clearAllMocks();
