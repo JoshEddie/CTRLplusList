@@ -2,8 +2,524 @@
 
 ## Purpose
 
-Establish a checkable contract for the repository's test-authoring conventions, starting with the mechanically-enforceable subset of the Vitest title-shape convention. Created by archiving change `enforce-test-title-lint`.
+Govern the repository's test suite as a system: the pre-merge gate, runner and
+layout conventions, fixture and mocking boundaries, the universal per-file
+coverage floor, the cognitive-complexity gate, test-substance and naming bars,
+the per-carve-out audit obligation, the data-layer integration harness, and
+the e2e execution model. Created by archiving change `enforce-test-title-lint`;
+completed at the `test-coverage` program's close-out, when the Tier-1
+foundation rules accumulated across its sub-proposals (per that change's
+design D13) rolled up here. Carve-out bookkeeping (which slice was tested
+when) lives only in the archived sub-proposals.
+
 ## Requirements
+
+### Requirement: Test suite SHALL exist and SHALL run as a pre-merge gate
+
+The repository SHALL include an automated test suite executed via `npm test`. The `test` command SHALL exit non-zero if any test fails, and the pre-merge gate SHALL block merge on a non-zero exit. The pre-merge gate SHALL consist of four required tasks executed independently: `lint`, `tsc --noEmit`, `build`, and `test`. The `test` gate SHALL be encoded as a required task alongside the existing three in `openspec/config.yaml`'s `tasks` rule, and every `tasks.md` written after this capability is established SHALL include the four-gate pre-merge section with separately-checkable items.
+
+#### Scenario: Failing test blocks merge
+
+- **WHEN** any test in the suite fails on a branch under review
+- **THEN** `npm test` exits non-zero
+- **AND** the pre-merge gate fails
+- **AND** the four-gate pre-merge section of the change's `tasks.md` cannot be checked complete
+
+#### Scenario: Pre-merge tasks are separately checkable
+
+- **WHEN** a contributor writes a new `tasks.md` after the testing-foundation capability is established
+- **THEN** the pre-merge section contains four discrete tasks (one per gate)
+- **AND** partial failure (e.g., test fails but lint passes) is visible in the checklist
+
+### Requirement: Test files SHALL colocate with source under a consistent layout
+
+Test files SHALL be colocated with the source they test, but SHALL live inside a `__tests__/` directory adjacent to the source module — NOT alongside it. The colocation principle (tests stay next to the code they exercise) is preserved; the `__tests__/` folder keeps source-directory listings focused on production files and groups multiple tests for the same module without polluting the parent directory. The file-naming pattern remains `<source>.test.<ext>` (e.g., `Button.tsx` → `__tests__/Button.test.tsx`).
+
+End-to-end tests SHALL live under a top-level `e2e/` directory. Cross-module shared fixtures SHALL live under `test/fixtures/`. Cross-module shared helpers and custom matchers SHALL live under `test/helpers/`. Test-only helpers used by tests within a single `__tests__/` directory SHALL live inside that same `__tests__/` directory (e.g., `app/ui/components/button/__tests__/test-helpers.ts`); they SHALL NOT be hoisted to `test/helpers/` unless a second `__tests__/` directory begins importing them. Per-test-file fixtures or helpers that are not reused SHALL stay inline; only repeated patterns extract.
+
+Test-only files inside `__tests__/` directories (including local `test-helpers.*` modules) SHALL NOT appear in coverage reports — `vitest.config.ts`'s `coverage.exclude` SHALL contain a `**/__tests__/**` glob that covers them.
+
+#### Scenario: Component test colocation under __tests__/
+
+- **WHEN** a contributor adds tests for `app/ui/components/button/Button.tsx`
+- **THEN** the tests live at `app/ui/components/button/__tests__/Button.test.tsx`
+- **AND** the test imports the production module via a parent-relative specifier (`import { Button } from '../Button'`)
+
+#### Scenario: Hook test colocation under __tests__/
+
+- **WHEN** a contributor adds tests for `hooks/use-media-query.ts`
+- **THEN** the tests live at `hooks/__tests__/use-media-query.test.tsx`
+- **AND** server-side variants live at `hooks/__tests__/use-media-query.server.test.ts`
+
+#### Scenario: Local test helper colocation
+
+- **WHEN** two test files inside `app/ui/components/button/__tests__/` need the same render helper
+- **THEN** the helper lives at `app/ui/components/button/__tests__/test-helpers.ts`
+- **AND** both tests import it via `import { ... } from './test-helpers'`
+- **AND** the helper is NOT reported in coverage (matched by `**/__tests__/**` exclude)
+
+#### Scenario: Cross-module helper extraction
+
+- **WHEN** the same helper is needed by tests inside two different `__tests__/` directories (e.g., a DB fixture used by both `lib/__tests__/visibility.test.ts` and `app/actions/__tests__/lists.test.ts`)
+- **THEN** the helper extracts to `test/helpers/` (or `test/fixtures/` for fixture data) and both tests import from the extracted location
+
+#### Scenario: E2E test placement
+
+- **WHEN** a contributor adds a Playwright test for the list-creation flow
+- **THEN** the spec lives under `e2e/` (e.g., `e2e/list-creation.spec.ts`)
+- **AND** it does NOT live under any `__tests__/` directory
+
+### Requirement: Tests SHALL NOT call rate-limited external services
+
+Tests SHALL mock the network boundary of any external service whose real provider imposes a quota, charges money per call, or requires interactive credentials. Known boundaries in this category at the time of writing: the `app/api/image-search` upstream provider, NextAuth Google OAuth, and any third-party service added later. The mocks SHALL replace the network call (e.g., `fetch` interception, MSW handlers, or framework-equivalent), NOT internal application modules. Internal modules — DAL functions, server actions, `lib/`, hooks — SHALL NOT be mocked when their dependencies are local; integration tests SHALL exercise them against the real test database.
+
+#### Scenario: Image-search upstream is mocked
+
+- **WHEN** a test exercises `GET /api/image-search`
+- **THEN** the upstream image provider's network endpoint is intercepted at the `fetch` boundary
+- **AND** the test asserts on the route's auth + rate-limit + response-shape behavior against the intercepted response
+- **AND** no real call to the upstream provider occurs in CI or local runs
+
+#### Scenario: NextAuth is not invoked against real Google
+
+- **WHEN** a test requires an authenticated session
+- **THEN** the test uses the local-mode auth bypass (`USE_PG_DRIVER=1`, with the `BYPASS_SESSION_USER` identity selector — see the e2e execution-model requirements below) or an equivalent fixture
+- **AND** no OAuth handshake to a real Google endpoint occurs
+
+#### Scenario: DAL functions are not mocked from action tests
+
+- **WHEN** a server-action test exercises a mutation that calls a DAL read
+- **THEN** the test runs against the real test database (per the DB-under-test choice)
+- **AND** the DAL function is NOT mocked or stubbed
+
+### Requirement: Seed-as-fixture for E2E SHALL be versioned and audited for negative cases
+
+`scripts/seed-dev-users.ts` SHALL serve as the canonical E2E fixture. E2E tests MAY assert against the seeded entities. Changes to the seed SHALL be treated as breaking changes to the E2E suite — the seed file SHALL carry a header comment after the testing-foundation capability is established noting that any edit MUST be accompanied by review of E2E specs that depend on the affected entities. Before the testing-foundation capability is established, an audit SHALL determine whether the seed covers negative cases required by E2E (lists owned by other users that `dev-test-viewer` SHOULD NOT see, etc.) and either (a) extend `seed-dev-users.ts` with the missing cases, or (b) add a parallel `scripts/seed-e2e-fixtures.ts` for cases that would pollute dev UX.
+
+#### Scenario: Seed change requires E2E review
+
+- **WHEN** a contributor modifies `scripts/seed-dev-users.ts` after the testing-foundation capability is established
+- **THEN** the change description identifies which E2E specs depend on the modified entities
+- **AND** those specs are reviewed for required updates as part of the same change
+
+#### Scenario: Negative-case audit deliverable
+
+- **WHEN** the `test-foundation-spike` sub-proposal completes
+- **THEN** its deliverables include a written audit identifying any visibility/authorization negative case not currently reachable from the seed
+- **AND** for each missing case, the audit specifies the disposition: extend `seed-dev-users.ts` OR add `seed-e2e-fixtures.ts` OR accept-with-rationale
+
+### Requirement: Coverage SHALL be enforced per-file with a single universal floor
+
+Coverage SHALL be measured and enforced per file, not as a layer or repo-wide aggregate. There SHALL be exactly one floor applying to every enumerated file regardless of file class:
+
+| Metric | Floor |
+| --- | --- |
+| Lines | 98% |
+| Statements | 98% |
+| Branches | 95% |
+| Functions | **100% (non-negotiable)** |
+
+The `functions: 100%` floor is non-negotiable: an uninvoked exported function is a real test gap, not slop. Dead code SHALL be deleted, not protected by a lower floor.
+
+Files excluded from coverage enforcement (informational only): `*.d.ts`; generated drizzle artifacts under `drizzle/`; `app/sw.ts`; test files themselves and their `__tests__/` siblings (matched by `**/__tests__/**`); barrel `index.ts` re-exports of zero runtime behavior (matched by `app/ui/components/*/index.ts` — NOT a global `**/index.ts`, which would silently exclude `db/index.ts` and other top-level index modules that carry runtime); type-only `**/types.ts`; layout files without branching logic. The narrow scope of the index-barrel exclude is invariant: a `**/index.ts` exclude SHALL NOT be introduced.
+
+While the parent `test-coverage` change is in flight, the per-file threshold list in `vitest.config.ts` MAY enumerate only files with landed tests (so files in untested carve-outs do not fail the gate they have no opportunity to pass). When the parent `test-coverage` change archives, the per-file enumeration SHALL be removed and the floor SHALL apply universally across `coverage.include` — at that point, every file in `coverage.include` (subject to `coverage.exclude`) is gated against the universal floor.
+
+Each test sub-proposal SHALL enforce the coverage floor on every file in its declared carve-out at archive time. A repo-wide coverage report SHALL be generated for visibility but SHALL NOT gate merge until the parent `test-coverage` change archives.
+
+#### Scenario: Functions floor is non-negotiable
+
+- **WHEN** a sub-proposal's carve-out includes a file with an exported helper that has no invoking test
+- **THEN** the file's `functions` coverage metric is below 100%
+- **AND** the pre-merge `test` gate fails
+- **AND** the disposition is to write the missing test OR delete the unreachable function — NOT to lower the floor
+
+#### Scenario: Small helper cannot hide behind fat file
+
+- **WHEN** a sub-proposal's carve-out includes both a 500-line component and a 30-line helper
+- **THEN** coverage is computed per file
+- **AND** the 30-line helper meeting the floor is checked independently of the 500-line component meeting the floor
+- **AND** an aggregate average across the two does NOT satisfy the gate
+
+#### Scenario: Per-file enumeration during test-coverage flight
+
+- **WHEN** the parent `test-coverage` change is in flight (not yet archived) and a contributor adds the file `app/(main)/lists/page.tsx` to production without writing tests for it yet
+- **THEN** the file does NOT appear in `vitest.config.ts`'s per-file threshold enumeration
+- **AND** the pre-merge `test` gate does NOT fail on that file
+- **AND** the file's coverage gap is captured in the parent change's task list awaiting its carve-out sub-proposal
+
+#### Scenario: Enumeration deletes at test-coverage archive
+
+- **WHEN** the parent `test-coverage` change archives via its task 7.3 baseline
+- **THEN** the per-file enumeration in `vitest.config.ts` is removed
+- **AND** the universal floor applies to every file matched by `coverage.include` and not excluded by `coverage.exclude`
+
+#### Scenario: Index-barrel exclude is narrow
+
+- **WHEN** a contributor proposes adding `**/index.ts` to `coverage.exclude`
+- **THEN** the proposal is rejected
+- **AND** the only acceptable index-barrel exclude is `app/ui/components/*/index.ts` (zero-runtime re-exports under the primitive-family convention)
+- **AND** `db/index.ts` (which carries Drizzle init) is NOT excluded
+
+### Requirement: Files SHALL meet the universal floor via tests or annotated excludes — never a lowered floor
+
+A file enumerated in `vitest.config.ts`'s per-file thresholds SHALL meet the universal floor (`lines: 98, statements: 98, branches: 95, functions: 100`). When a region of source is genuinely uncoverable (e.g., a defensive `throw` on an unreachable branch, an SSR-only fallback that cannot execute in jsdom, a `try/catch` whose `catch` block guards against a condition the runtime contract forbids), the disposition SHALL be exactly one of:
+
+- **(a)** Write the test that exercises the region; OR
+- **(b)** Mark the region with `/* v8 ignore next */` (or `/* v8 ignore start */ … /* v8 ignore stop */` for multi-line regions) and an immediately-preceding one-line comment naming the specific reason the region is uncoverable.
+
+Lowering the floor for a file (or class of files) SHALL NOT be an acceptable disposition. Adding a TODO, follow-up issue, or unaddressed note SHALL NOT be an acceptable disposition. The reviewer of any PR that introduces a `/* v8 ignore */` annotation SHALL verify the rationale comment is specific (names what makes the region uncoverable, not "for coverage") before approving.
+
+#### Scenario: Test-first disposition
+
+- **WHEN** a file is at 97% statements coverage because one error-path branch is not yet exercised
+- **THEN** the disposition is to write the test exercising that branch
+- **AND** the floor is NOT lowered to 97% to accommodate the gap
+
+#### Scenario: Annotated exclude with rationale
+
+- **WHEN** a file contains a `throw new Error('unreachable: TS exhaustiveness has narrowed all cases')` that cannot be reached at runtime without violating the function's typed contract
+- **THEN** the line is preceded by a one-line comment naming the typed-contract guarantee
+- **AND** the line carries `/* v8 ignore next */`
+- **AND** the file's coverage report shows the line as ignored, not counted against the floor
+
+#### Scenario: Floor-lowering rejected
+
+- **WHEN** a sub-proposal proposes lowering a file's `branches` floor from 95 to 90 to accommodate an uncovered branch
+- **THEN** the proposal is rejected at review
+- **AND** the disposition options are (a) write the test or (b) annotate with `/* v8 ignore */` + rationale
+
+#### Scenario: Vague rationale rejected
+
+- **WHEN** a PR introduces `/* v8 ignore next */` with a preceding comment of "// coverage" or "// can't test"
+- **THEN** the reviewer requests a specific rationale (what runtime contract, what branch, why unreachable)
+- **AND** the PR is not approved until the comment names the specific reason
+
+### Requirement: Per-file thresholds SHALL reference a single shared COVERAGE_FLOOR constant
+
+`vitest.config.ts` SHALL define exactly one coverage-floor object — `const COVERAGE_FLOOR = { lines: 98, statements: 98, branches: 95, functions: 100 } as const;` — at module scope. Every per-file entry in `test.coverage.thresholds` SHALL reference this constant by identity (the object reference, not a copy). Per-file numeric variation SHALL NOT exist: a contributor reading the config SHALL be able to answer "what is the bar" in one read.
+
+If a future need arises to vary thresholds by file (e.g., a file class with a documented exception), the variation SHALL be introduced as a SECOND named constant with a comment naming the exception's rationale — never as inline numeric overrides scattered across the threshold list.
+
+#### Scenario: Single source of truth
+
+- **WHEN** a contributor reads `vitest.config.ts`
+- **THEN** exactly one `COVERAGE_FLOOR` (or named-variant) constant is visible at module scope
+- **AND** every per-file threshold entry reads as `'<path>': COVERAGE_FLOOR,`
+
+#### Scenario: Inline numeric override rejected
+
+- **WHEN** a PR introduces a per-file entry like `'lib/foo.ts': { lines: 95, statements: 95, branches: 80, functions: 90 }`
+- **THEN** the PR is rejected at review
+- **AND** the contributor either (a) writes the tests/annotations needed to use `COVERAGE_FLOOR` or (b) introduces a named-exception constant with a rationale comment
+
+#### Scenario: Adding a new tested file
+
+- **WHEN** a future sub-proposal lands tests for `app/actions/lists.ts`
+- **THEN** the sub-proposal adds exactly one line to `vitest.config.ts`: `'app/actions/lists.ts': COVERAGE_FLOOR,`
+- **AND** the contributor makes no judgment call on threshold values
+
+### Requirement: Tests SHALL assert observable behavior, not execution
+
+Every test SHALL contain at least one assertion that constrains the production code's observable behavior — a specific return value, rendered output, thrown error, network call shape, or persisted state change that would differ if the production code were subtly wrong. Tests SHALL NOT consist solely of any of the following ("execution-only" patterns):
+
+- **Tautological assertions** — assertions that hold for any input, e.g. `expect(true).toBe(true)`, `expect(arr.length).toBeGreaterThanOrEqual(0)`, comparisons of a value against itself, `expect(x).toBeDefined()` / `expect(x).toBeTruthy()` as the only assertion on a value the test itself constructed.
+- **Execute-for-coverage calls** — invoking production code without any `expect(...)` on the result, error, or side effect, written purely to lift the coverage number.
+- **Snapshot-only tests** where the snapshot is the sole assertion AND the snapshot was machine-generated rather than authored against a known-correct shape.
+
+The `test-foundation` sub-proposal SHALL enable ESLint rules that mechanically catch the most common forms: at minimum `vitest/expect-expect` (or runner-equivalent — forbids tests with no `expect`), `vitest/valid-expect`, and `vitest/no-standalone-expect`. A project-specific rule configuration SHALL additionally flag the tautology shortlist above (`.length` compared against `0` with `toBeGreaterThanOrEqual` / `toBeGreaterThan(-1)`, `toBe(true)` / `toBe(false)` against a literal of the same value, lone `toBeDefined()` / `toBeTruthy()` on a value constructed inside the test body). When the runner is not vitest, the equivalent plugin (`eslint-plugin-jest`, `eslint-plugin-jest-extended`, etc.) SHALL be substituted.
+
+The rule SHALL land at severity `error` in `test-foundation` so the pre-merge `lint` gate enforces it from day one — there is no warn-then-promote ramp for this rule because no pre-existing tests need grandfathering.
+
+#### Scenario: Test with no assertions fails lint
+
+- **WHEN** a test body calls production code but contains no `expect(...)` call
+- **THEN** `npm run lint` reports an `expect-expect` (or runner-equivalent) error
+- **AND** the pre-merge `lint` gate fails
+
+#### Scenario: Tautological length assertion fails lint
+
+- **WHEN** a test asserts `expect(result.length).toBeGreaterThanOrEqual(0)` as the only assertion on `result`
+- **THEN** lint reports the tautology
+- **AND** the test SHALL be rewritten to assert the expected length, contents, or another observable property — or deleted if the behavior is already covered elsewhere
+
+#### Scenario: Substantive coverage-driven test is accepted
+
+- **WHEN** a test calls a function to exercise an uncovered branch AND asserts on its return value, thrown error, rendered output, or persisted state change
+- **THEN** the test passes lint
+- **AND** counts toward the per-file coverage floor
+
+#### Scenario: Authored snapshot is accepted, machine-generated snapshot-only is not
+
+- **WHEN** a snapshot test is the only assertion AND the snapshot file was written by running the test once and accepting whatever came out
+- **THEN** the audit (see four-audits requirement) flags the test for rewrite to assert specific properties
+- **AND WHEN** a snapshot is paired with at least one other assertion on the specific properties under test, OR the snapshot was hand-authored against a known-correct shape with a comment naming the contract being locked
+- **THEN** the test is accepted
+
+### Requirement: Cognitive complexity SHALL be capped at 15 per function
+
+The project SHALL enable `eslint-plugin-sonarjs` with the `sonarjs/cognitive-complexity` rule configured at threshold 15 and severity `error`, applied globally. (Rollout history: the rule landed at `warn` globally when the capability was established, and each test sub-proposal promoted its carve-out's files to `error` via per-file `overrides` at archive time; the governing `test-coverage` change's close-out universalized the gate and removed the per-file overrides as redundant.) Per-line disables (`// eslint-disable-next-line sonarjs/cognitive-complexity`) are permitted ONLY with an accompanying comment naming the reason; bare disables SHALL be a lint error.
+
+#### Scenario: Over-threshold function fails lint
+
+- **WHEN** a function exceeds cognitive complexity 15 in any file
+- **THEN** `npm run lint` reports a `sonarjs/cognitive-complexity` error (not a warning)
+- **AND** the pre-merge `lint` gate fails
+
+#### Scenario: Justified disable is permitted
+
+- **WHEN** a function legitimately exceeds the threshold
+- **THEN** a per-line disable comment naming the reason is accepted by lint
+- **AND** a bare disable without reason fails lint
+
+### Requirement: Each test sub-proposal SHALL perform four audits and dispose of every finding
+
+Each test sub-proposal SHALL include in its `tasks.md` an audit section, performed and recorded BEFORE the coverage-validation task, covering four audits:
+
+1. **Duplication audit** (on the carve-out source) — duplicated logic in source, duplicated test setup, duplicated fixtures within or near the carve-out.
+2. **Complexity audit** (on the carve-out source) — functions in the carve-out at or above cognitive complexity 15.
+3. **Testability audit** (on the carve-out source) — code that resisted testing (wide mocking surface, unreachable branches, side-effect entanglement, hidden global state).
+4. **Assertion audit** (on the new test files) — every new test file SHALL be reviewed against the "Tests SHALL assert observable behavior, not execution" requirement. For each test, the audit SHALL record in one sentence the observable behavior under test (return value, rendered output, thrown error, persisted state, network call shape). Tests that exist only to lift coverage, assert tautologies, or smoke-execute a function without checking its result SHALL be rewritten to assert observable behavior OR deleted (if the behavior is genuinely covered by another test in the carve-out). Lint-rule coverage of the tautology shortlist does NOT eliminate this audit — the reviewer SHALL also catch substance failures the rules miss (e.g., asserting on an irrelevant property, asserting on a value the mock just returned, missing the actual contract).
+
+Every finding from any of the four audits SHALL be disposed of in exactly one of two ways: **(a) fixed in-place within the sub-proposal**, with the new tests proving behavior preservation; OR **(b) deferred as a new sub-proposal added to the governing `test-coverage` change's `tasks.md`** (applies to audits 1–3 only — assertion-audit findings SHALL always be fixed in-place, since they concern the sub-proposal's own newly-written tests). Deferring a finding as a TODO comment, follow-up issue, or unaddressed note SHALL NOT be an acceptable disposition.
+
+#### Scenario: Assertion audit catches a substance failure the linter missed
+
+- **WHEN** the assertion audit reviews a test that calls `createList(...)` and then asserts only `expect(result).toBeTruthy()`
+- **THEN** the audit records the test as failing the substance bar (asserting on a value the production code constructed, with no constraint on its shape)
+- **AND** the test SHALL be rewritten to assert specific properties (e.g., `result.id` matches the expected pattern, `result.title` equals the input, the list appears in a follow-up `getListsByUser` call) OR deleted
+- **AND** the audit task records the disposition
+
+#### Scenario: Duplication found and fixed in-place
+
+- **WHEN** the audit finds two functions with copy-pasted logic in the carve-out
+- **THEN** the sub-proposal extracts the shared logic and updates callers
+- **AND** the new tests cover the extracted location
+- **AND** the audit task records "fixed in-place" with the commit/file reference
+
+#### Scenario: Architectural refactor exceeds carve-out
+
+- **WHEN** the audit finds a structural problem spanning files outside the carve-out
+- **THEN** the sub-proposal adds a new sibling sub-proposal entry to `test-coverage/tasks.md`
+- **AND** the audit task records "deferred" with a link to the new entry
+- **AND** the finding is NOT addressed in the current sub-proposal
+
+#### Scenario: TODO comment is not acceptable
+
+- **WHEN** an audit finding has not been fixed in-place AND no new sub-proposal entry has been added
+- **THEN** the sub-proposal fails its audit task
+- **AND** SHALL NOT proceed to coverage validation
+
+### Requirement: Sub-proposals SHALL refactor code in their carve-out as needed for testability
+
+Test sub-proposals SHALL have authority to refactor code within their declared carve-out when the refactor improves testability and the new tests prove behavior preservation. Refactors that span files outside the carve-out (cross-file dependencies, architectural changes, schema changes) SHALL NOT be performed in the test sub-proposal; they SHALL be deferred per the audit obligation. A sub-proposal's title MAY be renamed to indicate substantial refactor scope (e.g., `test-and-refactor-<family>`) without changing its carve-out boundary.
+
+#### Scenario: Single-file refactor inside carve-out
+
+- **WHEN** a function in the carve-out is too entangled to test
+- **THEN** the sub-proposal refactors the function within the same file
+- **AND** the new tests prove the refactored function preserves the original behavior
+
+#### Scenario: Cross-file refactor exceeds carve-out
+
+- **WHEN** the audit identifies an entanglement that requires moving code between files
+- **THEN** the sub-proposal does NOT perform the cross-file refactor
+- **AND** a new sibling sub-proposal is added to `test-coverage/tasks.md`
+
+### Requirement: Sub-proposals SHALL elevate non-trivial invariants to capability-spec SHALLs
+
+Each test sub-proposal SHALL examine the invariants its tests enforce. An invariant SHALL be added as a `### Requirement: ...` SHALL to the relevant capability spec if and only if all three of the following hold:
+
+(a) the invariant is non-obvious from the component name, function signature, or type;
+(b) the invariant would survive a reasonable reimplementation of the carve-out;
+(c) the invariant protects against a real failure mode — privacy leak, data loss, accessibility regression, or contract break for callers.
+
+Invariants that fail any of (a), (b), (c) SHALL remain tested but SHALL NOT be added to the spec. The sub-proposal's `tasks.md` SHALL record both elevated and non-elevated invariants with one-line rationale per non-elevation.
+
+#### Scenario: Non-obvious privacy invariant is elevated
+
+- **WHEN** a test enforces that the DAL filters out lists with `visibility = 'private'` for non-owner viewers
+- **THEN** the sub-proposal adds a SHALL to the `list-visibility` spec encoding this invariant
+- **AND** the audit task records the elevation
+
+#### Scenario: Trivial rendering assertion is not elevated
+
+- **WHEN** a test asserts that `<Button>` renders a `<button>` element
+- **THEN** the sub-proposal does NOT add this as a SHALL to the `button-system` spec
+- **AND** the audit task records non-elevation with rationale ("derivable from name/type")
+
+### Requirement: Drift-correcting spec deltas SHALL reach canonical via the standard archive-time rollup
+
+When a test sub-proposal's tests enforce a source behavior that contradicts an existing capability spec (spec drift), the correction SHALL be authored in the sub-proposal's own `changes/<name>/specs/<capability>/spec.md` delta — which is the source of truth and the artifact reviewers read during the change — and SHALL reach the active `openspec/specs/<capability>/spec.md` through the standard OpenSpec archive-time rollup, NOT by an apply-time write to the active spec ahead of archive. This is the single ratified convention for the program (per `test-coverage` design D13 and §7.11): it matches the OpenSpec tooling default, the `test-app-frame` precedent (commit `c2f3e19`), and the majority of sub-proposals, and it avoids the error-prone "Sync anyway vs Archive now" operator branch that an early apply-time write forces at archive. `test-visit-history`'s apply-time write (its §9.1) is recorded as a one-off divergence the program does NOT adopt going forward. Tier classification: **Tier 1** — this is a cross-cutting authoring convention, not carve-out bookkeeping.
+
+#### Scenario: A drift correction is deferred to archive-time rollup
+
+- **WHEN** a sub-proposal discovers the active spec contradicts shipped source the new tests lock, and authors the corrected requirement in its `changes/<name>/specs/<capability>/spec.md`
+- **THEN** the active `openspec/specs/<capability>/spec.md` is NOT edited during apply
+- **AND** the correction lands in the active spec only when the sub-proposal archives, via the standard rollup
+- **AND** `openspec validate <capability> --strict` passes against the sub-proposal's delta
+
+#### Scenario: Close-out reconciliation patches assigned to already-archived sub-proposals
+
+- **WHEN** a drift item is owned by a sub-proposal that has already archived without correcting it (so no in-flight `changes/<name>/specs/` delta exists to carry it), and the governing `test-coverage` change applies the fix as a close-out patch
+- **THEN** the governing change MAY edit the active capability spec directly as a close-out reconciliation, recording the edit in its `tasks.md`
+- **AND** this direct edit is the close-out exception, not a license for in-flight sub-proposals to write canonical at apply-time
+
+### Requirement: Foundation work SHALL be split into a spike and an implementation phase
+
+The first test sub-proposal SHALL be `test-foundation-spike`. Its deliverables SHALL include: (1) a written comparison of DB-under-test options (pglite, testcontainers, Neon branch) on speed, fidelity to `drizzle-orm/neon-http`, CI cost, and local-dev ergonomics; (2) a working proof-of-concept against one DAL function and one server action demonstrating the recommended approach; (3) the seed-fixture negative-case audit per the seed-as-fixture requirement; (4) the CI provider choice. The second sub-proposal SHALL be `test-foundation`, which lands the chosen runner, fixtures, helpers, CI configuration, the seed extension or parallel fixture, the `sonarjs` plugin at `warn`, the `npm test` script, and the `openspec/config.yaml` `tasks` rule edit. No other test sub-proposal SHALL begin implementation work until `test-foundation` archives, except that drafting MAY proceed in parallel.
+
+#### Scenario: Spike output blocks foundation
+
+- **WHEN** the `test-foundation` sub-proposal is being drafted
+- **THEN** it consumes the spike's deliverables as inputs
+- **AND** it does NOT proceed to implementation if any spike deliverable is missing
+
+#### Scenario: Sub-proposals wait on foundation
+
+- **WHEN** a `test-<carve-out>` sub-proposal other than the spike or foundation is being applied
+- **THEN** `test-foundation` is already archived
+- **AND** the runner, fixtures, helpers, CI, and complexity rule are in place
+
+### Requirement: Governing change SHALL track sub-proposal completion
+
+The `test-coverage` change's `tasks.md` SHALL list each planned test sub-proposal as a top-level checkbox. A sub-proposal's checkbox SHALL be checked when, and only when, that sub-proposal archives via `openspec archive`. The `test-coverage` change SHALL itself archive only after all listed sub-proposals are archived. New sub-proposals discovered mid-flight (per the audit deferral rule or per scope-growth of an existing sub-proposal) SHALL be added as new top-level checkboxes; their addition is the canonical record of the scope change.
+
+#### Scenario: Sub-proposal archive flips the checkbox
+
+- **WHEN** `openspec archive test-button-system` succeeds
+- **THEN** the corresponding checkbox in `openspec/changes/test-coverage/tasks.md` is marked complete in a follow-up commit
+
+#### Scenario: Governing change waits on all sub-proposals
+
+- **WHEN** the operator attempts to archive `test-coverage` with any sub-proposal checkbox unchecked
+- **THEN** the operator confirms the unchecked items are intentional non-goals (and removes them from `tasks.md` with rationale) OR completes them before archiving
+
+#### Scenario: Deferred finding becomes a new checkbox
+
+- **WHEN** a sub-proposal's audit defers an architectural refactor
+- **THEN** a new checkbox is added to `test-coverage/tasks.md` describing the deferred sub-proposal
+- **AND** the originating sub-proposal's audit task links to the new checkbox by name
+
+### Requirement: Vitest test names SHALL follow `<StateUnderTest>_<ExpectedBehavior>` shape
+
+Every Vitest `it(...)` / `test(...)` name SHALL have a **single underscore** marking the one state│behavior boundary: the state under test (input, scenario, or condition) on the left, the expected observable behavior (return value, thrown error, rendered output, persisted state change, or side effect) on the right. The **state SHALL be a single PascalCase token** — compound state is NOT expressed in the `it()` name but hoisted into nested `describe(...)` blocks (see the describe-structure requirement), even when used once. The **behavior SHALL be one PascalCase token, or several dash-joined PascalCase facets** when one trigger produces multiple observable effects (e.g. `ClickFollow_CallsFollowUser-ToastSuccess-RouterRefresh`); such single-trigger compounds SHALL NOT be split into separate tests (splitting would only duplicate setup). The unit being tested SHALL NOT appear in the `it()` name — it is carried by the enclosing `describe(...)`. Tokens are PascalCase with words concatenated (e.g. `InputPrivate`, `ReturnsOwner`, `RedirectsToLists`); literal identifiers from production code (enum values, exported constants, type names, CSS class strings) MAY appear in their native casing within a token (e.g. `ReturnsOWNER`). Parameterized / matrix tests MAY interpolate the parameter into any token, and printf placeholders (`%s`, `%#`) are permitted for `it.each`, as long as the result still parses on the single boundary underscore. This shape's mechanically-checkable subset is **lint-enforced at `error`** (see the separate enforcement requirement); the dash is the behavior-facet joiner in `it`/`test` only.
+
+The following name templates SHALL fail review as vacuous:
+
+- `should <X>` / `should work` / `should work correctly`
+- `<X> correctly` / `<X> properly` / `<X> as expected`
+- `renders` (without naming what is rendered or asserted)
+- `works` / `basic <X>` / `<X> basics`
+- Any name that does not constrain a specific observable property
+
+**Precision principle:** the structured shape SHALL NOT be used to launder imprecise naming. Both tokens MUST be as specific as the test's assertions. The behavior token SHALL name the specific error class or message text when the assertion is `.toThrow(...)`, the specific return value or shape when the assertion is `.toEqual(...)` / `.toBe(...)`, the specific rendered text or DOM property when the assertion is on the render tree, etc. Bare `Throws` (when the assertion matches a specific message), bare `Returns` / `ReturnsError` (when the assertion matches a specific value), and bare `Renders` (when the assertion matches specific output) SHALL fail review as the structured equivalent of vacuous prose. The state token is held to the same standard: opaque labels like `Garbage`, `Bad`, `Invalid` without an accompanying detail clause SHALL fail review; precise alternatives name what makes the input distinctive (`UnknownInput`, `EmptyString`, `NegativeNumber`, `DateMissingDayComponent`).
+
+This naming rule is complementary to — not a substitute for — the "Tests SHALL assert observable behavior, not execution" requirement: a substantively-asserting test with a vacuous name still fails the naming bar, and a vacuously-asserting test with a structured name still fails the substance bar.
+
+#### Scenario: Two-part shape parses on a single underscore
+
+- **WHEN** a contributor writes `it('InputPrivate_ReturnsOWNER', ...)`
+- **THEN** the name has exactly one underscore separating the state token (`InputPrivate`) from the behavior token (`ReturnsOWNER`)
+- **AND** the name passes the naming bar
+
+#### Scenario: Literal identifier preserves native casing
+
+- **WHEN** a test asserts the production code returns the `OWNER` enum constant
+- **THEN** the name MAY appear as `InputPrivate_ReturnsOWNER` (preserving the enum's native casing)
+- **AND** the name passes review
+
+#### Scenario: Parameterized name interpolates the parameter
+
+- **WHEN** a `for (const variant of VARIANTS)` loop generates names like `it(\`Variant${cap(variant)}DefaultSize_ReturnsBtn${cap(variant)}\`, ...)`
+- **THEN** the resulting strings (`VariantPrimaryDefaultSize_ReturnsBtnPrimary`, `VariantGhostDefaultSize_ReturnsBtnGhost`, ...) each parse as `<State>_<Behavior>`
+- **AND** each name passes review
+
+#### Scenario: Vague template fails review
+
+- **WHEN** a contributor writes `it('should work correctly', ...)`, `it('renders properly', ...)`, or `it('basic navigation', ...)`
+- **THEN** the assertion audit (see the four-audits requirement) flags the test for renaming
+- **AND** the test SHALL be renamed to the `<State>_<Behavior>` shape before the sub-proposal archives
+
+#### Scenario: Structured-but-imprecise name fails review
+
+- **WHEN** a test asserts `expect(() => fromDb('garbage')).toThrow(/Unknown list visibility value/)` AND is named `InputGarbage_Throws`
+- **THEN** the assertion audit flags both tokens for imprecision: `Garbage` is an opaque label that does not name the input's distinguishing property, and `Throws` is a bare behavior token that does not name the asserted error message
+- **AND** the test SHALL be renamed to something like `UnknownInput_ThrowsUnknownVisibilityValueError` (precise state token + precise behavior token matching the assertion's `.toThrow` pattern)
+- **AND WHEN** a test asserts `expect(render).toHaveTextContent('Add item')` AND is named `EmptyList_Renders`
+- **THEN** the audit flags `Renders` as a bare behavior token and the test SHALL be renamed to e.g. `EmptyList_RendersAddItemCallToAction`
+
+#### Scenario: Substance and naming bars are independent
+
+- **WHEN** a test is named `InputPrivate_ReturnsOWNER` but its only assertion is `expect(result).toBeTruthy()`
+- **THEN** the substance bar fails (per the observable-behavior requirement) regardless of the structured name
+- **AND WHEN** a test asserts a specific return value but is named `should decode private correctly`
+- **THEN** the naming bar fails regardless of the substantive assertion
+
+### Requirement: Vitest describe blocks SHALL follow a three-role naming convention
+
+Vitest `describe(...)` blocks play exactly three roles, each with its own naming rule. A given describe block SHALL be exactly one of these roles, and its name SHALL conform to the rule for that role:
+
+1. **Module describe** (outermost, optional) — names the module, component, or file under test in its **natural source casing**, matching how the file/module is named in code: `'visibility'`, `'buttonClasses'`, `'NumericInput'`, `'listAccess'`.
+2. **Function describe** — names a specific exported function or method in its **native identifier casing**, matching how the function is named in code: `'fromDb'`, `'guardListViewable'`, `'visibilityDbValues'`. A function describe MAY appear directly at the top level (collapsing the module layer) when the file covers a single exported function.
+3. **Scenario-family describe** — groups cases by an input or output condition with a **single PascalCase tag**: `'LegacyDbStrings'`, `'UnknownInputs'`, `'WhitespaceContract'`, `'VariantSizeMatrix'`, `'FalsyExtra'`. The tag SHALL contain no spaces, punctuation, or special characters. Underscores MAY separate genuinely distinct concepts (e.g. `'SSR_NoWindow'`) but a single tag is preferred. The tag SHALL name what UNIFIES the grouped cases — the precision principle from the `it()` naming rule extends here. Opaque labels like `'Misc'`, `'Various'`, `'Other'`, or bare `'EdgeCases'` (without naming which edges) SHALL fail review.
+
+Additionally:
+
+- Inner describes (function or scenario-family) SHALL NOT repeat the outer module name (no `describe('utils > formatCurrency', ...)`, no `describe('utils', () => describe('utilsFormatCurrency', ...))`).
+- A test file covering a single exported function MAY collapse to a single top-level `describe(<functionName>, ...)` without an outer module describe.
+- Scenario-family describes are NOT subject to the no-repeat rule because they do not name the unit.
+- Multiple scenario-family describes MAY nest under a function describe (e.g. `describe('fromDb', () => { describe('LegacyDbStrings', ...); describe('UnknownInputs', ...); })`).
+
+#### Scenario: Three-layer nesting follows role rules
+
+- **WHEN** a contributor tests `lib/visibility.ts` which exports `fromDb` and `visibilityDbValues`, and `fromDb` has natural case clusters
+- **THEN** the file uses `describe('visibility', () => { describe('fromDb', () => { describe('LegacyDbStrings', ...); describe('UnknownInputs', ...); }); describe('visibilityDbValues', ...); })`
+- **AND** the module layer (`'visibility'`) uses natural source casing
+- **AND** the function layer (`'fromDb'`, `'visibilityDbValues'`) uses native identifier casing
+- **AND** the scenario-family layer (`'LegacyDbStrings'`, `'UnknownInputs'`) uses single PascalCase tags
+- **AND** no inner describe repeats `'visibility'`
+
+#### Scenario: Single-function file MAY collapse the outer describe
+
+- **WHEN** a test file covers a single exported function (e.g. `buttonClasses.ts` exporting only `buttonClasses`)
+- **THEN** the file MAY use a single top-level `describe('buttonClasses', () => { describe('VariantSizeMatrix', ...); describe('FalsyExtra', ...); })` without an outer file-level describe
+- **AND** the structure passes review
+
+#### Scenario: Prose scenario-family describe fails review
+
+- **WHEN** a contributor writes `describe('variant × size matrix', ...)`, `describe('legacy DB strings', ...)`, or `describe('whitespace contract', ...)`
+- **THEN** the audit flags the describe name for containing spaces, special characters, or non-PascalCase casing
+- **AND** the describe SHALL be renamed to a single PascalCase tag (e.g. `'VariantSizeMatrix'`, `'LegacyDbStrings'`, `'WhitespaceContract'`)
+
+#### Scenario: Vacuous scenario-family describe fails review
+
+- **WHEN** a contributor writes `describe('Misc', ...)`, `describe('Various', ...)`, `describe('Other', ...)`, or bare `describe('EdgeCases', ...)` without naming the specific edge
+- **THEN** the audit flags the describe as failing the precision principle (does not name what unifies the grouped cases)
+- **AND** the describe SHALL be renamed to a tag that names the unifying property (`'FalsyExtra'`, `'EmptyArray'`, `'MaxLengthString'`, etc.) or its cases SHALL be flattened into the parent describe
+
+### Requirement: Playwright test names SHALL follow `<PageOrFlow>_<Action>_<ExpectedOutcome>` shape
+
+Every Playwright `test(...)` name SHALL consist of exactly three PascalCase parts separated by single underscores: the page or user flow under test, the action performed, and the expected observable outcome. Playwright tests SHALL NOT rely on `describe(...)` to carry the page/flow context — the three-part name SHALL be self-contained because Playwright failure output and HTML reports surface the test name without consistent describe-path nesting. Examples that pass: `Dashboard_NavigateToCurrentMonth_ShowsBudgetGroups`, `ListPage_AddItem_AppearsInList`, `SignIn_BypassEnabled_RendersProtectedPage`. Examples that fail: `should sign in`, `basic navigation works`, `list creation`.
+
+#### Scenario: Three-part shape parses on two underscores
+
+- **WHEN** a contributor writes `test('ListPage_AddItem_AppearsInList', ...)`
+- **THEN** the name has exactly two underscores separating page (`ListPage`), action (`AddItem`), and outcome (`AppearsInList`)
+- **AND** the name passes review
+
+#### Scenario: E2E vague template fails review
+
+- **WHEN** a contributor writes `test('should sign in', ...)` or `test('basic navigation works', ...)`
+- **THEN** the assertion audit flags the test for renaming
+- **AND** the test SHALL be renamed to the three-part shape before the sub-proposal archives
+
+#### Scenario: Playwright names do not rely on describe context
+
+- **WHEN** a Playwright spec groups tests under `test.describe('list creation', ...)`
+- **THEN** each `test(...)` name inside SHALL still be a complete three-part `<PageOrFlow>_<Action>_<ExpectedOutcome>` string
+- **AND** removing the surrounding describe SHALL NOT make any test name ambiguous
+
 ### Requirement: Vitest title-shape convention SHALL be sharpened and mechanically enforced at lint error severity
 
 The mechanically-checkable subset of the Vitest title-shape convention SHALL be enforced by an ESLint rule that fails the pre-merge `lint` gate, NOT by manual review alone. Enforcement SHALL be configured via `eslint-plugin-vitest`'s `vitest/valid-title` rule in the `**/*.test.{ts,tsx}` block of `eslint.config.mjs`, at severity `error`. The convention is sharpened so the **single underscore is the one state│behavior boundary**, and the enforced subset SHALL be:
@@ -81,115 +597,33 @@ A green `lint` run therefore SHALL be read as "the title shape is structurally v
 - **THEN** `vitest/valid-title` accepts it (the lint rule enforces shape, not precision)
 - **AND** the precision principle remains a manual assertion-audit finding
 
-### Requirement: Home-digest capability carve-out SHALL be tested at the universal COVERAGE_FLOOR with complexity locked at error
+### Requirement: DAL reads and server actions SHALL be integration-tested against a migrated pglite instance via a shared harness
 
-The `home-digest` capability carve-out (sub-proposal 4.3) — comprising the executable source files `app/(main)/HomePage.tsx`, `app/(main)/page.tsx`, the four rail components `app/(main)/lists/ui/components/rails/MyListsRail.tsx`, `FollowingRail.tsx`, `BookmarksRail.tsx`, `RecentlyVisitedRail.tsx`, the extracted helper `app/(main)/lists/ui/components/rails/capRail.ts`, and the two client components `app/(main)/lists/ui/components/CollapsibleRail.tsx` and `app/(main)/lists/ui/components/BookmarkMigrationToast.tsx` — SHALL be covered by colocated test files under `__tests__/` directories meeting the universal per-file `COVERAGE_FLOOR` defined in `vitest.config.ts` (`lines:98 / statements:98 / branches:95 / functions:100`). The `sonarjs/cognitive-complexity` rule SHALL be promoted from `warn` to `error` for these executable files via `eslint.config.mjs` per-file overrides. Async-server-component carve-out files (`HomePage.tsx`, the four rails) are tested in the node project by direct async invocation and React-element prop-inspection (no jsdom render); the two client components and the `page.tsx` shell are tested in the jsdom project via React Testing Library. Subsequent sub-proposals that import these modules SHALL inherit the assumption that they are tested and complexity-locked.
+DAL functions (`lib/dal.ts`) and server actions (`app/actions/*.ts`) SHALL be tested under the **node** vitest project against a real migrated database, not against mocked query builders. Tier classification: **Tier 1** (per `test-coverage` design D13) — this requirement is a cross-cutting data-layer test contract, not carve-out bookkeeping, and was first established by the `test-following` sub-proposal (4.2).
 
-The DAL read `lib/dal.ts#getUserIdByEmail` (the only DAL read imported directly by `HomePage.tsx`) is exercised by a behavioral integration test against the PGlite test database, but `lib/dal.ts` SHALL NOT be enumerated in `vitest.config.ts`'s per-file `thresholds` map by this carve-out: vitest's per-file coverage gate cannot isolate a single exported function of the 708-line shared `lib/dal.ts`, whose other functions are owned by sibling carve-outs. The `lib/dal.ts` per-file coverage-attribution strategy is deferred to a governance checkbox in `openspec/changes/test-coverage/tasks.md`.
+DAL functions (`lib/dal.ts`) and server actions (`app/actions/*.ts`) run under the **node** vitest project (`*.test.ts`) against a real, migrated in-process Postgres provided by `bootPglite()` (`test/helpers/db.ts`), NOT against mocked query builders. The test SHALL:
 
-#### Scenario: Each carve-out file meets the universal floor
+1. Boot a fresh migrated pglite instance per test (isolating rows, not just files) and module-mock `@/db` so the module-under-test's `import { db } from '@/db'` resolves to that instance.
+2. Apply `mockNextCache()` (`test/helpers/next-cache.ts`) so the `'use cache'` directive's `cacheTag(...)` calls are no-ops and `updateTag` / `revalidateTag` are spies whose calls can be asserted.
+3. Mock `@/lib/auth`'s `auth()` to control the viewer session — this is the NextAuth network boundary the foundation already permits mocking.
 
-- **WHEN** `npm test -- --coverage` runs against `main` after this change archives
-- **THEN** the per-file coverage report shows each of `HomePage.tsx`, `page.tsx`, `MyListsRail.tsx`, `FollowingRail.tsx`, `BookmarksRail.tsx`, `RecentlyVisitedRail.tsx`, `capRail.ts`, `CollapsibleRail.tsx`, and `BookmarkMigrationToast.tsx` at `lines ≥ 98%, statements ≥ 98%, branches ≥ 95%, functions = 100%`
-- **AND** every per-file threshold entry references the shared `COVERAGE_FLOOR` constant (no per-file numeric variation)
-- **AND** `lib/dal.ts` is NOT among the enumerated per-file threshold entries
+Tests SHALL assert observable database state (rows present / absent / counted) and the cache-tag side effects (`updateTag` called on the success path, NOT called on early-return or error paths), per the assertion-substance bar. A module whose static `@/db` import cannot be cleanly swapped MAY introduce a minimal `getDb()` indirection in the source as a testability refactor (per the refactor-authority requirement) rather than lowering the coverage floor.
 
-#### Scenario: Complexity ceiling fails lint in carve-out files
+#### Scenario: A server action is tested against pglite with cache-tag assertions
 
-- **WHEN** a contributor edits any executable carve-out file to raise a function's cognitive complexity to 16
-- **THEN** `npm run lint` reports a `sonarjs/cognitive-complexity` error (not a warning)
-- **AND** the pre-merge `lint` gate fails
+- **WHEN** a server-action test boots pglite, mocks `@/db` to it, mocks `auth()` to a viewer session, and invokes the action
+- **THEN** the test asserts the resulting row state in pglite AND asserts the `updateTag(...)` spy was called exactly on the success path and not on the unauthorized / validation-failure / DB-error paths
+- **AND** the test does NOT mock the Drizzle query builder
 
-#### Scenario: Elevated invariant is regression-locked
+#### Scenario: A `'use cache'` DAL read runs under the node project
 
-- **WHEN** a future change to `BookmarkMigrationToast.tsx` changes the un-hydrated `useSyncExternalStore` snapshot from *dismissed* to *visible* (reintroducing the flash-of-toast on cold load)
-- **THEN** the colocated test in `BookmarkMigrationToast.test.tsx` fails with an assertion naming the pre-hydration visibility contract
-- **AND** the `test` pre-merge gate fails
+- **WHEN** a DAL read carrying the `'use cache'` directive is invoked from a node-project test after `mockNextCache()`
+- **THEN** the function body executes against pglite, `cacheTag(...)` is a no-op, and the returned rows are asserted against the seeded fixture
 
-### Requirement: DAL functions SHALL be integration-tested against PGlite by swapping the @/db connection, not by mocking the function
+#### Scenario: Downstream data-layer carve-outs inherit the harness
 
-The repository's DB-under-test mechanism (PGlite, chosen by `test-foundation-spike`) SHALL be applied to DAL functions by booting a PGlite instance via `test/helpers/db.ts#bootPglite`, applying the migrations, seeding rows, and substituting the `@/db` module's exported connection with the PGlite-backed Drizzle client for the duration of the test. This honors the testing-foundation rule "DAL functions SHALL NOT be mocked — integration tests SHALL exercise them against the real test database": only the database *connection/driver* (`@/db`, normally `drizzle-orm/neon-http`) is swapped, and the DAL function under test runs its real query logic against the real (PGlite) database. This carve-out establishes the pattern for the first time; later DAL carve-outs (`test-following`, `test-list-collections`, `test-visit-history`, `test-list-item-management`, `test-list-visibility`) SHALL reuse it, extracting the connection-swap + seed glue to `test/helpers/` once a second DAL test file needs it.
-
-#### Scenario: getUserIdByEmail integration test runs against PGlite
-
-- **WHEN** `lib/__tests__/getUserIdByEmail.test.ts` runs in the node project
-- **THEN** it boots PGlite, applies migrations, seeds `users` rows, swaps `@/db` to the PGlite client, and asserts that a matching email returns the seeded row, a non-matching email returns `null`, and the DAL function itself is NOT mocked or stubbed
-
-#### Scenario: Pattern is reused, not re-invented, by later DAL carve-outs
-
-- **WHEN** a later DAL carve-out adds a second DAL integration test
-- **THEN** the `@/db` connection-swap + seed harness is extracted to `test/helpers/` and imported by both consumers
-- **AND** no DAL function is mocked from any DAL or action test
-
-### Requirement: Misc-primitives carve-out SHALL be tested at the universal COVERAGE_FLOOR with complexity locked at error
-
-The misc-primitives carve-out — comprising the executable components at `app/ui/components/ConfirmDialog.tsx`, `app/ui/components/TooltipWrapper.tsx`, `app/ui/components/Empty.tsx`, and `app/ui/components/FormShell.tsx` (which exports both `FormShell` and `FormShellFooter` plus the internal `useDismiss` hook) — SHALL be covered by colocated test files meeting the universal per-file `COVERAGE_FLOOR` defined in `vitest.config.ts` (`lines:98 / statements:98 / branches:95 / functions:100`). Test files SHALL live at `app/ui/components/__tests__/ConfirmDialog.test.tsx`, `app/ui/components/__tests__/TooltipWrapper.test.tsx`, `app/ui/components/__tests__/Empty.test.tsx`, and `app/ui/components/__tests__/FormShell.test.tsx` (all jsdom project). The `sonarjs/cognitive-complexity` rule SHALL be promoted from `warn` to `error` for the four executable files via `eslint.config.mjs` per-file overrides. Subsequent sub-proposals that import `<ConfirmDialog>`, `<TooltipWrapper>`, `<Empty>`, `<FormShell>`, `<FormShellFooter>`, or `useDismiss` SHALL inherit the assumption that those modules are tested and complexity-locked, and any future raise of complexity above 15 in those files SHALL fail lint. This carve-out's `testing-foundation` delta is Tier 2 per `test-coverage` design D13 — it does NOT roll into the parent's `test-coverage` accumulator and does NOT modify the active `openspec/specs/testing-foundation/spec.md`.
-
-#### Scenario: Each carve-out file meets the universal floor
-
-- **WHEN** `npm test -- --coverage` runs against `main` after this change archives
-- **THEN** the per-file coverage report shows each of `ConfirmDialog.tsx`, `TooltipWrapper.tsx`, `Empty.tsx`, and `FormShell.tsx` at `lines ≥ 98%, statements ≥ 98%, branches ≥ 95%, functions = 100%`
-- **AND** the gate passes
-- **AND** all four per-file threshold entries in `vitest.config.ts` reference the shared `COVERAGE_FLOOR` constant (no per-file numeric variation)
-
-#### Scenario: Carve-out tests live in __tests__
-
-- **WHEN** a contributor opens the carve-out source files
-- **THEN** test files exist at `app/ui/components/__tests__/ConfirmDialog.test.tsx`, `app/ui/components/__tests__/TooltipWrapper.test.tsx`, `app/ui/components/__tests__/Empty.test.tsx`, and `app/ui/components/__tests__/FormShell.test.tsx`
-
-#### Scenario: Complexity ceiling fails lint in carve-out files
-
-- **WHEN** a contributor edits any of the four carve-out files to raise a function's cognitive complexity to 16
-- **THEN** `npm run lint` reports a `sonarjs/cognitive-complexity` error (not a warning)
-- **AND** the pre-merge `lint` gate fails
-
-#### Scenario: New family specs are active after archive
-
-- **WHEN** this sub-proposal archives
-- **THEN** the four new active specs exist at `openspec/specs/confirm-dialog-system/spec.md`, `openspec/specs/tooltip-system/spec.md`, `openspec/specs/empty-state-system/spec.md`, and `openspec/specs/form-shell-system/spec.md`
-- **AND** each spec has a Purpose paragraph written (not "TBD")
-- **AND** each spec's SHALLs are regression-locked by ≥ 1 colocated `<State>_<Behavior>` test in the corresponding test file
-
-#### Scenario: Elevated invariants are regression-locked
-
-- **WHEN** a future change to any of the four carve-out files alters a SHALL-locked behavior — including (but not limited to): removes the `isOpen` short-circuit from `<ConfirmDialog>`; changes the Cancel or Confirm variant; breaks the Confirm-then-onClose call order; alters the `tooltip-container` wrapper-class composition (e.g. reintroduces a trailing space or drops the single-space join); renders the tooltip span unconditionally; emits a different title or description for `type === 'purchase'`; changes the `<Empty>` CTA branch selection; renders the wrong inner-class variant in `<FormShell>`; removes the overlay-self-target dismiss guard; alters the `useDismiss` three-branch priority (onClose → router.back if history > 1 → router.push closeHref); detaches the `isPending` → `isLoading` passthrough on `<FormShellFooter>`'s Submit
-- **THEN** the corresponding colocated test file fails with an assertion naming the specific divergence
-- **AND** the `test` pre-merge gate fails
-
-### Requirement: list-hero-header capability carve-out SHALL be tested at the universal COVERAGE_FLOOR with complexity locked at error
-
-The `list-hero-header` capability carve-out — comprising the executable source files `app/(main)/lists/ui/components/ListDetails.tsx`, `app/(main)/lists/ui/components/ShareButton.tsx`, and `app/(main)/lists/ui/components/EditListAction.tsx`, plus the new `resolveListVisibility` export added to `lib/visibility.ts` — SHALL be covered by colocated test files meeting the universal per-file `COVERAGE_FLOOR` defined in `vitest.config.ts` (`lines:98 / statements:98 / branches:95 / functions:100`). Component/helper test files SHALL live under `__tests__/` directories mirroring their source locations (`app/(main)/lists/ui/components/__tests__/ListDetails.test.tsx`, `ShareButton.test.tsx`, `EditListAction.test.tsx`), run under the jsdom project. The `sonarjs/cognitive-complexity` rule SHALL be promoted from `warn` to `error` for the three carve-out component files via `eslint.config.mjs` per-file overrides. A reusable WCAG contrast helper SHALL exist at `test/helpers/contrast.ts` (with its own test under `test/helpers/__tests__/`), and the `list-hero-header` contrast invariant (R8) SHALL be enforced by an automated test at `app/(main)/lists/ui/styles/__tests__/hero-contrast.test.ts` that reads the gradient and text-color tokens from `app/ui/styles/global.css` and `app/(main)/lists/ui/styles/list.css`. Subsequent sub-proposals that import `ListDetails`, `ShareButton`, or `EditListAction` SHALL inherit the assumption that those modules are tested and complexity-locked, and any future raise of complexity above 15 in those files SHALL fail lint.
-
-#### Scenario: Each carve-out file meets the universal floor
-
-- **WHEN** `npm test -- --coverage` runs against `main` after this change archives
-- **THEN** the per-file coverage report shows each of `ListDetails.tsx`, `ShareButton.tsx`, `EditListAction.tsx`, and the `resolveListVisibility` export in `lib/visibility.ts` at `lines ≥ 98%, statements ≥ 98%, branches ≥ 95%, functions = 100%`
-- **AND** the gate passes
-- **AND** every per-file threshold entry added by this change references the shared `COVERAGE_FLOOR` constant (no per-file numeric variation)
-
-#### Scenario: Complexity ceiling fails lint in carve-out files
-
-- **WHEN** a contributor edits any of `ListDetails.tsx`, `ShareButton.tsx`, or `EditListAction.tsx` to raise a function's cognitive complexity to 16
-- **THEN** `npm run lint` reports a `sonarjs/cognitive-complexity` error (not a warning)
-- **AND** the pre-merge `lint` gate fails
-
-#### Scenario: Carve-out tests live in `__tests__/`
-
-- **WHEN** a contributor opens the carve-out source files
-- **THEN** test files exist at `app/(main)/lists/ui/components/__tests__/ListDetails.test.tsx`, `app/(main)/lists/ui/components/__tests__/ShareButton.test.tsx`, and `app/(main)/lists/ui/components/__tests__/EditListAction.test.tsx`
-- **AND** a shared contrast helper exists at `test/helpers/contrast.ts` with a colocated test, and the hero contrast invariant is enforced at `app/(main)/lists/ui/styles/__tests__/hero-contrast.test.ts`
-
-#### Scenario: Contrast invariant is regression-locked against the CSS tokens
-
-- **WHEN** a future change to `app/ui/styles/global.css` or `app/(main)/lists/ui/styles/list.css` lightens the `--hero-gradient` lightest stop or changes a hero text-role color so a role drops below its WCAG AA threshold (3:1 large / 4.5:1 normal) against the worst-case gradient pixel
-- **THEN** `hero-contrast.test.ts` fails with an assertion naming the failing role and its computed ratio
-- **AND** the `test` pre-merge gate fails
-
-#### Scenario: Elevated invariant is regression-locked
-
-- **WHEN** a future change to `ListDetails.tsx` reintroduces a redundant or empty `.list-hero-share-wrapper` on viewer or preview views
-- **THEN** the colocated `ListDetails.test.tsx` fails with an assertion naming the unexpected wrapper element
-- **AND** the `test` pre-merge gate fails
+- **WHEN** a later data-layer sub-proposal (e.g. home-digest, list-item-management, list-visibility, server-endpoint-authorization, visit-history, user-actions) tests a DAL read or server action
+- **THEN** it uses this pglite + `mockNextCache()` + auth-boundary-mock pattern rather than re-deriving a data-layer test strategy
 
 ### Requirement: PGlite test database SHALL be booted at most once per test file, with per-test isolation via a shared schema-derived reset helper
 
@@ -225,13 +659,15 @@ This requirement completes the existing "extract the connection-swap + seed glue
 - **THEN** neither contains a hand-rolled `TRUNCATE TABLE …` SQL literal
 - **AND** both reset rows between tests by calling the shared schema-derived reset helper from `test/helpers/db.ts`
 
+<!-- Rolled in from sub-proposal 6.0 `test-e2e-foundation` (Tier 1 per design
+     D13): the e2e execution model. The six requirements below are the
+     elevated invariants. -->
+
 ### Requirement: E2E and bypassed local dev SHALL run against a local Postgres via the `USE_PG_DRIVER` driver-switch
 
 The application's DB connection (`db/index.ts`) SHALL select its Drizzle driver from the `USE_PG_DRIVER` environment variable: when `USE_PG_DRIVER === '1'` it SHALL use `drizzle-orm/postgres-js` against `DATABASE_URL`; otherwise it SHALL use the production `drizzle-orm/neon-http` driver unchanged. So that repeated runs never consume the metered live Neon branch, the e2e harness and bypassed local development SHALL set `USE_PG_DRIVER=1` and point `DATABASE_URL` at a local Postgres (a Docker container). The exported `db` SHALL remain typed as the neon-http database type so that transaction APIs unavailable in production do not typecheck against it.
 
 Local mode SHALL be entered through dedicated npm scripts (e.g. `dev:local`, and the e2e run) that set `USE_PG_DRIVER=1` and the localhost `DATABASE_URL` **together**, so a developer never hand-sets those variables. The plain scripts (`dev`, and any non-local path) SHALL remain on the production driver + real auth. The localhost `DATABASE_URL` SHALL have a single source of truth shared by the scripts, `docker-compose.e2e.yml`, and `e2e/helpers/constants.ts` rather than being repeated as drifting literals. The localhost boot guard below is therefore a defense-in-depth backstop against misconfiguration, not a step in the normal workflow.
-
-This requirement is **Tier 1** (per `test-coverage` design D13): it is cross-cutting test-execution foundation, not carve-out bookkeeping, and rolls into the parent `testing-foundation` accumulator.
 
 #### Scenario: Flag on selects postgres-js against the local DB
 
@@ -370,115 +806,3 @@ Continuous integration SHALL run the Playwright e2e suite in two tiers: (1) a **
 - **WHEN** CI runs in a context lacking the Neon API secret (e.g. a fork PR)
 - **THEN** the pre-promote migration gate is skipped rather than failing
 - **AND** the per-PR e2e tier still runs
-
-### Requirement: The PWA/offline e2e specs SHALL be authored against the foundation harness and recorded as Tier 2 bookkeeping
-
-This carve-out (sub-proposal 6.2) SHALL author the PWA/offline `e2e/*.spec.ts` specs (service worker registration, install-detection surface, offline never-cache-HTML + precache behavior, kill-switch, and the safe-area/top-bar regression set) against the e2e execution harness owned by `test-e2e-foundation` (sub-proposal 6.0), in the authenticated session mode. The flow-level contract lives in the `e2e-pwa-offline` capability spec; the drift corrections and latent-invariant elevations live in the `pwa-shell` delta. The e2e *execution* model (local DB target, `next start` server mode, the two session modes, CI tiers) is `test-e2e-foundation`'s Tier-1 contribution to `testing-foundation`, NOT this carve-out's. THIS requirement is archive-only carve-out bookkeeping (Tier 2 per `test-coverage` design D13) and SHALL NOT roll into the parent `testing-foundation` accumulator.
-
-This carve-out SHALL NOT reshape `playwright.config.ts`'s execution-model design, choose the DB driver/target, or define new e2e CI jobs (all owned by 6.0). It SHALL contribute NO per-file unit coverage and SHALL NOT alter `vitest.config.ts` thresholds (e2e is the integration tier). Install detection SHALL be asserted at the criteria level only — no `beforeinstallprompt` synthesis and no external service calls.
-
-The seed negative-case audit for THIS carve-out's fixtures SHALL be recorded with its disposition: for each required fixture (any route rendering for the seeded viewer; a seeded list page to visit before going offline; a page where the floating items-pagination overlay renders), the audit SHALL state whether the spec builds its own state, selects defensively against seeded data, or required a `scripts/seed-dev-users.ts` extension carrying the seed-as-fixture review-coupling note.
-
-#### Scenario: PWA/offline specs exist and run under the foundation harness
-
-- **WHEN** this change archives
-- **THEN** `e2e/` contains the PWA/offline specs (registration, install surface, offline, kill-switch, safe-area regression set)
-- **AND** each runs under the foundation harness's authenticated session mode
-- **AND** this carve-out did NOT reshape the harness execution-model design or DB target, nor define new e2e CI jobs
-
-#### Scenario: No unit-coverage change
-
-- **WHEN** this carve-out validates at archive time
-- **THEN** `vitest.config.ts` per-file thresholds are unchanged by it
-
-#### Scenario: Seed negative-case audit disposition is recorded
-
-- **WHEN** this carve-out's `tasks.md` records the audit findings
-- **THEN** the seed negative-case audit names each required fixture and its disposition (build-own-state, defensive selection, or seed extension)
-- **AND** any seed extension is accompanied by the seed-as-fixture review-coupling note
-
-### Requirement: The `lib/dal.ts` remainder and `lib/auth.ts` SHALL be whole-covered at the universal COVERAGE_FLOOR against the real test database
-
-The **whole of `lib/dal.ts`** SHALL be brought to the universal floor, because `vitest.config.ts` enforces coverage `perFile`. The reads not reached by the sibling data-layer carve-outs (4.2 / 4.3 / 4.6 / 4.9 / 4.11 / 4.14) — `getUserById`, `getList`, `getLists`, `getListsByUser`, `getItemsByUser`, `getItemById`, `getItemsByPurchased`, `getItemsByListId`, `getListsSharedByUser`, `getBlockedByUser`, `getPublicListsByUser`, `getProfileForUser` — together with the `sanitizePurchases` / `firstNameOf` projection branches and every throwing read's `catch`, SHALL be covered by colocated `*.test.ts` files under the **node** vitest project. The reads SHALL be exercised as the REAL production functions (imported and invoked, NOT re-implemented) against the PGlite test database (`bootPglite()` from `test/helpers/db.ts`), with `next/cache` mocked via `mockNextCache()` and `@/db` module-mocked to the PGlite instance — per the established data-layer harness contract. Internal modules SHALL NOT be mocked.
-
-The sibling-covered reads' happy paths SHALL NOT be re-tested; however the uncovered branches those siblings left short — chiefly each read's `catch` error path — SHALL be backfilled here, because the per-file gate measures the whole file and cannot pass while those branches are red. The backfill SHALL add only the missing branch tests, not duplicate the siblings' happy-path suites.
-
-`lib/auth.ts` SHALL be covered to the universal floor: the local-mode bypass surface (`auth()` zero-argument behavior for the default-viewer, `guest`, and other-seeded-id identities; `synthesizeSession`) and the NextAuth `signIn` / `jwt` / `session` callbacks. The callbacks MAY be extracted to named exports as a within-carve-out testability refactor so they are directly invocable; any single line that genuinely cannot be unit-reached (e.g. the `auth(req, ctx)` pass-through to real NextAuth) SHALL be disposed of with a `/* v8 ignore */` carrying a one-line rationale — never by lowering the floor.
-
-On completion, `lib/dal.ts` and `lib/auth.ts` SHALL be enumerated in `vitest.config.ts` per-file `thresholds` at the shared `COVERAGE_FLOOR` constant, and SHALL have `sonarjs/cognitive-complexity` promoted to `error` via `eslint.config.mjs`. The deferral comments in `vitest.config.ts` that excluded `lib/dal.ts` (from sub-proposals 4.2 / 4.3 / 4.14) SHALL be removed.
-
-#### Scenario: The DAL remainder and lib/auth.ts meet the universal floor
-
-- **WHEN** `npm test -- --coverage` runs against `main` after this change archives
-- **THEN** the per-file coverage report shows `lib/dal.ts` and `lib/auth.ts` each at `lines ≥ 98%, statements ≥ 98%, branches ≥ 95%, functions = 100%`
-- **AND** both per-file threshold entries in `vitest.config.ts` reference the shared `COVERAGE_FLOOR` constant (no per-file numeric variation)
-- **AND** `eslint.config.mjs` sets `sonarjs/cognitive-complexity` to `error` for both files
-
-#### Scenario: Whole-file floor backfills sibling-covered reads' uncovered branches
-
-- **WHEN** this carve-out lands and `lib/dal.ts` is enumerated at `COVERAGE_FLOOR` with `perFile: true`
-- **THEN** the `catch` error path of every throwing read — including `getFollowingByUser`, `getFollowersOfUser`, `isFollowing`, `viewerHasAnyFollows`, `isBlocked`, and `getFollowingFeedUsers` (covered only on their happy paths by sibling carve-outs) — is exercised by a test
-- **AND** no sibling read's happy-path suite is duplicated
-- **AND** the per-file gate passes only because the whole file, not merely the twelve previously-untested reads, meets the floor
-
-#### Scenario: DAL reads are tested against the real test database, not mocked
-
-- **WHEN** a `lib/dal.ts` read is exercised
-- **THEN** the test runs the real production function against PGlite (`bootPglite()`)
-- **AND** the function is NOT re-implemented in the test and the Drizzle query builder is NOT mocked
-- **AND** only `next/cache` and `@/db` (to the PGlite instance) are mocked
-
-#### Scenario: The getListsByUser updated_at sort is regression-locked
-
-- **WHEN** a future change makes `getListsByUser` order by `created_at` instead of `updated_at DESC`
-- **THEN** the corresponding test fails with an assertion naming the wrong ordering
-- **AND** the `test` pre-merge gate fails
-
-### Requirement: The multi-capability-shared-file coverage deferral SHALL be resolved for the final shared file
-
-With `lib/dal.ts` whole-covered and enumerated, the §7.7 / §7.10 deferral for multi-capability shared files SHALL be resolved: the chosen mechanism is whole-file enumeration at the universal floor once every function is covered (NOT a per-function coverage tool, NOT splitting the file). `app/actions/lists.ts` and `app/actions/items.ts` were resolved earlier by sub-proposal 4.9; `lib/dal.ts` was the last outstanding shared file. After this change, no shared multi-capability file remains deferred from the per-file coverage gate.
-
-#### Scenario: No shared file remains deferred from the per-file gate
-
-- **WHEN** the governing `test-coverage` change audits multi-capability shared files at close-out
-- **THEN** `lib/dal.ts`, `app/actions/lists.ts`, and `app/actions/items.ts` are each enumerated in `vitest.config.ts` `thresholds` at `COVERAGE_FLOOR`
-- **AND** no `vitest.config.ts` comment defers a shared file's per-file gate
-- **AND** §7.7 and §7.10 in `test-coverage/tasks.md` are unblocked
-
-### Requirement: The live auth & account-menu client UI SHALL be whole-covered at the universal COVERAGE_FLOOR
-
-The auth and account-menu **client UI** left at 0% by the §0–§6 carve-outs — whose sign-in *flow* is e2e-covered by 6.1 (`test-e2e-critical-flows`) but whose **components** had no unit tests — SHALL be brought to the universal per-file `COVERAGE_FLOOR` (`lines:98 / statements:98 / branches:95 / functions:100`) by colocated `*.test.tsx` files under the **jsdom** vitest project. The covered files are, under `app/(auth)/ui/components/`: `User.tsx`, `UserMenu.tsx`, `UserAvatarPopover.tsx`, `UserImage.tsx`, `SignInPage.tsx`, `SignInButton.tsx`, and `AuthContainer.tsx`; and `app/(auth)/sign-in/page.tsx`.
-
-The client components SHALL be rendered through the **real** governed primitives (`Menu`/`MenuItem`/`MenuLinkItem` for `UserAvatarPopover`, `Button`/`buttonClasses` for `SignInButton` and `UserMenu`), with only framework boundaries mocked — the server actions (`@/app/actions/user`), `next/image`, `next/navigation`, and `next/link` (the last pulled in transitively by the real `MenuLinkItem`, which cannot mount under jsdom without an `AppRouterContext`). The async server-component shells (`User`, `SignInPage`, `sign-in/page.tsx`) SHALL be tested via the async-RSC pattern: `auth()` mocked, `next/server`'s `connection()` mocked to a resolved no-op (for `SignInPage`), and `next/navigation`'s `redirect()` mocked to throw a sentinel. A sibling component that carries its own colocated coverage MAY be mocked when a test needs to isolate the parent's branch logic — `UserMenu`'s session-branch test mocks `UserAvatarPopover` and `SignInButton`, each owned and tested separately. No governed primitive SHALL be mocked, re-owned, or re-tested here, and internal modules SHALL NOT otherwise be mocked.
-
-On completion, every covered file SHALL be enumerated in `vitest.config.ts` per-file `thresholds` at the shared `COVERAGE_FLOOR` constant (no per-file numeric variation) and SHALL have `sonarjs/cognitive-complexity` promoted to `error` in `eslint.config.mjs`.
-
-#### Scenario: The live auth-UI files meet the universal floor
-
-- **WHEN** `npm run test:coverage` runs against `main` after this change archives
-- **THEN** the per-file coverage report shows each of the eight covered files at `lines ≥ 98%, statements ≥ 98%, branches ≥ 95%, functions = 100%`
-- **AND** each per-file threshold entry in `vitest.config.ts` references the shared `COVERAGE_FLOOR` constant
-- **AND** `eslint.config.mjs` sets `sonarjs/cognitive-complexity` to `error` for each covered file
-
-#### Scenario: Account-menu components render through real primitives
-
-- **WHEN** a `UserAvatarPopover` test renders the component
-- **THEN** the real `Menu` / `MenuItem` / `MenuLinkItem` primitives are mounted (not mocked)
-- **AND** nothing beyond the permitted framework boundaries (`@/app/actions/user`, `next/image`, `next/navigation`, `next/link`) is mocked
-
-#### Scenario: The sign-in redirect branch is unit-covered without duplicating the e2e
-
-- **WHEN** `SignInPage` is rendered for an already-authenticated viewer (`auth()` resolves a session with a user)
-- **THEN** the `redirect('/')` sentinel is thrown and no sign-in UI renders
-- **AND** for a session-less viewer the `AuthContainer`, logo, and `SignInButton` render — the unit tier owning the redirect branch the e2e (6.1) does not exercise
-
-### Requirement: The dead old-chrome cluster SHALL be removed, not covered
-
-The pre-`AppFrame` chrome cluster — `app/ui/components/AuthPage.tsx` (`AuthProvider`, zero importers), its transitively-orphaned `app/ui/components/AppMenu.tsx`, `app/ui/components/Logo.tsx`, and `app/ui/components/Nav.tsx` (each imported only by the prior link and floored under sub-proposal 4.1), and the two leaf-dead `app/(auth)/ui/components/AuthButtons.tsx` and `app/(auth)/ui/components/SignOutButton.tsx` (zero importers; stale duplicates of the live `SignInButton`/sign-out affordances) — SHALL be disposed of by **deletion**, per the four-audit dead-code rule, rather than by writing tests for code nothing renders. The orphaned `AppMenu.tsx` / `Logo.tsx` / `Nav.tsx` per-file `thresholds` entries and `sonarjs/cognitive-complexity = error` overrides SHALL be removed from `vitest.config.ts` and `eslint.config.mjs`, and their colocated `*.test.tsx` files SHALL be deleted, so no orphaned tested-but-dead code survives. No `app-frame` requirement changes, since that spec governs the surviving `AppFrame`/`AppNav` path and never named the removed primitives.
-
-#### Scenario: The dead cluster is gone and the build stays green
-
-- **WHEN** the codebase is grepped for `AuthProvider`, `AppMenu`, the old `Logo`/`Nav` primitives, `AuthButtons`, and the old `SignOutButton` after this change archives
-- **THEN** no source file matches, no `vitest.config.ts` / `eslint.config.mjs` entry references the three removed floored files, and no `__tests__/{AppMenu,Logo,Nav}.test.tsx` remains
-- **AND** `npx tsc --noEmit` and `npm run build` complete with zero errors
-

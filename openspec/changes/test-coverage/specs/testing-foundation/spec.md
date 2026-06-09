@@ -19,24 +19,41 @@ The repository SHALL include an automated test suite executed via `npm test`. Th
 
 ### Requirement: Test files SHALL colocate with source under a consistent layout
 
-Test files SHALL be colocated with the source they test using the `<source>.test.<ext>` pattern (e.g., `Button.tsx` → `Button.test.tsx`). End-to-end tests SHALL live under a top-level `e2e/` directory. Shared fixtures SHALL live under `test/fixtures/`. Shared test helpers and custom matchers SHALL live under `test/helpers/`. Per-test-file fixtures or helpers that are not reused SHALL stay inline; only repeated patterns extract.
+Test files SHALL be colocated with the source they test, but SHALL live inside a `__tests__/` directory adjacent to the source module — NOT alongside it. The colocation principle (tests stay next to the code they exercise) is preserved; the `__tests__/` folder keeps source-directory listings focused on production files and groups multiple tests for the same module without polluting the parent directory. The file-naming pattern remains `<source>.test.<ext>` (e.g., `Button.tsx` → `__tests__/Button.test.tsx`).
 
-#### Scenario: Component test colocation
+End-to-end tests SHALL live under a top-level `e2e/` directory. Cross-module shared fixtures SHALL live under `test/fixtures/`. Cross-module shared helpers and custom matchers SHALL live under `test/helpers/`. Test-only helpers used by tests within a single `__tests__/` directory SHALL live inside that same `__tests__/` directory (e.g., `app/ui/components/button/__tests__/test-helpers.ts`); they SHALL NOT be hoisted to `test/helpers/` unless a second `__tests__/` directory begins importing them. Per-test-file fixtures or helpers that are not reused SHALL stay inline; only repeated patterns extract.
+
+Test-only files inside `__tests__/` directories (including local `test-helpers.*` modules) SHALL NOT appear in coverage reports — `vitest.config.ts`'s `coverage.exclude` SHALL contain a `**/__tests__/**` glob that covers them.
+
+#### Scenario: Component test colocation under __tests__/
 
 - **WHEN** a contributor adds tests for `app/ui/components/button/Button.tsx`
-- **THEN** the tests live at `app/ui/components/button/Button.test.tsx`
+- **THEN** the tests live at `app/ui/components/button/__tests__/Button.test.tsx`
+- **AND** the test imports the production module via a parent-relative specifier (`import { Button } from '../Button'`)
+
+#### Scenario: Hook test colocation under __tests__/
+
+- **WHEN** a contributor adds tests for `hooks/use-media-query.ts`
+- **THEN** the tests live at `hooks/__tests__/use-media-query.test.tsx`
+- **AND** server-side variants live at `hooks/__tests__/use-media-query.server.test.ts`
+
+#### Scenario: Local test helper colocation
+
+- **WHEN** two test files inside `app/ui/components/button/__tests__/` need the same render helper
+- **THEN** the helper lives at `app/ui/components/button/__tests__/test-helpers.ts`
+- **AND** both tests import it via `import { ... } from './test-helpers'`
+- **AND** the helper is NOT reported in coverage (matched by `**/__tests__/**` exclude)
+
+#### Scenario: Cross-module helper extraction
+
+- **WHEN** the same helper is needed by tests inside two different `__tests__/` directories (e.g., a DB fixture used by both `lib/__tests__/visibility.test.ts` and `app/actions/__tests__/lists.test.ts`)
+- **THEN** the helper extracts to `test/helpers/` (or `test/fixtures/` for fixture data) and both tests import from the extracted location
 
 #### Scenario: E2E test placement
 
 - **WHEN** a contributor adds a Playwright test for the list-creation flow
 - **THEN** the spec lives under `e2e/` (e.g., `e2e/list-creation.spec.ts`)
-- **AND** it does NOT live colocated with any single source file
-
-#### Scenario: Shared fixture extraction
-
-- **WHEN** two or more test files would set up the same DB state, mock the same fetch boundary, or render the same composed component
-- **THEN** the shared setup MUST extract to `test/fixtures/` or `test/helpers/`
-- **AND** the duplicating test files import from the extracted location
+- **AND** it does NOT live under any `__tests__/` directory
 
 ### Requirement: Tests SHALL NOT call rate-limited external services
 
@@ -77,40 +94,116 @@ Tests SHALL mock the network boundary of any external service whose real provide
 - **THEN** its deliverables include a written audit identifying any visibility/authorization negative case not currently reachable from the seed
 - **AND** for each missing case, the audit specifies the disposition: extend `seed-dev-users.ts` OR add `seed-e2e-fixtures.ts` OR accept-with-rationale
 
-### Requirement: Coverage SHALL be enforced per-file with class-specific floors
+### Requirement: Coverage SHALL be enforced per-file with a single universal floor
 
-Coverage SHALL be measured and enforced per file, not as a layer or repo-wide aggregate. Per-file floors SHALL be:
+Coverage SHALL be measured and enforced per file, not as a layer or repo-wide aggregate. There SHALL be exactly one floor applying to every enumerated file regardless of file class:
 
-| File class | Floor |
+| Metric | Floor |
 | --- | --- |
-| Pure logic (`lib/*.ts` excluding `lib/dal.ts`; pure helpers like `buttonClasses.ts`) | 95% |
-| Primitive components (files under `app/ui/components/<family>/`) | 90% |
-| `lib/dal.ts` (per exported function) | 80% |
-| Server actions (`app/actions/*.ts`, per exported function) | 80% |
-| API routes (`app/api/**/route.ts`) | 80% |
-| Page-scoped UI (`app/(main)/**/ui/`) | 60% |
-| Page entries (`app/(main)/**/page.tsx`) | 60% |
+| Lines | 98% |
+| Statements | 98% |
+| Branches | 95% |
+| Functions | **100% (non-negotiable)** |
 
-Files excluded from coverage enforcement (informational only): `*.d.ts`; generated drizzle artifacts under `drizzle/`; `app/sw.ts`; `app/manifest.ts`; test files themselves; layout files without branching logic. Each test sub-proposal SHALL enforce coverage floors ONLY on files in its declared carve-out at archive time. A repo-wide coverage report SHALL be generated for visibility but SHALL NOT gate merge.
+The `functions: 100%` floor is non-negotiable: an uninvoked exported function is a real test gap, not slop. Dead code SHALL be deleted, not protected by a lower floor.
+
+Files excluded from coverage enforcement (informational only): `*.d.ts`; generated drizzle artifacts under `drizzle/`; `app/sw.ts`; test files themselves and their `__tests__/` siblings (matched by `**/__tests__/**`); barrel `index.ts` re-exports of zero runtime behavior (matched by `app/ui/components/*/index.ts` — NOT a global `**/index.ts`, which would silently exclude `db/index.ts` and other top-level index modules that carry runtime); type-only `**/types.ts`; layout files without branching logic. The narrow scope of the index-barrel exclude is invariant: a `**/index.ts` exclude SHALL NOT be introduced.
+
+While the parent `test-coverage` change is in flight, the per-file threshold list in `vitest.config.ts` MAY enumerate only files with landed tests (so files in untested carve-outs do not fail the gate they have no opportunity to pass). When the parent `test-coverage` change archives, the per-file enumeration SHALL be removed and the floor SHALL apply universally across `coverage.include` — at that point, every file in `coverage.include` (subject to `coverage.exclude`) is gated against the universal floor.
+
+Each test sub-proposal SHALL enforce the coverage floor on every file in its declared carve-out at archive time. A repo-wide coverage report SHALL be generated for visibility but SHALL NOT gate merge until the parent `test-coverage` change archives.
+
+#### Scenario: Functions floor is non-negotiable
+
+- **WHEN** a sub-proposal's carve-out includes a file with an exported helper that has no invoking test
+- **THEN** the file's `functions` coverage metric is below 100%
+- **AND** the pre-merge `test` gate fails
+- **AND** the disposition is to write the missing test OR delete the unreachable function — NOT to lower the floor
 
 #### Scenario: Small helper cannot hide behind fat file
 
 - **WHEN** a sub-proposal's carve-out includes both a 500-line component and a 30-line helper
 - **THEN** coverage is computed per file
-- **AND** the 30-line helper meeting its 90% floor is checked independently of the 500-line component meeting its 90% floor
+- **AND** the 30-line helper meeting the floor is checked independently of the 500-line component meeting the floor
 - **AND** an aggregate average across the two does NOT satisfy the gate
 
-#### Scenario: Sub-proposal owns only its files
+#### Scenario: Per-file enumeration during test-coverage flight
 
-- **WHEN** a sub-proposal validates coverage at archive time
-- **THEN** it checks only files declared in its carve-out
-- **AND** unrelated files at lower coverage do NOT block the sub-proposal's archival
+- **WHEN** the parent `test-coverage` change is in flight (not yet archived) and a contributor adds the file `app/(main)/lists/page.tsx` to production without writing tests for it yet
+- **THEN** the file does NOT appear in `vitest.config.ts`'s per-file threshold enumeration
+- **AND** the pre-merge `test` gate does NOT fail on that file
+- **AND** the file's coverage gap is captured in the parent change's task list awaiting its carve-out sub-proposal
 
-#### Scenario: Excluded files do not gate
+#### Scenario: Enumeration deletes at test-coverage archive
 
-- **WHEN** `app/sw.ts` has zero unit coverage
-- **THEN** no sub-proposal fails coverage validation on that file
-- **AND** the file is reported as informationally excluded
+- **WHEN** the parent `test-coverage` change archives via its task 7.3 baseline
+- **THEN** the per-file enumeration in `vitest.config.ts` is removed
+- **AND** the universal floor applies to every file matched by `coverage.include` and not excluded by `coverage.exclude`
+
+#### Scenario: Index-barrel exclude is narrow
+
+- **WHEN** a contributor proposes adding `**/index.ts` to `coverage.exclude`
+- **THEN** the proposal is rejected
+- **AND** the only acceptable index-barrel exclude is `app/ui/components/*/index.ts` (zero-runtime re-exports under the primitive-family convention)
+- **AND** `db/index.ts` (which carries Drizzle init) is NOT excluded
+
+### Requirement: Files SHALL meet the universal floor via tests or annotated excludes — never a lowered floor
+
+A file enumerated in `vitest.config.ts`'s per-file thresholds SHALL meet the universal floor (`lines: 98, statements: 98, branches: 95, functions: 100`). When a region of source is genuinely uncoverable (e.g., a defensive `throw` on an unreachable branch, an SSR-only fallback that cannot execute in jsdom, a `try/catch` whose `catch` block guards against a condition the runtime contract forbids), the disposition SHALL be exactly one of:
+
+- **(a)** Write the test that exercises the region; OR
+- **(b)** Mark the region with `/* v8 ignore next */` (or `/* v8 ignore start */ … /* v8 ignore stop */` for multi-line regions) and an immediately-preceding one-line comment naming the specific reason the region is uncoverable.
+
+Lowering the floor for a file (or class of files) SHALL NOT be an acceptable disposition. Adding a TODO, follow-up issue, or unaddressed note SHALL NOT be an acceptable disposition. The reviewer of any PR that introduces a `/* v8 ignore */` annotation SHALL verify the rationale comment is specific (names what makes the region uncoverable, not "for coverage") before approving.
+
+#### Scenario: Test-first disposition
+
+- **WHEN** a file is at 97% statements coverage because one error-path branch is not yet exercised
+- **THEN** the disposition is to write the test exercising that branch
+- **AND** the floor is NOT lowered to 97% to accommodate the gap
+
+#### Scenario: Annotated exclude with rationale
+
+- **WHEN** a file contains a `throw new Error('unreachable: TS exhaustiveness has narrowed all cases')` that cannot be reached at runtime without violating the function's typed contract
+- **THEN** the line is preceded by a one-line comment naming the typed-contract guarantee
+- **AND** the line carries `/* v8 ignore next */`
+- **AND** the file's coverage report shows the line as ignored, not counted against the floor
+
+#### Scenario: Floor-lowering rejected
+
+- **WHEN** a sub-proposal proposes lowering a file's `branches` floor from 95 to 90 to accommodate an uncovered branch
+- **THEN** the proposal is rejected at review
+- **AND** the disposition options are (a) write the test or (b) annotate with `/* v8 ignore */` + rationale
+
+#### Scenario: Vague rationale rejected
+
+- **WHEN** a PR introduces `/* v8 ignore next */` with a preceding comment of "// coverage" or "// can't test"
+- **THEN** the reviewer requests a specific rationale (what runtime contract, what branch, why unreachable)
+- **AND** the PR is not approved until the comment names the specific reason
+
+### Requirement: Per-file thresholds SHALL reference a single shared COVERAGE_FLOOR constant
+
+`vitest.config.ts` SHALL define exactly one coverage-floor object — `const COVERAGE_FLOOR = { lines: 98, statements: 98, branches: 95, functions: 100 } as const;` — at module scope. Every per-file entry in `test.coverage.thresholds` SHALL reference this constant by identity (the object reference, not a copy). Per-file numeric variation SHALL NOT exist: a contributor reading the config SHALL be able to answer "what is the bar" in one read.
+
+If a future need arises to vary thresholds by file (e.g., a file class with a documented exception), the variation SHALL be introduced as a SECOND named constant with a comment naming the exception's rationale — never as inline numeric overrides scattered across the threshold list.
+
+#### Scenario: Single source of truth
+
+- **WHEN** a contributor reads `vitest.config.ts`
+- **THEN** exactly one `COVERAGE_FLOOR` (or named-variant) constant is visible at module scope
+- **AND** every per-file threshold entry reads as `'<path>': COVERAGE_FLOOR,`
+
+#### Scenario: Inline numeric override rejected
+
+- **WHEN** a PR introduces a per-file entry like `'lib/foo.ts': { lines: 95, statements: 95, branches: 80, functions: 90 }`
+- **THEN** the PR is rejected at review
+- **AND** the contributor either (a) writes the tests/annotations needed to use `COVERAGE_FLOOR` or (b) introduces a named-exception constant with a rationale comment
+
+#### Scenario: Adding a new tested file
+
+- **WHEN** a future sub-proposal lands tests for `app/actions/lists.ts`
+- **THEN** the sub-proposal adds exactly one line to `vitest.config.ts`: `'app/actions/lists.ts': COVERAGE_FLOOR,`
+- **AND** the contributor makes no judgment call on threshold values
 
 ### Requirement: Tests SHALL assert observable behavior, not execution
 
@@ -151,22 +244,17 @@ The rule SHALL land at severity `error` in `test-foundation` so the pre-merge `l
 
 ### Requirement: Cognitive complexity SHALL be capped at 15 per function
 
-The project SHALL enable `eslint-plugin-sonarjs` with the `sonarjs/cognitive-complexity` rule configured at threshold 15. The rule SHALL land at severity `warn` globally when the testing-foundation capability is established. Each test sub-proposal SHALL promote the rule to severity `error` for files in its carve-out via `overrides` in `eslint.config.mjs` at archive time. Per-line disables (`// eslint-disable-next-line sonarjs/cognitive-complexity`) are permitted ONLY with an accompanying comment naming the reason; bare disables SHALL be a lint error.
+The project SHALL enable `eslint-plugin-sonarjs` with the `sonarjs/cognitive-complexity` rule configured at threshold 15 and severity `error`, applied globally. (Rollout history: the rule landed at `warn` globally when the capability was established, and each test sub-proposal promoted its carve-out's files to `error` via per-file `overrides` at archive time; the governing `test-coverage` change's close-out universalized the gate and removed the per-file overrides as redundant.) Per-line disables (`// eslint-disable-next-line sonarjs/cognitive-complexity`) are permitted ONLY with an accompanying comment naming the reason; bare disables SHALL be a lint error.
 
-#### Scenario: New code triggers warn globally
+#### Scenario: Over-threshold function fails lint
 
 - **WHEN** a function exceeds cognitive complexity 15 in any file
-- **THEN** `npm run lint` emits a `sonarjs/cognitive-complexity` warning
-
-#### Scenario: Carve-out promotes to error
-
-- **WHEN** a sub-proposal archives with a carve-out covering files X, Y, Z
-- **THEN** `eslint.config.mjs` overrides set `sonarjs/cognitive-complexity` to `error` for X, Y, Z
-- **AND** any future commit raising complexity above 15 in those files fails lint
+- **THEN** `npm run lint` reports a `sonarjs/cognitive-complexity` error (not a warning)
+- **AND** the pre-merge `lint` gate fails
 
 #### Scenario: Justified disable is permitted
 
-- **WHEN** a function in a promoted file legitimately exceeds the threshold
+- **WHEN** a function legitimately exceeds the threshold
 - **THEN** a per-line disable comment naming the reason is accepted by lint
 - **AND** a bare disable without reason fails lint
 
@@ -418,33 +506,6 @@ Every Playwright `test(...)` name SHALL consist of exactly three PascalCase part
 - **THEN** each `test(...)` name inside SHALL still be a complete three-part `<PageOrFlow>_<Action>_<ExpectedOutcome>` string
 - **AND** removing the surrounding describe SHALL NOT make any test name ambiguous
 
-### Requirement: Pure-libs carve-out SHALL be tested at the 95% per-file floor with complexity locked at error
-
-The pure-libs carve-out — comprising `lib/visibility.ts`, `lib/listAccess.ts`, `hooks/use-media-query.ts`, and `app/ui/components/button/buttonClasses.ts` — SHALL be covered by colocated test files meeting the testing-foundation `Pure logic` per-file floor of 95% line coverage. `lib/types.ts` is type-only (zero executable statements after TS erasure) and SHALL be added to `vitest.config.ts`'s `coverage.exclude` patterns so the report is unambiguous. The `sonarjs/cognitive-complexity` rule SHALL be promoted from `warn` to `error` for the four carve-out files via `eslint.config.mjs` `overrides`. Subsequent sub-proposals that import from any of these four files SHALL inherit the assumption that those modules are tested and complexity-locked, and any future raise of complexity above 15 in those files SHALL fail lint.
-
-#### Scenario: Each carve-out file meets its 95% floor
-
-- **WHEN** `npm test -- --coverage` runs against `main` after this change archives
-- **THEN** the per-file coverage report shows `lib/visibility.ts`, `lib/listAccess.ts`, `hooks/use-media-query.ts`, and `app/ui/components/button/buttonClasses.ts` each at 95% line coverage or higher
-- **AND** the gate passes
-
-#### Scenario: Type-only file is excluded from the report
-
-- **WHEN** the coverage report is generated
-- **THEN** `lib/types.ts` does NOT appear as a file with a coverage percentage
-- **AND** `vitest.config.ts`'s `coverage.exclude` list includes `lib/types.ts`
-
-#### Scenario: Complexity ceiling fails lint in carve-out files
-
-- **WHEN** a contributor edits `lib/listAccess.ts` to raise a function's cognitive complexity to 16
-- **THEN** `npm run lint` reports a `sonarjs/cognitive-complexity` error (not a warning)
-- **AND** the pre-merge `lint` gate fails
-
-#### Scenario: Carve-out tests live colocated
-
-- **WHEN** a contributor opens the carve-out source files
-- **THEN** a `*.test.ts` (for `.ts` source) or `*.test.tsx` (for jsdom-requiring source) file exists alongside each one — at `lib/visibility.test.ts`, `lib/listAccess.test.ts`, `hooks/use-media-query.test.tsx`, and `app/ui/components/button/buttonClasses.test.ts`
-
 ### Requirement: DAL reads and server actions SHALL be integration-tested against a migrated pglite instance via a shared harness
 
 DAL functions (`lib/dal.ts`) and server actions (`app/actions/*.ts`) SHALL be tested under the **node** vitest project against a real migrated database, not against mocked query builders. Tier classification: **Tier 1** (per `test-coverage` design D13) — this requirement is a cross-cutting data-layer test contract, not carve-out bookkeeping, and was first established by the `test-following` sub-proposal (4.2).
@@ -472,6 +533,40 @@ Tests SHALL assert observable database state (rows present / absent / counted) a
 
 - **WHEN** a later data-layer sub-proposal (e.g. home-digest, list-item-management, list-visibility, server-endpoint-authorization, visit-history, user-actions) tests a DAL read or server action
 - **THEN** it uses this pglite + `mockNextCache()` + auth-boundary-mock pattern rather than re-deriving a data-layer test strategy
+
+### Requirement: PGlite test database SHALL be booted at most once per test file, with per-test isolation via a shared schema-derived reset helper
+
+Every `*.test.ts` DB-integration test file SHALL boot the PGlite instance via `test/helpers/db.ts#bootPglite` at most once per file (in a `beforeAll` hook), and SHALL NOT call `bootPglite` inside an `it()` / `test()` body or inside a per-test `beforeEach`. Per-test isolation SHALL be achieved by resetting table rows between tests, NOT by re-booting and re-migrating.
+
+The row reset SHALL be performed by a single shared helper exported from `test/helpers/db.ts` (e.g. `resetDb`) that issues one `TRUNCATE … RESTART IDENTITY CASCADE` over the database. The set of tables truncated SHALL be derived from the drizzle schema at `db/schema.ts` — iterating the schema module's exports and selecting drizzle table objects (via `is(value, PgTable)`), resolving each name with `getTableName` — and SHALL NOT be a hand-maintained SQL table-name literal. A table newly added to `db/schema.ts` SHALL therefore be reset automatically without editing the helper.
+
+Test files that mutate rows SHALL call this shared reset helper (and `vi.restoreAllMocks()` where they install per-test `db` spies) in `beforeEach` before reseeding, so that no row or spy leaks from one test into the next now that the database instance is shared across a file's tests. Files that only seed read-only fixtures once and never mutate MAY seed in `beforeAll` and skip the reset.
+
+This requirement completes the existing "extract the connection-swap + seed glue to `test/helpers/`" expectation into a binding boot-frequency contract; it does not change the migration-replay logic of `bootPglite` itself — only how often callers invoke it.
+
+#### Scenario: Reset helper leaves all schema tables empty
+
+- **WHEN** a test seeds rows into multiple tables and a subsequent `beforeEach` calls the shared `resetDb` helper
+- **THEN** selecting from every table defined in `db/schema.ts` returns zero rows
+- **AND** the truncation set was derived from the schema (not a hardcoded table-name list), so a table absent from any prior hand-rolled `TRUNCATE` literal is also emptied
+
+#### Scenario: No DB-integration test file boots PGlite per test
+
+- **WHEN** the repository's `*.test.ts` files are inspected
+- **THEN** no `bootPglite()` call appears inside an `it()` / `test()` body or inside a `beforeEach` hook
+- **AND** every file that uses `bootPglite` calls it from a `beforeAll` hook exactly once
+
+#### Scenario: Converted file stays green under the full parallel suite, not just in isolation
+
+- **WHEN** a file converted from per-test boot to per-file boot + `resetDb` runs as part of the full `pool: 'forks'` node suite
+- **THEN** every test passes with no cross-test row or mock leakage
+- **AND** the per-test boot-timeout flake described in issue #97 no longer occurs
+
+#### Scenario: TRUNCATE literal is de-duplicated
+
+- **WHEN** `app/actions/__tests__/items.test.ts` and `lists.test.ts` are inspected after this change
+- **THEN** neither contains a hand-rolled `TRUNCATE TABLE …` SQL literal
+- **AND** both reset rows between tests by calling the shared schema-derived reset helper from `test/helpers/db.ts`
 
 <!-- Rolled in from sub-proposal 6.0 `test-e2e-foundation` (Tier 1 per design
      D13): the e2e execution model. The six requirements below are the
@@ -572,7 +667,7 @@ Because the bypass is process-wide (no per-request seam), an authenticated viewe
 
 ### Requirement: The local e2e database SHALL be schema-applied by `drizzle-kit push` and populated by the canonical seed-as-fixture
 
-The Docker e2e database SHALL receive its schema via `drizzle-kit push` (schema derived directly from `db/schema.ts`, no migration replay), and SHALL be populated by invoking the canonical seed (`scripts/seed-dev-users.ts`) through the same `USE_PG_DRIVER` path (`USE_PG_DRIVER=1 DATABASE_URL=<local> ...`) so the seed reaches the local DB via the one driver-switch. The container's credentials SHALL be committed, non-secret, localhost-bound test values.
+The Docker e2e database SHALL receive its schema via `drizzle-kit push` (schema derived directly from `db/schema.ts`, no migration replay), and SHALL be populated by invoking the canonical seed (`scripts/seed-dev-users.ts`) through the same `USE_PG_DRIVER` path (`USE_PG_DRIVER=1 DATABASE_URL=<local> ...`) so the seed reaches the local DB via the one driver-switch. Before the e2e suite runs, the database SHALL be reset to the canonical fixture — `db:reset:dev`, which cascade-wipes seeded-owned rows then reseeds — so every run starts from a byte-identical known state regardless of any prior run's writes on a persisted database. The shared bring-up (`setup-e2e-db.sh`) SHALL apply schema only and SHALL NOT itself reset: the data-state step belongs to each caller, so `dev:local` seeds without wiping (preserving UI-created rows; reset there stays the explicit `db:reset:dev` opt-in) while `test:e2e` resets. The container's credentials SHALL be committed, non-secret, localhost-bound test values.
 
 #### Scenario: Schema applied from source via push
 
@@ -586,9 +681,21 @@ The Docker e2e database SHALL receive its schema via `drizzle-kit push` (schema 
 - **THEN** the seeded fixture rows are written to the local Postgres
 - **AND** no separate test-only DB client is required to seed it
 
+#### Scenario: The e2e suite starts from a deterministic reset
+
+- **WHEN** the e2e run is prepared (`test:e2e`)
+- **THEN** the database is reset to the canonical fixture (cascade wipe + reseed) before any spec executes
+- **AND** the starting state does not depend on rows written by a prior run on a persisted database
+
+#### Scenario: Local dev bring-up preserves UI-created rows
+
+- **WHEN** `dev:local` brings up the local database
+- **THEN** it seeds the canonical fixture without wiping
+- **AND** rows a developer created through the UI survive the restart (reset stays the explicit `db:reset:dev` opt-in)
+
 ### Requirement: CI SHALL run e2e in a fork-safe per-PR tier and a secret-bearing pre-promote migration tier
 
-Continuous integration SHALL run the Playwright e2e suite in two tiers: (1) a **per-PR** job that stands up a local Postgres sidecar, applies schema via `drizzle-kit push`, seeds the fixture, and runs the suite using only committed non-secret test credentials — so it runs on fork pull requests; and (2) a **pre-promote** job on trusted branches that creates an **ephemeral branch of the production Neon project** (copy-on-write — production data and schema are never mutated, and the branch is deleted afterward), runs `drizzle-kit migrate` against that branch, then resets and re-seeds the canonical test fixture onto it and exercises a representative set of DAL reads through the **production `neon-http` driver** (`USE_PG_DRIVER` unset). Branching production rather than a from-scratch database is deliberate: it validates the pending migrations against production's *actual* applied-migration state and schema, catching a migration production is missing or hand-applied drift that a clean database cannot surface; seeding test data first ensures CI never reads real users' production data. This tier is the sole CI guard for migration-replay correctness against the real schema and for production-driver (`neon-http`) divergence. It validates migration *replay* via `drizzle-kit migrate`; it SHALL NOT be construed as validating the production migration-apply mechanism itself (e.g. a manual SQL run against production), which uses a different apply path and is outside this capability's scope. It requires a Neon API secret and SHALL be skipped where that secret is unavailable (e.g. fork PRs). Once the per-PR tier exists, the descriptive note in `openspec/config.yaml` and this capability stating "CI does not currently run Playwright" SHALL be corrected.
+Continuous integration SHALL run the Playwright e2e suite in two tiers: (1) a **per-PR** job that stands up a local Postgres sidecar, applies schema via `drizzle-kit push`, resets to the canonical fixture (cascade wipe + reseed), and runs the suite using only committed non-secret test credentials — so it runs on fork pull requests; and (2) a **pre-promote** job on trusted branches that creates an **ephemeral branch of the production Neon project** (copy-on-write — production data and schema are never mutated, and the branch is deleted afterward), runs `drizzle-kit migrate` against that branch, then resets and re-seeds the canonical test fixture onto it and exercises a representative set of DAL reads through the **production `neon-http` driver** (`USE_PG_DRIVER` unset). Branching production rather than a from-scratch database is deliberate: it validates the pending migrations against production's *actual* applied-migration state and schema, catching a migration production is missing or hand-applied drift that a clean database cannot surface; seeding test data first ensures CI never reads real users' production data. This tier is the sole CI guard for migration-replay correctness against the real schema and for production-driver (`neon-http`) divergence. It validates migration *replay* via `drizzle-kit migrate`; it SHALL NOT be construed as validating the production migration-apply mechanism itself (e.g. a manual SQL run against production), which uses a different apply path and is outside this capability's scope. It requires a Neon API secret and SHALL be skipped where that secret is unavailable (e.g. fork PRs). Once the per-PR tier exists, the descriptive note in `openspec/config.yaml` and this capability stating "CI does not currently run Playwright" SHALL be corrected.
 
 #### Scenario: Per-PR e2e runs without secrets
 
