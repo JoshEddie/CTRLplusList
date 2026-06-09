@@ -60,7 +60,7 @@
 
 - [x] 8.1 `testing-foundation` delta (`specs/testing-foundation/spec.md`) — Tier-2 carve-out bookkeeping (the 8 live files whole-covered + enumerated; the old-chrome cluster removal); archive-only per design D13. No apply-time write to the active `testing-foundation` spec or the parent `test-coverage` accumulator. `openspec validate test-account-auth-ui --strict` passes.
 - [x] 8.2 Confirm NO active capability spec changes at apply-time: `menu-system` and `e2e-critical-flows` SHALLs are LOCKED as-is (asserted by the new tests, not modified); `app-frame` is untouched (never named the deleted primitives).
-- [ ] 8.3 **On archive** (at `/opsx:archive`): flip `test-coverage/tasks.md` §9.3 to `[x]` with a landed/archived note. §7.2 / §7.3 (global complexity promotion + final coverage baseline) remain blocked on §9.4 / §9.5 still being open — this sub-proposal alone does not clear them. *(Deferred to `/opsx:archive`; not part of apply.)*
+- [x] 8.3 **On archive** (at `/opsx:archive`): flip `test-coverage/tasks.md` §9.3 to `[x]` with a landed/archived note. §7.2 / §7.3 (global complexity promotion + final coverage baseline) remain blocked on §9.4 / §9.5 still being open — this sub-proposal alone does not clear them. *(Deferred to `/opsx:archive`; not part of apply.)*
 
 ## 9. Pre-merge (four-gate)
 
