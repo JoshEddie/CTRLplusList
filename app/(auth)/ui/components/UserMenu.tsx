@@ -12,11 +12,10 @@ import AuthContainer from './AuthContainer';
 import UserAvatarPopover from './UserAvatarPopover';
 
 export default function UserMenu({ session }: { session: Session | null }) {
-  const userSignedIn: boolean = !!session?.user;
   const user = session?.user;
 
   // Signed-in users get a compact popover anchored to the avatar.
-  if (userSignedIn && user) {
+  if (user) {
     return <UserAvatarPopover user={user} />;
   }
 

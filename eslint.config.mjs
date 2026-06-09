@@ -84,12 +84,19 @@ const eslintConfig = [
       // test-app-frame (sub-proposal 4.1) — locked at universal COVERAGE_FLOOR.
       'app/ui/components/AppFrame.tsx',
       'app/ui/components/AppNav.tsx',
-      'app/ui/components/AppMenu.tsx',
       'app/ui/components/AppLogo.tsx',
-      'app/ui/components/Logo.tsx',
       'app/ui/components/Header.tsx',
-      'app/ui/components/Nav.tsx',
       'app/ui/hooks/useKeyboardOffset.ts',
+      // test-account-auth-ui (sub-proposal 9.3) — complexity locked at error.
+      // The old-chrome cluster (AppMenu/Logo/Nav) was deleted as dead code.
+      'app/(auth)/ui/components/User.tsx',
+      'app/(auth)/ui/components/UserMenu.tsx',
+      'app/(auth)/ui/components/UserAvatarPopover.tsx',
+      'app/(auth)/ui/components/UserImage.tsx',
+      'app/(auth)/ui/components/SignInPage.tsx',
+      'app/(auth)/ui/components/SignInButton.tsx',
+      'app/(auth)/ui/components/AuthContainer.tsx',
+      'app/(auth)/sign-in/page.tsx',
       // test-following (sub-proposal 4.2) — locked at universal COVERAGE_FLOOR.
       'app/actions/follows.ts',
       // test-list-item-management (sub-proposal 4.9) — complexity locked at error.
