@@ -54,7 +54,8 @@
   - **Result:** `openspec validate test-list-history-bookmark-pages --strict` → valid. No apply-time write to the active `testing-foundation` spec or the `test-coverage` accumulator (archive-only per D13).
 - [x] 8.2 Confirm NO active capability spec changes at apply-time: the `visit-history` SHALLs are LOCKED as-is (asserted by the new tests, not modified); no spec-drift finding to flag (Decision 7).
   - **Result:** confirmed — no `visit-history` (or other active capability) spec edited; the only repo changes are the 8 `.test.tsx` files, the `vitest.config.ts` thresholds, and the `eslint.config.mjs` complexity-error entries. No source files modified.
-- [ ] 8.3 **On archive** (at `/opsx:archive`): flip `test-coverage/tasks.md` §9.5 to `[x]` with a landed/archived note. This is the **last** open §9 follow-up — on its archive, the §9 dependency on §7.1 clears, **unblocking** §7.2 / §7.3 / §7.5 / §8 of the governing change. *(Deferred to `/opsx:archive`; not part of apply.)*
+- [x] 8.3 **On archive** (at `/opsx:archive`): flip `test-coverage/tasks.md` §9.5 to `[x]` with a landed/archived note. This is the **last** open §9 follow-up — on its archive, the §9 dependency on §7.1 clears, **unblocking** §7.2 / §7.3 / §7.5 / §8 of the governing change.
+  - **Done (2026-06-09):** `test-coverage/tasks.md` §9.5 flipped to `[x]` with the landed/archived note (incl. the spec-review fixes — per-directory `makeRow` `test-helpers.tsx` extraction + the tightened CLAUDE.md/TESTING.md DRY rule); §7.2 / §7.3 / §7.5 / §8 of the governing change unblocked.
 
 ## 9. Pre-merge (five-gate)
 
