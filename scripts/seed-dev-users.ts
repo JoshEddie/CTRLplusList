@@ -198,6 +198,30 @@ function itemsForList(listId: string): string[] {
   return out;
 }
 
+// Purchase fan-out per item:
+//   qty_limit = 3:       1 (partial) or 3 (fully-claimed), per listIdx parity
+//   qty_limit = null:    1 (single buyer) or 4 (many buyers), per listIdx parity
+//   qty_limit = 1:       0 or 1 via stride derived from the target ratio —
+//                        viewer's archived items run hotter (~70%) since
+//                        archived often means purchased.
+function purchaseCountFor(
+  item: {
+    user_id: string;
+    archived_at: Date | null;
+    quantity_limit: number | null;
+  },
+  listIdx: number,
+  itemIdx: number,
+  baseRatio: number
+): number {
+  if (item.quantity_limit === 3) return listIdx % 2 === 0 ? 1 : 3;
+  if (item.quantity_limit === null) return listIdx % 2 === 0 ? 1 : 4;
+  const effectiveRatio =
+    item.user_id === VIEWER_ID && item.archived_at ? 0.7 : baseRatio;
+  const stride = Math.max(1, Math.round(1 / effectiveRatio));
+  return itemIdx % stride === 0 ? 1 : 0;
+}
+
 // Viewer-owned lists — 15 of them across varied occasions to force both the
 // MyListsRail horizontal scroll and the /lists page vertical scroll.
 const VIEWER_LIST_TEMPLATES: {
@@ -757,24 +781,7 @@ async function main() {
       const item = itemRows.find((r) => r.id === itemId);
       if (!item) return;
 
-      // Decide how many purchase rows this item gets.
-      //   qty_limit = 3:       1 (partial) or 3 (fully-claimed), per listIdx parity
-      //   qty_limit = null:    1 (single buyer) or 4 (many buyers), per listIdx parity
-      //   qty_limit = 1:       0 or 1 via existing stride-based ratio
-      let purchaseCount: number;
-      if (item.quantity_limit === 3) {
-        purchaseCount = listIdx % 2 === 0 ? 1 : 3;
-      } else if (item.quantity_limit === null) {
-        purchaseCount = listIdx % 2 === 0 ? 1 : 4;
-      } else {
-        // Viewer's archived items get a higher rate (~70%) since archived often
-        // means purchased.
-        const isArchived = !!item.archived_at;
-        const effectiveRatio =
-          item.user_id === VIEWER_ID && isArchived ? 0.7 : purchaseRatio;
-        const stride = Math.max(1, Math.round(1 / effectiveRatio));
-        purchaseCount = idx % stride === 0 ? 1 : 0;
-      }
+      const purchaseCount = purchaseCountFor(item, listIdx, idx, purchaseRatio);
       if (purchaseCount === 0) return;
 
       // Eligible buyer pool (owner excluded). Rotate by (h + n) so each
