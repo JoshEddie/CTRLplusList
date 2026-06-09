@@ -58,7 +58,8 @@
   - **Result:** `openspec validate test-connections-and-profile-pages --strict` → valid. No apply-time write to the active `testing-foundation` spec or the `test-coverage` accumulator (archive-only per D13).
 - [x] 9.2 Confirm NO active capability spec changes at apply-time: the `following` SHALLs are LOCKED as-is (asserted by the new tests, not modified); the `/u/[id]` route-path drift is flagged for the operator (§6.2), not edited.
   - **Result:** confirmed — no `following` (or other active capability) spec edited; the only repo changes are the 12 `.test.tsx` files + one `test-helpers.tsx`, the `vitest.config.ts` thresholds, and the `eslint.config.mjs` complexity-error entries. No source files modified.
-- [ ] 9.3 **On archive** (at `/opsx:archive`): flip `test-coverage/tasks.md` §9.4 to `[x]` with a landed/archived note. §7.2 / §7.3 (global complexity promotion + final coverage baseline) remain blocked while §9.5 is still open — this sub-proposal alone does not clear them. *(Deferred to `/opsx:archive`; not part of apply.)*
+- [x] 9.3 **On archive** (at `/opsx:archive`): flip `test-coverage/tasks.md` §9.4 to `[x]` with a landed/archived note. §7.2 / §7.3 (global complexity promotion + final coverage baseline) remain blocked while §9.5 is still open — this sub-proposal alone does not clear them. *(Deferred to `/opsx:archive`; not part of apply.)*
+  - **Done (archive, 2026-06-09):** `test-coverage/tasks.md` §9.4 flipped to `[x]` with the landed/archived note. The `testing-foundation` Tier-2 carve-out record stays archive-only per D13 (operator chose "Archive without syncing"). §7.2 / §7.3 / §8 stay blocked while §9.5 is open.
 
 ## 10. Pre-merge (four-gate)
 

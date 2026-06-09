@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 
 describe('ProfileListsSection', () => {
-  it('AwaitsParams_ReadsPublicListsWithLimit50-ForwardsToGrid', async () => {
+  it('PopulatedLists_ReadsPublicListsWithLimit50-ForwardsToGrid', async () => {
     vi.mocked(getPublicListsByUser).mockResolvedValue([
       { id: 'l1' },
       { id: 'l2' },
