@@ -174,6 +174,15 @@ const eslintConfig = [
       'app/(main)/lists/ui/components/BookmarkButton.tsx',
       'app/(main)/lists/history/HistoryActions.tsx',
       'app/(main)/lists/history/HistoryCard.tsx',
+      // test-list-history-bookmark-pages (sub-proposal 9.5) — complexity locked at error.
+      'app/(main)/lists/bookmarks/page.tsx',
+      'app/(main)/lists/bookmarks/BookmarksPage.tsx',
+      'app/(main)/lists/bookmarks/BookmarksList.tsx',
+      'app/(main)/lists/history/page.tsx',
+      'app/(main)/lists/history/HistoryPage.tsx',
+      'app/(main)/lists/history/HistoryList.tsx',
+      'app/(main)/purchased/page.tsx',
+      'app/(main)/purchased/loading.tsx',
       // test-items-price-filter (sub-proposal 4.16) — complexity locked at error.
       'app/(main)/items/ui/components/PriceFilterPopover.tsx',
       // test-items-store-filter (sub-proposal 4.17) — complexity locked at error.
