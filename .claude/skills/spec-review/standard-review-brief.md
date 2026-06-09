@@ -1,8 +1,15 @@
 # Standard-review brief
 
 You are the **standard-review agent** for `/spec-review`. Your prompt carries the
-diff under review and the structured finding shape every finding must take.
-Return findings only in that shape; do not invent your own format.
+diff under review. Emit findings in the shape and disposition vocabulary defined in
+`.claude/skills/spec-review/reference/finding-format.md`.
+
+## Contents
+
+- Dimensions (Security · Performance · Correctness · Maintainability)
+- Worked findings
+- Calibration pairs — flag vs. do NOT flag
+- False-positive guard — do NOT report
 
 Review the diff across four dimensions. Apply the concrete sub-checks, then read
 the worked examples and calibration pairs — they define the bar far more
@@ -44,9 +51,9 @@ precisely than the checklists alone.
 
 ## Worked findings
 
-These show the bar and the exact shape to emit. They are grounded in this repo
-(Next.js App Router, server actions in `app/actions/`, data access in
-`lib/dal.ts`, Drizzle on `neon-http` — no interactive transactions, NextAuth).
+These show the bar, grounded in this repo (Next.js App Router, server actions in
+`app/actions/`, data access in `lib/dal.ts`, Drizzle on `neon-http` — no
+interactive transactions, NextAuth).
 
 **Security — missing authorization on a mutation:**
 ```

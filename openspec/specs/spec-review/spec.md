@@ -32,11 +32,57 @@ The skill SHALL perform a standard code review covering security, performance, c
 
 ### Requirement: Multi-agent orchestration
 
-The skill SHALL run its review phases as parallel sub-agents — at minimum a standard-review agent, a convention-audit agent, and a contract-audit agent — and SHALL consolidate their findings into a single report.
+The skill SHALL run its review phases as parallel sub-agents — at minimum a
+standard-review agent, a convention-audit agent, and a contract-audit agent — and
+SHALL consolidate their findings into a single report. The skill SHALL perform
+this parallel review fan-out by invoking a workflow bundled within the skill,
+rather than by spawning the phase agents directly, such that each phase agent
+returns its findings through a schema-validated structured-output shape (the
+finding shape defined for the skill), not as free text. The skill instructing the
+workflow invocation SHALL itself satisfy the workflow's opt-in; no separate
+per-run user opt-in is required.
 
-#### Scenario: Phases run in parallel and consolidate
-- **WHEN** `/spec-review` executes against a diff
-- **THEN** the standard-review, convention-audit, and contract-audit agents run concurrently and their findings are merged into one consolidated report
+Because the workflow runs non-interactively and cannot prompt the user, the
+skill SHALL retain — outside the workflow — every interactive or
+orchestrator-judgment step: scope and change resolution (including any
+`AskUserQuestion` prompts), the CI status read, consolidation of the returned
+findings into the report, the verdict / clear-to-archive determination, and the
+explore-mode handoff. The skill SHALL pass the workflow only fully-resolved,
+non-interactive inputs (at minimum the diff source, the resolved change name, the
+archive state, and the bundled brief locations) and SHALL receive the phase
+findings back from the workflow for consolidation. This SHALL NOT weaken the
+existing "OpenSpec change resolution" or "Optional explore-mode handoff"
+requirements: their interactive steps remain in the skill.
+
+#### Scenario: Fan-out runs via the bundled workflow
+
+- **WHEN** `/spec-review` executes against a resolved diff
+- **THEN** the skill invokes its bundled workflow, the standard-review,
+  convention-audit, and contract-audit phases run concurrently within it, and
+  their findings are returned to the skill and merged into one consolidated
+  report
+
+#### Scenario: Phase findings are schema-validated
+
+- **WHEN** a phase agent in the workflow produces findings
+- **THEN** each finding conforms to the skill's structured finding shape by
+  schema validation rather than being emitted as free text for the orchestrator
+  to parse
+
+#### Scenario: Interactive steps stay in the skill, not the workflow
+
+- **WHEN** scope resolution is ambiguous (more than one plausible change) or the
+  explore-mode handoff is offered
+- **THEN** the interaction (e.g. `AskUserQuestion`, the handoff prompt) is
+  performed by the skill, never by the non-interactive workflow, which receives
+  only the already-resolved inputs
+
+#### Scenario: Workflow receives resolved inputs and returns findings
+
+- **WHEN** the skill invokes the workflow
+- **THEN** it passes the diff source, the resolved change name, the archive
+  state, and the bundled brief locations, and consumes the findings the workflow
+  returns rather than re-deriving them
 
 ### Requirement: Convention audit follows CLAUDE.md doc-pointers
 
@@ -248,3 +294,70 @@ and contract phases.
   needed by both the orchestrator and a brief
 - **THEN** that contract is defined in one place and referenced, not copied into
   each brief
+
+### Requirement: Concise, progressively-disclosed authoring
+
+The skill SHALL be authored for conciseness and progressive disclosure: its
+`SKILL.md` body SHALL stay under 500 lines and contain only the orchestrator's
+job (scope resolution, fan-out invocation, CI read, consolidation, verdict,
+handoff), with shared contracts and agent-facing detail placed in bundled
+reference files rather than inline. Each reference file SHALL be a terminal leaf
+(it SHALL NOT reference further files) and SHALL be referenced **one level deep**
+from each entry point that needs it — `SKILL.md` and each sub-agent brief link to
+it directly, and no brief SHALL reach a shared contract by pointing back through
+`SKILL.md`. Any bundled markdown file longer than 100 lines SHALL begin with a
+table of contents. This builds on, and does not weaken, the "Sub-agent briefs are
+bundled within the skill" single-sourcing requirement: the single source MAY move
+to a leaf reference file, but remains single.
+
+#### Scenario: SKILL.md stays under the size limit
+
+- **WHEN** the `spec-review` skill is packaged
+- **THEN** its `SKILL.md` body is under 500 lines and carries the orchestrator's
+  job rather than the agent-facing review contracts
+
+#### Scenario: Shared contracts live in terminal leaf reference files
+
+- **WHEN** a contract is shared between the orchestrator and a brief (e.g. the
+  archive-state latitude table or the finding format)
+- **THEN** it lives in a bundled reference file that itself references no further
+  file, single-sourced rather than duplicated
+
+#### Scenario: References are one level deep from each entry point
+
+- **WHEN** `SKILL.md` or a brief needs a shared contract
+- **THEN** it links to that reference file directly, and no brief obtains the
+  contract by pointing back through `SKILL.md`
+
+#### Scenario: Long reference files carry a table of contents
+
+- **WHEN** a bundled markdown file exceeds 100 lines
+- **THEN** it begins with a table of contents listing its sections
+
+### Requirement: Bundled evaluation scenarios
+
+The skill SHALL ship with at least three bundled evaluation scenarios that cover
+its core verdict outcomes — at minimum a false-complete contract mismatch (a
+task marked complete with no implementing work, yielding a not-clear-to-archive
+verdict), a merged-archive conformance violation (a Type-2 change yielding a
+`Request changes` verdict under directional framing), and a clean PR (no `Fix now`
+findings, yielding an `Approve` verdict). Each scenario SHALL state its inputs and
+its expected behavior so it can serve as a source of truth for future iteration,
+independent of whether an automated runner exists.
+
+#### Scenario: At least three evaluations are bundled
+
+- **WHEN** the `spec-review` skill is packaged
+- **THEN** at least three evaluation scenarios are bundled with it
+
+#### Scenario: Evaluations cover the core verdict outcomes
+
+- **WHEN** the bundled evaluation scenarios are read
+- **THEN** they include at minimum a false-complete contract mismatch, a
+  merged-archive conformance violation, and a clean approving PR
+
+#### Scenario: Each evaluation states inputs and expected behavior
+
+- **WHEN** an individual evaluation scenario is read
+- **THEN** it specifies the review inputs and the expected behavior, so it is
+  checkable by hand even without an automated runner

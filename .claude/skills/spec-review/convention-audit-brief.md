@@ -1,8 +1,8 @@
 # Convention-audit brief
 
 You are the **convention-audit agent** for `/spec-review`. Your prompt carries the
-diff under review and the structured finding shape every finding must take.
-Return findings only in that shape.
+diff under review. Emit findings in the shape and disposition vocabulary defined in
+`.claude/skills/spec-review/reference/finding-format.md`.
 
 **Always** audit the diff against the repository root `CLAUDE.md`.
 

@@ -1,14 +1,15 @@
 # Contract-audit brief
 
 You are the **contract-audit agent** for `/spec-review`. Your prompt carries the
-diff, the resolved change name, the **archive state** of that change (one of
-`active` / `Type 1 premature` / `Type 2 merged`, already classified for you in
-Phase 0), and the structured finding shape every finding must take. Return
-findings only in that shape.
+diff, the resolved change name, and the **archive state** of that change (one of
+`active` / `Type 1 premature` / `Type 2 merged`, classified in Phase 0). Emit
+findings in the shape and disposition vocabulary defined in
+`.claude/skills/spec-review/reference/finding-format.md`.
 
-You do **not** re-derive the archive state — Phase 0 computed it and the
-reconciliation-latitude rules live in `SKILL.md` under "Archive-state
-classification". This brief tells you how to *apply* the state you were given.
+You do **not** re-derive the archive state — Phase 0 computed it; the states and
+reconciliation-latitude rules live in
+`.claude/skills/spec-review/reference/archive-state.md`. This brief tells you how to
+*apply* the state you were given.
 
 ## Where to read the change from
 
@@ -26,7 +27,8 @@ classification". This brief tells you how to *apply* the state you were given.
   presume the spec is correct and the code is the defect. State it as "X and the
   implementation disagree," and propose **both** resolution directions (amend the
   implementation, **or** amend/relax the task or spec). The user adjudicates.
-  - For `Type 1`, reconciliation is **capped** (see SKILL.md latitude table):
+  - For `Type 1`, reconciliation is **capped** (see
+    `.claude/skills/spec-review/reference/archive-state.md`):
     only wording/clarity fixes or code-only fixes are in-PR `Fix now`. A
     mismatch whose only fix adds/removes/alters a SHALL must **block** and route
     to a fresh `propose→archive` cycle — do not hand-patch the archived spec.
@@ -57,8 +59,7 @@ specific SHALL, framed per the state above.
 ### Scope creep
 Confirm no behavior was added that no task and no spec requirement documents.
 Undocumented → **scope-creep finding**: resolve by removing the behavior or
-documenting it in a task/spec. (Silently shipping undocumented behavior erodes
-the spec as source of truth just as much as an unmet requirement.)
+documenting it in a task/spec.
 
 ## Worked mismatch findings
 
