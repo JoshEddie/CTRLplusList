@@ -8,7 +8,7 @@ export default function AuthContainer({
   className?: string;
 }) {
   return (
-    <div className={`sign-in-page ${className}`}>
+    <div className={`sign-in-page ${className ?? ''}`}>
       <div className="auth-container">{children}</div>
     </div>
   );

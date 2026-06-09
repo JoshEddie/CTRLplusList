@@ -7,7 +7,7 @@ vi.mock('@/app/(auth)/ui/components/SignInPage', () => ({
 }));
 
 describe('IndexPage', () => {
-  it('Default_RendersSignInPageInsideSuspense', async () => {
+  it('Default_RendersSignInPage', async () => {
     render(await IndexPage());
     expect(screen.getByTestId('sign-in-page')).toBeInTheDocument();
   });

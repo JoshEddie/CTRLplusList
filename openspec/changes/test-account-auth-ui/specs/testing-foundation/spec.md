@@ -4,7 +4,7 @@
 
 The auth and account-menu **client UI** left at 0% by the §0–§6 carve-outs — whose sign-in *flow* is e2e-covered by 6.1 (`test-e2e-critical-flows`) but whose **components** had no unit tests — SHALL be brought to the universal per-file `COVERAGE_FLOOR` (`lines:98 / statements:98 / branches:95 / functions:100`) by colocated `*.test.tsx` files under the **jsdom** vitest project. The covered files are, under `app/(auth)/ui/components/`: `User.tsx`, `UserMenu.tsx`, `UserAvatarPopover.tsx`, `UserImage.tsx`, `SignInPage.tsx`, `SignInButton.tsx`, and `AuthContainer.tsx`; and `app/(auth)/sign-in/page.tsx`.
 
-The client components SHALL be rendered through the **real** governed primitives (`Menu`/`MenuItem`/`MenuLinkItem` for `UserAvatarPopover`, `Button`/`buttonClasses` for `SignInButton` and `UserMenu`), with only the boundaries `testing-foundation` permits mocked — the server actions (`@/app/actions/user`), `next/image`, and `next/navigation`. The async server-component shells (`User`, `SignInPage`, `sign-in/page.tsx`) SHALL be tested via the async-RSC pattern: `auth()` mocked, `next/server`'s `connection()` mocked to a resolved no-op (for `SignInPage`), and `next/navigation`'s `redirect()` mocked to throw a sentinel. Internal modules SHALL NOT otherwise be mocked, and no governed primitive SHALL be re-owned or re-tested here.
+The client components SHALL be rendered through the **real** governed primitives (`Menu`/`MenuItem`/`MenuLinkItem` for `UserAvatarPopover`, `Button`/`buttonClasses` for `SignInButton` and `UserMenu`), with only framework boundaries mocked — the server actions (`@/app/actions/user`), `next/image`, `next/navigation`, and `next/link` (the last pulled in transitively by the real `MenuLinkItem`, which cannot mount under jsdom without an `AppRouterContext`). The async server-component shells (`User`, `SignInPage`, `sign-in/page.tsx`) SHALL be tested via the async-RSC pattern: `auth()` mocked, `next/server`'s `connection()` mocked to a resolved no-op (for `SignInPage`), and `next/navigation`'s `redirect()` mocked to throw a sentinel. A sibling component that carries its own colocated coverage MAY be mocked when a test needs to isolate the parent's branch logic — `UserMenu`'s session-branch test mocks `UserAvatarPopover` and `SignInButton`, each owned and tested separately. No governed primitive SHALL be mocked, re-owned, or re-tested here, and internal modules SHALL NOT otherwise be mocked.
 
 On completion, every covered file SHALL be enumerated in `vitest.config.ts` per-file `thresholds` at the shared `COVERAGE_FLOOR` constant (no per-file numeric variation) and SHALL have `sonarjs/cognitive-complexity` promoted to `error` in `eslint.config.mjs`.
 
@@ -19,7 +19,7 @@ On completion, every covered file SHALL be enumerated in `vitest.config.ts` per-
 
 - **WHEN** a `UserAvatarPopover` test renders the component
 - **THEN** the real `Menu` / `MenuItem` / `MenuLinkItem` primitives are mounted (not mocked)
-- **AND** only the server actions (`@/app/actions/user`), `next/image`, and `next/navigation` are mocked at the boundary
+- **AND** nothing beyond the permitted framework boundaries (`@/app/actions/user`, `next/image`, `next/navigation`, `next/link`) is mocked
 
 #### Scenario: The sign-in redirect branch is unit-covered without duplicating the e2e
 

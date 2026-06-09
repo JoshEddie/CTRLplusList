@@ -15,8 +15,7 @@ describe('AuthContainer', () => {
       </AuthContainer>
     );
     const wrap = container.querySelector('.sign-in-page') as HTMLElement;
-    // No className passed → the template literal leaves a trailing `undefined`.
-    expect(wrap).toHaveClass('sign-in-page', 'undefined');
+    expect(wrap).toHaveClass('sign-in-page', { exact: true });
     const inner = wrap.firstElementChild as HTMLElement;
     expect(inner).toHaveClass('auth-container');
     expect(inner.contains(screen.getByTestId('child'))).toBe(true);
