@@ -8,8 +8,7 @@ import {
 } from '@/db/schema';
 import type { bootPglite } from '@/test/helpers/db';
 
-// Shared seed helpers for the lib/data test lanes — the merged successor of
-// test/helpers/seedItemGraph.ts and app/actions/__tests__/test-helpers.ts.
+// Shared seed helpers for the lib/data test lanes.
 // The vi.mock harness (the `@/db` getter-holder, the `@/lib/auth` mock,
 // mockNextCache) stays inline per file because vi.mock is hoisted per module;
 // only the pure `db.insert` graph builders are shared here. Excluded from

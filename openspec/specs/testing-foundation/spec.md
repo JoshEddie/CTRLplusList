@@ -60,7 +60,7 @@ Test-only files inside `__tests__/` directories (including local `test-helpers.*
 
 #### Scenario: Cross-module helper extraction
 
-- **WHEN** the same helper is needed by tests inside two different `__tests__/` directories (e.g., a DB fixture used by both `lib/__tests__/visibility.test.ts` and `app/actions/__tests__/lists.test.ts`)
+- **WHEN** the same helper is needed by tests inside two different `__tests__/` directories (e.g., a DB fixture used by both `lib/__tests__/visibility.test.ts` and `lib/data/__tests__/list.actions.test.ts`)
 - **THEN** the helper extracts to `test/helpers/` (or `test/fixtures/` for fixture data) and both tests import from the extracted location
 
 #### Scenario: E2E test placement
@@ -215,7 +215,7 @@ If a future need arises to vary thresholds by file (e.g., a file class with a do
 
 #### Scenario: Adding a new tested file requires no config edit
 
-- **WHEN** a future change lands tests for `app/actions/lists.ts`
+- **WHEN** a future change lands tests for `lib/data/list.actions.ts`
 - **THEN** no `vitest.config.ts` edit is needed — the universal floor already gates the file via `coverage.include`
 - **AND** the contributor makes no judgment call on threshold values
 
@@ -271,6 +271,38 @@ The project SHALL enable `eslint-plugin-sonarjs` with the `sonarjs/cognitive-com
 - **WHEN** a function legitimately exceeds the threshold
 - **THEN** a per-line disable comment naming the reason is accepted by lint
 - **AND** a bare disable without reason fails lint
+
+### Requirement: File size SHALL be lint-enforced as three bands
+
+Production source files SHALL be held to the repo-wide size bands, enforced in `eslint.config.mjs`. Both rules count **lines of code** — comments and blank lines are free (`sonarjs/max-lines` counts code lines natively; the core rule is configured with `skipBlankLines`/`skipComments` to match, so the two thresholds measure the same thing):
+
+- **Red — over 500 lines is an error.** Core `max-lines` configured at `['error', { max: 500, skipBlankLines: true, skipComments: true }]`. A red file blocks merge; the only disposition is decomposition (for data-layer modules, by table cohesion per `data-layer-organization`) — never an `eslint-disable`.
+- **Yellow — 300–500 lines is a warning.** `sonarjs/max-lines` configured at `['warn', { maximum: 300 }]`. Yellow is advisory: pull easy wins where a clean extraction exists; a cohesive file MAY remain yellow indefinitely.
+- **Green — under 300 lines.** The goal; no diagnostics.
+
+Scope: the rules SHALL apply to production source (`app/**`, `lib/**`, `hooks/**`, `db/**`) and SHALL NOT apply to test files (`**/*.test.*`, `**/__tests__/**`, `test/**`, `e2e/**`), `scripts/**`, or data-literal modules already carved out of coverage (e.g. `app/changelog/releases.ts`). Test-file size remains governed by this capability's structural conventions (one lane per source module), not a line count.
+
+Gate interaction: the pre-merge "zero warnings" lint bar SHALL be read as zero warnings **outside the yellow band** — yellow size advisories are the single deliberate warning class and do not block merge. Per-file or per-line `eslint-disable` for either size rule SHALL NOT be added.
+
+#### Scenario: Red file blocks at lint
+
+- **WHEN** a production source file reaches 501+ lines
+- **THEN** `npm run lint` reports a `max-lines` error and pre-merge fails until the file is decomposed
+
+#### Scenario: Yellow file warns without blocking
+
+- **WHEN** a production source file sits between 300 and 500 lines
+- **THEN** lint emits a `sonarjs/max-lines` warning, visible in lint output, and merge is not blocked
+
+#### Scenario: Test files are exempt
+
+- **WHEN** a `__tests__/` suite or e2e spec exceeds 500 lines
+- **THEN** neither size rule fires; test structure is governed by the one-lane-per-source-module convention, not a line count
+
+#### Scenario: No escape hatches
+
+- **WHEN** a PR adds an `eslint-disable` (file- or line-level) for `max-lines` or `sonarjs/max-lines`
+- **THEN** the PR is rejected at review; the disposition is decomposition (red) or accepting the visible warning (yellow)
 
 ### Requirement: Each test sub-proposal SHALL perform four audits and dispose of every finding
 
@@ -599,9 +631,9 @@ A green `lint` run therefore SHALL be read as "the title shape is structurally v
 
 ### Requirement: DAL reads and server actions SHALL be integration-tested against a migrated pglite instance via a shared harness
 
-DAL functions (`lib/dal.ts`) and server actions (`app/actions/*.ts`) SHALL be tested under the **node** vitest project against a real migrated database, not against mocked query builders. Tier classification: **Tier 1** (per `test-coverage` design D13) — this requirement is a cross-cutting data-layer test contract, not carve-out bookkeeping, and was first established by the `test-following` sub-proposal (4.2).
+Data-layer reads (`lib/data/*.ts`) and server actions (`lib/data/*.actions.ts`) SHALL be tested under the **node** vitest project against a real migrated database, not against mocked query builders. Tier classification: **Tier 1** (per `test-coverage` design D13) — this requirement is a cross-cutting data-layer test contract, not carve-out bookkeeping, and was first established by the `test-following` sub-proposal (4.2).
 
-DAL functions (`lib/dal.ts`) and server actions (`app/actions/*.ts`) run under the **node** vitest project (`*.test.ts`) against a real, migrated in-process Postgres provided by `bootPglite()` (`test/helpers/db.ts`), NOT against mocked query builders. The test SHALL:
+Data-layer reads (`lib/data/*.ts`) and server actions (`lib/data/*.actions.ts`) run under the **node** vitest project (`*.test.ts`) against a real, migrated in-process Postgres provided by `bootPglite()` (`test/helpers/db.ts`), NOT against mocked query builders. The test SHALL:
 
 1. Boot a fresh migrated pglite instance per test (isolating rows, not just files) and module-mock `@/db` so the module-under-test's `import { db } from '@/db'` resolves to that instance.
 2. Apply `mockNextCache()` (`test/helpers/next-cache.ts`) so the `'use cache'` directive's `cacheTag(...)` calls are no-ops and `updateTag` / `revalidateTag` are spies whose calls can be asserted.
@@ -655,9 +687,9 @@ This requirement completes the existing "extract the connection-swap + seed glue
 
 #### Scenario: TRUNCATE literal is de-duplicated
 
-- **WHEN** `app/actions/__tests__/items.test.ts` and `lists.test.ts` are inspected after this change
-- **THEN** neither contains a hand-rolled `TRUNCATE TABLE …` SQL literal
-- **AND** both reset rows between tests by calling the shared schema-derived reset helper from `test/helpers/db.ts`
+- **WHEN** the relocated action suites under `lib/data/__tests__/` (`item.actions.test.ts`, `purchase.actions.test.ts`, `list.actions.test.ts`, `listItems.actions.test.ts`, `visit.actions.test.ts`) are inspected after this change
+- **THEN** none contains a hand-rolled `TRUNCATE TABLE …` SQL literal
+- **AND** all reset rows between tests by calling the shared schema-derived reset helper from `test/helpers/db.ts`
 
 <!-- Rolled in from sub-proposal 6.0 `test-e2e-foundation` (Tier 1 per design
      D13): the e2e execution model. The six requirements below are the

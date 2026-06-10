@@ -5,7 +5,7 @@ TBD - created by archiving change harden-server-action-authorization. Update Pur
 ## Requirements
 ### Requirement: Server actions SHALL resolve the acting user from the session, not the request payload
 
-Every Next.js server action under `app/actions/**` that writes to a user-owned resource (rows whose schema includes a `user_id` foreign key — currently `lists`, `items`, `purchases`) SHALL determine the acting user id by:
+Every Next.js server action exported from a `lib/data/*.actions.ts` module (the server-action home defined by `data-layer-organization`) that writes to a user-owned resource (rows whose schema includes a `user_id` foreign key — currently `lists`, `items`, `purchases`) SHALL determine the acting user id by:
 
 1. Calling `auth()` and rejecting (`{ success: false, error: 'Unauthorized' }`) if no session exists or `session.user.email` is absent, except where this requirement's "guest write paths" clause permits anonymous writes.
 2. Looking up `users.id` from `users.email` against the database.
@@ -43,8 +43,10 @@ Actions whose target row already encodes the relationship in its where-clause (e
 
 Specific actions covered by this requirement (non-exhaustive — every future action that updates a user-owned row is automatically covered):
 
-- `app/actions/lists.ts`: `updateList`, `deleteList`, `setListVisibility`, `setListItems`, `updatePriority`.
-- `app/actions/items.ts`: `updateItem`, `updateItemLists`, `updateItemStores`, `archiveItem`, `deleteItem`.
+- `lib/data/list.actions.ts`: `updateList`, `deleteList`, `setListVisibility`.
+- `lib/data/listItems.actions.ts`: `setListItems`, `updatePriority`.
+- `lib/data/item.actions.ts`: `updateItem`, `archiveItem`, `deleteItem`.
+- `lib/data/item.associations.ts`: `updateItemLists`, `updateItemStores` — internal helpers invoked by the item actions, not endpoints; their ownership checks are covered the same way.
 
 Actions in this list MUST NOT accept the actor id as a function parameter (e.g. `deleteItem(id, userId)`). The actor id is exclusively resolved from `auth()`. Existing call sites that pass an actor id SHALL be updated in lockstep with the signature change.
 
@@ -169,9 +171,9 @@ This requirement is a sibling of the existing rule that the actor id is exclusiv
 
 ### Requirement: Follow-graph mutation actions SHALL resolve the actor exclusively from the session and SHALL NOT accept an actor parameter
 
-Every server action under `app/actions/follows.ts` that writes to the follow graph (`followUser`, `unfollowUser`, `removeFollower`, `blockUser`, `unblockUser`) SHALL resolve the acting user id by calling `auth()` and looking up `users.id` from `session.user.email` (via the shared `authedUserId` helper), and SHALL reject with `{ success: false, error: 'Unauthorized' }` when no session exists. These actions SHALL NOT accept the actor id as a function parameter; the only parameter is the *target* of the relationship (`followee_id`, `follower_id`, or `blocked_id`), never the actor.
+Every follow-graph server action in `lib/data/user.actions.ts` (`followUser`, `unfollowUser`, `removeFollower`, `blockUser`, `unblockUser`) SHALL resolve the acting user id by calling `auth()` and looking up `users.id` from `session.user.email` (via the shared `authedUserId` helper), and SHALL reject with `{ success: false, error: 'Unauthorized' }` when no session exists. These actions SHALL NOT accept the actor id as a function parameter; the only parameter is the *target* of the relationship (`followee_id`, `follower_id`, or `blocked_id`), never the actor.
 
-The actor-bearing columns written or matched by these actions — `user_follows.follower_id`, `user_blocks.blocker_id`, and the viewer side of every where-clause — SHALL be the session-resolved actor id, not a value derived from the payload. This extends the cross-cutting actor-resolution rule (whose explicit file enumeration covers `lists.ts` and `items.ts`) to the follow-graph mutations, which write to relationship tables (`user_follows`, `user_blocks`) rather than `user_id`-keyed owned rows.
+The actor-bearing columns written or matched by these actions — `user_follows.follower_id`, `user_blocks.blocker_id`, and the viewer side of every where-clause — SHALL be the session-resolved actor id, not a value derived from the payload. This extends the cross-cutting actor-resolution rule (whose explicit file enumeration covers `list.actions.ts` and `item.actions.ts`) to the follow-graph mutations, which write to relationship tables (`user_follows`, `user_blocks`) rather than `user_id`-keyed owned rows.
 
 Specifically, `removeFollower(follower_id)` SHALL delete ONLY the edge where the session actor is the **followee** — `(follower_id = follower_id, followee_id = sessionActor)`. A caller SHALL NOT be able to delete a follow edge they are not the followee of; the action accepts no `followee_id` parameter through which an arbitrary edge could be targeted. This closes the failure mode where a refactor accepting a `followee_id` argument would let any authenticated user sever follow relationships between two other users.
 

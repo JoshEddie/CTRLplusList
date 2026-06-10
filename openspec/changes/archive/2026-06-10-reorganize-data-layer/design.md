@@ -149,7 +149,7 @@ Scope: production source (`app/**`, `lib/**`, `hooks/**`, `db/**`) only. Exempti
 - **`scripts/**`** — `seed-dev-users.ts` is 864 lines of dev tooling outside the coverage perimeter.
 - **Data literals already coverage-excluded** — `app/changelog/releases.ts` grows append-only by design.
 
-Measured outcome at completion: **zero red production files** (the only >500 sources today — `dal.ts`, `items.ts`, `lists.ts` — are the ones this change deletes). Standing yellows, deliberately not fixed here (pure-move scope): `app/api/image-search/route.ts` (403), `useItemForm.ts` (358), `ChooseItemsForm.tsx` (313), plus `list.actions.ts` (~345), `item.actions.ts` (~325), `listItems.actions.ts` (~320).
+Measured outcome at completion: **zero red production files** (the only >500 sources today — `dal.ts`, `items.ts`, `lists.ts` — are the ones this change deletes). Standing yellows, deliberately not fixed here (pure-move scope): `app/api/image-search/route.ts` (403 raw lines) and `useItemForm.ts` (358 raw lines) — the two warnings recorded in task 6.6. The other four files predicted yellow by raw `wc -l` (`ChooseItemsForm.tsx`, `list.actions.ts`, `item.actions.ts`, `listItems.actions.ts`) measure under 300 code lines, which is what the rules count.
 
 Gate interaction, flagged explicitly: the repo's pre-merge bar has been "zero errors, zero warnings." Yellow-by-design creates a deliberate exception class — the bar becomes "zero errors; the only warnings are yellow-band size advisories" (encoded in the testing-foundation ADDED requirement). No `eslint-disable` escape hatches for either rule, consistent with the repo's no-escape-hatch lint stance.
 
