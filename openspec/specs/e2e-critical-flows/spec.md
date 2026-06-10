@@ -13,7 +13,7 @@ The covered flows SHALL be:
 1. **Sign-in surface** — the AuthPage sign-in UI renders its sign-in affordance.
 2. **Sign-in via bypass** — under the local-mode session bypass (`USE_PG_DRIVER=1`, session selector unset), a protected page renders for the seeded viewer without a sign-in step.
 3. **Create list** — a list is created through the list-creation form.
-4. **Add items** — items are attached to a list through the choose-items surface.
+4. **Add items** — items are attached to a list through the choose-items surface, and the attached item is asserted to render on the resulting list page by name — not merely by the post-save URL and list heading, which a silent no-op in the save action would also satisfy.
 5. **Set visibility** — a list's visibility is changed through the visibility picker.
 6. **Share** — the share affordance is reachable for a non-hidden list.
 7. **Signed-in (authenticated non-owner) claims an item with spoiler hiding** — a signed-in viewer who is not the owner claims an item — whether marking it as their own purchase ("I purchased it") or on behalf of someone else ("Someone else") — and sees their own claim; the owner's default (no-spoiler) view of a claimed item hides the claim. (Being a follower of the owner is incidental — any caller may view/claim a non-Hidden list; what distinguishes this from flow 9 is the signed-in vs logged-out session.)
@@ -34,7 +34,7 @@ The covered flows SHALL be:
 #### Scenario: Owner lifecycle arc is covered
 
 - **WHEN** the suite runs the create-list → add-items → set-visibility → share arc as the seeded viewer
-- **THEN** each step asserts its observable result: the new list is reachable, the chosen items attach to it, the visibility control reflects the selected state ("Shared"), and the share affordance is reachable on the now-non-hidden list
+- **THEN** each step asserts its observable result: the new list is reachable, the chosen item's name renders on the list page after saving (proving the attach round-tripped through the save action, not just that navigation succeeded), the visibility control reflects the selected state ("Shared"), and the share affordance is reachable on the now-non-hidden list
 
 #### Scenario: Spoiler hiding diverges for owner default vs. owner-with-spoilers
 

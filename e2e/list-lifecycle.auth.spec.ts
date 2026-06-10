@@ -23,13 +23,25 @@ test('ListLifecycle_OwnerCreatesAndShares_StepsReflected', async ({ page }) => {
   expect(listId).toBeTruthy();
 
   // Add items — select one library item and save; the arc returns to the list
-  // page.
-  await page.locator('ul.choose-items-list').getByRole('checkbox').first().check();
+  // page. Capture the chosen row's item name so the post-save assertion can
+  // prove the attach itself round-tripped.
+  const chosenRow = page.locator('ul.choose-items-list li').first();
+  await chosenRow.getByRole('checkbox').check();
+  const chosenItemName = (await chosenRow.locator('.itemName').innerText()).trim();
   await expect(page.getByText('1 item selected')).toBeVisible();
   await page.getByRole('button', { name: /Add 1 item to list/ }).click();
 
   await expect(page).toHaveURL(new RegExp(`/lists/${listId}$`));
   await expect(page.getByRole('heading', { name: listName }).first()).toBeVisible();
+  // The chosen item's name rendering proves setListItems persisted the attach —
+  // URL + heading alone would also pass on a silent no-op save (the new list
+  // starts empty, so nothing else can supply this name). Scoped to the list
+  // page's owner item rows (.sortable-item): the choose-items DOM — full of
+  // .itemName nodes for the whole library — stays mounted in the document
+  // after the client-side transition, so an unscoped name lookup matches it.
+  await expect(
+    page.locator('.sortable-item .itemName', { hasText: chosenItemName })
+  ).toBeVisible();
 
   // Set visibility — a new list defaults to Hidden; promote it to Shared via
   // the visibility picker and assert the trigger pill now reads "Shared".
