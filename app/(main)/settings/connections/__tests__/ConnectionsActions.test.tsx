@@ -6,11 +6,11 @@ import {
   removeFollower,
   unblockUser,
   unfollowUser,
-} from '@/app/actions/follows';
+} from '@/lib/data/user.actions';
 import toast from 'react-hot-toast';
 import ConnectionsAction from '../ConnectionsActions';
 
-vi.mock('@/app/actions/follows', () => ({
+vi.mock('@/lib/data/user.actions', () => ({
   unfollowUser: vi.fn(),
   removeFollower: vi.fn(),
   blockUser: vi.fn(),
@@ -27,10 +27,25 @@ vi.mock('react-hot-toast', () => ({
 const TARGET = 't-target';
 
 const CASES = [
-  { action: 'unfollow', label: 'Unfollow', fnName: 'UnfollowUser', mock: unfollowUser },
-  { action: 'remove', label: 'Remove', fnName: 'RemoveFollower', mock: removeFollower },
+  {
+    action: 'unfollow',
+    label: 'Unfollow',
+    fnName: 'UnfollowUser',
+    mock: unfollowUser,
+  },
+  {
+    action: 'remove',
+    label: 'Remove',
+    fnName: 'RemoveFollower',
+    mock: removeFollower,
+  },
   { action: 'block', label: 'Block', fnName: 'BlockUser', mock: blockUser },
-  { action: 'unblock', label: 'Unblock', fnName: 'UnblockUser', mock: unblockUser },
+  {
+    action: 'unblock',
+    label: 'Unblock',
+    fnName: 'UnblockUser',
+    mock: unblockUser,
+  },
 ] as const;
 
 beforeEach(() => {
@@ -64,9 +79,7 @@ describe('ConnectionsAction', () => {
 
         await waitFor(() => expect(c.mock).toHaveBeenCalledWith(TARGET));
         expect(c.mock).toHaveBeenCalledTimes(1);
-        await waitFor(() =>
-          expect(toast.success).toHaveBeenCalledWith('done')
-        );
+        await waitFor(() => expect(toast.success).toHaveBeenCalledWith('done'));
         expect(router.refresh).toHaveBeenCalledTimes(1);
         expect(toast.error).not.toHaveBeenCalled();
       });
@@ -103,9 +116,7 @@ describe('ConnectionsAction', () => {
       const btn = screen.getByRole('button', { name: 'Block' });
 
       await user.click(btn);
-      await waitFor(() =>
-        expect(btn).toHaveAttribute('aria-disabled', 'true')
-      );
+      await waitFor(() => expect(btn).toHaveAttribute('aria-disabled', 'true'));
 
       await user.click(btn);
       expect(blockUser).toHaveBeenCalledTimes(1);

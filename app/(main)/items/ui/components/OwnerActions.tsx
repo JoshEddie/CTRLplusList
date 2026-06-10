@@ -1,12 +1,17 @@
 'use client';
 
-import { archiveItem } from '@/app/actions/items';
+import { archiveItem } from '@/lib/data/item.actions';
 import { Button } from '@/app/ui/components/button';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { MdArchive, MdModeEdit, MdMoreHoriz, MdUnarchive } from 'react-icons/md';
+import {
+  MdArchive,
+  MdModeEdit,
+  MdMoreHoriz,
+  MdUnarchive,
+} from 'react-icons/md';
 import EditItemButton from './EditItemButton';
 
 export default function OwnerActions({
@@ -89,7 +94,11 @@ export default function OwnerActions({
           {showArchiveAction && (
             <MenuItem
               icon={
-                archivedView ? <MdUnarchive size={18} /> : <MdArchive size={18} />
+                archivedView ? (
+                  <MdUnarchive size={18} />
+                ) : (
+                  <MdArchive size={18} />
+                )
               }
               onClick={async () => {
                 setKebabOpen(false);

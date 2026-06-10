@@ -1,5 +1,5 @@
 import ListCardRow from '@/app/ui/components/ListCardRow';
-import { getListsByUser } from '@/lib/dal';
+import { getListsByUser } from '@/lib/data/list';
 import { capRail } from './utils';
 
 export default async function MyListsRail({ userId }: { userId: string }) {

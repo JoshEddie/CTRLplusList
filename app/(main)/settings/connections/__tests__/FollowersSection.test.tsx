@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
-import { getFollowersOfUser, getUserIdByEmail } from '@/lib/dal';
+import { getFollowersOfUser, getUserIdByEmail } from '@/lib/data/user';
 import FollowersSection from '../FollowersSection';
 import { makeSession, makeViewer, redirectMock } from './test-helpers';
 
@@ -12,7 +12,7 @@ vi.hoisted(() => {
 });
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
+vi.mock('@/lib/data/user', () => ({
   getFollowersOfUser: vi.fn(),
   getUserIdByEmail: vi.fn(),
 }));

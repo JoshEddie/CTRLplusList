@@ -1,10 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getBookmarkStatus } from '@/lib/dal';
+import { getBookmarkStatus } from '@/lib/data/visit';
 import BookmarkContainer from '../BookmarkContainer';
 
-vi.mock('@/lib/dal', () => ({ getBookmarkStatus: vi.fn() }));
+vi.mock('@/lib/data/visit', () => ({ getBookmarkStatus: vi.fn() }));
 vi.mock('../BookmarkButton', () => ({
   default: (props: { listId: string; initialBookmarked: boolean }) => (
     <div

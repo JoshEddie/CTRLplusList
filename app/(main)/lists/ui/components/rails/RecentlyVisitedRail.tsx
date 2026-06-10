@@ -1,5 +1,5 @@
 import MoreCard from '@/app/ui/components/MoreCard';
-import { getVisitHistoryByUser } from '@/lib/dal';
+import { getVisitHistoryByUser } from '@/lib/data/visit';
 import HistoryCard from '../../../history/HistoryCard';
 import { capRail } from './utils';
 

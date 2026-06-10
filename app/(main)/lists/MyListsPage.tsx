@@ -1,7 +1,7 @@
 import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { auth } from '@/lib/auth';
-import { getUserIdByEmail } from '@/lib/dal';
+import { getUserIdByEmail } from '@/lib/data/user';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import MyListsGrid from './ui/components/MyListsGrid';

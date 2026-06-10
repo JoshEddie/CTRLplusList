@@ -1,14 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
-import { getList, getUserIdByEmail } from '@/lib/dal';
+import { getList } from '@/lib/data/list';
+import { getUserIdByEmail } from '@/lib/data/user';
 import EditListBody from '../EditListBody';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
-  getList: vi.fn(),
-  getUserIdByEmail: vi.fn(),
-}));
+vi.mock('@/lib/data/list', () => ({ getList: vi.fn() }));
+vi.mock('@/lib/data/user', () => ({ getUserIdByEmail: vi.fn() }));
 
 const redirectMock = vi.hoisted(() =>
   vi.fn((url: string) => {

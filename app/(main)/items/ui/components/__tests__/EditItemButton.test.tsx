@@ -3,10 +3,10 @@ import { renderToString } from 'react-dom/server';
 import toast from 'react-hot-toast';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getItemEditData } from '@/app/actions/items';
+import { getItemEditData } from '@/lib/data/item.actions';
 import EditItemButton from '../EditItemButton';
 
-vi.mock('@/app/actions/items', () => ({ getItemEditData: vi.fn() }));
+vi.mock('@/lib/data/item.actions', () => ({ getItemEditData: vi.fn() }));
 vi.mock('react-hot-toast', () => ({ default: { error: vi.fn() } }));
 vi.mock('../itemform/ItemFormContainer', () => ({
   default: (props: { onClose: () => void }) => (

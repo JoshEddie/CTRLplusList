@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/dal';
+import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
 import FollowContainer from '../FollowContainer';
 
-vi.mock('@/lib/dal', () => ({
+vi.mock('@/lib/data/user', () => ({
   isFollowing: vi.fn(),
   hasBlocked: vi.fn(),
   viewerHasAnyFollows: vi.fn(),

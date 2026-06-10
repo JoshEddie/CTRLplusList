@@ -1,11 +1,13 @@
 import ListCard from '@/app/ui/components/ListCard';
-import { getListsByUser } from '@/lib/dal';
+import { getListsByUser } from '@/lib/data/list';
 
 export default async function MyListsGrid({ userId }: { userId: string }) {
   const lists = await getListsByUser(userId);
 
   if (lists.length === 0) {
-    return <p className="my-lists-empty">No lists yet. Create your first one.</p>;
+    return (
+      <p className="my-lists-empty">No lists yet. Create your first one.</p>
+    );
   }
 
   return (

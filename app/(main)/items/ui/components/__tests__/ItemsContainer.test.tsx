@@ -4,12 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { auth } from '@/lib/auth';
-import { getItemsByListId, getItemsByUser, getUserIdByEmail } from '@/lib/dal';
+import { getItemsByListId, getItemsByUser } from '@/lib/data/item';
+import { getUserIdByEmail } from '@/lib/data/user';
 import ItemsContainer from '../ItemsContainer';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
+vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
+}));
+vi.mock('@/lib/data/item', () => ({
   getItemsByUser: vi.fn(),
   getItemsByListId: vi.fn(),
 }));
@@ -21,7 +24,9 @@ const redirectMock = vi.hoisted(() =>
 );
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
 
-const cookieHolder = vi.hoisted(() => ({ value: undefined as string | undefined }));
+const cookieHolder = vi.hoisted(() => ({
+  value: undefined as string | undefined,
+}));
 vi.mock('next/headers', () => ({
   cookies: vi.fn(async () => ({
     get: (name: string) =>

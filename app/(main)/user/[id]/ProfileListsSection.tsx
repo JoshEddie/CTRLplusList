@@ -1,4 +1,4 @@
-import { getPublicListsByUser } from '@/lib/dal';
+import { getPublicListsByUser } from '@/lib/data/list';
 import PublicListsGrid from '../../users/ui/components/PublicListsGrid';
 
 type Props = {

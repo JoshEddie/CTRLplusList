@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { setListVisibility } from '@/app/actions/lists';
+import { setListVisibility } from '@/lib/data/list.actions';
 import { VISIBILITY } from '@/lib/visibility';
 import { toast } from 'react-hot-toast';
 import ShareButton from '../ShareButton';
@@ -9,7 +9,7 @@ import { makeList } from './test-helpers';
 
 const refreshMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@/app/actions/lists', () => ({ setListVisibility: vi.fn() }));
+vi.mock('@/lib/data/list.actions', () => ({ setListVisibility: vi.fn() }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: refreshMock }),
 }));
@@ -178,7 +178,9 @@ describe('ShareButton', () => {
         await userEvent.click(
           screen.getByRole('button', { name: 'Share list' })
         );
-        await waitFor(() => expect(writeTextMock).toHaveBeenCalledWith(LIST_URL));
+        await waitFor(() =>
+          expect(writeTextMock).toHaveBeenCalledWith(LIST_URL)
+        );
         expect(toast.promise).toHaveBeenCalledTimes(1);
         expect(vi.mocked(toast.promise).mock.calls[0][1]).toMatchObject({
           success: 'Copied to clipboard',
@@ -266,7 +268,9 @@ describe('ShareButton', () => {
       render(<ShareButton list={privateList()} />);
       await userEvent.click(screen.getByRole('button', { name: 'Share list' }));
       await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-      expect(screen.queryByText('This list is hidden.')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('This list is hidden.')
+      ).not.toBeInTheDocument();
       expect(setListVisibility).not.toHaveBeenCalled();
     });
 

@@ -1,6 +1,6 @@
 import UserCard from '@/app/(main)/users/ui/components/UserCard';
 import MoreCard from '@/app/ui/components/MoreCard';
-import { getFollowingFeedUsers } from '@/lib/dal';
+import { getFollowingFeedUsers } from '@/lib/data/user';
 import { capRail } from './utils';
 
 export default async function FollowingRail({ userId }: { userId: string }) {

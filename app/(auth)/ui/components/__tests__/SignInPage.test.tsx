@@ -8,7 +8,7 @@ vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('next/server', () => ({
   connection: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock('@/app/actions/user', () => ({
+vi.mock('@/lib/data/user.actions', () => ({
   signInUser: vi.fn(),
   signOutUser: vi.fn(),
 }));

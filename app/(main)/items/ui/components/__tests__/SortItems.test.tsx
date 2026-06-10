@@ -1,9 +1,9 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { updatePriority } from '@/app/actions/lists';
+import { updatePriority } from '@/lib/data/listItems.actions';
 import SortItems, { SortableItem } from '../SortItems';
 
-vi.mock('@/app/actions/lists', () => ({ updatePriority: vi.fn() }));
+vi.mock('@/lib/data/listItems.actions', () => ({ updatePriority: vi.fn() }));
 
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
@@ -71,7 +71,11 @@ vi.mock('../Item', () => ({
 }));
 
 const ITEMS = [
-  { id: 'A', name: 'Apple', purchases: [{ id: 'p1', firstName: 'X', by: 'other' }] },
+  {
+    id: 'A',
+    name: 'Apple',
+    purchases: [{ id: 'p1', firstName: 'X', by: 'other' }],
+  },
   { id: 'B', name: 'Banana', purchases: [] },
   { id: 'C', name: 'Cherry', purchases: [] },
 ] as never[];
@@ -99,9 +103,10 @@ describe('SortItems', () => {
   it('EmptyItems_RendersChooseItemsCTA', () => {
     render(<SortItems items={[]} listId="l1" user_id="u1" />);
     expect(screen.getByText('No items on this list yet')).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: /Choose items/ })
-    ).toHaveAttribute('href', '/lists/l1/choose-items');
+    expect(screen.getByRole('link', { name: /Choose items/ })).toHaveAttribute(
+      'href',
+      '/lists/l1/choose-items'
+    );
   });
 
   it('Items_RenderDragHandlesAndCards', () => {
@@ -200,12 +205,7 @@ describe('SortItems', () => {
       sortableState.transform = { x: 5, y: 10 };
       sortableState.isDragging = true;
       render(
-        <SortableItem
-          id="A"
-          item={ITEMS[0]}
-          className="extra"
-          isAnyDragging
-        />
+        <SortableItem id="A" item={ITEMS[0]} className="extra" isAnyDragging />
       );
       // eslint-disable-next-line testing-library/no-node-access
       const wrapper = document.querySelector('.sortable-item') as HTMLElement;

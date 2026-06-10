@@ -3,7 +3,7 @@
 import Modal from '@/app/(main)/items/ui/components/purchasemodal/Modal';
 import ModalButtons from '@/app/(main)/items/ui/components/purchasemodal/ModalButtons';
 import PurchaseFlow from '@/app/(main)/items/ui/components/purchasemodal/PurchaseFlow';
-import { setListVisibility } from '@/app/actions/lists';
+import { setListVisibility } from '@/lib/data/list.actions';
 import { Button } from '@/app/ui/components/button';
 import { ListTable } from '@/lib/types';
 import { VISIBILITY, resolveListVisibility } from '@/lib/visibility';

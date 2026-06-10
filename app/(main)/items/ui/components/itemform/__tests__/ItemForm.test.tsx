@@ -1,15 +1,19 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createItem, updateItem } from '@/app/actions/items';
+import { createItem, updateItem } from '@/lib/data/item.actions';
 import ItemForm from '../ItemForm';
 
-vi.mock('@/app/actions/items', () => ({
+vi.mock('@/lib/data/item.actions', () => ({
   createItem: vi.fn(),
   updateItem: vi.fn(),
 }));
 
-const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn(), back: vi.fn() }));
+const router = vi.hoisted(() => ({
+  push: vi.fn(),
+  refresh: vi.fn(),
+  back: vi.fn(),
+}));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
 
 vi.mock('react-hot-toast', () => ({
@@ -77,7 +81,10 @@ describe('ItemForm', () => {
     it('TypeName_LivePreviewReflectsName', async () => {
       const user = userEvent.setup();
       render(<ItemForm user_id="u1" lists={LISTS} />);
-      expect(screen.getByTestId('preview')).toHaveAttribute('data-preview', 'true');
+      expect(screen.getByTestId('preview')).toHaveAttribute(
+        'data-preview',
+        'true'
+      );
       await user.type(screen.getByLabelText(/Name/), 'Hat');
       expect(screen.getByTestId('preview')).toHaveAttribute('data-name', 'Hat');
     });
@@ -171,7 +178,13 @@ describe('ItemForm', () => {
   });
 
   it('EditEmptyName_TitleFallsBackToItem', () => {
-    render(<ItemForm user_id="u1" lists={LISTS} item={{ ...ITEM, name: '' } as never} />);
+    render(
+      <ItemForm
+        user_id="u1"
+        lists={LISTS}
+        item={{ ...ITEM, name: '' } as never}
+      />
+    );
     expect(screen.getByText('Edit Item')).toBeInTheDocument();
   });
 });

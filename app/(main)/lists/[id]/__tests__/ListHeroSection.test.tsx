@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { list_visits } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { getList, getUserById, getUserIdByEmail } from '@/lib/dal';
+import { getList } from '@/lib/data/list';
+import { getUserById, getUserIdByEmail } from '@/lib/data/user';
 import { updateTag } from 'next/cache';
 import ListHeroSection from '../ListHeroSection';
 
@@ -41,8 +42,8 @@ vi.mock('@/db', () => ({ db: { insert: dbSpy.insert } }));
 
 vi.mock('next/cache', () => ({ updateTag: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
-  getList: vi.fn(),
+vi.mock('@/lib/data/list', () => ({ getList: vi.fn() }));
+vi.mock('@/lib/data/user', () => ({
   getUserById: vi.fn(),
   getUserIdByEmail: vi.fn(),
 }));
@@ -168,9 +169,7 @@ describe('ListHeroSection', () => {
         items: [],
       } as never);
       render(await ListHeroSection(props('l1')));
-      expect(
-        screen.getByText(/please login to view it/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/please login to view it/i)).toBeInTheDocument();
     });
   });
 

@@ -1,13 +1,19 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
-import { getItemById, getListsByUser, getUserIdByEmail } from '@/lib/dal';
+import { getItemById } from '@/lib/data/item';
+import { getListsByUser } from '@/lib/data/list';
+import { getUserIdByEmail } from '@/lib/data/user';
 import ItemFormBody from '../ItemFormBody';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
+vi.mock('@/lib/data/item', () => ({
   getItemById: vi.fn(),
+}));
+vi.mock('@/lib/data/list', () => ({
   getListsByUser: vi.fn(),
+}));
+vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
 }));
 

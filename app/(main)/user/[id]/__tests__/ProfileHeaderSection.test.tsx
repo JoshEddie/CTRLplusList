@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
-import { getProfileForUser, getUserIdByEmail } from '@/lib/dal';
+import { getProfileForUser, getUserIdByEmail } from '@/lib/data/user';
 import ProfileHeaderSection from '../ProfileHeaderSection';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
+vi.mock('@/lib/data/user', () => ({
   getProfileForUser: vi.fn(),
   getUserIdByEmail: vi.fn(),
 }));
@@ -64,9 +64,7 @@ function makeProfile(
   };
 }
 
-function props(
-  overrides: { id?: string; sp?: Record<string, string> } = {}
-) {
+function props(overrides: { id?: string; sp?: Record<string, string> } = {}) {
   return {
     params: Promise.resolve({ id: overrides.id ?? 'target' }),
     searchParams: Promise.resolve(overrides.sp ?? {}),

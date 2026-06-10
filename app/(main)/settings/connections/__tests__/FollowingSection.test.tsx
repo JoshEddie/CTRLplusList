@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
-import { getFollowingByUser, getUserIdByEmail } from '@/lib/dal';
+import { getFollowingByUser, getUserIdByEmail } from '@/lib/data/user';
 import FollowingSection from '../FollowingSection';
 import { makeSession, makeViewer, redirectMock } from './test-helpers';
 
@@ -14,7 +14,7 @@ vi.hoisted(() => {
 });
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
+vi.mock('@/lib/data/user', () => ({
   getFollowingByUser: vi.fn(),
   getUserIdByEmail: vi.fn(),
 }));
@@ -96,9 +96,7 @@ describe('FollowingSection', () => {
       expect(
         screen.getByRole('heading', { name: 'Following (0)' })
       ).toBeInTheDocument();
-      expect(
-        screen.getByText('Not following anyone yet.')
-      ).toBeInTheDocument();
+      expect(screen.getByText('Not following anyone yet.')).toBeInTheDocument();
       expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
     });
   });

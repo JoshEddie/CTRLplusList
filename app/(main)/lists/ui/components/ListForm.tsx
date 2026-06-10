@@ -1,6 +1,10 @@
 'use client';
 
-import { ActionResponse, createList, updateList } from '@/app/actions/lists';
+import {
+  ActionResponse,
+  createList,
+  updateList,
+} from '@/lib/data/list.actions';
 import {
   DatalistField,
   DateField,

@@ -1,6 +1,6 @@
 'use client';
 
-import { getItemEditData } from '@/app/actions/items';
+import { getItemEditData } from '@/lib/data/item.actions';
 import { ItemStoreTable, ItemTable, ListTable } from '@/lib/types';
 import { useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';

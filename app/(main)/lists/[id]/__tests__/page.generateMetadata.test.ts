@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { seedList } from '@/app/actions/__tests__/test-helpers';
+import { seedList } from '@/lib/data/__tests__/test-helpers';
 import { lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite } from '@/test/helpers/db';

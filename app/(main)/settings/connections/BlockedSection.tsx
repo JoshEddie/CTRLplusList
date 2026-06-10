@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth';
-import { getBlockedByUser, getUserIdByEmail } from '@/lib/dal';
+import { getBlockedByUser, getUserIdByEmail } from '@/lib/data/user';
 import { redirect } from 'next/navigation';
 import ConnectionRow from './ConnectionRow';
 import ConnectionsAction from './ConnectionsActions';

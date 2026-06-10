@@ -1,6 +1,7 @@
 import Header from '@/app/ui/components/Header';
 import { auth } from '@/lib/auth';
-import { getItemsByPurchased, getUserIdByEmail } from '@/lib/dal';
+import { getItemsByPurchased } from '@/lib/data/purchase';
+import { getUserIdByEmail } from '@/lib/data/user';
 import { redirect } from 'next/navigation';
 import Items from '../items/ui/components/Items';
 

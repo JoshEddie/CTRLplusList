@@ -16,6 +16,10 @@ Default to writing no comments. Only add one when the WHY is non-obvious — a h
 
 Don't explain WHAT the code does — well-named identifiers already do that. Don't reference the current task, fix, or callers ("used by X", "added for the Y flow", "handles the case from issue #123") — those belong in the PR description and rot as the codebase evolves.
 
+### File size (red / yellow / green):
+
+Lint-enforced bands for production source, counted in lines of **code** (comments and blank lines are free): **red** >400 = error — split by table-cohesion/domain before merge; **yellow** 300–400 = warning — pull easy wins where a clean extraction exists, a cohesive file may stay yellow; **green** <300 = goal, never achieved by scattering one concern across files. Yellow size advisories are the only tolerated lint warnings; no `eslint-disable` for either rule. Canonical homes: the rules in [eslint.config.mjs](eslint.config.mjs), the normative text in `openspec/specs/testing-foundation`.
+
 ### Abstraction (DRY · KISS · coupling):
 
 #### Duplication (DRY)
@@ -46,7 +50,7 @@ Don't explain WHAT the code does — well-named identifiers already do that. Don
 #### Where extracted helpers live
 
 - Small, generic, or pure helpers go in a **co-located `utils.ts`** for that directory (create it if absent) — not in their own single-purpose file. `capRail` lives in `app/(main)/lists/ui/components/rails/utils.ts`, following `app/(main)/users/ui/utils.ts` (`initialsOf`).
-- Reserve a descriptively-named standalone module for a genuine domain/capability concept (`lib/dal.ts`, `lib/visibility.ts`, `lib/listAccess.ts`). `utils.ts` is for the small stuff, not a dumping ground for domain logic.
+- Reserve a descriptively-named standalone module for a genuine domain/capability concept (`lib/data/user.ts`, `lib/visibility.ts`, `lib/listAccess.ts`). `utils.ts` is for the small stuff, not a dumping ground for domain logic.
 
 #### Worked example: `Button` / `LinkButton`
 

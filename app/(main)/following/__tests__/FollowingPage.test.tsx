@@ -1,12 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
-import { getFollowingFeedUsers, getUserIdByEmail } from '@/lib/dal';
+import { getFollowingFeedUsers, getUserIdByEmail } from '@/lib/data/user';
 import { updateTag } from 'next/cache';
 import FollowingPage from '../FollowingPage';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
+vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
   getFollowingFeedUsers: vi.fn(),
 }));
@@ -19,7 +19,9 @@ const redirectMock = vi.hoisted(() =>
 );
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
 
-const afterHolder = vi.hoisted(() => ({ cb: undefined as undefined | (() => Promise<void>) }));
+const afterHolder = vi.hoisted(() => ({
+  cb: undefined as undefined | (() => Promise<void>),
+}));
 vi.mock('next/server', () => ({
   after: (fn: () => Promise<void>) => {
     afterHolder.cb = fn;

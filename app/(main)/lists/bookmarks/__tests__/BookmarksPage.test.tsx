@@ -2,15 +2,14 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { auth } from '@/lib/auth';
-import { getBookmarkedListsByUser, getUserIdByEmail } from '@/lib/dal';
+import { getUserIdByEmail } from '@/lib/data/user';
+import { getBookmarkedListsByUser } from '@/lib/data/visit';
 import BookmarksPage from '../BookmarksPage';
 import { makeRow } from './test-helpers';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
-  getUserIdByEmail: vi.fn(),
-  getBookmarkedListsByUser: vi.fn(),
-}));
+vi.mock('@/lib/data/user', () => ({ getUserIdByEmail: vi.fn() }));
+vi.mock('@/lib/data/visit', () => ({ getBookmarkedListsByUser: vi.fn() }));
 
 const redirectMock = vi.hoisted(() =>
   vi.fn((url: string) => {

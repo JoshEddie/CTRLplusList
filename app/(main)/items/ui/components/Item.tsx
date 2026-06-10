@@ -1,6 +1,6 @@
 'use client';
 
-import { createPurchase, removePurchase } from '@/app/actions/items';
+import { createPurchase, removePurchase } from '@/lib/data/purchase.actions';
 import { ItemDisplay, PurchaseView } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';

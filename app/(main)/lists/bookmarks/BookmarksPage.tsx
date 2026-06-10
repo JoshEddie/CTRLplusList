@@ -1,6 +1,7 @@
 import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { auth } from '@/lib/auth';
-import { getBookmarkedListsByUser, getUserIdByEmail } from '@/lib/dal';
+import { getUserIdByEmail } from '@/lib/data/user';
+import { getBookmarkedListsByUser } from '@/lib/data/visit';
 import { redirect } from 'next/navigation';
 import BookmarksList from './BookmarksList';
 

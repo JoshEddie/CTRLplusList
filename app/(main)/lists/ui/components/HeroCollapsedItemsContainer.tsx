@@ -1,9 +1,5 @@
-import {
-  getBookmarkStatus,
-  hasBlocked,
-  isFollowing,
-  viewerHasAnyFollows,
-} from '@/lib/dal';
+import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
+import { getBookmarkStatus } from '@/lib/data/visit';
 import { ListTable } from '@/lib/types';
 import { type ListVisibility } from '@/lib/visibility';
 import {

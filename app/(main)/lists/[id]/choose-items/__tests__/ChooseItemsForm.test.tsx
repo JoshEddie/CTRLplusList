@@ -1,12 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { setListItems } from '@/app/actions/lists';
+import { setListItems } from '@/lib/data/listItems.actions';
 import ChooseItemsForm from '../ChooseItemsForm';
 
-vi.mock('@/app/actions/lists', () => ({ setListItems: vi.fn() }));
+vi.mock('@/lib/data/listItems.actions', () => ({ setListItems: vi.fn() }));
 
-const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+const router = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+  refresh: vi.fn(),
+}));
 const spHolder = vi.hoisted(() => ({ value: new URLSearchParams() }));
 vi.mock('next/navigation', () => ({
   useRouter: () => router,
@@ -213,7 +217,9 @@ describe('ChooseItemsForm', () => {
     it('FilterMatchesNothing_ShowsClearFiltersAffordance', async () => {
       const user = userEvent.setup();
       renderForm({}, 'q=zzz');
-      expect(screen.getByText('No items match your filters.')).toBeInTheDocument();
+      expect(
+        screen.getByText('No items match your filters.')
+      ).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: 'Clear filters' }));
       expect(router.replace).toHaveBeenCalledWith('/lists/l1');
     });
@@ -228,7 +234,13 @@ describe('ChooseItemsForm', () => {
     it('NullNameItem_RendersWithEmptyLabel', () => {
       renderForm({
         items: [
-          { id: 'n1', name: null, description: null, stores: [], purchases: [] },
+          {
+            id: 'n1',
+            name: null,
+            description: null,
+            stores: [],
+            purchases: [],
+          },
         ] as never,
       });
       expect(screen.getAllByTestId('item')).toHaveLength(1);
@@ -238,7 +250,13 @@ describe('ChooseItemsForm', () => {
       renderForm(
         {
           items: [
-            { id: 'n1', name: null, description: null, stores: [], purchases: [] },
+            {
+              id: 'n1',
+              name: null,
+              description: null,
+              stores: [],
+              purchases: [],
+            },
             ...ITEMS,
           ] as never,
         },
@@ -255,13 +273,17 @@ describe('ChooseItemsForm', () => {
       await user.click(checkboxes()[1]);
       await user.click(screen.getByRole('button', { name: /Save changes/ }));
       expect(setListItems).toHaveBeenCalledWith('l1', ['a1', 'a2']);
-      await waitFor(() => expect(router.push).toHaveBeenCalledWith('/lists/l1'));
+      await waitFor(() =>
+        expect(router.push).toHaveBeenCalledWith('/lists/l1')
+      );
       expect(router.refresh).toHaveBeenCalled();
     });
 
     it('ManageNoChanges_SaveDisabled', () => {
       renderForm();
-      expect(screen.getByRole('button', { name: /Save changes/ })).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: /Save changes/ })
+      ).toBeDisabled();
     });
 
     it('SaveFails_NoNavigation', async () => {

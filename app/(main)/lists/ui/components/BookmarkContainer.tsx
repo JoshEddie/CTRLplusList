@@ -1,4 +1,4 @@
-import { getBookmarkStatus } from '@/lib/dal';
+import { getBookmarkStatus } from '@/lib/data/visit';
 import BookmarkButton from './BookmarkButton';
 
 export default async function BookmarkContainer({

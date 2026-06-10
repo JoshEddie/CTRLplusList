@@ -1,6 +1,6 @@
 'use client';
 
-import { bookmarkList, unbookmarkList } from '@/app/actions/lists';
+import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
 import { Button } from '@/app/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
