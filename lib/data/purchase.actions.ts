@@ -3,9 +3,9 @@
 import { db } from '@/db';
 import { items, purchases, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { type ActionResponse } from '@/lib/data/item.actions';
 import { isItemViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
+import { type ActionResponse } from '@/lib/types';
 import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';

@@ -3,16 +3,14 @@
 import { db } from '@/db';
 import { user_blocks, user_follows } from '@/db/schema';
 import { signIn, signOut } from '@/lib/auth';
-import { authedUserId } from '@/lib/data/user.session';
+import {
+  UNAUTHORIZED_RESPONSE,
+  authedUserId,
+} from '@/lib/data/user.session';
+import { type ActionResponse } from '@/lib/types';
 import { and, eq } from 'drizzle-orm';
 import { updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
-
-export type ActionResponse = {
-  success: boolean;
-  message: string;
-  error?: string;
-};
 
 export async function signInUser() {
   await signIn('google');
@@ -27,7 +25,7 @@ export async function followUser(followee_id: string): Promise<ActionResponse> {
   try {
     const viewerId = await authedUserId();
     if (!viewerId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
     if (viewerId === followee_id) {
       return {
@@ -72,7 +70,7 @@ export async function unfollowUser(
   try {
     const viewerId = await authedUserId();
     if (!viewerId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
 
     await db
@@ -98,7 +96,7 @@ export async function removeFollower(
   try {
     const viewerId = await authedUserId();
     if (!viewerId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
 
     await db
@@ -126,7 +124,7 @@ export async function blockUser(blocked_id: string): Promise<ActionResponse> {
   try {
     const viewerId = await authedUserId();
     if (!viewerId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
     if (viewerId === blocked_id) {
       return {
@@ -175,7 +173,7 @@ export async function unblockUser(blocked_id: string): Promise<ActionResponse> {
   try {
     const viewerId = await authedUserId();
     if (!viewerId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
 
     await db

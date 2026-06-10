@@ -1,7 +1,14 @@
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { auth } from '@/lib/auth';
+import { type ActionResponse } from '@/lib/types';
 import { eq } from 'drizzle-orm';
+
+export const UNAUTHORIZED_RESPONSE: ActionResponse = {
+  success: false,
+  message: 'Unauthorized',
+  error: 'Unauthorized',
+};
 
 // Session → users.id, the shared actor-resolution helper for action modules
 // (see openspec/specs/server-endpoint-authorization). Lives apart from the

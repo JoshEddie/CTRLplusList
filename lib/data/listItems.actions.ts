@@ -3,8 +3,8 @@
 import { db } from '@/db';
 import { list_items, lists, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { type ActionResponse } from '@/lib/data/list.actions';
 import { authedUserId } from '@/lib/data/user.session';
+import { type ActionResponse } from '@/lib/types';
 import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';

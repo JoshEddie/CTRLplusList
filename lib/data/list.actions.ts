@@ -2,7 +2,11 @@
 
 import { db } from '@/db';
 import { lists } from '@/db/schema';
-import { authedUserId } from '@/lib/data/user.session';
+import {
+  UNAUTHORIZED_RESPONSE,
+  authedUserId,
+} from '@/lib/data/user.session';
+import { type ActionResponse } from '@/lib/types';
 import {
   VISIBILITY,
   VISIBILITY_VALUES,
@@ -37,19 +41,11 @@ const ListSchema = z.object({
 
 export type ListData = z.infer<typeof ListSchema>;
 
-export type ActionResponse = {
-  success: boolean;
-  message: string;
-  errors?: Record<string, string[]>;
-  error?: string;
-  id?: string;
-};
-
 export async function createList(data: ListData): Promise<ActionResponse> {
   try {
     const userId = await authedUserId();
     if (!userId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
 
     const validationResult = ListSchema.safeParse(data);
@@ -96,7 +92,7 @@ export async function updateList(
   try {
     const userId = await authedUserId();
     if (!userId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
 
     const list = await db.query.lists.findFirst({
@@ -170,7 +166,7 @@ export async function deleteList(id: string): Promise<ActionResponse> {
   try {
     const userId = await authedUserId();
     if (!userId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
 
     const list = await db.query.lists.findFirst({
@@ -212,7 +208,7 @@ export async function setListVisibility(
   try {
     const userId = await authedUserId();
     if (!userId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
 
     const parsed = VisibilitySchema.safeParse(visibility);

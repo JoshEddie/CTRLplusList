@@ -22,6 +22,7 @@ All within `lib/data/` modules and their `__tests__/` suites; no behavior change
 - **Test the db-error rethrows, drop their ignores**: two catch/rethrow paths in `listItems.actions.ts`, using the `vi.spyOn(db, …)` failure-injection pattern already in that file's suite.
 - **Delete carried-over WHAT comments** across `item.actions.ts`, `item.schema.ts`, `item.associations.ts`, `listItems.actions.ts`, `user.ts`, `list.ts`.
 - **Optional rider — unify actor resolution in `list.actions.ts`**: replace its four inline `auth()` + email-lookup blocks with the shared `authedUserId` from `user.session.ts`, matching `user.actions` / `visit.actions` / `listItems.actions` (DRY; behavior-touching via import graph + test mocks, which is why it was excluded from the pure move).
+- **Review-adopted rider — one `ActionResponse` envelope, one unauthorized response** (the exception to "all within `lib/data/`"): /spec-review of PR #128 surfaced the envelope type defined three times as drifted subsets and the unauthorized literal duplicated 13× across list/visit/user actions; merged into one superset type in `lib/types.ts` and one `UNAUTHORIZED_RESPONSE` in `user.session.ts`, importers (including `ListForm.tsx`) repointed (design D8).
 
 ## Capabilities
 

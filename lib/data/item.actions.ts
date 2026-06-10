@@ -8,17 +8,10 @@ import { updateItemLists, updateItemStores } from '@/lib/data/item.associations'
 import { ItemSchema } from '@/lib/data/item.schema';
 import { getListsByUser } from '@/lib/data/list';
 import { getUserIdByEmail } from '@/lib/data/user';
-import { ItemDetails } from '@/lib/types';
+import { type ActionResponse, ItemDetails } from '@/lib/types';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
-
-export type ActionResponse = {
-  success: boolean;
-  message: string;
-  errors?: Record<string, string[]>;
-  error?: string;
-};
 
 export async function getItemEditData(itemId: string) {
   const session = await auth();

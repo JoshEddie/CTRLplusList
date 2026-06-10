@@ -18,7 +18,7 @@ Every target file already has a pglite-backed suite in `lib/data/__tests__/` wit
 
 - The two COALESCE-fallback ignores ([listItems.actions.ts:88](lib/data/listItems.actions.ts:88), [item.associations.ts:165](lib/data/item.associations.ts:165)) stay: their rationale cites the SQL `COALESCE` contract — an invariant established outside the function — which is exactly `testing-foundation`'s allowed set. The issue deliberately omits them.
 - No behavior change to any endpoint's success path; no schema, cache-tag, or endpoint-surface changes.
-- No restructuring beyond the optional `list.actions.ts` actor-resolution rider.
+- No restructuring beyond the optional `list.actions.ts` actor-resolution rider and the D8 response-envelope consolidation adopted from /spec-review of PR #128.
 
 ## Decisions
 
@@ -49,6 +49,12 @@ Delete the comments enumerated in the issue across `item.actions.ts`, `item.sche
 ### D7 — Rider: adopt `authedUserId` in `list.actions.ts` — in scope
 
 The four actions' inline `auth()` + email lookup duplicates what `lib/data/user.session.ts`'s `authedUserId` already provides and what `user.actions` / `visit.actions` / `listItems.actions` already use. CLAUDE.md DRY says extract-on-sight for identical-by-design logic; it was deferred only to keep the move pure, and this change is the designated home for deferred behavior-touching work. Test impact: `list.actions.test.ts` switches from stubbing `auth()` to the same `authedUserId`-stubbing pattern the sibling suites use. Thrown-error/return contracts of the four actions must be preserved (assert in the existing tests).
+
+Surfaced ordering difference (post-review): `setListVisibility` was the only action that parsed visibility between the session check and the user lookup; the fused `authedUserId` necessarily resolves the actor first, so an unknown-email session with an invalid visibility value now returns Unauthorized instead of the validation error — consistent with the other three actions and the sibling modules.
+
+### D8 — Review-adopted rider: one `ActionResponse` envelope, one unauthorized response
+
+/spec-review of PR #128 flagged the four unauthorized literals the D7 rider left in `list.actions.ts`; investigation surfaced the wider duplication: the literal `{ success: false, message: 'Unauthorized', error: 'Unauthorized' }` appeared 13× (list ×4, visit ×4, user ×5) and the `ActionResponse` envelope was defined three times as drifted subsets (`item.actions` lacks `id`; `user.actions` lacks `errors`/`id`). Disposition per CLAUDE.md DRY (multi-field literal, count ≥3): merge the envelope into its superset in `lib/types.ts` — widening is safe, no consumer reads the absent optional fields — and extract `UNAUTHORIZED_RESPONSE` into `user.session.ts` beside `authedUserId`, whose failure it expresses. All importers repointed; no message or `error`-code change anywhere.
 
 ## Risks / Trade-offs
 

@@ -34,8 +34,14 @@ Issue [#126](https://github.com/JoshEddie/CTRLplusList/issues/126). Per-file cov
 
 ## 6. Rider — adopt `authedUserId` in list.actions (design D7)
 
-- [x] 6.1 Replace the four inline `auth()` + email-lookup blocks in `lib/data/list.actions.ts` with `authedUserId` from `lib/data/user.session.ts`, preserving each action's error/return contract *(surfaced difference: the two guard `message` strings collapse from 'Unauthorized access' / 'User not found' to 'Unauthorized', matching user/visit/listItems actions; `error: 'Unauthorized'` — what callers branch on — is unchanged)*
+- [x] 6.1 Replace the four inline `auth()` + email-lookup blocks in `lib/data/list.actions.ts` with `authedUserId` from `lib/data/user.session.ts`, preserving each action's error/return contract *(surfaced differences: the two guard `message` strings collapse from 'Unauthorized access' / 'User not found' to 'Unauthorized', matching user/visit/listItems actions — `error: 'Unauthorized'`, what callers branch on, is unchanged; and in `setListVisibility` the fused lookup moves actor resolution ahead of the visibility parse, so an unknown-email session with an invalid visibility value returns Unauthorized instead of the invalid-visibility error — the other three actions already resolved the actor before validating)*
 - [x] 6.2 Update `lib/data/__tests__/list.actions.test.ts` mocks from `auth()`-stubbing to the sibling suites' `authedUserId` pattern; existing assertions stay green (surface any user-visible error-shape difference rather than silently aligning) *(no mock edits needed: the sibling pattern IS `auth()`-stubbing — `authedUserId` resolves through the mocked `auth` + real pglite lookup; all 41 assertions green unchanged)*
+
+## 6b. Post-review riders (/spec-review of PR #128, design D8)
+
+- [x] 6b.1 Merge the three drifted `ActionResponse` definitions (`list.actions`, `item.actions`, `user.actions`) into one superset type in `lib/types.ts`; repoint the importers (`purchase.actions`, `visit.actions`, `listItems.actions`, `ListForm.tsx`)
+- [x] 6b.2 Extract `UNAUTHORIZED_RESPONSE` to `lib/data/user.session.ts` beside `authedUserId`; replace the 13 literal copies across `list.actions` / `visit.actions` / `user.actions`
+- [x] 6b.3 Surface the `setListVisibility` auth-before-parse ordering difference in task 6.1's annotation and design D7
 
 ## 7. Conformance sweep (delta spec)
 

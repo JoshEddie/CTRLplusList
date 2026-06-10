@@ -2,8 +2,11 @@
 
 import { db } from '@/db';
 import { list_visits, lists } from '@/db/schema';
-import { type ActionResponse } from '@/lib/data/list.actions';
-import { authedUserId } from '@/lib/data/user.session';
+import {
+  UNAUTHORIZED_RESPONSE,
+  authedUserId,
+} from '@/lib/data/user.session';
+import { type ActionResponse } from '@/lib/types';
 import { VISIBILITY, fromDb } from '@/lib/visibility';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { updateTag } from 'next/cache';
@@ -12,7 +15,7 @@ export async function bookmarkList(list_id: string): Promise<ActionResponse> {
   try {
     const userId = await authedUserId();
     if (!userId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
 
     const list = await db.query.lists.findFirst({
@@ -57,7 +60,7 @@ export async function unbookmarkList(list_id: string): Promise<ActionResponse> {
   try {
     const userId = await authedUserId();
     if (!userId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
 
     await db
@@ -81,7 +84,7 @@ export async function clearVisitHistory(opts: {
   try {
     const userId = await authedUserId();
     if (!userId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
 
     if (opts.includeBookmarked) {
@@ -121,7 +124,7 @@ export async function removeVisit(list_id: string): Promise<ActionResponse> {
   try {
     const userId = await authedUserId();
     if (!userId) {
-      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
+      return UNAUTHORIZED_RESPONSE;
     }
 
     // If the row is bookmarked, clear last_visited_at so it leaves the history

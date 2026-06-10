@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  ActionResponse,
-  createList,
-  updateList,
-} from '@/lib/data/list.actions';
+import { createList, updateList } from '@/lib/data/list.actions';
 import {
   DatalistField,
   DateField,
@@ -12,7 +8,7 @@ import {
   TextField,
 } from '@/app/ui/components/field';
 import { FormShell, FormShellFooter } from '@/app/ui/components/FormShell';
-import { ListTable } from '@/lib/types';
+import { ActionResponse, ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, useActionState, useState } from 'react';
 import DeleteListButton from './DeleteListButton';

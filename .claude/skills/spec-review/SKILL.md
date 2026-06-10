@@ -193,7 +193,7 @@ Emit a single report in **exactly this order** — do not reorder, omit, or add 
 <Approve | Request changes> — <clear to archive | not yet clear to archive (blockers: …) | not yet clear — needs a fresh propose→archive cycle | already archived | blocked — violates merged spec <name>; needs implementation conformance or a fresh proposal | no archive gate (contract audit skipped)>
 
 ---
-Would you like me to enter OpenSpec explore mode to investigate these findings — recommend which to fix, and weigh how each fix would land (pros/cons)?
+Would you like me to enter OpenSpec explore mode to investigate these findings — verify every disposition (Drops included), recommend which to fix, and weigh how each fix would land (pros/cons)?
 ```
 
 A findings group with no findings shows `_none_`; the **Contract** group is omitted when the contract audit was skipped.
@@ -234,9 +234,9 @@ No change to gate; state `no archive gate (contract audit skipped)`. The verdict
 
 The **final line** of output is exactly one opt-in prompt. Suggested wording (rewordable):
 
-> Would you like me to enter OpenSpec explore mode to investigate these findings — recommend which to fix, and weigh how each fix would land (pros/cons)?
+> Would you like me to enter OpenSpec explore mode to investigate these findings — verify every disposition (Drops included), recommend which to fix, and weigh how each fix would land (pros/cons)?
 
 **Never auto-run.** After emitting the prompt, take no further action until the user responds.
 
-- **Explicit yes** → enter OpenSpec explore mode, carrying the findings as context.
+- **Explicit yes** → enter OpenSpec explore mode, carrying the **full findings table — every disposition, Drops and File-issues included**, not just the open `Fix now` items. Dispositions are proposals: explore grounds them in the actual code and confirms or reopens them, rather than treating them as settled.
 - **Decline or no response** → the review ends.
