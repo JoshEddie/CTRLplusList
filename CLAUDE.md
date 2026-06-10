@@ -18,7 +18,7 @@ Don't explain WHAT the code does — well-named identifiers already do that. Don
 
 ### File size (red / yellow / green):
 
-Lint-enforced bands for production source, counted in lines of **code** (comments and blank lines are free): **red** >500 = error — split by table-cohesion/domain before merge; **yellow** 300–500 = warning — pull easy wins where a clean extraction exists, a cohesive file may stay yellow; **green** <300 = goal, never achieved by scattering one concern across files. Yellow size advisories are the only tolerated lint warnings; no `eslint-disable` for either rule. Canonical homes: the rules in [eslint.config.mjs](eslint.config.mjs), the normative text in `openspec/specs/testing-foundation`.
+Lint-enforced bands for production source, counted in lines of **code** (comments and blank lines are free): **red** >400 = error — split by table-cohesion/domain before merge; **yellow** 300–400 = warning — pull easy wins where a clean extraction exists, a cohesive file may stay yellow; **green** <300 = goal, never achieved by scattering one concern across files. Yellow size advisories are the only tolerated lint warnings; no `eslint-disable` for either rule. Canonical homes: the rules in [eslint.config.mjs](eslint.config.mjs), the normative text in `openspec/specs/testing-foundation`.
 
 ### Abstraction (DRY · KISS · coupling):
 

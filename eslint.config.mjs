@@ -36,7 +36,7 @@ const eslintConfig = [
     rules: {
       'max-lines': [
         'error',
-        { max: 500, skipBlankLines: true, skipComments: true },
+        { max: 400, skipBlankLines: true, skipComments: true },
       ],
       // sonarjs always skips blank lines and comments (no option exists)
       'sonarjs/max-lines': ['warn', { maximum: 300 }],
