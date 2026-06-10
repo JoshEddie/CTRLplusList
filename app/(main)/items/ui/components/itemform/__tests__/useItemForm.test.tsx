@@ -1,9 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createItem, updateItem } from '@/app/actions/items';
+import { createItem, updateItem } from '@/lib/data/item.actions';
 import { useItemForm } from '../useItemForm';
 
-vi.mock('@/app/actions/items', () => ({
+vi.mock('@/lib/data/item.actions', () => ({
   createItem: vi.fn(),
   updateItem: vi.fn(),
 }));
@@ -243,9 +243,7 @@ describe('useItemForm', () => {
 
     // Apply each [value, field] op (immediate state); only the LAST op's
     // validation survives the shared debounce, so order the asserted field last.
-    function driveStore(
-      ops: Array<[string, 'name' | 'price' | 'link']>
-    ) {
+    function driveStore(ops: Array<[string, 'name' | 'price' | 'link']>) {
       const { result } = renderHook(() => useItemForm());
       for (const [value, field] of ops) {
         act(() => result.current.handleStoreChange(0, value, field));
@@ -398,9 +396,7 @@ describe('useItemForm', () => {
     it('ActionThrows_ToastsUnexpectedError', async () => {
       vi.mocked(createItem).mockRejectedValue(new Error('boom'));
       await submitValid();
-      expect(toast.error).toHaveBeenCalledWith(
-        'An unexpected error occurred'
-      );
+      expect(toast.error).toHaveBeenCalledWith('An unexpected error occurred');
     });
   });
 

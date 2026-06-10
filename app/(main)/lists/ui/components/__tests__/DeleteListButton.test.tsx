@@ -1,13 +1,17 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { deleteList } from '@/app/actions/lists';
+import { deleteList } from '@/lib/data/list.actions';
 import toast from 'react-hot-toast';
 import DeleteListButton from '../DeleteListButton';
 
-const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn(), back: vi.fn() }));
+const router = vi.hoisted(() => ({
+  push: vi.fn(),
+  refresh: vi.fn(),
+  back: vi.fn(),
+}));
 
-vi.mock('@/app/actions/lists', () => ({ deleteList: vi.fn() }));
+vi.mock('@/lib/data/list.actions', () => ({ deleteList: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
 vi.mock('react-hot-toast', () => ({
   default: { success: vi.fn(), error: vi.fn() },
@@ -29,9 +33,7 @@ beforeEach(() => {
 describe('DeleteListButton', () => {
   it('Default_DialogClosed', () => {
     render(<DeleteListButton id="list-9" />);
-    expect(
-      screen.queryByText('Confirm Delete')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Confirm Delete')).not.toBeInTheDocument();
   });
 
   it('ClickDelete_OpensConfirmDialog', async () => {

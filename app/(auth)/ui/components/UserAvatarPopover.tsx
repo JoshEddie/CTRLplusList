@@ -1,6 +1,6 @@
 'use client';
 
-import { signOutUser } from '@/app/actions/user';
+import { signOutUser } from '@/lib/data/user.actions';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
 import { Session } from 'next-auth';
 import { useRef, useState } from 'react';

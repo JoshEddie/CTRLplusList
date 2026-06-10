@@ -2,7 +2,7 @@ import { db } from '@/db';
 import { items, list_items, lists } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
-import { hasBlocked } from './dal';
+import { hasBlocked } from '@/lib/data/user';
 import { VISIBILITY, fromDb } from './visibility';
 
 /**

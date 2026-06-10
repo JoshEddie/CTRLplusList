@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
-import { getItemsByListId, getItemsByUser, getUserIdByEmail } from '@/lib/dal';
+import { getItemsByListId, getItemsByUser } from '@/lib/data/item';
+import { getUserIdByEmail } from '@/lib/data/user';
 import { ItemDisplay } from '@/lib/types';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { redirect } from 'next/navigation';

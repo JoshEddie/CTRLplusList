@@ -1,6 +1,7 @@
 import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { auth } from '@/lib/auth';
-import { getUserIdByEmail, getVisitHistoryByUser } from '@/lib/dal';
+import { getUserIdByEmail } from '@/lib/data/user';
+import { getVisitHistoryByUser } from '@/lib/data/visit';
 import { redirect } from 'next/navigation';
 import { ClearHistoryButton } from './HistoryActions';
 import HistoryList from './HistoryList';

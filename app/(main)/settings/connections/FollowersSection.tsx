@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth';
-import { getFollowersOfUser, getUserIdByEmail } from '@/lib/dal';
+import { getFollowersOfUser, getUserIdByEmail } from '@/lib/data/user';
 import { redirect } from 'next/navigation';
 import ConnectionRow from './ConnectionRow';
 import ConnectionsAction from './ConnectionsActions';

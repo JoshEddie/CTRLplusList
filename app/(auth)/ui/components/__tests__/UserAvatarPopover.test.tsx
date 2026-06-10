@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from 'next-auth';
 import UserAvatarPopover from '../UserAvatarPopover';
 
-vi.mock('@/app/actions/user', () => ({
+vi.mock('@/lib/data/user.actions', () => ({
   signInUser: vi.fn(),
   signOutUser: vi.fn(),
 }));

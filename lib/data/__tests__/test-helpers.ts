@@ -8,11 +8,12 @@ import {
 } from '@/db/schema';
 import type { bootPglite } from '@/test/helpers/db';
 
-// Shared seed helpers for the action carve-out test files (items.test.ts,
-// lists.test.ts). The vi.mock harness (the `@/db` getter-holder, the
-// `@/lib/auth` mock, mockNextCache) stays inline per file because vi.mock is
-// hoisted per module; only the pure `db.insert` graph builders are shared here.
-// Excluded from coverage by the `**/__tests__/**` glob in vitest.config.ts.
+// Shared seed helpers for the lib/data test lanes — the merged successor of
+// test/helpers/seedItemGraph.ts and app/actions/__tests__/test-helpers.ts.
+// The vi.mock harness (the `@/db` getter-holder, the `@/lib/auth` mock,
+// mockNextCache) stays inline per file because vi.mock is hoisted per module;
+// only the pure `db.insert` graph builders are shared here. Excluded from
+// coverage by the `**/__tests__/**` glob in vitest.config.ts.
 
 export type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
 
@@ -28,6 +29,8 @@ export async function seedList(
     visibility?: string;
     shared?: boolean;
     shared_at?: Date | null;
+    created_at?: Date;
+    updated_at?: Date;
   }
 ): Promise<void> {
   await db.insert(lists).values({
@@ -40,6 +43,8 @@ export async function seedList(
     visibility: list.visibility ?? 'private',
     shared: list.shared ?? false,
     shared_at: list.shared_at ?? null,
+    ...(list.created_at ? { created_at: list.created_at } : {}),
+    ...(list.updated_at ? { updated_at: list.updated_at } : {}),
   });
 }
 
@@ -53,6 +58,7 @@ export async function seedItem(
     image_url?: string | null;
     quantity_limit?: number | null;
     archived_at?: Date | null;
+    created_at?: Date;
   }
 ): Promise<void> {
   await db.insert(items).values({
@@ -61,9 +67,11 @@ export async function seedItem(
     description: item.description ?? '',
     image_url: item.image_url ?? null,
     user_id: item.user_id,
+    // Matches the schema default — explicit so the seeded state is readable.
     quantity_limit:
       item.quantity_limit === undefined ? 1 : item.quantity_limit,
     archived_at: item.archived_at ?? null,
+    ...(item.created_at ? { created_at: item.created_at } : {}),
   });
 }
 
@@ -118,18 +126,18 @@ export async function seedItemStore(
   store: {
     id: string;
     item_id: string;
-    name: string;
-    link: string;
-    price: string;
+    name?: string;
+    link?: string;
+    price?: string;
     order?: number;
   }
 ): Promise<void> {
   await db.insert(item_stores).values({
     id: store.id,
     item_id: store.item_id,
-    name: store.name,
-    link: store.link,
-    price: store.price,
+    name: store.name ?? store.id,
+    link: store.link ?? 'https://example.com',
+    price: store.price ?? '10',
     order: store.order ?? 1,
   });
 }

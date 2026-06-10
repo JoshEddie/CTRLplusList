@@ -4,7 +4,7 @@ import Item from '@/app/(main)/items/ui/components/Item';
 import { displayPrice } from '@/app/(main)/items/ui/components/itemFilters';
 import ItemFormContainer from '@/app/(main)/items/ui/components/itemform/ItemFormContainer';
 import ItemsToolbar from '@/app/(main)/items/ui/components/itemsToolbar';
-import { setListItems } from '@/app/actions/lists';
+import { setListItems } from '@/lib/data/listItems.actions';
 import { Button, LinkButton } from '@/app/ui/components/button';
 import { CheckboxField } from '@/app/ui/components/field/CheckboxField';
 import { ItemDisplay, ListTable } from '@/lib/types';

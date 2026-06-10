@@ -10,7 +10,7 @@ TBD - created by syncing change test-items-library-shell. Update Purpose after s
 
 The `/items` route SHALL resolve the viewer from the authenticated session's email via the data-access layer, and SHALL `redirect('/')` when there is no session email or the email resolves to no user. The library-mode `ItemsContainer` (invoked without a `listId`) SHALL apply the same guard before reading the viewer's items.
 
-This is a page-level React Server Component guard. It is complementary to — and does not overlap with — `server-endpoint-authorization`, which owns the authorization of server actions (`app/actions/**`) and API route handlers (`app/api/**`); page-RSC redirect guards are owned by this capability.
+This is a page-level React Server Component guard. It is complementary to — and does not overlap with — `server-endpoint-authorization`, which owns the authorization of server actions (`lib/data/*.actions.ts`) and API route handlers (`app/api/**`); page-RSC redirect guards are owned by this capability.
 
 #### Scenario: No session email redirects to the landing page
 

@@ -1,10 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { signInUser } from '@/app/actions/user';
+import { signInUser } from '@/lib/data/user.actions';
 import SignInButton from '../SignInButton';
 
-vi.mock('@/app/actions/user', () => ({
+vi.mock('@/lib/data/user.actions', () => ({
   signInUser: vi.fn(),
   signOutUser: vi.fn(),
 }));

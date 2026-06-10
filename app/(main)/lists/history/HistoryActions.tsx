@@ -1,6 +1,6 @@
 'use client';
 
-import { clearVisitHistory, removeVisit } from '@/app/actions/lists';
+import { clearVisitHistory, removeVisit } from '@/lib/data/visit.actions';
 import { Button } from '@/app/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';

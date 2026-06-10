@@ -23,7 +23,11 @@ context: |
   - App-wide UI primitives under `app/ui/components/<family>/`
   - Page-scoped UI under `app/(main)/<area>/ui/`
   - CSS tokens in `app/ui/styles/global.css`
-  - Data reads in `lib/dal.ts`; mutations in `app/actions/`
+  - Data layer in `lib/data/`: per-domain module pairs — reads in
+    `<domain>.ts`, server actions in `<domain>.actions.ts` (domains:
+    user, list, listItems, visit, item, purchase) plus internal
+    non-endpoint modules (`item.schema.ts`, `item.associations.ts`,
+    `user.session.ts`). See `openspec/specs/data-layer-organization`.
   - Drizzle schema in `db/schema.ts`
 
   # Spec authority
@@ -45,8 +49,8 @@ context: |
   primitive via a spec modification instead.
 
   # Data freshness
-  `lib/dal.ts` reads use `'use cache'` + `cacheTag(...)`. Mutations
-  must call `revalidateTag(...)` for matching tags or reads go stale.
+  `lib/data/*.ts` reads use `'use cache'` + `cacheTag(...)`. Mutations
+  must call `updateTag(...)` for matching tags or reads go stale.
 
   # Meta: this file is a WIP
   If during any OpenSpec workflow (explore, propose, design, apply)

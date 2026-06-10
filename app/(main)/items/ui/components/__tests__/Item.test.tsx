@@ -5,15 +5,19 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPurchase, removePurchase } from '@/app/actions/items';
+import { createPurchase, removePurchase } from '@/lib/data/purchase.actions';
 import Item from '../Item';
 
-vi.mock('@/app/actions/items', () => ({
+vi.mock('@/lib/data/purchase.actions', () => ({
   createPurchase: vi.fn(),
   removePurchase: vi.fn(),
 }));
 
-const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
+const router = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+  refresh: vi.fn(),
+}));
 const sp = vi.hoisted(() => ({ value: new URLSearchParams() }));
 vi.mock('next/navigation', () => ({
   useRouter: () => router,
@@ -26,7 +30,10 @@ vi.mock('next/navigation', () => ({
 // to the component's own try/catch.
 vi.mock('react-hot-toast', () => ({
   default: {
-    promise: <T,>(p: Promise<T>, opts: { success?: unknown; error?: unknown }) =>
+    promise: <T,>(
+      p: Promise<T>,
+      opts: { success?: unknown; error?: unknown }
+    ) =>
       p.then(
         (v) => {
           if (typeof opts?.success === 'function') opts.success(v);
@@ -96,13 +103,23 @@ vi.mock('../PurchaseModalSlot', () => ({
     <div data-testid="modal-slot" data-my-claim={String(!!p.myClaim)}>
       <button
         type="button"
-        onClick={() => (p.onPurchaseConfirm as (n: string, u?: boolean) => void)('Vicky', true)}
+        onClick={() =>
+          (p.onPurchaseConfirm as (n: string, u?: boolean) => void)(
+            'Vicky',
+            true
+          )
+        }
       >
         confirm-self
       </button>
       <button
         type="button"
-        onClick={() => (p.onPurchaseConfirm as (n: string, u?: boolean) => void)('Sam Lee', false)}
+        onClick={() =>
+          (p.onPurchaseConfirm as (n: string, u?: boolean) => void)(
+            'Sam Lee',
+            false
+          )
+        }
       >
         confirm-guest
       </button>
@@ -275,7 +292,10 @@ describe('Item', () => {
 
   describe('ModalMount', () => {
     it('PurchaseParamMatches_MountsModalSlot', () => {
-      renderItem({ item: { user_id: OWNER }, user_id: 'viewer' }, 'purchaseItem=i1');
+      renderItem(
+        { item: { user_id: OWNER }, user_id: 'viewer' },
+        'purchaseItem=i1'
+      );
       expect(screen.getByTestId('modal-slot')).toBeInTheDocument();
     });
 
@@ -335,7 +355,11 @@ describe('Item', () => {
   });
 
   describe('Claim', () => {
-    const viewer = { item: { user_id: OWNER }, user_id: 'viewer', user_name: 'Vicky' };
+    const viewer = {
+      item: { user_id: OWNER },
+      user_id: 'viewer',
+      user_name: 'Vicky',
+    };
 
     it('SelfConfirm_CreatePurchaseNullGuest-AddsOptimisticSelfClaim', async () => {
       const user = userEvent.setup();
@@ -441,7 +465,10 @@ describe('Item', () => {
 
     it('UndoWithoutClaim_RemovesByItemId', async () => {
       const user = userEvent.setup();
-      renderItem({ item: { user_id: OWNER }, user_id: 'viewer' }, 'purchaseItem=i1');
+      renderItem(
+        { item: { user_id: OWNER }, user_id: 'viewer' },
+        'purchaseItem=i1'
+      );
       await user.click(screen.getByRole('button', { name: 'confirm-undo' }));
       expect(removePurchase).toHaveBeenCalledWith({
         item_id: 'i1',

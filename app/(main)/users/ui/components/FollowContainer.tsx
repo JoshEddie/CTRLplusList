@@ -1,4 +1,4 @@
-import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/dal';
+import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
 import type { ButtonVariant } from '@/app/ui/components/button';
 import FollowControls from './FollowControls';
 

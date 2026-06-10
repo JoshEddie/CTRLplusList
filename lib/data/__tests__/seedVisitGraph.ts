@@ -1,5 +1,5 @@
-import { list_visits, lists } from '../../db/schema';
-import type { bootPglite } from './db';
+import { list_visits, lists } from '@/db/schema';
+import type { bootPglite } from '@/test/helpers/db';
 
 type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
 

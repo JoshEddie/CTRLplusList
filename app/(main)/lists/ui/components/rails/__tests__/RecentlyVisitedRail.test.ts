@@ -8,7 +8,7 @@ import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 
 mockNextCache();
-// HistoryCard → HistoryActions → @/app/actions/lists → @/lib/auth → next-auth.
+// HistoryCard → HistoryActions → @/lib/data/visit.actions → @/lib/auth → next-auth.
 // Mock the auth boundary so the transitive next-auth import does not load
 // (NextAuth network-boundary allowance); this rail test never exercises auth.
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
@@ -23,14 +23,14 @@ vi.mock('@/db', () => ({
 }));
 
 let db: TestDb;
-let dal: typeof import('@/lib/dal');
+let dal: typeof import('@/lib/data/visit');
 let RecentlyVisitedRail: typeof import('../RecentlyVisitedRail').default;
 
 beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
-  dal = await import('@/lib/dal');
+  dal = await import('@/lib/data/visit');
   RecentlyVisitedRail = (await import('../RecentlyVisitedRail')).default;
 });
 
@@ -56,9 +56,9 @@ async function seedVisit(listId: string, lastVisitedAt: Date): Promise<void> {
 type El = { type: unknown; props: Record<string, unknown> };
 
 function rowItems(tree: El): El[] {
-  return (tree.props.children as unknown[]).flat().filter(
-    (c): c is El => !!c && typeof c === 'object' && 'props' in c
-  );
+  return (tree.props.children as unknown[])
+    .flat()
+    .filter((c): c is El => !!c && typeof c === 'object' && 'props' in c);
 }
 
 function childTypeOf(item: El): unknown {
@@ -71,7 +71,9 @@ function historyCardItems(tree: El): El[] {
 
 describe('RecentlyVisitedRail', () => {
   it('NoVisits_RendersEmptyState', async () => {
-    const tree = (await RecentlyVisitedRail({ userId: 'viewer' })) as unknown as El;
+    const tree = (await RecentlyVisitedRail({
+      userId: 'viewer',
+    })) as unknown as El;
     expect(tree.type).toBe('div');
     expect(tree.props.className).toBe('list-card-row-empty');
     expect(tree.props.children).toBe('No visits yet.');
@@ -82,7 +84,9 @@ describe('RecentlyVisitedRail', () => {
       await seedVisit(`l${i}`, new Date(2021, 0, i + 1));
     }
 
-    const tree = (await RecentlyVisitedRail({ userId: 'viewer' })) as unknown as El;
+    const tree = (await RecentlyVisitedRail({
+      userId: 'viewer',
+    })) as unknown as El;
     expect(historyCardItems(tree)).toHaveLength(5);
 
     const moreCard = rowItems(tree).at(-1)!.props.children as El;
@@ -95,7 +99,9 @@ describe('RecentlyVisitedRail', () => {
       await seedVisit(`l${i}`, new Date(2021, 0, i + 1));
     }
 
-    const tree = (await RecentlyVisitedRail({ userId: 'viewer' })) as unknown as El;
+    const tree = (await RecentlyVisitedRail({
+      userId: 'viewer',
+    })) as unknown as El;
     expect(historyCardItems(tree)).toHaveLength(3);
     const hasMoreCard = rowItems(tree).some((c) => childTypeOf(c) === MoreCard);
     expect(hasMoreCard).toBe(false);
@@ -112,7 +118,9 @@ describe('RecentlyVisitedRail', () => {
   it('HistoryCard_ReceivesRowProp', async () => {
     await seedVisit('l0', new Date(2021, 0, 1));
 
-    const tree = (await RecentlyVisitedRail({ userId: 'viewer' })) as unknown as El;
+    const tree = (await RecentlyVisitedRail({
+      userId: 'viewer',
+    })) as unknown as El;
     const card = historyCardItems(tree)[0].props.children as El;
     expect((card.props as { row: { list_id: string } }).row.list_id).toBe('l0');
   });

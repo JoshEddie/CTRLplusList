@@ -1,10 +1,11 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { user_blocks, user_follows } from '@/db/schema';
-import { auth } from '@/lib/auth';
+import { auth, signIn, signOut } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedBlock, seedFollow, seedUsers } from '@/test/helpers/seedFollowGraph';
+import { redirect } from 'next/navigation';
 
 mockNextCache();
 
@@ -16,14 +17,34 @@ vi.mock('@/db', () => ({
     return holder.db;
   },
 }));
-vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
+vi.mock('@/lib/auth', () => ({
+  auth: vi.fn(),
+  signIn: vi.fn(),
+  signOut: vi.fn(),
+}));
+
+// Real Next `redirect()` throws to abort the request; production code relies on
+// nothing running after it. The mock mirrors that with a tagged sentinel the
+// test catches via `rejects.toThrow`.
+class RedirectSignal extends Error {
+  constructor(public target: string) {
+    super(`__redirect:${target}__`);
+  }
+}
+vi.mock('next/navigation', () => ({
+  redirect: vi.fn((target: string) => {
+    throw new RedirectSignal(target);
+  }),
+}));
 
 const VIEWER = { id: 'viewer', email: 'viewer@test.local' };
 const TARGET = { id: 'target', email: 'target@test.local' };
 const THIRD = { id: 'third', email: 'third@test.local' };
 
 let db: TestDb;
-let actions: typeof import('@/app/actions/follows');
+let actions: typeof import('@/lib/data/user.actions');
+let signInUser: typeof import('@/lib/data/user.actions').signInUser;
+let signOutUser: typeof import('@/lib/data/user.actions').signOutUser;
 let updateTag: ReturnType<typeof vi.fn>;
 
 function asViewer() {
@@ -47,7 +68,8 @@ beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
-  actions = await import('@/app/actions/follows');
+  actions = await import('@/lib/data/user.actions');
+  ({ signInUser, signOutUser } = actions);
   ({ updateTag } = (await import('next/cache')) as unknown as {
     updateTag: ReturnType<typeof vi.fn>;
   });
@@ -60,6 +82,46 @@ beforeEach(async () => {
   await seedUsers(db, [VIEWER, TARGET, THIRD]);
   updateTag.mockClear();
   asViewer();
+  vi.mocked(signIn).mockReset();
+  vi.mocked(signOut).mockReset();
+  vi.mocked(redirect).mockClear();
+});
+
+describe('signInUser', () => {
+  it('Invoked_DelegatesToSignInWithGoogleProvider', async () => {
+    await signInUser();
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google');
+  });
+
+  it('Invoked_DoesNotCallSignOutOrRedirect', async () => {
+    await signInUser();
+    expect(signOut).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
+  });
+});
+
+describe('signOutUser', () => {
+  it('Invoked_CallsSignOutWithRedirectFalse', async () => {
+    await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
+    expect(signOut).toHaveBeenCalledExactlyOnceWith({ redirect: false });
+  });
+
+  it('Invoked_RedirectsToSignIn', async () => {
+    await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
+    expect(redirect).toHaveBeenCalledExactlyOnceWith('/sign-in');
+  });
+
+  it('Invoked_ClearsSessionBeforeRedirect', async () => {
+    await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
+    expect(vi.mocked(signOut).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(redirect).mock.invocationCallOrder[0],
+    );
+  });
+
+  it('Invoked_DoesNotCallSignIn', async () => {
+    await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
+    expect(signIn).not.toHaveBeenCalled();
+  });
 });
 
 describe('followUser', () => {

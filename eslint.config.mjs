@@ -23,6 +23,25 @@ const eslintConfig = [
       'sonarjs/cognitive-complexity': ['error', 15],
     },
   },
+  // File-size bands (policy: CLAUDE.md); two rules because each carries one
+  // severity.
+  {
+    files: ['app/**', 'lib/**', 'hooks/**', 'db/**'],
+    ignores: [
+      '**/*.test.*',
+      '**/__tests__/**',
+      'app/changelog/releases.ts',
+    ],
+    plugins: { sonarjs },
+    rules: {
+      'max-lines': [
+        'error',
+        { max: 500, skipBlankLines: true, skipComments: true },
+      ],
+      // sonarjs always skips blank lines and comments (no option exists)
+      'sonarjs/max-lines': ['warn', { maximum: 300 }],
+    },
+  },
   {
     rules: {
       '@typescript-eslint/no-unused-vars': 'error',

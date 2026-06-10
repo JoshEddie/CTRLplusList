@@ -1,10 +1,12 @@
 'use server';
 
 import { db } from '@/db';
-import { user_blocks, user_follows, users } from '@/db/schema';
-import { auth } from '@/lib/auth';
+import { user_blocks, user_follows } from '@/db/schema';
+import { signIn, signOut } from '@/lib/auth';
+import { authedUserId } from '@/lib/data/user.session';
 import { and, eq } from 'drizzle-orm';
 import { updateTag } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 export type ActionResponse = {
   success: boolean;
@@ -12,14 +14,13 @@ export type ActionResponse = {
   error?: string;
 };
 
-async function authedUserId(): Promise<string | null> {
-  const session = await auth();
-  if (!session?.user?.email) return null;
-  const u = await db.query.users.findFirst({
-    where: eq(users.email, session.user.email),
-    columns: { id: true },
-  });
-  return u?.id ?? null;
+export async function signInUser() {
+  await signIn('google');
+}
+
+export async function signOutUser() {
+  await signOut({ redirect: false });
+  redirect('/sign-in');
 }
 
 export async function followUser(followee_id: string): Promise<ActionResponse> {
@@ -193,4 +194,3 @@ export async function unblockUser(blocked_id: string): Promise<ActionResponse> {
     return { success: false, message: 'Failed to unblock', error: 'Failed' };
   }
 }
-

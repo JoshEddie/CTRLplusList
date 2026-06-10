@@ -2,13 +2,19 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { auth } from '@/lib/auth';
-import { getItemsByUser, getListsByUser, getUserIdByEmail } from '@/lib/dal';
+import { getItemsByUser } from '@/lib/data/item';
+import { getListsByUser } from '@/lib/data/list';
+import { getUserIdByEmail } from '@/lib/data/user';
 import Home from '../page';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
+vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
+}));
+vi.mock('@/lib/data/item', () => ({
   getItemsByUser: vi.fn(),
+}));
+vi.mock('@/lib/data/list', () => ({
   getListsByUser: vi.fn(),
 }));
 
@@ -19,7 +25,9 @@ const redirectMock = vi.hoisted(() =>
 );
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
 
-const cookieHolder = vi.hoisted(() => ({ value: undefined as string | undefined }));
+const cookieHolder = vi.hoisted(() => ({
+  value: undefined as string | undefined,
+}));
 vi.mock('next/headers', () => ({
   cookies: vi.fn(async () => ({
     get: (name: string) =>

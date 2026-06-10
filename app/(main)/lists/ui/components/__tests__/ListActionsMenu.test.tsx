@@ -2,12 +2,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { deleteList } from '@/app/actions/lists';
+import { deleteList } from '@/lib/data/list.actions';
 import { ListTable } from '@/lib/types';
 import toast from 'react-hot-toast';
 import ListActionsMenu from '../ListActionsMenu';
 
-vi.mock('@/app/actions/lists', () => ({ deleteList: vi.fn() }));
+vi.mock('@/lib/data/list.actions', () => ({ deleteList: vi.fn() }));
 
 const router = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
@@ -64,7 +64,9 @@ describe('ListActionsMenu', () => {
       expect(kebab).toHaveAttribute('aria-expanded', 'false');
       await openMenu(user);
       expect(kebab).toHaveAttribute('aria-expanded', 'true');
-      expect(screen.getByRole('menu', { name: 'List actions' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('menu', { name: 'List actions' })
+      ).toBeInTheDocument();
     });
   });
 
@@ -87,9 +89,7 @@ describe('ListActionsMenu', () => {
       const user = userEvent.setup();
       renderMenu({ showSpoilers: false, previewMode: false });
       await openMenu(user);
-      const items = screen
-        .getAllByRole('menuitem')
-        .map((el) => el.textContent);
+      const items = screen.getAllByRole('menuitem').map((el) => el.textContent);
       expect(items).toEqual([
         'Choose items',
         'Edit list',
@@ -196,7 +196,10 @@ describe('ListActionsMenu', () => {
 
     it('WithPrependedItems_RendersOnlyPrependedItems', async () => {
       const user = userEvent.setup();
-      renderMenu({ isOwner: false, prependedItems: <div data-testid="prepended" /> });
+      renderMenu({
+        isOwner: false,
+        prependedItems: <div data-testid="prepended" />,
+      });
       await openMenu(user);
       expect(screen.getByTestId('prepended')).toBeInTheDocument();
       expect(screen.queryAllByRole('menuitem')).toHaveLength(0);

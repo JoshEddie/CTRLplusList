@@ -9,12 +9,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  bookmarkList,
-  setListVisibility,
-  unbookmarkList,
-} from '@/app/actions/lists';
-import { followUser, unfollowUser } from '@/app/actions/follows';
+import { setListVisibility } from '@/lib/data/list.actions';
+import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
+import { followUser, unfollowUser } from '@/lib/data/user.actions';
 import { Menu } from '@/app/ui/components/menu';
 import { ListTable } from '@/lib/types';
 import { VISIBILITY } from '@/lib/visibility';
@@ -26,13 +23,15 @@ import {
   VisibilityMenuItems,
 } from '../HeroCollapsedItems';
 
-vi.mock('@/app/actions/lists', () => ({
+vi.mock('@/lib/data/list.actions', () => ({
   setListVisibility: vi.fn(),
+}));
+vi.mock('@/lib/data/visit.actions', () => ({
   bookmarkList: vi.fn(),
   unbookmarkList: vi.fn(),
 }));
 
-vi.mock('@/app/actions/follows', () => ({
+vi.mock('@/lib/data/user.actions', () => ({
   followUser: vi.fn(),
   unfollowUser: vi.fn(),
 }));
@@ -78,7 +77,10 @@ const dialogProto = HTMLDialogElement.prototype as unknown as Record<
   string,
   unknown
 >;
-const originals = { showModal: dialogProto.showModal, close: dialogProto.close };
+const originals = {
+  showModal: dialogProto.showModal,
+  close: dialogProto.close,
+};
 
 beforeEach(() => {
   dialogProto.showModal = vi.fn(function (this: HTMLDialogElement) {
@@ -219,9 +221,11 @@ describe('ShareMenuItem', () => {
   it('ShareAbortError_DoesNotToastError', async () => {
     Object.defineProperty(navigator, 'share', {
       configurable: true,
-      value: vi.fn().mockRejectedValue(
-        Object.assign(new Error('aborted'), { name: 'AbortError' })
-      ),
+      value: vi
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error('aborted'), { name: 'AbortError' })
+        ),
     });
     const user = userEvent.setup();
     renderInMenu(<ShareMenuItem list={publicList} />);
@@ -250,7 +254,10 @@ describe('VisibilityMenuItems', () => {
 
   it('Default_RendersThreeRadioRowsInSourceOrder', () => {
     renderInMenu(
-      <VisibilityMenuItems listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityMenuItems
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+      />
     );
     const labels = screen
       .getAllByRole('menuitemradio')
@@ -260,7 +267,10 @@ describe('VisibilityMenuItems', () => {
 
   it('InitialVisibility_ChecksMatchingRowOnly', () => {
     renderInMenu(
-      <VisibilityMenuItems listId="list-1" initialVisibility={VISIBILITY.LINK} />
+      <VisibilityMenuItems
+        listId="list-1"
+        initialVisibility={VISIBILITY.LINK}
+      />
     );
     expect(row('Private')).toHaveAttribute('aria-checked', 'true');
     expect(row('Hidden')).toHaveAttribute('aria-checked', 'false');
@@ -274,7 +284,10 @@ describe('VisibilityMenuItems', () => {
     });
     const user = userEvent.setup();
     renderInMenu(
-      <VisibilityMenuItems listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityMenuItems
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+      />
     );
     await user.click(row('Private'));
     expect(row('Private')).toHaveAttribute('aria-checked', 'true');
@@ -293,7 +306,10 @@ describe('VisibilityMenuItems', () => {
     });
     const user = userEvent.setup();
     renderInMenu(
-      <VisibilityMenuItems listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityMenuItems
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+      />
     );
     await user.click(row('Private'));
     await waitFor(() =>
@@ -305,7 +321,10 @@ describe('VisibilityMenuItems', () => {
   it('SelectAlreadyCheckedRow_IsNoOp', async () => {
     const user = userEvent.setup();
     renderInMenu(
-      <VisibilityMenuItems listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityMenuItems
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+      />
     );
     await user.click(row('Hidden'));
     expect(setListVisibility).not.toHaveBeenCalled();
@@ -320,7 +339,10 @@ describe('VisibilityMenuItems', () => {
     );
     const user = userEvent.setup();
     renderInMenu(
-      <VisibilityMenuItems listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityMenuItems
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+      />
     );
     await user.click(row('Private'));
     await waitFor(() => expect(row('Hidden')).toBeDisabled());
@@ -332,7 +354,9 @@ describe('VisibilityMenuItems', () => {
 
 describe('BookmarkMenuItem', () => {
   it('NotBookmarked_RendersBookmarkLabel-IconSvg', () => {
-    renderInMenu(<BookmarkMenuItem listId="list-1" initialBookmarked={false} />);
+    renderInMenu(
+      <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
+    );
     const item = screen.getByRole('menuitem', { name: 'Bookmark' });
     expect(item).toBeInTheDocument();
     expect(item.querySelector('svg')).not.toBeNull();
@@ -348,7 +372,9 @@ describe('BookmarkMenuItem', () => {
   it('ClickFromNotBookmarked_OptimisticToggle-CallsBookmarkList-ToastsBookmarked', async () => {
     vi.mocked(bookmarkList).mockResolvedValue({ success: true, message: '' });
     const user = userEvent.setup();
-    renderInMenu(<BookmarkMenuItem listId="list-1" initialBookmarked={false} />);
+    renderInMenu(
+      <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
+    );
     await user.click(screen.getByRole('menuitem', { name: 'Bookmark' }));
     expect(
       screen.getByRole('menuitem', { name: 'Bookmarked' })
@@ -372,7 +398,9 @@ describe('BookmarkMenuItem', () => {
       message: 'Failed',
     });
     const user = userEvent.setup();
-    renderInMenu(<BookmarkMenuItem listId="list-1" initialBookmarked={false} />);
+    renderInMenu(
+      <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
+    );
     await user.click(screen.getByRole('menuitem', { name: 'Bookmark' }));
     expect(
       await screen.findByRole('menuitem', { name: 'Bookmark' })
@@ -388,7 +416,9 @@ describe('BookmarkMenuItem', () => {
       })
     );
     const user = userEvent.setup();
-    renderInMenu(<BookmarkMenuItem listId="list-1" initialBookmarked={false} />);
+    renderInMenu(
+      <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
+    );
     await user.click(screen.getByRole('menuitem', { name: 'Bookmark' }));
     await user.click(screen.getByRole('menuitem', { name: 'Bookmarked' }));
     expect(bookmarkList).toHaveBeenCalledTimes(1);
@@ -414,7 +444,9 @@ describe('FollowMenuItem', () => {
 
     it('NullOwnerName_RendersFollow', () => {
       renderInMenu(<FollowMenuItem {...props} ownerName={null} />);
-      expect(screen.getByRole('menuitem', { name: 'Follow' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('menuitem', { name: 'Follow' })
+      ).toBeInTheDocument();
     });
 
     it('RequireDisclosure_ClickOpensDialog-NoImmediateFollow-ConfirmFollows', async () => {
@@ -424,9 +456,9 @@ describe('FollowMenuItem', () => {
         <FollowMenuItem {...props} requireDisclosure={true} />
       );
       await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
-      expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
-        true
-      );
+      expect(
+        (container.querySelector('dialog') as HTMLDialogElement).open
+      ).toBe(true);
       expect(followUser).not.toHaveBeenCalled();
       await user.click(screen.getByRole('button', { name: 'Follow' }));
       await waitFor(() => expect(followUser).toHaveBeenCalledWith('owner-1'));
@@ -439,9 +471,9 @@ describe('FollowMenuItem', () => {
       );
       await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
-      expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
-        false
-      );
+      expect(
+        (container.querySelector('dialog') as HTMLDialogElement).open
+      ).toBe(false);
       expect(followUser).not.toHaveBeenCalled();
     });
 

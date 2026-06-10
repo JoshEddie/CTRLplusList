@@ -2,18 +2,18 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
+import { seedUsers } from '@/test/helpers/seedFollowGraph';
+
 import {
   seedItem,
+  seedItemStore,
   seedList,
   seedListItem,
   seedPurchase,
-  seedStore,
-} from '@/test/helpers/seedItemGraph';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+  type TestDb,
+} from './test-helpers';
 
 mockNextCache();
-
-type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
 
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock('@/db', () => ({
@@ -23,13 +23,13 @@ vi.mock('@/db', () => ({
 }));
 
 let db: TestDb;
-let dal: typeof import('@/lib/dal');
+let dal: typeof import('@/lib/data/item');
 
 beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
-  dal = await import('@/lib/dal');
+  dal = await import('@/lib/data/item');
 });
 
 beforeEach(async () => {
@@ -97,8 +97,18 @@ describe('getItemsByUser', () => {
       user_id: 'u',
       created_at: new Date('2022-01-01'),
     });
-    await seedStore(db, { id: 's2', item_id: 'new', name: 'second', order: 2 });
-    await seedStore(db, { id: 's1', item_id: 'new', name: 'first', order: 1 });
+    await seedItemStore(db, {
+      id: 's2',
+      item_id: 'new',
+      name: 'second',
+      order: 2,
+    });
+    await seedItemStore(db, {
+      id: 's1',
+      item_id: 'new',
+      name: 'first',
+      order: 1,
+    });
 
     const rows = await dal.getItemsByUser('u');
     expect(rows.map((r) => r.id)).toEqual(['new', 'old']);
@@ -146,10 +156,20 @@ describe('getItemById', () => {
     await seedItem(db, { id: 'i1', user_id: 'u', quantity_limit: 3 });
     await seedList(db, { id: 'l1', user_id: 'u' });
     await seedList(db, { id: 'l2', user_id: 'u' });
-    await seedListItem(db, 'l1', 'i1', 5);
-    await seedListItem(db, 'l2', 'i1', 9);
-    await seedStore(db, { id: 's2', item_id: 'i1', name: 'second', order: 2 });
-    await seedStore(db, { id: 's1', item_id: 'i1', name: 'first', order: 1 });
+    await seedListItem(db, { list_id: 'l1', item_id: 'i1', position: 5 });
+    await seedListItem(db, { list_id: 'l2', item_id: 'i1', position: 9 });
+    await seedItemStore(db, {
+      id: 's2',
+      item_id: 'i1',
+      name: 'second',
+      order: 2,
+    });
+    await seedItemStore(db, {
+      id: 's1',
+      item_id: 'i1',
+      name: 'first',
+      order: 1,
+    });
 
     const item = await dal.getItemById('i1', 'u');
     expect(item?.id).toBe('i1');
@@ -174,72 +194,14 @@ describe('getItemById', () => {
   });
 });
 
-describe('getItemsByPurchased', () => {
-  it('NoUserId_ReturnsEmptyArray', async () => {
-    expect(await dal.getItemsByPurchased()).toEqual([]);
-  });
-
-  it('PurchasedItems_OrderedByPurchasedAtDesc', async () => {
-    await seedUsers(db, [{ id: 'buyer' }, { id: 'owner' }]);
-    await seedItem(db, { id: 'early', user_id: 'owner' });
-    await seedItem(db, { id: 'late', user_id: 'owner' });
-    await seedPurchase(db, {
-      id: 'pe',
-      item_id: 'early',
-      user_id: 'buyer',
-      purchased_at: new Date('2021-01-01'),
-    });
-    await seedPurchase(db, {
-      id: 'pl',
-      item_id: 'late',
-      user_id: 'buyer',
-      purchased_at: new Date('2022-01-01'),
-    });
-
-    const rows = await dal.getItemsByPurchased('buyer');
-    expect(rows.map((r) => r.id)).toEqual(['late', 'early']);
-  });
-
-  it('NonOwnerView_TagsViewersOwnPurchaseSelf-OthersOther', async () => {
-    await seedUsers(db, [
-      { id: 'buyer', name: 'Bea' },
-      { id: 'owner' },
-      { id: 'other', name: 'Otto' },
-    ]);
-    await seedItem(db, { id: 'shared', user_id: 'owner', quantity_limit: 2 });
-    await seedPurchase(db, { id: 'mine', item_id: 'shared', user_id: 'buyer' });
-    await seedPurchase(db, {
-      id: 'theirs',
-      item_id: 'shared',
-      user_id: 'other',
-    });
-
-    const rows = await dal.getItemsByPurchased('buyer');
-    const byId = Object.fromEntries(rows[0].purchases.map((p) => [p.id, p]));
-    expect(byId.mine).toEqual({ id: 'mine', by: 'self', firstName: 'Bea' });
-    expect(byId.theirs).toEqual({
-      id: 'theirs',
-      by: 'other',
-      firstName: 'Otto',
-    });
-  });
-
-  it('QueryThrows_RejectsWithRawError', async () => {
-    vi.spyOn(db.query.purchases, 'findMany').mockRejectedValueOnce(
-      new Error('boom')
-    );
-    await expect(dal.getItemsByPurchased('buyer')).rejects.toThrow('boom');
-  });
-});
-
 describe('getItemsByListId', () => {
   it('MultipleMemberships_OrderedByPositionAsc', async () => {
     await seedUsers(db, [{ id: 'u' }]);
     await seedList(db, { id: 'l1', user_id: 'u' });
     await seedItem(db, { id: 'first', user_id: 'u' });
     await seedItem(db, { id: 'second', user_id: 'u' });
-    await seedListItem(db, 'l1', 'second', 2);
-    await seedListItem(db, 'l1', 'first', 1);
+    await seedListItem(db, { list_id: 'l1', item_id: 'second', position: 2 });
+    await seedListItem(db, { list_id: 'l1', item_id: 'first', position: 1 });
 
     const rows = await dal.getItemsByListId('l1');
     expect(rows.map((r) => r.id)).toEqual(['first', 'second']);
@@ -254,7 +216,7 @@ describe('getItemsByListId', () => {
       ]);
       await seedList(db, { id: 'l1', user_id: 'owner' });
       await seedItem(db, { id: 'i1', user_id: 'owner', quantity_limit: 2 });
-      await seedListItem(db, 'l1', 'i1', 1);
+      await seedListItem(db, { list_id: 'l1', item_id: 'i1', position: 1 });
       await seedPurchase(db, { id: 'pv', item_id: 'i1', user_id: 'viewer' });
       await seedPurchase(db, { id: 'po', item_id: 'i1', user_id: 'other' });
     }
@@ -295,7 +257,7 @@ describe('getItemsByListId', () => {
       await seedUsers(db, [{ id: 'owner' }, { id: 'viewer' }]);
       await seedList(db, { id: 'l1', user_id: 'owner' });
       await seedItem(db, { id: 'i1', user_id: 'owner', quantity_limit: 2 });
-      await seedListItem(db, 'l1', 'i1', 1);
+      await seedListItem(db, { list_id: 'l1', item_id: 'i1', position: 1 });
       await seedPurchase(db, {
         id: 'pg',
         item_id: 'i1',

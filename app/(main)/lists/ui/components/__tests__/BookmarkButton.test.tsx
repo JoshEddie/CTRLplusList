@@ -2,11 +2,11 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { bookmarkList, unbookmarkList } from '@/app/actions/lists';
+import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
 import toast from 'react-hot-toast';
 import BookmarkButton from '../BookmarkButton';
 
-vi.mock('@/app/actions/lists', () => ({
+vi.mock('@/lib/data/visit.actions', () => ({
   bookmarkList: vi.fn(),
   unbookmarkList: vi.fn(),
 }));

@@ -7,13 +7,9 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  getBookmarkStatus,
-  hasBlocked,
-  isFollowing,
-  viewerHasAnyFollows,
-} from '@/lib/dal';
-import { followUser } from '@/app/actions/follows';
+import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
+import { getBookmarkStatus } from '@/lib/data/visit';
+import { followUser } from '@/lib/data/user.actions';
 import { ListTable } from '@/lib/types';
 import { VISIBILITY } from '@/lib/visibility';
 import {
@@ -21,8 +17,10 @@ import {
   HeroCollapsedViewerItems,
 } from '../HeroCollapsedItemsContainer';
 
-vi.mock('@/lib/dal', () => ({
+vi.mock('@/lib/data/visit', () => ({
   getBookmarkStatus: vi.fn(),
+}));
+vi.mock('@/lib/data/user', () => ({
   isFollowing: vi.fn(),
   hasBlocked: vi.fn(),
   viewerHasAnyFollows: vi.fn(),
@@ -30,12 +28,14 @@ vi.mock('@/lib/dal', () => ({
 
 // The composed child factories reach the DB/network boundary via these
 // modules; mocking them keeps the container unit test off the server graph.
-vi.mock('@/app/actions/lists', () => ({
+vi.mock('@/lib/data/list.actions', () => ({
   setListVisibility: vi.fn(),
+}));
+vi.mock('@/lib/data/visit.actions', () => ({
   bookmarkList: vi.fn(),
   unbookmarkList: vi.fn(),
 }));
-vi.mock('@/app/actions/follows', () => ({
+vi.mock('@/lib/data/user.actions', () => ({
   followUser: vi.fn(),
   unfollowUser: vi.fn(),
 }));
@@ -76,7 +76,10 @@ const dialogProto = HTMLDialogElement.prototype as unknown as Record<
   string,
   unknown
 >;
-const originals = { showModal: dialogProto.showModal, close: dialogProto.close };
+const originals = {
+  showModal: dialogProto.showModal,
+  close: dialogProto.close,
+};
 
 beforeEach(() => {
   dialogProto.showModal = vi.fn(function (this: HTMLDialogElement) {

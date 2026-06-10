@@ -7,11 +7,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { followUser, unfollowUser } from '@/app/actions/follows';
+import { followUser, unfollowUser } from '@/lib/data/user.actions';
 import toast from 'react-hot-toast';
 import FollowControls from '../FollowControls';
 
-vi.mock('@/app/actions/follows', () => ({
+vi.mock('@/lib/data/user.actions', () => ({
   followUser: vi.fn(),
   unfollowUser: vi.fn(),
 }));
@@ -29,7 +29,10 @@ const dialogProto = HTMLDialogElement.prototype as unknown as Record<
   string,
   unknown
 >;
-const originals = { showModal: dialogProto.showModal, close: dialogProto.close };
+const originals = {
+  showModal: dialogProto.showModal,
+  close: dialogProto.close,
+};
 
 beforeEach(() => {
   dialogProto.showModal = vi.fn(function (this: HTMLDialogElement) {
@@ -144,9 +147,9 @@ describe('FollowControls', () => {
     const user = userEvent.setup();
     const { container } = renderControls({ requireDisclosure: true });
     await user.click(mainFollow());
-    expect(
-      (container.querySelector('dialog') as HTMLDialogElement).open
-    ).toBe(true);
+    expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
+      true
+    );
     expect(followUser).not.toHaveBeenCalled();
   });
 
@@ -159,9 +162,9 @@ describe('FollowControls', () => {
     const { container } = renderControls({ requireDisclosure: true });
     await user.click(mainFollow());
     await user.click(screen.getByRole('button', { name: 'Follow' }));
-    expect(
-      (container.querySelector('dialog') as HTMLDialogElement).open
-    ).toBe(false);
+    expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
+      false
+    );
     await waitFor(() => expect(followUser).toHaveBeenCalledWith(USER_ID));
   });
 
@@ -170,9 +173,9 @@ describe('FollowControls', () => {
     const { container } = renderControls({ requireDisclosure: true });
     await user.click(mainFollow());
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(
-      (container.querySelector('dialog') as HTMLDialogElement).open
-    ).toBe(false);
+    expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
+      false
+    );
     expect(followUser).not.toHaveBeenCalled();
   });
 
@@ -211,9 +214,9 @@ describe('FollowControls', () => {
       requireDisclosure: true,
     });
     await user.click(mainFollowing());
-    expect(
-      (container.querySelector('dialog') as HTMLDialogElement).open
-    ).toBe(false);
+    expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
+      false
+    );
     await waitFor(() => expect(unfollowUser).toHaveBeenCalledWith(USER_ID));
   });
 });

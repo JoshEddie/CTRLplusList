@@ -1,12 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
-import { getList, getUserIdByEmail, hasBlocked } from '@/lib/dal';
+import { getList } from '@/lib/data/list';
+import { getUserIdByEmail, hasBlocked } from '@/lib/data/user';
 import ListItemsSection from '../ListItemsSection';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
-  getList: vi.fn(),
+vi.mock('@/lib/data/list', () => ({ getList: vi.fn() }));
+vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
   hasBlocked: vi.fn(),
   isFollowing: vi.fn(),
@@ -24,7 +25,11 @@ const redirectMock = vi.hoisted(() =>
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
 
 vi.mock('@/app/(main)/items/ui/components/SortItemsContainer', () => ({
-  default: (p: { listId: string; isOwner?: boolean; showSpoilers?: boolean }) => (
+  default: (p: {
+    listId: string;
+    isOwner?: boolean;
+    showSpoilers?: boolean;
+  }) => (
     <div
       data-testid="sort-items-container"
       data-list-id={p.listId}

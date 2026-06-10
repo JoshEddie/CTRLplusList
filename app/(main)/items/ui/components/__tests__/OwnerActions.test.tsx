@@ -1,10 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { archiveItem } from '@/app/actions/items';
+import { archiveItem } from '@/lib/data/item.actions';
 import OwnerActions from '../OwnerActions';
 
-vi.mock('@/app/actions/items', () => ({ archiveItem: vi.fn() }));
+vi.mock('@/lib/data/item.actions', () => ({ archiveItem: vi.fn() }));
 
 vi.mock('react-hot-toast', () => ({
   default: {
@@ -85,7 +85,10 @@ describe('OwnerActions', () => {
 
   it('UserId_RendersEditButton', () => {
     renderActions();
-    expect(screen.getByTestId('edit-btn')).toHaveAttribute('data-item-id', 'i1');
+    expect(screen.getByTestId('edit-btn')).toHaveAttribute(
+      'data-item-id',
+      'i1'
+    );
   });
 
   it('Kebab_OpensMenuWithReturnToEditLink-ArchiveDispatches', async () => {

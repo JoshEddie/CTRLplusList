@@ -5,14 +5,7 @@
  * assert them. Interactive affordances are still queried by role / accessible
  * name. */
 import { render, within } from '@testing-library/react';
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ListDetails from '../ListDetails';
 import { makeList, type TestList } from './test-helpers';
 
@@ -73,7 +66,7 @@ vi.mock('@/app/(main)/lists/ui/components/ListFormContainer', () => ({
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
-vi.mock('@/app/actions/lists', () => ({ setListVisibility: vi.fn() }));
+vi.mock('@/lib/data/list.actions', () => ({ setListVisibility: vi.fn() }));
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -97,7 +90,9 @@ async function renderHero(overrides: Partial<Props> = {}) {
 
 function heroOf(container: HTMLElement) {
   const hero = container.querySelector('.list-hero') as HTMLElement;
-  const identity = hero.querySelector('.list-hero-card-identity') as HTMLElement;
+  const identity = hero.querySelector(
+    '.list-hero-card-identity'
+  ) as HTMLElement;
   const controls = hero.querySelector(
     '.list-hero-card-controls'
   ) as HTMLElement;
@@ -132,9 +127,9 @@ describe('ListDetails', () => {
       const { container, identity } = await renderHero({
         list: sharedOwnerList(),
       });
-      expect(container.querySelectorAll('.list-hero-share-wrapper')).toHaveLength(
-        1
-      );
+      expect(
+        container.querySelectorAll('.list-hero-share-wrapper')
+      ).toHaveLength(1);
       const wrapper = identity.querySelector(
         '.list-hero-share-wrapper'
       ) as HTMLElement;
@@ -359,8 +354,12 @@ describe('ListDetails', () => {
       const { container } = await renderHero(previewProps);
       const hero = container.querySelector('.list-hero') as HTMLElement;
       expect(hero.querySelector('.list-hero-share-wrapper')).toBeNull();
-      expect(within(hero).queryByRole('link', { name: 'Choose items' })).toBeNull();
-      expect(within(hero).queryByRole('button', { name: 'Edit list' })).toBeNull();
+      expect(
+        within(hero).queryByRole('link', { name: 'Choose items' })
+      ).toBeNull();
+      expect(
+        within(hero).queryByRole('button', { name: 'Edit list' })
+      ).toBeNull();
     });
 
     it('Preview_ControlsCardHasOnlyActionRowWithKebab', async () => {
@@ -370,9 +369,7 @@ describe('ListDetails', () => {
       expect(
         rows[0].querySelector('[data-testid="actions-menu-stub"]')
       ).toBeInTheDocument();
-      expect(
-        controls.querySelector('.list-hero-byline-group')
-      ).toBeNull();
+      expect(controls.querySelector('.list-hero-byline-group')).toBeNull();
     });
   });
 
@@ -486,17 +483,20 @@ describe('ListDetails', () => {
         ['Years', 2 * 31536000, '2 years ago'],
       ];
 
-      it.each(cases)('Bucket%s_FooterShowsUpdatedAgo', async (_label, deltaSeconds, expected) => {
-        const updated_at = new Date(fixedNow.getTime() - deltaSeconds * 1000);
-        const { container } = await renderHero({
-          itemCount: 4,
-          list: makeList({ updated_at }),
-        });
-        expect(
-          (container.querySelector('.list-hero-identity-foot') as HTMLElement)
-            .textContent
-        ).toBe(`4 items · updated ${expected}`);
-      });
+      it.each(cases)(
+        'Bucket%s_FooterShowsUpdatedAgo',
+        async (_label, deltaSeconds, expected) => {
+          const updated_at = new Date(fixedNow.getTime() - deltaSeconds * 1000);
+          const { container } = await renderHero({
+            itemCount: 4,
+            list: makeList({ updated_at }),
+          });
+          expect(
+            (container.querySelector('.list-hero-identity-foot') as HTMLElement)
+              .textContent
+          ).toBe(`4 items · updated ${expected}`);
+        }
+      );
     });
   });
 });

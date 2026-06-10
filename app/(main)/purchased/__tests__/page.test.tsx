@@ -2,12 +2,15 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { auth } from '@/lib/auth';
-import { getItemsByPurchased, getUserIdByEmail } from '@/lib/dal';
+import { getItemsByPurchased } from '@/lib/data/purchase';
+import { getUserIdByEmail } from '@/lib/data/user';
 import Purchased from '../page';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
+vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
+}));
+vi.mock('@/lib/data/purchase', () => ({
   getItemsByPurchased: vi.fn(),
 }));
 

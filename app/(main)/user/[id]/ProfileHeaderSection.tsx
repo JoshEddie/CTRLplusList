@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth';
-import { getProfileForUser, getUserIdByEmail } from '@/lib/dal';
+import { getProfileForUser, getUserIdByEmail } from '@/lib/data/user';
 import { notFound } from 'next/navigation';
 import FollowPrompt from '../../users/ui/components/FollowPrompt';
 import ProfileHeader from '../../users/ui/components/ProfileHeader';

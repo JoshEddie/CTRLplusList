@@ -1,12 +1,9 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/db';
 import { list_items } from '@/db/schema';
-import {
-  getItemsByUser,
-  getList,
-  getListsByUser,
-  getUserIdByEmail,
-} from '@/lib/dal';
+import { getItemsByUser } from '@/lib/data/item';
+import { getList, getListsByUser } from '@/lib/data/list';
+import { getUserIdByEmail } from '@/lib/data/user';
 import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import ChooseItemsForm from './ChooseItemsForm';

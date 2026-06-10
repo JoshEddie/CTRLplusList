@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getPublicListsByUser } from '@/lib/dal';
+import { getPublicListsByUser } from '@/lib/data/list';
 import ProfileListsSection from '../ProfileListsSection';
 
-vi.mock('@/lib/dal', () => ({ getPublicListsByUser: vi.fn() }));
+vi.mock('@/lib/data/list', () => ({ getPublicListsByUser: vi.fn() }));
 
 vi.mock('@/app/(main)/users/ui/components/PublicListsGrid', () => ({
   default: (props: { lists: { id: string }[] }) => (

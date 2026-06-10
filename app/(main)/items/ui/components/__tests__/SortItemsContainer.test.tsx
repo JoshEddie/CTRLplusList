@@ -3,12 +3,15 @@ import { Suspense } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { auth } from '@/lib/auth';
-import { getItemsByListId, getUserIdByEmail } from '@/lib/dal';
+import { getItemsByListId } from '@/lib/data/item';
+import { getUserIdByEmail } from '@/lib/data/user';
 import SortItemsContainer from '../SortItemsContainer';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
+vi.mock('@/lib/data/item', () => ({
   getItemsByListId: vi.fn(),
+}));
+vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
 }));
 
@@ -43,7 +46,11 @@ beforeEach(() => {
 describe('SortItemsContainer', () => {
   it('Authenticated_ReadsViewerScopedAndRendersSortItems', async () => {
     render(
-      await SortItemsContainer({ listId: 'l1', isOwner: true, showSpoilers: true })
+      await SortItemsContainer({
+        listId: 'l1',
+        isOwner: true,
+        showSpoilers: true,
+      })
     );
     expect(getItemsByListId).toHaveBeenCalledWith('l1', {
       viewerId: 'u1',

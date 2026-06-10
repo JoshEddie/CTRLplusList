@@ -1,14 +1,11 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { VISIBILITY } from '@/lib/visibility';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import {
-  seedItem,
-  seedList,
-  seedListItem,
-} from '@/test/helpers/seedItemGraph';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
-import { VISIBILITY } from '@/lib/visibility';
+
+import { seedItem, seedList, seedListItem } from './test-helpers';
 
 mockNextCache();
 
@@ -22,13 +19,13 @@ vi.mock('@/db', () => ({
 }));
 
 let db: TestDb;
-let dal: typeof import('@/lib/dal');
+let dal: typeof import('@/lib/data/list');
 
 beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
-  dal = await import('@/lib/dal');
+  dal = await import('@/lib/data/list');
 });
 
 beforeEach(async () => {
@@ -45,8 +42,8 @@ describe('getList', () => {
     await seedList(db, { id: 'l1', user_id: 'owner', visibility: 'public' });
     await seedItem(db, { id: 'i1', user_id: 'owner' });
     await seedItem(db, { id: 'i2', user_id: 'owner' });
-    await seedListItem(db, 'l1', 'i1', 1);
-    await seedListItem(db, 'l1', 'i2', 2);
+    await seedListItem(db, { list_id: 'l1', item_id: 'i1', position: 1 });
+    await seedListItem(db, { list_id: 'l1', item_id: 'i2', position: 2 });
 
     const list = await dal.getList('l1');
     expect(list?.user.id).toBe('owner');

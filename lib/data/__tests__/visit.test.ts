@@ -3,7 +3,8 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
-import { seedList, seedVisit } from '@/test/helpers/seedVisitGraph';
+
+import { seedList, seedVisit } from './seedVisitGraph';
 
 mockNextCache();
 
@@ -20,13 +21,13 @@ const VIEWER = { id: 'viewer', email: 'viewer@test.local' };
 const OTHER = { id: 'other', email: 'other@test.local' };
 
 let db: TestDb;
-let dal: typeof import('@/lib/dal');
+let dal: typeof import('@/lib/data/visit');
 
 beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
-  dal = await import('@/lib/dal');
+  dal = await import('@/lib/data/visit');
 });
 
 beforeEach(async () => {

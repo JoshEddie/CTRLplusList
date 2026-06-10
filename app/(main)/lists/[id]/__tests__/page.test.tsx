@@ -7,10 +7,8 @@ import ListPage from '../page';
 // page.tsx imports auth + the DAL for its (separately tested) generateMetadata;
 // mock both so importing the module never reaches the neon-backed `@/db`.
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/dal', () => ({
-  getList: vi.fn(),
-  getUserIdByEmail: vi.fn(),
-}));
+vi.mock('@/lib/data/list', () => ({ getList: vi.fn() }));
+vi.mock('@/lib/data/user', () => ({ getUserIdByEmail: vi.fn() }));
 
 vi.mock('../ListHeroSection', () => ({
   default: (props: { params: unknown; searchParams: unknown }) => (

@@ -2,11 +2,11 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { clearVisitHistory, removeVisit } from '@/app/actions/lists';
+import { clearVisitHistory, removeVisit } from '@/lib/data/visit.actions';
 import toast from 'react-hot-toast';
 import { ClearHistoryButton, RemoveVisitButton } from '../HistoryActions';
 
-vi.mock('@/app/actions/lists', () => ({
+vi.mock('@/lib/data/visit.actions', () => ({
   removeVisit: vi.fn(),
   clearVisitHistory: vi.fn(),
 }));
@@ -115,7 +115,9 @@ describe('ClearHistoryButton', () => {
     await user.click(
       screen.getByRole('button', { name: 'Clear non-bookmarked' })
     );
-    expect(clearVisitHistory).toHaveBeenCalledWith({ includeBookmarked: false });
+    expect(clearVisitHistory).toHaveBeenCalledWith({
+      includeBookmarked: false,
+    });
   });
 
   it('ClearAll_CallsClearVisitHistoryIncludeBookmarkedTrue', async () => {

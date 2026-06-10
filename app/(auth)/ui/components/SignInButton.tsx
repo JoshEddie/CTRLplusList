@@ -1,4 +1,4 @@
-import { signInUser } from '@/app/actions/user';
+import { signInUser } from '@/lib/data/user.actions';
 
 export default function SignInButton() {
   return (

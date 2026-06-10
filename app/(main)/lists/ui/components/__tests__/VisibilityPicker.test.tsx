@@ -1,14 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { setListVisibility } from '@/app/actions/lists';
+import { setListVisibility } from '@/lib/data/list.actions';
 import { VISIBILITY } from '@/lib/visibility';
 import toast from 'react-hot-toast';
 import VisibilityPicker from '../VisibilityPicker';
 
 const refreshMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@/app/actions/lists', () => ({ setListVisibility: vi.fn() }));
+vi.mock('@/lib/data/list.actions', () => ({ setListVisibility: vi.fn() }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: refreshMock }),
 }));
@@ -20,7 +20,10 @@ function trigger() {
   return screen.getByRole('button', { name: /Visibility:/ });
 }
 
-async function openAndSelect(user: ReturnType<typeof userEvent.setup>, name: RegExp) {
+async function openAndSelect(
+  user: ReturnType<typeof userEvent.setup>,
+  name: RegExp
+) {
   await user.click(trigger());
   await user.click(screen.getByRole('menuitemradio', { name }));
 }
@@ -107,8 +110,10 @@ describe('VisibilityPicker', () => {
   });
 
   it('PendingChange_DisablesMenuRows', async () => {
-    let resolveApply: (v: { success: boolean; message: string }) => void = () =>
-      {};
+    let resolveApply: (v: {
+      success: boolean;
+      message: string;
+    }) => void = () => {};
     vi.mocked(setListVisibility).mockReturnValue(
       new Promise((r) => {
         resolveApply = r;

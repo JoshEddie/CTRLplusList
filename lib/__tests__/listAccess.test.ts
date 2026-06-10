@@ -10,7 +10,7 @@ import {
 import { bootPglite } from '../../test/helpers/db';
 
 // Holder mutated in `beforeAll` after pglite boots. Static imports of `@/db`
-// from production source (lib/listAccess.ts, lib/dal.ts) read through the
+// from production source (lib/listAccess.ts, lib/data/user.ts) read through the
 // getter so they see the same pglite-backed drizzle client this test seeds.
 const dbHolder = vi.hoisted(() => ({
   current: null as unknown as Awaited<ReturnType<typeof bootPglite>>['db'],

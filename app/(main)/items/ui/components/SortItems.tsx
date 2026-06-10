@@ -1,6 +1,6 @@
 'use client';
 
-import { updatePriority } from '@/app/actions/lists';
+import { updatePriority } from '@/lib/data/listItems.actions';
 import { LinkButton } from '@/app/ui/components/button';
 import { ItemDisplay } from '@/lib/types';
 import { MdChecklist } from 'react-icons/md';

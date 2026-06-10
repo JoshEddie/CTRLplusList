@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createList, updateList } from '@/app/actions/lists';
+import { createList, updateList } from '@/lib/data/list.actions';
 import ListForm from '../ListForm';
 import { makeList } from './test-helpers';
 
@@ -11,7 +11,7 @@ const router = vi.hoisted(() => ({
   back: vi.fn(),
 }));
 
-vi.mock('@/app/actions/lists', () => ({
+vi.mock('@/lib/data/list.actions', () => ({
   createList: vi.fn(),
   updateList: vi.fn(),
   deleteList: vi.fn(),
@@ -37,7 +37,10 @@ function submitForm() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(createList).mockResolvedValue({ success: true, id: 'new-1' } as never);
+  vi.mocked(createList).mockResolvedValue({
+    success: true,
+    id: 'new-1',
+  } as never);
   vi.mocked(updateList).mockResolvedValue({
     success: true,
     id: 'list-1',
@@ -145,9 +148,7 @@ describe('ListForm', () => {
       fireEvent.change(dateField(), { target: { value: '2030-05-01' } });
       await user.click(screen.getByRole('button', { name: 'Create List' }));
 
-      expect(
-        await screen.findByText('Name already taken')
-      ).toBeInTheDocument();
+      expect(await screen.findByText('Name already taken')).toBeInTheDocument();
       expect(router.push).not.toHaveBeenCalled();
       expect(
         screen.getByRole('button', { name: 'Create List' })

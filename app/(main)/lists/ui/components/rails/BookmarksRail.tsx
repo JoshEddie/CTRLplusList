@@ -1,5 +1,5 @@
 import ListCardRow from '@/app/ui/components/ListCardRow';
-import { getBookmarkedListsByUser } from '@/lib/dal';
+import { getBookmarkedListsByUser } from '@/lib/data/visit';
 import { capRail } from './utils';
 
 export default async function BookmarksRail({ userId }: { userId: string }) {

@@ -1,6 +1,7 @@
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { auth } from '@/lib/auth';
-import { getList, getUserIdByEmail } from '@/lib/dal';
+import { getList } from '@/lib/data/list';
+import { getUserIdByEmail } from '@/lib/data/user';
 import { VISIBILITY } from '@/lib/visibility';
 import { Metadata } from 'next';
 import { Suspense } from 'react';
