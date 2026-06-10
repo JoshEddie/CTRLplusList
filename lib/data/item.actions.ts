@@ -80,16 +80,10 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       quantity_limit: validatedData.quantity_limit,
     });
 
-    // Get the lists from the form data and ensure they exist
     const lists = validatedData.lists || [];
     if (lists.length > 0) {
-      // Extract just the IDs from the NameId objects
       const listIds: string[] = lists.map((list) => list.value);
-      // Only proceed if we have valid list IDs
-      /* v8 ignore next -- lists.length>0 guarantees listIds.length>0 (1:1 map), so the empty branch is dead */
-      if (listIds.length > 0) {
-        await updateItemLists(listIds, id);
-      }
+      await updateItemLists(listIds, id);
     }
     await updateItemStores(
       (validatedData.stores || []).map((store) => ({
@@ -115,7 +109,6 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
 
 export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    // Security check - ensure user is authenticated
     const session = await auth();
     if (!session?.user?.email) {
       return {
@@ -161,7 +154,6 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
       };
     }
 
-    // Type safe update object with validated data
     const validatedData = validationResult.data;
     const updateData: Record<string, unknown> = {};
 
@@ -173,7 +165,6 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
     if (validatedData.quantity_limit !== undefined)
       updateData.quantity_limit = validatedData.quantity_limit;
 
-    // Update item
     await db.update(items).set(updateData).where(eq(items.id, data.id));
 
     // Call updateItemLists even with empty array to properly remove all associations
@@ -264,7 +255,6 @@ export async function archiveItem(
 
 export async function deleteItem(id: string) {
   try {
-    // Security check - ensure user is authenticated
     const session = await auth();
     if (!session?.user?.email) {
       throw new Error('Unauthorized');
@@ -288,7 +278,6 @@ export async function deleteItem(id: string) {
       throw new Error('Unauthorized - Item does not belong to you');
     }
 
-    // Delete item
     await db.delete(items).where(eq(items.id, id));
 
     updateTag('items');

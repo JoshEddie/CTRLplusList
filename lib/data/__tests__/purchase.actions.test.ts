@@ -289,6 +289,28 @@ describe('createPurchase', () => {
       expect(rows[0].user_id).toBe(OWNER.id);
     });
 
+    it('ItemDeletedBetweenViewabilityCheckAndRefetch_ReturnsItemNotFound-NoRow', async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id });
+      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+
+      // Under neon-http the viewability check and the quantity re-fetch are
+      // separate round-trips; a concurrent delete can land between them. Let
+      // the first findFirst (inside isItemViewable) hit the real db, then make
+      // the re-fetch see the item gone.
+      const realFindFirst = db.query.items.findFirst.bind(db.query.items);
+      vi.spyOn(db.query.items, 'findFirst')
+        .mockImplementationOnce(realFindFirst)
+        .mockResolvedValueOnce(undefined as never);
+
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+      });
+      expect(res).toMatchObject({ success: false, message: 'Item not found' });
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
     it('InsertThrowsNonUnique_ReturnsFailedToCreatePurchase', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
       vi.spyOn(db, 'insert').mockImplementation(() => {

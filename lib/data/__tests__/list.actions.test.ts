@@ -224,6 +224,23 @@ describe('updateList', () => {
     });
   });
 
+  it('RowDeletedBetweenOwnershipCheckAndUpdate_ReturnsNotFound', async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id });
+    // Under neon-http the ownership check and the update are separate
+    // round-trips; a concurrent delete can land between them, leaving
+    // .returning() empty.
+    vi.spyOn(db, 'update').mockReturnValueOnce({
+      set: () => ({ where: () => ({ returning: async () => [] }) }),
+    } as never);
+    const res = await actions.updateList('L', { name: 'New Name' });
+    expect(res).toMatchObject({
+      success: false,
+      message: 'List not found',
+      error: 'Not found',
+    });
+    expect(updateTag).not.toHaveBeenCalled();
+  });
+
   it('UpdateThrows_ReturnsFailedToUpdateList', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     vi.spyOn(db, 'update').mockImplementation(() => {

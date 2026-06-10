@@ -1,8 +1,8 @@
 'use server';
 
 import { db } from '@/db';
-import { lists, users } from '@/db/schema';
-import { auth } from '@/lib/auth';
+import { lists } from '@/db/schema';
+import { authedUserId } from '@/lib/data/user.session';
 import {
   VISIBILITY,
   VISIBILITY_VALUES,
@@ -47,25 +47,9 @@ export type ActionResponse = {
 
 export async function createList(data: ListData): Promise<ActionResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
-    }
-
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      return {
-        success: false,
-        message: 'User not found',
-        error: 'Unauthorized',
-      };
+    const userId = await authedUserId();
+    if (!userId) {
+      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
     }
 
     const validationResult = ListSchema.safeParse(data);
@@ -85,7 +69,7 @@ export async function createList(data: ListData): Promise<ActionResponse> {
       subtitle: validatedData.subtitle ?? null,
       occasion: sql`${validatedData.occasion}`,
       date: validatedData.date,
-      user_id: sessionUser.id,
+      user_id: userId,
     });
 
     updateTag('lists');
@@ -110,25 +94,9 @@ export async function updateList(
   data: Partial<ListData>
 ): Promise<ActionResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
-    }
-
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      return {
-        success: false,
-        message: 'User not found',
-        error: 'Unauthorized',
-      };
+    const userId = await authedUserId();
+    if (!userId) {
+      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
     }
 
     const list = await db.query.lists.findFirst({
@@ -138,7 +106,7 @@ export async function updateList(
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
-    if (list.user_id !== sessionUser.id) {
+    if (list.user_id !== userId) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -173,7 +141,6 @@ export async function updateList(
       .where(eq(lists.id, id))
       .returning();
 
-    /* v8 ignore next 7 -- unreachable: the row was confirmed to exist by the ownership check above, so .returning() always yields it */
     if (result.length === 0) {
       return {
         success: false,
@@ -201,25 +168,9 @@ export async function updateList(
 
 export async function deleteList(id: string): Promise<ActionResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
-    }
-
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      return {
-        success: false,
-        message: 'User not found',
-        error: 'Unauthorized',
-      };
+    const userId = await authedUserId();
+    if (!userId) {
+      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
     }
 
     const list = await db.query.lists.findFirst({
@@ -229,7 +180,7 @@ export async function deleteList(id: string): Promise<ActionResponse> {
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
-    if (list.user_id !== sessionUser.id) {
+    if (list.user_id !== userId) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -259,13 +210,9 @@ export async function setListVisibility(
   visibility: ListVisibility
 ): Promise<ActionResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
+    const userId = await authedUserId();
+    if (!userId) {
+      return { success: false, message: 'Unauthorized', error: 'Unauthorized' };
     }
 
     const parsed = VisibilitySchema.safeParse(visibility);
@@ -277,18 +224,6 @@ export async function setListVisibility(
       };
     }
 
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      return {
-        success: false,
-        message: 'User not found',
-        error: 'Unauthorized',
-      };
-    }
-
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, id),
       columns: { user_id: true, visibility: true },
@@ -296,7 +231,7 @@ export async function setListVisibility(
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
-    if (list.user_id !== sessionUser.id) {
+    if (list.user_id !== userId) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',

@@ -85,7 +85,6 @@ export async function createPurchase(data: {
       where: eq(items.id, data.item_id),
       columns: { quantity_limit: true },
     });
-    /* v8 ignore next 7 -- unreachable: isItemViewable above already confirmed the item exists, so this null-guard never fires */
     if (!item) {
       return {
         success: false,

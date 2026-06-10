@@ -18,7 +18,6 @@ export async function updateItemStores(
 ): Promise<void> {
   try {
     const session = await auth();
-    /* v8 ignore next 3 -- defense-in-depth: createItem/updateItem already verified this session before calling the helper; unreachable via the public surface */
     if (!session?.user?.email) {
       throw new Error('Unauthorized');
     }
@@ -26,7 +25,6 @@ export async function updateItemStores(
       where: eq(users.email, session.user.email),
       columns: { id: true },
     });
-    /* v8 ignore next 3 -- defense-in-depth: the caller already resolved this user; unreachable via the public surface */
     if (!sessionUser) {
       throw new Error('Unauthorized');
     }
@@ -34,12 +32,10 @@ export async function updateItemStores(
       where: eq(items.id, itemId),
       columns: { user_id: true },
     });
-    /* v8 ignore next 3 -- defense-in-depth: createItem/updateItem already verified item ownership before calling the helper; unreachable via the public surface */
     if (!item || item.user_id !== sessionUser.id) {
       throw new Error('Unauthorized');
     }
 
-    // First, get all current store associations for this item
     const currentAssociations = await db
       .select()
       .from(item_stores)
@@ -104,7 +100,6 @@ export async function updateItemLists(
 ): Promise<void> {
   try {
     const session = await auth();
-    /* v8 ignore next 3 -- defense-in-depth: createItem/updateItem already verified this session before calling the helper; unreachable via the public surface */
     if (!session?.user?.email) {
       throw new Error('Unauthorized');
     }
@@ -112,7 +107,6 @@ export async function updateItemLists(
       where: eq(users.email, session.user.email),
       columns: { id: true },
     });
-    /* v8 ignore next 3 -- defense-in-depth: the caller already resolved this user; unreachable via the public surface */
     if (!sessionUser) {
       throw new Error('Unauthorized');
     }
@@ -120,7 +114,6 @@ export async function updateItemLists(
       where: eq(items.id, itemId),
       columns: { user_id: true },
     });
-    /* v8 ignore next 3 -- defense-in-depth: createItem/updateItem already verified item ownership before calling the helper; unreachable via the public surface */
     if (!item || item.user_id !== sessionUser.id) {
       throw new Error('Unauthorized');
     }
@@ -137,21 +130,17 @@ export async function updateItemLists(
       }
     }
 
-    // First, get all current list associations for this item
     const currentAssociations = await db
       .select({ list_id: list_items.list_id })
       .from(list_items)
       .where(eq(list_items.item_id, itemId));
 
-    // Convert to set for efficient lookups
     const currentListIds = new Set(currentAssociations.map((a) => a.list_id));
     const selectedListIds = new Set(listIds);
 
-    // Insert new associations
     if (listIds && listIds.length > 0) {
       await Promise.all(
         listIds.map(async (listId) => {
-          // Skip if already exists
           if (currentListIds.has(listId)) return;
 
           // Get the maximum position for the list and add 65536 for the new item
