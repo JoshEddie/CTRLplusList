@@ -18,7 +18,7 @@ import { expect, test } from '@playwright/test';
 const LIST = '/lists/dev-list-alice-baby';
 const LIST_NAME = 'Baby On The Way';
 
-test('Bookmark_ViewerBookmarksThenUnbookmarks_BookmarkSurfacesReflect', async ({
+test('Bookmark_ViewerBookmarksThenUnbookmarks_AppearsOnBookmarkSurfacesThenGone', async ({
   page,
 }) => {
   await page.goto(LIST);

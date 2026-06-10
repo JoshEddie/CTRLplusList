@@ -12,7 +12,7 @@ import { expect, test } from '@playwright/test';
 // cache-tag loop on the library side. Filling the store row exercises the
 // item.associations.ts store-sync path. Desktop affordances throughout (icon
 // buttons, not the mobile kebab).
-test('ItemCrud_OwnerCreatesEditsArchivesDeletes_StepsReflected', async ({
+test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted', async ({
   page,
 }) => {
   const stamp = Date.now();
