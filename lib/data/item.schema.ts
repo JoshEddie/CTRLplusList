@@ -31,7 +31,6 @@ export const ItemSchema = z.object({
       }
     }),
 
-  // Optional fields
   quantity_limit: z
     .number()
     .int('Quantity limit must be a whole number')
@@ -59,26 +58,15 @@ export const ItemSchema = z.object({
         if (!stores) return true;
         return stores.every((store) => {
           const hasAnyField = store.name || store.link || store.price;
-          const hasAllFields = store.name && store.link && store.price;
-
-          // If no fields are filled, it's valid
           if (!hasAnyField) return true;
+          if (!store.name || !store.link || !store.price) return false;
 
-          // If any field is filled, all must be filled
-          if (!hasAllFields) return false;
-
-          // Validate URL format if link is provided
-          /* v8 ignore next -- hasAllFields above guarantees link is truthy, so this guard's false branch is unreachable */
-          if (store.link) {
-            try {
-              new URL(store.link);
-              return true;
-            } catch {
-              return false;
-            }
+          try {
+            new URL(store.link);
+            return true;
+          } catch {
+            return false;
           }
-          /* v8 ignore next -- unreachable: the if above always returns when link is truthy (and hasAllFields guarantees it is) */
-          return true;
         });
       },
       {

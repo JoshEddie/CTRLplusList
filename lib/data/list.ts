@@ -17,7 +17,6 @@ export function withVisibility<T extends { visibility: string }>(
   return { ...row, visibility: fromDb(row.visibility) };
 }
 
-// Fetcher functions for React Query
 export async function getList(id: string) {
   'use cache';
   cacheTag('lists');

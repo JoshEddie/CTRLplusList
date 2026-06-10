@@ -3,8 +3,8 @@
 import { db } from '@/db';
 import { list_items, lists, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { type ActionResponse } from '@/lib/data/list.actions';
 import { authedUserId } from '@/lib/data/user.session';
+import { type ActionResponse } from '@/lib/types';
 import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
@@ -127,18 +127,15 @@ async function checkListBalance(listId: string): Promise<boolean> {
       .orderBy(desc(list_items.position))
       .limit(2);
 
-    /* v8 ignore next -- updatePriority requires a distinct item and target, so the list always has ≥2 rows when this runs */
     if (result.length < 2) return false;
 
     const [first, second] = result;
     const minGap = 0.001;
     return first.position - second.position < minGap;
-    /* v8 ignore start -- infra db-error rethrow; not triggerable from userspace without a DB failure */
   } catch (error) {
     console.error('Error checking list balance:', error);
     throw error;
   }
-  /* v8 ignore stop */
 }
 
 async function rebalanceList(listId: string): Promise<void> {
@@ -163,12 +160,10 @@ async function rebalanceList(listId: string): Promise<void> {
     });
 
     await Promise.all(updates);
-    /* v8 ignore start -- infra db-error rethrow; not triggerable from userspace without a DB failure */
   } catch (error) {
     console.error('Error rebalancing list:', error);
     throw error;
   }
-  /* v8 ignore stop */
 }
 
 // Integer fractional-index position for a moved item: the midpoint between the
@@ -238,8 +233,6 @@ export async function updatePriority(
       };
     }
 
-    // Get the positions before and after target position
-
     const itemPositionResult = await db
       .select({ position: list_items.position })
       .from(list_items)
@@ -281,19 +274,15 @@ export async function updatePriority(
       targetPosition
     );
 
-    /* v8 ignore next -- new_position is always strictly between the target and a neighbour, so it never equals itemPosition once itemPosition !== targetPosition (guarded above) */
-    if (new_position !== itemPosition) {
-      await db
-        .update(list_items)
-        .set({ position: new_position })
-        .where(
-          and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
-        );
-    }
+    await db
+      .update(list_items)
+      .set({ position: new_position })
+      .where(
+        and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
+      );
 
     updateTag('items');
 
-    // Check and rebalance if needed
     if (await checkListBalance(listId)) {
       await rebalanceList(listId);
     }

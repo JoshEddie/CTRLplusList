@@ -1,3 +1,11 @@
+export type ActionResponse = {
+  success: boolean;
+  message: string;
+  errors?: Record<string, string[]>;
+  error?: string;
+  id?: string;
+};
+
 export type ListTable = {
   id: string;
   name: string;

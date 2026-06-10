@@ -3,9 +3,9 @@
 import { db } from '@/db';
 import { items, purchases, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { type ActionResponse } from '@/lib/data/item.actions';
 import { isItemViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
+import { type ActionResponse } from '@/lib/types';
 import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
@@ -85,7 +85,6 @@ export async function createPurchase(data: {
       where: eq(items.id, data.item_id),
       columns: { quantity_limit: true },
     });
-    /* v8 ignore next 7 -- unreachable: isItemViewable above already confirmed the item exists, so this null-guard never fires */
     if (!item) {
       return {
         success: false,

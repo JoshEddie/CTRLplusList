@@ -6,7 +6,6 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 import { cache } from 'react';
 
-// Get user by id
 export const getUserById: (id: string) => Promise<UserTable | null> = cache(
   async (id: string) => {
     try {
@@ -19,7 +18,6 @@ export const getUserById: (id: string) => Promise<UserTable | null> = cache(
   }
 );
 
-// Get user by email
 export const getUserIdByEmail: (email: string) => Promise<UserTable | null> =
   cache(async (email: string) => {
     try {

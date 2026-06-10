@@ -266,6 +266,82 @@ describe('updatePriority', () => {
     });
   });
 
+  // checkListBalance's limit(2) scan is its own round-trip, so a concurrent
+  // removal can shrink the list below 2 rows after the move was validated.
+  // Its bare db.select() is the only zero-arg select in the updatePriority
+  // flow (the position lookups all pass a field selection), which is what
+  // lets the stub target it alone.
+  it('ListShrinksBelowTwoRowsBeforeBalanceCheck_SkipsRebalance-StillSucceeds', async () => {
+    await seedListWith({ A: 65536, B: 131072, C: 196608 });
+    const realSelect = db.select.bind(db) as (...a: never[]) => unknown;
+    vi.spyOn(db, 'select').mockImplementation(((...args: never[]) =>
+      args.length === 0
+        ? ({
+            from: () => ({
+              where: () => ({
+                orderBy: () => ({ limit: () => Promise.resolve([]) }),
+              }),
+            }),
+          } as never)
+        : realSelect(...args)) as never);
+
+    const res = await actions.updatePriority('C', 'B', 'L');
+    // listItemRows uses a bare select too, so drop the stub before reading.
+    vi.restoreAllMocks();
+    expect(res.success).toBe(true);
+    expect(await positionOf('C')).toBe(Math.floor((65536 + 131072) / 2));
+  });
+
+  it('BalanceCheckSelectThrows_InjectedErrorPropagatesToActionFailure', async () => {
+    await seedListWith({ A: 65536, B: 131072, C: 196608 });
+    const boom = new Error('boom');
+    const realSelect = db.select.bind(db) as (...a: never[]) => unknown;
+    vi.spyOn(db, 'select').mockImplementation(((...args: never[]) =>
+      args.length === 0
+        ? ({
+            from: () => ({
+              where: () => ({
+                orderBy: () => ({ limit: () => Promise.reject(boom) }),
+              }),
+            }),
+          } as never)
+        : realSelect(...args)) as never);
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const res = await actions.updatePriority('C', 'B', 'L');
+    expect(res.error).toBe('Failed to update item priority');
+    // The outer catch logs the same error instance — checkListBalance rethrew
+    // it rather than swallowing it.
+    expect(consoleError).toHaveBeenCalledWith('Database Error:', boom);
+  });
+
+  it('RebalanceUpdateThrows_InjectedErrorPropagatesToActionFailure', async () => {
+    // Same collision seed as the rebalance happy path, so checkListBalance
+    // returns true and rebalanceList runs; the move's own position write is
+    // update call #1, so failing every later update call hits only the
+    // rebalance writes.
+    await seedListWith({ D: 32768, C: 65536, A: 131072, B: 131072 });
+    const boom = new Error('boom');
+    const realUpdate = db.update.bind(db) as (...a: never[]) => unknown;
+    let updateCalls = 0;
+    vi.spyOn(db, 'update').mockImplementation(((...args: never[]) => {
+      updateCalls++;
+      if (updateCalls > 1) throw boom;
+      return realUpdate(...args);
+    }) as never);
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+
+    const res = await actions.updatePriority('D', 'C', 'L');
+    expect(res.error).toBe('Failed to update item priority');
+    // The outer catch logs the same error instance — rebalanceList rethrew it
+    // rather than swallowing it.
+    expect(consoleError).toHaveBeenCalledWith('Database Error:', boom);
+  });
+
   it('UpdateThrows_ReturnsFailedToUpdateItemPriority', async () => {
     await seedListWith({ A: 65536, B: 131072, C: 196608 });
     vi.spyOn(db, 'update').mockImplementation(() => {
