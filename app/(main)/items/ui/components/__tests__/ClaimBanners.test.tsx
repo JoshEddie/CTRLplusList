@@ -38,6 +38,7 @@ function renderBanners(
     isOwner: false,
     showSpoilerInfo: false,
     claims: [],
+    claimSummary: '',
     counterText: '1/3 claimed',
     onUndo: vi.fn(),
     onRemoveClaim: vi.fn(),
@@ -48,7 +49,11 @@ function renderBanners(
 
 describe('ClaimBanners', () => {
   it('PurchasedByOthers_ShowsClaimedByNames', () => {
-    renderBanners({ showPurchased: true, claims: [samClaim, joClaim] });
+    renderBanners({
+      showPurchased: true,
+      claims: [samClaim, joClaim],
+      claimSummary: 'Sam, Jo',
+    });
     expect(screen.getByRole('status')).toHaveTextContent('Claimed by Sam, Jo');
   });
 

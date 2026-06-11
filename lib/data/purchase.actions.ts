@@ -12,7 +12,7 @@ import {
 import { isItemViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
 import { type ActionResponse } from '@/lib/types';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
 
@@ -210,14 +210,20 @@ export async function createPurchase(data: {
   }
 }
 
-type RemovePurchaseInput =
-  | { purchase_id: string; guest_name?: string | null }
-  | { item_id: string; guest_name?: string | null };
+type RemovePurchaseInput = { purchase_id: string; guest_name?: string | null };
 
 export async function removePurchase(
   data: RemovePurchaseInput
 ): Promise<ActionResponse> {
   try {
+    if (!data.purchase_id) {
+      return {
+        success: false,
+        message: 'Cannot identify which claim to remove',
+        error: 'Missing identity',
+      };
+    }
+
     const session = await auth();
     let actorUserId: string | null = null;
     if (session?.user?.email) {
@@ -228,82 +234,46 @@ export async function removePurchase(
       actorUserId = user?.id ?? null;
     }
 
-    if ('purchase_id' in data && data.purchase_id) {
-      const row = await db.query.purchases.findFirst({
-        where: eq(purchases.id, data.purchase_id),
-        columns: {
-          id: true,
-          item_id: true,
-          user_id: true,
-          claimed_by: true,
-          guest_name: true,
-        },
-      });
-      if (!row) {
-        return {
-          success: false,
-          message: 'Claim not found',
-          error: 'Not found',
-        };
-      }
-
-      const targetItem = await db.query.items.findFirst({
-        where: eq(items.id, row.item_id),
-        columns: { user_id: true },
-      });
-
-      if (
-        !canRemovePurchase(
-          row,
-          targetItem?.user_id ?? null,
-          actorUserId,
-          data.guest_name
-        )
-      ) {
-        return {
-          success: false,
-          message: 'Not your claim',
-          error: 'Not your claim',
-        };
-      }
-
-      await db.delete(purchases).where(eq(purchases.id, row.id));
-      updateTag('items');
-      return {
-        success: true,
-        message: 'Item marked as not purchased successfully',
-      };
-    }
-
-    // Legacy item-scoped path: only authenticated callers are permitted.
-    // Guests must use the purchase_id shape (see spec). user_id here means
-    // the purchaser — a purchaser always holds removal rights.
-    if (!('item_id' in data) || !data.item_id) {
+    const row = await db.query.purchases.findFirst({
+      where: eq(purchases.id, data.purchase_id),
+      columns: {
+        id: true,
+        item_id: true,
+        user_id: true,
+        claimed_by: true,
+        guest_name: true,
+      },
+    });
+    if (!row) {
       return {
         success: false,
-        message: 'Cannot identify which claim to remove',
-        error: 'Missing identity',
+        message: 'Claim not found',
+        error: 'Not found',
       };
     }
-    if (!actorUserId) {
+
+    const targetItem = await db.query.items.findFirst({
+      where: eq(items.id, row.item_id),
+      columns: { user_id: true },
+    });
+
+    if (
+      !canRemovePurchase(
+        row,
+        targetItem?.user_id ?? null,
+        actorUserId,
+        data.guest_name
+      )
+    ) {
       return {
         success: false,
-        message: 'Cannot identify which claim to remove',
-        error: 'Missing identity',
+        message: 'Not your claim',
+        error: 'Not your claim',
       };
     }
 
-    await db
-      .delete(purchases)
-      .where(
-        and(
-          eq(purchases.item_id, data.item_id),
-          eq(purchases.user_id, actorUserId)
-        )
-      );
-
+    await db.delete(purchases).where(eq(purchases.id, row.id));
     updateTag('items');
-
     return {
       success: true,
       message: 'Item marked as not purchased successfully',

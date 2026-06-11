@@ -524,9 +524,9 @@ const seedFollows: { follower_id: string; followee_id: string }[] = [
   { follower_id: friendId('iris'), followee_id: VIEWER_ID },
   // Friend ↔ friend mutuals: Alice is mutual with every other friend, so her
   // lists' attributed-purchaser picker has a pool big enough to scroll (~10
-  // rows) and a markable target besides the viewer (expand-claim-attribution
-  // e2e flow 10 picks Bob). Only Alice's edges — the viewer's own counts and
-  // mutuals are untouched.
+  // rows) and a markable target besides the viewer (the attributed-claim e2e
+  // spec picks Bob from this pool). Only Alice's edges — the viewer's own
+  // counts and mutuals are untouched.
   ...FRIENDS.filter((f) => f.slug !== 'alice').flatMap((f) => [
     { follower_id: friendId('alice'), followee_id: friendId(f.slug) },
     { follower_id: friendId(f.slug), followee_id: friendId('alice') },
@@ -781,7 +781,7 @@ async function main() {
     {
       // Attributed claim on a viewer-owned item (limit 3): Alice marked Bob
       // as the purchaser. Owner spoiler view shows "Bob — added by Alice";
-      // master-unclaim target for e2e flow 11.
+      // the owner-spoiler e2e spec master-unclaims this exact row.
       id: 'dev-purchase-attributed',
       item_id: 'dev-list-viewer-birthday-item-1',
       user_id: friendId('bob'),

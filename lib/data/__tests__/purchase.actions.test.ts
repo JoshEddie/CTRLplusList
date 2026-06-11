@@ -797,28 +797,13 @@ describe('removePurchase', () => {
     });
   });
 
-  describe('LegacyItemScoped', () => {
-    it('Authed_DeletesOwnRows-CallsUpdateTagItems', async () => {
+  describe('MissingIdentity', () => {
+    it('EmptyPurchaseId_ReturnsMissingIdentity-NoDelete', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedPurchase(db, { id: 'p1', item_id: 'I', user_id: OWNER.id });
-      const res = await actions.removePurchase({ item_id: 'I' });
-      expect(res.success).toBe(true);
-      expect(await purchaseRows('I')).toHaveLength(0);
-      expect(updateTag).toHaveBeenCalledWith('items');
-    });
-
-    it('Unauthenticated_ReturnsMissingIdentity', async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id });
-      await seedPurchase(db, { id: 'p1', item_id: 'I', user_id: OWNER.id });
-      noSession();
-      const res = await actions.removePurchase({ item_id: 'I' });
+      const res = await actions.removePurchase({ purchase_id: '' });
       expect(res.error).toBe('Missing identity');
       expect(await purchaseRows('I')).toHaveLength(1);
-    });
-
-    it('MissingItemId_ReturnsMissingIdentity', async () => {
-      const res = await actions.removePurchase({ item_id: '' });
-      expect(res.error).toBe('Missing identity');
     });
   });
 });

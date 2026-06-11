@@ -30,6 +30,7 @@ export default function ClaimBanners({
   isOwner,
   showSpoilerInfo,
   claims,
+  claimSummary,
   counterText,
   onUndo,
   onRemoveClaim,
@@ -39,13 +40,11 @@ export default function ClaimBanners({
   isOwner: boolean;
   showSpoilerInfo: boolean;
   claims: PurchaseView[];
+  claimSummary: string;
   counterText: string;
   onUndo: () => void;
   onRemoveClaim: (claim: PurchaseView) => void;
 }) {
-  const claimSummary = claims
-    .map((c) => (c.by === 'self' ? 'You' : c.firstName))
-    .join(', ');
   return (
     <>
       {showPurchased && !myClaim && (

@@ -38,11 +38,15 @@ export default function PurchaseFlowContainer({
   useEffect(() => {
     if (!user_id) return;
     let cancelled = false;
-    getClaimPickerForItem(itemId).then((data) => {
-      if (cancelled) return;
-      setPicker(data);
-      setPickerLoading(false);
-    });
+    getClaimPickerForItem(itemId)
+      .then((data) => {
+        if (cancelled) return;
+        setPicker(data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setPickerLoading(false);
+      });
     return () => {
       cancelled = true;
     };

@@ -243,6 +243,17 @@ describe('PurchaseFlowContainer', () => {
       expect(screen.getByText('Loading…')).toBeInTheDocument();
     });
 
+    it('PickerFetchRejects_ClearsLoading-ShowsEmptyState', async () => {
+      vi.mocked(getClaimPickerForItem).mockRejectedValue(
+        new Error('network down')
+      );
+      renderContainer();
+      expect(
+        await screen.findByText('No one by that name — add them below')
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+    });
+
     it('NullPicker_FallsBackToTheOwnerLabel-EmptyState', async () => {
       vi.mocked(getClaimPickerForItem).mockResolvedValue(null);
       renderContainer();

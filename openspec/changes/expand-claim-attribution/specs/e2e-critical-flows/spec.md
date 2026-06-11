@@ -44,7 +44,7 @@ The covered flows SHALL be:
 
 #### Scenario: Attributed claim via the picker round-trips
 
-- **WHEN** the seeded viewer opens the purchase modal on a claimable item of a followed owner's list, chooses "Someone else", and selects a seeded mutual of that owner from the picker
+- **WHEN** the seeded viewer opens the purchase modal on a claimable item of a followed owner's list and selects a seeded mutual of that owner from the picker
 - **THEN** the claim succeeds and the item displays the attributed user's first name
 - **AND** on reload the attribution persists
 

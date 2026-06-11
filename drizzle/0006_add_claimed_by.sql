@@ -11,6 +11,14 @@
 -- Non-destructive: the column is purely additive; pre-change rows are
 -- untouched apart from the backfill.
 
-ALTER TABLE "purchases" ADD COLUMN "claimed_by" text;--> statement-breakpoint
-ALTER TABLE "purchases" ADD CONSTRAINT "purchases_claimed_by_user_id_fk" FOREIGN KEY ("claimed_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-UPDATE "purchases" SET "claimed_by" = "user_id" WHERE "user_id" IS NOT NULL;
+ALTER TABLE "purchases" ADD COLUMN IF NOT EXISTS "claimed_by" text;--> statement-breakpoint
+DO $$
+BEGIN
+  -- Postgres has no ADD CONSTRAINT IF NOT EXISTS; guard via pg_constraint.
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'purchases_claimed_by_user_id_fk'
+  ) THEN
+    ALTER TABLE "purchases" ADD CONSTRAINT "purchases_claimed_by_user_id_fk" FOREIGN KEY ("claimed_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
+  END IF;
+END $$;--> statement-breakpoint
+UPDATE "purchases" SET "claimed_by" = "user_id" WHERE "user_id" IS NOT NULL AND "claimed_by" IS NULL;

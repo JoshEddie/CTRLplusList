@@ -792,14 +792,14 @@ describe('Item', () => {
       );
     });
 
-    it('UndoWithoutClaim_RemovesByItemId', async () => {
+    it('UndoWithoutClaim_DoesNotCallRemove', async () => {
       const user = userEvent.setup();
       renderItem(
         { item: { user_id: OWNER }, user_id: 'viewer' },
         'purchaseItem=i1'
       );
       await user.click(screen.getByRole('button', { name: 'confirm-undo' }));
-      expect(removePurchase).toHaveBeenCalledWith({ item_id: 'i1' });
+      expect(removePurchase).not.toHaveBeenCalled();
     });
 
     it('UndoFails_LogsError', async () => {

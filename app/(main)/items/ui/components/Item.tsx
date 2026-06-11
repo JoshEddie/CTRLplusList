@@ -111,21 +111,18 @@ export default function Item({
   };
 
   const handleUndoConfirm = async () => {
-    /* v8 ignore next -- defensive: item.id is always present for a persisted item. */
-    if (!item.id) return;
+    /* v8 ignore next -- defensive: the modal only renders the undo flow when a removable claim exists. */
+    if (!removableClaim) return;
     try {
-      // Prefer purchase_id (immune to display-name collisions). Fall back to
-      // the legacy item_id-scoped shape, which the server only honors for
-      // signed-in callers.
-      const payload = removableClaim
-        ? { purchase_id: removableClaim.id }
-        : { item_id: item.id };
-      const result = await toast.promise(removePurchase(payload), {
-        loading: 'Removing claim',
-        success: 'Claim removed successfully',
-        error: 'Failed to remove claim',
-      });
-      if (result?.success && removableClaim) {
+      const result = await toast.promise(
+        removePurchase({ purchase_id: removableClaim.id }),
+        {
+          loading: 'Removing claim',
+          success: 'Claim removed successfully',
+          error: 'Failed to remove claim',
+        }
+      );
+      if (result?.success) {
         setLocalPurchases((prev) =>
           prev.filter((p) => p.id !== removableClaim.id)
         );
@@ -246,6 +243,7 @@ export default function Item({
           isOwner={isOwner}
           showSpoilerInfo={showSpoilerInfo}
           claims={localPurchases}
+          claimSummary={claimSummary}
           counterText={counterText}
           onUndo={handlePurchaseClick}
           onRemoveClaim={handleRemoveClaim}
