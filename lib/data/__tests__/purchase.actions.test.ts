@@ -1,11 +1,15 @@
 import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { purchases } from '@/db/schema';
+import { lists, purchases } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedBlock, seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedBlock,
+  seedFollow,
+  seedUsers,
+} from '@/test/helpers/seedFollowGraph';
 
 import {
   seedItem,
@@ -35,6 +39,7 @@ vi.setConfig({ hookTimeout: 60000 });
 
 const OWNER = { id: 'owner', email: 'owner@test.local' };
 const OTHER = { id: 'other', email: 'other@test.local' };
+const TARGET = { id: 'target', email: 'target@test.local' };
 const GHOST_EMAIL = 'ghost@test.local';
 
 let db: TestDb;
@@ -46,6 +51,9 @@ function asOwner() {
 }
 function asOther() {
   vi.mocked(auth).mockResolvedValue({ user: { email: OTHER.email } } as never);
+}
+function asTarget() {
+  vi.mocked(auth).mockResolvedValue({ user: { email: TARGET.email } } as never);
 }
 function asGhost() {
   vi.mocked(auth).mockResolvedValue({ user: { email: GHOST_EMAIL } } as never);
@@ -72,14 +80,14 @@ beforeEach(async () => {
   // auth mock, then start each case from a clean, freshly seeded database.
   vi.restoreAllMocks();
   await resetDb(db);
-  await seedUsers(db, [OWNER, OTHER]);
+  await seedUsers(db, [OWNER, OTHER, TARGET]);
   updateTag.mockClear();
   asOwner();
 });
 
 describe('createPurchase', () => {
   describe('IdentityContract', () => {
-    it('AuthedSelfClaim_UsesSessionUserId-NullGuestName', async () => {
+    it('AuthedSelfClaim_UsesSessionUserIdForBothRoles-NullGuestName', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });
       await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
@@ -90,32 +98,39 @@ describe('createPurchase', () => {
       });
       expect(res.success).toBe(true);
       expect(await purchaseRows('I')).toEqual([
-        expect.objectContaining({ user_id: OWNER.id, guest_name: null }),
+        expect.objectContaining({
+          user_id: OWNER.id,
+          claimed_by: OWNER.id,
+          guest_name: null,
+        }),
       ]);
       expect(updateTag).toHaveBeenCalledWith('items');
     });
 
-    it('AuthedOnBehalf_RecordsNamedGuestClaim', async () => {
+    it('AuthedOnBehalf_RecordsNamedGuestClaimWithCallerAsClaimer', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });
       await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
 
-      // A signed-in caller marking a claim on behalf of a named other person
-      // ("Someone else") records it as that named guest (user_id NULL) — the
-      // typed name is honored, not the caller's own identity. Trimmed, mirroring
-      // the guest path.
+      // A signed-in caller recording a claim for a named non-user stores the
+      // typed name as the purchaser label (user_id NULL) while claimed_by
+      // records the asserter — which is what grants them removal rights.
       const res = await actions.createPurchase({
         item_id: 'I',
         guest_name: '  Aunt May  ',
       });
       expect(res.success).toBe(true);
       expect(await purchaseRows('I')).toEqual([
-        expect.objectContaining({ user_id: null, guest_name: 'Aunt May' }),
+        expect.objectContaining({
+          user_id: null,
+          claimed_by: OWNER.id,
+          guest_name: 'Aunt May',
+        }),
       ]);
       expect(updateTag).toHaveBeenCalledWith('items');
     });
 
-    it('GuestWithName_InsertsNullUserIdAndGuestName', async () => {
+    it('GuestWithName_InsertsAllNullIdentitiesAndGuestName', async () => {
       await seedList(db, {
         id: 'L',
         user_id: OWNER.id,
@@ -131,7 +146,11 @@ describe('createPurchase', () => {
       });
       expect(res.success).toBe(true);
       expect(await purchaseRows('I')).toEqual([
-        expect.objectContaining({ user_id: null, guest_name: 'Gifty' }),
+        expect.objectContaining({
+          user_id: null,
+          claimed_by: null,
+          guest_name: 'Gifty',
+        }),
       ]);
     });
 
@@ -324,6 +343,202 @@ describe('createPurchase', () => {
     });
   });
 
+  describe('AttributedClaims', () => {
+    beforeEach(async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
+      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+      // TARGET is an owner-mutual; OTHER (the claimer) needs no relationship.
+      await seedFollow(db, OWNER.id, TARGET.id);
+      await seedFollow(db, TARGET.id, OWNER.id);
+      asOther();
+    });
+
+    it('EligibleTarget_InsertsCallerAsClaimerAndTargetAsPurchaser', async () => {
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+        purchased_by: TARGET.id,
+      });
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toEqual([
+        expect.objectContaining({
+          user_id: TARGET.id,
+          claimed_by: OTHER.id,
+          guest_name: null,
+        }),
+      ]);
+      expect(updateTag).toHaveBeenCalledWith('items');
+    });
+
+    it('TargetNotFollowedByOwner_ReturnsIneligiblePurchaser-NoRow-NoUpdateTag', async () => {
+      // OTHER follows the owner both ways with no edge to TARGET — but the
+      // pool is the OWNER's mutuals, and 'stranger' has no owner edge.
+      await seedUsers(db, [{ id: 'stranger', email: 'stranger@test.local' }]);
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+        purchased_by: 'stranger',
+      });
+      expect(res.error).toBe('Ineligible purchaser');
+      expect(await purchaseRows('I')).toHaveLength(0);
+      expect(updateTag).not.toHaveBeenCalled();
+    });
+
+    it('TargetWithOneWayFollow_ReturnsIneligiblePurchaser-NoRow', async () => {
+      await seedUsers(db, [{ id: 'oneway', email: 'oneway@test.local' }]);
+      await seedFollow(db, OWNER.id, 'oneway');
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+        purchased_by: 'oneway',
+      });
+      expect(res.error).toBe('Ineligible purchaser');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('TargetBlockedClaimer_ReturnsIneligiblePurchaser-NoRow', async () => {
+      await seedBlock(db, TARGET.id, OTHER.id);
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+        purchased_by: TARGET.id,
+      });
+      expect(res.error).toBe('Ineligible purchaser');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('ClaimerBlockedTarget_ReturnsIneligiblePurchaser-NoRow', async () => {
+      await seedBlock(db, OTHER.id, TARGET.id);
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+        purchased_by: TARGET.id,
+      });
+      expect(res.error).toBe('Ineligible purchaser');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('TargetIsOwner_ReturnsIneligiblePurchaser-NoRow', async () => {
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+        purchased_by: OWNER.id,
+      });
+      expect(res.error).toBe('Ineligible purchaser');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('TargetIsCaller_InsertsSelfClaimShapeWithoutPoolCheck', async () => {
+      // Picking yourself in the picker is just a self-claim — no eligibility
+      // gate, identical row shape.
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+        purchased_by: OTHER.id,
+      });
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toEqual([
+        expect.objectContaining({ user_id: OTHER.id, claimed_by: OTHER.id }),
+      ]);
+    });
+
+    it('PurchasedByWithGuestName_ReturnsAmbiguousPurchaser-NoRow', async () => {
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: 'Aunt May',
+        purchased_by: TARGET.id,
+      });
+      expect(res.error).toBe('Ambiguous purchaser');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('UnauthenticatedWithPurchasedBy_ReturnsMissingIdentity-NoRow', async () => {
+      noSession();
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+        purchased_by: TARGET.id,
+      });
+      expect(res.error).toBe('Missing identity');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('TargetAlreadyPurchaser_ReturnsDuplicateClaim-AlreadyMarkedMessage', async () => {
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        user_id: TARGET.id,
+        claimed_by: TARGET.id,
+      });
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+        purchased_by: TARGET.id,
+      });
+      expect(res).toMatchObject({
+        success: false,
+        error: 'Duplicate claim',
+        message: 'Already marked as the purchaser',
+      });
+      expect(await purchaseRows('I')).toHaveLength(1);
+    });
+  });
+
+  describe('OwnerClaims', () => {
+    beforeEach(async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'private' });
+      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: 1 });
+      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+      asOwner();
+    });
+
+    it('OwnerSelfClaim_InsertsOwnerAsClaimerAndPurchaser', async () => {
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+      });
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toEqual([
+        expect.objectContaining({ user_id: OWNER.id, claimed_by: OWNER.id }),
+      ]);
+    });
+
+    it('OwnerAttributedClaim_InsertsOwnerAsClaimerAndMutualAsPurchaser', async () => {
+      await seedFollow(db, OWNER.id, TARGET.id);
+      await seedFollow(db, TARGET.id, OWNER.id);
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+        purchased_by: TARGET.id,
+      });
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toEqual([
+        expect.objectContaining({ user_id: TARGET.id, claimed_by: OWNER.id }),
+      ]);
+    });
+
+    it('OwnerSelfClaimOnLimitOneItem_BlocksSubsequentViewerClaimAsFullyClaimed', async () => {
+      // Owner claims count toward quantity_limit like any other claim.
+      await db
+        .update(lists)
+        .set({ visibility: 'public' })
+        .where(eq(lists.id, 'L'));
+      const ownerRes = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+      });
+      expect(ownerRes.success).toBe(true);
+      asOther();
+      const viewerRes = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+      });
+      expect(viewerRes.error).toBe('Fully claimed');
+      expect(await purchaseRows('I')).toHaveLength(1);
+    });
+  });
+
   // Documents the accepted residual race (spec MODIFIED scenario: concurrent
   // distinct claimants on a limited item). Two guests both pass the best-effort
   // count and both insert because the partial unique index excludes NULL
@@ -472,28 +687,123 @@ describe('removePurchase', () => {
     });
   });
 
-  describe('LegacyItemScoped', () => {
-    it('Authed_DeletesOwnRows-CallsUpdateTagItems', async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id });
-      await seedPurchase(db, { id: 'p1', item_id: 'I', user_id: OWNER.id });
-      const res = await actions.removePurchase({ item_id: 'I' });
+  describe('RightsMatrix', () => {
+    beforeEach(async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+    });
+
+    it('ClaimerOnAttributedRow_DeletesRow', async () => {
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        user_id: TARGET.id,
+        claimed_by: OTHER.id,
+      });
+      asOther();
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
       expect(res.success).toBe(true);
       expect(await purchaseRows('I')).toHaveLength(0);
-      expect(updateTag).toHaveBeenCalledWith('items');
     });
 
-    it('Unauthenticated_ReturnsMissingIdentity', async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id });
-      await seedPurchase(db, { id: 'p1', item_id: 'I', user_id: OWNER.id });
+    it('PurchaserOnAttributedRow_DeletesRow', async () => {
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        user_id: TARGET.id,
+        claimed_by: OTHER.id,
+      });
+      asTarget();
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('ItemOwnerOnUnrelatedClaim_DeletesRow', async () => {
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        user_id: TARGET.id,
+        claimed_by: TARGET.id,
+      });
+      asOwner();
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('ItemOwnerOnAllNullGuestRow_DeletesRowWithoutName', async () => {
+      // Legacy guest rows (all-NULL identities) are creator-locked; the
+      // owner's master unclaim is their escape hatch.
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        user_id: null,
+        claimed_by: null,
+        guest_name: 'Gifty',
+      });
+      asOwner();
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('UnrelatedAuthedUser_ReturnsNotYourClaim-RowPersists', async () => {
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        user_id: TARGET.id,
+        claimed_by: TARGET.id,
+      });
+      asOther();
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
+      expect(res.error).toBe('Not your claim');
+      expect(await purchaseRows('I')).toHaveLength(1);
+      expect(updateTag).not.toHaveBeenCalled();
+    });
+
+    it('AuthedCreatorOfGuestNameRow_DeletesRow', async () => {
+      // The legacy lockout: the creator's identity was on no column, so
+      // `user_id === actor` denied them. claimed_by now records it.
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        user_id: null,
+        claimed_by: OTHER.id,
+        guest_name: 'Mom',
+      });
+      asOther();
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('GuestNameMatchOnClaimedRow_ReturnsNotYourClaim-RowPersists', async () => {
+      // The unauthenticated name-match path only covers claimed_by-NULL rows;
+      // an authenticated caller's guest-name claim is not guest-removable.
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        user_id: null,
+        claimed_by: OTHER.id,
+        guest_name: 'Mom',
+      });
       noSession();
-      const res = await actions.removePurchase({ item_id: 'I' });
-      expect(res.error).toBe('Missing identity');
+      const res = await actions.removePurchase({
+        purchase_id: 'p1',
+        guest_name: 'Mom',
+      });
+      expect(res.error).toBe('Not your claim');
       expect(await purchaseRows('I')).toHaveLength(1);
     });
+  });
 
-    it('MissingItemId_ReturnsMissingIdentity', async () => {
-      const res = await actions.removePurchase({ item_id: '' });
+  describe('MissingIdentity', () => {
+    it('EmptyPurchaseId_ReturnsMissingIdentity-NoDelete', async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedPurchase(db, { id: 'p1', item_id: 'I', user_id: OWNER.id });
+      const res = await actions.removePurchase({ purchase_id: '' });
       expect(res.error).toBe('Missing identity');
+      expect(await purchaseRows('I')).toHaveLength(1);
     });
   });
 });

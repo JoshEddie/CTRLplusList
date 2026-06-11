@@ -1,9 +1,6 @@
 .modal-overlay {
   position: fixed;
-  top: 149px;
-  left: 0;
-  right: 0;
-  bottom: 16px;
+  inset: 0;
   padding: 16px;
   display: flex;
   justify-content: center;
@@ -45,7 +42,7 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   z-index: 99;
   width: 100%;
-  max-height: calc(100vh - 197px);
+  max-height: calc(100dvh - 32px);
   overflow-x: hidden;
   overflow-y: auto;
   position: relative;
@@ -126,12 +123,84 @@
   margin-top: 1rem;
 }
 
-@media (min-width: 600px) {
-  .modal-overlay {
-    top: 84px;
-  }
+.claim-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
-  .modal {
-    max-height: calc(100vh - 140px);
-  }
+.claim-modal-header h2 {
+  font-size: 20px;
+  text-align: center;
+}
+
+.claim-modal-subtitle {
+  text-align: center;
+  font-size: 14px;
+  color: var(--neutral-text-color);
+  opacity: 0.75;
+}
+
+.claim-self-cta {
+  width: 100%;
+}
+
+.claim-divider {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.claim-pool-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.claim-pool-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+  font-size: 16px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.claim-pool-row:hover,
+.claim-pool-row:focus-visible {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+.claim-pool-empty {
+  padding: 12px 8px;
+  font-size: 14px;
+  opacity: 0.75;
+  text-align: center;
+}
+
+.claim-fallback-toggle {
+  border: none;
+  background: none;
+  padding: 8px;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+  color: inherit;
+}
+
+.claim-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }

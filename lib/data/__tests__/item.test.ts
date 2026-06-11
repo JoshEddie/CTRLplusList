@@ -136,7 +136,7 @@ describe('getItemsByUser', () => {
 
       const rows = await dal.getItemsByUser('owner', { showSpoilers: true });
       expect(rows[0].purchases).toEqual([
-        { id: 'p1', by: 'other', firstName: 'Cara' },
+        { id: 'p1', by: 'other', firstName: 'Cara', claimedByViewer: false },
       ]);
       expect(rows[0].hasPurchases).toBe(true);
     });
@@ -241,8 +241,18 @@ describe('getItemsByListId', () => {
       await seedClaimedItem();
       const rows = await dal.getItemsByListId('l1', { viewerId: 'viewer' });
       const byId = Object.fromEntries(rows[0].purchases.map((p) => [p.id, p]));
-      expect(byId.pv).toEqual({ id: 'pv', by: 'self', firstName: 'Vic' });
-      expect(byId.po).toEqual({ id: 'po', by: 'other', firstName: 'Otto' });
+      expect(byId.pv).toEqual({
+        id: 'pv',
+        by: 'self',
+        firstName: 'Vic',
+        claimedByViewer: false,
+      });
+      expect(byId.po).toEqual({
+        id: 'po',
+        by: 'other',
+        firstName: 'Otto',
+        claimedByViewer: false,
+      });
     });
 
     it('NonOwnerNoViewerId_TagsAllOther', async () => {
@@ -266,7 +276,7 @@ describe('getItemsByListId', () => {
 
       const rows = await dal.getItemsByListId('l1', { viewerId: 'viewer' });
       expect(rows[0].purchases).toEqual([
-        { id: 'pg', by: 'other', firstName: 'Gabby' },
+        { id: 'pg', by: 'other', firstName: 'Gabby', claimedByViewer: false },
       ]);
     });
   });

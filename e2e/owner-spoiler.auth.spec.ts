@@ -7,6 +7,10 @@ import { expect, test } from '@playwright/test';
 // while `?spoilers=1` reveals the claimer's first name. Pins that owner-default
 // ⇄ owner-spoiler divergence — the contract a regression would most likely
 // silently break.
+//
+// The assertion targets the seeded legacy guest claim ("Grandma" on
+// dev-list-viewer-birthday-item-3): claim-attribution.auth.spec mutates other
+// claims on this list in a parallel worker, but nothing removes Grandma.
 const LIST = '/lists/dev-list-viewer-birthday';
 
 test('OwnerView_SpoilerToggle_HidesThenRevealsClaim', async ({ page }) => {
@@ -15,10 +19,12 @@ test('OwnerView_SpoilerToggle_HidesThenRevealsClaim', async ({ page }) => {
   await expect(page.locator('.item-container').first()).toBeVisible();
   await expect(page.getByText('Spoilers:')).toHaveCount(0);
 
-  // Spoiler-enabled view: the owner now sees the claim, including a revealed
-  // claimer first name after the dash.
+  // Spoiler-enabled view: the owner now sees the claims, including the
+  // revealed claimer name on a per-claim row.
   await page.goto(`${LIST}?spoilers=1`);
-  const spoiler = page.locator('.purchased-banner--spoiler').first();
+  const spoiler = page
+    .locator('.purchased-banner--spoiler', { hasText: 'Grandma' })
+    .first();
   await expect(spoiler).toBeVisible();
-  await expect(spoiler).toContainText(/claimed\s*[—–-]\s*[A-Za-z]/);
+  await expect(spoiler).toContainText('claimed');
 });

@@ -1,11 +1,13 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { user_blocks, user_follows } from '@/db/schema';
+import { lists, user_blocks, user_follows } from '@/db/schema';
 import { auth, signIn, signOut } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedBlock, seedFollow, seedUsers } from '@/test/helpers/seedFollowGraph';
+import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
+import { seedItem, seedList, seedListItem } from './test-helpers';
 
 mockNextCache();
 
@@ -396,5 +398,55 @@ describe('NoInteractiveTransactions', () => {
     await actions.blockUser(TARGET.id);
     await actions.unblockUser(TARGET.id);
     expect(txSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('getClaimPickerForItem', () => {
+  beforeEach(async () => {
+    // TARGET owns a public list+item; THIRD is TARGET's mutual, so THIRD is
+    // the eligible pool for VIEWER's picker.
+    await seedList(db, { id: 'L', user_id: TARGET.id, visibility: 'public' });
+    await seedItem(db, { id: 'I', user_id: TARGET.id });
+    await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+    await seedFollow(db, TARGET.id, THIRD.id);
+    await seedFollow(db, THIRD.id, TARGET.id);
+  });
+
+  it('AuthedViewerOnViewableItem_ReturnsOwnerNameAndMutualPool', async () => {
+    const picker = await actions.getClaimPickerForItem('I');
+    expect(picker).toEqual({
+      ownerName: 'target',
+      pool: [{ id: THIRD.id, name: 'third', image: null }],
+    });
+  });
+
+  it('Unauthenticated_ReturnsNull', async () => {
+    noSession();
+    expect(await actions.getClaimPickerForItem('I')).toBeNull();
+  });
+
+  it('NonViewableItem_ReturnsNull', async () => {
+    await db
+      .update(lists)
+      .set({ visibility: 'private' })
+      .where(eq(lists.id, 'L'));
+    expect(await actions.getClaimPickerForItem('I')).toBeNull();
+  });
+
+  it('ItemDeletedBetweenViewabilityCheckAndRefetch_ReturnsNull', async () => {
+    // isItemViewable's findFirst hits the real db; the picker's own re-fetch
+    // then sees the item gone (separate round-trips under neon-http).
+    const realFindFirst = db.query.items.findFirst.bind(db.query.items);
+    vi.spyOn(db.query.items, 'findFirst')
+      .mockImplementationOnce(realFindFirst)
+      .mockResolvedValueOnce(undefined as never);
+    expect(await actions.getClaimPickerForItem('I')).toBeNull();
+  });
+
+  it('QueryThrows_ReturnsNullWithoutThrowing', async () => {
+    vi.spyOn(db.query.items, 'findFirst').mockRejectedValueOnce(
+      new Error('boom')
+    );
+    await expect(actions.getClaimPickerForItem('I')).resolves.toBeNull();
   });
 });

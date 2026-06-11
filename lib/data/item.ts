@@ -35,6 +35,11 @@ export async function getItemsByUser(
                 name: true,
               },
             },
+            claimer: {
+              columns: {
+                name: true,
+              },
+            },
           },
         },
       },
@@ -121,6 +126,11 @@ export async function getItemsByListId(
             purchases: {
               with: {
                 user: {
+                  columns: {
+                    name: true,
+                  },
+                },
+                claimer: {
                   columns: {
                     name: true,
                   },

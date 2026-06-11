@@ -65,8 +65,16 @@ vi.mock('@dnd-kit/sortable', async (orig) => {
 });
 
 vi.mock('../Item', () => ({
-  default: (p: { item?: { id: string; name?: string } }) => (
-    <div data-testid="item" data-id={p.item?.id} data-name={p.item?.name} />
+  default: (p: {
+    item?: { id: string; name?: string };
+    showSpoilers?: boolean;
+  }) => (
+    <div
+      data-testid="item"
+      data-id={p.item?.id}
+      data-name={p.item?.name}
+      data-show-spoilers={String(p.showSpoilers)}
+    />
   ),
 }));
 
@@ -115,6 +123,14 @@ describe('SortItems', () => {
       screen.getAllByRole('button', { name: 'Drag to reorder item' })
     ).toHaveLength(3);
     expect(gridOrder()).toEqual(['A', 'B', 'C']);
+  });
+
+  it('ShowSpoilersProp_ReachesEachGridItem', () => {
+    render(<SortItems items={ITEMS} listId="l1" user_id="u1" showSpoilers />);
+    const flags = screen
+      .getAllByTestId('item')
+      .map((e) => e.getAttribute('data-show-spoilers'));
+    expect(flags).toEqual(['true', 'true', 'true']);
   });
 
   it('DropOnDifferentRow_ReordersOptimistically-CallsUpdatePriority-Refreshes', async () => {

@@ -33,6 +33,7 @@ interface ItemsProps {
   items: ItemDisplay[];
   listId: string;
   user_id?: string;
+  showSpoilers?: boolean;
 }
 
 function EmptyListCTA({ listId }: { listId: string }) {
@@ -48,7 +49,12 @@ function EmptyListCTA({ listId }: { listId: string }) {
   );
 }
 
-export default function SortItems({ items, listId, user_id }: ItemsProps) {
+export default function SortItems({
+  items,
+  listId,
+  user_id,
+  showSpoilers,
+}: ItemsProps) {
   const router = useRouter();
   const itemsKey = items
     .map((i) => {
@@ -151,6 +157,7 @@ export default function SortItems({ items, listId, user_id }: ItemsProps) {
                 id={item.id}
                 item={item}
                 user_id={user_id}
+                showSpoilers={showSpoilers}
                 isAnyDragging={isDragging}
               />
             );
@@ -176,12 +183,14 @@ export function SortableItem({
   item,
   className,
   user_id,
+  showSpoilers,
   isAnyDragging = false,
 }: {
   id: string;
   item: ItemDisplay;
   className?: string;
   user_id?: string;
+  showSpoilers?: boolean;
   isAnyDragging?: boolean;
 }) {
   const {
@@ -223,7 +232,7 @@ export function SortableItem({
       >
         <MdOutlineDragHandle size={40} className="drag-handle-icon" />
       </button>
-      <Item item={item} user_id={user_id} />
+      <Item item={item} user_id={user_id} showSpoilers={showSpoilers} />
     </div>
   );
 }

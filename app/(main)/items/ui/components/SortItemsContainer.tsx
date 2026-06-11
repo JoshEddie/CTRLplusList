@@ -31,7 +31,12 @@ export default async function SortItemsContainer({
 
   return (
     <Suspense fallback={<LoadingIndicator size="page" />}>
-      <SortItems items={items} user_id={user?.id} listId={listId} />
+      <SortItems
+        items={items}
+        user_id={user?.id}
+        listId={listId}
+        showSpoilers={showSpoilers}
+      />
     </Suspense>
   );
 }

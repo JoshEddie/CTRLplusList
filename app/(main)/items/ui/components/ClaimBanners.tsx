@@ -17,22 +17,33 @@ function BannerCheck() {
   );
 }
 
+function claimLabel(claim: PurchaseView): string {
+  const name = claim.by === 'self' ? 'You' : claim.firstName;
+  return claim.claimerFirstName
+    ? `${name} — added by ${claim.claimerFirstName}`
+    : name;
+}
+
 export default function ClaimBanners({
   showPurchased,
   myClaim,
   isOwner,
   showSpoilerInfo,
+  claims,
   claimSummary,
   counterText,
   onUndo,
+  onRemoveClaim,
 }: {
   showPurchased: boolean;
   myClaim: PurchaseView | null;
   isOwner: boolean;
   showSpoilerInfo: boolean;
+  claims: PurchaseView[];
   claimSummary: string;
   counterText: string;
   onUndo: () => void;
+  onRemoveClaim: (claim: PurchaseView) => void;
 }) {
   return (
     <>
@@ -45,7 +56,9 @@ export default function ClaimBanners({
       {!isOwner && myClaim && (
         <div className="purchased-banner purchased-banner--mine" role="status">
           <BannerCheck />
-          You claimed this
+          {myClaim.by === 'self'
+            ? 'You claimed this'
+            : `You claimed this for ${myClaim.firstName}`}
           <button
             type="button"
             className="purchased-banner-undo"
@@ -62,10 +75,30 @@ export default function ClaimBanners({
           role="status"
         >
           <BannerCheck />
-          <span>
-            <strong>Spoilers:</strong> {counterText}
-            {claimSummary && ` — ${claimSummary}`}
-          </span>
+          <div className="spoiler-claims">
+            <span>
+              <strong>Spoilers:</strong> {counterText}
+            </span>
+            <ul className="spoiler-claim-list">
+              {claims.map((claim) => (
+                <li key={claim.id} className="spoiler-claim-row">
+                  <span>{claimLabel(claim)}</span>
+                  <button
+                    type="button"
+                    className="purchased-banner-undo"
+                    onClick={() => onRemoveClaim(claim)}
+                    aria-label={
+                      claim.by === 'self'
+                        ? 'Remove your claim'
+                        : `Remove ${claim.firstName}'s claim`
+                    }
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
     </>

@@ -1,16 +1,51 @@
 'use server';
 
 import { db } from '@/db';
-import { user_blocks, user_follows } from '@/db/schema';
+import { items, user_blocks, user_follows, users } from '@/db/schema';
 import { signIn, signOut } from '@/lib/auth';
+import { getEligiblePurchasers } from '@/lib/data/user';
 import {
   UNAUTHORIZED_RESPONSE,
   authedUserId,
 } from '@/lib/data/user.session';
+import { isItemViewable } from '@/lib/listAccess';
 import { type ActionResponse } from '@/lib/types';
 import { and, eq } from 'drizzle-orm';
 import { updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
+
+export type ClaimPicker = {
+  ownerName: string | null;
+  pool: { id: string; name: string | null; image: string | null }[];
+};
+
+// Read bridge for the claim modal's attributed-purchaser picker: resolves the
+// claimer from the session and scopes the cached pool read (getEligiblePurchasers)
+// to an item the claimer can view. Guests get null — their modal has no picker.
+export async function getClaimPickerForItem(
+  item_id: string
+): Promise<ClaimPicker | null> {
+  try {
+    const viewerId = await authedUserId();
+    if (!viewerId) return null;
+    const viewable = await isItemViewable(item_id, viewerId);
+    if (!viewable) return null;
+    const item = await db.query.items.findFirst({
+      where: eq(items.id, item_id),
+      columns: { user_id: true },
+    });
+    if (!item) return null;
+    const owner = await db.query.users.findFirst({
+      where: eq(users.id, item.user_id),
+      columns: { name: true },
+    });
+    const pool = await getEligiblePurchasers(item.user_id, viewerId);
+    return { ownerName: owner?.name ?? null, pool };
+  } catch (error) {
+    console.error('Error fetching claim picker:', error);
+    return null;
+  }
+}
 
 export async function signInUser() {
   await signIn('google');

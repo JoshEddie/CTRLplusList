@@ -14,6 +14,7 @@ export default function ItemCard({
   claimActionDisabled,
   showCounter,
   counterText,
+  showOwnerClaimAction,
   onPurchaseClick,
 }: {
   item: ItemDisplay;
@@ -26,6 +27,7 @@ export default function ItemCard({
   claimActionDisabled: boolean;
   showCounter: boolean;
   counterText: string;
+  showOwnerClaimAction: boolean;
   onPurchaseClick: () => void;
 }) {
   return (
@@ -42,7 +44,7 @@ export default function ItemCard({
           ) : null}
         </div>
         <StoreLinks item={item} showStores={!showPurchased && !showSpoilerInfo}>
-          {!isOwner && (
+          {(!isOwner || showOwnerClaimAction) && (
             <Purchase
               purchasedBy={
                 showPurchased ? (myClaim ? 'You' : claimSummary) : undefined
