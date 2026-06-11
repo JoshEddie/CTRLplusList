@@ -80,7 +80,6 @@ export default function Item({
   const showPurchased = isFullyClaimed && !isOwner;
   // Owner only sees purchase state when spoilers are on (DAL returns empty otherwise)
   const showSpoilerInfo = hasAnyClaim && isOwner;
-  // Owner claim entry is spoiler-gated and only offered while quantity remains.
   const showOwnerClaimAction = isOwner && !!showSpoilers && !isFullyClaimed;
 
   const claimSummary = useMemo(() => {

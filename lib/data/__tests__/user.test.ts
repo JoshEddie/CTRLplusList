@@ -551,18 +551,16 @@ describe('getEligiblePurchasers', () => {
     expect(pool.map((u) => u.id)).not.toContain('claimer');
   });
 
-  it('BlockEdgeEitherDirection_ExcludesTarget', async () => {
+  it('BlockedByTarget_ExcludesTarget', async () => {
     await seedBlock(db, 'm-blocked', 'claimer');
-    const blockedByTarget = await dal.getEligiblePurchasers('own', 'claimer');
-    expect(blockedByTarget.map((u) => u.id)).not.toContain('m-blocked');
+    const pool = await dal.getEligiblePurchasers('own', 'claimer');
+    expect(pool.map((u) => u.id)).not.toContain('m-blocked');
+  });
 
-    await resetDb(db);
-    await seedUsers(db, [{ id: 'own' }, { id: 'claimer' }, { id: 'm-blocked' }]);
-    await seedFollow(db, 'own', 'm-blocked');
-    await seedFollow(db, 'm-blocked', 'own');
+  it('BlockedByClaimer_ExcludesTarget', async () => {
     await seedBlock(db, 'claimer', 'm-blocked');
-    const blockedByClaimer = await dal.getEligiblePurchasers('own', 'claimer');
-    expect(blockedByClaimer).toEqual([]);
+    const pool = await dal.getEligiblePurchasers('own', 'claimer');
+    expect(pool.map((u) => u.id)).not.toContain('m-blocked');
   });
 
   it('ClaimerMutualsPresent_SortFirstThenNameAscending', async () => {
@@ -589,30 +587,31 @@ describe('getEligiblePurchasers', () => {
     await seedUsers(db, [{ id: 'own' }, { id: 'claimer' }]);
     expect(await dal.getEligiblePurchasers('own', 'claimer')).toEqual([]);
   });
-});
 
-describe('getEligiblePurchasersFailureAndSortEdges', () => {
-  it('QueryThrows_RejectsWithFetchEligiblePurchasersError', async () => {
-    vi.spyOn(db, 'select').mockImplementationOnce(() => {
-      throw new Error('boom');
+  describe('FailureAndSortEdges', () => {
+    it('QueryThrows_RejectsWithFetchEligiblePurchasersError', async () => {
+      vi.spyOn(db, 'select').mockImplementationOnce(() => {
+        throw new Error('boom');
+      });
+      await expect(dal.getEligiblePurchasers('own', 'claimer')).rejects.toThrow(
+        'Failed to fetch eligible purchasers'
+      );
     });
-    await expect(dal.getEligiblePurchasers('own', 'claimer')).rejects.toThrow(
-      'Failed to fetch eligible purchasers'
-    );
-  });
 
-  it('NullNamePoolMembers_SortByIdStableAfterNamed', async () => {
-    await seedUsers(db, [{ id: 'own' }, { id: 'claimer' }]);
-    // seedUsers defaults name to the id, so insert null-named users directly.
-    await db
-      .insert(users)
-      .values([{ id: 'nameless-a' }, { id: 'named', name: 'Named' }]);
-    for (const id of ['nameless-a', 'named']) {
-      await seedFollow(db, 'own', id);
-      await seedFollow(db, id, 'own');
-    }
-    const pool = await dal.getEligiblePurchasers('own', 'claimer');
-    // Null names compare as '' and sort ahead of real names.
-    expect(pool.map((u) => u.id)).toEqual(['nameless-a', 'named']);
+    it('NullNamePoolMembers_SortByIdStableAfterNamed', async () => {
+      await resetDb(db);
+      await seedUsers(db, [{ id: 'own' }, { id: 'claimer' }]);
+      // seedUsers defaults name to the id, so insert null-named users directly.
+      await db
+        .insert(users)
+        .values([{ id: 'nameless-a' }, { id: 'named', name: 'Named' }]);
+      for (const id of ['nameless-a', 'named']) {
+        await seedFollow(db, 'own', id);
+        await seedFollow(db, id, 'own');
+      }
+      const pool = await dal.getEligiblePurchasers('own', 'claimer');
+      // Null names compare as '' and sort ahead of real names.
+      expect(pool.map((u) => u.id)).toEqual(['nameless-a', 'named']);
+    });
   });
 });

@@ -42,7 +42,7 @@
 
 ## 7. Pre-merge
 
-- [x] 7.1 `npm run lint` — zero errors, zero warnings
+- [x] 7.1 `npm run lint` — zero errors; only pre-existing tolerated size advisories (yellow `sonarjs/max-lines` warnings in files untouched by this change)
 - [x] 7.2 `npx tsc --noEmit` — zero errors
 - [x] 7.3 `npm run build` — completes successfully
 - [x] 7.4 `npm run test:coverage` — zero failing tests, coverage reported
@@ -57,3 +57,11 @@
 - [x] 8.5 Reword the seed comments at `scripts/seed-dev-users.ts:527-528` and `:784` to the durable constraint (the claim-attribution and owner-spoiler e2e specs depend on these exact rows/edges) without naming the change or flow numbers
 - [x] 8.6 Retire the legacy `item_id`-scoped `removePurchase` path (unreachable from the current UI — the modal only offers undo when `removableClaim` is non-null): remove the union member, the where-clause delete block, the dead `Item.tsx` fallback, and their tests, so every delete flows through the load-row + `canRemovePurchase` matrix the specs mandate
 - [x] 8.7 Re-run the pre-merge gates (7.1–7.5) after the remediation lands
+
+## 9. Review remediation, round 2 (PR #132 spec-review)
+
+- [x] 9.1 Split `BlockEdgeEitherDirection_ExcludesTarget` into `BlockedByTarget_` / `BlockedByClaimer_` tests — one trigger per test, no mid-test reset
+- [x] 9.2 Nest the failure/sort-edge tests as a `FailureAndSortEdges` scenario describe under the `getEligiblePurchasers` function describe
+- [x] 9.3 Remove the WHAT-restating comment above `showOwnerClaimAction` in `Item.tsx`
+- [x] 9.4 Reword task 7.1 to match the verified lint state (tolerated pre-existing size advisories)
+- [x] 9.5 Deferred out-of-scope findings: `/purchased` spoiler-gate payload leak → issue #134; `Item.tsx` removal-block duplication and picker-error empty-state UX → issue #133 comment
