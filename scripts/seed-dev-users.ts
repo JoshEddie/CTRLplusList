@@ -522,6 +522,15 @@ const seedFollows: { follower_id: string; followee_id: string }[] = [
   { follower_id: friendId('grace'), followee_id: VIEWER_ID },
   { follower_id: friendId('carol'), followee_id: VIEWER_ID },
   { follower_id: friendId('iris'), followee_id: VIEWER_ID },
+  // Friend ↔ friend mutuals: Alice is mutual with every other friend, so her
+  // lists' attributed-purchaser picker has a pool big enough to scroll (~10
+  // rows) and a markable target besides the viewer (expand-claim-attribution
+  // e2e flow 10 picks Bob). Only Alice's edges — the viewer's own counts and
+  // mutuals are untouched.
+  ...FRIENDS.filter((f) => f.slug !== 'alice').flatMap((f) => [
+    { follower_id: friendId('alice'), followee_id: friendId(f.slug) },
+    { follower_id: friendId(f.slug), followee_id: friendId('alice') },
+  ]),
 ];
 
 async function main() {
@@ -759,9 +768,60 @@ async function main() {
     id: string;
     item_id: string;
     user_id: string | null;
+    claimed_by: string | null;
     guest_name: string | null;
     purchased_at: Date;
   }[] = [];
+  // Hand-authored claim rows so every unclaim-matrix branch (claimer,
+  // purchaser, owner master unclaim, guest name-match) and the owner
+  // spoiler-view "added by" label are reachable straight from the seed.
+  // The fan-out loop below skips these items to keep capacity deterministic.
+  const ATTRIBUTION_EPOCH = new Date('2026-05-15T00:00:00Z');
+  const specialClaimRows = [
+    {
+      // Attributed claim on a viewer-owned item (limit 3): Alice marked Bob
+      // as the purchaser. Owner spoiler view shows "Bob — added by Alice";
+      // master-unclaim target for e2e flow 11.
+      id: 'dev-purchase-attributed',
+      item_id: 'dev-list-viewer-birthday-item-1',
+      user_id: friendId('bob'),
+      claimed_by: friendId('alice'),
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    {
+      // The viewer as attributed purchaser on a friend's list: Bob marked the
+      // viewer. The viewer sees it as their own claim ('self') and can unclaim.
+      id: 'dev-purchase-attributed-to-viewer',
+      item_id: 'dev-list-alice-wedding-item-1',
+      user_id: VIEWER_ID,
+      claimed_by: friendId('bob'),
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    {
+      // Owner self-claim (unlimited item): claimer and purchaser are both the
+      // owner — the spoiler-view "I bought this myself" state.
+      id: 'dev-purchase-owner-self',
+      item_id: 'dev-list-viewer-birthday-item-2',
+      user_id: VIEWER_ID,
+      claimed_by: VIEWER_ID,
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    {
+      // Legacy-shape signed-out guest row (all-NULL identities): self-serve
+      // removal is the exact-name match; the owner escape hatch is master
+      // unclaim.
+      id: 'dev-purchase-legacy-guest',
+      item_id: 'dev-list-viewer-birthday-item-3',
+      user_id: null,
+      claimed_by: null,
+      guest_name: 'Grandma',
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+  ];
+  const specialClaimItems = new Set(specialClaimRows.map((r) => r.item_id));
   // Position-based selection per list (rather than global hash) so every list
   // — including small friend lists — gets a guaranteed share. For each list,
   // mark every Nth item as purchased. Multi-claim and unlimited items receive
@@ -778,6 +838,7 @@ async function main() {
       purchaseRatio = 0.4; // friend lists — viewer sees these via rails
     }
     listItemIds.forEach((itemId, idx) => {
+      if (specialClaimItems.has(itemId)) return;
       const item = itemRows.find((r) => r.id === itemId);
       if (!item) return;
 
@@ -799,12 +860,16 @@ async function main() {
           id: `${itemId}-purchase-${n}`,
           item_id: itemId,
           user_id: asGuest ? null : buyerId,
+          // Self-claim shape: the buyer asserted their own claim. Guest rows
+          // keep the signed-out shape (all-NULL identities).
+          claimed_by: asGuest ? null : buyerId,
           guest_name: asGuest ? GUEST_NAMES[h % GUEST_NAMES.length] : null,
           purchased_at: new Date(PURCHASE_EPOCH - ((h + n) % 60) * 86400000),
         });
       }
     });
   });
+  purchaseRows.push(...specialClaimRows);
   // Drop legacy unsuffixed purchase IDs from prior seed versions before
   // inserting the new -purchase-N rows. Without this, an old -purchase row
   // would coexist with the new -purchase-1 row on the same item and inflate
@@ -821,6 +886,7 @@ async function main() {
         target: purchases.id,
         set: {
           user_id: sql`excluded.user_id`,
+          claimed_by: sql`excluded.claimed_by`,
           guest_name: sql`excluded.guest_name`,
           purchased_at: sql`excluded.purchased_at`,
         },

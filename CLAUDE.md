@@ -81,6 +81,8 @@ The app gates every protected page on Google OAuth via NextAuth, which makes it 
 
 **Seeded `quantity_limit` coverage:** every seeded list has overrides at positions 0, 1, and last, rotating `(3, null, 1)` → `(null, 1, 3)` → `(1, 3, null)` across consecutive lists. Multi-claim and unlimited items receive multiple deterministic purchase rows (`${itemId}-purchase-${n}`) so partial-claimed, fully-claimed, and multi-buyer-unlimited UI states are reachable directly from the seed without manual clicking.
 
+**Seeded claim-attribution coverage:** authenticated fan-out purchase rows are self-claims (`claimed_by = user_id`); guest rows keep all-NULL identities. Four hand-authored rows (`dev-purchase-*`, on `dev-list-viewer-birthday-item-1..3` and `dev-list-alice-wedding-item-1`, whose items are excluded from the fan-out) cover the attributed-claim shape (Alice marked Bob), the viewer-as-attributed-purchaser shape, an owner self-claim, and a legacy signed-out-guest row — every unclaim-matrix branch and the owner spoiler "added by" label are reachable from the seed. Alice is seeded mutual with every other friend, so her lists' attributed-purchaser picker has a pool large enough to scroll and targets besides the viewer.
+
 **Files:**
 
 - [db/index.ts](db/index.ts) — `USE_PG_DRIVER` driver-switch (postgres-js vs neon-http) + the localhost boot guard.

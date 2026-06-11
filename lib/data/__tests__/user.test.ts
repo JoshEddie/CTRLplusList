@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { users } from '@/db/schema';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import {
@@ -508,5 +509,110 @@ describe('ReadErrorPaths', () => {
     await expect(dal.getFollowingFeedUsers('follower')).rejects.toThrow(
       'Failed to fetch following feed users'
     );
+  });
+});
+
+describe('getEligiblePurchasers', () => {
+  beforeEach(async () => {
+    await seedUsers(db, [
+      { id: 'own', name: 'Olive Owner' },
+      { id: 'claimer', name: 'Cleo Claimer' },
+      { id: 'm-shared', name: 'Zara Shared' },
+      { id: 'm-owner-only', name: 'Andy OwnerOnly' },
+      { id: 'oneway', name: 'Wendy Oneway' },
+      { id: 'm-blocked', name: 'Blake Blocked' },
+    ]);
+    // Owner mutuals: m-shared, m-owner-only, m-blocked. oneway is one-direction.
+    for (const id of ['m-shared', 'm-owner-only', 'm-blocked']) {
+      await seedFollow(db, 'own', id);
+      await seedFollow(db, id, 'own');
+    }
+    await seedFollow(db, 'own', 'oneway');
+    // m-shared is also the claimer's mutual (sorts first).
+    await seedFollow(db, 'claimer', 'm-shared');
+    await seedFollow(db, 'm-shared', 'claimer');
+  });
+
+  it('OwnerMutualsOnly_ExcludesOneWayFollowAndOwner', async () => {
+    const pool = await dal.getEligiblePurchasers('own', 'claimer');
+    expect(pool.map((u) => u.id).sort()).toEqual([
+      'm-blocked',
+      'm-owner-only',
+      'm-shared',
+    ]);
+  });
+
+  it('ClaimerInOwnersMutuals_ExcludedFromPool', async () => {
+    // The claimer's own claim is the modal's primary self-claim CTA, never a
+    // picker row.
+    await seedFollow(db, 'own', 'claimer');
+    await seedFollow(db, 'claimer', 'own');
+    const pool = await dal.getEligiblePurchasers('own', 'claimer');
+    expect(pool.map((u) => u.id)).not.toContain('claimer');
+  });
+
+  it('BlockEdgeEitherDirection_ExcludesTarget', async () => {
+    await seedBlock(db, 'm-blocked', 'claimer');
+    const blockedByTarget = await dal.getEligiblePurchasers('own', 'claimer');
+    expect(blockedByTarget.map((u) => u.id)).not.toContain('m-blocked');
+
+    await resetDb(db);
+    await seedUsers(db, [{ id: 'own' }, { id: 'claimer' }, { id: 'm-blocked' }]);
+    await seedFollow(db, 'own', 'm-blocked');
+    await seedFollow(db, 'm-blocked', 'own');
+    await seedBlock(db, 'claimer', 'm-blocked');
+    const blockedByClaimer = await dal.getEligiblePurchasers('own', 'claimer');
+    expect(blockedByClaimer).toEqual([]);
+  });
+
+  it('ClaimerMutualsPresent_SortFirstThenNameAscending', async () => {
+    const pool = await dal.getEligiblePurchasers('own', 'claimer');
+    // m-shared (claimer mutual) leads; the rest sort by name: Andy < Blake.
+    expect(pool.map((u) => u.id)).toEqual([
+      'm-shared',
+      'm-owner-only',
+      'm-blocked',
+    ]);
+  });
+
+  it('PoolMembers_CarryNameAndImageForPickerRows', async () => {
+    const pool = await dal.getEligiblePurchasers('own', 'claimer');
+    expect(pool[0]).toEqual({
+      id: 'm-shared',
+      name: 'Zara Shared',
+      image: null,
+    });
+  });
+
+  it('NoMutuals_ReturnsEmptyArray', async () => {
+    await resetDb(db);
+    await seedUsers(db, [{ id: 'own' }, { id: 'claimer' }]);
+    expect(await dal.getEligiblePurchasers('own', 'claimer')).toEqual([]);
+  });
+});
+
+describe('getEligiblePurchasersFailureAndSortEdges', () => {
+  it('QueryThrows_RejectsWithFetchEligiblePurchasersError', async () => {
+    vi.spyOn(db, 'select').mockImplementationOnce(() => {
+      throw new Error('boom');
+    });
+    await expect(dal.getEligiblePurchasers('own', 'claimer')).rejects.toThrow(
+      'Failed to fetch eligible purchasers'
+    );
+  });
+
+  it('NullNamePoolMembers_SortByIdStableAfterNamed', async () => {
+    await seedUsers(db, [{ id: 'own' }, { id: 'claimer' }]);
+    // seedUsers defaults name to the id, so insert null-named users directly.
+    await db
+      .insert(users)
+      .values([{ id: 'nameless-a' }, { id: 'named', name: 'Named' }]);
+    for (const id of ['nameless-a', 'named']) {
+      await seedFollow(db, 'own', id);
+      await seedFollow(db, id, 'own');
+    }
+    const pool = await dal.getEligiblePurchasers('own', 'claimer');
+    // Null names compare as '' and sort ahead of real names.
+    expect(pool.map((u) => u.id)).toEqual(['nameless-a', 'named']);
   });
 });

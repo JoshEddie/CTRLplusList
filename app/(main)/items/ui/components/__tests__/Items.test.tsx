@@ -11,6 +11,8 @@ import Items from '../Items';
 interface ItemStubProps {
   item: ItemDisplay;
   user_id?: string;
+  user_name?: string | null;
+  showSpoilers?: boolean;
   showArchiveAction?: boolean;
   archivedView?: boolean;
 }
@@ -19,6 +21,8 @@ vi.mock('../Item', () => ({
   default: ({
     item,
     user_id,
+    user_name,
+    showSpoilers,
     showArchiveAction,
     archivedView,
   }: ItemStubProps) => (
@@ -26,6 +30,8 @@ vi.mock('../Item', () => ({
       data-testid="item-stub"
       data-item-id={item.id}
       data-user-id={user_id ?? ''}
+      data-user-name={user_name ?? ''}
+      data-show-spoilers={String(showSpoilers)}
       data-show-archive={String(showArchiveAction)}
       data-archived-view={String(archivedView)}
     />
@@ -84,12 +90,16 @@ describe('Items', () => {
         <Items
           items={[makeItem('a')]}
           user_id="viewer"
+          user_name="Vicky"
+          showSpoilers
           showArchiveAction
           archivedView
         />
       );
       const stub = screen.getByTestId('item-stub');
       expect(stub).toHaveAttribute('data-user-id', 'viewer');
+      expect(stub).toHaveAttribute('data-user-name', 'Vicky');
+      expect(stub).toHaveAttribute('data-show-spoilers', 'true');
       expect(stub).toHaveAttribute('data-show-archive', 'true');
       expect(stub).toHaveAttribute('data-archived-view', 'true');
     });

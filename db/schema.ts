@@ -172,6 +172,9 @@ export const purchases = pgTable(
     user_id: text('user_id').references(() => users.id, {
       onDelete: 'cascade',
     }),
+    claimed_by: text('claimed_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
     guest_name: text('guest_name'),
     purchased_at: timestamp('purchased_at').defaultNow().notNull(),
   },
@@ -208,6 +211,12 @@ export const purchasesRelations = relations(purchases, ({ one }) => ({
   user: one(users, {
     fields: [purchases.user_id],
     references: [users.id],
+    relationName: 'purchaser',
+  }),
+  claimer: one(users, {
+    fields: [purchases.claimed_by],
+    references: [users.id],
+    relationName: 'claimer',
   }),
 }));
 
@@ -236,7 +245,8 @@ export const saved_listsRelations = relations(saved_lists, ({ one }) => ({
 export const usersRelations = relations(users, ({ many }) => ({
   lists: many(lists),
   items: many(items),
-  purchases: many(purchases),
+  purchases: many(purchases, { relationName: 'purchaser' }),
+  claimed_purchases: many(purchases, { relationName: 'claimer' }),
   saved_lists: many(saved_lists),
   visits: many(list_visits),
   following: many(user_follows, { relationName: 'follower' }),

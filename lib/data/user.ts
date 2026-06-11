@@ -2,7 +2,7 @@ import { db } from '@/db';
 import { lists, user_blocks, user_follows, users } from '@/db/schema';
 import { UserTable } from '@/lib/types';
 import { VISIBILITY, visibilityDbValues } from '@/lib/visibility';
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 import { cache } from 'react';
 
@@ -147,6 +147,84 @@ export async function hasBlocked({
   } catch (error) {
     console.error('Error checking block status:', error);
     throw new Error('Failed to check block status');
+  }
+}
+
+/**
+ * Eligible attributed-purchaser pool for an item on `ownerId`'s list, as seen
+ * by `claimerId`: the owner's mutual follows (owner follows them AND they
+ * follow the owner), minus anyone with a block edge to/from the claimer,
+ * minus the owner, minus the claimer themselves (their claim is the modal's
+ * primary self-claim CTA, not a picker row). Sorted with the claimer's own
+ * mutuals first, then by name. Eligibility gates at claim time only — the
+ * server re-verifies via `isEligiblePurchaser` (lib/data/purchase.ts); this
+ * read feeds the picker UI.
+ */
+export async function getEligiblePurchasers(ownerId: string, claimerId: string) {
+  'use cache';
+  cacheTag('user_follows');
+  cacheTag('user_blocks');
+  try {
+    const followRows = await db
+      .select({
+        follower_id: user_follows.follower_id,
+        followee_id: user_follows.followee_id,
+      })
+      .from(user_follows)
+      .where(
+        or(
+          inArray(user_follows.follower_id, [ownerId, claimerId]),
+          inArray(user_follows.followee_id, [ownerId, claimerId])
+        )
+      );
+
+    const mutualsOf = (userId: string) => {
+      const followees = new Set<string>();
+      const followers = new Set<string>();
+      for (const row of followRows) {
+        if (row.follower_id === userId) followees.add(row.followee_id);
+        if (row.followee_id === userId) followers.add(row.follower_id);
+      }
+      return new Set([...followees].filter((id) => followers.has(id)));
+    };
+
+    const ownerMutuals = mutualsOf(ownerId);
+    const claimerMutuals = mutualsOf(claimerId);
+
+    const blockRows = await db
+      .select({
+        blocker_id: user_blocks.blocker_id,
+        blocked_id: user_blocks.blocked_id,
+      })
+      .from(user_blocks)
+      .where(
+        or(
+          eq(user_blocks.blocker_id, claimerId),
+          eq(user_blocks.blocked_id, claimerId)
+        )
+      );
+    const blockedWithClaimer = new Set(
+      blockRows.flatMap((row) => [row.blocker_id, row.blocked_id])
+    );
+
+    const poolIds = [...ownerMutuals].filter(
+      (id) =>
+        id !== ownerId && id !== claimerId && !blockedWithClaimer.has(id)
+    );
+    if (poolIds.length === 0) return [];
+
+    const rows = await db
+      .select({ id: users.id, name: users.name, image: users.image })
+      .from(users)
+      .where(inArray(users.id, poolIds));
+
+    // Claimer-mutuals first, then by display name.
+    const sortKey = (u: { id: string; name: string | null }) =>
+      `${claimerMutuals.has(u.id) ? 0 : 1}:${u.name ?? ''}`;
+    return rows.sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+  } catch (error) {
+    console.error('Error fetching eligible purchasers:', error);
+    throw new Error('Failed to fetch eligible purchasers');
   }
 }
 

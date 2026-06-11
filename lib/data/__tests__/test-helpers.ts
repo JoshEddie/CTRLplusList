@@ -87,6 +87,7 @@ export async function seedPurchase(
     id: string;
     item_id: string;
     user_id?: string | null;
+    claimed_by?: string | null;
     guest_name?: string | null;
     purchased_at?: Date;
   }
@@ -95,6 +96,7 @@ export async function seedPurchase(
     id: purchase.id,
     item_id: purchase.item_id,
     user_id: purchase.user_id ?? null,
+    claimed_by: purchase.claimed_by ?? null,
     guest_name: purchase.guest_name ?? null,
     purchased_at: purchase.purchased_at ?? new Date(),
   });

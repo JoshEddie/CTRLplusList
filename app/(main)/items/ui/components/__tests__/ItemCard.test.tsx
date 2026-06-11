@@ -8,7 +8,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { PurchaseView } from '@/lib/types';
 import ItemCard from '../ItemCard';
 
-const claim: PurchaseView = { id: 'p1', by: 'self', firstName: 'You' };
+const claim: PurchaseView = {
+  id: 'p1',
+  by: 'self',
+  firstName: 'You',
+  claimedByViewer: true,
+};
 
 function renderCard(
   overrides: Partial<React.ComponentProps<typeof ItemCard>> = {}
@@ -30,6 +35,7 @@ function renderCard(
     claimActionDisabled: false,
     showCounter: true,
     counterText: '0/3 claimed',
+    showOwnerClaimAction: false,
     onPurchaseClick: vi.fn(),
     ...overrides,
   };
@@ -61,11 +67,20 @@ describe('ItemCard', () => {
     expect(props.onPurchaseClick).toHaveBeenCalledTimes(1);
   });
 
-  it('Owner_RendersNoClaimAffordance', () => {
-    renderCard({ isOwner: true });
-    expect(
-      screen.queryByRole('button', { name: 'Claim this item' })
-    ).not.toBeInTheDocument();
+  describe('OwnerClaimGate', () => {
+    it('ShowOwnerClaimActionFalse_OmitsClaimButton', () => {
+      renderCard({ isOwner: true, showOwnerClaimAction: false });
+      expect(
+        screen.queryByRole('button', { name: 'Claim this item' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('ShowOwnerClaimActionTrue_RendersClaimButton', () => {
+      renderCard({ isOwner: true, showOwnerClaimAction: true });
+      expect(
+        screen.getByRole('button', { name: 'Claim this item' })
+      ).toBeInTheDocument();
+    });
   });
 
   it('NoDescription_OmitsDescriptionParagraph', () => {

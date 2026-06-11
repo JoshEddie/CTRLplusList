@@ -21,8 +21,18 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('../Item', () => ({
-  default: ({ item }: { item: ItemDisplay }) => (
-    <div data-testid="item-stub" data-item-id={item.id} />
+  default: ({
+    item,
+    showSpoilers,
+  }: {
+    item: ItemDisplay;
+    showSpoilers?: boolean;
+  }) => (
+    <div
+      data-testid="item-stub"
+      data-item-id={item.id}
+      data-show-spoilers={String(showSpoilers)}
+    />
   ),
 }));
 vi.mock('../PriceFilterPopover', () => ({ default: () => <div /> }));
@@ -347,6 +357,34 @@ describe('ItemsBrowser', () => {
       renderBrowser([makeItem('a', { name: 'Gift' })], { mode: 'items' });
       fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
       expect(nav.replace).toHaveBeenCalledWith('/items?sort=name_asc');
+    });
+  });
+
+  describe('Spoilers', () => {
+    const spoilerFlag = () =>
+      screen.getByTestId('item-stub').getAttribute('data-show-spoilers');
+
+    it('ModeItemsPurchasesReveal_PassesShowSpoilersTrue', () => {
+      nav.search = 'purchases=reveal';
+      renderBrowser([makeItem('a')], { mode: 'items' });
+      expect(spoilerFlag()).toBe('true');
+    });
+
+    it('ModeItemsPurchasesOnly_PassesShowSpoilersTrue', () => {
+      nav.search = 'purchases=only';
+      renderBrowser([makeItem('a', { hasPurchases: true })], { mode: 'items' });
+      expect(spoilerFlag()).toBe('true');
+    });
+
+    it('ModeListPurchasesReveal_PassesShowSpoilersFalse', () => {
+      nav.search = 'purchases=reveal';
+      renderBrowser([makeItem('a')], { mode: 'list' });
+      expect(spoilerFlag()).toBe('false');
+    });
+
+    it('ModeItemsNoPurchasesParam_PassesShowSpoilersFalse', () => {
+      renderBrowser([makeItem('a')], { mode: 'items' });
+      expect(spoilerFlag()).toBe('false');
     });
   });
 

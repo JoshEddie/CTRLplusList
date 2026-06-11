@@ -1,39 +1,44 @@
 import { PurchaseView } from '@/lib/types';
-import { Dispatch, SetStateAction } from 'react';
 import Modal from './purchasemodal/Modal';
 import ModalButtons from './purchasemodal/ModalButtons';
 import PurchaseFlow from './purchasemodal/PurchaseFlow';
-import PurchaseFlowContainer from './purchasemodal/PurchaseFlowContainer';
-
-export type PurchaseFlowState = 'initial' | 'self' | 'other' | 'guest';
+import PurchaseFlowContainer, {
+  AttributedTarget,
+} from './purchasemodal/PurchaseFlowContainer';
 
 export default function PurchaseModalSlot({
-  myClaim,
+  removableClaim,
   user_id,
-  user_name,
-  guestName,
-  setGuestName,
-  purchaseFlow,
-  setPurchaseFlow,
+  isOwner,
+  itemId,
+  itemName,
   onClose,
-  onPurchaseConfirm,
+  onSelfClaim,
+  onAttributedClaim,
+  onGuestClaim,
   onUndoConfirm,
 }: {
-  myClaim: PurchaseView | null;
+  removableClaim: PurchaseView | null;
   user_id?: string;
-  user_name?: string | null;
-  guestName: string;
-  setGuestName: Dispatch<SetStateAction<string>>;
-  purchaseFlow: PurchaseFlowState;
-  setPurchaseFlow: Dispatch<SetStateAction<PurchaseFlowState>>;
+  isOwner: boolean;
+  itemId: string;
+  itemName: string;
   onClose: () => void;
-  onPurchaseConfirm: (name: string, user_purchase?: boolean) => void;
+  onSelfClaim: () => void;
+  onAttributedClaim: (target: AttributedTarget) => void;
+  onGuestClaim: (name: string) => void;
   onUndoConfirm: () => void;
 }) {
-  if (myClaim) {
+  if (removableClaim) {
     return (
       <Modal onClose={onClose}>
-        <PurchaseFlow primary_text="Remove your claim on this item?">
+        <PurchaseFlow
+          primary_text={
+            removableClaim.by === 'self'
+              ? 'Remove your claim on this item?'
+              : `Remove your claim for ${removableClaim.firstName}?`
+          }
+        >
           <ModalButtons
             primary_button_text="Remove my claim"
             primary_button_onclick={onUndoConfirm}
@@ -46,12 +51,12 @@ export default function PurchaseModalSlot({
     <Modal onClose={onClose}>
       <PurchaseFlowContainer
         user_id={user_id}
-        guestName={guestName}
-        setGuestName={setGuestName}
-        handlePurchaseConfirm={onPurchaseConfirm}
-        purchaseFlow={purchaseFlow}
-        setPurchaseFlow={setPurchaseFlow}
-        user_name={user_name}
+        isOwner={isOwner}
+        itemId={itemId}
+        itemName={itemName}
+        onSelfClaim={onSelfClaim}
+        onAttributedClaim={onAttributedClaim}
+        onGuestClaim={onGuestClaim}
       />
     </Modal>
   );

@@ -8,27 +8,24 @@ import { firstClaimableSingleItem } from '../test/helpers/e2e/utils';
 // happens to follow the owner, but the relationship is incidental — any caller
 // may view/claim a non-Hidden list.
 //
-// The authenticated purchase modal has two branches, both covered below, and
-// they record DIFFERENT things:
-//   1. "I purchased it"  — a self-claim → recorded as the viewer's own claim
-//      (user_id = viewer) → shows "You claimed this".
-//   2. "Someone else"    — a claim on behalf of a named third party → recorded
-//      as that named guest (user_id NULL, guest_name = entered name) → shows
-//      "Claimed by <name>", NOT "You claimed this".
-//
-// These pin the non-owner observer of the spoiler mechanism. The owner-side
-// hiding of that same claim is the divergence pinned by owner-spoiler.auth.spec
-// (the bypass fixes the identity to the viewer, so observing a claim as the
-// *list owner* is a cross-user Non-Goal).
+// The single-screen claim modal records different row shapes per path, two of
+// which are covered here (the attributed-picker path lives in
+// claim-attribution.auth.spec):
+//   1. "I'm getting this"  — a one-tap self-claim → recorded as the viewer's
+//      own claim (purchaser = viewer) → shows "You claimed this".
+//   2. name fallback        — a claim for a named non-user → recorded with the
+//      viewer as claimer and the typed name as guest label → the claimer's own
+//      banner reads "You claimed this for <name>" (other viewers see
+//      "Claimed by <name>").
 //
 // Self-claim assertions are scoped by item name: seeded viewer claims on OTHER
 // items also read "You claimed this", so a bare match would not prove THIS claim
-// landed. The on-behalf assertion uses a per-run-unique purchaser name, so it is
+// landed. The fallback assertion uses a per-run-unique purchaser name, so it is
 // unambiguous on its own.
 const LIST = '/lists/dev-list-alice-wedding';
 const LIST_HEADING = "Alice's Wedding Registry";
 
-test('SignedInClaim_SelfPurchase_ShowsOwnClaim', async ({ page }) => {
+test('SignedInClaim_SelfClaimOneTap_ShowsOwnClaim', async ({ page }) => {
   await page.goto(LIST);
   await expect(
     page.getByRole('heading', { name: LIST_HEADING }).first()
@@ -37,10 +34,10 @@ test('SignedInClaim_SelfPurchase_ShowsOwnClaim', async ({ page }) => {
   const item = firstClaimableSingleItem(page);
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
-  // Open the purchase modal and take the "I purchased it" self-claim path.
+  // Open the claim modal; the primary CTA self-claims in one tap — no
+  // confirmation screen.
   await item.getByRole('button', { name: 'Claim this item' }).click();
-  await page.getByRole('button', { name: 'I purchased it' }).click();
-  await page.getByRole('button', { name: 'Confirm Purchase' }).click();
+  await page.getByRole('button', { name: "I'm getting this" }).click();
 
   // The item reflects the viewer's own claim, and it persists across a fresh
   // server render.
@@ -52,7 +49,9 @@ test('SignedInClaim_SelfPurchase_ShowsOwnClaim', async ({ page }) => {
   await expect(claimedAfter.getByText('You claimed this').first()).toBeVisible();
 });
 
-test('SignedInClaim_OnBehalfOfOther_ShowsNamedClaim', async ({ page }) => {
+test('SignedInClaim_NameFallbackForNonUser_ShowsClaimerBannerWithName', async ({
+  page,
+}) => {
   const purchaser = `Buyer${Date.now()}`;
 
   await page.goto(LIST);
@@ -63,22 +62,27 @@ test('SignedInClaim_OnBehalfOfOther_ShowsNamedClaim', async ({ page }) => {
   const item = firstClaimableSingleItem(page);
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
-  // Open the purchase modal and take the "Someone else" on-behalf path: it
-  // routes through the distinct "Who purchased this item?" step with a
-  // purchaser-name field.
+  // Open the claim modal and expand the "not listed" fallback for a
+  // purchaser without an account.
   await item.getByRole('button', { name: 'Claim this item' }).click();
-  await page.getByRole('button', { name: 'Someone else' }).click();
-  await expect(page.getByText('Who purchased this item?')).toBeVisible();
-  await page.getByLabel("Purchaser's name").fill(purchaser);
-  await page.getByRole('button', { name: 'Confirm Purchase' }).click();
+  await page
+    .getByRole('button', { name: 'Someone not listed? Enter their name' })
+    .click();
+  await page.getByLabel('Their name').fill(purchaser);
+  await page.getByRole('button', { name: `Claim for ${purchaser}` }).click();
 
-  // The claim is attributed to the NAMED third party, not the viewer, and
-  // persists on reload. Scoping to the item also confirms it does NOT read
-  // "You claimed this" (the bug this pins would have misattributed it).
-  await expect(page.getByText(`Claimed by ${purchaser}`)).toBeVisible();
+  // The viewer asserted the claim (claimed_by), so their banner names the
+  // third party; it persists on reload and never reads as a bare
+  // "You claimed this" (which would mean the claim was misattributed to the
+  // viewer as purchaser).
+  const claimed = page.locator('.item-container', { hasText: itemName });
+  await expect(
+    claimed.getByText(`You claimed this for ${purchaser}`).first()
+  ).toBeVisible();
 
   await page.reload();
-  const claimed = page.locator('.item-container', { hasText: itemName });
-  await expect(claimed.getByText(`Claimed by ${purchaser}`)).toBeVisible();
-  await expect(claimed.getByText('You claimed this')).toHaveCount(0);
+  const claimedAfter = page.locator('.item-container', { hasText: itemName });
+  await expect(
+    claimedAfter.getByText(`You claimed this for ${purchaser}`).first()
+  ).toBeVisible();
 });

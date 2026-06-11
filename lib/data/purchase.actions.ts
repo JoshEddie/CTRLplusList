@@ -3,6 +3,12 @@
 import { db } from '@/db';
 import { items, purchases, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
+import {
+  canRemovePurchase,
+  claimConflictResponse,
+  duplicateClaimResponse,
+  isEligiblePurchaser,
+} from '@/lib/data/purchase';
 import { isItemViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
 import { type ActionResponse } from '@/lib/types';
@@ -13,18 +19,25 @@ import { updateTag } from 'next/cache';
 // Postgres unique-violation error code.
 const PG_UNIQUE_VIOLATION = '23505';
 
-// Resolve who a createPurchase claim is authorized AS vs stored AS. An
-// authenticated caller supplying a non-empty guest_name is recording a claim
-// "on behalf of" that named third party ("Someone else"): it is authorized by
-// their session (callerUserId) but stored as a guest claim (actorUserId NULL,
-// guestName set) so the claim belongs to the named person, not the caller. A
-// self-claim (no guest_name) is stored under the caller's own id. No user_id is
-// ever taken from the payload — the third party is a free-text name, never an
-// account.
+// Resolve who a createPurchase claim is authorized AS vs stored AS, producing
+// one of the four row shapes (claimed_by = who asserted, user_id = the
+// purchaser):
+//   self-claim:               claimed_by = caller, user_id = caller
+//   attributed claim:         claimed_by = caller, user_id = purchased_by target
+//   authenticated guest name: claimed_by = caller, user_id = NULL, guest_name set
+//   signed-out guest:         claimed_by = NULL,   user_id = NULL, guest_name set
+// claimed_by is always session-resolved; the purchased_by target is a payload
+// field but only an attribution target — eligibility is re-verified against
+// the live follow/block graph before insert.
 async function resolveClaimIdentity(
-  rawGuestName: string | null
+  rawGuestName: string | null,
+  purchasedBy: string | null
 ): Promise<
-  | { callerUserId: string | null; actorUserId: string | null; guestName: string | null }
+  | {
+      callerUserId: string | null;
+      purchaserUserId: string | null;
+      guestName: string | null;
+    }
   | { error: ActionResponse }
 > {
   const session = await auth();
@@ -39,11 +52,31 @@ async function resolveClaimIdentity(
         error: { success: false, message: 'User not found', error: 'Unauthorized' },
       };
     }
+    if (purchasedBy && trimmed) {
+      return {
+        error: {
+          success: false,
+          message: 'Cannot identify which claim to add',
+          error: 'Ambiguous purchaser',
+        },
+      };
+    }
+    if (purchasedBy) {
+      return {
+        callerUserId: sessionUser.id,
+        purchaserUserId: purchasedBy,
+        guestName: null,
+      };
+    }
     return trimmed
-      ? { callerUserId: sessionUser.id, actorUserId: null, guestName: trimmed }
-      : { callerUserId: sessionUser.id, actorUserId: sessionUser.id, guestName: null };
+      ? { callerUserId: sessionUser.id, purchaserUserId: null, guestName: trimmed }
+      : {
+          callerUserId: sessionUser.id,
+          purchaserUserId: sessionUser.id,
+          guestName: null,
+        };
   }
-  if (!trimmed) {
+  if (purchasedBy || !trimmed) {
     return {
       error: {
         success: false,
@@ -52,21 +85,26 @@ async function resolveClaimIdentity(
       },
     };
   }
-  return { callerUserId: null, actorUserId: null, guestName: trimmed };
+  return { callerUserId: null, purchaserUserId: null, guestName: trimmed };
 }
 
 export async function createPurchase(data: {
   item_id: string;
   guest_name: string | null;
+  purchased_by?: string | null;
 }): Promise<ActionResponse> {
   try {
-    const identity = await resolveClaimIdentity(data.guest_name);
+    const identity = await resolveClaimIdentity(
+      data.guest_name,
+      data.purchased_by ?? null
+    );
     if ('error' in identity) {
       return identity.error;
     }
-    // callerUserId authorizes the request (the viewability/block gate below);
-    // actorUserId + guestName are what we STORE for the claim.
-    const { callerUserId, actorUserId, guestName } = identity;
+    // callerUserId authorizes the request (the viewability/block gate below)
+    // and is stored as claimed_by; purchaserUserId + guestName identify the
+    // purchaser we STORE for the claim.
+    const { callerUserId, purchaserUserId, guestName } = identity;
 
     // Gate by viewability: items on lists the caller can't see are unclaimable.
     // Indistinguishable from a missing item on purpose. Gated on the
@@ -83,7 +121,7 @@ export async function createPurchase(data: {
 
     const item = await db.query.items.findFirst({
       where: eq(items.id, data.item_id),
-      columns: { quantity_limit: true },
+      columns: { quantity_limit: true, user_id: true },
     });
     if (!item) {
       return {
@@ -91,6 +129,31 @@ export async function createPurchase(data: {
         message: 'Item not found',
         error: 'Item not found',
       };
+    }
+
+    const isAttributed =
+      !!purchaserUserId && purchaserUserId !== callerUserId;
+    if (isAttributed) {
+      // Re-verify the attribution target against the live graph: must be an
+      // owner-mutual, no block edge with the claimer, and not the owner. The
+      // client picker is presentation only. A block/unfollow can land between
+      // this check and the insert below (neon-http: no transactions) —
+      // residual and harmless: removal rights are row-based, and the at-claim
+      // gate is best-effort by design.
+      const eligible = await isEligiblePurchaser(
+        item.user_id,
+        // callerUserId is non-null here: purchased_by without a session is
+        // rejected in resolveClaimIdentity.
+        callerUserId as string,
+        purchaserUserId
+      );
+      if (!eligible) {
+        return {
+          success: false,
+          message: 'That person cannot be marked as the purchaser',
+          error: 'Ineligible purchaser',
+        };
+      }
     }
 
     const existing = await db
@@ -102,52 +165,34 @@ export async function createPurchase(data: {
       .from(purchases)
       .where(eq(purchases.item_id, data.item_id));
 
-    const isDuplicate = existing.some((p) =>
-      actorUserId
-        ? p.user_id === actorUserId
-        : !!guestName && p.guest_name === guestName
+    const conflict = claimConflictResponse(
+      existing,
+      purchaserUserId,
+      guestName,
+      item.quantity_limit,
+      isAttributed
     );
-    if (isDuplicate) {
-      return {
-        success: false,
-        message: 'You have already claimed this item',
-        error: 'Duplicate claim',
-      };
-    }
-
-    if (
-      item.quantity_limit !== null &&
-      existing.length >= item.quantity_limit
-    ) {
-      return {
-        success: false,
-        message: 'This item is fully claimed',
-        error: 'Fully claimed',
-      };
-    }
+    if (conflict) return conflict;
 
     try {
       await db.insert(purchases).values({
         id: nanoid(),
         item_id: data.item_id,
-        user_id: actorUserId,
+        user_id: purchaserUserId,
+        claimed_by: callerUserId,
         guest_name: guestName,
         purchased_at: new Date(),
       });
     } catch (insertError) {
       // Partial unique index trip (purchases_item_user_unique_idx): a
-      // duplicate claim by the same authenticated user slipped past the
-      // in-app check because two requests raced against distinct DB
-      // sessions. The capacity-race for guest claims / different users on a
-      // limited item is not closed at the DB layer (neon-http driver does
-      // not support interactive transactions, so SELECT … FOR UPDATE is not
-      // available). Accepted as a known limitation.
+      // duplicate purchaser slipped past the in-app check because two
+      // requests raced against distinct DB sessions. The capacity-race for
+      // guest claims / different users on a limited item is not closed at the
+      // DB layer (neon-http driver does not support interactive transactions,
+      // so SELECT … FOR UPDATE is not available). Accepted as a known
+      // limitation.
       if (sqlstateOf(insertError) === PG_UNIQUE_VIOLATION) {
-        return {
-          success: false,
-          message: 'You have already claimed this item',
-          error: 'Duplicate claim',
-        };
+        return duplicateClaimResponse(isAttributed);
       }
       throw insertError;
     }
@@ -169,19 +214,6 @@ type RemovePurchaseInput =
   | { purchase_id: string; guest_name?: string | null }
   | { item_id: string; guest_name?: string | null };
 
-// Guests must own a guest row AND supply the matching name, else any guest who
-// knew a purchase id could revoke it.
-function canRemovePurchase(
-  row: { user_id: string | null; guest_name: string | null },
-  actorUserId: string | null,
-  suppliedGuestName: string | null | undefined
-): boolean {
-  if (actorUserId) return row.user_id === actorUserId;
-  if (row.user_id !== null) return false;
-  const supplied = suppliedGuestName?.trim() ?? '';
-  return supplied !== '' && row.guest_name === supplied;
-}
-
 export async function removePurchase(
   data: RemovePurchaseInput
 ): Promise<ActionResponse> {
@@ -199,7 +231,13 @@ export async function removePurchase(
     if ('purchase_id' in data && data.purchase_id) {
       const row = await db.query.purchases.findFirst({
         where: eq(purchases.id, data.purchase_id),
-        columns: { id: true, user_id: true, guest_name: true },
+        columns: {
+          id: true,
+          item_id: true,
+          user_id: true,
+          claimed_by: true,
+          guest_name: true,
+        },
       });
       if (!row) {
         return {
@@ -209,7 +247,19 @@ export async function removePurchase(
         };
       }
 
-      if (!canRemovePurchase(row, actorUserId, data.guest_name)) {
+      const targetItem = await db.query.items.findFirst({
+        where: eq(items.id, row.item_id),
+        columns: { user_id: true },
+      });
+
+      if (
+        !canRemovePurchase(
+          row,
+          targetItem?.user_id ?? null,
+          actorUserId,
+          data.guest_name
+        )
+      ) {
         return {
           success: false,
           message: 'Not your claim',
@@ -226,7 +276,8 @@ export async function removePurchase(
     }
 
     // Legacy item-scoped path: only authenticated callers are permitted.
-    // Guests must use the purchase_id shape (see spec).
+    // Guests must use the purchase_id shape (see spec). user_id here means
+    // the purchaser — a purchaser always holds removal rights.
     if (!('item_id' in data) || !data.item_id) {
       return {
         success: false,

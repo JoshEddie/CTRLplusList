@@ -3,7 +3,8 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { getClaimPickerForItem } from '@/lib/data/user.actions';
 import { PurchaseView } from '@/lib/types';
 import PurchaseModalSlot from '../PurchaseModalSlot';
 
@@ -11,31 +12,53 @@ vi.mock('@/app/(auth)/ui/components/SignInButton', () => ({
   default: () => <div data-testid="signin-button" />,
 }));
 
-const claim: PurchaseView = { id: 'pm', by: 'self', firstName: 'You' };
+// user.actions is a 'use server' module whose import chain reaches the DB
+// driver; PurchaseFlowContainer only consumes the picker read.
+vi.mock('@/lib/data/user.actions', () => ({
+  getClaimPickerForItem: vi.fn(),
+}));
+
+const selfClaim: PurchaseView = {
+  id: 'pm',
+  by: 'self',
+  firstName: 'You',
+  claimedByViewer: true,
+};
+const attributedClaim: PurchaseView = {
+  id: 'pa',
+  by: 'other',
+  firstName: 'Grandma',
+  claimedByViewer: true,
+};
 
 function renderSlot(
   overrides: Partial<React.ComponentProps<typeof PurchaseModalSlot>> = {}
 ) {
   const props: React.ComponentProps<typeof PurchaseModalSlot> = {
-    myClaim: null,
+    removableClaim: null,
     user_id: undefined,
-    user_name: null,
-    guestName: '',
-    setGuestName: vi.fn(),
-    purchaseFlow: 'initial',
-    setPurchaseFlow: vi.fn(),
+    isOwner: false,
+    itemId: 'i1',
+    itemName: 'Fancy Mug',
     onClose: vi.fn(),
-    onPurchaseConfirm: vi.fn(),
+    onSelfClaim: vi.fn(),
+    onAttributedClaim: vi.fn(),
+    onGuestClaim: vi.fn(),
     onUndoConfirm: vi.fn(),
     ...overrides,
   };
   return { props, ...render(<PurchaseModalSlot {...props} />) };
 }
 
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(getClaimPickerForItem).mockResolvedValue(null);
+});
+
 describe('PurchaseModalSlot', () => {
-  it('MyClaim_RendersRemoveClaimFlow-FiresUndo', async () => {
+  it('SelfRemovableClaim_RendersRemoveYourClaimCopy-FiresUndoConfirm', async () => {
     const user = userEvent.setup();
-    const { props } = renderSlot({ myClaim: claim });
+    const { props } = renderSlot({ removableClaim: selfClaim });
     expect(
       screen.getByText('Remove your claim on this item?')
     ).toBeInTheDocument();
@@ -43,22 +66,33 @@ describe('PurchaseModalSlot', () => {
     expect(props.onUndoConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it('NoClaimUnauthenticated_RendersGuestPurchaseFlow', () => {
+  it('AttributedRemovableClaim_RendersRemoveForFirstNameCopy', () => {
+    renderSlot({ removableClaim: attributedClaim });
+    expect(
+      screen.getByText('Remove your claim for Grandma?')
+    ).toBeInTheDocument();
+  });
+
+  it('NoClaimUnauthenticated_RendersGuestClaimFlow', () => {
     renderSlot();
     expect(screen.getByTestId('signin-button')).toBeInTheDocument();
     expect(screen.getByLabelText('Your name')).toBeInTheDocument();
   });
 
-  it('NoClaimAuthenticated_RendersPurchaseChoiceFlow', () => {
-    renderSlot({ user_id: 'viewer', user_name: 'Vicky' });
+  it('NoClaimAuthenticated_RendersClaimThisGiftFlowWithItemName', async () => {
+    renderSlot({ user_id: 'viewer' });
     expect(
-      screen.getByRole('button', { name: 'I purchased it' })
+      screen.getByRole('heading', { name: 'Claim this gift' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Fancy Mug')).toBeInTheDocument();
+    expect(
+      await screen.findByText('No one by that name — add them below')
     ).toBeInTheDocument();
   });
 
   it('CloseAffordance_FiresOnClose', async () => {
     const user = userEvent.setup();
-    const { props, container } = renderSlot({ myClaim: claim });
+    const { props, container } = renderSlot({ removableClaim: selfClaim });
     await user.click(container.querySelector('.close-button') as HTMLElement);
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });

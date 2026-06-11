@@ -24,7 +24,7 @@ test('GuestClaim_PublicList_RecordsGuestPurchase', async ({ page }) => {
     .getByRole('button', { name: 'Claim this item' })
     .click();
   await page.getByLabel('Your name').fill(guestName);
-  await page.getByRole('button', { name: 'Purchase as Guest' }).click();
+  await page.getByRole('button', { name: 'Claim as Guest' }).click();
 
   // The single-claim item is now fully claimed and names the guest.
   await expect(page.getByText(`Claimed by ${guestName}`)).toBeVisible();
