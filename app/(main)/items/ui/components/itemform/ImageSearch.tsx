@@ -1,24 +1,11 @@
 'use client';
 
 import { FieldError, SearchField } from '@/app/ui/components/field';
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { useIsClient } from '@/app/ui/hooks/useIsClient';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FaSearch, FaTimes } from 'react-icons/fa';
 import { ImageResultsViewer } from './ImageResultsViewer';
-
-// "Am I on the client?" without tripping react-hooks/set-state-in-effect. An
-// empty subscribe + true/false snapshot is the canonical useSyncExternalStore
-// pattern for SSR-safe client detection (same approach as use-media-query.ts).
-const subscribeNoop = () => () => {};
-const getClientSnapshot = () => true;
-/* v8 ignore next -- getServerSnapshot is only invoked by React during server-side rendering; the jsdom client test env always resolves getClientSnapshot. */
-const getServerSnapshot = () => false;
 
 interface ImageSearchProps {
   isOpen: boolean;
@@ -54,11 +41,7 @@ export function ImageSearch({
   disabled = false,
 }: ImageSearchProps) {
   // Mounted guard so createPortal doesn't run during SSR.
-  const mounted = useSyncExternalStore(
-    subscribeNoop,
-    getClientSnapshot,
-    getServerSnapshot
-  );
+  const mounted = useIsClient();
 
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState('');
