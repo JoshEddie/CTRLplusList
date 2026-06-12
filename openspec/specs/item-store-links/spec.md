@@ -211,7 +211,7 @@ The right-most column of the row-view grid SHALL render different content per vi
 - Non-owner, fully claimed by others: a disabled "✓ Fully claimed" pill in the same right-column cell as the other claim affordances (cols 3–4 are empty for a non-owner; spanning them would add their column gaps and misalign the pill); the card surface receives the muted/desaturated claimed treatment and the purchase modal SHALL NOT be openable from it
 - Non-owner, viewer has a removable claim: an outline "Manage your claim" button that opens the purchase modal's already-claimed state (store row + remove-claim affordance); the price row shows the plain price with no metadata line
 
-In row view, the right-column claim affordances ("Get this gift", "Manage your claim", the disabled "Fully claimed" pill) SHALL share a `min-width: 165px` floor so rows align across states.
+In row view at ≥600px, the right-column claim affordances ("Get this gift", "Manage your claim", the disabled "Fully claimed" pill) SHALL share a `min-width: 165px` floor so rows align across states. The floor SHALL NOT apply at `<600px`, where the mobile horizontal-card requirement gives claim affordances the full action row instead.
 - Owner with spoilers active (revealed claim): NOT ABSORBED — the spoiler pill occupies col 3 only (same slot the buy-pill would have), leaving the owner-actions kebab cell free at all viewports. The wide-pill treatment would stomp on the owner-actions cell and obscure the owner's actions — the owner's primary intent at `/lists/[ownedId]?spoilers=on` is editing while seeing who claimed what, so the kebab SHALL remain visible.
 
 #### Scenario: Owner sees the kebab trigger in col 5 at all viewports
@@ -227,7 +227,7 @@ In row view, the right-column claim affordances ("Get this gift", "Manage your c
 #### Scenario: Fully-claimed state absorbs the right columns as a disabled wide pill
 
 - **WHEN** the item is fully claimed by someone other than the viewer
-- **THEN** a disabled "✓ Fully claimed" pill SHALL render in the right-column cell aligned with the other claim affordances (shared `min-width: 165px` floor), the card SHALL receive the muted claimed treatment, and activating the pill SHALL NOT open the purchase modal
+- **THEN** a disabled "✓ Fully claimed" pill SHALL render in the right-column cell aligned with the other claim affordances (shared `min-width: 165px` floor at ≥600px), the card SHALL receive the muted claimed treatment, and activating the pill SHALL NOT open the purchase modal
 
 #### Scenario: Viewer-claimed state offers Manage your claim
 
@@ -238,6 +238,11 @@ In row view, the right-column claim affordances ("Get this gift", "Manage your c
 
 - **WHEN** the viewer owns the list and `showSpoilerInfo` is true (item has claims and spoilers are revealed for the owner)
 - **THEN** the `.purchased-banner--spoiler` element SHALL apply `grid-column: 3` (not `3 / -1`), occupying only the buy-pill cell on rows 1–2; the kebab `.item-owner-actions-mobile` cell SHALL remain available at all viewports. The spoiler pill SHALL NOT overlap or obscure the kebab affordance.
+
+#### Scenario: Claim-affordance width floor is scoped to ≥600px
+
+- **WHEN** the viewport is `<600px`
+- **THEN** the `min-width: 165px` floor SHALL NOT apply to `.claim-cta-btn`, `.manage-claim-btn`, or the claimed pill — their width is governed by the mobile horizontal-card action-row spans
 
 #### Scenario: Footer banner is hidden in row view
 
@@ -265,17 +270,24 @@ Owner actions on an item card/row SHALL render as a single kebab `<Menu>` at ALL
 
 ### Requirement: At viewport widths below 600px the row layout SHALL reflow into a vertically-stacked horizontal-card
 
-`.item-list .item-container` and `.sortable-item .item-container` at `<600px` SHALL apply a grid template that stacks content vertically rather than compressing horizontally. The shape SHALL be: image (col `img`, spans rows 1–2), title (col `content`, row 1), price (col `content`, row 2 — for a non-owner the store-metadata line joins the price on this row), description (col 1/-1, row 3, full-width), action row (col 1/-1, row 4, full-width). The action row's contents are viewer-aware: for the owner, buy-link + `+N` flush-left and the owner-actions kebab flush-right; for a non-owner, the "Get this gift" button (full label — the previous `<600px` "Claim" short form is retired). The leader-dot `::after` SHALL be suppressed at this breakpoint. The leading slot (col `leading`) is the same column used by drag handle / checkbox surfaces.
+`.item-list .item-container` and `.sortable-item .item-container` at `<600px` SHALL apply a grid template that stacks content vertically rather than compressing horizontally. The shape SHALL be: image (col `img`, spans rows 1–2), title (col `content` spanning to the card's right edge — `grid-column: 2 / -1` — row 1), price (same `2 / -1` span, row 2 — for a non-owner the store-metadata line joins the price on this row), description (col 1/-1, row 3, full-width), action row (row 4). The trailing grid column SHALL NOT reserve width on rows 1–2: title and price span across it, so the action row's contents alone determine its width.
+
+The action row's contents are viewer-aware:
+
+- **Non-owner:** the claim affordance ("Get this gift" with its full label — the previous `<600px` "Claim" short form is retired — or "Manage your claim") SHALL span the full action row (`grid-column: 1 / -1`) and stretch to the full row width. This stretch is page-scoped cell placement at `<600px` only; it does not alter the button primitive's dimension contract.
+- **Owner:** left content (buy-link + `+N` trigger, or the claim button when one renders on an owned row, or the spoiler pill) SHALL span `grid-column: 1 / 3`; the owner-actions kebab SHALL occupy the trailing column (col 3) exclusively. No action-row occupant SHALL overlap or obscure the kebab.
+
+The leader-dot `::after` SHALL be suppressed at this breakpoint. The leading slot (col `leading`) is the same column used by drag handle / checkbox surfaces.
 
 #### Scenario: Mobile row stacks vertically instead of cramming horizontally
 
 - **WHEN** the viewport is `<600px` and a row is rendered
-- **THEN** the title and price SHALL stack on rows 1 and 2 right of the image; the description SHALL render on row 3 spanning the full width; the viewer-aware action row SHALL render on row 4 spanning the full width
+- **THEN** the title and price SHALL stack on rows 1 and 2 right of the image, each spanning to the card's right edge with no reserved trailing-column width; the description SHALL render on row 3 spanning the full width; the viewer-aware action row SHALL render on row 4
 
-#### Scenario: Non-owner mobile row shows metadata and the full button label
+#### Scenario: Non-owner mobile row shows metadata and a full-width claim button
 
 - **WHEN** the viewport is `<600px` and a non-owner renders an unclaimed item with multiple stores
-- **THEN** the store-metadata line SHALL render with the price (single line, `+N` truncation) and the action row SHALL contain the "Get this gift" button with its full label
+- **THEN** the store-metadata line SHALL render with the price (single line, `+N` truncation) and the "Get this gift" button SHALL render with its full label, spanning and stretching the full action row
 
 #### Scenario: Leader dots are suppressed at mobile
 
@@ -285,7 +297,12 @@ Owner actions on an item card/row SHALL render as a single kebab `<Menu>` at ALL
 #### Scenario: Owner-actions kebab engages in the action row
 
 - **WHEN** the viewport is `<600px` and the viewer is the owner
-- **THEN** the kebab `<Menu>` SHALL be visible flush-right in the action-row column, consistent with the universal-kebab requirement
+- **THEN** the kebab `<Menu>` SHALL be visible flush-right in the action-row trailing column, consistent with the universal-kebab requirement, and SHALL NOT be overlapped by any other action-row occupant
+
+#### Scenario: Owner spoiler pill leaves the kebab cell free at mobile
+
+- **WHEN** the viewport is `<600px`, the viewer owns the list, and `showSpoilerInfo` is true for an item with claims
+- **THEN** the `.purchased-banner--spoiler` element SHALL span `grid-column: 1 / 3` on the action row, and the kebab SHALL remain visible and operable in the trailing column
 
 ### Requirement: Choose-items SHALL adopt the shared row's visual treatment at mobile and render descriptions
 
