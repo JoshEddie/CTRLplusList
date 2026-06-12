@@ -3,28 +3,12 @@
 import { db } from '@/db';
 import { items, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { getItemById } from '@/lib/data/item';
 import { updateItemLists, updateItemStores } from '@/lib/data/item.associations';
 import { ItemSchema } from '@/lib/data/item.schema';
-import { getListsByUser } from '@/lib/data/list';
-import { getUserIdByEmail } from '@/lib/data/user';
 import { type ActionResponse, ItemDetails } from '@/lib/types';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
-
-export async function getItemEditData(itemId: string) {
-  const session = await auth();
-  if (!session?.user?.email) return null;
-  const user = await getUserIdByEmail(session.user.email);
-  if (!user) return null;
-  const [item, lists] = await Promise.all([
-    getItemById(itemId, user.id),
-    getListsByUser(user.id),
-  ]);
-  if (!item) return null;
-  return { item, lists };
-}
 
 export async function createItem(data: ItemDetails): Promise<ActionResponse> {
   try {

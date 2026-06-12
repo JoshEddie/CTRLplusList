@@ -3,9 +3,14 @@
 import { db } from '@/db';
 import { list_items, lists, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
+import {
+  checkListBalance,
+  rebalanceList,
+  reorderPosition,
+} from '@/lib/data/listItems.positions';
 import { authedUserId } from '@/lib/data/user.session';
 import { type ActionResponse } from '@/lib/types';
-import { and, asc, desc, eq, gt, inArray, lt, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
 
@@ -118,93 +123,61 @@ export async function setListItems(
   }
 }
 
-async function checkListBalance(listId: string): Promise<boolean> {
+export async function removeListItem(
+  list_id: string,
+  item_id: string
+): Promise<ActionResponse> {
   try {
-    const result = await db
-      .select()
-      .from(list_items)
-      .where(eq(list_items.list_id, listId))
-      .orderBy(desc(list_items.position))
-      .limit(2);
+    const userId = await authedUserId();
+    if (!userId) {
+      return {
+        success: false,
+        message: 'Unauthorized access',
+        error: 'Unauthorized',
+      };
+    }
 
-    if (result.length < 2) return false;
-
-    const [first, second] = result;
-    const minGap = 0.001;
-    return first.position - second.position < minGap;
-  } catch (error) {
-    console.error('Error checking list balance:', error);
-    throw error;
-  }
-}
-
-async function rebalanceList(listId: string): Promise<void> {
-  try {
-    const items = await db
-      .select()
-      .from(list_items)
-      .where(eq(list_items.list_id, listId))
-      .orderBy(asc(list_items.position));
-
-    const updates = items.map((item: { item_id: string }, index: number) => {
-      const newPosition = (index + 1) * 65536;
-      return db
-        .update(list_items)
-        .set({ position: newPosition })
-        .where(
-          and(
-            eq(list_items.list_id, listId),
-            eq(list_items.item_id, item.item_id)
-          )
-        );
+    const list = await db.query.lists.findFirst({
+      where: eq(lists.id, list_id),
+      columns: { user_id: true },
     });
+    if (!list) {
+      return { success: false, message: 'List not found', error: 'Not found' };
+    }
+    if (list.user_id !== userId) {
+      return {
+        success: false,
+        message: 'Unauthorized - list does not belong to you',
+        error: 'Forbidden',
+      };
+    }
 
-    await Promise.all(updates);
-  } catch (error) {
-    console.error('Error rebalancing list:', error);
-    throw error;
-  }
-}
-
-// Integer fractional-index position for a moved item: the midpoint between the
-// target and its neighbour on the side the item is travelling from, or the
-// edge cases when the target has no neighbour on that side.
-async function reorderPosition(
-  listId: string,
-  itemPosition: number,
-  targetPosition: number
-): Promise<number> {
-  if (itemPosition > targetPosition) {
-    const result = await db
-      .select({ position: list_items.position })
-      .from(list_items)
+    const deleted = await db
+      .delete(list_items)
       .where(
-        and(
-          eq(list_items.list_id, listId),
-          lt(list_items.position, targetPosition)
-        )
+        and(eq(list_items.list_id, list_id), eq(list_items.item_id, item_id))
       )
-      .orderBy(desc(list_items.position))
-      .limit(1);
-    return result.length > 0
-      ? Math.floor((result[0].position + targetPosition) / 2)
-      : Math.floor(targetPosition / 2);
-  }
+      .returning({ item_id: list_items.item_id });
+    if (deleted.length === 0) {
+      return {
+        success: false,
+        message: 'Item is not on this list',
+        error: 'Not found',
+      };
+    }
 
-  const result = await db
-    .select({ position: list_items.position })
-    .from(list_items)
-    .where(
-      and(
-        eq(list_items.list_id, listId),
-        gt(list_items.position, targetPosition)
-      )
-    )
-    .orderBy(asc(list_items.position))
-    .limit(1);
-  return result.length > 0
-    ? Math.floor((result[0].position + targetPosition) / 2)
-    : targetPosition + 65536;
+    updateTag('items');
+    updateTag('lists');
+
+    return { success: true, message: 'Removed from list' };
+  } catch (error) {
+    console.error('Error removing list item:', error);
+    return {
+      success: false,
+      message: 'An error occurred while removing the item',
+      error: 'Failed to remove item',
+    };
+  }
 }
 
 export async function updatePriority(

@@ -593,31 +593,3 @@ describe('deleteItem', () => {
     expect(res.error).toBe('Failed to delete item');
   });
 });
-
-describe('getItemEditData', () => {
-  it('NoSession_ReturnsNull', async () => {
-    noSession();
-    expect(await actions.getItemEditData('I')).toBeNull();
-  });
-
-  it('UnknownEmail_ReturnsNull', async () => {
-    asGhost();
-    expect(await actions.getItemEditData('I')).toBeNull();
-  });
-
-  it('MissingItem_ReturnsNull', async () => {
-    expect(await actions.getItemEditData('nope')).toBeNull();
-  });
-
-  it('OwnedItem_ReturnsItemAndLists', async () => {
-    await seedItem(db, { id: 'I', user_id: OWNER.id, name: 'Gift' });
-    await seedList(db, { id: 'L', user_id: OWNER.id, name: 'Birthday' });
-    await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
-
-    const res = await actions.getItemEditData('I');
-    expect(res?.item.id).toBe('I');
-    expect(res?.item.name).toBe('Gift');
-    expect(res?.item.lists.map((l) => l.id)).toContain('L');
-    expect(res?.lists.map((l) => l.id)).toContain('L');
-  });
-});
