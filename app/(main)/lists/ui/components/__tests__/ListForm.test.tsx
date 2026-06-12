@@ -91,11 +91,12 @@ describe('ListForm', () => {
         />
       );
 
+      await user.type(nameField(), '!');
       await user.click(screen.getByRole('button', { name: 'Update List' }));
 
       await waitFor(() =>
         expect(updateList).toHaveBeenCalledWith('list-1', {
-          name: 'Birthday Wishlist',
+          name: 'Birthday Wishlist!',
           subtitle: 'For the family',
           occasion: 'Birthday',
           date: new Date('2030-01-01'),
@@ -120,11 +121,12 @@ describe('ListForm', () => {
       const user = userEvent.setup();
       render(<ListForm list={makeList()} isEditing />);
 
+      await user.type(nameField(), '!');
       await user.click(screen.getByRole('button', { name: 'Update List' }));
 
       await waitFor(() =>
         expect(updateList).toHaveBeenCalledWith('list-1', {
-          name: 'Birthday Wishlist',
+          name: 'Birthday Wishlist!',
           subtitle: null,
           occasion: '',
           date: new Date('2030-01-01'),
@@ -132,6 +134,57 @@ describe('ListForm', () => {
       );
       expect(router.push).toHaveBeenCalledWith('/lists/list-1');
       expect(router.refresh).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('PristineEdit', () => {
+    it('ModalSubmitNoChanges_SkipsUpdateList-OnSuccessThenCloseThenRefresh', async () => {
+      const onClose = vi.fn();
+      const onSuccess = vi.fn();
+      const user = userEvent.setup();
+      render(
+        <ListForm
+          list={makeList({ subtitle: 'For the family', occasion: 'Birthday' })}
+          isEditing
+          onClose={onClose}
+          onSuccess={onSuccess}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Update List' }));
+
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+      expect(updateList).not.toHaveBeenCalled();
+      expect(onSuccess).toHaveBeenCalledTimes(1);
+      expect(router.refresh).toHaveBeenCalledTimes(1);
+      expect(router.push).not.toHaveBeenCalled();
+    });
+
+    it('PageSubmitNoChanges_SkipsUpdateList-NavigatesToList', async () => {
+      const user = userEvent.setup();
+      render(<ListForm list={makeList()} isEditing />);
+
+      await user.click(screen.getByRole('button', { name: 'Update List' }));
+
+      await waitFor(() =>
+        expect(router.push).toHaveBeenCalledWith('/lists/list-1')
+      );
+      expect(updateList).not.toHaveBeenCalled();
+    });
+
+    it('RevertedEditSubmit_SkipsUpdateList', async () => {
+      const user = userEvent.setup();
+      render(<ListForm list={makeList()} isEditing />);
+
+      await user.type(nameField(), '!');
+      await user.clear(nameField());
+      await user.type(nameField(), 'Birthday Wishlist');
+      await user.click(screen.getByRole('button', { name: 'Update List' }));
+
+      await waitFor(() =>
+        expect(router.push).toHaveBeenCalledWith('/lists/list-1')
+      );
+      expect(updateList).not.toHaveBeenCalled();
     });
   });
 

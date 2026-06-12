@@ -86,6 +86,21 @@ beforeEach(async () => {
 });
 
 describe('createPurchase', () => {
+  // Spoiler hazard: a claim-driven bump would leak claim activity to the
+  // owner through the hero's "updated" label (list-update-recency).
+  it('AuthedSelfClaim_LeavesListUpdatedAtUnchanged', async () => {
+    const STALE = new Date('2020-01-01T00:00:00.000Z');
+    await seedList(db, { id: 'L', user_id: OWNER.id, updated_at: STALE });
+    await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+    await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+
+    const res = await actions.createPurchase({ item_id: 'I', guest_name: null });
+
+    expect(res.success).toBe(true);
+    const row = (await db.select().from(lists).where(eq(lists.id, 'L')))[0];
+    expect(row.updated_at.toISOString()).toBe(STALE.toISOString());
+  });
+
   describe('IdentityContract', () => {
     it('AuthedSelfClaim_UsesSessionUserIdForBothRoles-NullGuestName', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });

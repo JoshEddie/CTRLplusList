@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { item_stores, items, list_items } from '@/db/schema';
+import { item_stores, items, list_items, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import type { ItemDetails } from '@/lib/types';
 import { bootPglite, resetDb } from '@/test/helpers/db';
@@ -591,5 +591,67 @@ describe('deleteItem', () => {
     asGhost();
     const res = await actions.deleteItem('I');
     expect(res.error).toBe('Failed to delete item');
+  });
+});
+
+describe('UpdateRecency', () => {
+  const STALE = new Date('2020-01-01T00:00:00.000Z');
+
+  const updatedAtById = async () =>
+    Object.fromEntries(
+      (await db.select().from(lists)).map((r) => [r.id, r.updated_at])
+    );
+
+  beforeEach(async () => {
+    // I is a member of M1 and M2; OFF has no membership.
+    await seedItem(db, { id: 'I', user_id: OWNER.id, name: 'Gift' });
+    await seedList(db, { id: 'M1', user_id: OWNER.id, updated_at: STALE });
+    await seedList(db, { id: 'M2', user_id: OWNER.id, updated_at: STALE });
+    await seedList(db, { id: 'OFF', user_id: OWNER.id, updated_at: STALE });
+    await seedListItem(db, { list_id: 'M1', item_id: 'I', position: 65536 });
+    await seedListItem(db, { list_id: 'M2', item_id: 'I', position: 65536 });
+  });
+
+  it('DeleteItem_BumpsMemberLists-LeavesNonMemberUntouched-CallsUpdateTagLists', async () => {
+    const before = Date.now();
+    const res = await actions.deleteItem('I');
+    const after = Date.now();
+
+    expect(res.success).toBe(true);
+    const byId = await updatedAtById();
+    expect(byId.M1.getTime()).toBeGreaterThanOrEqual(before);
+    expect(byId.M1.getTime()).toBeLessThanOrEqual(after);
+    expect(byId.M2.getTime()).toBeGreaterThanOrEqual(before);
+    expect(byId.M2.getTime()).toBeLessThanOrEqual(after);
+    expect(byId.OFF.toISOString()).toBe(STALE.toISOString());
+    expect(updateTag).toHaveBeenCalledWith('lists');
+  });
+
+  it('UpdateItemFieldsOnly_LeavesAllUpdatedAtUnchanged', async () => {
+    const res = await actions.updateItem(
+      makeItem({
+        id: 'I',
+        name: 'Renamed Gift',
+        lists: [
+          { value: 'M1', label: 'M1' },
+          { value: 'M2', label: 'M2' },
+        ],
+      })
+    );
+
+    expect(res.success).toBe(true);
+    const byId = await updatedAtById();
+    expect(byId.M1.toISOString()).toBe(STALE.toISOString());
+    expect(byId.M2.toISOString()).toBe(STALE.toISOString());
+    expect(byId.OFF.toISOString()).toBe(STALE.toISOString());
+  });
+
+  it('ArchiveItem_LeavesMemberListsUpdatedAtUnchanged', async () => {
+    const res = await actions.archiveItem('I', true);
+
+    expect(res.success).toBe(true);
+    const byId = await updatedAtById();
+    expect(byId.M1.toISOString()).toBe(STALE.toISOString());
+    expect(byId.M2.toISOString()).toBe(STALE.toISOString());
   });
 });

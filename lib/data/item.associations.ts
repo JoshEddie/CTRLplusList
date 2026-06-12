@@ -1,8 +1,10 @@
 import { db } from '@/db';
 import { item_stores, items, list_items, lists, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
+import { touchLists } from '@/lib/data/list.touch';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { updateTag } from 'next/cache';
 
 // Internal write helpers for item ↔ store / item ↔ list associations, invoked
 // only by the item actions. Deliberately NOT in a 'use server' module:
@@ -138,6 +140,8 @@ export async function updateItemLists(
     const currentListIds = new Set(currentAssociations.map((a) => a.list_id));
     const selectedListIds = new Set(listIds);
 
+    const addedListIds = listIds.filter((id) => !currentListIds.has(id));
+
     if (listIds && listIds.length > 0) {
       await Promise.all(
         listIds.map(async (listId) => {
@@ -178,6 +182,14 @@ export async function updateItemLists(
             inArray(list_items.list_id, listIdsToDelete)
           )
         );
+    }
+
+    // Membership changed on exactly these lists — advance their update
+    // recency and refresh cached list reads (list-update-recency).
+    const changedListIds = [...addedListIds, ...listIdsToDelete];
+    if (changedListIds.length > 0) {
+      await touchLists(changedListIds);
+      updateTag('lists');
     }
   } catch (error) {
     console.error('Database Error:', error);

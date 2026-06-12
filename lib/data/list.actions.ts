@@ -97,7 +97,13 @@ export async function updateList(
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, id),
-      columns: { user_id: true },
+      columns: {
+        user_id: true,
+        name: true,
+        subtitle: true,
+        occasion: true,
+        date: true,
+      },
     });
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
@@ -124,12 +130,34 @@ export async function updateList(
     const validatedData = validationResult.data;
     const updateData: Record<string, unknown> = {};
 
-    if (validatedData.name !== undefined) updateData.name = validatedData.name;
-    if (validatedData.subtitle !== undefined)
+    if (validatedData.name !== undefined && validatedData.name !== list.name)
+      updateData.name = validatedData.name;
+    if (
+      validatedData.subtitle !== undefined &&
+      validatedData.subtitle !== list.subtitle
+    )
       updateData.subtitle = validatedData.subtitle;
-    if (validatedData.occasion !== undefined)
+    if (
+      validatedData.occasion !== undefined &&
+      validatedData.occasion !== list.occasion
+    )
       updateData.occasion = validatedData.occasion;
-    if (validatedData.date !== undefined) updateData.date = validatedData.date;
+    if (
+      validatedData.date !== undefined &&
+      validatedData.date.getTime() !== list.date.getTime()
+    )
+      updateData.date = validatedData.date;
+
+    // updated_at advances only on a real change (list-update-recency): a
+    // payload matching the stored row issues no UPDATE at all.
+    if (Object.keys(updateData).length === 0) {
+      return {
+        success: true,
+        message: 'List updated successfully',
+        id,
+      };
+    }
+    updateData.updated_at = new Date();
 
     const result = await db
       .update(lists)

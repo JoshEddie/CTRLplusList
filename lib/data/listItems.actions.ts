@@ -3,6 +3,7 @@
 import { db } from '@/db';
 import { list_items, lists, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
+import { touchLists } from '@/lib/data/list.touch';
 import {
   checkListBalance,
   rebalanceList,
@@ -102,6 +103,8 @@ export async function setListItems(
       );
     }
 
+    await touchLists([list_id]);
+
     updateTag('items');
     updateTag('lists');
 
@@ -165,6 +168,8 @@ export async function removeListItem(
         error: 'Not found',
       };
     }
+
+    await touchLists([list_id]);
 
     updateTag('items');
     updateTag('lists');

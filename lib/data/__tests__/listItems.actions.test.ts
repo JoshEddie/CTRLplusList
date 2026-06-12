@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { list_items } from '@/db/schema';
+import { list_items, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
@@ -158,6 +158,49 @@ describe('setListItems', () => {
     expect((await listItemRows('L')).map((r) => r.item_id)).toEqual(['A']);
   });
 
+  describe('UpdateRecency', () => {
+    const STALE = new Date('2020-01-01T00:00:00.000Z');
+
+    const updatedAtOfL = async () =>
+      (await db.select().from(lists).where(eq(lists.id, 'L')))[0].updated_at;
+
+    beforeEach(async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id, updated_at: STALE });
+      await seedItem(db, { id: 'A', user_id: OWNER.id });
+      await seedItem(db, { id: 'B', user_id: OWNER.id });
+      await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
+    });
+
+    it('NonEmptyDiff_BumpsUpdatedAt', async () => {
+      const before = Date.now();
+      const res = await actions.setListItems('L', ['A', 'B']);
+      const after = Date.now();
+
+      expect(res.success).toBe(true);
+      const t = (await updatedAtOfL()).getTime();
+      expect(t).toBeGreaterThanOrEqual(before);
+      expect(t).toBeLessThanOrEqual(after);
+    });
+
+    it('NoChanges_LeavesUpdatedAtUnchanged', async () => {
+      const res = await actions.setListItems('L', ['A']);
+
+      expect(res.message).toBe('No changes');
+      expect((await updatedAtOfL()).toISOString()).toBe(STALE.toISOString());
+    });
+
+    it('RemoveListItem_BumpsUpdatedAt', async () => {
+      const before = Date.now();
+      const res = await actions.removeListItem('L', 'A');
+      const after = Date.now();
+
+      expect(res.success).toBe(true);
+      const t = (await updatedAtOfL()).getTime();
+      expect(t).toBeGreaterThanOrEqual(before);
+      expect(t).toBeLessThanOrEqual(after);
+    });
+  });
+
   it('SelectThrows_ReturnsFailedToSaveItems', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     await seedItem(db, { id: 'A', user_id: OWNER.id });
@@ -291,6 +334,41 @@ describe('updatePriority', () => {
     expect([await positionOf('A'), await positionOf('B')].sort()).toEqual([
       196608, 262144,
     ]);
+  });
+
+  describe('UpdateRecency', () => {
+    const STALE = new Date('2020-01-01T00:00:00.000Z');
+
+    const updatedAtOfL = async () =>
+      (await db.select().from(lists).where(eq(lists.id, 'L')))[0].updated_at;
+
+    async function seedStaleListWith(positions: Record<string, number>) {
+      await seedList(db, { id: 'L', user_id: OWNER.id, updated_at: STALE });
+      for (const itemId of Object.keys(positions)) {
+        await seedItem(db, { id: itemId, user_id: OWNER.id });
+        await seedListItem(db, {
+          list_id: 'L',
+          item_id: itemId,
+          position: positions[itemId],
+        });
+      }
+    }
+
+    it('Move_LeavesUpdatedAtUnchanged', async () => {
+      await seedStaleListWith({ A: 65536, B: 131072, C: 196608 });
+      const res = await actions.updatePriority('C', 'B', 'L');
+
+      expect(res.success).toBe(true);
+      expect((await updatedAtOfL()).toISOString()).toBe(STALE.toISOString());
+    });
+
+    it('MoveTriggeringRebalance_LeavesUpdatedAtUnchanged', async () => {
+      await seedStaleListWith({ D: 32768, C: 65536, A: 131072, B: 131072 });
+      const res = await actions.updatePriority('D', 'C', 'L');
+
+      expect(res.success).toBe(true);
+      expect((await updatedAtOfL()).toISOString()).toBe(STALE.toISOString());
+    });
   });
 
   describe('Guards', () => {

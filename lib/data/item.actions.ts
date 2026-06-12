@@ -1,9 +1,10 @@
 'use server';
 
 import { db } from '@/db';
-import { items, users } from '@/db/schema';
+import { items, list_items, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { updateItemLists, updateItemStores } from '@/lib/data/item.associations';
+import { touchLists } from '@/lib/data/list.touch';
 import { ItemSchema } from '@/lib/data/item.schema';
 import { type ActionResponse, ItemDetails } from '@/lib/types';
 import { eq } from 'drizzle-orm';
@@ -255,7 +256,21 @@ export async function deleteItem(id: string) {
       throw new Error('Unauthorized - Item does not belong to you');
     }
 
+    // The delete cascades through list_items, removing the item from its
+    // lists — capture the memberships first so those lists' update recency
+    // can be advanced afterwards (list-update-recency).
+    const memberships = await db
+      .select({ list_id: list_items.list_id })
+      .from(list_items)
+      .where(eq(list_items.item_id, id));
+
     await db.delete(items).where(eq(items.id, id));
+
+    const affectedListIds = memberships.map((m) => m.list_id);
+    if (affectedListIds.length > 0) {
+      await touchLists(affectedListIds);
+      updateTag('lists');
+    }
 
     updateTag('items');
 

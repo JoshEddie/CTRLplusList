@@ -203,6 +203,74 @@ describe('updateList', () => {
     expect(row?.date.toISOString()).toBe(date.toISOString());
   });
 
+  describe('UpdateRecency', () => {
+    const STALE = new Date('2020-01-01T00:00:00.000Z');
+    const SEEDED = {
+      name: 'Old',
+      subtitle: 'keep me',
+      occasion: 'birthday',
+      date: new Date('2030-01-01T00:00:00.000Z'),
+    };
+
+    beforeEach(async () => {
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        updated_at: STALE,
+        ...SEEDED,
+      });
+    });
+
+    const findL = async () => (await listRows()).find((l) => l.id === 'L');
+
+    it('IdenticalPayload_IssuesNoWrite-ReturnsSuccess-NoUpdateTag', async () => {
+      const updateSpy = vi.spyOn(db, 'update');
+      const res = await actions.updateList('L', { ...SEEDED });
+
+      expect(res).toMatchObject({ success: true, id: 'L' });
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(updateTag).not.toHaveBeenCalled();
+      expect((await findL())?.updated_at.toISOString()).toBe(
+        STALE.toISOString()
+      );
+    });
+
+    it('SameInstantNewDateObject_TreatedClean-NoWrite', async () => {
+      const updateSpy = vi.spyOn(db, 'update');
+      const res = await actions.updateList('L', {
+        date: new Date(SEEDED.date.getTime()),
+      });
+
+      expect(res).toMatchObject({ success: true, id: 'L' });
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect((await findL())?.updated_at.toISOString()).toBe(
+        STALE.toISOString()
+      );
+    });
+
+    it('ChangedName_BumpsUpdatedAt', async () => {
+      const before = Date.now();
+      const res = await actions.updateList('L', { name: 'New Name' });
+      const after = Date.now();
+
+      expect(res.success).toBe(true);
+      const t = (await findL())?.updated_at.getTime();
+      expect(t).toBeGreaterThanOrEqual(before);
+      expect(t).toBeLessThanOrEqual(after);
+    });
+
+    it('PartialPayloadUnchangedField_OmittedFieldsIgnored-NoWrite', async () => {
+      const updateSpy = vi.spyOn(db, 'update');
+      const res = await actions.updateList('L', { name: SEEDED.name });
+
+      expect(res).toMatchObject({ success: true, id: 'L' });
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect((await findL())?.updated_at.toISOString()).toBe(
+        STALE.toISOString()
+      );
+    });
+  });
+
   it('InvalidData_ReturnsValidationErrors', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     const res = await actions.updateList('L', { name: 'ab' });
@@ -586,6 +654,27 @@ describe('setListVisibility', () => {
       expect(row?.shared).toBe(false);
       expect(row?.shared_at).toBeNull();
     });
+  });
+
+  it('PrivateToPublic_LeavesUpdatedAtUnchanged', async () => {
+    // Visibility is share recency (shared_at), not list news — it must not
+    // advance update recency (list-update-recency).
+    const STALE = new Date('2020-01-01T00:00:00.000Z');
+    await seedList(db, {
+      id: 'L',
+      user_id: OWNER.id,
+      visibility: 'private',
+      shared: false,
+      shared_at: null,
+      updated_at: STALE,
+    });
+
+    const res = await actions.setListVisibility('L', 'public');
+
+    expect(res.success).toBe(true);
+    expect((await findL())?.updated_at.toISOString()).toBe(
+      STALE.toISOString()
+    );
   });
 
   describe('SuccessShapeAndRevalidation', () => {
