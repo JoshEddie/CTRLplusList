@@ -2,6 +2,7 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { fetchProduct } from '@/lib/product-fetch';
+import { isPrivateHostname } from '@/lib/product-fetch/ssrf';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
@@ -28,19 +29,9 @@ function checkRateLimit(userId: string): boolean {
   return true;
 }
 
-// SSRF guard: tier 1 fetches from our own network, so refuse anything that
-// could resolve inside it. Literal IPs are rejected wholesale — real product
-// pages live on hostnames.
-function isPrivateTarget(parsed: URL): boolean {
-  const host = parsed.hostname.toLowerCase();
-  if (host === 'localhost' || host.endsWith('.localhost')) return true;
-  if (host.endsWith('.local') || host.endsWith('.internal')) return true;
-  if (!host.includes('.')) return true;
-  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return true;
-  if (host.startsWith('[') || host.includes(':')) return true;
-  return false;
-}
-
+// String-level SSRF pre-check only; the DNS-resolving, per-redirect-hop guard
+// lives in lib/product-fetch (tier 1 is the only path that fetches from our
+// own network).
 function validateUrl(url: unknown): URL | null {
   if (typeof url !== 'string' || url.length === 0 || url.length > MAX_URL_LENGTH) {
     return null;
@@ -52,7 +43,7 @@ function validateUrl(url: unknown): URL | null {
     return null;
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-  if (isPrivateTarget(parsed)) return null;
+  if (isPrivateHostname(parsed.hostname)) return null;
   return parsed;
 }
 

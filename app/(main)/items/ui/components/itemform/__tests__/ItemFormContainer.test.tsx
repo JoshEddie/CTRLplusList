@@ -214,7 +214,7 @@ describe('ItemFormContainer', () => {
       const form = await screen.findByTestId('item-form');
       const prefill = JSON.parse(form.getAttribute('data-prefill')!);
       expect(prefill.name).toBe('Acme Widget');
-      // Fetched descriptions are never prefilled (wrong/noisy content — #157).
+      // Fetched descriptions are never prefilled (wrong/noisy content).
       expect(prefill.description).toBeUndefined();
       expect(prefill.image_url).toBe('https://example.com/w.jpg');
       expect(prefill.stores).toHaveLength(1);

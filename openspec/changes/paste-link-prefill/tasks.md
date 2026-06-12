@@ -24,7 +24,8 @@
 - [x] 4.1 Add the create-only phase machine (`'url' | 'fetching' | 'form'`) in `ItemFormContainer.tsx` / `ItemForm.tsx`; edit mode opens straight to `'form'`; `FormShell` dismiss + `returnTo` plumbing untouched
 - [x] 4.2 Build `UrlEntryStep` (FormField + TextField `type="url"`, primary "Fetch Details" Button, "Fill in details manually →" link variant, client-side URL validation error)
 - [x] 4.3 Build `FetchingStep` (`<LoadingIndicator size="rail">`, cycling messages ~2.5s with fade outside any live region, static "This may take a moment.", URL strip with "change", footer Cancel aborting via `AbortController` and returning to `'url'`)
-- [x] 4.4 Wire success: map result into `useItemForm` initial values (name, description, imageUrl, one store row `{name: store, price, link: pastedUrl}` + provenance), render "Fetched from {store}" badge with change affordance; drop `price_fetched_at` when the user edits the prefilled price
+- [x] 4.4 Wire success: map result into `useItemForm` initial values (name, imageUrl, one store row `{name: store, price, link: pastedUrl}` + provenance; Description stays empty per spec), render "Fetched from {store}" badge with change affordance; drop `price_fetched_at` when the user edits the prefilled price
+- [x] 4.8 Eager validation of prefilled values: client-side name bounds mirroring `ItemSchema` (3–100) in `itemform/utils.ts` + `submitDisabled` gating on `FormShell` footer while the form is invalid (shared with manual/edit flows)
 - [x] 4.5 Wire failure/timeout: manual form with "couldn't fetch automatically" notice, pasted URL prefilled into store-row Link, "← Use a link instead" escape back to `'url'`
 - [x] 4.6 CSS for the new states using existing `global.css` / `--field-*` tokens (no new one-off interactive-surface classes)
 - [x] 4.7 Component tests for the phase machine: create opens at `'url'`, edit skips it, manual toggle both directions, cancel/change abort, success prefill mapping, failure fallback with notice
@@ -44,4 +45,4 @@
 - [x] 7.2 `npx tsc --noEmit` — zero errors
 - [x] 7.3 `npm run build` — completes successfully
 - [x] 7.4 `npm run test:coverage` — zero failing tests, coverage reported
-- [ ] 7.5 `npm run test:e2e` — zero failing tests
+- [~] 7.5 `npm run test:e2e` — zero failing tests (verified by GitHub PR CI: `e2e` check green on PR #158)

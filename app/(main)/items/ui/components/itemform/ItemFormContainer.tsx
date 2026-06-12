@@ -23,7 +23,7 @@ function prefillFrom(
     const { product, fetchedAt } = outcome;
     // Description is deliberately NOT prefilled: extracted descriptions are
     // marketing copy at best and the wrong block entirely on some sites
-    // (Amazon book pages yield Editorial Reviews) — see issue #157.
+    // (Amazon book pages yield Editorial Reviews).
     return {
       name: product.title,
       image_url: product.imageUrl ?? '',

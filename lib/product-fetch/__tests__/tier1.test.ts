@@ -1,3 +1,4 @@
+import { lookup } from 'node:dns/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -12,6 +13,15 @@ import {
   OG_ONLY_HTML,
   PRODUCT_JSON_LD,
 } from './test-helpers';
+
+vi.mock('node:dns/promises', () => ({
+  lookup: vi.fn(),
+}));
+const lookupMock = vi.mocked(lookup);
+
+function redirectResponse(location: string): Response {
+  return new Response(null, { status: 301, headers: { location } });
+}
 
 describe('normalizePrice', () => {
   it('NumericString_ReturnsTrimmedString', () => {
@@ -189,6 +199,9 @@ describe('fetchTier1', () => {
   beforeEach(() => {
     fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
+    lookupMock.mockResolvedValue([
+      { address: '93.184.216.34', family: 4 },
+    ] as never);
   });
 
   afterEach(() => {
@@ -206,7 +219,7 @@ describe('fetchTier1', () => {
     expect(result?.title).toBe('Acme Widget');
     expect(result?.finalUrl).toBe('https://example.com/widget');
     const [, init] = fetchMock.mock.calls[0];
-    expect(init.redirect).toBe('follow');
+    expect(init.redirect).toBe('manual');
     expect(init.headers['User-Agent']).toMatch(/Mozilla/);
   });
 
@@ -236,18 +249,70 @@ describe('fetchTier1', () => {
     expect(result?.title).toBe('Acme Widget');
   });
 
-  it('RedirectedResponse_ReturnsFinalUrl', async () => {
-    fetchMock.mockResolvedValue(
-      htmlResponse(
-        htmlWithJsonLd(PRODUCT_JSON_LD),
-        'https://www.amazon.com/dp/B0TEST'
+  it('RedirectedResponse_RevalidatesHopAndReturnsFinalUrl', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        redirectResponse('https://www.amazon.com/dp/B0TEST')
       )
-    );
+      .mockResolvedValueOnce(htmlResponse(htmlWithJsonLd(PRODUCT_JSON_LD)));
     const result = await fetchTier1(
       'https://a.co/d/share',
       new AbortController().signal
     );
     expect(result?.finalUrl).toBe('https://www.amazon.com/dp/B0TEST');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(lookupMock).toHaveBeenCalledWith('www.amazon.com', {
+      all: true,
+      verbatim: true,
+    });
+  });
+
+  it('RedirectToPrivateHost_ReturnsUndefinedWithoutFetchingHop', async () => {
+    fetchMock.mockResolvedValueOnce(
+      redirectResponse('http://localhost:3000/admin')
+    );
+    expect(
+      await fetchTier1('https://example.com/widget', new AbortController().signal)
+    ).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('HostnameResolvingToPrivateIp_ReturnsUndefinedWithoutFetching', async () => {
+    lookupMock.mockResolvedValue([{ address: '10.0.0.5', family: 4 }] as never);
+    expect(
+      await fetchTier1(
+        'https://evil.10.0.0.5.nip.io/page',
+        new AbortController().signal
+      )
+    ).toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('UnresolvableHostname_ReturnsUndefinedWithoutFetching', async () => {
+    lookupMock.mockRejectedValue(new Error('ENOTFOUND'));
+    expect(
+      await fetchTier1(
+        'https://no-such-host.example.com',
+        new AbortController().signal
+      )
+    ).toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('RedirectWithMalformedLocation_ReturnsUndefinedWithoutFetchingHop', async () => {
+    fetchMock.mockResolvedValueOnce(redirectResponse('http://['));
+    expect(
+      await fetchTier1('https://example.com/widget', new AbortController().signal)
+    ).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('RedirectLoopBeyondLimit_ReturnsUndefined', async () => {
+    fetchMock.mockResolvedValue(redirectResponse('https://example.com/again'));
+    expect(
+      await fetchTier1('https://example.com/widget', new AbortController().signal)
+    ).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(6);
   });
 
   it('TitlelessPage_ReturnsUndefined', async () => {

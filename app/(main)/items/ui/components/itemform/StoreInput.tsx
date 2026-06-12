@@ -1,13 +1,7 @@
 import { PriceField, TextField } from '@/app/ui/components/field';
 import { ItemDetails } from '@/lib/types';
 import './prefill.css';
-
-function priceAsOf(fetchedAt: Date | string | null | undefined) {
-  if (!fetchedAt) return null;
-  const date = new Date(fetchedAt);
-  if (Number.isNaN(date.getTime())) return null;
-  return `price as of ${date.toLocaleDateString()}`;
-}
+import { priceAsOf } from './utils';
 
 interface ItemFormErrors {
   name: string;

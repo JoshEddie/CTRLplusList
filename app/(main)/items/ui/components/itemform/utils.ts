@@ -4,6 +4,22 @@ export interface StoreFields {
   price: string;
 }
 
+export function isValidProductUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+export function priceAsOf(fetchedAt: Date | string | null | undefined) {
+  if (!fetchedAt) return null;
+  const date = new Date(fetchedAt);
+  if (Number.isNaN(date.getTime())) return null;
+  return `price as of ${date.toLocaleDateString()}`;
+}
+
 export function isValidHttpUrl(url: string): { url: string; error?: string } {
   if (!url.match(/^https?:\/\//i)) {
     return { url, error: 'http:// is missing' };

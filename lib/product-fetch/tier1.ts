@@ -1,6 +1,8 @@
+import { isUnsafeFetchTarget } from '@/lib/product-fetch/ssrf';
 import type { ExtractedProduct } from '@/lib/product-fetch/types';
 
 const TIER1_TIMEOUT_MS = 6000;
+const MAX_REDIRECTS = 5;
 
 const BROWSER_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
@@ -135,6 +137,56 @@ export function extractMeta(html: string): ExtractedProduct {
   };
 }
 
+function parseUrl(value: string, base?: URL): URL | undefined {
+  try {
+    return new URL(value, base);
+  } catch {
+    return undefined;
+  }
+}
+
+function redirectTarget(response: Response, from: URL): URL | null | undefined {
+  if (response.status < 300 || response.status >= 400) return null;
+  const location = response.headers.get('location');
+  return location ? parseUrl(location, from) : null;
+}
+
+// Redirects are followed manually so the SSRF guard re-runs on every hop —
+// a public URL must not be able to 302 into localhost or a private range.
+async function followSafely(
+  startUrl: URL,
+  signal: AbortSignal,
+  timeoutSignal: AbortSignal
+): Promise<{ response: Response; finalUrl: URL } | undefined> {
+  let currentUrl = startUrl;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    if (await isUnsafeFetchTarget(currentUrl)) return undefined;
+    let response: Response;
+    try {
+      response = await fetch(currentUrl.toString(), {
+        redirect: 'manual',
+        signal: timeoutSignal,
+        headers: {
+          'User-Agent': BROWSER_UA,
+          Accept: 'text/html,application/xhtml+xml',
+        },
+      });
+    } catch (error) {
+      if (signal.aborted) throw error;
+      return undefined;
+    }
+    const next = redirectTarget(response, currentUrl);
+    if (next === null && response.ok) {
+      return { response, finalUrl: currentUrl };
+    }
+    // Unread bodies hold the undici connection open until GC.
+    void response.body?.cancel();
+    if (!next) return undefined;
+    currentUrl = next;
+  }
+  return undefined;
+}
+
 export async function fetchTier1(
   url: string,
   signal: AbortSignal
@@ -143,21 +195,11 @@ export async function fetchTier1(
     signal,
     AbortSignal.timeout(TIER1_TIMEOUT_MS),
   ]);
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      redirect: 'follow',
-      signal: timeoutSignal,
-      headers: {
-        'User-Agent': BROWSER_UA,
-        Accept: 'text/html,application/xhtml+xml',
-      },
-    });
-  } catch (error) {
-    if (signal.aborted) throw error;
-    return undefined;
-  }
-  if (!response.ok) return undefined;
+  const startUrl = parseUrl(url);
+  if (!startUrl) return undefined;
+  const followed = await followSafely(startUrl, signal, timeoutSignal);
+  if (!followed) return undefined;
+  const { response, finalUrl } = followed;
   const html = await response.text();
   const jsonLd = extractJsonLd(html);
   const meta = extractMeta(html);
@@ -168,7 +210,7 @@ export async function fetchTier1(
           Object.entries(jsonLd).filter(([, v]) => v !== undefined)
         )
       : {}),
-    finalUrl: response.url || url,
+    finalUrl: finalUrl.toString(),
   };
   return merged.title ? merged : undefined;
 }

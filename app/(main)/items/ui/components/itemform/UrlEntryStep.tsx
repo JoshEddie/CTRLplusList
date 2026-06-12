@@ -4,15 +4,7 @@ import { Button } from '@/app/ui/components/button';
 import { TextField } from '@/app/ui/components/field';
 import { useState } from 'react';
 import './prefill.css';
-
-export function isValidProductUrl(value: string): boolean {
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
+import { isValidProductUrl } from './utils';
 
 export function UrlEntryStep({
   initialUrl,
