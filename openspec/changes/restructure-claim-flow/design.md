@@ -43,8 +43,8 @@ The price row becomes `{price} · {store} · {store} +N` — at most two named s
 - **Fully claimed by others:** greyed/desaturated card, disabled `✓ Fully claimed` button, modal not openable. Same gating as today's `showPurchased`, new presentation.
 - **Viewer has a removable claim:** an outline (`primary`-variant) `Manage your claim` button opening the already-claimed modal state (D5); the price row shows the plain price (no metadata line, no extra pill — the green mine-banner already conveys the claimed state). This replaces the wide claimed-pill-with-Undo card treatment.
 - **Row view:** all right-column claim affordances (`Get this gift`, `Manage your claim`, the disabled `Fully claimed` pill) share a `min-width: 165px` floor so rows align across states.
-- Banners (`ClaimBanners`) remain for owner-spoiler and claimed-by-others info; the mine-banner's Undo affordance is removed outright — claim management is the `Manage your claim` button's job.
-- **Owner claim entry (spoilers on):** the card affordance reads `Mark as claimed` — purchase-recording language, since "Get this gift" makes no sense for the owner's own items.
+- Banners (`ClaimBanners`) remain for owner-spoiler and claimed-by-others **info only**; both the mine-banner's Undo affordance and the owner's per-claim Remove affordance are removed from the banner outright — claim management is the modal's job (`Manage your claim` for the viewer, `Manage claims` for the owner).
+- **Owner claim entry (spoilers on):** the owner's card affordance is claim-presence-aware. With no claims yet (item still claimable) it reads `Mark as claimed` — purchase-recording language, since "Get this gift" makes no sense for the owner's own items. Once any claim exists it reads `Manage claims` and opens the modal's owner claims list (`OwnerClaimsList`), where each claim carries a per-claim `Remove` (master unclaim) — and the modal still offers the `I bought this myself` claim CTA when claimable quantity remains, so the owner can both add and remove from one surface. `showOwnerManageAction` (any claim) takes precedence over `showOwnerClaimAction` (claimable) on the card, so `Mark as claimed` is the card copy only on zero-claim items.
 
 ### D3 — Modal shell: existing `Modal` primitive, content restyled; bottom sheet deferred
 
@@ -97,9 +97,11 @@ The duplicated `removePurchase` + `toast.promise` + `localPurchases` filter bloc
 | Surface | Copy |
 |---|---|
 | Card CTA (non-owner) | `Get this gift` |
-| Card CTA (owner, spoilers on) | `Mark as claimed` |
+| Card CTA (owner, spoilers on, no claims yet) | `Mark as claimed` |
+| Card CTA (owner, spoilers on, has claims) | `Manage claims` |
 | Card fully-claimed | `✓ Fully claimed` (disabled) |
 | Card viewer-claimed | `Manage your claim` |
+| Modal owner per-claim unclaim | `Remove` (in `OwnerClaimsList`) |
 | Modal self-claim (friend) | `Claim this gift` |
 | Modal self-claim (owner) | `I bought this myself` |
 | Disclosure (friend) | `Claiming for someone else?` |

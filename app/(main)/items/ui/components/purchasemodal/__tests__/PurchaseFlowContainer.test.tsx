@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getClaimPickerForItem } from '@/lib/data/user.actions';
+import { PurchaseView } from '@/lib/types';
 import PurchaseFlowContainer from '../PurchaseFlowContainer';
 
 // user.actions is a 'use server' module whose import chain reaches the DB
@@ -442,6 +443,7 @@ describe('PurchaseFlowContainer', () => {
       const { onSelfClaim } = renderContainer({
         isOwner: true,
         showSpoilers: true,
+        ownerCanClaim: true,
       });
       await user.click(
         screen.getByRole('button', { name: 'I bought this myself' })
@@ -451,6 +453,28 @@ describe('PurchaseFlowContainer', () => {
       expect(
         await screen.findByPlaceholderText('Search your circle…')
       ).toBeInTheDocument();
+    });
+
+    it('SpoilersOn_OwnerClaimsListRemove-DispatchesOnRemoveClaim', async () => {
+      const user = userEvent.setup();
+      const claim: PurchaseView = {
+        id: 'pc1',
+        by: 'other',
+        firstName: 'Bob',
+        claimerFirstName: 'Alice',
+        claimedByViewer: false,
+      };
+      const { onRemoveClaim } = renderContainer({
+        isOwner: true,
+        showSpoilers: true,
+        ownerCanClaim: true,
+        ownerClaims: [claim],
+      });
+      expect(screen.getByText('Bob — added by Alice')).toBeInTheDocument();
+      await user.click(
+        screen.getByRole('button', { name: "Remove Bob's claim" })
+      );
+      expect(onRemoveClaim).toHaveBeenCalledWith(claim);
     });
   });
 });

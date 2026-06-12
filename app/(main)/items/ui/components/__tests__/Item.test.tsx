@@ -80,16 +80,7 @@ vi.mock('../ClaimBanners', () => ({
         data-claims={claims.map((c) => c.firstName).join(',')}
         data-my-claim={String(!!p.myClaim)}
         data-counter={p.counterText as string}
-      >
-        <button
-          type="button"
-          onClick={() =>
-            (p.onRemoveClaim as (c: unknown) => void)(claims[0])
-          }
-        >
-          banner-remove-first
-        </button>
-      </div>
+      />
     );
   },
 }));
@@ -149,6 +140,16 @@ vi.mock('../PurchaseModalSlot', () => ({
       </button>
       <button type="button" onClick={p.onUndoConfirm as () => void}>
         confirm-undo
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          (p.onRemoveClaim as (c: unknown) => void)(
+            (p.ownerClaims as unknown[])[0]
+          )
+        }
+      >
+        modal-remove-first
       </button>
       <button type="button" onClick={p.onClose as () => void}>
         slot-close
@@ -743,21 +744,26 @@ describe('Item', () => {
     });
   });
 
-  describe('RemoveClaimBanner', () => {
-    it('OwnerSpoilerRemoveClick_RemovesByPurchaseId-DropsClaim', async () => {
-      const user = userEvent.setup();
-      renderItem({
+  describe('OwnerMasterUnclaim', () => {
+    // Owner master unclaim is dispatched from the modal's claims list (not the
+    // spoiler banner); the modal carries `ownerClaims` only when spoilers are on.
+    const ownerWithClaim = {
+      user_id: OWNER,
+      showSpoilers: true,
+      item: {
         user_id: OWNER,
-        item: {
-          user_id: OWNER,
-          quantity_limit: 3,
-          purchases: [
-            { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
-          ],
-        },
-      });
+        quantity_limit: 3,
+        purchases: [
+          { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
+        ],
+      },
+    };
+
+    it('ModalRemoveClick_RemovesByPurchaseId-DropsClaim', async () => {
+      const user = userEvent.setup();
+      renderItem(ownerWithClaim, 'purchaseItem=i1');
       await user.click(
-        screen.getByRole('button', { name: 'banner-remove-first' })
+        screen.getByRole('button', { name: 'modal-remove-first' })
       );
       expect(removePurchase).toHaveBeenCalledWith({ purchase_id: 'p1' });
       await waitFor(() => expect(banners()).toHaveAttribute('data-claims', ''));
@@ -766,18 +772,9 @@ describe('Item', () => {
     it('RemoveThrows_LogsError-KeepsClaim', async () => {
       vi.mocked(removePurchase).mockRejectedValue(new Error('boom'));
       const user = userEvent.setup();
-      renderItem({
-        user_id: OWNER,
-        item: {
-          user_id: OWNER,
-          quantity_limit: 3,
-          purchases: [
-            { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
-          ],
-        },
-      });
+      renderItem(ownerWithClaim, 'purchaseItem=i1');
       await user.click(
-        screen.getByRole('button', { name: 'banner-remove-first' })
+        screen.getByRole('button', { name: 'modal-remove-first' })
       );
       await waitFor(() => expect(console.error).toHaveBeenCalled());
       expect(banners()).toHaveAttribute('data-claims', 'Sam');
@@ -786,18 +783,9 @@ describe('Item', () => {
     it('RemoveFails_KeepsClaim', async () => {
       vi.mocked(removePurchase).mockResolvedValue({ success: false } as never);
       const user = userEvent.setup();
-      renderItem({
-        user_id: OWNER,
-        item: {
-          user_id: OWNER,
-          quantity_limit: 3,
-          purchases: [
-            { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
-          ],
-        },
-      });
+      renderItem(ownerWithClaim, 'purchaseItem=i1');
       await user.click(
-        screen.getByRole('button', { name: 'banner-remove-first' })
+        screen.getByRole('button', { name: 'modal-remove-first' })
       );
       await waitFor(() => expect(removePurchase).toHaveBeenCalled());
       expect(banners()).toHaveAttribute('data-claims', 'Sam');

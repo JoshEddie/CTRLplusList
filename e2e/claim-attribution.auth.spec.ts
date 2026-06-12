@@ -106,17 +106,25 @@ test('OwnerList_SpoilersOnMasterUnclaim_RemovesSeededAttributedClaim', async ({
   await page.goto(`${OWN_LIST}?spoilers=1`);
 
   // The seeded attributed claim (Alice marked Bob) renders with the claimer
-  // identified; the owner did not create it but can remove it.
-  const row = page.locator('.spoiler-claim-row', {
+  // identified in the spoiler banner; once any claim exists the card affordance
+  // is "Manage claims", and master unclaim is dispatched from the modal's
+  // claims list — the owner did not create the claim but can remove it.
+  const item = page.locator('.item-container', {
     hasText: 'Bob — added by Alice',
   });
-  await expect(row).toBeVisible();
-  await row.getByRole('button', { name: "Remove Bob's claim" }).click();
+  await expect(item).toBeVisible();
+  await item.getByRole('button', { name: 'Manage claims' }).click();
+  // exact: the dnd-kit sortable wrapper is also a role=button whose accessible
+  // name swallows the modal's text on the owner's sortable grid.
+  await page
+    .getByRole('button', { name: "Remove Bob's claim", exact: true })
+    .click();
   await expect(
     page.locator('.spoiler-claim-row', { hasText: 'Bob — added by Alice' })
   ).toHaveCount(0);
 
   // Gone for real, not just optimistically: a fresh server render agrees.
+  await page.locator('.close-button').click();
   await page.reload();
   await expect(page.locator('.item-container').first()).toBeVisible();
   await expect(

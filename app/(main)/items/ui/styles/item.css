@@ -1047,6 +1047,13 @@
   display: flex;
 }
 
+@media (min-width: 600px) {
+  .item-list .item-container.owner:has(.claim-cta-btn, .manage-claim-btn) .item-owner-actions,
+  .sortable-item .item-container.owner:has(.claim-cta-btn, .manage-claim-btn) .item-owner-actions {
+    grid-column: 5;
+  }
+}
+
 /* Non-owner claim banners are footers for grid view only; in row view
    their information lives on the row itself (wide "Fully claimed" pill,
    Manage your claim). The owner-spoiler banner stays — it

@@ -246,8 +246,8 @@ export default function Item({
 
       {!preview && showModal && (
         <PurchaseModalSlot
-          // The owner's unclaim affordance is the per-claim spoiler-banner row
-          // (master unclaim), so their modal always opens on the claim flow.
+          // Owner master unclaim lives in the modal's claims list, not a card
+          // affordance, so the owner's modal always opens on the claim flow.
           removableClaim={isOwner ? null : removableClaim}
           user_id={user_id}
           isOwner={isOwner}
