@@ -1,70 +1,77 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
-import { MdCheck, MdLock } from 'react-icons/md';
+import { MdCheck } from 'react-icons/md';
 import '../styles/purchase.css';
 
 type PurchaseProps = {
-  purchasedBy: string | undefined;
+  fullyClaimed?: boolean;
+  viewerClaimed?: boolean;
+  /** Owner's spoiler-gated claim entry — same modal, purchase-recording copy. */
+  ownerClaim?: boolean;
+  /** Owner's spoiler-gated claim management — the modal lists removable claims. */
+  ownerManage?: boolean;
   handlePurchaseClick: () => void;
   className?: string;
-  disabled?: boolean;
-  fullyClaimedLabel?: string;
 };
 
 export default function Purchase({
-  purchasedBy,
+  fullyClaimed,
+  viewerClaimed,
+  ownerClaim,
+  ownerManage,
   handlePurchaseClick,
   className,
-  disabled,
-  fullyClaimedLabel,
 }: PurchaseProps) {
-  const onClick = disabled ? undefined : handlePurchaseClick;
-  const isClaimed = !!purchasedBy;
+  if (ownerManage) {
+    return (
+      <Button
+        variant="primary"
+        className={`manage-claim-btn ${className || ''}`}
+        onClick={handlePurchaseClick}
+        aria-label="Manage claims"
+      >
+        Manage claims
+      </Button>
+    );
+  }
 
-  if (disabled) {
+  if (viewerClaimed) {
+    return (
+      <Button
+        variant="primary"
+        className={`manage-claim-btn ${className || ''}`}
+        onClick={handlePurchaseClick}
+        aria-label="Manage your claim"
+      >
+        Manage your claim
+      </Button>
+    );
+  }
+
+  if (fullyClaimed) {
     return (
       <div
         className={`claimed-state claimed-state--fully ${className || ''}`}
         role="status"
       >
         <span className="claimed-state-label">
-          <MdLock aria-hidden />
-          {fullyClaimedLabel || 'Fully claimed'}
+          <MdCheck aria-hidden />
+          Fully claimed
         </span>
       </div>
     );
   }
 
-  if (isClaimed) {
-    return (
-      <button
-        type="button"
-        className={`claimed-state ${className || ''}`}
-        onClick={onClick}
-        aria-label="Remove your claim"
-      >
-        <span className="claimed-state-label">
-          <MdCheck aria-hidden />
-          {purchasedBy === 'You'
-            ? 'You claimed this'
-            : `Claimed: ${purchasedBy}`}
-        </span>
-        <span className="claimed-state-undo" aria-hidden>
-          Undo
-        </span>
-      </button>
-    );
-  }
-
+  const label = ownerClaim ? 'Mark as claimed' : 'Get this gift';
   return (
     <Button
       variant="primary"
-      className="claim-cta-btn"
-      onClick={onClick}
-      aria-label="Claim this item"
+      className={`claim-cta-btn ${className || ''}`}
+      onClick={handlePurchaseClick}
+      aria-label={label}
     >
-      Claim this gift
+      {label}
     </Button>
   );
 }

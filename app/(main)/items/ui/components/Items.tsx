@@ -8,6 +8,7 @@ interface ItemsProps {
   user_id?: string;
   user_name?: string | null;
   view?: 'grid' | 'list';
+  showSpoilers?: boolean;
   showArchiveAction?: boolean;
   archivedView?: boolean;
 }
@@ -17,6 +18,7 @@ export default function Items({
   user_id,
   user_name,
   view = 'grid',
+  showSpoilers,
   showArchiveAction,
   archivedView,
 }: ItemsProps) {
@@ -30,6 +32,7 @@ export default function Items({
               item={item}
               user_id={user_id}
               user_name={user_name}
+              showSpoilers={showSpoilers}
               showArchiveAction={showArchiveAction}
               archivedView={archivedView}
             />

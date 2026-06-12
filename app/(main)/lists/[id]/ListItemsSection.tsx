@@ -1,7 +1,8 @@
 import ItemsContainer from '@/app/(main)/items/ui/components/ItemsContainer';
 import SortItemsContainer from '@/app/(main)/items/ui/components/SortItemsContainer';
 import { auth } from '@/lib/auth';
-import { getList, getUserIdByEmail } from '@/lib/dal';
+import { getList } from '@/lib/data/list';
+import { getUserIdByEmail } from '@/lib/data/user';
 import { guardListViewable } from '@/lib/listAccess';
 import { VISIBILITY } from '@/lib/visibility';
 

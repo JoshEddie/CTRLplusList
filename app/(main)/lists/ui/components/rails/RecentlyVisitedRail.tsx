@@ -1,6 +1,7 @@
 import MoreCard from '@/app/ui/components/MoreCard';
-import { getVisitHistoryByUser } from '@/lib/dal';
+import { getVisitHistoryByUser } from '@/lib/data/visit';
 import HistoryCard from '../../../history/HistoryCard';
+import { capRail } from './utils';
 
 export default async function RecentlyVisitedRail({
   userId,
@@ -10,8 +11,7 @@ export default async function RecentlyVisitedRail({
   // Fetch one more than we render so we can tell whether to show the "+N more" tile.
   // The DAL's limit is a cap; a tighter total-count query would be a Stage 2 perf follow-up.
   const all = await getVisitHistoryByUser(userId, { limit: 50 });
-  const rows = all.slice(0, 5);
-  const moreCount = Math.max(0, all.length - rows.length);
+  const { shown: rows, moreCount } = capRail(all);
 
   if (rows.length === 0) {
     return <div className="list-card-row-empty">No visits yet.</div>;

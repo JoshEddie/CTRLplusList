@@ -24,6 +24,7 @@ export default function HeroCollapseShell({
   // replaceState, not pushState — toggling must not pollute browser history.
   // Back-button should return to the previous page, never unwind toggles.
   useEffect(() => {
+    /* v8 ignore next -- SSR-only guard; jsdom always defines `window`, so this short-circuit is unreachable under the test environment. */
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
     if (collapsed) {

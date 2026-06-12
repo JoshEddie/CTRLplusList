@@ -23,7 +23,11 @@ context: |
   - App-wide UI primitives under `app/ui/components/<family>/`
   - Page-scoped UI under `app/(main)/<area>/ui/`
   - CSS tokens in `app/ui/styles/global.css`
-  - Data reads in `lib/dal.ts`; mutations in `app/actions/`
+  - Data layer in `lib/data/`: per-domain module pairs — reads in
+    `<domain>.ts`, server actions in `<domain>.actions.ts` (domains:
+    user, list, listItems, visit, item, purchase) plus internal
+    non-endpoint modules (`item.schema.ts`, `item.associations.ts`,
+    `user.session.ts`). See `openspec/specs/data-layer-organization`.
   - Drizzle schema in `db/schema.ts`
 
   # Spec authority
@@ -45,8 +49,8 @@ context: |
   primitive via a spec modification instead.
 
   # Data freshness
-  `lib/dal.ts` reads use `'use cache'` + `cacheTag(...)`. Mutations
-  must call `revalidateTag(...)` for matching tags or reads go stale.
+  `lib/data/*.ts` reads use `'use cache'` + `cacheTag(...)`. Mutations
+  must call `updateTag(...)` for matching tags or reads go stale.
 
   # Meta: this file is a WIP
   If during any OpenSpec workflow (explore, propose, design, apply)
@@ -91,16 +95,31 @@ rules:
     - |
       Every tasks.md MUST include a pre-merge verification section
       (conventionally the final numbered section, e.g. "## N. Pre-
-      merge") with explicit, separately-checkable tasks for ALL THREE
+      merge") with explicit, separately-checkable tasks for ALL FIVE
       of the following gates passing clean:
         - `npm run lint` (eslint — zero errors, zero warnings)
         - `npx tsc --noEmit` (typescript — zero errors)
         - `npm run build` (next build — completes successfully,
           including type-check and production bundle)
+        - `npm run test:coverage` (vitest — zero failing tests, with
+          coverage reporting)
+        - `npm run test:e2e` (playwright — zero failing tests)
       These are not optional and not collapsible into a single
       "validate" checkbox — each gate gets its own task so partial
       failure is visible in the checklist. The `build` gate exists in
       addition to `tsc --noEmit` because Next.js' production build
       surfaces issues (route-level type errors, server/client boundary
       violations, missing env at build time, RSC serialization) that
-      `tsc --noEmit` alone does not catch.
+      `tsc --noEmit` alone does not catch. The `test:e2e` gate is
+      author-run locally and ALSO re-run by CI per-PR (a fork-safe
+      Postgres-sidecar job runs the Playwright suite against the same
+      docker-compose + seed-as-fixture path — see the `testing-foundation`
+      capability and ci.yml).
+
+      These gates are run by the author locally before requesting
+      review, against the author's real `.env.local`; CI re-runs all
+      five (lint/tsc/build/test:coverage, plus the e2e suite per-PR) for
+      defense in depth. Tasks should record local-run results; do not
+      annotate them with CI-environment caveats (e.g. placeholder env
+      vars, missing secrets) — those belong in ci.yml, not in the
+      change record.

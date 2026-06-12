@@ -1,6 +1,6 @@
 'use client';
 
-import { updatePriority } from '@/app/actions/lists';
+import { updatePriority } from '@/lib/data/listItems.actions';
 import { LinkButton } from '@/app/ui/components/button';
 import { ItemDisplay } from '@/lib/types';
 import { MdChecklist } from 'react-icons/md';
@@ -33,6 +33,7 @@ interface ItemsProps {
   items: ItemDisplay[];
   listId: string;
   user_id?: string;
+  showSpoilers?: boolean;
 }
 
 function EmptyListCTA({ listId }: { listId: string }) {
@@ -48,7 +49,12 @@ function EmptyListCTA({ listId }: { listId: string }) {
   );
 }
 
-export default function SortItems({ items, listId, user_id }: ItemsProps) {
+export default function SortItems({
+  items,
+  listId,
+  user_id,
+  showSpoilers,
+}: ItemsProps) {
   const router = useRouter();
   const itemsKey = items
     .map((i) => {
@@ -150,7 +156,9 @@ export default function SortItems({ items, listId, user_id }: ItemsProps) {
                 key={item.id}
                 id={item.id}
                 item={item}
+                listId={listId}
                 user_id={user_id}
+                showSpoilers={showSpoilers}
                 isAnyDragging={isDragging}
               />
             );
@@ -175,13 +183,17 @@ export function SortableItem({
   id,
   item,
   className,
+  listId,
   user_id,
+  showSpoilers,
   isAnyDragging = false,
 }: {
   id: string;
   item: ItemDisplay;
   className?: string;
+  listId?: string;
   user_id?: string;
+  showSpoilers?: boolean;
   isAnyDragging?: boolean;
 }) {
   const {
@@ -223,7 +235,12 @@ export function SortableItem({
       >
         <MdOutlineDragHandle size={40} className="drag-handle-icon" />
       </button>
-      <Item item={item} user_id={user_id} />
+      <Item
+        item={item}
+        listId={listId}
+        user_id={user_id}
+        showSpoilers={showSpoilers}
+      />
     </div>
   );
 }

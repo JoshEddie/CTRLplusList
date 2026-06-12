@@ -2,7 +2,7 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { auth } from '@/lib/auth';
-import { getFollowingFeedUsers, getUserIdByEmail } from '@/lib/dal';
+import { getFollowingFeedUsers, getUserIdByEmail } from '@/lib/data/user';
 import { eq } from 'drizzle-orm';
 import { updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';

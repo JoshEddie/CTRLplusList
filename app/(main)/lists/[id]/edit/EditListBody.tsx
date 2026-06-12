@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
-import { getList, getUserIdByEmail } from '@/lib/dal';
+import { getList } from '@/lib/data/list';
+import { getUserIdByEmail } from '@/lib/data/user';
 import { redirect } from 'next/navigation';
 import ListForm from '../../ui/components/ListForm';
 

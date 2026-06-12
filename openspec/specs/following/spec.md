@@ -199,7 +199,7 @@ A block SHALL prevent follow actions in both directions and SHALL exclude the bl
 
 ### Requirement: Sign-in SHALL capture the user's full name from Google when available
 
-The sign-in callback in `lib/auth.ts` SHALL store `${profile.given_name} ${profile.family_name}` in `users.name` when both fields are present on Google's OAuth profile. If only `given_name` is present, `users.name` SHALL fall back to the first name. Existing surfaces that prefer first-name-only (purchase attribution, etc.) SHALL continue to derive that via `firstNameOf()` in `lib/dal.ts` — the storage change does not alter display in casual contexts.
+The sign-in callback in `lib/auth.ts` SHALL store `${profile.given_name} ${profile.family_name}` in `users.name` when both fields are present on Google's OAuth profile. If only `given_name` is present, `users.name` SHALL fall back to the first name. Existing surfaces that prefer first-name-only (purchase attribution, etc.) SHALL continue to derive that via `firstNameOf()` in `lib/data/purchase.ts` — the storage change does not alter display in casual contexts.
 
 The connections settings page SHALL display the stored `users.name` (full name when available) for each row alongside the follow/follower/block-since date, to help owners disambiguate between users who share a first name. Backfill is lazy: existing users retain their stored first-name-only value until they next sign in.
 
@@ -273,7 +273,7 @@ The `users` table SHALL have a `last_seen_following_at` nullable timestamp. When
 
 ### Requirement: Follow-graph mutations SHALL NOT use interactive transactions
 
-Server actions in `app/actions/follows.ts` (`followUser`, `unfollowUser`, `removeFollower`, `blockUser`, `unblockUser`) SHALL be implemented as one or more sequential single-statement calls against `db`. They SHALL NOT use `db.transaction(async (tx) => { … })`, SHALL NOT use `SELECT … FOR UPDATE`, and SHALL NOT use any pattern that assumes a multi-statement database session.
+Server actions in `lib/data/user.actions.ts` (`followUser`, `unfollowUser`, `removeFollower`, `blockUser`, `unblockUser`) SHALL be implemented as one or more sequential single-statement calls against `db`. They SHALL NOT use `db.transaction(async (tx) => { … })`, SHALL NOT use `SELECT … FOR UPDATE`, and SHALL NOT use any pattern that assumes a multi-statement database session.
 
 The same single-statement constraint SHALL apply to any inline server-component side-effect that mutates follow-graph or follow-graph-adjacent state (e.g. the inline `users.last_seen_following_at` update performed in `/following`'s `after()` callback). Replacing a previously-exported server action with an inline equivalent SHALL NOT relax this constraint.
 
@@ -283,7 +283,7 @@ When a follow-graph mutation needs to maintain a cross-statement invariant (e.g.
 
 1. **Idempotent ordering** — perform the safer write first (e.g. for `blockUser`, insert the block row before deleting follow rows, so a partial failure leaves the user effectively-blocked rather than effectively-followed).
 2. **DB-level constraints** — `ON CONFLICT DO NOTHING`, composite primary keys, partial unique indexes, or `CHECK` constraints — to backstop races at the database layer.
-3. **Documented residual** — when neither of the above suffices, the residual race SHALL be commented inline at the call site (mirroring the pattern in `app/actions/items.ts` `createPurchase`'s capacity-race comment).
+3. **Documented residual** — when neither of the above suffices, the residual race SHALL be commented inline at the call site (mirroring the pattern in `lib/data/purchase.actions.ts` `createPurchase`'s capacity-race comment).
 
 #### Scenario: blockUser succeeds without invoking the driver's transaction API
 
@@ -304,4 +304,26 @@ When a follow-graph mutation needs to maintain a cross-statement invariant (e.g.
 
 - **WHEN** `/following` renders and registers an `after()` callback that updates `users.last_seen_following_at` for the viewer
 - **THEN** the callback issues exactly one `db.update(users).set({ last_seen_following_at: new Date() }).where(eq(users.id, viewerId))` statement followed by `updateTag('user_follows')`, with no call to `db.transaction(...)`, no `SELECT … FOR UPDATE`, and no `auth()`/`headers()`/`cookies()` call inside the callback
+
+### Requirement: The `user_follows` composite primary key SHALL be the de-duplication backstop for concurrent follow writes
+
+A follow relationship is uniquely identified by the pair `(follower_id, followee_id)`. The `user_follows` table SHALL enforce this uniqueness with a composite primary key on `(follower_id, followee_id)` (`db/schema.ts`), and `followUser` SHALL insert via `onConflictDoNothing()` so that a duplicate follow — whether from a double click, an optimistic-UI retry, or two concurrent requests racing the follow/unfollow toggle — resolves to a single row with no error and no second row.
+
+This requirement names the actual mechanism that makes "Follow is idempotent" safe under concurrency. The neon-http driver provides no interactive transactions and no `SELECT … FOR UPDATE` (see "Follow-graph mutations SHALL NOT use interactive transactions"), so the composite primary key — NOT a partial unique index — is the database-layer guarantee against duplicate follow rows. Any migration that drops or weakens this primary key SHALL be treated as removing a load-bearing concurrency backstop.
+
+#### Scenario: Duplicate followUser inserts no second row
+
+- **WHEN** an authenticated viewer invokes `followUser(targetId)` twice for the same target (the second call before or after the first commits)
+- **THEN** exactly one `user_follows(follower_id = viewer, followee_id = target)` row exists
+- **AND** neither call returns an error attributable to a uniqueness violation (the `onConflictDoNothing()` clause absorbs the conflict)
+
+#### Scenario: Composite primary key rejects a raw duplicate insert
+
+- **WHEN** a second `INSERT INTO user_follows` with the same `(follower_id, followee_id)` pair is attempted WITHOUT the `onConflictDoNothing()` clause
+- **THEN** the database raises a unique-violation error (SQLSTATE 23505) from the composite primary key
+
+#### Scenario: Follow / unfollow toggle race converges to a single definite state
+
+- **WHEN** a `followUser(targetId)` and a concurrent retry of the same `followUser(targetId)` both execute
+- **THEN** the row set contains at most one matching `user_follows` row, and a subsequent `unfollowUser(targetId)` removes it, leaving zero rows
 

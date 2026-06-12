@@ -51,7 +51,6 @@ export function ListSelection({
   };
 
   const add = (option: OptionType) => {
-    if (selected.some((s) => s.value === option.value)) return;
     const next = [...selected, option];
     setSelected(next);
     onChange(next);

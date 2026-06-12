@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
-import { getItemsByListId, getUserIdByEmail } from '@/lib/dal';
+import { getItemsByListId } from '@/lib/data/item';
+import { getUserIdByEmail } from '@/lib/data/user';
 import { ItemDisplay } from '@/lib/types';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { Suspense } from 'react';
@@ -30,7 +31,12 @@ export default async function SortItemsContainer({
 
   return (
     <Suspense fallback={<LoadingIndicator size="page" />}>
-      <SortItems items={items} user_id={user?.id} listId={listId} />
+      <SortItems
+        items={items}
+        user_id={user?.id}
+        listId={listId}
+        showSpoilers={showSpoilers}
+      />
     </Suspense>
   );
 }

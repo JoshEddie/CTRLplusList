@@ -107,7 +107,10 @@
   align-self: flex-start;
   padding: 3px 10px;
   border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.17);
+  /* α≤0.03 keeps white eyebrow text ≥4.5:1 over the gradient worst-case
+     (lightest) stop; a heavier fill lightens the pill below AA. Enforced by
+     hero-contrast.test.ts. */
+  background-color: rgba(255, 255, 255, 0.03);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -137,16 +140,20 @@
 }
 
 .list-hero-subtitle {
-  /* α=0.92 on --hero-gradient worst-case ≈ 4.6:1 — clears AA 4.5:1. */
+  /* Opaque white = 4.82:1 over the gradient worst-case (lightest) stop;
+     translucent secondary text dropped below AA 4.5:1. Enforced by
+     hero-contrast.test.ts. Hierarchy held by font-size, not opacity. */
   margin: 0;
   font-size: 16px;
   line-height: 1.3;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--light-color);
 }
 
 .list-hero-identity-foot {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.85);
+  /* Opaque white for AA 4.5:1 over the gradient worst-case stop — see
+     .list-hero-subtitle. */
+  color: var(--light-color);
   line-height: 1.3;
 }
 

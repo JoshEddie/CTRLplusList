@@ -14,6 +14,39 @@
   line-height: 1;
 }
 
+/* Inert store-name metadata on viewer-facing cards ("$35.50 · Amazon ·
+   Target +1"). Plain muted text — never a tap target. Single line: the
+   component drops named stores (growing +N) when they overflow; if even
+   one name can't fit, the name ellipsis-truncates while the price and the
+   +N count stay fully visible. */
+.item-price-row--metadata {
+  min-width: 0;
+}
+
+.item-price-row--metadata .item-price {
+  flex: 0 0 auto;
+}
+
+.item-store-metadata {
+  display: inline-flex;
+  align-items: baseline;
+  min-width: 0;
+  color: var(--muted-text-color);
+  font-size: 13px;
+}
+
+.item-store-metadata-names {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.item-store-metadata-count {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
 /* Buy-link row. Single-row grid — extras live in a popover, not inline.
    Single store: one column stretching to fill (primary chip).
    Multi-store: primary stretches; +N trigger hugs its content. */
@@ -114,47 +147,3 @@
   opacity: 0.5;
 }
 
-/* Modal store-links (purchase modal) keep their own layout */
-.modal-store-links {
-  display: grid;
-  grid-template-rows: auto;
-  gap: 8px;
-  text-align: center;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.modal-store-links .btn {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px;
-}
-
-.modal-store-links .store-name {
-  font-weight: 200;
-}
-
-.stores-show-more {
-  color: var(--secondary-color);
-  background-color: transparent;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  width: max-content;
-  margin: 0 auto;
-  font-size: 14px;
-}
-
-.stores-show-more:hover {
-  color: var(--primary-color);
-  text-decoration: underline;
-}
-
-.modal-item-name {
-  text-align: center;
-  margin-bottom: 10px;
-  color: var(--secondary-color);
-  font-family: var(--font-crimson-pro);
-  font-size: 18px;
-}

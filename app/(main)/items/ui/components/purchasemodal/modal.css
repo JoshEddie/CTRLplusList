@@ -1,9 +1,6 @@
 .modal-overlay {
   position: fixed;
-  top: 149px;
-  left: 0;
-  right: 0;
-  bottom: 16px;
+  inset: 0;
   padding: 16px;
   display: flex;
   justify-content: center;
@@ -45,7 +42,7 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   z-index: 99;
   width: 100%;
-  max-height: calc(100vh - 197px);
+  max-height: calc(100dvh - 32px);
   overflow-x: hidden;
   overflow-y: auto;
   position: relative;
@@ -119,6 +116,24 @@
   opacity: 1;
 }
 
+/* Store row at the top of every purchase-modal variant. Ghost treatment
+   keeps the claim CTA visually dominant. */
+.modal-store-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.modal-store-row .modal-store-row-link {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.modal-store-row-more-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
 .guest-purchase {
   display: flex;
   flex-direction: column;
@@ -126,12 +141,249 @@
   margin-top: 1rem;
 }
 
-@media (min-width: 600px) {
-  .modal-overlay {
-    top: 84px;
-  }
+.claim-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
-  .modal {
-    max-height: calc(100vh - 140px);
-  }
+/* Header: item thumbnail + name + price. The Modal primitive's close
+   affordance sits outside this header. */
+.claim-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.claim-modal-thumb {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: var(--secondary-background-color);
+}
+
+.claim-modal-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.claim-modal-heading {
+  min-width: 0;
+}
+
+.claim-modal-header h2 {
+  font-size: 18px;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.claim-modal-price {
+  font-family: var(--font-roboto-condensed);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin: 2px 0 0;
+}
+
+/* Owner spoilers-off: no claim UI, just a quiet label. */
+.owner-list-label {
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted-text-color);
+  padding: 4px 0;
+}
+
+/* Guest sign-in pitch, demoted to a footer line below the claim section. */
+.guest-signin-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted-text-color);
+  margin-top: 4px;
+}
+
+/* Already-claimed state: confirmation banner + danger removal. */
+.claimed-banner {
+  /* Locally-darkened text — global --success-text fails WCAG 1.4.3 AA
+     contrast on --success-bg (3.42:1, below the 4.5:1 floor). */
+  --claimed-text: #047857;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--success-border);
+  border-radius: 10px;
+  background-color: var(--success-bg);
+  color: var(--claimed-text);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.remove-claim-btn,
+.claim-confirm-btn {
+  width: 100%;
+}
+
+/* Owner claim management: one row per existing claim with its master
+   unclaim. */
+.owner-claims-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.owner-claim-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Collapsed-by-default attributed-claim disclosure. */
+.claim-disclosure {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.claim-disclosure-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 8px;
+  border: none;
+  border-top: 1px solid var(--card-border-color);
+  background: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.claim-disclosure-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.claim-disclosure-avatars {
+  display: inline-flex;
+}
+
+.claim-disclosure-avatars .user-avatar:not(:first-child) {
+  margin-left: -8px;
+}
+
+.claim-pool-status {
+  padding: 12px 8px;
+  font-size: 14px;
+  opacity: 0.75;
+  text-align: center;
+}
+
+.claim-pool-error {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.claim-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.claim-picker-divider {
+  border-top: 1px solid var(--card-border-color);
+}
+
+.claim-pool-row.selected {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+.claim-pool-check {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.claim-self-cta {
+  width: 100%;
+}
+
+.claim-divider {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.claim-pool-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.claim-pool-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+  font-size: 16px;
+  cursor: pointer;
+  color: inherit;
+}
+
+.claim-pool-row:hover,
+.claim-pool-row:focus-visible {
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+.claim-pool-empty {
+  padding: 12px 8px;
+  font-size: 14px;
+  opacity: 0.75;
+  text-align: center;
+}
+
+.claim-fallback-toggle {
+  border: none;
+  background: none;
+  padding: 8px;
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+  color: inherit;
+}
+
+.claim-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }

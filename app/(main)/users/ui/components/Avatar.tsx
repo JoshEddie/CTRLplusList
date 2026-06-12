@@ -2,12 +2,7 @@
 
 import { useState } from 'react';
 import { FaUser } from 'react-icons/fa';
-
-function initialsOf(name: string | null | undefined): string {
-  if (!name) return '';
-  const parts = name.trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase() ?? '').join('');
-}
+import { initialsOf } from '../utils';
 
 export default function Avatar({
   src,
@@ -32,7 +27,9 @@ export default function Avatar({
         // Plain <img> rather than next/image: hero avatars are 36px and the
         // 3rd-party Google URL set is open-ended, so the optimizer config
         // would need every origin whitelisted. Defer to native <img> here.
+        // eslint-disable-next-line @next/next/no-img-element -- deliberate native <img>, see above
         <img
+          /* v8 ignore next -- showImage guarantees src is a non-empty string here; the `?? undefined` is a type-narrowing fallback unreachable at runtime. */
           src={src ?? undefined}
           alt=""
           width={size}

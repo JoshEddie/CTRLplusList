@@ -1,6 +1,6 @@
 'use client';
 
-import { archiveItem, deleteItem } from '@/app/actions/items';
+import { archiveItem, deleteItem } from '@/lib/data/item.actions';
 import { Button } from '@/app/ui/components/button';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { useRouter } from 'next/navigation';
@@ -65,7 +65,9 @@ export default function DeleteItemButton({
   // Anchor word: "history." Archive preserves it, Delete erases it. The
   // metaphor absorbs claims, list memberships, and time on lists without
   // forcing the dialog to enumerate them or branch on claim count.
-  const title = archived ? 'Delete this item permanently?' : 'Delete this item?';
+  const title = archived
+    ? 'Delete this item permanently?'
+    : 'Delete this item?';
   const message = archived
     ? "This erases its history. Can't be undone."
     : "Archive instead to keep its history. Deleting can't be undone.";

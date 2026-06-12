@@ -1,6 +1,6 @@
 'use client';
 
-import { followUser, unfollowUser } from '@/app/actions/follows';
+import { followUser, unfollowUser } from '@/lib/data/user.actions';
 import type { ButtonVariant } from '@/app/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';

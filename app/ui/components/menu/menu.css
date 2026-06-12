@@ -21,6 +21,13 @@
   gap: 2px;
 }
 
+/* Collision fallback: applied by Menu.tsx when the popover would overflow
+   the bottom viewport edge but fits above the trigger. */
+.menu-popover--up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
 .menu-item {
   display: flex;
   align-items: center;

@@ -2,10 +2,8 @@
 
 ## Purpose
 
-TBD - created by archiving change add-following-and-history. Update Purpose after archive.
-
+The home digest is the authenticated landing view at `/`. It composes a one-time bookmark-migration toast above four collapsible, recency-capped rails — **My Lists**, **Following**, **Bookmarks**, and **Recently visited** — each showing at most the 5 most-recent entries with a **See all** link to its dedicated full-results page and a trailing "+N more" tile when more entries exist. Each rail's collapsed/expanded state persists per-rail in `localStorage`. The view gives a returning user a fast, scannable overview of their own lists, the people they follow, their saved lists, and their recent activity without leaving the home page.
 ## Requirements
-
 ### Requirement: Home page SHALL render four collapsible rails as a digest
 
 The home page (`/`) SHALL render four rails in the following order: **My Lists**, **Following**, **Bookmarks**, **Recently visited**. Each rail SHALL show at most the 5 most-recent entries and SHALL include a **See all** link to a dedicated full-results page. Each rail SHALL be collapsible via a chevron toggle in the rail header.
@@ -54,19 +52,19 @@ The **My Lists** rail SHALL show the viewer's owned lists ordered by `updated_at
 - **WHEN** the user navigates to `/lists`
 - **THEN** the page's `<Header>` contains a "+ New List" button linking to `/lists/new`
 
-### Requirement: Following rail SHALL show user cards sorted by recency of their latest public list
+### Requirement: Following rail SHALL show user cards sorted by recency of their latest followers-visible list
 
-The **Following** rail SHALL show user cards (avatar + name) for users the viewer follows, sorted by `MAX(shared_at)` over each followee's `'public'` lists in descending order. Users with no `'public'` lists are sorted last by name. Each card SHALL show a "N new" badge if N > 0 (per the `last_seen_following_at` rule in the `following` capability). The card SHALL link to `/u/[id]`. A **See all** link in the rail header SHALL route to `/following`.
+The **Following** rail SHALL show user cards (avatar + name) for users the viewer follows, sorted by `MAX(shared_at)` over each followee's **followers-visible** lists in descending order. A followers-visible list is one whose visibility is `VISIBILITY.FOLLOWERS` — the canonical state `getFollowingFeedUsers` filters via `visibilityDbValues([VISIBILITY.FOLLOWERS])`, which matches the persisted DB encodings `'public'` (current) and `'followers'` (post-Stage-2-rename). Users with no followers-visible lists are sorted last by name. Each card SHALL show a "N new" badge if N > 0 (per the `last_seen_following_at` rule in the `following` capability). The card SHALL link to `/u/[id]`. A **See all** link in the rail header SHALL route to `/following`.
 
 #### Scenario: Active followee sorted first
 
-- **WHEN** viewer follows users A and B; A's most recent public list has `shared_at = T1`, B's has `shared_at = T2 < T1`
+- **WHEN** viewer follows users A and B; A's most recent followers-visible list has `shared_at = T1`, B's has `shared_at = T2 < T1`
 - **THEN** A's card precedes B's in the Following rail
 
-#### Scenario: Followee with no public lists
+#### Scenario: Followee with no followers-visible lists
 
-- **WHEN** viewer follows user C who has no `'public'` lists
-- **THEN** C's card appears in the rail (sorted after followees with public lists) with no "N new" badge
+- **WHEN** viewer follows user C who has no followers-visible lists
+- **THEN** C's card appears in the rail (sorted after followees with followers-visible lists) with no "N new" badge
 
 #### Scenario: See all link
 
@@ -201,3 +199,37 @@ When a rail's underlying dataset contains more than 5 entries, the rail body SHA
 
 - **WHEN** the trailing tile renders
 - **THEN** the tile's background is a faint brand-tinted surface (visibly distinct from `--light-color` but quiet enough to feel like a sibling card) and the "+N more →" text uses `--primary-color`
+
+### Requirement: The bookmark-migration toast SHALL suppress its pre-hydration flash
+
+The one-time bookmark-migration toast (`BookmarkMigrationToast`) reads its dismissed state from `localStorage` via `useSyncExternalStore`. Because `localStorage` is unavailable during server render, the hook's server/initial snapshot SHALL report the toast as **dismissed** (hidden), so the toast does NOT render in the server-generated HTML and SHALL appear only after client hydration reads the real `localStorage` value. This prevents a flash-of-toast on every cold page load (server renders the toast → hydration reads a `dismissed` flag → toast disappears), which would otherwise occur if the un-hydrated state defaulted to *visible*. The dismissed flag is the `localStorage` key `home.bookmark-migration-toast.dismissed`; a value of `'true'` means dismissed. A `localStorage` read that throws (e.g. access denied) SHALL be treated as *not dismissed* on the client, and a write that throws on dismissal SHALL be swallowed without surfacing an error.
+
+#### Scenario: Server/pre-hydration render hides the toast
+
+- **WHEN** the home page is server-rendered (or the component renders before client hydration completes)
+- **THEN** the toast does NOT appear in the rendered output (the un-hydrated snapshot reports dismissed)
+- **AND** no flash-of-toast occurs on cold load before hydration resolves the real `localStorage` value
+
+#### Scenario: Hydrated client with no flag shows the toast
+
+- **WHEN** the client has hydrated and `localStorage['home.bookmark-migration-toast.dismissed']` is absent or not `'true'`
+- **THEN** the toast renders (a `role="status"` element with the rename copy and a dismiss button)
+
+#### Scenario: Hydrated client with the flag set keeps the toast hidden
+
+- **WHEN** the client has hydrated and `localStorage['home.bookmark-migration-toast.dismissed']` is `'true'`
+- **THEN** the toast does NOT render
+
+#### Scenario: Dismissal persists and hides the toast
+
+- **WHEN** the user clicks the toast's dismiss button
+- **THEN** `localStorage['home.bookmark-migration-toast.dismissed']` is set to `'true'`
+- **AND** the toast unmounts
+
+#### Scenario: localStorage access failure is tolerated
+
+- **WHEN** reading `localStorage` throws (access denied / disabled)
+- **THEN** the client treats the toast as not dismissed (the read falls back without throwing)
+- **AND WHEN** writing the dismissed flag throws
+- **THEN** the dismissal handler swallows the error without surfacing it to the user
+

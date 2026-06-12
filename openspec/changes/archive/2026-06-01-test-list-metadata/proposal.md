@@ -1,0 +1,63 @@
+## Why
+
+Sub-proposal 4.10 of the `test-coverage` initiative — the `list-metadata` capability carve-out (closes [#49](https://github.com/JoshEddie/CTRLplusList/issues/49)). The capability is `lists.subtitle`: a single nullable text column, surfaced through the list create/edit form and rendered on list-card and list-hero views. The parent `test-coverage` `tasks.md` §4.10 calls it "2 requirements; expected small."
+
+The defining finding of this carve-out — established by grepping every active spec and reading source at HEAD — is that **`list-metadata` is a cross-cutting capability with no exclusively-owned, coverage-gated source file.** Every surface that implements the subtitle contract is already claimed by a sibling carve-out or excluded from coverage:
+
+- `app/actions/lists.ts` — the `ListSchema.subtitle` zod field + the create/update persistence path — is explicitly owned by §4.9 `test-list-item-management` (its line names `app/actions/lists.ts`).
+- `app/ui/components/ListCard.tsx` — the subtitle-vs-placeholder render branch — is explicitly owned by §4.6 `test-list-collections` (its line names `ListCard.tsx`).
+- `app/(main)/lists/ui/components/ListDetails.tsx` — the hero subtitle render — belongs to the list-hero capabilities (§4.7 `test-list-hero-header` / §4.8 `test-list-hero-collapse`).
+- `app/(main)/lists/ui/components/ListForm.tsx` — the subtitle `<TextField>` + the client-side empty-string→null normalization — is broader than `list-metadata` (it is the entire list create/edit form: name, occasion, date, delete) and is not exclusively a metadata surface.
+- `lib/types.ts` (`ListTable.subtitle`) is type-only and **excluded from coverage** (`**/types.ts` in `vitest.config.ts`).
+- `db/schema.ts` (`subtitle: text('subtitle')`) is **outside `coverage.include`** (`include: ['lib/**', 'app/**', 'hooks/**']`).
+- The migration that added the column lives under `drizzle/` and is **coverage-excluded** (`drizzle/**`).
+
+Per the `testing-foundation` per-file coverage model ("Each test sub-proposal SHALL enforce coverage floors ONLY on files in its declared carve-out at archive time") and the one-`.test.<ext>`-per-source colocation convention, this carve-out therefore **cannot add new colocated `.test.tsx` files or `vitest.config.ts` floor entries for `ListCard.tsx` / `ListForm.tsx` / `ListDetails.tsx` / `lists.ts` without colliding with §4.6, §4.7/4.8, and §4.9.** The issue anticipates this with its "MAY elevate latent invariants to the `list-metadata` spec" clause: the carve-out's primary deliverable is **spec elevation**, not new UI-layer test files.
+
+Inherited constraints surfaced by spec-grep:
+
+- `testing-foundation` (active delta in `openspec/changes/test-coverage/specs/testing-foundation/spec.md` plus archived deltas from the foundation and primitive/app-frame carve-outs) — runner (vitest 4.x, jsdom + node projects), four-gate pre-merge, `__tests__/` colocation, universal per-file floor `lines:98 / statements:98 / branches:95 / functions:100` referenced from the single `COVERAGE_FLOOR` constant, no-backdoor disposition rule, `<State>_<Behavior>` `it()` shape, three-role `describe()` convention, four-audit obligation, invariant-elevation audit, assertion-substance bar, observable-behavior-over-execution, `sonarjs/cognitive-complexity` warn-globally / error-per-carve-out policy, NextAuth-as-network-boundary mocking allowance, DAL/DB-integration tests run against the real pglite test DB (`test/helpers/db.ts` `bootPglite()`), internal modules SHALL NOT be mocked. Every requirement applies verbatim.
+- `list-metadata` (active spec, created by archiving `redesign-home-and-tokens`) — two requirements, both with a **`TBD` Purpose**. R1 ("Lists SHALL support an optional subtitle field") and R2 ("Existing lists SHALL NOT be backfilled with derived subtitles"). **R1's scenario "Null subtitle renders no slot" has DRIFTED behind the source** — see "What Changes."
+- `list-collections` (§4.6 owns `ListCard.tsx`), `list-hero-header` / `list-hero-collapse` (own the hero subtitle render in `ListDetails.tsx`), `list-item-management` (§4.9 owns `app/actions/lists.ts`) — these capabilities OWN the files that implement the subtitle contract. This carve-out does NOT claim their files for coverage. Instead, the subtitle behavior they must each assert is made **normative in the elevated `list-metadata` spec**, so each owning carve-out is gated by the subtitle scenarios when it lands.
+- `form-field-system` — `ListForm` renders the subtitle input via `<TextField>`. The primitive is already tested under §3.3 `test-form-field-system` (archived). No `form-field-system` SHALL is asserted from this carve-out.
+- Cache-tag rule: `createList` / `updateList` call `updateTag('lists')` on the `lists` tag; `lib/dal.ts` reads tagged `lists` go stale without it. No new read is introduced by this carve-out, so no new revalidation path is added.
+
+## What Changes
+
+- **MODIFIED** `list-metadata` spec — R1 ("Lists SHALL support an optional subtitle field") scenario "Null subtitle renders no slot" is corrected for source drift. The current scenario asserts "no subtitle line is rendered (the meta row sits directly below the name)". The source at HEAD does NOT match for the list-card view: `ListCard.tsx` renders `<div className="list-card-subtitle-placeholder" aria-hidden />` when `subtitle` is null — a deliberate non-text spacer that preserves card-grid vertical alignment. The two list-card views diverge: `ListCard` renders a placeholder spacer (no text); the `ListDetails` hero renders nothing (`subtitle ? (...) : null`). The MODIFIED scenario captures both behaviors precisely (a placeholder spacer carrying no subtitle text + `aria-hidden`, distinct from a visible subtitle line; the hero renders no node at all). R1's Purpose-level prose is also tightened.
+- **MODIFIED** `list-metadata` spec — the `TBD` Purpose is replaced with a real Purpose describing the capability (the optional `lists.subtitle` field and its create/edit/render contract).
+- **ADDED** `list-metadata` spec — three latent invariants the source enforces today but no requirement currently locks:
+  - **Empty-string and whitespace-only subtitle SHALL normalize to NULL** — enforced as defense-in-depth in TWO places: the `ListSchema.subtitle` zod `.transform((v) => (v === '' || v == null ? null : v))` (server) AND the `ListForm` client-side `rawSubtitle === '' ? null : rawSubtitle` after `.trim()`. The spec locks the NULL-not-empty-string contract and notes the dual enforcement so a future contributor does not "simplify" by removing one layer.
+  - **Subtitle SHALL be capped at 120 characters** — `ListSchema.subtitle.max(120, …)` (server) mirrored by `maxLength={120}` on the form `<TextField>` (client). The spec locks the cap and its error message.
+  - **A partial list update SHALL distinguish "omitted" from "cleared"** — `updateList`'s `if (validatedData.subtitle !== undefined) updateData.subtitle = validatedData.subtitle` gate means an update payload that omits `subtitle` leaves the stored value untouched, while a payload with `subtitle: null` clears it. This is non-obvious (the `!== undefined` guard distinguishes the two) and protects against an edit form silently wiping a subtitle when another field is changed.
+- **NEW** ONE node-project DB-integration test — `db/__tests__/list-subtitle.test.ts` (the only cleanly-ownable new test). `db/schema.ts` is outside `coverage.include` and unowned by any carve-out, so this test adds NO `vitest.config.ts` floor entry and collides with nothing. It runs against `bootPglite()` (the real migrated schema) and asserts the data-layer half of R1 + all of R2:
+  - inserting a `lists` row that OMITS `subtitle` yields `subtitle === null` (R2: the column carries no derive-on-write default / backfill);
+  - a subtitle round-trips through insert and a subsequent column update;
+  - an update setting `subtitle = null` clears a previously-set value (the "cleared" half of the partial-update invariant, at the SQL layer).
+- **NO** new `.test.tsx` for `ListCard.tsx` (owned by §4.6), `ListForm.tsx`, `ListDetails.tsx`, or `app/actions/lists.ts` (owned by §4.9). The UI-layer and action-layer subtitle assertions are **delegated** to the owning carve-outs and made mandatory by the elevated spec's scenarios. See `design.md` Decision 1.
+- **NO** change to `vitest.config.ts` — no source file is newly owned for a coverage floor (the one new test targets a coverage-excluded file).
+- **NO** change to `eslint.config.mjs` — no source file is newly complexity-locked (no `.tsx` carve-out files claimed).
+- **NEW** `testing-foundation` carve-out bookkeeping record (sub-proposal-archive ONLY, per `test-coverage` design D13 two-tier rollup) — records that `list-metadata` was carved out as a **cross-cutting, spec-only** capability: no per-file floors were added here, the subtitle data-contract is locked by a node integration test on the (coverage-excluded) schema, and the UI/action subtitle scenarios are owned by §4.6 / §4.7-4.8 / §4.9 as gated by the elevated `list-metadata` spec. Recorded in `openspec/changes/test-list-metadata/specs/testing-foundation/spec.md` ONLY — does NOT roll into the parent `test-coverage` accumulator and does NOT modify the active `openspec/specs/testing-foundation/spec.md`.
+- **NEW** four-audit findings recorded in `tasks.md` (assertion-substance, duplication, complexity, testability) plus the invariant-elevation audit. **NO source refactors anticipated.**
+
+## Capabilities
+
+### New Capabilities
+
+None. The `list-metadata` capability spec already exists.
+
+### Modified Capabilities
+
+- `list-metadata`: the `TBD` Purpose is replaced; R1's "Null subtitle renders no slot" scenario is MODIFIED to match the source (placeholder spacer on the card; no node in the hero); and THREE requirements are ADDED (empty/whitespace→NULL normalization with dual enforcement, 120-character cap, omitted-vs-cleared partial-update gate). No requirements are REMOVED. R2 (no-backfill) is unchanged in wording; the new DB-integration test locks it.
+- `testing-foundation`: a carve-out bookkeeping record is written to this sub-proposal's archive-only delta (Tier 2 per `test-coverage` design D13), recording the cross-cutting / spec-only disposition. No change to the active `testing-foundation` spec; no change to the parent `test-coverage` accumulator.
+
+## Impact
+
+- **New files:** one — `db/__tests__/list-subtitle.test.ts` (node project; runs against `bootPglite()`).
+- **Modified config:** none. No `vitest.config.ts` floor entry (the new test targets a coverage-excluded file); no `eslint.config.mjs` override (no `.tsx` carve-out file claimed).
+- **Modified source:** none anticipated.
+- **Modified specs:** `openspec/specs/list-metadata/spec.md` — Purpose filled, one R1 scenario MODIFIED, three requirements ADDED. The carve-out bookkeeping requirement lives ONLY in this sub-proposal's archive directory (`openspec/changes/archive/<date>-test-list-metadata/specs/testing-foundation/spec.md`); it does NOT roll into the parent `test-coverage` accumulator.
+- **CI:** the existing four-gate workflow runs unchanged; the `test` job grows by one node-project file (one `bootPglite()` boot — same fixed migration-replay cost the existing DB-helper tests already pay).
+- **Dependencies:** none added.
+- **Downstream:** the parent `test-coverage` checkbox for §4.10 flips on archive. §4.6 (`ListCard`), §4.7/4.8 (hero), and §4.9 (`lists.ts` actions) inherit the elevated `list-metadata` spec — their tests are now gated by the subtitle scenarios (placeholder-spacer branch, empty→NULL normalization, 120-cap, omitted-vs-cleared update). The drift fix means the §4.6 `ListCard` test asserts the corrected (placeholder-spacer) contract rather than the stale "no slot" wording.
+- **Risk:** low. One new test against a well-exercised harness; no source change; no config change. The only judgment call is the cross-cutting / spec-only disposition (Decision 1) — if a reviewer prefers UI-layer subtitle tests to land HERE rather than in the owning carve-outs, the fallback is to claim `ListForm.tsx` (the one unclaimed file) under this carve-out; this is rejected in `design.md` Decision 1 because `ListForm` is broader than `list-metadata` and floor-owning it would force this carve-out to test the entire list create/edit form. The drift fix (Decision 2) is a spec-follows-source correction; if disputed, the alternative is removing the placeholder spacer from `ListCard.tsx`, which breaks card-grid alignment (the design intent the source encodes).

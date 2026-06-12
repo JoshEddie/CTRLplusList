@@ -249,7 +249,9 @@ function getProviderChain(): ImageSearchProvider[] {
 // free tier, so if Serper answered "airpods" last Tuesday, we don't hit SerpAPI
 // for the same thing today.
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const CACHE_MAX_ENTRIES = 500;
+// Tunable via env (mirrors the other IMAGE_SEARCH_* knobs); defaults to 500.
+const CACHE_MAX_ENTRIES =
+  Number(process.env.IMAGE_SEARCH_CACHE_MAX_ENTRIES) || 500;
 const resultCache = new Map<
   string,
   { expires: number; items: ImageSearchResult[] }

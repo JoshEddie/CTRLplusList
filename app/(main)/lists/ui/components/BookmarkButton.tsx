@@ -1,6 +1,6 @@
 'use client';
 
-import { bookmarkList, unbookmarkList } from '@/app/actions/lists';
+import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
 import { Button } from '@/app/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
@@ -23,9 +23,8 @@ export default function BookmarkButton({
     const next = !bookmarked;
     setBookmarked(next);
     startTransition(async () => {
-      const result = next
-        ? await bookmarkList(listId)
-        : await unbookmarkList(listId);
+      const action = next ? bookmarkList : unbookmarkList;
+      const result = await action(listId);
       if (!result.success) {
         setBookmarked(!next);
         toast.error(result.message);
