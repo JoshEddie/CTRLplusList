@@ -1,5 +1,6 @@
-/* eslint-disable testing-library/no-container, testing-library/no-node-access --
- * Modal's close affordance is a class-only `<div className="close-button">` with no role.
+/* eslint-disable testing-library/no-node-access --
+ * Modal's close affordance is a class-only `<div className="close-button">`
+ * with no role, portaled to document.body.
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -116,8 +117,12 @@ describe('PurchaseModalSlot', () => {
 
   it('CloseAffordance_FiresOnClose', async () => {
     const user = userEvent.setup();
-    const { props, container } = renderSlot({ removableClaim: selfClaim });
-    await user.click(container.querySelector('.close-button') as HTMLElement);
+    const { props } = renderSlot({ removableClaim: selfClaim });
+    // Modal portals to document.body, so the close affordance is outside the
+    // render container.
+    await user.click(
+      document.body.querySelector('.close-button') as HTMLElement
+    );
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 });
