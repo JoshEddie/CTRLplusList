@@ -542,4 +542,158 @@ describe('Menu', () => {
       expect(menuitemCalls.length).toBe(0);
     });
   });
+
+  describe('Placement', () => {
+    const rectOf = (r: Partial<DOMRect>): DOMRect =>
+      ({
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        width: 0,
+        height: 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+        ...r,
+      }) as DOMRect;
+
+    // The popover reports `menuHeight`; every other element (the anchor
+    // button, or the parentElement fallback) reports the anchor rect.
+    function stubGeometry({
+      anchorTop,
+      anchorBottom,
+      menuHeight,
+    }: {
+      anchorTop: number;
+      anchorBottom: number;
+      menuHeight: number;
+    }) {
+      vi.spyOn(
+        Element.prototype,
+        'getBoundingClientRect'
+      ).mockImplementation(function (this: Element) {
+        return this.getAttribute('role') === 'menu'
+          ? rectOf({ height: menuHeight })
+          : rectOf({ top: anchorTop, bottom: anchorBottom });
+      });
+    }
+
+    beforeEach(() => {
+      vi.stubGlobal('innerHeight', 800);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+    });
+
+    it('FitsBelow_OmitsMenuPopoverUpClass', () => {
+      stubGeometry({ anchorTop: 80, anchorBottom: 100, menuHeight: 200 });
+      renderMenu({
+        open: true,
+        onClose: vi.fn(),
+        withAnchor: true,
+        children: <MenuItem>A</MenuItem>,
+      });
+      const popover = screen.getByRole('menu');
+      expect(popover).toHaveClass('menu-popover');
+      expect(popover).not.toHaveClass('menu-popover--up');
+    });
+
+    it('OverflowsBelowFitsAbove_AppliesMenuPopoverUpClass', () => {
+      stubGeometry({ anchorTop: 730, anchorBottom: 750, menuHeight: 200 });
+      renderMenu({
+        open: true,
+        onClose: vi.fn(),
+        withAnchor: true,
+        children: <MenuItem>A</MenuItem>,
+      });
+      expect(screen.getByRole('menu')).toHaveClass('menu-popover--up');
+    });
+
+    it('FitsNeitherSide_OmitsMenuPopoverUpClass', () => {
+      stubGeometry({ anchorTop: 300, anchorBottom: 320, menuHeight: 700 });
+      renderMenu({
+        open: true,
+        onClose: vi.fn(),
+        withAnchor: true,
+        children: <MenuItem>A</MenuItem>,
+      });
+      expect(screen.getByRole('menu')).not.toHaveClass('menu-popover--up');
+    });
+
+    describe('NoAnchorRef', () => {
+      it('OverflowsBelowFitsAbove_AppliesMenuPopoverUpClassViaParentElement', () => {
+        stubGeometry({ anchorTop: 730, anchorBottom: 750, menuHeight: 200 });
+        renderMenu({
+          open: true,
+          onClose: vi.fn(),
+          children: <MenuItem>A</MenuItem>,
+        });
+        expect(screen.getByRole('menu')).toHaveClass('menu-popover--up');
+      });
+    });
+
+    describe('FlippedOpen', () => {
+      function renderFlipped() {
+        const onClose = vi.fn<() => void>();
+        stubGeometry({ anchorTop: 730, anchorBottom: 750, menuHeight: 200 });
+        const { harnessRef } = renderMenu({
+          open: true,
+          onClose,
+          withAnchor: true,
+          children: (
+            <>
+              <MenuItem>First</MenuItem>
+              <MenuItem>Second</MenuItem>
+            </>
+          ),
+        });
+        expect(screen.getByRole('menu')).toHaveClass('menu-popover--up');
+        return { onClose, harnessRef };
+      }
+
+      it('EscapeKey_OnCloseCalledAndAnchorFocused', () => {
+        const { onClose, harnessRef } = renderFlipped();
+        const anchor = harnessRef.current?.anchorRef
+          .current as HTMLButtonElement;
+        const focusSpy = vi.spyOn(anchor, 'focus');
+        act(() => {
+          document.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape' })
+          );
+        });
+        expect(onClose).toHaveBeenCalledTimes(1);
+        expect(focusSpy).toHaveBeenCalledTimes(1);
+      });
+
+      it('OutsideClick_OnCloseCalled', () => {
+        const { onClose } = renderFlipped();
+        act(() => {
+          document.body.dispatchEvent(
+            new MouseEvent('mousedown', { bubbles: true })
+          );
+        });
+        expect(onClose).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('OverflowsBelowFitsAbove_FirstItemFocusedWithPreventScroll', () => {
+      const focusSpy = vi.spyOn(HTMLElement.prototype, 'focus');
+      stubGeometry({ anchorTop: 730, anchorBottom: 750, menuHeight: 200 });
+      renderMenu({
+        open: true,
+        onClose: vi.fn(),
+        withAnchor: true,
+        children: <MenuItem>First</MenuItem>,
+      });
+      const first = screen.getByRole('menuitem', { name: 'First' });
+      const calls = focusSpy.mock.calls.filter(
+        (_, idx) => focusSpy.mock.instances[idx] === first
+      );
+      expect(calls.length).toBeGreaterThanOrEqual(1);
+      expect(calls[0][0]).toEqual({ preventScroll: true });
+    });
+  });
 });

@@ -7,9 +7,14 @@ import {
   RefObject,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
+  useState,
 } from 'react';
 import './menu.css';
+
+// Must match the 6px offset in .menu-popover / .menu-popover--up (menu.css).
+const MENU_GAP_PX = 6;
 
 type MenuProps = {
   open: boolean;
@@ -25,6 +30,26 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
 ) {
   const localRef = useRef<HTMLDivElement | null>(null);
   useImperativeHandle(ref, () => localRef.current as HTMLDivElement);
+
+  const [flipUp, setFlipUp] = useState(false);
+
+  // Collision detection: decided once per open, before paint, from the
+  // anchor's rect so the result is independent of the current placement.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const el = localRef.current;
+    /* v8 ignore next -- defensive: localRef is always set when the popover DOM has mounted; effect is gated on open. */
+    if (!el) return;
+    const anchor = anchorRef?.current ?? el.parentElement;
+    /* v8 ignore next -- defensive: a mounted popover always has a parentElement under React; the guard only narrows the DOM lib's `Element | null` typing. */
+    if (!anchor) return;
+    const anchorRect = anchor.getBoundingClientRect();
+    const menuHeight = el.getBoundingClientRect().height;
+    const fitsBelow =
+      anchorRect.bottom + MENU_GAP_PX + menuHeight <= window.innerHeight;
+    const fitsAbove = anchorRect.top - MENU_GAP_PX - menuHeight >= 0;
+    setFlipUp(!fitsBelow && fitsAbove);
+  }, [open, anchorRef]);
 
   // Outside-click / Escape dismiss. The check ignores clicks on the anchor
   // so that activating the trigger doesn't dismiss-then-reopen the menu.
@@ -108,7 +133,9 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
   return (
     <div
       ref={localRef}
-      className={['menu-popover', className].filter(Boolean).join(' ')}
+      className={['menu-popover', flipUp && 'menu-popover--up', className]
+        .filter(Boolean)
+        .join(' ')}
       role="menu"
       {...aria}
     >
