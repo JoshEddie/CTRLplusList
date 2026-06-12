@@ -19,8 +19,8 @@ function renderStep(
     <UrlEntryStep
       initialUrl={props.initialUrl}
       initialError={props.initialError}
-      onFetch={onFetch}
-      onManual={onManual}
+      onFetch={onFetch as never}
+      onManual={onManual as never}
     />
   );
   return { onFetch, onManual };
