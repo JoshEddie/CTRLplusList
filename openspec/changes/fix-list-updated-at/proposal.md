@@ -12,7 +12,7 @@ Inherited constraints found in active specs:
 
 - `lists.updated_at` is bumped when, and only when, a change a follower would plausibly be notified about occurs ("notification razor"):
   - List detail edit (name, subtitle, occasion, date) that actually changes a value.
-  - Item added to or removed from the list — via the list page (`setListItems`), the item form (`updateItemLists`), or item deletion (cascade removal from its lists).
+  - Item added to or removed from the list — via the list page (`setListItems`), the kebab-menu single-item removal (`removeListItem`), the item form (`updateItemLists`), or item deletion (cascade removal from its lists).
 - Explicitly excluded from bumping: reorder (`updatePriority`), item field edits (`updateItem`), item archive/unarchive, visibility changes (owned by `shared_at`), claims/purchases (spoiler hazard: owners must not infer claim activity from the timestamp).
 - `updateList` gains a dirty check: when the validated payload matches the stored row, no `UPDATE` is issued at all (and therefore no timestamp bump); the action returns success.
 - The list edit form skips the server call entirely when nothing changed (client-side pristine check) — UX layer; the server-side dirty check remains the integrity authority.
@@ -32,7 +32,7 @@ Inherited constraints found in active specs:
 ## Impact
 
 - `lib/data/list.actions.ts` — `updateList`: widen the existing ownership-check fetch to include detail columns, add dirty comparison (value equality for `date`), include `updated_at` in the write.
-- `lib/data/listItems.actions.ts` — `setListItems`: bump on actual add/remove (existing "No changes" early return already guards no-ops); `updatePriority` untouched.
+- `lib/data/listItems.actions.ts` — `setListItems`: bump on actual add/remove (existing "No changes" early return already guards no-ops); `removeListItem` (from issue-138): bump after a successful delete; `updatePriority` untouched.
 - `lib/data/item.associations.ts` — `updateItemLists`: bump only lists actually gaining or losing the item.
 - `lib/data/item.actions.ts` — `deleteItem`: capture the item's list memberships before delete and bump those lists.
 - A small shared `touchLists(listIds)` helper in `lib/data` (one `UPDATE … WHERE id IN (...)`).

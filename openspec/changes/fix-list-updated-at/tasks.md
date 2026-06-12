@@ -16,6 +16,7 @@
 - [x] 3.2 `updateItemLists` (`lib/data/item.associations.ts`): touch only the lists actually gaining or losing the item (inserted set + `listIdsToDelete`)
 - [x] 3.3 `deleteItem` (`lib/data/item.actions.ts`): capture the item's `list_items` memberships before the delete, then touch those lists after the delete succeeds
 - [x] 3.4 Add `updateTag('lists')` to `updateItemLists`-driven paths and `deleteItem` (design D5)
+- [x] 3.4b Rebase integration: `removeListItem` (new membership-removal action from issue-138, landed on dev mid-change) calls `touchLists([list_id])` after a successful delete, plus a `RemoveListItem_BumpsUpdatedAt` test
 - [x] 3.5 Confirm no bump is added to `updatePriority`, `updateItem`, `archiveItem`, `setListVisibility` (exclusions per spec)
 - [x] 3.6 Unit tests: each membership path bumps the right lists and only those; reorder/rebalance, item field edit, archive, visibility, and purchase paths leave `updated_at` unchanged
 

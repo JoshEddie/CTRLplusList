@@ -5,7 +5,7 @@
 `lists.updated_at` SHALL advance when, and only when, a mutation changes what a follower would plausibly be notified about — the list's own details or its item membership. Specifically, the timestamp SHALL advance on:
 
 - A list detail edit (`updateList`) that actually changes at least one of `name`, `subtitle`, `occasion`, `date`.
-- An item being added to or removed from the list, via any path: the choose-items save (`setListItems`), the item form's list membership update (`updateItemLists`), or item deletion (whose cascade removes the item from its lists).
+- An item being added to or removed from the list, via any path: the choose-items save (`setListItems`), the single-item kebab-menu removal (`removeListItem`), the item form's list membership update (`updateItemLists`), or item deletion (whose cascade removes the item from its lists).
 
 The timestamp SHALL NOT advance on:
 
@@ -26,6 +26,11 @@ Bumps SHALL be issued by an internal data-layer helper that updates `updated_at`
 
 - **WHEN** the owner saves a choose-items selection that inserts or deletes at least one `list_items` row
 - **THEN** the list's `updated_at` is set to the time of the save
+
+#### Scenario: Kebab-menu removal advances the timestamp
+
+- **WHEN** the owner removes an item from a list via the item's "Remove from list" menu entry (`removeListItem`)
+- **THEN** the list's `updated_at` is set to the time of the removal
 
 #### Scenario: Item-form membership change advances only the affected lists
 

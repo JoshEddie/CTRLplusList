@@ -40,6 +40,7 @@ Rejected alternative — trusting the client's pristine check alone: the server 
 ### D4: Bump granularity for membership paths
 
 - `setListItems`: bump after a non-empty diff (the existing early return already filters no-ops).
+- `removeListItem` (kebab-menu single-item removal, landed via issue-138 during this change's rebase onto dev): bump after a successful delete — it is a membership removal like any other; its existing not-found early return already filters no-ops.
 - `updateItemLists` (item form): bump **only** the lists actually gaining or losing the item — the inserted set plus `listIdsToDelete` — never the unchanged ones.
 - `deleteItem`: membership rows vanish via `ON DELETE CASCADE`, so the affected list ids must be captured **before** the delete (one select on `list_items`), then bumped after the delete succeeds.
 - `archiveItem`: no bump. Archive hides the item from list views but the membership row persists and the flip is reversible; bumping would make archive/unarchive flapping read as list news. Recorded as a deliberate exclusion.

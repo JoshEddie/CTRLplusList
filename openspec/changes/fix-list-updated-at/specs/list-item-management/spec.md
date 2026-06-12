@@ -21,6 +21,21 @@ Submitting the page SHALL invoke a server action that computes the diff between 
 - **WHEN** a request to set list items is made by a user who is not the list owner
 - **THEN** the action returns an unauthorized response and `list_items` is unchanged
 
+### Requirement: removeListItem SHALL authorize list ownership server-side
+
+A focused server action in `lib/data/listItems.actions.ts` (alongside `setListItems`) SHALL accept `(list_id, item_id)`, verify the authenticated session user owns the list before any write (same authorization shape as `setListItems`), and delete at most the single matching `list_items` row. Unauthorized or unauthenticated calls SHALL return a failure `ActionResponse` and perform no write. The operation is a single DELETE statement — no transaction is required under the neon-http driver constraint. A successful removal SHALL advance the list's `updated_at` (per `list-update-recency`).
+
+#### Scenario: Non-owner cannot remove an item from someone else's list
+
+- **WHEN** an authenticated user who does not own the list invokes the action directly with a valid (list_id, item_id) pair
+- **THEN** the action returns a failure response and the `list_items` row is not deleted
+
+#### Scenario: Successful removal revalidates cache tags
+
+- **WHEN** the list owner invokes the action with an item currently on the list
+- **THEN** the row is deleted, the action returns success, and `updateTag('items')` and `updateTag('lists')` are called
+- **AND** the list's `updated_at` is set to the time of the removal
+
 ### Requirement: updatePriority SHALL reorder list items via fractional positions with rebalance on collision
 
 The `updatePriority(item_id, target_id, listId)` server action SHALL move an item to the position of a target item within a single list, owner-only, using integer fractional indexing over the `list_items.position` column. New `list_items` rows SHALL be appended at `MAX(position) + 65536` (base spacing 65536). On a move, the new position SHALL be computed as the integer midpoint between the target's position and the neighboring row on the side the moved item is travelling from:
