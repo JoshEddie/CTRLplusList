@@ -156,6 +156,7 @@ export default function SortItems({
                 key={item.id}
                 id={item.id}
                 item={item}
+                listId={listId}
                 user_id={user_id}
                 showSpoilers={showSpoilers}
                 isAnyDragging={isDragging}
@@ -182,6 +183,7 @@ export function SortableItem({
   id,
   item,
   className,
+  listId,
   user_id,
   showSpoilers,
   isAnyDragging = false,
@@ -189,6 +191,7 @@ export function SortableItem({
   id: string;
   item: ItemDisplay;
   className?: string;
+  listId?: string;
   user_id?: string;
   showSpoilers?: boolean;
   isAnyDragging?: boolean;
@@ -232,7 +235,12 @@ export function SortableItem({
       >
         <MdOutlineDragHandle size={40} className="drag-handle-icon" />
       </button>
-      <Item item={item} user_id={user_id} showSpoilers={showSpoilers} />
+      <Item
+        item={item}
+        listId={listId}
+        user_id={user_id}
+        showSpoilers={showSpoilers}
+      />
     </div>
   );
 }

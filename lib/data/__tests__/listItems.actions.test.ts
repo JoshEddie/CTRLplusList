@@ -170,6 +170,63 @@ describe('setListItems', () => {
   });
 });
 
+describe('removeListItem', () => {
+  beforeEach(async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id });
+    await seedItem(db, { id: 'A', user_id: OWNER.id });
+    await seedItem(db, { id: 'B', user_id: OWNER.id });
+    await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
+    await seedListItem(db, { list_id: 'L', item_id: 'B', position: 131072 });
+  });
+
+  it('Owner_DeletesOnlyTargetRow-BumpsItemsAndListsTags', async () => {
+    const res = await actions.removeListItem('L', 'A');
+    expect(res.success).toBe(true);
+    expect(res.message).toBe('Removed from list');
+    expect((await listItemRows('L')).map((r) => r.item_id)).toEqual(['B']);
+    expect(updateTag).toHaveBeenCalledWith('items');
+    expect(updateTag).toHaveBeenCalledWith('lists');
+  });
+
+  it('NoSession_ReturnsUnauthorized-NoDelete', async () => {
+    noSession();
+    const res = await actions.removeListItem('L', 'A');
+    expect(res.error).toBe('Unauthorized');
+    expect((await listItemRows('L')).length).toBe(2);
+  });
+
+  it('NonOwner_ReturnsForbidden-NoDelete', async () => {
+    asOther();
+    const res = await actions.removeListItem('L', 'A');
+    expect(res.error).toBe('Forbidden');
+    expect((await listItemRows('L')).length).toBe(2);
+  });
+
+  it('MissingList_ReturnsNotFound', async () => {
+    const res = await actions.removeListItem('nope', 'A');
+    expect(res.error).toBe('Not found');
+  });
+
+  it('ItemNotOnList_ReturnsNotFound-NoTagBump', async () => {
+    const res = await actions.removeListItem('L', 'ghost');
+    expect(res.error).toBe('Not found');
+    expect(res.message).toBe('Item is not on this list');
+    expect(updateTag).not.toHaveBeenCalled();
+  });
+
+  it('DeleteThrows_ReturnsFailedToRemoveItem', async () => {
+    vi.spyOn(db, 'delete').mockImplementation(() => {
+      throw new Error('boom');
+    });
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const res = await actions.removeListItem('L', 'A');
+    expect(res.error).toBe('Failed to remove item');
+    expect(consoleError).toHaveBeenCalled();
+  });
+});
+
 describe('updatePriority', () => {
   async function seedListWith(positions: Record<string, number>) {
     await seedList(db, { id: 'L', user_id: OWNER.id });

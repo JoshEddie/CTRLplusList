@@ -22,6 +22,7 @@ export default function Item({
   showArchiveAction,
   archivedView,
   preview,
+  listId,
 }: {
   item: ItemDisplay;
   className?: string;
@@ -33,6 +34,8 @@ export default function Item({
   archivedView?: boolean;
   /** Render as a live preview inside the item form: no modal, no interactions. */
   preview?: boolean;
+  /** Owned-list context — enables the "Remove from list" owner action. */
+  listId?: string;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -234,9 +237,9 @@ export default function Item({
         {isOwner && (
           <OwnerActions
             itemId={item.id}
-            user_id={user_id}
             showArchiveAction={showArchiveAction}
             archivedView={archivedView}
+            listId={listId}
             pathname={pathname}
             searchParams={searchParams}
             onArchived={() => router.refresh()}

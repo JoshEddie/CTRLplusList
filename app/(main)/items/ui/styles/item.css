@@ -94,6 +94,14 @@
   box-shadow: var(--card-shadow-hover);
 }
 
+/* A card with an open menu (owner kebab or +N store popover) must paint
+   above later sibling cards/rows — siblings can form their own stacking
+   contexts (e.g. .purchased's opacity), which the popover's z-index alone
+   cannot cross. .menu-popover only exists in the DOM while open. */
+.item-container:has(.menu-popover) {
+  z-index: 30;
+}
+
 .item-container.purchased {
   opacity: 0.85;
 }
@@ -222,57 +230,34 @@
   }
 }
 
-/* Owner overlay actions (top-right edit/archive icons) */
-.item-owner-actions {
+/* Owner actions kebab. Base treatment is the grid-view top-right overlay
+   (always visible — the hidden-until-hover affordance is what made owner
+   actions undiscoverable); row views reset it into their grid track. */
+.item-owner-actions-mobile {
   position: absolute;
   top: 8px;
   right: 8px;
   display: flex;
-  gap: 5px;
+  align-items: center;
   z-index: 2;
-  opacity: 0;
-  transition: opacity 0.15s;
-  /* The overlay's bounding box can sit over the owner's spoiler-view claim
-     button; only the icons themselves should swallow clicks. */
-  pointer-events: none;
 }
 
-.item-owner-actions .edit-button,
-.item-owner-actions .archive-button {
-  pointer-events: auto;
-}
-
-.item-container:hover .item-owner-actions,
-.item-container:focus-within .item-owner-actions {
-  opacity: 1;
-}
-
-.item-owner-actions .edit-button,
-.item-owner-actions .archive-button {
-  position: static;
+.item-grid:not(.sortable) .item-owner-actions-kebab {
   width: 28px;
   height: 28px;
+  padding: 0;
   border-radius: 50%;
   background-color: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(0, 0, 0, 0.07);
   color: var(--muted-text-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
-  transition: color 0.13s;
-  text-decoration: none;
-  font-size: 14px;
 }
 
-.item-owner-actions .edit-button:hover,
-.item-owner-actions .archive-button:hover {
+.item-grid:not(.sortable) .item-owner-actions-kebab:hover {
   color: var(--primary-color);
   background-color: var(--light-color);
 }
 
-.preview .item-owner-actions,
 .preview .item-owner-actions-mobile {
   display: none;
 }
@@ -1016,8 +1001,6 @@
 /* Default placement for the right column: owner actions OR the
    non-owner "Get this gift" / "Manage your claim" button. All span
    both content rows. */
-.item-list .item-owner-actions,
-.sortable-item .item-owner-actions,
 .item-list .item-owner-actions-mobile,
 .sortable-item .item-owner-actions-mobile,
 .item-list .claim-cta-btn,
@@ -1040,16 +1023,18 @@
   min-width: 165px;
 }
 
-.item-list .item-owner-actions,
-.sortable-item .item-owner-actions {
-  position: static;
-  opacity: 1;
-  display: flex;
+/* Stay the popover's positioning ancestor (relative, not static) so the
+   menu opens under the kebab, not under the whole card. */
+.item-list .item-owner-actions-mobile,
+.sortable-item .item-owner-actions-mobile {
+  position: relative;
+  top: auto;
+  right: auto;
 }
 
 @media (min-width: 600px) {
-  .item-list .item-container.owner:has(.claim-cta-btn, .manage-claim-btn) .item-owner-actions,
-  .sortable-item .item-container.owner:has(.claim-cta-btn, .manage-claim-btn) .item-owner-actions {
+  .item-list .item-container.owner:has(.claim-cta-btn, .manage-claim-btn) .item-owner-actions-mobile,
+  .sortable-item .item-container.owner:has(.claim-cta-btn, .manage-claim-btn) .item-owner-actions-mobile {
     grid-column: 5;
   }
 }
@@ -1058,7 +1043,7 @@
    their information lives on the row itself (wide "Fully claimed" pill,
    Manage your claim). The owner-spoiler banner stays — it
    carries the per-claim master-unclaim affordances — as a col-3 pill so
-   .item-owner-actions (col 4) remains visible. */
+   the owner-actions kebab (col 4) remains visible. */
 .item-list .purchased-banner,
 .sortable-item .purchased-banner {
   display: none;
@@ -1227,9 +1212,6 @@
 
   /* Right-actions on action row, justified right. The non-owner
      "Get this gift" / "Manage your claim" button keeps its full label. */
-  .item-list .item-owner-actions,
-  .item-grid .item-owner-actions,
-  .sortable-item .item-owner-actions,
   .item-list .item-owner-actions-mobile,
   .item-grid .item-owner-actions-mobile,
   .sortable-item .item-owner-actions-mobile,
@@ -1243,6 +1225,14 @@
     grid-row: 4;
     align-self: center;
     justify-self: end;
+  }
+
+  /* Grid-as-list at mobile pulls the overlay kebab into the action row;
+     relative (not static) keeps it the popover's positioning ancestor. */
+  .item-grid .item-owner-actions-mobile {
+    position: relative;
+    top: auto;
+    right: auto;
   }
 
   /* Grid-as-list at mobile mirrors the row-view banner policy: footers
@@ -1285,25 +1275,6 @@
   .item-grid .claim-counter,
   .sortable-item .claim-counter {
     display: none;
-  }
-}
-
-/* M1-kebab (<400px): hide inline edit/archive icons, show kebab Menu. */
-.item-owner-actions-mobile {
-  display: none;
-}
-
-@media (max-width: 399px) {
-  .item-list .item-owner-actions,
-  .item-grid .item-owner-actions,
-  .sortable-item .item-owner-actions {
-    display: none;
-  }
-  .item-list .item-owner-actions-mobile,
-  .item-grid .item-owner-actions-mobile,
-  .sortable-item .item-owner-actions-mobile {
-    display: flex;
-    align-items: center;
   }
 }
 
