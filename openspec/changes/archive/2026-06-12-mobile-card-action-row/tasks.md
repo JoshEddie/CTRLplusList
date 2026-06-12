@@ -11,10 +11,10 @@
 
 ## 3. Visual verification (375px viewport, dev:local seed)
 
-- [ ] 3.1 Non-owner list view: title/price use full width; "Get this gift" and "Manage your claim" stretch full action row; fully-claimed pill unchanged
-- [ ] 3.2 Owner list (sortable) view: kebab visible and operable; claim button and spoiler banner span `1 / 3` with no kebab overlap; storeLinks row unchanged
-- [ ] 3.3 `/items` library and choose-items picker at mobile: no regressions from the shared reflow
-- [ ] 3.4 ≥600px row view spot-check: no behavior change (165px floor still applies, spans unchanged)
+- [x] 3.1 Non-owner list view: title/price use full width; "Get this gift" and "Manage your claim" stretch full action row; fully-claimed pill unchanged
+- [x] 3.2 Owner list (sortable) view: kebab visible and operable; claim button and spoiler banner span `1 / 3` with no kebab overlap; storeLinks row unchanged
+- [x] 3.3 `/items` library and choose-items picker at mobile: no regressions from the shared reflow
+- [x] 3.4 ≥600px row view spot-check: no behavior change (165px floor still applies, spans unchanged)
 
 ## 4. Pre-merge
 
@@ -22,4 +22,4 @@
 - [x] 4.2 `npx tsc --noEmit` — zero errors
 - [x] 4.3 `npm run build` — completes successfully
 - [x] 4.4 `npm run test:coverage` — zero failing tests
-- [ ] 4.5 `npm run test:e2e` — zero failing tests
+- [x] 4.5 `npm run test:e2e` — zero failing tests
