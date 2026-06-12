@@ -2,6 +2,18 @@ import { ItemDisplay, PurchaseView } from '@/lib/types';
 import ItemPhoto from './ItemPhoto';
 import Purchase from './Purchase';
 import StoreLinks from './StoreLinks';
+import StoreMetadataLine from './StoreMetadataLine';
+import { formatStorePrice, lowestPricedStore } from './utils';
+
+function PriceRow({ item }: { item: ItemDisplay }) {
+  const lowest = lowestPricedStore(item.stores);
+  if (!lowest) return null;
+  return (
+    <div className="item-price-row">
+      <span className="item-price">{formatStorePrice(lowest.price)}</span>
+    </div>
+  );
+}
 
 export default function ItemCard({
   item,
@@ -9,12 +21,12 @@ export default function ItemCard({
   isOwner,
   showPurchased,
   showSpoilerInfo,
-  myClaim,
-  claimSummary,
+  removableClaim,
   claimActionDisabled,
   showCounter,
   counterText,
   showOwnerClaimAction,
+  showOwnerManageAction,
   onPurchaseClick,
 }: {
   item: ItemDisplay;
@@ -22,14 +34,16 @@ export default function ItemCard({
   isOwner: boolean;
   showPurchased: boolean;
   showSpoilerInfo: boolean;
-  myClaim: PurchaseView | null;
-  claimSummary: string;
+  removableClaim: PurchaseView | null;
   claimActionDisabled: boolean;
   showCounter: boolean;
   counterText: string;
   showOwnerClaimAction: boolean;
+  showOwnerManageAction: boolean;
   onPurchaseClick: () => void;
 }) {
+  const viewerClaimed = !isOwner && !!removableClaim;
+
   return (
     <div
       className={`item ${className || ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''}`}
@@ -43,19 +57,36 @@ export default function ItemCard({
             <p className="itemDescription">{item.description}</p>
           ) : null}
         </div>
-        <StoreLinks item={item} showStores={!showPurchased && !showSpoilerInfo}>
-          {(!isOwner || showOwnerClaimAction) && (
-            <Purchase
-              purchasedBy={
-                showPurchased ? (myClaim ? 'You' : claimSummary) : undefined
-              }
-              handlePurchaseClick={onPurchaseClick}
-              className={showPurchased ? 'purchased' : ''}
-              disabled={claimActionDisabled}
-              fullyClaimedLabel={claimActionDisabled ? 'Fully claimed' : undefined}
+        {isOwner ? (
+          <>
+            {/* Spoilers on is claim-management mode: the claim affordance
+                replaces the chip row (store access lives in its modal).
+                showSpoilerInfo covers claimed items, showOwnerClaimAction
+                the still-claimable ones. */}
+            <StoreLinks
+              item={item}
+              showStores={!showSpoilerInfo && !showOwnerClaimAction}
             />
-          )}
-        </StoreLinks>
+            {showOwnerManageAction ? (
+              <Purchase ownerManage handlePurchaseClick={onPurchaseClick} />
+            ) : showOwnerClaimAction ? (
+              <Purchase ownerClaim handlePurchaseClick={onPurchaseClick} />
+            ) : null}
+          </>
+        ) : (
+          <>
+            {viewerClaimed || claimActionDisabled ? (
+              <PriceRow item={item} />
+            ) : (
+              <StoreMetadataLine item={item} />
+            )}
+            <Purchase
+              viewerClaimed={viewerClaimed}
+              fullyClaimed={claimActionDisabled}
+              handlePurchaseClick={onPurchaseClick}
+            />
+          </>
+        )}
         {showCounter && !isOwner && !showPurchased && (
           <div className="claim-counter">{counterText}</div>
         )}

@@ -241,21 +241,6 @@ describe('StoreLinks', () => {
   });
 
   describe('EmptyState', () => {
-    it('NoValidStoreWithChildren_RendersActionRowWithChildren', () => {
-      const { container } = render(
-        <StoreLinks item={makeItem([])}>
-          <button type="button">Claim</button>
-        </StoreLinks>
-      );
-      const row = container.querySelector('.item-action-row');
-      expect(row).not.toBeNull();
-      expect(row).toContainElement(
-        screen.getByRole('button', { name: 'Claim' })
-      );
-      expect(container.querySelector('.item-price-row')).toBeNull();
-      expect(container.querySelector('.storeLinks')).toBeNull();
-    });
-
     it('NoValidStoreNoChildren_RendersNull', () => {
       const { container } = render(<StoreLinks item={makeItem([])} />);
       expect(container).toBeEmptyDOMElement();

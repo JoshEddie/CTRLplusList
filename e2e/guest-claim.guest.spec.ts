@@ -21,7 +21,7 @@ test('GuestClaim_PublicList_RecordsGuestPurchase', async ({ page }) => {
   // unambiguous on reload.
   const guestName = `GuestE2E${Date.now()}`;
   await firstClaimableSingleItem(page)
-    .getByRole('button', { name: 'Claim this item' })
+    .getByRole('button', { name: 'Get this gift' })
     .click();
   await page.getByLabel('Your name').fill(guestName);
   await page.getByRole('button', { name: 'Claim as Guest' }).click();

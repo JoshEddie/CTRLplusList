@@ -18,11 +18,18 @@ test('AttributedClaim_PickMutualFromPicker_PersistsBobAsPurchaser', async ({
   const item = firstClaimableSingleItem(page);
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
-  // Open the claim modal; the picker lists Alice's mutuals. Search narrows
-  // the live pool, and tapping the row claims immediately — no second screen.
-  await item.getByRole('button', { name: 'Claim this item' }).click();
+  // Open the purchase modal and expand the collapsed disclosure; the picker
+  // lists Alice's mutuals. Search narrows the live pool; tapping a row
+  // selects it and Confirm records the claim — expand-inline, no second screen.
+  await item.getByRole('button', { name: 'Get this gift' }).click();
+  await page
+    .getByRole('button', { name: /Claiming for someone else\?/ })
+    .click();
   await page.getByLabel("Search Alice's circle").fill('Bob');
   await page.getByRole('button', { name: 'Bob Example' }).click();
+  await page
+    .getByRole('button', { name: 'Confirm — Bob Example', exact: true })
+    .click();
 
   // The viewer asserted the claim for Bob; the banner names the attributed
   // user (linked-account first name, not a typed guest label) and the
@@ -50,9 +57,9 @@ test('OwnerList_SpoilersOff_ShowsNoClaimOrUnclaimAffordances', async ({
 }) => {
   await page.goto(OWN_LIST);
   await expect(page.locator('.item-container').first()).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Claim this item' })).toHaveCount(
-    0
-  );
+  await expect(
+    page.getByRole('button', { name: 'Mark as claimed' })
+  ).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Remove .*claim/ })).toHaveCount(
     0
   );
@@ -69,10 +76,10 @@ test('OwnerList_SpoilersOnSelfClaim_ShowsYouRowInSpoilerBanner', async ({
   // is the same one viewers get, with the owner copy variant.
   const item = page
     .locator('.item-container')
-    .filter({ has: page.getByRole('button', { name: 'Claim this item' }) })
+    .filter({ has: page.getByRole('button', { name: 'Mark as claimed' }) })
     .first();
   const itemName = (await item.locator('.itemName').innerText()).trim();
-  await item.getByRole('button', { name: 'Claim this item' }).click();
+  await item.getByRole('button', { name: 'Mark as claimed' }).click();
   // exact: the dnd-kit sortable wrapper is also a role=button whose
   // accessible name swallows the modal's text on the owner's sortable grid.
   await page

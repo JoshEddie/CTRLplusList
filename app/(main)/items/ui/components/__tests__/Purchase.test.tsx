@@ -4,88 +4,74 @@ import { describe, expect, it, vi } from 'vitest';
 import Purchase from '../Purchase';
 
 describe('Purchase', () => {
-  describe('Disabled', () => {
-    it('DefaultLabel_RendersFullyClaimedStatusWithoutClickTarget', () => {
-      render(
-        <Purchase
-          purchasedBy={undefined}
-          handlePurchaseClick={vi.fn()}
-          disabled
-        />
-      );
+  describe('FullyClaimed', () => {
+    it('FullyClaimed_RendersStatusPillWithoutClickTarget', () => {
+      render(<Purchase fullyClaimed handlePurchaseClick={vi.fn()} />);
       const status = screen.getByRole('status');
       expect(status).toHaveClass('claimed-state', 'claimed-state--fully');
       expect(status).toHaveTextContent('Fully claimed');
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 
-    it('CustomLabelAndClassName_RendersBothOnStatus', () => {
+    it('ClassName_AppliedToStatusPill', () => {
       render(
         <Purchase
-          purchasedBy="Alice"
+          fullyClaimed
           handlePurchaseClick={vi.fn()}
-          disabled
           className="row-claim"
-          fullyClaimedLabel="3 of 3 claimed"
         />
       );
-      const status = screen.getByRole('status');
-      expect(status).toHaveClass('row-claim');
-      expect(status).toHaveTextContent('3 of 3 claimed');
+      expect(screen.getByRole('status')).toHaveClass('row-claim');
     });
   });
 
-  describe('Claimed', () => {
-    it('PurchasedByYou_RendersYouClaimedThisWithUndo', () => {
-      render(<Purchase purchasedBy="You" handlePurchaseClick={vi.fn()} />);
-      const button = screen.getByRole('button', {
-        name: 'Remove your claim',
-      });
-      expect(button).toHaveTextContent('You claimed this');
-      expect(button).toHaveTextContent('Undo');
+  describe('ViewerClaimed', () => {
+    it('ViewerClaimed_RendersManageYourClaimGhostButton', () => {
+      render(<Purchase viewerClaimed handlePurchaseClick={vi.fn()} />);
+      expect(
+        screen.getByRole('button', { name: 'Manage your claim' })
+      ).toHaveClass('manage-claim-btn');
     });
 
-    it('UndoClick_CallsHandlerOnce', () => {
+    it('ManageClick_CallsHandlerOnce', () => {
       const handleClick = vi.fn();
-      render(<Purchase purchasedBy="You" handlePurchaseClick={handleClick} />);
-      fireEvent.click(
-        screen.getByRole('button', { name: 'Remove your claim' })
-      );
+      render(<Purchase viewerClaimed handlePurchaseClick={handleClick} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Manage your claim' }));
       expect(handleClick).toHaveBeenCalledTimes(1);
     });
 
-    it('PurchasedByOther_RendersClaimedWithBuyerName-AppliesClassName', () => {
+    it('ViewerClaimedAndFullyClaimed_ManageWinsOverDisabledPill', () => {
       render(
-        <Purchase
-          purchasedBy="Alice"
-          handlePurchaseClick={vi.fn()}
-          className="row-claim"
-        />
+        <Purchase viewerClaimed fullyClaimed handlePurchaseClick={vi.fn()} />
       );
-      const button = screen.getByRole('button', {
-        name: 'Remove your claim',
-      });
-      expect(button).toHaveTextContent('Claimed: Alice');
-      expect(button).toHaveClass('row-claim');
+      expect(
+        screen.getByRole('button', { name: 'Manage your claim' })
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('OwnerClaim', () => {
+    it('OwnerClaim_RendersMarkAsClaimedLabel', () => {
+      render(<Purchase ownerClaim handlePurchaseClick={vi.fn()} />);
+      expect(
+        screen.getByRole('button', { name: 'Mark as claimed' })
+      ).toBeInTheDocument();
     });
   });
 
   describe('Unclaimed', () => {
-    it('NoPurchaser_RendersClaimCta', () => {
-      render(
-        <Purchase purchasedBy={undefined} handlePurchaseClick={vi.fn()} />
-      );
+    it('Unclaimed_RendersGetThisGiftCta', () => {
+      render(<Purchase handlePurchaseClick={vi.fn()} />);
       expect(
-        screen.getByRole('button', { name: 'Claim this item' })
-      ).toHaveTextContent('Claim this gift');
+        screen.getByRole('button', { name: 'Get this gift' })
+      ).toHaveTextContent('Get this gift');
     });
 
     it('CtaClick_CallsHandlerOnce', () => {
       const handleClick = vi.fn();
-      render(
-        <Purchase purchasedBy={undefined} handlePurchaseClick={handleClick} />
-      );
-      fireEvent.click(screen.getByRole('button', { name: 'Claim this item' }));
+      render(<Purchase handlePurchaseClick={handleClick} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Get this gift' }));
       expect(handleClick).toHaveBeenCalledTimes(1);
     });
   });

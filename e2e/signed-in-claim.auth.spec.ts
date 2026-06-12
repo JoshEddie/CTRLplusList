@@ -11,7 +11,7 @@ import { firstClaimableSingleItem } from '../test/helpers/e2e/utils';
 // The single-screen claim modal records different row shapes per path, two of
 // which are covered here (the attributed-picker path lives in
 // claim-attribution.auth.spec):
-//   1. "I'm getting this"  — a one-tap self-claim → recorded as the viewer's
+//   1. 'Claim this gift'  — a one-tap self-claim → recorded as the viewer's
 //      own claim (purchaser = viewer) → shows "You claimed this".
 //   2. name fallback        — a claim for a named non-user → recorded with the
 //      viewer as claimer and the typed name as guest label → the claimer's own
@@ -34,10 +34,10 @@ test('SignedInClaim_SelfClaimOneTap_ShowsOwnClaim', async ({ page }) => {
   const item = firstClaimableSingleItem(page);
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
-  // Open the claim modal; the primary CTA self-claims in one tap — no
-  // confirmation screen.
-  await item.getByRole('button', { name: 'Claim this item' }).click();
-  await page.getByRole('button', { name: "I'm getting this" }).click();
+  // Open the purchase modal via the card's "Get this gift" affordance; the
+  // primary CTA self-claims in one tap — no confirmation screen.
+  await item.getByRole('button', { name: 'Get this gift' }).click();
+  await page.getByRole('button', { name: 'Claim this gift' }).click();
 
   // The item reflects the viewer's own claim, and it persists across a fresh
   // server render.
@@ -47,6 +47,34 @@ test('SignedInClaim_SelfClaimOneTap_ShowsOwnClaim', async ({ page }) => {
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
   await expect(claimedAfter.getByText('You claimed this').first()).toBeVisible();
+});
+
+test('SignedInClaim_StoreLinksReachedOnlyThroughModal_StoreRowBesideClaimCta', async ({
+  page,
+}) => {
+  await page.goto(LIST);
+  await expect(
+    page.getByRole('heading', { name: LIST_HEADING }).first()
+  ).toBeVisible();
+
+  // No direct store-link affordance exists on the non-owner cards — store
+  // names render only as inert metadata in the price row.
+  await expect(page.locator('.storeLinks')).toHaveCount(0);
+
+  // Opening the modal surfaces the store row (cheapest store, new tab) in
+  // the same surface as the claim CTA.
+  const item = page
+    .locator('.item-container')
+    .filter({ has: page.getByRole('button', { name: 'Get this gift' }) })
+    .filter({ has: page.locator('.item-store-metadata') })
+    .first();
+  await item.getByRole('button', { name: 'Get this gift' }).click();
+  const storeLink = page.locator('.modal-store-row').getByRole('link').first();
+  await expect(storeLink).toBeVisible();
+  await expect(storeLink).toHaveAttribute('target', '_blank');
+  await expect(
+    page.getByRole('button', { name: 'Claim this gift', exact: true })
+  ).toBeVisible();
 });
 
 test('SignedInClaim_NameFallbackForNonUser_ShowsClaimerBannerWithName', async ({
@@ -62,14 +90,14 @@ test('SignedInClaim_NameFallbackForNonUser_ShowsClaimerBannerWithName', async ({
   const item = firstClaimableSingleItem(page);
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
-  // Open the claim modal and expand the "not listed" fallback for a
-  // purchaser without an account.
-  await item.getByRole('button', { name: 'Claim this item' }).click();
+  // Open the purchase modal, expand the attributed-claim disclosure, and use
+  // the "Someone not listed?" fallback for a purchaser without an account.
+  await item.getByRole('button', { name: 'Get this gift' }).click();
   await page
-    .getByRole('button', { name: 'Someone not listed? Enter their name' })
+    .getByRole('button', { name: /Claiming for someone else\?/ })
     .click();
-  await page.getByLabel('Their name').fill(purchaser);
-  await page.getByRole('button', { name: `Claim for ${purchaser}` }).click();
+  await page.getByLabel('Someone not listed?').fill(purchaser);
+  await page.getByRole('button', { name: `Confirm — ${purchaser}` }).click();
 
   // The viewer asserted the claim (claimed_by), so their banner names the
   // third party; it persists on reload and never reads as a bare

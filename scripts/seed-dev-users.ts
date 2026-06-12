@@ -715,6 +715,27 @@ async function main() {
       price: '35.50',
     },
   ];
+  // Hand-authored edge case: a high price plus a store name too long for
+  // even one named slot, so the card metadata line's name-truncation +
+  // non-truncating "+N" count is reachable straight from the seed.
+  const LONG_STORE_ITEM = 'dev-list-alice-baby-item-2';
+  const LONG_STORE_ROWS = [
+    {
+      name: 'Really long store name that carries really cool items',
+      link: 'https://www.example.com/really-long-store',
+      price: '1000.00',
+    },
+    {
+      name: 'Williams Sonoma',
+      link: 'https://www.williams-sonoma.com/products/example',
+      price: '1249.95',
+    },
+    {
+      name: 'Crate & Barrel',
+      link: 'https://www.crateandbarrel.com/example/s12345',
+      price: '1399.00',
+    },
+  ];
   const storeRows: {
     id: string;
     item_id: string;
@@ -724,11 +745,16 @@ async function main() {
     order: number;
   }[] = [];
   for (const item of itemRows) {
-    // 1–3 stores per item, deterministic by item id hash.
     const hash = item.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    const storeCount = (hash % 3) + 1;
-    for (let i = 0; i < storeCount; i++) {
-      const store = STORE_CATALOG[(hash + i) % STORE_CATALOG.length];
+    const catalog =
+      item.id === LONG_STORE_ITEM
+        ? LONG_STORE_ROWS
+        : // 1–3 stores per item, deterministic by item id hash.
+          Array.from(
+            { length: (hash % 3) + 1 },
+            (_, i) => STORE_CATALOG[(hash + i) % STORE_CATALOG.length]
+          );
+    catalog.forEach((store, i) => {
       storeRows.push({
         id: `${item.id}-store-${i + 1}`,
         item_id: item.id,
@@ -737,7 +763,7 @@ async function main() {
         price: store.price,
         order: i + 1,
       });
-    }
+    });
   }
   await db
     .insert(item_stores)

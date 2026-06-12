@@ -97,13 +97,15 @@ describe('createPurchase', () => {
         guest_name: null,
       });
       expect(res.success).toBe(true);
-      expect(await purchaseRows('I')).toEqual([
+      const rows = await purchaseRows('I');
+      expect(rows).toEqual([
         expect.objectContaining({
           user_id: OWNER.id,
           claimed_by: OWNER.id,
           guest_name: null,
         }),
       ]);
+      expect(res.id).toBe(rows[0].id);
       expect(updateTag).toHaveBeenCalledWith('items');
     });
 

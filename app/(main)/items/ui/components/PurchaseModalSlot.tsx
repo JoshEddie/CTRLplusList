@@ -1,49 +1,62 @@
-import { PurchaseView } from '@/lib/types';
+import { Button } from '@/app/ui/components/button';
+import { ItemDisplay, PurchaseView } from '@/lib/types';
+import { MdCheck } from 'react-icons/md';
 import Modal from './purchasemodal/Modal';
-import ModalButtons from './purchasemodal/ModalButtons';
-import PurchaseFlow from './purchasemodal/PurchaseFlow';
+import ModalStoreRow from './purchasemodal/ModalStoreRow';
 import PurchaseFlowContainer, {
   AttributedTarget,
 } from './purchasemodal/PurchaseFlowContainer';
+import PurchaseModalHeader from './purchasemodal/PurchaseModalHeader';
 
 export default function PurchaseModalSlot({
   removableClaim,
   user_id,
   isOwner,
-  itemId,
-  itemName,
+  showSpoilers,
+  ownerCanClaim,
+  ownerClaims,
+  item,
   onClose,
   onSelfClaim,
   onAttributedClaim,
   onGuestClaim,
+  onRemoveClaim,
   onUndoConfirm,
 }: {
   removableClaim: PurchaseView | null;
   user_id?: string;
   isOwner: boolean;
-  itemId: string;
-  itemName: string;
+  showSpoilers: boolean;
+  ownerCanClaim: boolean;
+  ownerClaims: PurchaseView[];
+  item: ItemDisplay;
   onClose: () => void;
   onSelfClaim: () => void;
   onAttributedClaim: (target: AttributedTarget) => void;
   onGuestClaim: (name: string) => void;
+  onRemoveClaim: (claim: PurchaseView) => void;
   onUndoConfirm: () => void;
 }) {
   if (removableClaim) {
     return (
       <Modal onClose={onClose}>
-        <PurchaseFlow
-          primary_text={
-            removableClaim.by === 'self'
-              ? 'Remove your claim on this item?'
-              : `Remove your claim for ${removableClaim.firstName}?`
-          }
-        >
-          <ModalButtons
-            primary_button_text="Remove my claim"
-            primary_button_onclick={onUndoConfirm}
-          />
-        </PurchaseFlow>
+        <div className="claim-modal">
+          <PurchaseModalHeader item={item} />
+          <ModalStoreRow stores={item.stores} />
+          <div className="claimed-banner" role="status">
+            <MdCheck aria-hidden />
+            {removableClaim.by === 'self'
+              ? 'You claimed this'
+              : `You claimed this for ${removableClaim.firstName}`}
+          </div>
+          <Button
+            variant="danger"
+            className="remove-claim-btn"
+            onClick={onUndoConfirm}
+          >
+            Remove my claim
+          </Button>
+        </div>
       </Modal>
     );
   }
@@ -52,11 +65,14 @@ export default function PurchaseModalSlot({
       <PurchaseFlowContainer
         user_id={user_id}
         isOwner={isOwner}
-        itemId={itemId}
-        itemName={itemName}
+        showSpoilers={showSpoilers}
+        ownerCanClaim={ownerCanClaim}
+        ownerClaims={ownerClaims}
+        item={item}
         onSelfClaim={onSelfClaim}
         onAttributedClaim={onAttributedClaim}
         onGuestClaim={onGuestClaim}
+        onRemoveClaim={onRemoveClaim}
       />
     </Modal>
   );
