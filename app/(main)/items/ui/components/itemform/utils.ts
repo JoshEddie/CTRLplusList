@@ -19,6 +19,16 @@ export function isValidHttpUrl(url: string): { url: string; error?: string } {
   }
 }
 
+// Mirrors ItemSchema's name bounds (lib/data/item.schema.ts) so the client
+// surfaces the same error the server would return.
+export function itemNameError(value: string | number | null | undefined): string {
+  const name = value?.toString() ?? '';
+  if (!name) return 'Name is required';
+  if (name.length < 3) return 'Title must be at least 3 characters';
+  if (name.length > 100) return 'Title must be less than 100 characters';
+  return '';
+}
+
 export function storeNameError(value: string | number, store: StoreFields): string {
   if (!value && (store.link || store.price)) {
     return 'Store name required when price or link is added';

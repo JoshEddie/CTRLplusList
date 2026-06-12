@@ -54,7 +54,7 @@ No new HTML-parsing dependency: JSON-LD is the high-value path and is plain JSON
 
 ### D4 — Tier 2 Zyte: only when configured, single POST
 
-`POST https://api.zyte.com/v1/extract`, basic auth `ZYTE_API_KEY`, body `{url, product: true, followRedirect: true}`. Skipped entirely (waterfall: tier 1 → fail) when `ZYTE_API_KEY` is unset — local dev and e2e work without the key. Overall app-side abort at 20s across the whole waterfall; on abort/timeout the route returns `{ok: false, error: 'timeout'}` and the client falls to manual entry with the "couldn't fetch automatically" notice.
+`POST https://api.zyte.com/v1/extract`, basic auth `ZYTE_API_KEY`, body `{url, product: true, productOptions: {extractFrom: httpResponseBody}, followRedirect: true}`. Skipped entirely (waterfall: tier 1 → fail) when `ZYTE_API_KEY` is unset — local dev and e2e work without the key. Overall app-side abort at 20s across the whole waterfall; on abort/timeout the route returns `{ok: false, error: 'timeout'}` and the client falls to manual entry with the "couldn't fetch automatically" notice.
 
 `followRedirect: true` is load-bearing: Amazon share links (`a.co/...`) redirect to the product page.
 
@@ -63,7 +63,7 @@ No new HTML-parsing dependency: JSON-LD is the high-value path and is plain JSON
 `ItemForm` gains a create-only phase: `'url' | 'fetching' | 'form'` (edit mode and prefilled-failure both start at `'form'`/manual). New page-scoped components in `app/(main)/items/ui/components/itemform/`:
 
 - `UrlEntryStep` — `FormField` + `TextField type="url"` + `<Button variant="primary">Fetch Details</Button>`, "Fill in details manually →" as `button-system` `link` variant. Renders inside the same `FormShell` (narrow body), so shell dismiss/footer contracts are untouched.
-- `FetchingStep` — `<LoadingIndicator size="form">` (shared primitive, unmodified) with adjacent cycling-message text node (component-local `useEffect` interval, fade via opacity transition, `aria-live` handled by the indicator's existing status region — message text is decorative, cycling outside the live region to avoid SR spam), static "This may take a moment.", URL strip with "change" (returns to `'url'`), footer Cancel aborts the in-flight request (`AbortController`) and returns to `'url'`.
+- `FetchingStep` — `<LoadingIndicator size="rail">` (shared primitive, unmodified) with adjacent cycling-message text node (component-local `useEffect` interval, fade via opacity transition, `aria-live` handled by the indicator's existing status region — message text is decorative, cycling outside the live region to avoid SR spam), static "This may take a moment.", URL strip with "change" (returns to `'url'`), footer Cancel aborts the in-flight request (`AbortController`) and returns to `'url'`.
 - Manual entry state = existing form, plus a "← Use a link instead" escape (link-variant button) shown only when create-mode arrived via manual/failure path.
 
 On success: map product → `useItemForm` initial values (name, description, imageUrl, one store row `{name: store, price, link: pastedUrl}` + provenance fields held in hook state) and a "Fetched from {store}" badge above the form. The phase machine lives in the container so phase 2 can lift it out to drive multiple pending cards.

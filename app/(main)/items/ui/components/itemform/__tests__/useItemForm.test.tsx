@@ -67,6 +67,89 @@ const EXISTING = {
 };
 
 describe('useItemForm', () => {
+  describe('OverlongPrefilledName', () => {
+    const LONG_NAME = 'Sport Silicone Band '.repeat(11); // 220 chars
+
+    it('Mount_SetsMaxLengthErrorImmediately', () => {
+      const { result } = renderHook(() => useItemForm({ name: LONG_NAME }));
+      expect(result.current.errors.name).toBe(
+        'Title must be less than 100 characters'
+      );
+    });
+
+    it('Submit_BlocksCreate-ToastsFixErrors', async () => {
+      const { result } = renderHook(() => useItemForm({ name: LONG_NAME }));
+      await act(() => result.current.handleSubmit(submit()));
+      expect(createItem).not.toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith(
+        'Please fix the form errors before submitting'
+      );
+    });
+
+    it('EditedToValidLength_ClearsErrorAndSubmits', async () => {
+      const { result } = renderHook(() => useItemForm({ name: LONG_NAME }));
+      act(() => result.current.handleNameChange('Sport Silicone Band'));
+      expect(result.current.errors.name).toBe('');
+      await act(() => result.current.handleSubmit(submit()));
+      await waitFor(() =>
+        expect(createItem).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'Sport Silicone Band' })
+        )
+      );
+    });
+  });
+
+  describe('FetchedPriceProvenance', () => {
+    const FETCHED_STORE = {
+      name: 'Amazon',
+      link: 'https://a.co/x',
+      price: '24.50',
+      price_fetched_at: '2026-06-01T12:00:00.000Z',
+      canonical_url: 'https://a.co/c',
+      currency: 'USD',
+    };
+
+    it('DateValuedFetchedAt_NormalizesToIsoString', () => {
+      const { result } = renderHook(() =>
+        useItemForm({
+          stores: [
+            {
+              ...FETCHED_STORE,
+              price_fetched_at: new Date('2026-06-01T12:00:00.000Z'),
+            },
+          ],
+        })
+      );
+      expect(result.current.formState.stores[0].price_fetched_at).toBe(
+        '2026-06-01T12:00:00.000Z'
+      );
+    });
+
+    it('EditPrice_DropsPriceFetchedAt-KeepsCanonicalAndCurrency', () => {
+      const { result } = renderHook(() =>
+        useItemForm({ stores: [FETCHED_STORE] })
+      );
+      act(() => result.current.handleStoreChange(0, '30.00', 'price'));
+      expect(result.current.formState.stores[0].price_fetched_at).toBeNull();
+      expect(result.current.formState.stores[0].canonical_url).toBe(
+        'https://a.co/c'
+      );
+      expect(result.current.formState.stores[0].currency).toBe('USD');
+    });
+
+    it('EditLink_KeepsPriceFetchedAt', () => {
+      const { result } = renderHook(() =>
+        useItemForm({ stores: [FETCHED_STORE] })
+      );
+      act(() =>
+        result.current.handleStoreChange(0, 'https://other.com', 'link')
+      );
+      expect(result.current.formState.stores[0].price_fetched_at).toBe(
+        '2026-06-01T12:00:00.000Z'
+      );
+    });
+  });
+
   describe('Initialization', () => {
     it('NewItem_DefaultsEmptyStateWithOneStore', () => {
       const { result } = renderHook(() => useItemForm());

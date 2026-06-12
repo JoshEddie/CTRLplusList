@@ -3,7 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { StoreInputContainer } from '../StoreInput';
 
-type Store = { name: string; link: string; price: string };
+type Store = {
+  name: string;
+  link: string;
+  price: string;
+  price_fetched_at?: Date | string | null;
+};
 
 function renderStores(
   stores: Store[],
@@ -83,6 +88,29 @@ describe('StoreInputContainer', () => {
     const { add } = renderStores([EMPTY]);
     await user.click(screen.getByRole('button', { name: '+ Add Store' }));
     expect(add).toHaveBeenCalledWith(1);
+  });
+
+  describe('PriceAsOfAnnotation', () => {
+    it('FetchedPrice_RendersPriceAsOfCaptureDate', () => {
+      renderStores([
+        {
+          name: 'Amazon',
+          link: 'https://a.co/x',
+          price: '24.50',
+          price_fetched_at: new Date('2026-06-01T12:00:00Z'),
+        },
+      ]);
+      expect(
+        screen.getByText(
+          `price as of ${new Date('2026-06-01T12:00:00Z').toLocaleDateString()}`
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('ManualPrice_RendersNoAnnotation', () => {
+      renderStores([{ name: 'Amazon', link: 'https://a.co/x', price: '9.99' }]);
+      expect(screen.queryByText(/price as of/)).not.toBeInTheDocument();
+    });
   });
 
   it('ClickRemove_CallsHandleStoreRemoveWithIndex', async () => {

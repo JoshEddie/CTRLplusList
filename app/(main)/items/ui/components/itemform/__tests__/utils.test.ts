@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   StoreFields,
   isValidHttpUrl,
+  itemNameError,
   storeLinkError,
   storeNameError,
   storePriceError,
@@ -12,6 +13,27 @@ function store(overrides: Partial<StoreFields> = {}): StoreFields {
 }
 
 afterEach(() => vi.restoreAllMocks());
+
+describe('itemNameError', () => {
+  it('EmptyValue_ReturnsNameRequired', () => {
+    expect(itemNameError('')).toBe('Name is required');
+    expect(itemNameError(null)).toBe('Name is required');
+  });
+
+  it('TwoCharName_ReturnsMinThreeMessage', () => {
+    expect(itemNameError('ab')).toBe('Title must be at least 3 characters');
+  });
+
+  it('HundredOneCharName_ReturnsMaxHundredMessage', () => {
+    expect(itemNameError('a'.repeat(101))).toBe(
+      'Title must be less than 100 characters'
+    );
+  });
+
+  it('HundredCharName_ReturnsEmpty', () => {
+    expect(itemNameError('a'.repeat(100))).toBe('');
+  });
+});
 
 describe('isValidHttpUrl', () => {
   it('ValidHttpUrl_NormalizesAndReturnsNoError', () => {

@@ -18,7 +18,11 @@ import { ItemNameInput } from './ItemNameInput';
 import { ListSelection } from './ListSelection';
 import { QuantityLimitField } from './QuantityLimitField';
 import { StoreInputContainer } from './StoreInput';
-import { useItemForm } from './useItemForm';
+import { useItemForm, type ItemFormInitial } from './useItemForm';
+import { Button } from '@/app/ui/components/button';
+import './prefill.css';
+
+export type ItemFormPrefill = Omit<ItemFormInitial, 'id' | 'lists'>;
 
 interface ItemFormProps {
   item?: ItemTable & {
@@ -29,6 +33,10 @@ interface ItemFormProps {
   lists?: ListTable[];
   user_id: string;
   returnTo?: string;
+  prefill?: ItemFormPrefill;
+  fetchedBadge?: { store: string; url: string; onChange: () => void };
+  showFetchFailedNotice?: boolean;
+  onUseLinkInstead?: () => void;
   onSuccess?: () => void;
   onClose?: () => void;
 }
@@ -38,6 +46,10 @@ export default function ItemForm({
   lists,
   user_id,
   returnTo,
+  prefill,
+  fetchedBadge,
+  showFetchFailedNotice,
+  onUseLinkInstead,
   onSuccess,
   onClose,
 }: ItemFormProps) {
@@ -45,6 +57,7 @@ export default function ItemForm({
     formState,
     errors,
     isPending,
+    isFormValid,
     handleNameChange,
     handleDescriptionChange,
     handleImageUrlChange,
@@ -54,7 +67,7 @@ export default function ItemForm({
     handleStoreAdd,
     handleStoreRemove,
     handleSubmit,
-  } = useItemForm(item, returnTo, onSuccess);
+  } = useItemForm(item ?? prefill, returnTo, onSuccess);
 
   const listOptions: OptionType[] = useMemo(() => {
     if (!lists) return [];
@@ -181,7 +194,33 @@ export default function ItemForm({
             </div>
           </aside>
 
-          <div className="form-shell-split-right">{sections}</div>
+          <div className="form-shell-split-right">
+            {fetchedBadge && (
+              <div className="prefill-badge">
+                <span className="prefill-badge-text">
+                  Fetched from {fetchedBadge.store} ·{' '}
+                  <span className="prefill-url-text">{fetchedBadge.url}</span>
+                </span>
+                <Button variant="link" onClick={fetchedBadge.onChange}>
+                  change
+                </Button>
+              </div>
+            )}
+            {showFetchFailedNotice && (
+              <div className="prefill-notice">
+                We couldn&apos;t fetch that automatically — fill in the details
+                below.
+              </div>
+            )}
+            {onUseLinkInstead && (
+              <div className="prefill-use-link">
+                <Button variant="link" onClick={onUseLinkInstead}>
+                  ← Use a link instead
+                </Button>
+              </div>
+            )}
+            {sections}
+          </div>
         </div>
 
         <FormShellFooter
@@ -189,6 +228,7 @@ export default function ItemForm({
           onCancel={onClose}
           submitLabel={isEditing ? 'Update Item' : 'Create Item'}
           isPending={isPending}
+          submitDisabled={!isFormValid()}
           deleteSlot={
             isEditing && item ? (
               <DeleteItemButton

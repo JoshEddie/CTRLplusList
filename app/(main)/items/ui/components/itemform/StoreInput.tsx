@@ -1,5 +1,13 @@
 import { PriceField, TextField } from '@/app/ui/components/field';
 import { ItemDetails } from '@/lib/types';
+import './prefill.css';
+
+function priceAsOf(fetchedAt: Date | string | null | undefined) {
+  if (!fetchedAt) return null;
+  const date = new Date(fetchedAt);
+  if (Number.isNaN(date.getTime())) return null;
+  return `price as of ${date.toLocaleDateString()}`;
+}
 
 interface ItemFormErrors {
   name: string;
@@ -36,6 +44,7 @@ export function StoreInputContainer({
         const err = itemFormErrors.stores[index];
         const parsedPrice = store.price ? parseFloat(String(store.price)) : NaN;
         const priceAmount = Number.isFinite(parsedPrice) ? parsedPrice : null;
+        const fetchedAnnotation = priceAsOf(store.price_fetched_at);
         return (
           <div
             key={index}
@@ -51,12 +60,19 @@ export function StoreInputContainer({
               onChange={(e) => handleStoreChange(index, e.target.value, 'name')}
               autoComplete="off"
             />
-            <PriceField
-              label="Price"
-              error={err?.price || undefined}
-              amount={priceAmount}
-              onChange={(v) => handleStoreChange(index, v.toFixed(2), 'price')}
-            />
+            <div className="if-store-price">
+              <PriceField
+                label="Price"
+                error={err?.price || undefined}
+                amount={priceAmount}
+                onChange={(v) =>
+                  handleStoreChange(index, v.toFixed(2), 'price')
+                }
+              />
+              {fetchedAnnotation && (
+                <span className="price-as-of">{fetchedAnnotation}</span>
+              )}
+            </div>
             <TextField
               label="Link"
               className="if-store-link"

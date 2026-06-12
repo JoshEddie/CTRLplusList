@@ -25,6 +25,11 @@ test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted',
   // (ItemSchema: name + link + price together), so fill all three.
   await page.goto('/items');
   await page.getByRole('button', { name: 'New Item' }).click();
+  // Create mode opens at the URL-entry step (paste-link-prefill); this spec
+  // exercises the manual path.
+  await page
+    .getByRole('button', { name: 'Fill in details manually →' })
+    .click();
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill(createdName);
   await page
     .getByRole('textbox', { name: 'Description', exact: true })

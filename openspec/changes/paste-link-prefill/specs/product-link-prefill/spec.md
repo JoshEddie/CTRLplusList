@@ -47,12 +47,12 @@ While a fetch is in flight the modal SHALL render: the shared `<LoadingIndicator
 
 ### Requirement: A successful fetch SHALL prefill the item form with editable values
 
-On a successful fetch the modal SHALL transition to the existing item form with: Name = fetched title; Description = fetched description (when present); Image URL = fetched image URL (when present); exactly one store row prefilled with store name derived from the product page's hostname, the fetched price, and the pasted URL as the store link. A "Fetched from {store}" badge SHALL render above the form with a truncated-URL "change" affordance returning to URL entry. Every prefilled field SHALL remain editable, and submission SHALL flow through the existing create action unchanged. The prefilled store row SHALL satisfy the store-validity rule owned by `item-store-links` (name + link + numeric price) whenever a numeric price was fetched; when no price was fetched the price field SHALL be left empty for the user.
+On a successful fetch the modal SHALL transition to the existing item form with: Name = fetched title; Image URL = fetched image URL (when present); exactly one store row prefilled with store name derived from the product page's hostname, the fetched price, and the pasted URL as the store link. The Description field SHALL be left empty — extracted descriptions are marketing copy at best and the wrong page block on some sites (e.g. Amazon book pages yield Editorial Reviews; see issue #157) — the user authors their own notes. A "Fetched from {store}" badge SHALL render above the form with a truncated-URL "change" affordance returning to URL entry. Every prefilled field SHALL remain editable, and submission SHALL flow through the existing create action unchanged. The prefilled store row SHALL satisfy the store-validity rule owned by `item-store-links` (name + link + numeric price) whenever a numeric price was fetched; when no price was fetched the price field SHALL be left empty for the user.
 
 #### Scenario: Fetched values land in the form
 
-- **WHEN** a fetch resolves with title, image, price, and store
-- **THEN** the form SHALL render with name, image URL, and one store row (store, price, pasted link) prefilled, all editable, plus the "Fetched from {store}" badge
+- **WHEN** a fetch resolves with title, description, image, price, and store
+- **THEN** the form SHALL render with name, image URL, and one store row (store, price, pasted link) prefilled, all editable, plus the "Fetched from {store}" badge — and the Description field SHALL be empty
 
 #### Scenario: Partial result prefills what it has
 
@@ -73,10 +73,17 @@ On a successful fetch the modal SHALL transition to the existing item form with:
 
 When the fetch fails, times out, or returns no usable product data, the modal SHALL transition to the manual item form with a non-blocking notice ("We couldn't fetch that automatically — fill in the details below."), the pasted URL prefilled into the first store row's Link field, and the "← Use a link instead" affordance available to retry with a different URL. The failure SHALL never surface fabricated or partial-garbage data as if fetched.
 
+Rate limiting is the exception: a 429 / `rate_limited` response SHALL return the user to the URL entry state (pasted URL retained) with a friendly field-level error ("You've hit the fetch limit — try again in about a minute.") — retry-in-a-minute is the remedy, not manual entry.
+
 #### Scenario: Timeout falls to manual with notice
 
 - **WHEN** a fetch exceeds the app-side timeout
 - **THEN** the manual form SHALL render with the couldn't-fetch notice and the pasted URL in the store row's Link field
+
+#### Scenario: Rate-limited fetch stays on URL entry
+
+- **WHEN** the endpoint returns 429 `{ error: 'rate_limited' }`
+- **THEN** the URL entry state SHALL render with the pasted URL retained and the slow-down field error, and the manual form SHALL NOT render
 
 #### Scenario: Fetch failure falls to manual with notice
 
@@ -109,7 +116,7 @@ The endpoint SHALL `await auth()` at handler entry and return 401 JSON for unaut
 
 ### Requirement: Product fetching SHALL run a tiered waterfall behind a swappable seam
 
-A `fetchProduct(url, {signal})` seam SHALL encapsulate the fetch strategy: tier 1 — server-side fetch of the page following redirects, extracting schema.org JSON-LD `Product` data first and OpenGraph/meta fallbacks second; tier 2 — Zyte extract API (`product: true`, `followRedirect: true`, basic auth with `ZYTE_API_KEY`) attempted only when tier 1 yields no title AND the key is configured; tier 3 is the UI's manual fallback. The whole waterfall SHALL be bounded by an app-side abort timeout of ~20 seconds, and the route's `maxDuration` SHALL comfortably exceed it. The seam's result SHALL normalize to `{ title, description?, imageUrl?, price?, currency?, canonicalUrl?, store }` with price emitted only when strictly numeric. The route handler SHALL contain no parsing logic — vendors swap inside the seam.
+A `fetchProduct(url, {signal})` seam SHALL encapsulate the fetch strategy: tier 1 — server-side fetch of the page following redirects, extracting schema.org JSON-LD `Product` data first and OpenGraph/meta fallbacks second; tier 2 — Zyte extract API (`product: true` with `extractFrom: httpResponseBody`, basic auth with `ZYTE_API_KEY`) attempted only when tier 1 yields no title AND the key is configured; tier 3 is the UI's manual fallback. The whole waterfall SHALL be bounded by an app-side abort timeout of ~20 seconds, and the route's `maxDuration` SHALL comfortably exceed it. The seam's result SHALL normalize to `{ title, description?, imageUrl?, price?, currency?, canonicalUrl?, store }` with price emitted only when strictly numeric. The route handler SHALL contain no parsing logic — vendors swap inside the seam.
 
 #### Scenario: Structured-data site resolves at tier 1
 
@@ -119,7 +126,7 @@ A `fetchProduct(url, {signal})` seam SHALL encapsulate the fetch strategy: tier 
 #### Scenario: Resistant site falls to Zyte
 
 - **WHEN** tier 1 yields no title and `ZYTE_API_KEY` is configured
-- **THEN** the seam SHALL call Zyte with `{url, product: true, followRedirect: true}` and normalize its product response
+- **THEN** the seam SHALL call Zyte with `{url, product: true, productOptions: {extractFrom: httpResponseBody}, followRedirect: true}` and normalize its product response
 
 #### Scenario: Missing key skips tier 2
 

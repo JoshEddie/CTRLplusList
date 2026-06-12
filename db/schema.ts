@@ -160,6 +160,9 @@ export const item_stores = pgTable('item_stores', {
   link: text('link').notNull(),
   price: text('price').notNull(),
   order: integer('order').notNull().default(1),
+  price_fetched_at: timestamp('price_fetched_at'),
+  canonical_url: text('canonical_url'),
+  currency: text('currency'),
 });
 
 export const purchases = pgTable(

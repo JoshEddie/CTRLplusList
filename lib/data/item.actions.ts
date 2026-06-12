@@ -68,6 +68,9 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
         name: store.name || '',
         link: store.link || '',
         price: store.price || '',
+        price_fetched_at: store.price_fetched_at ?? null,
+        canonical_url: store.canonical_url ?? null,
+        currency: store.currency ?? null,
       })),
       id
     );
@@ -155,6 +158,9 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
         name: store.name || '',
         link: store.link || '',
         price: store.price || '',
+        price_fetched_at: store.price_fetched_at ?? null,
+        canonical_url: store.canonical_url ?? null,
+        currency: store.currency ?? null,
       })),
       data.id
     );
