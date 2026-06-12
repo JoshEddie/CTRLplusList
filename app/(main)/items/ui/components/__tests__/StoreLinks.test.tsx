@@ -467,6 +467,30 @@ describe('StoreLinks', () => {
       expect(screen.queryByRole('menu')).toBeNull();
     });
 
+    it('SecondMouseLeaveBeforeGrace_RestartsGraceFromScratch', () => {
+      vi.useFakeTimers();
+      const { container } = render(<StoreLinks item={makeItem(twoStores())} />);
+      const anchor = container.querySelector(
+        '.storeLinks-more-anchor'
+      ) as Element;
+      fireEvent.mouseEnter(anchor);
+      fireEvent.mouseLeave(anchor);
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      // A second leave restarts the 220ms grace; the first leave's pending
+      // timer must be cleared so it can't close the menu at its original 220.
+      fireEvent.mouseLeave(anchor);
+      act(() => {
+        vi.advanceTimersByTime(150);
+      });
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+
     it('MouseLeaveThenReEnterBeforeGrace_StaysOpen', () => {
       vi.useFakeTimers();
       const { container } = render(<StoreLinks item={makeItem(twoStores())} />);

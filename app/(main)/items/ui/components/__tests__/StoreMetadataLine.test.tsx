@@ -22,13 +22,14 @@ function stubWidths(scrollWidth: number, clientWidth: number) {
 
 type ResizeCallback = () => void;
 const resizeCallbacks: ResizeCallback[] = [];
+const disconnectSpy = vi.fn();
 
 class FakeResizeObserver {
   constructor(cb: ResizeCallback) {
     resizeCallbacks.push(cb);
   }
   observe() {}
-  disconnect() {}
+  disconnect = disconnectSpy;
 }
 
 afterEach(() => {
@@ -37,6 +38,7 @@ afterEach(() => {
   delete proto['clientWidth'];
   vi.unstubAllGlobals();
   resizeCallbacks.length = 0;
+  disconnectSpy.mockClear();
 });
 
 const store = (name: string, link: string, price: string) => ({
@@ -159,6 +161,14 @@ describe('StoreMetadataLine', () => {
       expect(container.querySelector('.item-price')).toHaveTextContent(
         '$1,000.00'
       );
+    });
+
+    it('Unmount_DisconnectsResizeObserver', () => {
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+      const { unmount } = render(<StoreMetadataLine item={makeItem(THREE)} />);
+      expect(disconnectSpy).not.toHaveBeenCalled();
+      unmount();
+      expect(disconnectSpy).toHaveBeenCalledTimes(1);
     });
 
     it('StoreListChanges_RestartsFitFromMax', () => {

@@ -12,7 +12,7 @@ export default function StoreMetadataLine({ item }: { item: ItemDisplay }) {
   const maxNamed = Math.min(MAX_NAMED_STORES, stores.length);
   const [named, setNamed] = useState(maxNamed);
   const spanRef = useRef<HTMLSpanElement>(null);
-  const measureRef = useRef<() => void>(() => {});
+  const measureRef = useRef<(() => void) | null>(null);
   const storesKey = stores.map((s) => s.name).join('|');
 
   // The store list can change in place (item-form live preview); restart the
@@ -46,7 +46,7 @@ export default function StoreMetadataLine({ item }: { item: ItemDisplay }) {
     if (!el || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
       setNamed(maxNamed);
-      measureRef.current();
+      measureRef.current?.();
     });
     observer.observe(el);
     return () => observer.disconnect();

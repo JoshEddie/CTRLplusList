@@ -51,6 +51,51 @@ describe('Purchase', () => {
     });
   });
 
+  describe('OwnerManage', () => {
+    it('OwnerManage_RendersManageClaimsGhostButton', () => {
+      render(<Purchase ownerManage handlePurchaseClick={vi.fn()} />);
+      expect(
+        screen.getByRole('button', { name: 'Manage claims' })
+      ).toHaveClass('manage-claim-btn');
+    });
+
+    it('ManageClick_CallsHandlerOnce', () => {
+      const handleClick = vi.fn();
+      render(<Purchase ownerManage handlePurchaseClick={handleClick} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Manage claims' }));
+      expect(handleClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('ClassName_AppliedToManageButton', () => {
+      render(
+        <Purchase
+          ownerManage
+          handlePurchaseClick={vi.fn()}
+          className="row-claim"
+        />
+      );
+      expect(
+        screen.getByRole('button', { name: 'Manage claims' })
+      ).toHaveClass('row-claim');
+    });
+
+    it('OwnerManageAndViewerClaimed_ManageClaimsWinsOverManageYourClaim', () => {
+      render(
+        <Purchase
+          ownerManage
+          viewerClaimed
+          handlePurchaseClick={vi.fn()}
+        />
+      );
+      expect(
+        screen.getByRole('button', { name: 'Manage claims' })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Manage your claim' })
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('OwnerClaim', () => {
     it('OwnerClaim_RendersMarkAsClaimedLabel', () => {
       render(<Purchase ownerClaim handlePurchaseClick={vi.fn()} />);
