@@ -16,11 +16,11 @@ The covered flows SHALL be:
 4. **Add items** — items are attached to a list through the choose-items surface, and the attached item is asserted to render on the resulting list page by name — not merely by the post-save URL and list heading, which a silent no-op in the save action would also satisfy.
 5. **Set visibility** — a list's visibility is changed through the visibility picker.
 6. **Share** — the share affordance is reachable for a non-hidden list.
-7. **Signed-in (authenticated non-owner) claims an item with spoiler hiding** — a signed-in viewer who is not the owner claims an item — whether marking it as their own purchase ("I purchased it"), on behalf of a linked user via the attributed-purchaser picker, or on behalf of a named non-user via the guest-name fallback — and sees their own claim; the owner's default (no-spoiler) view of a claimed item hides the claim. (Being a follower of the owner is incidental — any caller may view/claim a non-Hidden list; what distinguishes this from flow 9 is the signed-in vs logged-out session.)
+7. **Signed-in (authenticated non-owner) claims an item with spoiler hiding** — a signed-in viewer who is not the owner opens the purchase modal via the card's "Get this gift" affordance and claims an item — whether via the one-tap self-claim ("Claim this gift"), on behalf of a linked user via the attributed-purchaser picker (expanding the "Claiming for someone else?" disclosure), or on behalf of a named non-user via the "Someone not listed?" fallback — and sees their own claim; the owner's default (no-spoiler) view of a claimed item hides the claim. (Being a follower of the owner is incidental — any caller may view/claim a non-Hidden list; what distinguishes this from flow 9 is the signed-in vs logged-out session.)
 8. **Owner sees a claim** — the owner's spoiler-enabled view reveals a claim that the default view hides.
 9. **Guest (logged-out) claims an item on a public list** — REQUIRED; see the dedicated requirement below.
-10. **Attributed claim round-trips through the picker** — a signed-in non-owner marks a seeded mutual-of-the-owner as the purchaser via the picker; the claim displays the attributed user's first name, and the attribution is persisted (reflected on reload).
-11. **Owner claims and master-unclaims under spoilers** — the owner, with spoilers enabled, claims an item on their own list through the claim affordance, and removes an existing claim they did not create via master unclaim; with spoilers disabled, neither affordance renders.
+10. **Attributed claim round-trips through the picker** — a signed-in non-owner expands the modal's disclosure, marks a seeded mutual-of-the-owner as the purchaser via the picker's select-then-confirm interaction; the claim displays the attributed user's first name, and the attribution is persisted (reflected on reload).
+11. **Owner claims and master-unclaims under spoilers** — the owner, with spoilers enabled, claims an item on their own list through the claim affordance ("I bought this myself"), and removes an existing claim they did not create via master unclaim; with spoilers disabled, neither affordance renders.
 
 #### Scenario: Sign-in surface renders without completing OAuth
 
@@ -46,7 +46,7 @@ The covered flows SHALL be:
 
 #### Scenario: Attributed claim via the picker round-trips
 
-- **WHEN** the seeded viewer opens the purchase modal on a claimable item of a followed owner's list and selects a seeded mutual of that owner from the picker
+- **WHEN** the seeded viewer opens the purchase modal on a claimable item of a followed owner's list, expands the "Claiming for someone else?" disclosure, selects a seeded mutual of that owner, and confirms
 - **THEN** the claim succeeds and the item displays the attributed user's first name
 - **AND** on reload the attribution persists
 
@@ -55,6 +55,11 @@ The covered flows SHALL be:
 - **WHEN** the owner views their own seeded list first with spoilers disabled and then enabled
 - **THEN** the disabled view shows no claim or unclaim affordances
 - **AND** the enabled view lets the owner claim an unclaimed item and remove a seeded claim they did not create, each reflected after reload
+
+#### Scenario: Store links are reached through the purchase modal
+
+- **WHEN** a signed-in non-owner opens the purchase modal on an item with valid stores
+- **THEN** the modal renders the store row (primary store link opening in a new tab) and the claim CTA in the same surface — no direct store-link affordance exists on the card
 
 #### Scenario: Dropping a flow fails the suite
 
