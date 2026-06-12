@@ -63,7 +63,7 @@ export default function ModalStoreRow({
           >
             {sorted.map((store) => (
               <MenuLinkItem
-                key={store.name}
+                key={store.link}
                 href={store.link}
                 target="_blank"
                 rel="noreferrer"

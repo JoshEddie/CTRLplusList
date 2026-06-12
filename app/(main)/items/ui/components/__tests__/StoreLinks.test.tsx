@@ -467,6 +467,24 @@ describe('StoreLinks', () => {
       expect(screen.queryByRole('menu')).toBeNull();
     });
 
+    it('UnmountDuringCollapseGrace_ClearsPendingTimer', () => {
+      vi.useFakeTimers();
+      const { container, unmount } = render(
+        <StoreLinks item={makeItem(twoStores())} />
+      );
+      const anchor = container.querySelector(
+        '.storeLinks-more-anchor'
+      ) as Element;
+      fireEvent.mouseEnter(anchor);
+      fireEvent.mouseLeave(anchor);
+      // Delta, not absolute zero: React's scheduler can hold its own
+      // setTimeout under fake timers, independent of the collapse timer.
+      const pendingBeforeUnmount = vi.getTimerCount();
+      expect(pendingBeforeUnmount).toBeGreaterThan(0);
+      unmount();
+      expect(vi.getTimerCount()).toBe(pendingBeforeUnmount - 1);
+    });
+
     it('SecondMouseLeaveBeforeGrace_RestartsGraceFromScratch', () => {
       vi.useFakeTimers();
       const { container } = render(<StoreLinks item={makeItem(twoStores())} />);

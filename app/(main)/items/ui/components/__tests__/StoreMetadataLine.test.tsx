@@ -22,13 +22,16 @@ function stubWidths(scrollWidth: number, clientWidth: number) {
 
 type ResizeCallback = () => void;
 const resizeCallbacks: ResizeCallback[] = [];
+const observedEls: Element[] = [];
 const disconnectSpy = vi.fn();
 
 class FakeResizeObserver {
   constructor(cb: ResizeCallback) {
     resizeCallbacks.push(cb);
   }
-  observe() {}
+  observe(el: Element) {
+    observedEls.push(el);
+  }
   disconnect = disconnectSpy;
 }
 
@@ -38,6 +41,7 @@ afterEach(() => {
   delete proto['clientWidth'];
   vi.unstubAllGlobals();
   resizeCallbacks.length = 0;
+  observedEls.length = 0;
   disconnectSpy.mockClear();
 });
 
@@ -161,6 +165,21 @@ describe('StoreMetadataLine', () => {
       expect(container.querySelector('.item-price')).toHaveTextContent(
         '$1,000.00'
       );
+    });
+
+    it('ObserverTarget_IsBlockRowNotFitMutatedNamesSpan', () => {
+      // Observing the names span (or its inline-flex parent) oscillates:
+      // each fit-pass drop shrinks the observed box, re-firing the reset.
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver);
+      const { container, unmount } = render(
+        <StoreMetadataLine item={makeItem(THREE)} />
+      );
+      expect(observedEls).toEqual([
+        container.querySelector('.item-price-row--metadata'),
+      ]);
+      // Explicit unmount: RTL auto-cleanup runs after this file's afterEach
+      // has cleared disconnectSpy, leaking a disconnect call into the next test.
+      unmount();
     });
 
     it('Unmount_DisconnectsResizeObserver', () => {

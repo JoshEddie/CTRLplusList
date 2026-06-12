@@ -1,5 +1,5 @@
 import { ItemStoreTable, PurchaseView } from '@/lib/types';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function claimLabel(claim: PurchaseView): string {
   const name = claim.by === 'self' ? 'You' : claim.firstName;
@@ -15,6 +15,12 @@ const COLLAPSE_DELAY_MS = 220;
 export function useHoverOpenMenu() {
   const [open, setOpen] = useState(false);
   const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (collapseTimer.current) clearTimeout(collapseTimer.current);
+    };
+  }, []);
 
   const cancelCollapseAndOpen = useCallback(() => {
     if (collapseTimer.current) {

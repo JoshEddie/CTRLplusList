@@ -26,7 +26,7 @@ describe('Purchase', () => {
   });
 
   describe('ViewerClaimed', () => {
-    it('ViewerClaimed_RendersManageYourClaimGhostButton', () => {
+    it('ViewerClaimed_RendersManageYourClaimButton', () => {
       render(<Purchase viewerClaimed handlePurchaseClick={vi.fn()} />);
       expect(
         screen.getByRole('button', { name: 'Manage your claim' })
@@ -52,7 +52,7 @@ describe('Purchase', () => {
   });
 
   describe('OwnerManage', () => {
-    it('OwnerManage_RendersManageClaimsGhostButton', () => {
+    it('OwnerManage_RendersManageClaimsButton', () => {
       render(<Purchase ownerManage handlePurchaseClick={vi.fn()} />);
       expect(
         screen.getByRole('button', { name: 'Manage claims' })

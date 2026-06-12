@@ -12,6 +12,7 @@ export default function StoreMetadataLine({ item }: { item: ItemDisplay }) {
   const maxNamed = Math.min(MAX_NAMED_STORES, stores.length);
   const [named, setNamed] = useState(maxNamed);
   const spanRef = useRef<HTMLSpanElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<(() => void) | null>(null);
   const storesKey = stores.map((s) => s.name).join('|');
 
@@ -41,8 +42,11 @@ export default function StoreMetadataLine({ item }: { item: ItemDisplay }) {
 
   // A resized container may fit more names (reset to the maximum and let the
   // fit pass shrink back down) or fewer (re-measure the current text).
+  // Observes the block-level row, not the names span — the span (and its
+  // inline-flex parent) shrink to content when the fit pass drops a name,
+  // which would re-trigger the observer and oscillate.
   useLayoutEffect(() => {
-    const el = spanRef.current;
+    const el = rowRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
       setNamed(maxNamed);
@@ -55,7 +59,7 @@ export default function StoreMetadataLine({ item }: { item: ItemDisplay }) {
   if (stores.length === 0) return null;
   const overflow = stores.length - named;
   return (
-    <div className="item-price-row item-price-row--metadata">
+    <div ref={rowRef} className="item-price-row item-price-row--metadata">
       <span className="item-price">{formatStorePrice(stores[0].price)}</span>
       <span className="item-store-metadata">
         <span ref={spanRef} className="item-store-metadata-names">

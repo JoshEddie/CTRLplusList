@@ -8,7 +8,7 @@
 
 - [x] 2.1 Extract shared store validity/sort/price helpers (valid-store predicate, price-ascending sort, lowest price) into a co-located `utils.ts` so card chips, the metadata line, and the modal store row share one home
 - [x] 2.2 Build the store-metadata line (price row text `{price} · {store} · {store} +N`, max 2 named, muted, inert, single-line) for non-owner card and row views
-- [x] 2.3 Build the modal store row: ghost `<LinkButton target="_blank" rel="noreferrer">` primary + "+N stores" `<Menu>`/`<MenuLinkItem>` popover (click/tap only, price-ascending, `$X.XX`); verify Escape closes the menu without closing the modal; renders nothing when no valid store
+- [x] 2.3 Build the modal store row: ghost `<LinkButton target="_blank" rel="noreferrer">` primary + "+N stores" `<Menu>`/`<MenuLinkItem>` popover (hover-open with collapse grace, plus click/tap; price-ascending, `$X.XX`); verify Escape closes the menu without closing the modal; renders nothing when no valid store
 - [x] 2.4 Simplify `StoreLinks.tsx` to the owner-surface chip row: drop the claim-button `children` passthrough (render `null` with no valid store), keep choose-items / sortable / items-library behavior unchanged
 
 ## 3. Card restructure

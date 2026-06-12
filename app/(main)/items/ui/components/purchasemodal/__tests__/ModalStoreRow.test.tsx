@@ -45,6 +45,22 @@ describe('ModalStoreRow', () => {
     });
   });
 
+  it('DuplicateStoreNames_RendersOneMenuRowPerLink', () => {
+    render(
+      <ModalStoreRow
+        stores={[
+          store('Amazon', 'https://a/blue', '35.50'),
+          store('Amazon', 'https://a/red', '38.00'),
+          store('Etsy', 'https://e', '41.00'),
+        ]}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: '+2 stores' }));
+    expect(
+      screen.getAllByRole('menuitem').map((i) => i.getAttribute('href'))
+    ).toEqual(['https://a/blue', 'https://a/red', 'https://e']);
+  });
+
   it('MenuItemClick_ClosesMenu', async () => {
     const user = userEvent.setup();
     render(<ModalStoreRow stores={THREE} />);

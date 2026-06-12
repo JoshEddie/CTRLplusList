@@ -132,7 +132,7 @@ export default function StoreLinks({ item, showStores = true }: Props) {
                 >
                   {sortedStores.map((store) => (
                     <MenuLinkItem
-                      key={store.name}
+                      key={store.link}
                       href={store.link}
                       target="_blank"
                       rel="noreferrer"
