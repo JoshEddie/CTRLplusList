@@ -1,6 +1,6 @@
 'use client';
 
-import { deleteList } from '@/app/actions/lists';
+import { deleteList } from '@/lib/data/list.actions';
 import { Button } from '@/app/ui/components/button';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';

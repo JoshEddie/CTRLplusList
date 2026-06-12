@@ -1,6 +1,6 @@
 'use client';
 
-import { setListVisibility } from '@/app/actions/lists';
+import { setListVisibility } from '@/lib/data/list.actions';
 import { Menu, MenuItemRadio } from '@/app/ui/components/menu';
 import { PopoverTrigger } from '@/app/ui/components/popover-trigger';
 import { type ListVisibility } from '@/lib/visibility';

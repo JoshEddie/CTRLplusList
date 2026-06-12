@@ -13,6 +13,12 @@
 # testing
 /coverage
 
+# playwright
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+
 # next.js
 /.next/
 /out/
@@ -30,9 +36,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env
-.env.local
+# env files — secrets live ONLY in *.local files (gitignored). Committed
+# .env files (.env.example, e2e/.env) are deliberately non-secret config.
+.env*.local
 
 # vercel
 .vercel
@@ -49,3 +55,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 linear.md
+
+# claude code — per-session ephemeral lock
+.claude/scheduled_tasks.lock

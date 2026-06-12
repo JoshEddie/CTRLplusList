@@ -8,7 +8,7 @@ export function triggerClasses({
   active?: boolean;
   tone?: PopoverTriggerTone;
   extra?: string;
-}): string {
+} = {}): string {
   return [
     'popover-trigger',
     tone === 'on-dark' && 'tone-on-dark',

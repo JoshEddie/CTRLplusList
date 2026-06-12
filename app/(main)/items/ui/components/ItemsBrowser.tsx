@@ -5,7 +5,7 @@ import { ItemDisplay, SortKey } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import Items from './Items';
-import ItemsToolbar from './ItemsToolbar';
+import ItemsToolbar from './itemsToolbar';
 import Pagination from './Pagination';
 import { compareItems, displayPrice } from './itemFilters';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from './paginationConstants';
@@ -72,6 +72,12 @@ export default function ItemsBrowser({
     rawSort && validSorts.includes(rawSort) ? rawSort : defaultSort;
   const selectedStores = searchParams?.getAll('store') ?? [];
   const purchasesParam = searchParams?.get('purchases') ?? 'hide';
+  // Items-library mode renders the viewer's own items, so the spoilers
+  // reveal also unlocks the owner claim/unclaim affordances. List mode
+  // viewers are never the owner, so the flag is inert there.
+  const showSpoilers =
+    mode === 'items' &&
+    (purchasesParam === 'reveal' || purchasesParam === 'only');
   const priceMin = parseFloat(searchParams?.get('price_min') ?? '');
   const priceMax = parseFloat(searchParams?.get('price_max') ?? '');
   const hasPriceFilter = Number.isFinite(priceMin) || Number.isFinite(priceMax);
@@ -191,6 +197,7 @@ export default function ItemsBrowser({
             user_id={user_id}
             user_name={user_name}
             view={view}
+            showSpoilers={showSpoilers}
             showArchiveAction={showArchiveAction}
             archivedView={archivedView}
           />

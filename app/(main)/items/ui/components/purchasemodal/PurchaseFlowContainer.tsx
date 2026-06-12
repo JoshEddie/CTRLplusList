@@ -1,98 +1,198 @@
-import SignInButton from '@/app/(auth)/ui/components/SignInButton';
+'use client';
+
+import { Button } from '@/app/ui/components/button';
 import { TextField } from '@/app/ui/components/field';
+import {
+  getClaimPickerForItem,
+  signInUser,
+  type ClaimPicker,
+} from '@/lib/data/user.actions';
+import { ItemDisplay, PurchaseView } from '@/lib/types';
+import { useCallback, useEffect, useState } from 'react';
+import { claimLabel, firstToken } from '../utils';
+import ClaimDisclosure, {
+  type AttributedTarget,
+  type PickerStatus,
+} from './ClaimDisclosure';
 import ModalButtons from './ModalButtons';
-import PurchaseFlow from './PurchaseFlow';
+import ModalStoreRow from './ModalStoreRow';
+import PurchaseModalHeader from './PurchaseModalHeader';
+
+export type { AttributedTarget };
+
+function GuestClaimSection({
+  onGuestClaim,
+}: {
+  onGuestClaim: (name: string) => void;
+}) {
+  const [guestName, setGuestName] = useState('');
+  return (
+    <>
+      <div className="guest-purchase">
+        <TextField
+          label="Your name"
+          value={guestName}
+          onChange={(e) => setGuestName(e.target.value)}
+          placeholder="Your name"
+        />
+        <ModalButtons
+          primary_button_text="Claim as Guest"
+          primary_button_onclick={() =>
+            guestName.trim() && onGuestClaim(guestName.trim())
+          }
+          primary_button_disabled={!guestName.trim()}
+          primary_button_disabled_with_tooltip="Please enter a name to continue"
+        />
+      </div>
+      <form action={signInUser} className="guest-signin-footer">
+        Have an account?{' '}
+        <Button variant="link" type="submit">
+          Sign in
+        </Button>{' '}
+        to claim with your profile.
+      </form>
+    </>
+  );
+}
+
+function OwnerClaimsList({
+  claims,
+  onRemoveClaim,
+}: {
+  claims: PurchaseView[];
+  onRemoveClaim: (claim: PurchaseView) => void;
+}) {
+  if (claims.length === 0) return null;
+  return (
+    <ul className="owner-claims-list">
+      {claims.map((claim) => (
+        <li key={claim.id} className="owner-claim-row">
+          <span>{claimLabel(claim)}</span>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => onRemoveClaim(claim)}
+            aria-label={
+              claim.by === 'self'
+                ? 'Remove your claim'
+                : `Remove ${claim.firstName}'s claim`
+            }
+          >
+            Remove
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function PurchaseFlowContainer({
   user_id,
-  guestName,
-  setGuestName,
-  handlePurchaseConfirm,
-  purchaseFlow,
-  setPurchaseFlow,
-  user_name,
+  isOwner,
+  showSpoilers,
+  ownerCanClaim,
+  ownerClaims,
+  item,
+  onSelfClaim,
+  onAttributedClaim,
+  onGuestClaim,
+  onRemoveClaim,
 }: {
   user_id?: string | null;
-  guestName: string;
-  setGuestName: (name: string) => void;
-  handlePurchaseConfirm: (name: string, user_purchase?: boolean) => void;
-  purchaseFlow: 'initial' | 'self' | 'other' | 'guest';
-  setPurchaseFlow: (flow: 'initial' | 'self' | 'other' | 'guest') => void;
-  user_name?: string | null;
+  isOwner: boolean;
+  showSpoilers: boolean;
+  ownerCanClaim: boolean;
+  ownerClaims: PurchaseView[];
+  item: ItemDisplay;
+  onSelfClaim: () => void;
+  onAttributedClaim: (target: AttributedTarget) => void;
+  onGuestClaim: (name: string) => void;
+  onRemoveClaim: (claim: PurchaseView) => void;
 }) {
-  const USER_PURCHASE = true;
+  const [picker, setPicker] = useState<ClaimPicker | null>(null);
+  const [pickerStatus, setPickerStatus] = useState<PickerStatus>('loading');
+  const [fetchAttempt, setFetchAttempt] = useState(0);
+
+  // Spoilers-off owners get no claim UI and consume no claim data.
+  const showClaimSection = !!user_id && (!isOwner || showSpoilers);
+  const itemId = item.id;
+
+  // Each (item, attempt) pair is a fresh fetch; reset to loading at render
+  // time so the effect body only performs async state updates.
+  const fetchKey = `${itemId}:${fetchAttempt}`;
+  const [prevFetchKey, setPrevFetchKey] = useState(fetchKey);
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
+    setPickerStatus('loading');
+  }
+
+  useEffect(() => {
+    if (!showClaimSection || !itemId) return;
+    let cancelled = false;
+    getClaimPickerForItem(itemId)
+      .then((data) => {
+        if (cancelled) return;
+        setPicker(data);
+        setPickerStatus('ready');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPickerStatus('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [itemId, showClaimSection, fetchAttempt]);
+
+  const retry = useCallback(() => setFetchAttempt((n) => n + 1), []);
+
+  const circleLabel = isOwner
+    ? 'your circle'
+    : `${picker?.ownerName ? firstToken(picker.ownerName) : 'the owner'}'s circle`;
 
   return (
-    <>
+    <div className="claim-modal">
+      <PurchaseModalHeader item={item} />
+      <ModalStoreRow stores={item.stores} />
+
       {!user_id ? (
-        <PurchaseFlow primary_text="Sign in to track your purchases and save lists!">
-          <SignInButton />
-          <div className="guest-purchase">
-            <p>Or continue as guest:</p>
-            <TextField
-              label="Your name"
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              placeholder="Your name"
-            />
-            <ModalButtons
-              primary_button_text="Purchase as Guest"
-              primary_button_onclick={() =>
-                guestName && handlePurchaseConfirm(guestName)
-              }
-              primary_button_disabled={!guestName.trim()}
-              primary_button_disabled_with_tooltip="Please enter a name to continue"
-            />
-          </div>
-        </PurchaseFlow>
+        <GuestClaimSection onGuestClaim={onGuestClaim} />
+      ) : !showClaimSection ? (
+        <p className="owner-list-label">Your list</p>
       ) : (
         <>
-          {purchaseFlow === 'initial' && (
-            <PurchaseFlow primary_text="Did you or someone else purchase this item?">
-              <ModalButtons
-                primary_button_text="I purchased it"
-                primary_button_onclick={() => setPurchaseFlow('self')}
-                secondary_button_text="Someone else"
-                secondary_button_onclick={() => setPurchaseFlow('other')}
-              />
-            </PurchaseFlow>
+          {isOwner && (
+            <OwnerClaimsList
+              claims={ownerClaims}
+              onRemoveClaim={onRemoveClaim}
+            />
           )}
-
-          {purchaseFlow === 'self' && (
-            <PurchaseFlow primary_text={`Confirm purchase for ${user_name}`}>
-              <ModalButtons
-                primary_button_text="Confirm Purchase"
-                primary_button_onclick={() =>
-                  user_name && handlePurchaseConfirm(user_name, USER_PURCHASE)
+          {(!isOwner || ownerCanClaim) && (
+            <>
+              <Button
+                variant="primary"
+                className="claim-self-cta"
+                onClick={onSelfClaim}
+              >
+                {isOwner ? 'I bought this myself' : 'Claim this gift'}
+              </Button>
+              <ClaimDisclosure
+                label={
+                  isOwner
+                    ? 'Claiming for someone?'
+                    : 'Claiming for someone else?'
                 }
-                secondary_button_text="Back"
-                secondary_button_onclick={() => setPurchaseFlow('initial')}
+                circleLabel={circleLabel}
+                status={pickerStatus}
+                pool={picker?.pool ?? []}
+                onRetry={retry}
+                onAttributedClaim={onAttributedClaim}
+                onGuestClaim={onGuestClaim}
               />
-            </PurchaseFlow>
-          )}
-
-          {purchaseFlow === 'other' && (
-            <PurchaseFlow primary_text="Who purchased this item?">
-              <TextField
-                label="Purchaser's name"
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                placeholder="Purchaser's name"
-              />
-              <ModalButtons
-                primary_button_text="Confirm Purchase"
-                primary_button_onclick={() =>
-                  guestName && handlePurchaseConfirm(guestName)
-                }
-                secondary_button_text="Back"
-                secondary_button_onclick={() => setPurchaseFlow('initial')}
-                primary_button_disabled={!guestName.trim()}
-                primary_button_disabled_with_tooltip="Please enter a name to continue"
-              />
-            </PurchaseFlow>
+            </>
           )}
         </>
       )}
-    </>
+    </div>
   );
 }

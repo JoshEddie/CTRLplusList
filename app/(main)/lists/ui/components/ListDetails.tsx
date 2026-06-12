@@ -2,7 +2,11 @@ import Avatar from '@/app/(main)/users/ui/components/Avatar';
 import FollowContainer from '@/app/(main)/users/ui/components/FollowContainer';
 import { LinkButton } from '@/app/ui/components/button';
 import { ListTable } from '@/lib/types';
-import { VISIBILITY, type ListVisibility } from '@/lib/visibility';
+import {
+  VISIBILITY,
+  resolveListVisibility,
+  type ListVisibility,
+} from '@/lib/visibility';
 import Link from 'next/link';
 import { MdChecklist, MdVisibility } from 'react-icons/md';
 import BookmarkContainer from './BookmarkContainer';
@@ -54,6 +58,25 @@ function timeAgo(date: Date | string | null | undefined): string {
   return rtf.format(-value, unit);
 }
 
+// The spoiler-toggle, enter-preview, and exit-preview links all depend on the
+// same (showSpoilers, previewMode) pair; derive them together so ListDetails
+// itself stays flat.
+function navHrefs(
+  listId: string,
+  showSpoilers: boolean | undefined,
+  previewMode: boolean | undefined
+) {
+  return {
+    previewHref: `/lists/${listId}?preview=viewer${
+      showSpoilers ? '&spoilers=1' : ''
+    }`,
+    exitPreviewHref: `/lists/${listId}${showSpoilers ? '?spoilers=1' : ''}`,
+    spoilerHref: showSpoilers
+      ? `/lists/${listId}${previewMode ? '?preview=viewer' : ''}`
+      : `/lists/${listId}?${previewMode ? 'preview=viewer&' : ''}spoilers=1`,
+  };
+}
+
 export default async function ListDetails({
   isOwner,
   list,
@@ -73,17 +96,14 @@ export default async function ListDetails({
   previewMode?: boolean;
   itemCount: number;
 }) {
-  const visibility =
-    list.visibility ?? (list.shared ? VISIBILITY.LINK : VISIBILITY.OWNER);
-  const previewHref = `/lists/${list.id}?preview=viewer${
-    showSpoilers ? '&spoilers=1' : ''
-  }`;
-  const exitPreviewHref = `/lists/${list.id}${showSpoilers ? '?spoilers=1' : ''}`;
-  const spoilerHref = showSpoilers
-    ? `/lists/${list.id}${previewMode ? '?preview=viewer' : ''}`
-    : `/lists/${list.id}?${previewMode ? 'preview=viewer&' : ''}spoilers=1`;
+  const visibility = resolveListVisibility(list);
+  const { previewHref, exitPreviewHref, spoilerHref } = navHrefs(
+    list.id,
+    showSpoilers,
+    previewMode
+  );
 
-  const updatedDisplay = list.updated_at ? timeAgo(list.updated_at) : '';
+  const updatedDisplay = timeAgo(list.updated_at);
   const itemsDisplay = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
   const showOwnerControls = isOwner && !previewMode;
   const showViewerControls = !isOwner && viewer_id && !previewMode;
@@ -147,7 +167,7 @@ export default async function ListDetails({
         <div className="list-hero-grid">
           <div className="list-hero-card list-hero-card-identity">
             <div className="list-hero-identity-top">
-              <div className="list-hero-share-wrapper">{ownerControls}</div>
+              {ownerControls}
               <h1 className="list-hero-title">{list.name}</h1>
               {list.subtitle ? (
                 <div className="list-hero-eyebrow-subtitle-wrapper">

@@ -1,9 +1,5 @@
-import {
-  getBookmarkStatus,
-  isBlocked,
-  isFollowing,
-  viewerHasAnyFollows,
-} from '@/lib/dal';
+import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
+import { getBookmarkStatus } from '@/lib/data/visit';
 import { ListTable } from '@/lib/types';
 import { type ListVisibility } from '@/lib/visibility';
 import {
@@ -56,9 +52,9 @@ export async function HeroCollapsedViewerItems({
     hasAnyFollows,
   ] = await Promise.all([
     getBookmarkStatus(list.id, viewerId),
-    isFollowing(viewerId, ownerId),
-    isBlocked(ownerId, viewerId),
-    isBlocked(viewerId, ownerId),
+    isFollowing({ userId: viewerId, followeeId: ownerId }),
+    hasBlocked({ userId: ownerId, blockedId: viewerId }),
+    hasBlocked({ userId: viewerId, blockedId: ownerId }),
     viewerHasAnyFollows(viewerId),
   ]);
 

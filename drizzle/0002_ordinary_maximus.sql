@@ -1,1 +1,1 @@
-ALTER TABLE "lists" ADD COLUMN "subtitle" text;
+ALTER TABLE "lists" ADD COLUMN IF NOT EXISTS "subtitle" text;

@@ -4,15 +4,15 @@
     {
       "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000,
+      "runtimeArgs": ["run", "dev:local"],
+      "port": 4000,
       "autoPort": true
     },
     {
       "name": "web-prod",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start"],
-      "port": 3000,
+      "port": 4001,
       "autoPort": true
     }
   ]

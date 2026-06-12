@@ -58,6 +58,7 @@ function SegmentedControlInner<T extends string>(
 
   useEffect(() => {
     const container = localRef.current;
+    /* v8 ignore next -- defensive null-ref guard; localRef.current is always populated by the time useEffect runs under React 19 + jsdom, so this branch is unreachable in tests. */
     if (!container) return;
     const onKey = (e: KeyboardEvent) => {
       if (

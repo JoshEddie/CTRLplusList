@@ -1,6 +1,6 @@
 'use client';
 
-import { ActionResponse, createList, updateList } from '@/app/actions/lists';
+import { createList, updateList } from '@/lib/data/list.actions';
 import {
   DatalistField,
   DateField,
@@ -8,7 +8,7 @@ import {
   TextField,
 } from '@/app/ui/components/field';
 import { FormShell, FormShellFooter } from '@/app/ui/components/FormShell';
-import { ListTable } from '@/lib/types';
+import { ActionResponse, ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, useActionState, useState } from 'react';
 import DeleteListButton from './DeleteListButton';
@@ -84,10 +84,22 @@ export default function ListForm({
       date: new Date(dateString),
     };
 
+    // Pristine edit submits skip the round-trip entirely; the server-side
+    // no-op guard in updateList remains the authority (list-update-recency).
+    const pristine =
+      isEditing &&
+      list !== undefined &&
+      data.name === list.name &&
+      data.subtitle === (list.subtitle ?? null) &&
+      data.occasion === list.occasion &&
+      dateString === new Date(list.date).toISOString().split('T')[0];
+
     try {
-      const result = isEditing
-        ? await updateList(list!.id, data)
-        : await createList(data);
+      const result = pristine
+        ? { success: true, message: '', id: list.id }
+        : isEditing
+          ? await updateList(list!.id, data)
+          : await createList(data);
 
       if (result.success) {
         if (isEditing) {

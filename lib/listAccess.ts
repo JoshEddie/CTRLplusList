@@ -2,7 +2,7 @@ import { db } from '@/db';
 import { items, list_items, lists } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
-import { isBlocked, isFollowing } from './dal';
+import { hasBlocked } from '@/lib/data/user';
 import { VISIBILITY, fromDb } from './visibility';
 
 /**
@@ -22,7 +22,10 @@ export async function guardListViewable<T extends { user_id: string }>(
   if (!list) {
     redirect(viewerId ? '/lists' : '/');
   }
-  if (viewerId && (await isBlocked(list.user_id, viewerId))) {
+  if (
+    viewerId &&
+    (await hasBlocked({ userId: list.user_id, blockedId: viewerId }))
+  ) {
     redirect('/lists');
   }
   return list;
@@ -36,10 +39,11 @@ export async function guardListViewable<T extends { user_id: string }>(
  * list whose id they guessed. Mirrors the access predicate used by the
  * `/lists/[id]` render path:
  *   - owner: always viewable
- *   - followers-only / public list: viewable to followers (and to anyone for
- *     unlisted lists, since unlisted is link-shareable)
+ *   - public / unlisted list: viewable by anyone — both are link-open. The
+ *     follow relationship governs feed discovery, not claim access, so a guest
+ *     or any non-follower can view (and therefore claim) items on a public list
  *   - private list: only the owner
- *   - any list whose owner has blocked the viewer: not viewable
+ *   - any list whose owner has blocked the viewer: not viewable (block wins)
  *
  * Items not on any list are owner-only.
  */
@@ -77,15 +81,12 @@ export async function isItemViewable(
 
   for (const list of candidateLists) {
     if (viewerId && list.user_id === viewerId) return true;
-    if (viewerId && (await isBlocked(list.user_id, viewerId))) continue;
-    const visibility = fromDb(list.visibility);
-    if (visibility === VISIBILITY.OWNER) continue;
-    if (visibility === VISIBILITY.LINK) return true;
-    if (visibility === VISIBILITY.FOLLOWERS) {
-      if (!viewerId) continue;
-      if (await isFollowing(viewerId, list.user_id)) return true;
+    if (
+      viewerId &&
+      (await hasBlocked({ userId: list.user_id, blockedId: viewerId }))
+    )
       continue;
-    }
+    if (fromDb(list.visibility) !== VISIBILITY.OWNER) return true;
   }
   return false;
 }

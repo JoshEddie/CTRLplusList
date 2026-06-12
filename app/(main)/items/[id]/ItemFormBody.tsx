@@ -1,5 +1,7 @@
 import { auth } from '@/lib/auth';
-import { getItemById, getListsByUser, getUserIdByEmail } from '@/lib/dal';
+import { getItemById } from '@/lib/data/item';
+import { getListsByUser } from '@/lib/data/list';
+import { getUserIdByEmail } from '@/lib/data/user';
 import { redirect } from 'next/navigation';
 import ItemForm from '../ui/components/itemform/ItemForm';
 import { sanitizeReturnTo } from '../ui/components/returnTo';

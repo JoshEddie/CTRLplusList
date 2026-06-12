@@ -1,36 +1,26 @@
 'use client';
 
 import Item from '@/app/(main)/items/ui/components/Item';
-import {
-  compareItems,
-  displayPrice,
-} from '@/app/(main)/items/ui/components/itemFilters';
+import { displayPrice } from '@/app/(main)/items/ui/components/itemFilters';
 import ItemFormContainer from '@/app/(main)/items/ui/components/itemform/ItemFormContainer';
-import ItemsToolbar from '@/app/(main)/items/ui/components/ItemsToolbar';
-import { setListItems } from '@/app/actions/lists';
+import ItemsToolbar from '@/app/(main)/items/ui/components/itemsToolbar';
+import { setListItems } from '@/lib/data/listItems.actions';
 import { Button, LinkButton } from '@/app/ui/components/button';
 import { CheckboxField } from '@/app/ui/components/field/CheckboxField';
-import { ItemDisplay, ListTable, SortKey } from '@/lib/types';
+import { ItemDisplay, ListTable } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { FaPlus } from 'react-icons/fa';
 import { FaArrowLeftLong, FaArrowRightLong } from 'react-icons/fa6';
+import {
+  chooseItemsSaveLabel,
+  collectStoreOptions,
+  filterAndSortChooseItems,
+  parseChooseItemsFilters,
+} from './utils';
 
 type ItemRow = ItemDisplay;
-
-const VALID_SORT_CHOOSE: SortKey[] = [
-  'created_desc',
-  'created_asc',
-  'name_asc',
-  'name_desc',
-  'store_asc',
-  'store_desc',
-  'price_asc',
-  'price_desc',
-];
-
-type ShowFilter = 'all' | 'on' | 'off';
 
 export default function ChooseItemsForm({
   list_id,
@@ -63,27 +53,10 @@ export default function ChooseItemsForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showNewItem, setShowNewItem] = useState(false);
 
-  const q = (searchParams?.get('q') ?? '').toLowerCase().trim();
-  const rawSort = searchParams?.get('sort') as SortKey | null;
-  const sort: SortKey =
-    rawSort && VALID_SORT_CHOOSE.includes(rawSort) ? rawSort : 'name_asc';
-  const rawShow = searchParams?.get('show');
-  const show: ShowFilter =
-    rawShow === 'on' || rawShow === 'off' ? rawShow : 'all';
-  const selectedStores = searchParams?.getAll('store') ?? [];
-  const priceMin = parseFloat(searchParams?.get('price_min') ?? '');
-  const priceMax = parseFloat(searchParams?.get('price_max') ?? '');
-  const hasPriceFilter = Number.isFinite(priceMin) || Number.isFinite(priceMax);
+  const filters = parseChooseItemsFilters(searchParams);
+  const { q, show, selectedStores, hasPriceFilter } = filters;
 
-  const storeOptions = useMemo(() => {
-    const names = new Set<string>();
-    for (const item of items) {
-      for (const store of item.stores ?? []) {
-        if (store.name) names.add(store.name);
-      }
-    }
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
-  }, [items]);
+  const storeOptions = useMemo(() => collectStoreOptions(items), [items]);
 
   const hasAnyStore = storeOptions.length > 0;
   const hasAnyPrice = useMemo(
@@ -93,45 +66,21 @@ export default function ChooseItemsForm({
 
   const selectedStoresKey = selectedStores.join('|');
 
-  const filtered = useMemo(() => {
-    let result = items;
-    if (show === 'on') {
-      result = result.filter((item) => selected.has(item.id));
-    } else if (show === 'off') {
-      result = result.filter((item) => !selected.has(item.id));
-    }
-    if (q) {
-      result = result.filter((item) =>
-        `${item.name ?? ''} ${item.description ?? ''}`.toLowerCase().includes(q)
-      );
-    }
-    if (selectedStores.length > 0) {
-      const selectedSet = new Set(selectedStores);
-      result = result.filter((item) =>
-        item.stores?.some((s) => selectedSet.has(s.name))
-      );
-    }
-    if (hasPriceFilter) {
-      const lo = Number.isFinite(priceMin) ? priceMin : -Infinity;
-      const hi = Number.isFinite(priceMax) ? priceMax : Infinity;
-      result = result.filter((item) => {
-        const p = displayPrice(item);
-        return Number.isFinite(p) && p >= lo && p <= hi;
-      });
-    }
-    return [...result].sort((a, b) => compareItems(a, b, sort));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `selectedStores` is depended on via its `selectedStoresKey` projection to keep the deps array stable across array reorderings
-  }, [
-    items,
-    selected,
-    show,
-    q,
-    selectedStoresKey,
-    hasPriceFilter,
-    priceMin,
-    priceMax,
-    sort,
-  ]);
+  const filtered = useMemo(
+    () => filterAndSortChooseItems(items, selected, filters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `filters` is rebuilt each render from `searchParams`; depend on its primitive projections (with `selectedStores` via `selectedStoresKey`) to keep the deps array stable
+    [
+      items,
+      selected,
+      show,
+      q,
+      selectedStoresKey,
+      hasPriceFilter,
+      filters.priceMin,
+      filters.priceMax,
+      filters.sort,
+    ]
+  );
 
   const hasActiveFilters =
     q.length > 0 ||
@@ -206,12 +155,7 @@ export default function ChooseItemsForm({
 
   const totalSelected = selected.size;
   const mode: 'create' | 'manage' = isNew ? 'create' : 'manage';
-  const saveLabel =
-    mode === 'create'
-      ? totalSelected > 0
-        ? `Add ${totalSelected} item${totalSelected !== 1 ? 's' : ''} to list →`
-        : 'Skip'
-      : 'Save changes';
+  const saveLabel = chooseItemsSaveLabel(mode, totalSelected);
 
   return (
     <div className="choose-items-page">

@@ -1,10 +1,25 @@
 /**
  * Idempotent dev-only seed. Creates the bypass test viewer plus a small social
  * graph (mutual + one-way follows, public lists with items, visit history, and
- * bookmarks) so the home-page rails have content when AUTH_BYPASS=true.
+ * bookmarks) so the home-page rails have content in local mode (USE_PG_DRIVER=1,
+ * which routes the app at the localhost Docker Postgres AND bypasses auth — see
+ * lib/auth.ts and CLAUDE.md "Local dev + e2e").
  *
  * Run with: `npm run db:seed:dev`. Safe to re-run — all inserts use
  * deterministic IDs and `.onConflictDoNothing()`. Hard-fails on production.
+ *
+ * --------------------------------------------------------------------------
+ * Seed-as-fixture (testing-foundation capability).
+ *
+ * This file is the canonical E2E fixture. E2E specs assert against the
+ * entities created here (users, lists, items, visits, follows). Any edit
+ * that adds, removes, or changes the identity/visibility of a seeded entity
+ * is a breaking change to the E2E suite — accompany it with a review of
+ * the e2e/ specs that touch the affected entities, in the same change.
+ *
+ * Reset:  npm run db:reset:dev
+ * Apply:  npm run db:seed:dev
+ * --------------------------------------------------------------------------
  */
 import 'dotenv/config';
 import { inArray, sql } from 'drizzle-orm';
@@ -50,6 +65,7 @@ const FRIENDS: { slug: string; first: string; bg: string }[] = [
   { slug: 'hank', first: 'Hank', bg: '#65a30d' },
   { slug: 'iris', first: 'Iris', bg: '#f59e0b' },
   { slug: 'jack', first: 'Jack', bg: '#475569' },
+  { slug: 'kim', first: 'Kim', bg: '#9333ea' },
 ];
 const friendId = (slug: string) => `dev-friend-${slug}`;
 const seedUsers: SeedUser[] = [
@@ -182,6 +198,30 @@ function itemsForList(listId: string): string[] {
   return out;
 }
 
+// Purchase fan-out per item:
+//   qty_limit = 3:       1 (partial) or 3 (fully-claimed), per listIdx parity
+//   qty_limit = null:    1 (single buyer) or 4 (many buyers), per listIdx parity
+//   qty_limit = 1:       0 or 1 via stride derived from the target ratio —
+//                        viewer's archived items run hotter (~70%) since
+//                        archived often means purchased.
+function purchaseCountFor(
+  item: {
+    user_id: string;
+    archived_at: Date | null;
+    quantity_limit: number | null;
+  },
+  listIdx: number,
+  itemIdx: number,
+  baseRatio: number
+): number {
+  if (item.quantity_limit === 3) return listIdx % 2 === 0 ? 1 : 3;
+  if (item.quantity_limit === null) return listIdx % 2 === 0 ? 1 : 4;
+  const effectiveRatio =
+    item.user_id === VIEWER_ID && item.archived_at ? 0.7 : baseRatio;
+  const stride = Math.max(1, Math.round(1 / effectiveRatio));
+  return itemIdx % stride === 0 ? 1 : 0;
+}
+
 // Viewer-owned lists — 15 of them across varied occasions to force both the
 // MyListsRail horizontal scroll and the /lists page vertical scroll.
 const VIEWER_LIST_TEMPLATES: {
@@ -294,6 +334,7 @@ const FRIEND_LIST_TEMPLATES: {
   name: string;
   subtitle?: string;
   occasion: string;
+  visibility?: ListVisibility;
 }[] = [
   {
     friendSlug: 'alice',
@@ -389,6 +430,31 @@ const FRIEND_LIST_TEMPLATES: {
     name: "Jack's Holiday",
     occasion: 'Holiday',
   },
+  // testing-foundation: spike audit additions. These three lists give the
+  // E2E fixture a friend-owned OWNER list, a friend-owned LINK list, and a
+  // new friend (kim) owning a FOLLOWERS list with no list_visits row for
+  // the viewer. dave + jack are existing not-followed-by-viewer friends.
+  {
+    friendSlug: 'dave',
+    slug: 'private-wishlist',
+    name: "Dave's private wishlist",
+    occasion: 'Just Because',
+    visibility: VISIBILITY.OWNER,
+  },
+  {
+    friendSlug: 'jack',
+    slug: 'unlisted-plans',
+    name: "Jack's shared-by-link plans",
+    occasion: 'Just Because',
+    visibility: VISIBILITY.LINK,
+  },
+  {
+    friendSlug: 'kim',
+    slug: 'birthday',
+    name: "Kim's Birthday",
+    occasion: 'Birthday',
+    visibility: VISIBILITY.FOLLOWERS,
+  },
 ];
 
 const seedLists: SeedList[] = [
@@ -412,7 +478,7 @@ const seedLists: SeedList[] = [
       subtitle: t.subtitle,
       occasion: t.occasion,
       user_id: friendId(t.friendSlug),
-      visibility: VISIBILITY.FOLLOWERS,
+      visibility: t.visibility ?? VISIBILITY.FOLLOWERS,
       itemNames: itemsForList(id),
     };
   }),
@@ -426,8 +492,13 @@ type SeedVisit = {
 };
 // Visit every public friend list — gives Recently Visited enough rows (≥15) to
 // force pagination and horizontal scroll. Bookmark every other one so the
-// Bookmarks rail has plenty of content too.
-const seedVisits: SeedVisit[] = FRIEND_LIST_TEMPLATES.map((t, idx) => ({
+// Bookmarks rail has plenty of content too. Kim is excluded per the
+// testing-foundation spike audit: kim must have zero list_visits rows so
+// the "user with no visit history from the viewer" surface is reachable
+// directly from the seed.
+const seedVisits: SeedVisit[] = FRIEND_LIST_TEMPLATES.filter(
+  (t) => t.friendSlug !== 'kim'
+).map((t, idx) => ({
   user_id: VIEWER_ID,
   list_id: `dev-list-${t.friendSlug}-${t.slug}`,
   daysAgo: idx, // 0, 1, 2, … so recency descending matches the template order
@@ -451,6 +522,15 @@ const seedFollows: { follower_id: string; followee_id: string }[] = [
   { follower_id: friendId('grace'), followee_id: VIEWER_ID },
   { follower_id: friendId('carol'), followee_id: VIEWER_ID },
   { follower_id: friendId('iris'), followee_id: VIEWER_ID },
+  // Friend ↔ friend mutuals: Alice is mutual with every other friend, so her
+  // lists' attributed-purchaser picker has a pool big enough to scroll (~10
+  // rows) and a markable target besides the viewer (the attributed-claim e2e
+  // spec picks Bob from this pool). Only Alice's edges — the viewer's own
+  // counts and mutuals are untouched.
+  ...FRIENDS.filter((f) => f.slug !== 'alice').flatMap((f) => [
+    { follower_id: friendId('alice'), followee_id: friendId(f.slug) },
+    { follower_id: friendId(f.slug), followee_id: friendId('alice') },
+  ]),
 ];
 
 async function main() {
@@ -635,6 +715,27 @@ async function main() {
       price: '35.50',
     },
   ];
+  // Hand-authored edge case: a high price plus a store name too long for
+  // even one named slot, so the card metadata line's name-truncation +
+  // non-truncating "+N" count is reachable straight from the seed.
+  const LONG_STORE_ITEM = 'dev-list-alice-baby-item-2';
+  const LONG_STORE_ROWS = [
+    {
+      name: 'Really long store name that carries really cool items',
+      link: 'https://www.example.com/really-long-store',
+      price: '1000.00',
+    },
+    {
+      name: 'Williams Sonoma',
+      link: 'https://www.williams-sonoma.com/products/example',
+      price: '1249.95',
+    },
+    {
+      name: 'Crate & Barrel',
+      link: 'https://www.crateandbarrel.com/example/s12345',
+      price: '1399.00',
+    },
+  ];
   const storeRows: {
     id: string;
     item_id: string;
@@ -644,11 +745,16 @@ async function main() {
     order: number;
   }[] = [];
   for (const item of itemRows) {
-    // 1–3 stores per item, deterministic by item id hash.
     const hash = item.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    const storeCount = (hash % 3) + 1;
-    for (let i = 0; i < storeCount; i++) {
-      const store = STORE_CATALOG[(hash + i) % STORE_CATALOG.length];
+    const catalog =
+      item.id === LONG_STORE_ITEM
+        ? LONG_STORE_ROWS
+        : // 1–3 stores per item, deterministic by item id hash.
+          Array.from(
+            { length: (hash % 3) + 1 },
+            (_, i) => STORE_CATALOG[(hash + i) % STORE_CATALOG.length]
+          );
+    catalog.forEach((store, i) => {
       storeRows.push({
         id: `${item.id}-store-${i + 1}`,
         item_id: item.id,
@@ -657,7 +763,7 @@ async function main() {
         price: store.price,
         order: i + 1,
       });
-    }
+    });
   }
   await db
     .insert(item_stores)
@@ -688,9 +794,60 @@ async function main() {
     id: string;
     item_id: string;
     user_id: string | null;
+    claimed_by: string | null;
     guest_name: string | null;
     purchased_at: Date;
   }[] = [];
+  // Hand-authored claim rows so every unclaim-matrix branch (claimer,
+  // purchaser, owner master unclaim, guest name-match) and the owner
+  // spoiler-view "added by" label are reachable straight from the seed.
+  // The fan-out loop below skips these items to keep capacity deterministic.
+  const ATTRIBUTION_EPOCH = new Date('2026-05-15T00:00:00Z');
+  const specialClaimRows = [
+    {
+      // Attributed claim on a viewer-owned item (limit 3): Alice marked Bob
+      // as the purchaser. Owner spoiler view shows "Bob — added by Alice";
+      // the owner-spoiler e2e spec master-unclaims this exact row.
+      id: 'dev-purchase-attributed',
+      item_id: 'dev-list-viewer-birthday-item-1',
+      user_id: friendId('bob'),
+      claimed_by: friendId('alice'),
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    {
+      // The viewer as attributed purchaser on a friend's list: Bob marked the
+      // viewer. The viewer sees it as their own claim ('self') and can unclaim.
+      id: 'dev-purchase-attributed-to-viewer',
+      item_id: 'dev-list-alice-wedding-item-1',
+      user_id: VIEWER_ID,
+      claimed_by: friendId('bob'),
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    {
+      // Owner self-claim (unlimited item): claimer and purchaser are both the
+      // owner — the spoiler-view "I bought this myself" state.
+      id: 'dev-purchase-owner-self',
+      item_id: 'dev-list-viewer-birthday-item-2',
+      user_id: VIEWER_ID,
+      claimed_by: VIEWER_ID,
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    {
+      // Legacy-shape signed-out guest row (all-NULL identities): self-serve
+      // removal is the exact-name match; the owner escape hatch is master
+      // unclaim.
+      id: 'dev-purchase-legacy-guest',
+      item_id: 'dev-list-viewer-birthday-item-3',
+      user_id: null,
+      claimed_by: null,
+      guest_name: 'Grandma',
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+  ];
+  const specialClaimItems = new Set(specialClaimRows.map((r) => r.item_id));
   // Position-based selection per list (rather than global hash) so every list
   // — including small friend lists — gets a guaranteed share. For each list,
   // mark every Nth item as purchased. Multi-claim and unlimited items receive
@@ -707,27 +864,11 @@ async function main() {
       purchaseRatio = 0.4; // friend lists — viewer sees these via rails
     }
     listItemIds.forEach((itemId, idx) => {
+      if (specialClaimItems.has(itemId)) return;
       const item = itemRows.find((r) => r.id === itemId);
       if (!item) return;
 
-      // Decide how many purchase rows this item gets.
-      //   qty_limit = 3:       1 (partial) or 3 (fully-claimed), per listIdx parity
-      //   qty_limit = null:    1 (single buyer) or 4 (many buyers), per listIdx parity
-      //   qty_limit = 1:       0 or 1 via existing stride-based ratio
-      let purchaseCount: number;
-      if (item.quantity_limit === 3) {
-        purchaseCount = listIdx % 2 === 0 ? 1 : 3;
-      } else if (item.quantity_limit === null) {
-        purchaseCount = listIdx % 2 === 0 ? 1 : 4;
-      } else {
-        // Viewer's archived items get a higher rate (~70%) since archived often
-        // means purchased.
-        const isArchived = !!item.archived_at;
-        const effectiveRatio =
-          item.user_id === VIEWER_ID && isArchived ? 0.7 : purchaseRatio;
-        const stride = Math.max(1, Math.round(1 / effectiveRatio));
-        purchaseCount = idx % stride === 0 ? 1 : 0;
-      }
+      const purchaseCount = purchaseCountFor(item, listIdx, idx, purchaseRatio);
       if (purchaseCount === 0) return;
 
       // Eligible buyer pool (owner excluded). Rotate by (h + n) so each
@@ -745,12 +886,16 @@ async function main() {
           id: `${itemId}-purchase-${n}`,
           item_id: itemId,
           user_id: asGuest ? null : buyerId,
+          // Self-claim shape: the buyer asserted their own claim. Guest rows
+          // keep the signed-out shape (all-NULL identities).
+          claimed_by: asGuest ? null : buyerId,
           guest_name: asGuest ? GUEST_NAMES[h % GUEST_NAMES.length] : null,
           purchased_at: new Date(PURCHASE_EPOCH - ((h + n) % 60) * 86400000),
         });
       }
     });
   });
+  purchaseRows.push(...specialClaimRows);
   // Drop legacy unsuffixed purchase IDs from prior seed versions before
   // inserting the new -purchase-N rows. Without this, an old -purchase row
   // would coexist with the new -purchase-1 row on the same item and inflate
@@ -767,6 +912,7 @@ async function main() {
         target: purchases.id,
         set: {
           user_id: sql`excluded.user_id`,
+          claimed_by: sql`excluded.claimed_by`,
           guest_name: sql`excluded.guest_name`,
           purchased_at: sql`excluded.purchased_at`,
         },
@@ -796,7 +942,15 @@ async function main() {
   console.log('[seed-dev-users] Done.');
 }
 
-main().catch((err) => {
-  console.error('[seed-dev-users] Failed:', err);
-  process.exit(1);
-});
+// Exit explicitly: under USE_PG_DRIVER=1 the postgres-js pool keeps an open
+// connection, so Node would otherwise hang after `main()` resolves instead of
+// returning — which deadlocks `npm run test:e2e` (the e2e setup seeds before
+// Playwright runs). All writes are awaited inside `main()`, so exiting here is
+// safe. (The neon-http path has no persistent pool and would exit on its own;
+// this just makes it unconditional. Mirrors scripts/ci/neon-driver-smoke.ts.)
+main()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error('[seed-dev-users] Failed:', err);
+    process.exit(1);
+  });

@@ -6,6 +6,7 @@ import { FaArrowRight } from 'react-icons/fa';
 import { FaChevronDown } from 'react-icons/fa6';
 
 function subscribeLocalStorage(callback: () => void) {
+  /* v8 ignore next -- SSR short-circuit; window is always defined in jsdom. */
   if (typeof window === 'undefined') return () => {};
   window.addEventListener('storage', callback);
   return () => window.removeEventListener('storage', callback);

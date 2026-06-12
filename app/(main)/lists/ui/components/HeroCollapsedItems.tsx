@@ -1,11 +1,8 @@
 'use client';
 
-import {
-  bookmarkList,
-  setListVisibility,
-  unbookmarkList,
-} from '@/app/actions/lists';
-import { followUser, unfollowUser } from '@/app/actions/follows';
+import { setListVisibility } from '@/lib/data/list.actions';
+import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
+import { followUser, unfollowUser } from '@/lib/data/user.actions';
 import { MenuItem, MenuItemRadio } from '@/app/ui/components/menu';
 import { ListTable } from '@/lib/types';
 import { VISIBILITY, fromDb, type ListVisibility } from '@/lib/visibility';

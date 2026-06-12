@@ -51,23 +51,25 @@ Every list SHALL have a `visibility` value of exactly one of `'private'`, `'unli
 
 ### Requirement: List owners SHALL set visibility via a three-item radio menu
 
-The list visibility UI SHALL present a popover triggered by a single visibility pill containing exactly three radio-style menu items, one per enum value. The UI labels SHALL be **Just me** (→ `'private'`), **Private** (→ `'unlisted'`), and **Shared** (→ `'public'`). Each menu row SHALL render an icon, the label, and a one-line description; the currently-selected row SHALL render a trailing `✓` indicator and SHALL have `aria-checked="true"`. Selecting a row invokes `setListVisibility(id, visibility)` with the value the row maps to. Only the list owner SHALL be authorized to change visibility.
+The list visibility UI SHALL present a popover triggered by a single visibility pill containing exactly three radio-style menu items, one per enum value. The UI labels SHALL be **Hidden** (→ `'private'`), **Private** (→ `'unlisted'`), and **Shared** (→ `'public'`). Each menu row SHALL render an icon, the label, and a one-line description; the currently-selected row SHALL render a trailing `✓` indicator and SHALL have `aria-checked="true"`. Selecting a row invokes `setListVisibility(id, visibility)` with the value the row maps to. Only the list owner SHALL be authorized to change visibility.
+
+The row descriptions SHALL be: **Hidden** — "Only you can see this list"; **Private** — "Only people with the link can view"; **Shared** — "Anyone with the link — plus your followers see it in their feed". The Shared description SHALL frame follower visibility as an addition to link access, not a restriction, so it cannot be read as followers-only.
 
 The trigger pill SHALL display the currently-selected row's label verbatim (no qualifier suffix) alongside an icon (`🔒` for `'private'`, `🔗` for `'unlisted'`, `👥` for `'public'`). The pill's `aria-label` SHALL include the row's description for assistive-technology disambiguation.
 
 #### Scenario: Owner sees three radio menu items
 
 - **WHEN** an authenticated owner opens the visibility popover for their list
-- **THEN** a menu renders with exactly three radio items in order — Just me, Private, Shared — and the item matching the current `visibility` value has `aria-checked="true"` and a trailing `✓` indicator
+- **THEN** a menu renders with exactly three radio items in order — Hidden, Private, Shared — and the item matching the current `visibility` value has `aria-checked="true"` and a trailing `✓` indicator
 
 #### Scenario: Each row carries icon, label, and description
 
 - **WHEN** the visibility menu is rendered
-- **THEN** the Just me row shows `🔒 Just me` with description "Only you can see this list"; the Private row shows `🔗 Private` with description "Anyone with the link can view"; the Shared row shows `👥 Shared` with description "Visible to your followers"
+- **THEN** the Hidden row shows `🔒 Hidden` with description "Only you can see this list"; the Private row shows `🔗 Private` with description "Only people with the link can view"; the Shared row shows `👥 Shared` with description "Anyone with the link — plus your followers see it in their feed"
 
-#### Scenario: Selecting Just me sets private
+#### Scenario: Selecting Hidden sets private
 
-- **WHEN** the owner activates the Just me row
+- **WHEN** the owner activates the Hidden row
 - **THEN** `setListVisibility(id, 'private')` is invoked
 
 #### Scenario: Selecting Private sets unlisted
@@ -185,3 +187,48 @@ The visibility check inside `generateMetadata` SHALL use the same `auth()` and `
 
 - **WHEN** a request hits `/lists/[id]` for an id that does not resolve to a list (or `getList` throws)
 - **THEN** `generateMetadata` returns the generic title with `robots: { index: false, follow: false }` and no OG / Twitter blocks
+
+### Requirement: `setListVisibility` SHALL fail-closed re-validate the visibility argument before any DB access
+
+`setListVisibility(id, visibility)` SHALL validate `visibility` against the canonical `VISIBILITY_VALUES` enum (via `VisibilitySchema.safeParse`) and, on a value outside that enum, SHALL return `{ success: false, error: 'Validation' }` **before** reading the target list and **before** issuing any UPDATE. The re-validation SHALL occur even though the function's TypeScript parameter is typed `ListVisibility`, because as a `'use server'` action the argument crosses the network boundary from an untrusted client where the static type is erased. A rejected value SHALL leave the target row's `visibility`, `shared`, and `shared_at` columns entirely unchanged, and SHALL NOT trigger `updateTag('lists')`.
+
+#### Scenario: Out-of-enum value is rejected before any write
+
+- **WHEN** an authenticated owner calls `setListVisibility(id, v)` where `v` is not one of `'private' | 'unlisted' | 'public'` (e.g. `'owner'`, `'admin'`, or `''`)
+- **THEN** the action returns `{ success: false, error: 'Validation' }`
+- **AND** the target list's `visibility`, `shared`, and `shared_at` are identical to their pre-call values
+- **AND** `updateTag('lists')` is not called
+
+#### Scenario: Validation precedes the ownership/existence lookup
+
+- **WHEN** `setListVisibility` is called with an out-of-enum `visibility` value, regardless of whether `id` refers to a real list or whether the caller owns it
+- **THEN** the action returns the `'Validation'` error without the outcome depending on the list's existence or ownership (validation fails closed first)
+
+### Requirement: `VisibilityPicker` SHALL apply visibility optimistically and roll back on failure
+
+When the list owner selects a visibility row, `VisibilityPicker` SHALL advance its local trigger state to the selected value immediately (optimistic update), close the menu, and invoke `setListVisibility(listId, next)` inside a React transition. The optimistic update guarantees the trigger pill never displays a visibility the owner did not just choose while the request is in flight.
+
+On a **failed** result (`{ success: false }`), the picker SHALL roll the trigger state back to the value it held before the selection and surface `toast.error(result.message)`. It SHALL NOT call `router.refresh()` on the failure path — a failed change leaves the persisted visibility unchanged, so the on-screen pill SHALL be restored to match, never left showing the un-applied value.
+
+On a **successful** result (`{ success: true }`), the picker SHALL surface the selected row's success toast (`rowFor(next).toast` — e.g. "Shared — your followers can now find it" for the Shared row) and call `router.refresh()` to revalidate the page against the new visibility.
+
+While a change is pending, the menu rows SHALL be disabled so a second selection cannot race the in-flight transition. (Re-selecting the row whose value already matches the current visibility is a no-op, owned by the existing three-item-radio-menu requirement; this requirement governs only the apply/rollback path for an actual change.)
+
+#### Scenario: Successful apply keeps the optimistic value and refreshes
+
+- **WHEN** the owner selects a different visibility row and `setListVisibility` returns `{ success: true }`
+- **THEN** `setListVisibility(listId, next)` is invoked with the selected row's value
+- **AND** the trigger pill shows the selected row's label
+- **AND** the selected row's success toast is shown and `router.refresh()` is called
+
+#### Scenario: Failed apply rolls the pill back and toasts the error
+
+- **WHEN** the owner selects a different visibility row and `setListVisibility` returns `{ success: false, message }`
+- **THEN** the trigger pill is restored to the visibility it showed before the selection
+- **AND** `toast.error(message)` is shown
+- **AND** `router.refresh()` is NOT called
+
+#### Scenario: A pending change disables the menu rows
+
+- **WHEN** a visibility change is in flight (the transition has not resolved)
+- **THEN** the menu rows are disabled

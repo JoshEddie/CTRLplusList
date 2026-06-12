@@ -20,7 +20,6 @@ interface PriceFieldProps {
   required?: boolean;
   disabled?: boolean;
   autoFocus?: boolean;
-  id?: string;
   className?: string;
   'aria-label'?: string;
 }
@@ -39,7 +38,6 @@ export function PriceField({
   required,
   disabled,
   autoFocus,
-  id,
   className,
   'aria-label': ariaLabel,
 }: PriceFieldProps) {
@@ -84,7 +82,6 @@ export function PriceField({
         disabled={disabled}
         placeholder="0.00"
         autoFocus={autoFocus}
-        id={id}
         aria-label={ariaLabel}
       />
     </FormField>

@@ -1,3 +1,11 @@
+export type ActionResponse = {
+  success: boolean;
+  message: string;
+  errors?: Record<string, string[]>;
+  error?: string;
+  id?: string;
+};
+
 export type ListTable = {
   id: string;
   name: string;
@@ -34,6 +42,10 @@ export type PurchaseView = {
   id: string;
   by: 'self' | 'other';
   firstName: string;
+  /** The viewer asserted this claim (`claimed_by`) — grants the unclaim affordance even when the purchaser is someone else. */
+  claimedByViewer: boolean;
+  /** Owner spoiler view only: the claimer's first name when the claimer differs from the purchaser. */
+  claimerFirstName?: string;
 };
 
 export type ItemDisplay = ItemTable & {
@@ -79,6 +91,7 @@ export type PurchaseTable = {
   id: string;
   item_id: string;
   user_id: string | null;
+  claimed_by: string | null;
   guest_name: string | null;
   purchased_at: Date;
   user: { name: string | null } | null;

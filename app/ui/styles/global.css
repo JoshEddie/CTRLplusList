@@ -323,6 +323,38 @@ body::before {
   }
 }
 
+.error-boundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 20px;
+  padding-top: 64px;
+}
+
+.error-boundary h3 {
+  font-size: 40px;
+  font-family: var(--font-crimson-pro);
+  font-weight: 100;
+  color: var(--heading-text-color);
+}
+
+.error-boundary p {
+  font-size: 18px;
+  color: var(--muted-text-color);
+}
+
+.error-boundary-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.error-boundary-digest {
+  font-size: 14px;
+  color: var(--subtitle-text-color);
+}
+
 .container--list-details {
   padding: 0 0 16px;
   display: grid;
