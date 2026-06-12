@@ -49,17 +49,19 @@ The page SHALL render every active item in the owner's library plus any archived
 
 ### Requirement: Saving SHALL apply the add+remove diff against list_items in a single action
 
-Submitting the page SHALL invoke a server action that computes the diff between the user's current selection and the list's stored `list_items`, deletes rows for unchecked items, and inserts rows for newly checked items. The action SHALL be authorized to owners only and SHALL invalidate the `items` and `lists` cache tags on success.
+Submitting the page SHALL invoke a server action that computes the diff between the user's current selection and the list's stored `list_items`, deletes rows for unchecked items, and inserts rows for newly checked items. The action SHALL be authorized to owners only and SHALL invalidate the `items` and `lists` cache tags on success. When the diff is non-empty, the action SHALL advance the list's `updated_at` (per `list-update-recency`); a no-op save SHALL leave `updated_at` unchanged.
 
 #### Scenario: Mixed add and remove
 
 - **WHEN** the owner unchecks two previously-checked items and checks three new items, then clicks **Save changes**
 - **THEN** the two unchecked items' rows are deleted from `list_items` for this list, three new `list_items` rows are inserted for the newly checked items, and a success toast reports the counts
+- **AND** the list's `updated_at` is set to the time of the save
 
 #### Scenario: No-op save
 
 - **WHEN** the owner clicks **Save changes** without changing the selection
 - **THEN** the Save button is disabled (or the action is a no-op) and `list_items` is unchanged
+- **AND** the list's `updated_at` is unchanged
 
 #### Scenario: Non-owner submission is rejected
 
@@ -202,7 +204,7 @@ The choose-items page remains the bulk add/remove flow; this entry is a single-i
 
 ### Requirement: removeListItem SHALL authorize list ownership server-side
 
-A focused server action in `lib/data/listItems.actions.ts` (alongside `setListItems`) SHALL accept `(list_id, item_id)`, verify the authenticated session user owns the list before any write (same authorization shape as `setListItems`), and delete at most the single matching `list_items` row. Unauthorized or unauthenticated calls SHALL return a failure `ActionResponse` and perform no write. The operation is a single DELETE statement — no transaction is required under the neon-http driver constraint.
+A focused server action in `lib/data/listItems.actions.ts` (alongside `setListItems`) SHALL accept `(list_id, item_id)`, verify the authenticated session user owns the list before any write (same authorization shape as `setListItems`), and delete at most the single matching `list_items` row. Unauthorized or unauthenticated calls SHALL return a failure `ActionResponse` and perform no write. The operation is a single DELETE statement — no transaction is required under the neon-http driver constraint. A successful removal SHALL advance the list's `updated_at` (per `list-update-recency`).
 
 #### Scenario: Non-owner cannot remove an item from someone else's list
 
@@ -213,6 +215,7 @@ A focused server action in `lib/data/listItems.actions.ts` (alongside `setListIt
 
 - **WHEN** the list owner invokes the action with an item currently on the list
 - **THEN** the row is deleted, the action returns success, and `updateTag('items')` and `updateTag('lists')` are called
+- **AND** the list's `updated_at` is set to the time of the removal
 
 ### Requirement: Item edit, create, and delete flows SHALL preserve the caller's navigation context
 
@@ -466,6 +469,8 @@ The `updatePriority(item_id, target_id, listId)` server action SHALL move an ite
 
 After applying the move, the action SHALL check the two highest positions on the list; when their difference is below a minimum gap of `0.001`, the action SHALL rebalance the entire list by rewriting every row's position to `(index + 1) * 65536` in ascending position order, restoring uniform spacing. The action SHALL invalidate the `items` cache tag on success.
 
+Reorders are presentation-order changes, not list-content changes: neither a move nor a rebalance SHALL advance the list's `updated_at` (per `list-update-recency`).
+
 The action SHALL guard inputs: a caller who is not the list owner SHALL receive an unauthorized response and no write SHALL occur; when either `item_id` or `target_id` is not a member of `listId`, the action SHALL return `{ success: false, error: 'Item or target not found on this list' }`; when the moved item already occupies the target's exact position, the action SHALL return `{ success: false, error: 'Item is already at the target position' }` and no write SHALL occur.
 
 #### Scenario: Move computes the integer midpoint between target and neighbor
@@ -489,6 +494,11 @@ The action SHALL guard inputs: a caller who is not the list owner SHALL receive 
 - **WHEN** a move would leave the two highest positions on the list differing by less than `0.001`
 - **THEN** every `list_items` row on the list is rewritten to `(index + 1) * 65536` in ascending order, restoring 65536 spacing
 - **AND** the displayed order is preserved
+
+#### Scenario: Reorder leaves updated_at unchanged
+
+- **WHEN** the owner moves an item via `updatePriority`, including a move that triggers a full rebalance
+- **THEN** the list's `updated_at` is unchanged
 
 #### Scenario: Moving to the same position is a no-op
 
