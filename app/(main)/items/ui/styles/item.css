@@ -1013,14 +1013,18 @@
 }
 
 /* All right-column claim affordances share one width floor so rows align
-   regardless of state (Get this gift / Manage your claim / Fully claimed). */
-.item-list .claim-cta-btn,
-.item-list .manage-claim-btn,
-.sortable-item .claim-cta-btn,
-.sortable-item .manage-claim-btn {
-  width: auto;
-  white-space: nowrap;
-  min-width: 165px;
+   regardless of state (Get this gift / Manage your claim / Fully claimed).
+   ≥600px only — at mobile the claim affordances take the full action row,
+   so the floor would only fatten the empty col-3 track. */
+@media (min-width: 600px) {
+  .item-list .claim-cta-btn,
+  .item-list .manage-claim-btn,
+  .sortable-item .claim-cta-btn,
+  .sortable-item .manage-claim-btn {
+    width: auto;
+    white-space: nowrap;
+    min-width: 165px;
+  }
 }
 
 /* Stay the popover's positioning ancestor (relative, not static) so the
@@ -1077,8 +1081,14 @@
   grid-row: 1 / 3;
   align-self: center;
   width: auto;
-  min-width: 165px;
   min-height: 52px;
+}
+
+@media (min-width: 600px) {
+  .item-list .claimed-state,
+  .sortable-item .claimed-state {
+    min-width: 165px;
+  }
 }
 
 .item-list .claim-counter,
@@ -1093,8 +1103,11 @@
    produced unreadable cramming at 380px (name column squeezed to ~80px,
    2-char name truncation, price clipping). The horizontal-card pattern
    stacks vertically instead: image upper-left spans rows 1-2; title on
-   row 1; price on row 2 (no leader); description full-width row 3;
-   action row (storeLinks + right-actions) full-width row 4.
+   row 1 and price on row 2 (no leader), each spanning cols 2/-1 to the
+   card edge; description full-width row 3; action row on row 4 —
+   owner: storeLinks/claim button/spoiler banner span cols 1/3 with the
+   kebab alone in col 3; non-owner: the claim button stretches the full
+   row.
 
    Per user direction "if we're breaking up the row, lean into the card
    feel" — each row at mobile gets a full border, rounded corners, and
@@ -1160,18 +1173,21 @@
     grid-row: 1 / 3;
   }
 
-  /* Title row 1, price row 2 — stacked in col 2 next to image. */
+  /* Title row 1, price row 2 — stacked next to image, spanning to the
+     card edge. Col 3 holds nothing on rows 1-2 (actions all live on
+     row 4), so spanning across it stops the row-4 button's track width
+     from squeezing the title and price. */
   .item-list .item-name-description .itemName,
   .item-grid .item-name-description .itemName,
   .sortable-item .item-name-description .itemName {
-    grid-column: 2;
+    grid-column: 2 / -1;
     grid-row: 1;
   }
 
   .item-list .item-price-row,
   .item-grid .item-price-row,
   .sortable-item .item-price-row {
-    grid-column: 2;
+    grid-column: 2 / -1;
     grid-row: 2;
     align-self: center;
   }
@@ -1210,21 +1226,39 @@
      to content; long store names make their button wider, which is
      acceptable and honors the button-system contract. */
 
-  /* Right-actions on action row, justified right. The non-owner
-     "Get this gift" / "Manage your claim" button keeps its full label. */
+  /* Kebab on action row, justified right in col 3. */
   .item-list .item-owner-actions-mobile,
   .item-grid .item-owner-actions-mobile,
-  .sortable-item .item-owner-actions-mobile,
+  .sortable-item .item-owner-actions-mobile {
+    grid-column: 3;
+    grid-row: 4;
+    align-self: center;
+    justify-self: end;
+  }
+
+  /* Claim buttons stretch the full action row (full label, big tap
+     target) — storeLinks and the claim CTA never co-occur on row 4. */
   .item-list .claim-cta-btn,
   .item-grid .claim-cta-btn,
   .sortable-item .claim-cta-btn,
   .item-list .manage-claim-btn,
   .item-grid .manage-claim-btn,
   .sortable-item .manage-claim-btn {
-    grid-column: 3;
+    grid-column: 1 / -1;
     grid-row: 4;
     align-self: center;
-    justify-self: end;
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  /* Owner rows keep col 3 free for the kebab. */
+  .item-list .item-container.owner .claim-cta-btn,
+  .item-grid .item-container.owner .claim-cta-btn,
+  .sortable-item .item-container.owner .claim-cta-btn,
+  .item-list .item-container.owner .manage-claim-btn,
+  .item-grid .item-container.owner .manage-claim-btn,
+  .sortable-item .item-container.owner .manage-claim-btn {
+    grid-column: 1 / 3;
   }
 
   /* Grid-as-list at mobile pulls the overlay kebab into the action row;
@@ -1258,9 +1292,9 @@
     min-height: 36px;
   }
 
-  /* Spoiler banner takes the full action row at mobile — the desktop
-     col-3 carve-out must not leak in here: at <600px the row reflows to
-     a horizontal card with no col-4 owner-actions slot competing. */
+  /* Spoiler banner on the action row at mobile. Owner rows stop at
+     col 3 so the kebab stays visible and operable — the banner must
+     never slide under it. */
   .item-list .purchased-banner--spoiler,
   .item-grid .purchased-banner--spoiler,
   .sortable-item .purchased-banner--spoiler {
@@ -1269,6 +1303,12 @@
     min-height: 36px;
     font-size: 12px;
     padding: 6px 10px;
+  }
+
+  .item-list .item-container.owner .purchased-banner--spoiler,
+  .item-grid .item-container.owner .purchased-banner--spoiler,
+  .sortable-item .item-container.owner .purchased-banner--spoiler {
+    grid-column: 1 / 3;
   }
 
   .item-list .claim-counter,
