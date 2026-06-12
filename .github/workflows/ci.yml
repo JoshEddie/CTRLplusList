@@ -2,11 +2,13 @@ name: CI
 
 on:
   pull_request:
+  # Trunk branches (dev, release-*.*.x) always flow through PRs, so the
+  # pull_request trigger already covers them; listing them here too would run
+  # every job twice (once per event) whenever a PR branch matches. push fires
+  # only on main (post-merge), where no PR event exists.
   push:
     branches:
       - main
-      - dev
-      - 'release-*.*.x'
 
 permissions:
   contents: read
@@ -88,8 +90,8 @@ jobs:
   # copy-on-write and deleted afterward).
   pre-promote-migrate:
     if: >-
-      (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'dev' || (startsWith(github.ref_name, 'release-') && endsWith(github.ref_name, '.x'))))
-      || (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'dev' || (startsWith(github.base_ref, 'release-') && endsWith(github.base_ref, '.x'))))
+      (github.event_name == 'push' && github.ref_name == 'main')
+      || (github.event_name == 'pull_request' && (github.base_ref == 'main' || (startsWith(github.base_ref, 'release-') && endsWith(github.base_ref, '.x'))))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
