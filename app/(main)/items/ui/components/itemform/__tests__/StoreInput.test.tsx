@@ -111,6 +111,18 @@ describe('StoreInputContainer', () => {
       renderStores([{ name: 'Amazon', link: 'https://a.co/x', price: '9.99' }]);
       expect(screen.queryByText(/price as of/)).not.toBeInTheDocument();
     });
+
+    it('UnparseableFetchedAt_RendersNoAnnotation', () => {
+      renderStores([
+        {
+          name: 'Amazon',
+          link: 'https://a.co/x',
+          price: '24.50',
+          price_fetched_at: 'not-a-date',
+        },
+      ]);
+      expect(screen.queryByText(/price as of/)).not.toBeInTheDocument();
+    });
   });
 
   it('ClickRemove_CallsHandleStoreRemoveWithIndex', async () => {

@@ -122,6 +122,18 @@ describe('fetchZyte', () => {
     expect(result?.imageUrl).toBe('https://img/0.jpg');
   });
 
+  it('UnparseableJsonBody_ReturnsUndefined', async () => {
+    fetchMock.mockResolvedValue(
+      new Response('not json', {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+    expect(
+      await fetchZyte('https://example.com', new AbortController().signal)
+    ).toBeUndefined();
+  });
+
   it('Non200Response_ReturnsUndefined', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ detail: 'bad' }, 422));
     expect(

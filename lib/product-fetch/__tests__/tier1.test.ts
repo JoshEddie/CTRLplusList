@@ -115,6 +115,35 @@ ${htmlWithJsonLd(PRODUCT_JSON_LD)}`;
     ).toBeUndefined();
   });
 
+  it('TopLevelArrayWithProduct_ReturnsProductTitle', () => {
+    const arr = [
+      { '@type': 'WebSite', name: 'Site' },
+      { '@type': 'Product', name: 'Arr Widget' },
+    ];
+    expect(extractJsonLd(htmlWithJsonLd(arr))?.title).toBe('Arr Widget');
+  });
+
+  it('TopLevelArrayNoProduct_ReturnsUndefined', () => {
+    const arr = [{ '@type': 'WebSite', name: 'Site' }];
+    expect(extractJsonLd(htmlWithJsonLd(arr))).toBeUndefined();
+  });
+
+  it('ArrayWithPrimitiveEntry_SkipsToProduct', () => {
+    const arr = ['ignored', { '@type': 'Product', name: 'After Junk' }];
+    expect(extractJsonLd(htmlWithJsonLd(arr))?.title).toBe('After Junk');
+  });
+
+  it('GraphWithPrimitiveEntry_SkipsToProduct', () => {
+    const node = {
+      '@graph': ['ignored', { '@type': 'Product', name: 'Graph After Junk' }],
+    };
+    expect(extractJsonLd(htmlWithJsonLd(node))?.title).toBe('Graph After Junk');
+  });
+
+  it('NamelessProductNode_ReturnsUndefined', () => {
+    expect(extractJsonLd(htmlWithJsonLd({ '@type': 'Product' }))).toBeUndefined();
+  });
+
   it('OfferArray_ReturnsFirstOfferPrice', () => {
     const node = {
       '@type': 'Product',
