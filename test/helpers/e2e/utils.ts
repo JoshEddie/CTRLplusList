@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 
 // Locates the first item card a non-owner viewer can freshly claim on the
 // current list page. The card:
-//   - exposes an enabled "Claim this item" affordance (so it is not already
+//   - exposes an enabled "Get this gift" affordance (so it is not already
 //     fully claimed), and
 //   - is a single-claim item — no claim counter is rendered (`quantity_limit`
 //     of 1), so claiming it fully claims the item and surfaces the claimer's
@@ -17,7 +17,7 @@ import type { Locator, Page } from '@playwright/test';
 export function firstClaimableSingleItem(page: Page): Locator {
   return page
     .locator('.item-container')
-    .filter({ has: page.getByRole('button', { name: 'Claim this item' }) })
+    .filter({ has: page.getByRole('button', { name: 'Get this gift' }) })
     .filter({ hasNot: page.locator('.claim-counter') })
     .filter({ hasNotText: 'You claimed this' })
     .first();

@@ -21,28 +21,28 @@
    pagination-orphan constraint (cols in {1, 2, 3, 4, 6}). */
 @container (min-width: 300px) {
   .item-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px;
   }
 }
 
 @container (min-width: 640px) {
   .item-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
   }
 }
 
 @container (min-width: 890px) {
   .item-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 16px;
   }
 }
 
 @container (min-width: 1300px) {
   .item-grid {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
@@ -981,6 +981,12 @@
   opacity: 0.5;
 }
 
+/* Leader dots are owner-only: they connect the price to the owner's tall
+   buy-pill. Non-owner rows carry the inert store-metadata text on the price row instead — no pill to lead to. */
+.item-list .item-container:not(.owner) .item-price-row::after {
+  display: none;
+}
+
 .item-list .item-price,
 .sortable-item .item-price {
   font-size: 30px;
@@ -1007,17 +1013,31 @@
   align-self: center;
 }
 
-/* Default placement for the right column (col 5): owner actions OR the
-   non-owner Claim button. Both span both content rows. */
+/* Default placement for the right column: owner actions OR the
+   non-owner "Get this gift" / "Manage your claim" button. All span
+   both content rows. */
 .item-list .item-owner-actions,
 .sortable-item .item-owner-actions,
 .item-list .item-owner-actions-mobile,
 .sortable-item .item-owner-actions-mobile,
 .item-list .claim-cta-btn,
-.sortable-item .claim-cta-btn {
+.sortable-item .claim-cta-btn,
+.item-list .manage-claim-btn,
+.sortable-item .manage-claim-btn {
   grid-column: 4;
   grid-row: 1 / 3;
   align-self: center;
+}
+
+/* All right-column claim affordances share one width floor so rows align
+   regardless of state (Get this gift / Manage your claim / Fully claimed). */
+.item-list .claim-cta-btn,
+.item-list .manage-claim-btn,
+.sortable-item .claim-cta-btn,
+.sortable-item .manage-claim-btn {
+  width: auto;
+  white-space: nowrap;
+  min-width: 165px;
 }
 
 .item-list .item-owner-actions,
@@ -1027,13 +1047,26 @@
   display: flex;
 }
 
-/* In row view, the .purchased-banner family IS the wide claimed pill —
-   it already carries the canonical claim/spoiler text in all states, so
-   it absorbs the buy-pill + +N + right-column slots (cols 3 → -1) into
-   one indicator. The grid view keeps these as footer banners. */
+@media (min-width: 600px) {
+  .item-list .item-container.owner:has(.claim-cta-btn, .manage-claim-btn) .item-owner-actions,
+  .sortable-item .item-container.owner:has(.claim-cta-btn, .manage-claim-btn) .item-owner-actions {
+    grid-column: 5;
+  }
+}
+
+/* Non-owner claim banners are footers for grid view only; in row view
+   their information lives on the row itself (wide "Fully claimed" pill,
+   Manage your claim). The owner-spoiler banner stays — it
+   carries the per-claim master-unclaim affordances — as a col-3 pill so
+   .item-owner-actions (col 4) remains visible. */
 .item-list .purchased-banner,
 .sortable-item .purchased-banner {
-  grid-column: 3 / -1;
+  display: none;
+}
+
+.item-list .purchased-banner--spoiler,
+.sortable-item .purchased-banner--spoiler {
+  grid-column: 3;
   grid-row: 1 / 3;
   align-self: stretch;
   min-height: 52px;
@@ -1047,36 +1080,20 @@
   color: var(--success-text);
   font-weight: 600;
   font-size: 13px;
-  border-top: 1.5px solid var(--success-border); /* override default */
 }
 
-/* Owner-spoiler variant: stays in col 3 only so .item-owner-actions (col 4)
-   remains visible. The wide 3/-1 absorption is correct for the non-owner
-   claimed cases (no edit button competing for col 4) but stomps the
-   edit affordance for the owner-spoiler case. */
-.item-list .purchased-banner--spoiler,
-.sortable-item .purchased-banner--spoiler {
-  grid-column: 3;
-}
-
-/* Hide the inline .claimed-state pill from <Purchase> in row view —
-   the wide banner above already conveys the state, no need for the
-   inline duplicate. */
+/* Fully-claimed pill sits in the same right-column cell as the other
+   claim affordances (cols 3/5 are empty for a non-owner, but spanning
+   them would add their column gaps and knock the pill out of alignment),
+   floored at the same width. */
 .item-list .claimed-state,
 .sortable-item .claimed-state {
-  display: none;
-}
-
-/* Hide the Claim button AND the store-link chip row when the viewer
-   already has a claim: the wide banner above takes over the right area
-   ("you claimed this · undo"), per the design intent of "claim replaces
-   store buttons." This was also surfaced by the row redesign — without
-   it, the Claim button and chip row overlap the wide pill. */
-.item-list .item-container.has-my-claim .claim-cta-btn,
-.item-list .item-container.has-my-claim .storeLinks,
-.sortable-item .item-container.has-my-claim .claim-cta-btn,
-.sortable-item .item-container.has-my-claim .storeLinks {
-  display: none;
+  grid-column: 4;
+  grid-row: 1 / 3;
+  align-self: center;
+  width: auto;
+  min-width: 165px;
+  min-height: 52px;
 }
 
 .item-list .claim-counter,
@@ -1114,21 +1131,6 @@
   .item-grid .item-info,
   .item-grid .item-name-description {
     display: contents;
-  }
-
-  /* Mirror the all-widths has-my-claim hide rule (lines ~1012) for the
-     mobile-grid-as-list case. The wide claimed-pill takes over the
-     action-row slot, so the claim-cta-btn and storeLinks chip row are
-     hidden to avoid overlap. */
-  .item-grid .item-container.has-my-claim .claim-cta-btn,
-  .item-grid .item-container.has-my-claim .storeLinks {
-    display: none;
-  }
-
-  /* Inline .claimed-state pill is redundant in list-shape — the wide
-     banner above already conveys claim state. */
-  .item-grid .claimed-state {
-    display: none;
   }
 
   .item-list .item-container,
@@ -1223,7 +1225,8 @@
      to content; long store names make their button wider, which is
      acceptable and honors the button-system contract. */
 
-  /* Right-actions on action row, justified right. */
+  /* Right-actions on action row, justified right. The non-owner
+     "Get this gift" / "Manage your claim" button keeps its full label. */
   .item-list .item-owner-actions,
   .item-grid .item-owner-actions,
   .sortable-item .item-owner-actions,
@@ -1232,32 +1235,50 @@
   .sortable-item .item-owner-actions-mobile,
   .item-list .claim-cta-btn,
   .item-grid .claim-cta-btn,
-  .sortable-item .claim-cta-btn {
+  .sortable-item .claim-cta-btn,
+  .item-list .manage-claim-btn,
+  .item-grid .manage-claim-btn,
+  .sortable-item .manage-claim-btn {
     grid-column: 3;
     grid-row: 4;
     align-self: center;
     justify-self: end;
   }
 
-  /* Wide claimed-pill: takes the entire action row. */
-  .item-list .purchased-banner,
-  .item-grid .purchased-banner,
-  .sortable-item .purchased-banner {
+  /* Grid-as-list at mobile mirrors the row-view banner policy: footers
+     hide, the spoiler banner stays for its master-unclaim affordances. */
+  .item-grid .purchased-banner {
+    display: none;
+  }
+
+  .item-grid .purchased-banner--spoiler {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1.5px solid var(--success-border);
+    border-radius: 10px;
+  }
+
+  /* Fully-claimed wide pill: takes the entire action row. */
+  .item-list .claimed-state,
+  .item-grid .claimed-state,
+  .sortable-item .claimed-state {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    min-height: 36px;
+  }
+
+  /* Spoiler banner takes the full action row at mobile — the desktop
+     col-3 carve-out must not leak in here: at <600px the row reflows to
+     a horizontal card with no col-4 owner-actions slot competing. */
+  .item-list .purchased-banner--spoiler,
+  .item-grid .purchased-banner--spoiler,
+  .sortable-item .purchased-banner--spoiler {
     grid-column: 1 / -1;
     grid-row: 4;
     min-height: 36px;
     font-size: 12px;
     padding: 6px 10px;
-  }
-
-  /* Spoiler variant inherits the full-width action-row treatment at mobile.
-     The desktop col-3 carve-out (around line 960) must not leak in here:
-     at <600px the row reflows to a horizontal card with no col-4 owner-actions
-     slot competing for space — the action row's right slot owns that. */
-  .item-list .purchased-banner--spoiler,
-  .item-grid .purchased-banner--spoiler,
-  .sortable-item .purchased-banner--spoiler {
-    grid-column: 1 / -1;
   }
 
   .item-list .claim-counter,

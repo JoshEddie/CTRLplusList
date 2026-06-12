@@ -6,6 +6,11 @@ import { ItemDisplay } from '@/lib/types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MdOpenInNew } from 'react-icons/md';
 import '../styles/store-links.css';
+import {
+  formatStorePrice,
+  sortedValidStores,
+  useHoverOpenMenu,
+} from './utils';
 
 // Each menu row is ~36px tall (.menu-item: 10px+10px padding + 14px font).
 // Used to estimate panel height for placement decisions before render.
@@ -16,53 +21,20 @@ const TRIGGER_GAP_PX = 6; // .menu-popover top/bottom offset
 type Props = {
   item: ItemDisplay;
   showStores?: boolean;
-  children?: React.ReactNode;
 };
 
-// Hover grace so a glance-away-then-back doesn't snap the popover shut.
-const COLLAPSE_DELAY_MS = 220;
-
-export default function StoreLinks({
-  item,
-  showStores = true,
-  children,
-}: Props) {
-  const stores = useMemo(() => item.stores ?? [], [item.stores]);
-  const [open, setOpen] = useState(false);
+export default function StoreLinks({ item, showStores = true }: Props) {
+  const { open, setOpen, cancelCollapseAndOpen, scheduleCollapse } =
+    useHoverOpenMenu();
   const [placement, setPlacement] = useState<'above' | 'below'>('above');
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const validStores = useMemo(
-    () =>
-      stores.filter(
-        (s) => s?.name && s?.link && !Number.isNaN(Number(s.price))
-      ),
-    [stores]
-  );
 
   const sortedStores = useMemo(
-    () => [...validStores].sort((a, b) => Number(a.price) - Number(b.price)),
-    [validStores]
+    () => sortedValidStores(item.stores),
+    [item.stores]
   );
 
   const lowestPrice = sortedStores[0] ?? null;
-
-  const cancelCollapseAndOpen = useCallback(() => {
-    if (collapseTimer.current) {
-      clearTimeout(collapseTimer.current);
-      collapseTimer.current = null;
-    }
-    setOpen(true);
-  }, []);
-
-  const scheduleCollapse = useCallback(() => {
-    if (collapseTimer.current) clearTimeout(collapseTimer.current);
-    collapseTimer.current = setTimeout(() => {
-      setOpen(false);
-      collapseTimer.current = null;
-    }, COLLAPSE_DELAY_MS);
-  }, []);
 
   // Pick placement based on available space in the nearest clipping
   // ancestor. Prefer above (matches the user-stated default of "cover
@@ -106,7 +78,7 @@ export default function StoreLinks({
   }, [open, computePlacement]);
 
   if (!lowestPrice) {
-    return children ? <div className="item-action-row">{children}</div> : null;
+    return null;
   }
 
   const primary = lowestPrice;
@@ -116,7 +88,7 @@ export default function StoreLinks({
   return (
     <>
       <div className="item-price-row">
-        <span className="item-price">${Number(primary.price).toFixed(2)}</span>
+        <span className="item-price">{formatStorePrice(primary.price)}</span>
       </div>
       {showStores && (
         <>
@@ -160,7 +132,7 @@ export default function StoreLinks({
                 >
                   {sortedStores.map((store) => (
                     <MenuLinkItem
-                      key={store.name}
+                      key={store.link}
                       href={store.link}
                       target="_blank"
                       rel="noreferrer"
@@ -169,7 +141,7 @@ export default function StoreLinks({
                     >
                       <span className="storeLinks-menu-name">{store.name}</span>
                       <span className="storeLinks-menu-price">
-                        ${Number(store.price).toFixed(2)}
+                        {formatStorePrice(store.price)}
                       </span>
                     </MenuLinkItem>
                   ))}
@@ -179,7 +151,6 @@ export default function StoreLinks({
           </div>
         </>
       )}
-      {children}
     </>
   );
 }

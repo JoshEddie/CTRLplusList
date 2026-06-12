@@ -1,4 +1,5 @@
 import { PurchaseView } from '@/lib/types';
+import { claimLabel } from './utils';
 
 function BannerCheck() {
   return (
@@ -17,13 +18,6 @@ function BannerCheck() {
   );
 }
 
-function claimLabel(claim: PurchaseView): string {
-  const name = claim.by === 'self' ? 'You' : claim.firstName;
-  return claim.claimerFirstName
-    ? `${name} — added by ${claim.claimerFirstName}`
-    : name;
-}
-
 export default function ClaimBanners({
   showPurchased,
   myClaim,
@@ -32,8 +26,6 @@ export default function ClaimBanners({
   claims,
   claimSummary,
   counterText,
-  onUndo,
-  onRemoveClaim,
 }: {
   showPurchased: boolean;
   myClaim: PurchaseView | null;
@@ -42,8 +34,6 @@ export default function ClaimBanners({
   claims: PurchaseView[];
   claimSummary: string;
   counterText: string;
-  onUndo: () => void;
-  onRemoveClaim: (claim: PurchaseView) => void;
 }) {
   return (
     <>
@@ -59,14 +49,6 @@ export default function ClaimBanners({
           {myClaim.by === 'self'
             ? 'You claimed this'
             : `You claimed this for ${myClaim.firstName}`}
-          <button
-            type="button"
-            className="purchased-banner-undo"
-            onClick={onUndo}
-            aria-label="Remove your claim"
-          >
-            Undo
-          </button>
         </div>
       )}
       {showSpoilerInfo && (
@@ -83,18 +65,6 @@ export default function ClaimBanners({
               {claims.map((claim) => (
                 <li key={claim.id} className="spoiler-claim-row">
                   <span>{claimLabel(claim)}</span>
-                  <button
-                    type="button"
-                    className="purchased-banner-undo"
-                    onClick={() => onRemoveClaim(claim)}
-                    aria-label={
-                      claim.by === 'self'
-                        ? 'Remove your claim'
-                        : `Remove ${claim.firstName}'s claim`
-                    }
-                  >
-                    Remove
-                  </button>
                 </li>
               ))}
             </ul>

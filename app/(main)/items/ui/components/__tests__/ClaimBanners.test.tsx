@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { PurchaseView } from '@/lib/types';
 import ClaimBanners from '../ClaimBanners';
 
@@ -40,8 +39,6 @@ function renderBanners(
     claims: [],
     claimSummary: '',
     counterText: '1/3 claimed',
-    onUndo: vi.fn(),
-    onRemoveClaim: vi.fn(),
     ...overrides,
   };
   return { props, ...render(<ClaimBanners {...props} />) };
@@ -67,12 +64,10 @@ describe('ClaimBanners', () => {
     expect(screen.getByText('You claimed this')).toBeInTheDocument();
   });
 
-  it('SelfClaim_ShowsYouClaimedThis-UndoFiresCallback', async () => {
-    const user = userEvent.setup();
-    const { props } = renderBanners({ myClaim: selfClaim });
+  it('SelfClaim_ShowsYouClaimedThis-WithoutUndoAffordance', () => {
+    renderBanners({ myClaim: selfClaim });
     expect(screen.getByText('You claimed this')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Remove your claim' }));
-    expect(props.onUndo).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('ClaimedByViewerForOther_ShowsYouClaimedThisForFirstName', () => {
@@ -88,21 +83,14 @@ describe('ClaimBanners', () => {
   });
 
   describe('Spoiler', () => {
-    it('TwoClaims_RendersRowPerClaim-RemoveFiresOnRemoveClaimWithThatClaim', async () => {
-      const user = userEvent.setup();
-      const { props } = renderBanners({
+    it('TwoClaims_RendersInformationalRowPerClaim-NoRemoveAffordance', () => {
+      renderBanners({
         showSpoilerInfo: true,
         claims: [samClaim, joClaim],
       });
       expect(screen.getByText('Sam')).toBeInTheDocument();
       expect(screen.getByText('Jo')).toBeInTheDocument();
-      expect(
-        screen.getAllByRole('button', { name: /Remove .*claim/ })
-      ).toHaveLength(2);
-      await user.click(
-        screen.getByRole('button', { name: "Remove Jo's claim" })
-      );
-      expect(props.onRemoveClaim).toHaveBeenCalledWith(joClaim);
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 
     it('AttributedClaim_RendersAddedByClaimerFirstName', () => {
@@ -115,12 +103,9 @@ describe('ClaimBanners', () => {
       ).toBeInTheDocument();
     });
 
-    it('SelfClaim_LabelsRowYou-RemoveButtonNamedRemoveYourClaim', () => {
+    it('SelfClaim_LabelsRowYou', () => {
       renderBanners({ showSpoilerInfo: true, claims: [selfClaim] });
       expect(screen.getByText('You')).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: 'Remove your claim' })
-      ).toBeInTheDocument();
     });
 
     it('CounterText_RendersSpoilersPrefix', () => {

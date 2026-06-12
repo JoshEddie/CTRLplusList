@@ -174,15 +174,20 @@ export async function createPurchase(data: {
     );
     if (conflict) return conflict;
 
+    let insertedId: string;
     try {
-      await db.insert(purchases).values({
-        id: nanoid(),
-        item_id: data.item_id,
-        user_id: purchaserUserId,
-        claimed_by: callerUserId,
-        guest_name: guestName,
-        purchased_at: new Date(),
-      });
+      const [inserted] = await db
+        .insert(purchases)
+        .values({
+          id: nanoid(),
+          item_id: data.item_id,
+          user_id: purchaserUserId,
+          claimed_by: callerUserId,
+          guest_name: guestName,
+          purchased_at: new Date(),
+        })
+        .returning({ id: purchases.id });
+      insertedId = inserted.id;
     } catch (insertError) {
       // Partial unique index trip (purchases_item_user_unique_idx): a
       // duplicate purchaser slipped past the in-app check because two
@@ -199,7 +204,11 @@ export async function createPurchase(data: {
 
     updateTag('items');
 
-    return { success: true, message: 'Item marked as purchased successfully' };
+    return {
+      success: true,
+      message: 'Item marked as purchased successfully',
+      id: insertedId,
+    };
   } catch (error) {
     console.error('Error creating purchase:', error);
     return {

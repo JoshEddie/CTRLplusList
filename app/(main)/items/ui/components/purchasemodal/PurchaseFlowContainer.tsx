@@ -1,88 +1,150 @@
 'use client';
 
-import SignInButton from '@/app/(auth)/ui/components/SignInButton';
-import Avatar from '@/app/(main)/users/ui/components/Avatar';
 import { Button } from '@/app/ui/components/button';
-import { SearchField, TextField } from '@/app/ui/components/field';
-import { getClaimPickerForItem, type ClaimPicker } from '@/lib/data/user.actions';
-import { useEffect, useMemo, useState } from 'react';
-import { firstToken } from '../utils';
+import { TextField } from '@/app/ui/components/field';
+import {
+  getClaimPickerForItem,
+  signInUser,
+  type ClaimPicker,
+} from '@/lib/data/user.actions';
+import { ItemDisplay, PurchaseView } from '@/lib/types';
+import { useCallback, useEffect, useState } from 'react';
+import { claimLabel, firstToken } from '../utils';
+import ClaimDisclosure, {
+  type AttributedTarget,
+  type PickerStatus,
+} from './ClaimDisclosure';
 import ModalButtons from './ModalButtons';
-import PurchaseFlow from './PurchaseFlow';
+import ModalStoreRow from './ModalStoreRow';
+import PurchaseModalHeader from './PurchaseModalHeader';
 
-export type AttributedTarget = { id: string; name: string | null };
+export type { AttributedTarget };
+
+function GuestClaimSection({
+  onGuestClaim,
+}: {
+  onGuestClaim: (name: string) => void;
+}) {
+  const [guestName, setGuestName] = useState('');
+  return (
+    <>
+      <div className="guest-purchase">
+        <TextField
+          label="Your name"
+          value={guestName}
+          onChange={(e) => setGuestName(e.target.value)}
+          placeholder="Your name"
+        />
+        <ModalButtons
+          primary_button_text="Claim as Guest"
+          primary_button_onclick={() =>
+            guestName.trim() && onGuestClaim(guestName.trim())
+          }
+          primary_button_disabled={!guestName.trim()}
+          primary_button_disabled_with_tooltip="Please enter a name to continue"
+        />
+      </div>
+      <form action={signInUser} className="guest-signin-footer">
+        Have an account?{' '}
+        <Button variant="link" type="submit">
+          Sign in
+        </Button>{' '}
+        to claim with your profile.
+      </form>
+    </>
+  );
+}
+
+function OwnerClaimsList({
+  claims,
+  onRemoveClaim,
+}: {
+  claims: PurchaseView[];
+  onRemoveClaim: (claim: PurchaseView) => void;
+}) {
+  if (claims.length === 0) return null;
+  return (
+    <ul className="owner-claims-list">
+      {claims.map((claim) => (
+        <li key={claim.id} className="owner-claim-row">
+          <span>{claimLabel(claim)}</span>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => onRemoveClaim(claim)}
+            aria-label={
+              claim.by === 'self'
+                ? 'Remove your claim'
+                : `Remove ${claim.firstName}'s claim`
+            }
+          >
+            Remove
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function PurchaseFlowContainer({
   user_id,
   isOwner,
-  itemId,
-  itemName,
+  showSpoilers,
+  ownerCanClaim,
+  ownerClaims,
+  item,
   onSelfClaim,
   onAttributedClaim,
   onGuestClaim,
+  onRemoveClaim,
 }: {
   user_id?: string | null;
   isOwner: boolean;
-  itemId: string;
-  itemName: string;
+  showSpoilers: boolean;
+  ownerCanClaim: boolean;
+  ownerClaims: PurchaseView[];
+  item: ItemDisplay;
   onSelfClaim: () => void;
   onAttributedClaim: (target: AttributedTarget) => void;
   onGuestClaim: (name: string) => void;
+  onRemoveClaim: (claim: PurchaseView) => void;
 }) {
-  const [query, setQuery] = useState('');
-  const [fallbackOpen, setFallbackOpen] = useState(false);
-  const [guestName, setGuestName] = useState('');
   const [picker, setPicker] = useState<ClaimPicker | null>(null);
-  const [pickerLoading, setPickerLoading] = useState(!!user_id);
+  const [pickerStatus, setPickerStatus] = useState<PickerStatus>('loading');
+  const [fetchAttempt, setFetchAttempt] = useState(0);
+
+  // Spoilers-off owners get no claim UI and consume no claim data.
+  const showClaimSection = !!user_id && (!isOwner || showSpoilers);
+  const itemId = item.id;
+
+  // Each (item, attempt) pair is a fresh fetch; reset to loading at render
+  // time so the effect body only performs async state updates.
+  const fetchKey = `${itemId}:${fetchAttempt}`;
+  const [prevFetchKey, setPrevFetchKey] = useState(fetchKey);
+  if (fetchKey !== prevFetchKey) {
+    setPrevFetchKey(fetchKey);
+    setPickerStatus('loading');
+  }
 
   useEffect(() => {
-    if (!user_id) return;
+    if (!showClaimSection || !itemId) return;
     let cancelled = false;
     getClaimPickerForItem(itemId)
       .then((data) => {
         if (cancelled) return;
         setPicker(data);
+        setPickerStatus('ready');
       })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setPickerLoading(false);
+      .catch(() => {
+        if (cancelled) return;
+        setPickerStatus('error');
       });
     return () => {
       cancelled = true;
     };
-  }, [itemId, user_id]);
+  }, [itemId, showClaimSection, fetchAttempt]);
 
-  const filteredPool = useMemo(() => {
-    const pool = picker?.pool ?? [];
-    const q = query.trim().toLowerCase();
-    if (!q) return pool;
-    return pool.filter((u) => (u.name ?? '').toLowerCase().includes(q));
-  }, [picker, query]);
-
-  if (!user_id) {
-    return (
-      <PurchaseFlow primary_text="Sign in to track your purchases and save lists!">
-        <SignInButton />
-        <div className="guest-purchase">
-          <p>Or continue as guest:</p>
-          <TextField
-            label="Your name"
-            value={guestName}
-            onChange={(e) => setGuestName(e.target.value)}
-            placeholder="Your name"
-          />
-          <ModalButtons
-            primary_button_text="Claim as Guest"
-            primary_button_onclick={() =>
-              guestName.trim() && onGuestClaim(guestName.trim())
-            }
-            primary_button_disabled={!guestName.trim()}
-            primary_button_disabled_with_tooltip="Please enter a name to continue"
-          />
-        </div>
-      </PurchaseFlow>
-    );
-  }
+  const retry = useCallback(() => setFetchAttempt((n) => n + 1), []);
 
   const circleLabel = isOwner
     ? 'your circle'
@@ -90,74 +152,46 @@ export default function PurchaseFlowContainer({
 
   return (
     <div className="claim-modal">
-      <header className="claim-modal-header">
-        <h2>Claim this gift</h2>
-        <p className="claim-modal-subtitle">{itemName}</p>
-      </header>
+      <PurchaseModalHeader item={item} />
+      <ModalStoreRow stores={item.stores} />
 
-      <Button variant="primary" className="claim-self-cta" onClick={onSelfClaim}>
-        {isOwner ? 'I bought this myself' : "I'm getting this"}
-      </Button>
-
-      <p className="claim-divider">Claim for someone in {circleLabel}:</p>
-
-      <SearchField
-        placeholder={`Search ${circleLabel}…`}
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onClear={() => setQuery('')}
-        aria-label={`Search ${circleLabel}`}
-      />
-
-      <ul className="claim-pool-list">
-        {pickerLoading ? (
-          <li className="claim-pool-empty">Loading…</li>
-        ) : filteredPool.length === 0 ? (
-          <li className="claim-pool-empty">
-            No one by that name — add them below
-          </li>
-        ) : (
-          filteredPool.map((u) => (
-            <li key={u.id}>
-              <button
-                type="button"
-                className="claim-pool-row"
-                onClick={() => onAttributedClaim(u)}
-              >
-                <Avatar src={u.image} name={u.name} size={32} />
-                <span className="claim-pool-name">{u.name}</span>
-              </button>
-            </li>
-          ))
-        )}
-      </ul>
-
-      {!fallbackOpen ? (
-        <button
-          type="button"
-          className="claim-fallback-toggle"
-          onClick={() => setFallbackOpen(true)}
-        >
-          Someone not listed? Enter their name
-        </button>
+      {!user_id ? (
+        <GuestClaimSection onGuestClaim={onGuestClaim} />
+      ) : !showClaimSection ? (
+        <p className="owner-list-label">Your list</p>
       ) : (
-        <div className="claim-fallback">
-          <TextField
-            label="Their name"
-            value={guestName}
-            onChange={(e) => setGuestName(e.target.value)}
-            placeholder="Their name"
-            autoFocus
-          />
-          <ModalButtons
-            primary_button_text={`Claim for ${guestName.trim() || '…'}`}
-            primary_button_onclick={() =>
-              guestName.trim() && onGuestClaim(guestName.trim())
-            }
-            primary_button_disabled={!guestName.trim()}
-            primary_button_disabled_with_tooltip="Please enter a name to continue"
-          />
-        </div>
+        <>
+          {isOwner && (
+            <OwnerClaimsList
+              claims={ownerClaims}
+              onRemoveClaim={onRemoveClaim}
+            />
+          )}
+          {(!isOwner || ownerCanClaim) && (
+            <>
+              <Button
+                variant="primary"
+                className="claim-self-cta"
+                onClick={onSelfClaim}
+              >
+                {isOwner ? 'I bought this myself' : 'Claim this gift'}
+              </Button>
+              <ClaimDisclosure
+                label={
+                  isOwner
+                    ? 'Claiming for someone?'
+                    : 'Claiming for someone else?'
+                }
+                circleLabel={circleLabel}
+                status={pickerStatus}
+                pool={picker?.pool ?? []}
+                onRetry={retry}
+                onAttributedClaim={onAttributedClaim}
+                onGuestClaim={onGuestClaim}
+              />
+            </>
+          )}
+        </>
       )}
     </div>
   );

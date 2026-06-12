@@ -70,8 +70,6 @@ export default function Item({
       localPurchases.find((p) => p.by === 'self' || p.claimedByViewer) ?? null,
     [localPurchases]
   );
-  const myClaim = removableClaim?.by === 'self' ? removableClaim : null;
-
   const hasAnyClaim = claimCount > 0;
   // "Sold out" treatment (strikethrough price, faded stores, hidden claim
   // button) only fires when the item is fully claimed. Partial multi-claim
@@ -81,6 +79,9 @@ export default function Item({
   // Owner only sees purchase state when spoilers are on (DAL returns empty otherwise)
   const showSpoilerInfo = hasAnyClaim && isOwner;
   const showOwnerClaimAction = isOwner && !!showSpoilers && !isFullyClaimed;
+  // Owner claim management (master unclaim) lives in the purchase modal's
+  // claims list; the card affordance is "Manage claims" once any claim exists.
+  const showOwnerManageAction = isOwner && !!showSpoilers && hasAnyClaim;
 
   const claimSummary = useMemo(() => {
     if (!hasAnyClaim) return '';
@@ -105,35 +106,12 @@ export default function Item({
     /* v8 ignore next -- defensive: item.id is always present for a persisted item. */
     if (!item.id) return;
     /* v8 ignore next -- defensive: the claim affordance is disabled when fully claimed without a personal claim, so this early-return is unreachable from the UI. */
-    if (isFullyClaimed && !removableClaim) return;
+    if (!isOwner && isFullyClaimed && !removableClaim) return;
     handleModalOpen();
   };
 
-  const handleUndoConfirm = async () => {
-    /* v8 ignore next -- defensive: the modal only renders the undo flow when a removable claim exists. */
-    if (!removableClaim) return;
-    try {
-      const result = await toast.promise(
-        removePurchase({ purchase_id: removableClaim.id }),
-        {
-          loading: 'Removing claim',
-          success: 'Claim removed successfully',
-          error: 'Failed to remove claim',
-        }
-      );
-      if (result?.success) {
-        setLocalPurchases((prev) =>
-          prev.filter((p) => p.id !== removableClaim.id)
-        );
-      }
-    } catch (error) {
-      console.error('Failed to remove purchase:', error);
-    }
-    handleModalClose();
-  };
-
-  // Owner master unclaim — per-claim affordance in the spoiler banner.
-  const handleRemoveClaim = async (claim: PurchaseView) => {
+  // One home for claim removal: dispatch, toast copy, and local-state filter.
+  const removeClaim = async (claim: PurchaseView) => {
     try {
       const result = await toast.promise(
         removePurchase({ purchase_id: claim.id }),
@@ -151,13 +129,20 @@ export default function Item({
     }
   };
 
+  const handleUndoConfirm = async () => {
+    /* v8 ignore next -- defensive: the modal only renders the undo flow when a removable claim exists. */
+    if (!removableClaim) return;
+    await removeClaim(removableClaim);
+    handleModalClose();
+  };
+
   const recordClaim = async (
     payload: {
       item_id: string;
       guest_name: string | null;
       purchased_by?: string;
     },
-    optimistic: PurchaseView
+    optimistic: Omit<PurchaseView, 'id'>
   ) => {
     try {
       const result = await toast.promise(createPurchase(payload), {
@@ -165,9 +150,12 @@ export default function Item({
         success: 'Claim added successfully',
         error: (err: Error) => err?.message || 'Failed to add claim',
       });
-      if (result?.success) {
-        setLocalPurchases((prev) => [...prev, optimistic]);
-      } else if (result?.message) {
+      if (result?.success && result.id) {
+        const id = result.id;
+        setLocalPurchases((prev) =>
+          prev.some((p) => p.id === id) ? prev : [...prev, { ...optimistic, id }]
+        );
+      } else if (!result?.success && result?.message) {
         toast.error(result.message);
       }
       handleModalClose();
@@ -180,7 +168,6 @@ export default function Item({
     recordClaim(
       { item_id: item.id || '', guest_name: null },
       {
-        id: `optimistic-${Date.now()}`,
         by: 'self',
         firstName: firstToken(user_name || 'You'),
         claimedByViewer: true,
@@ -191,7 +178,6 @@ export default function Item({
     recordClaim(
       { item_id: item.id || '', guest_name: null, purchased_by: target.id },
       {
-        id: `optimistic-${Date.now()}`,
         by: target.id === user_id ? 'self' : 'other',
         firstName: firstToken(target.name || 'Someone'),
         claimedByViewer: true,
@@ -202,7 +188,6 @@ export default function Item({
     recordClaim(
       { item_id: item.id || '', guest_name: name },
       {
-        id: `optimistic-${Date.now()}`,
         by: 'other',
         firstName: firstToken(name),
         claimedByViewer: !!user_id,
@@ -227,12 +212,12 @@ export default function Item({
           isOwner={isOwner}
           showPurchased={showPurchased}
           showSpoilerInfo={showSpoilerInfo}
-          myClaim={myClaim}
-          claimSummary={claimSummary}
+          removableClaim={removableClaim}
           claimActionDisabled={claimActionDisabled}
           showCounter={showCounter}
           counterText={counterText}
           showOwnerClaimAction={showOwnerClaimAction}
+          showOwnerManageAction={showOwnerManageAction}
           onPurchaseClick={handlePurchaseClick}
         />
 
@@ -244,8 +229,6 @@ export default function Item({
           claims={localPurchases}
           claimSummary={claimSummary}
           counterText={counterText}
-          onUndo={handlePurchaseClick}
-          onRemoveClaim={handleRemoveClaim}
         />
 
         {isOwner && (
@@ -263,17 +246,20 @@ export default function Item({
 
       {!preview && showModal && (
         <PurchaseModalSlot
-          // The owner's unclaim affordance is the per-claim spoiler-banner row
-          // (master unclaim), so their modal always opens on the claim flow.
+          // Owner master unclaim lives in the modal's claims list, not a card
+          // affordance, so the owner's modal always opens on the claim flow.
           removableClaim={isOwner ? null : removableClaim}
           user_id={user_id}
           isOwner={isOwner}
-          itemId={item.id || ''}
-          itemName={item.name || ''}
+          showSpoilers={!!showSpoilers}
+          ownerCanClaim={showOwnerClaimAction}
+          ownerClaims={isOwner && showSpoilers ? localPurchases : []}
+          item={item}
           onClose={handleModalClose}
           onSelfClaim={handleSelfClaim}
           onAttributedClaim={handleAttributedClaim}
           onGuestClaim={handleGuestClaim}
+          onRemoveClaim={removeClaim}
           onUndoConfirm={handleUndoConfirm}
         />
       )}

@@ -61,9 +61,8 @@ vi.mock('../ItemCard', () => ({
       data-disabled={String(p.claimActionDisabled)}
       data-show-counter={String(p.showCounter)}
       data-counter={p.counterText as string}
-      data-summary={p.claimSummary as string}
       data-is-owner={String(p.isOwner)}
-      data-my-claim={String(!!p.myClaim)}
+      data-removable-claim={String(!!p.removableClaim)}
       data-show-owner-claim={String(p.showOwnerClaimAction)}
     >
       <button type="button" onClick={p.onPurchaseClick as () => void}>
@@ -81,19 +80,7 @@ vi.mock('../ClaimBanners', () => ({
         data-claims={claims.map((c) => c.firstName).join(',')}
         data-my-claim={String(!!p.myClaim)}
         data-counter={p.counterText as string}
-      >
-        <button type="button" onClick={p.onUndo as () => void}>
-          banner-undo
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            (p.onRemoveClaim as (c: unknown) => void)(claims[0])
-          }
-        >
-          banner-remove-first
-        </button>
-      </div>
+      />
     );
   },
 }));
@@ -117,7 +104,8 @@ vi.mock('../PurchaseModalSlot', () => ({
       data-testid="modal-slot"
       data-removable-claim={String(!!p.removableClaim)}
       data-is-owner={String(p.isOwner)}
-      data-item-name={p.itemName as string}
+      data-show-spoilers={String(p.showSpoilers)}
+      data-item-name={String((p.item as { name?: string | null })?.name ?? '')}
     >
       <button type="button" onClick={p.onSelfClaim as () => void}>
         claim-self
@@ -152,6 +140,16 @@ vi.mock('../PurchaseModalSlot', () => ({
       </button>
       <button type="button" onClick={p.onUndoConfirm as () => void}>
         confirm-undo
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          (p.onRemoveClaim as (c: unknown) => void)(
+            (p.ownerClaims as unknown[])[0]
+          )
+        }
+      >
+        modal-remove-first
       </button>
       <button type="button" onClick={p.onClose as () => void}>
         slot-close
@@ -195,7 +193,10 @@ const banners = () => screen.getByTestId('claim-banners');
 beforeEach(() => {
   vi.clearAllMocks();
   sp.value = new URLSearchParams();
-  vi.mocked(createPurchase).mockResolvedValue({ success: true } as never);
+  vi.mocked(createPurchase).mockResolvedValue({
+    success: true,
+    id: 'srv-1',
+  } as never);
   vi.mocked(removePurchase).mockResolvedValue({ success: true } as never);
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -292,7 +293,7 @@ describe('Item', () => {
         },
         user_id: 'viewer',
       });
-      expect(card()).toHaveAttribute('data-summary', 'You');
+      expect(card()).toHaveAttribute('data-removable-claim', 'true');
       expect(banners()).toHaveAttribute('data-my-claim', 'true');
     });
 
@@ -409,15 +410,6 @@ describe('Item', () => {
       const user = userEvent.setup();
       renderItem({ item: { user_id: OWNER }, user_id: 'viewer' });
       await user.click(screen.getByRole('button', { name: 'card-claim' }));
-      expect(router.push).toHaveBeenCalledWith(
-        expect.stringContaining('purchaseItem=i1')
-      );
-    });
-
-    it('BannerUndoClick_AlsoOpensModal', async () => {
-      const user = userEvent.setup();
-      renderItem({ item: { user_id: OWNER }, user_id: 'viewer' });
-      await user.click(screen.getByRole('button', { name: 'banner-undo' }));
       expect(router.push).toHaveBeenCalledWith(
         expect.stringContaining('purchaseItem=i1')
       );
@@ -571,7 +563,7 @@ describe('Item', () => {
         screen.getByRole('button', { name: 'claim-attributed' })
       );
       await waitFor(() =>
-        expect(card()).toHaveAttribute('data-summary', 'You')
+        expect(card()).toHaveAttribute('data-removable-claim', 'true')
       );
       expect(banners()).toHaveAttribute('data-my-claim', 'true');
     });
@@ -607,6 +599,51 @@ describe('Item', () => {
       renderItem(viewer, 'purchaseItem=i1');
       await user.click(screen.getByRole('button', { name: 'claim-self' }));
       await waitFor(() => expect(createPurchase).toHaveBeenCalled());
+    });
+
+    it('UnclaimImmediatelyAfterClaim_RemovesByServerIssuedId', async () => {
+      const user = userEvent.setup();
+      renderItem(viewer, 'purchaseItem=i1');
+      await user.click(screen.getByRole('button', { name: 'claim-self' }));
+      await waitFor(() =>
+        expect(screen.getByTestId('modal-slot')).toHaveAttribute(
+          'data-removable-claim',
+          'true'
+        )
+      );
+      await user.click(screen.getByRole('button', { name: 'confirm-undo' }));
+      expect(removePurchase).toHaveBeenCalledWith({ purchase_id: 'srv-1' });
+      await waitFor(() =>
+        expect(banners()).toHaveAttribute('data-my-claim', 'false')
+      );
+    });
+
+    it('ServerSnapshotLandsBeforeCreateResolves_ClaimRendersOnce', async () => {
+      let resolveCreate!: (v: unknown) => void;
+      vi.mocked(createPurchase).mockReturnValue(
+        new Promise((r) => {
+          resolveCreate = r;
+        }) as never
+      );
+      const user = userEvent.setup();
+      const { rerender } = renderItem(viewer, 'purchaseItem=i1');
+      await user.click(screen.getByRole('button', { name: 'claim-self' }));
+      rerender(
+        <Item
+          item={makeItem({
+            user_id: OWNER,
+            purchases: [
+              { id: 'srv-1', by: 'self', firstName: 'You', claimedByViewer: true },
+            ],
+          })}
+          user_id="viewer"
+          user_name="Vicky"
+        />
+      );
+      resolveCreate({ success: true, id: 'srv-1' });
+      await waitFor(() =>
+        expect(banners()).toHaveAttribute('data-claims', 'You')
+      );
     });
 
     it('PurchaseThrows_LogsError', async () => {
@@ -707,21 +744,26 @@ describe('Item', () => {
     });
   });
 
-  describe('RemoveClaimBanner', () => {
-    it('OwnerSpoilerRemoveClick_RemovesByPurchaseId-DropsClaim', async () => {
-      const user = userEvent.setup();
-      renderItem({
+  describe('OwnerMasterUnclaim', () => {
+    // Owner master unclaim is dispatched from the modal's claims list (not the
+    // spoiler banner); the modal carries `ownerClaims` only when spoilers are on.
+    const ownerWithClaim = {
+      user_id: OWNER,
+      showSpoilers: true,
+      item: {
         user_id: OWNER,
-        item: {
-          user_id: OWNER,
-          quantity_limit: 3,
-          purchases: [
-            { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
-          ],
-        },
-      });
+        quantity_limit: 3,
+        purchases: [
+          { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
+        ],
+      },
+    };
+
+    it('ModalRemoveClick_RemovesByPurchaseId-DropsClaim', async () => {
+      const user = userEvent.setup();
+      renderItem(ownerWithClaim, 'purchaseItem=i1');
       await user.click(
-        screen.getByRole('button', { name: 'banner-remove-first' })
+        screen.getByRole('button', { name: 'modal-remove-first' })
       );
       expect(removePurchase).toHaveBeenCalledWith({ purchase_id: 'p1' });
       await waitFor(() => expect(banners()).toHaveAttribute('data-claims', ''));
@@ -730,18 +772,9 @@ describe('Item', () => {
     it('RemoveThrows_LogsError-KeepsClaim', async () => {
       vi.mocked(removePurchase).mockRejectedValue(new Error('boom'));
       const user = userEvent.setup();
-      renderItem({
-        user_id: OWNER,
-        item: {
-          user_id: OWNER,
-          quantity_limit: 3,
-          purchases: [
-            { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
-          ],
-        },
-      });
+      renderItem(ownerWithClaim, 'purchaseItem=i1');
       await user.click(
-        screen.getByRole('button', { name: 'banner-remove-first' })
+        screen.getByRole('button', { name: 'modal-remove-first' })
       );
       await waitFor(() => expect(console.error).toHaveBeenCalled());
       expect(banners()).toHaveAttribute('data-claims', 'Sam');
@@ -750,18 +783,9 @@ describe('Item', () => {
     it('RemoveFails_KeepsClaim', async () => {
       vi.mocked(removePurchase).mockResolvedValue({ success: false } as never);
       const user = userEvent.setup();
-      renderItem({
-        user_id: OWNER,
-        item: {
-          user_id: OWNER,
-          quantity_limit: 3,
-          purchases: [
-            { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
-          ],
-        },
-      });
+      renderItem(ownerWithClaim, 'purchaseItem=i1');
       await user.click(
-        screen.getByRole('button', { name: 'banner-remove-first' })
+        screen.getByRole('button', { name: 'modal-remove-first' })
       );
       await waitFor(() => expect(removePurchase).toHaveBeenCalled());
       expect(banners()).toHaveAttribute('data-claims', 'Sam');

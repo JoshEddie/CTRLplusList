@@ -1,19 +1,16 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getClaimPickerForItem } from '@/lib/data/user.actions';
+import { PurchaseView } from '@/lib/types';
 import PurchaseFlowContainer from '../PurchaseFlowContainer';
 
-// SignInButton mounts a server-action <form action={signInUser}>; stub it so the
-// guest branch can assert the sign-in affordance without importing the action.
-vi.mock('@/app/(auth)/ui/components/SignInButton', () => ({
-  default: () => <div data-testid="signin-button" />,
-}));
-
 // user.actions is a 'use server' module whose import chain reaches the DB
-// driver; the picker read is the only contract the modal consumes.
+// driver; the picker read and the sign-in action are the only contracts the
+// modal consumes.
 vi.mock('@/lib/data/user.actions', () => ({
   getClaimPickerForItem: vi.fn(),
+  signInUser: vi.fn(),
 }));
 
 const PICKER = {
@@ -24,24 +21,45 @@ const PICKER = {
   ],
 };
 
+const ITEM = {
+  id: 'i1',
+  name: 'Fancy Mug',
+  description: '',
+  image_url: '',
+  stores: [
+    { name: 'Target', link: 'https://t.example', price: '38.00' },
+    { name: 'Amazon', link: 'https://a.example', price: '35.50' },
+  ],
+} as never;
+
 function renderContainer(
   overrides: Partial<React.ComponentProps<typeof PurchaseFlowContainer>> = {}
 ) {
   const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
     user_id: 'viewer',
     isOwner: false,
-    itemId: 'i1',
-    itemName: 'Fancy Mug',
+    showSpoilers: false,
+    ownerCanClaim: false,
+    ownerClaims: [],
+    item: ITEM,
     onSelfClaim: vi.fn(),
     onAttributedClaim: vi.fn(),
     onGuestClaim: vi.fn(),
+    onRemoveClaim: vi.fn(),
     ...overrides,
   };
   render(<PurchaseFlowContainer {...props} />);
   return props;
 }
 
-const samRow = () => screen.findByRole('button', { name: 'Sam Smith' });
+const disclosureTrigger = (name = 'Claiming for someone else?') =>
+  screen.getByRole('button', { name: new RegExp(name.replace('?', '\\?')) });
+
+async function expandLoadedDisclosure(user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByRole('button', { name: 'Claim this gift' });
+  await user.click(disclosureTrigger());
+  return screen.findByRole('button', { name: /Sam Smith/ });
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -49,13 +67,72 @@ beforeEach(() => {
 });
 
 describe('PurchaseFlowContainer', () => {
-  describe('Guest', () => {
-    it('NoUserId_RendersSignIn-GuestNameField-NoPickerFetch', () => {
+  describe('StoreRow', () => {
+    it('Authenticated_RendersCheapestStoreAsNewTabGhostLink', () => {
+      renderContainer();
+      const link = screen.getByRole('link', { name: /Amazon/ });
+      expect(link).toHaveAttribute('href', 'https://a.example');
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noreferrer');
+    });
+
+    it('Guest_StoreRowRendersWithoutSignIn', () => {
       renderContainer({ user_id: undefined });
-      expect(screen.getByTestId('signin-button')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /Amazon/ })).toBeInTheDocument();
+    });
+
+    it('OwnerSpoilersOff_StoreRowRenders', () => {
+      renderContainer({ isOwner: true, showSpoilers: false });
+      expect(screen.getByRole('link', { name: /Amazon/ })).toBeInTheDocument();
+    });
+
+    it('PlusNStoresTrigger_OpensMenuWithAllStoresPriceAscending', async () => {
+      renderContainer();
+      await screen.findByRole('button', { name: 'Claim this gift' });
+      // fireEvent: userEvent's synthetic hover would open-then-toggle the
+      // hover-opened menu shut.
+      fireEvent.click(screen.getByRole('button', { name: '+1 store' }));
+      const menuItems = screen.getAllByRole('menuitem');
+      expect(menuItems).toHaveLength(2);
+      expect(menuItems[0]).toHaveTextContent('Amazon');
+      expect(menuItems[0]).toHaveTextContent('$35.50');
+      expect(menuItems[1]).toHaveTextContent('Target');
+      expect(menuItems[1]).toHaveTextContent('$38.00');
+    });
+
+    it('EscapeWhileMenuOpen_ClosesMenuOnly', async () => {
+      const user = userEvent.setup();
+      renderContainer();
+      await screen.findByRole('button', { name: 'Claim this gift' });
+      fireEvent.click(screen.getByRole('button', { name: '+1 store' }));
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: '+1 store' })
+      ).toHaveFocus();
+    });
+
+    it('NoValidStore_RendersClaimSectionWithoutStoreRow', async () => {
+      renderContainer({
+        item: { ...((ITEM as object) ?? {}), stores: [] } as never,
+      });
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole('button', { name: 'Claim this gift' })
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('Guest', () => {
+    it('NoUserId_RendersGuestFieldAndFooterSignIn-NoPickerFetch', () => {
+      renderContainer({ user_id: undefined });
       expect(screen.getByLabelText('Your name')).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: 'Claim as Guest' })
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Have an account\?/)).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Sign in' })
       ).toBeInTheDocument();
       expect(getClaimPickerForItem).not.toHaveBeenCalled();
     });
@@ -79,88 +156,178 @@ describe('PurchaseFlowContainer', () => {
   });
 
   describe('Authenticated', () => {
-    it('Render_ShowsClaimThisGiftHeader-ItemNameSubtitle', async () => {
+    it('Render_ShowsItemHeader-PrimarySelfClaim-CollapsedDisclosure', async () => {
       renderContainer();
       expect(
-        screen.getByRole('heading', { name: 'Claim this gift' })
+        screen.getByRole('heading', { name: 'Fancy Mug' })
       ).toBeInTheDocument();
-      expect(screen.getByText('Fancy Mug')).toBeInTheDocument();
-      await samRow();
+      expect(
+        screen.getByRole('button', { name: 'Claim this gift' })
+      ).toBeInTheDocument();
+      const trigger = disclosureTrigger();
+      expect(trigger).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+      expect(
+        await screen.findByText(/Claiming for someone else\?/)
+      ).toBeInTheDocument();
     });
 
-    it('ViewerCtaClick_CallsOnSelfClaim', async () => {
+    it('SelfClaimClick_CallsOnSelfClaim-NoDisclosureInteractionNeeded', async () => {
       const user = userEvent.setup();
       const { onSelfClaim } = renderContainer();
-      await user.click(screen.getByRole('button', { name: "I'm getting this" }));
+      await user.click(
+        screen.getByRole('button', { name: 'Claim this gift' })
+      );
       expect(onSelfClaim).toHaveBeenCalledTimes(1);
-      await samRow();
     });
 
-    it('PoolLoaded_RendersOwnerFirstNameDivider-OneRowPerPoolUser', async () => {
+    it('ExpandBeforeLoad_ShowsOwnerScopedLoadingRow', async () => {
+      vi.mocked(getClaimPickerForItem).mockReturnValue(new Promise(() => {}));
+      const user = userEvent.setup();
       renderContainer();
-      expect(await samRow()).toBeInTheDocument();
+      await user.click(disclosureTrigger());
       expect(
-        screen.getByRole('button', { name: 'Jo Jones' })
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Claim for someone in Olivia's circle:")
+        screen.getByText("Loading the owner's circle…")
       ).toBeInTheDocument();
     });
 
-    it('PoolRowClick_CallsOnAttributedClaimWithThatUser', async () => {
+    it('ExpandAfterLoad_ShowsSearchAndPoolRows', async () => {
+      const user = userEvent.setup();
+      renderContainer();
+      await expandLoadedDisclosure(user);
+      expect(
+        screen.getByPlaceholderText("Search Olivia's circle…")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Jo Jones/ })
+      ).toBeInTheDocument();
+    });
+
+    it('PoolRowSelectThenConfirm_CallsOnAttributedClaim', async () => {
       const user = userEvent.setup();
       const { onAttributedClaim } = renderContainer();
-      await user.click(await samRow());
+      const samRow = await expandLoadedDisclosure(user);
+      expect(
+        screen.queryByRole('button', { name: /Confirm —/ })
+      ).not.toBeInTheDocument();
+      await user.click(samRow);
+      await user.click(
+        screen.getByRole('button', { name: 'Confirm — Sam Smith' })
+      );
       expect(onAttributedClaim).toHaveBeenCalledWith(PICKER.pool[0]);
+    });
+
+    it('SelectedRowSecondClick_DeselectsAndHidesConfirm', async () => {
+      const user = userEvent.setup();
+      renderContainer();
+      const samRow = await expandLoadedDisclosure(user);
+      await user.click(samRow);
+      await user.click(
+        screen.getByRole('button', { name: /Sam Smith/, pressed: true })
+      );
+      expect(
+        screen.queryByRole('button', { name: /Confirm —/ })
+      ).not.toBeInTheDocument();
     });
 
     it('SearchQuery_NarrowsPoolRowsCaseInsensitive', async () => {
       const user = userEvent.setup();
       renderContainer();
-      await samRow();
+      await expandLoadedDisclosure(user);
       await user.type(screen.getByRole('searchbox'), 'JO');
       expect(
-        screen.getByRole('button', { name: 'Jo Jones' })
+        screen.getByRole('button', { name: /Jo Jones/ })
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole('button', { name: 'Sam Smith' })
+        screen.queryByRole('button', { name: /Sam Smith/ })
       ).not.toBeInTheDocument();
     });
 
-    it('ClearSearchClick_ResetsQueryAndRestoresFullPool', async () => {
+    it('SearchNoMatch_DirectsToFreeTextFallback', async () => {
       const user = userEvent.setup();
       renderContainer();
-      await samRow();
-      await user.type(screen.getByRole('searchbox'), 'JO');
+      await expandLoadedDisclosure(user);
+      await user.type(screen.getByRole('searchbox'), 'zzz');
       expect(
-        screen.queryByRole('button', { name: 'Sam Smith' })
-      ).not.toBeInTheDocument();
-      await user.click(screen.getByRole('button', { name: 'Clear search' }));
-      expect(await samRow()).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: 'Jo Jones' })
+        screen.getByText('No one by that name — add them below')
       ).toBeInTheDocument();
+    });
+
+    it('FreeTextConfirm_CallsOnGuestClaimTrimmed', async () => {
+      const user = userEvent.setup();
+      const { onGuestClaim } = renderContainer();
+      await expandLoadedDisclosure(user);
+      await user.type(
+        screen.getByLabelText('Someone not listed?'),
+        ' Aunt May '
+      );
+      await user.click(
+        screen.getByRole('button', { name: 'Confirm — Aunt May' })
+      );
+      expect(onGuestClaim).toHaveBeenCalledWith('Aunt May');
+    });
+
+    it('SelectionAndFreeText_MutuallyExclusive', async () => {
+      const user = userEvent.setup();
+      renderContainer();
+      const samRow = await expandLoadedDisclosure(user);
+      await user.click(samRow);
+      await user.type(screen.getByLabelText('Someone not listed?'), 'Aunt');
+      expect(
+        screen.getByRole('button', { name: 'Confirm — Aunt' })
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /Sam Smith/ }));
+      expect(screen.getByLabelText('Someone not listed?')).toHaveValue('');
+      expect(
+        screen.getByRole('button', { name: 'Confirm — Sam Smith' })
+      ).toBeInTheDocument();
+    });
+
+    it('CollapseDisclosure_ResetsSearchSelectionAndFreeText', async () => {
+      const user = userEvent.setup();
+      renderContainer();
+      const samRow = await expandLoadedDisclosure(user);
+      await user.click(samRow);
+      await user.type(screen.getByRole('searchbox'), 'Sam');
+      await user.click(disclosureTrigger());
+      await user.click(disclosureTrigger());
       expect(screen.getByRole('searchbox')).toHaveValue('');
+      expect(
+        screen.queryByRole('button', { name: /Confirm —/ })
+      ).not.toBeInTheDocument();
     });
 
-    it('NullNamePoolUser_NeverMatchesQuery', async () => {
-      vi.mocked(getClaimPickerForItem).mockResolvedValue({
-        ownerName: 'Olivia Owner',
-        pool: [
-          { id: 'u2', name: 'Sam Smith', image: null },
-          { id: 'u5', name: null, image: null },
-        ],
-      });
+    it('PickerFetchRejects_ShowsErrorWithRetry-NotEmptyPool', async () => {
+      vi.mocked(getClaimPickerForItem).mockRejectedValue(
+        new Error('network down')
+      );
       const user = userEvent.setup();
       renderContainer();
-      await samRow();
-      expect(screen.getAllByRole('listitem')).toHaveLength(2);
-      await user.type(screen.getByRole('searchbox'), 'sam');
-      expect(screen.getAllByRole('listitem')).toHaveLength(1);
-      expect(await samRow()).toBeInTheDocument();
+      await user.click(disclosureTrigger());
+      expect(
+        await screen.findByText("Couldn't load the owner's circle")
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText('Someone not listed?')
+      ).not.toBeInTheDocument();
     });
 
-    it('ItemIdChangesMidFlight_StaleResponseDiscarded', async () => {
+    it('RetryAfterFailure_RecoversThePicker', async () => {
+      vi.mocked(getClaimPickerForItem)
+        .mockRejectedValueOnce(new Error('network down'))
+        .mockResolvedValueOnce(PICKER);
+      const user = userEvent.setup();
+      renderContainer();
+      await user.click(disclosureTrigger());
+      await screen.findByText("Couldn't load the owner's circle");
+      await user.click(screen.getByRole('button', { name: 'Retry' }));
+      expect(
+        await screen.findByRole('button', { name: /Sam Smith/ })
+      ).toBeInTheDocument();
+      expect(getClaimPickerForItem).toHaveBeenCalledTimes(2);
+    });
+
+    it('ItemChangesMidFlight_StaleResolutionDiscarded', async () => {
       let resolveStale!: (p: typeof PICKER) => void;
       vi.mocked(getClaimPickerForItem)
         .mockReturnValueOnce(
@@ -169,120 +336,145 @@ describe('PurchaseFlowContainer', () => {
           })
         )
         .mockResolvedValueOnce({
-          ownerName: 'Olivia Owner',
+          ownerName: 'Fresh Fiona',
           pool: [{ id: 'u7', name: 'Fresh Fred', image: null }],
         });
+      const user = userEvent.setup();
       const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
         user_id: 'viewer',
         isOwner: false,
-        itemId: 'i1',
-        itemName: 'Fancy Mug',
+        showSpoilers: false,
+        ownerCanClaim: false,
+        ownerClaims: [],
+        item: ITEM,
         onSelfClaim: vi.fn(),
         onAttributedClaim: vi.fn(),
         onGuestClaim: vi.fn(),
+        onRemoveClaim: vi.fn(),
       };
       const { rerender } = render(<PurchaseFlowContainer {...props} />);
-      rerender(<PurchaseFlowContainer {...props} itemId="i2" />);
+      rerender(
+        <PurchaseFlowContainer
+          {...props}
+          item={{ ...(ITEM as object), id: 'i2' } as never}
+        />
+      );
+      await user.click(disclosureTrigger());
       expect(
-        await screen.findByRole('button', { name: 'Fresh Fred' })
+        await screen.findByRole('button', { name: /Fresh Fred/ })
       ).toBeInTheDocument();
       await act(async () => {
         resolveStale(PICKER);
       });
       expect(
-        screen.queryByRole('button', { name: 'Sam Smith' })
+        screen.queryByRole('button', { name: /Sam Smith/ })
       ).not.toBeInTheDocument();
+    });
+
+    it('ItemChangesMidFlight_StaleRejectionDoesNotPoisonFreshPicker', async () => {
+      let rejectStale!: (e: Error) => void;
+      vi.mocked(getClaimPickerForItem)
+        .mockReturnValueOnce(
+          new Promise((_res, rej) => {
+            rejectStale = rej;
+          })
+        )
+        .mockResolvedValueOnce(PICKER);
+      const user = userEvent.setup();
+      const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
+        user_id: 'viewer',
+        isOwner: false,
+        showSpoilers: false,
+        ownerCanClaim: false,
+        ownerClaims: [],
+        item: ITEM,
+        onSelfClaim: vi.fn(),
+        onAttributedClaim: vi.fn(),
+        onGuestClaim: vi.fn(),
+        onRemoveClaim: vi.fn(),
+      };
+      const { rerender } = render(<PurchaseFlowContainer {...props} />);
+      rerender(
+        <PurchaseFlowContainer
+          {...props}
+          item={{ ...(ITEM as object), id: 'i2' } as never}
+        />
+      );
+      await user.click(disclosureTrigger());
+      await screen.findByRole('button', { name: /Sam Smith/ });
+      await act(async () => {
+        rejectStale(new Error('stale failure'));
+      });
+      expect(screen.queryByText(/Couldn't load/)).not.toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Fresh Fred' })
+        screen.getByRole('button', { name: /Sam Smith/ })
       ).toBeInTheDocument();
     });
 
-    it('SearchNoMatch_ShowsAddThemBelowEmptyState', async () => {
+    it('EmptyPool_RendersOnlyFreeTextFallback', async () => {
+      vi.mocked(getClaimPickerForItem).mockResolvedValue({
+        ownerName: 'Olivia Owner',
+        pool: [],
+      });
       const user = userEvent.setup();
       renderContainer();
-      await samRow();
-      await user.type(screen.getByRole('searchbox'), 'zzz');
+      await screen.findByRole('button', { name: 'Claim this gift' });
+      await user.click(disclosureTrigger());
       expect(
-        screen.getByText('No one by that name — add them below')
+        await screen.findByLabelText('Someone not listed?')
       ).toBeInTheDocument();
-    });
-
-    it('FallbackToggleClick_ExpandsNameField-PaddedNameCallsOnGuestClaimTrimmed', async () => {
-      const user = userEvent.setup();
-      const { onGuestClaim } = renderContainer();
-      await samRow();
-      expect(screen.queryByLabelText('Their name')).not.toBeInTheDocument();
-      await user.click(
-        screen.getByRole('button', { name: 'Someone not listed? Enter their name' })
-      );
-      await user.type(screen.getByLabelText('Their name'), ' Aunt May ');
-      await user.click(
-        screen.getByRole('button', { name: 'Claim for Aunt May' })
-      );
-      expect(onGuestClaim).toHaveBeenCalledWith('Aunt May');
-    });
-
-    it('FallbackEmptyName_SubmitDisabled-NoCallback', async () => {
-      const user = userEvent.setup();
-      const { onGuestClaim } = renderContainer();
-      await samRow();
-      await user.click(
-        screen.getByRole('button', { name: 'Someone not listed? Enter their name' })
-      );
-      const submit = screen.getByRole('button', { name: 'Claim for …' });
-      expect(submit).toBeDisabled();
-      await user.click(submit);
-      expect(onGuestClaim).not.toHaveBeenCalled();
-    });
-
-    it('PendingPicker_ShowsLoadingRow', () => {
-      vi.mocked(getClaimPickerForItem).mockReturnValue(
-        new Promise(() => {})
-      );
-      renderContainer();
-      expect(screen.getByText('Loading…')).toBeInTheDocument();
-    });
-
-    it('PickerFetchRejects_ClearsLoading-ShowsEmptyState', async () => {
-      vi.mocked(getClaimPickerForItem).mockRejectedValue(
-        new Error('network down')
-      );
-      renderContainer();
-      expect(
-        await screen.findByText('No one by that name — add them below')
-      ).toBeInTheDocument();
-      expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
-    });
-
-    it('NullPicker_FallsBackToTheOwnerLabel-EmptyState', async () => {
-      vi.mocked(getClaimPickerForItem).mockResolvedValue(null);
-      renderContainer();
-      expect(
-        await screen.findByText('No one by that name — add them below')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Claim for someone in the owner's circle:")
-      ).toBeInTheDocument();
+      expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+      expect(screen.queryByText(/Couldn't load/)).not.toBeInTheDocument();
     });
   });
 
   describe('Owner', () => {
-    it('OwnerCtaClick_RendersIBoughtThisMyself-CallsOnSelfClaim', async () => {
+    it('SpoilersOff_RendersYourListLabelOnly-NoClaimUI-NoPickerFetch', () => {
+      renderContainer({ isOwner: true, showSpoilers: false });
+      expect(screen.getByText('Your list')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'I bought this myself' })
+      ).not.toBeInTheDocument();
+      expect(getClaimPickerForItem).not.toHaveBeenCalled();
+    });
+
+    it('SpoilersOn_RendersOwnerCtaAndOwnerDisclosure', async () => {
       const user = userEvent.setup();
-      const { onSelfClaim } = renderContainer({ isOwner: true });
+      const { onSelfClaim } = renderContainer({
+        isOwner: true,
+        showSpoilers: true,
+        ownerCanClaim: true,
+      });
       await user.click(
         screen.getByRole('button', { name: 'I bought this myself' })
       );
       expect(onSelfClaim).toHaveBeenCalledTimes(1);
-      await samRow();
+      await user.click(disclosureTrigger('Claiming for someone?'));
+      expect(
+        await screen.findByPlaceholderText('Search your circle…')
+      ).toBeInTheDocument();
     });
 
-    it('Render_UsesYourCircleDivider', async () => {
-      renderContainer({ isOwner: true });
-      expect(
-        screen.getByText('Claim for someone in your circle:')
-      ).toBeInTheDocument();
-      await samRow();
+    it('SpoilersOn_OwnerClaimsListRemove-DispatchesOnRemoveClaim', async () => {
+      const user = userEvent.setup();
+      const claim: PurchaseView = {
+        id: 'pc1',
+        by: 'other',
+        firstName: 'Bob',
+        claimerFirstName: 'Alice',
+        claimedByViewer: false,
+      };
+      const { onRemoveClaim } = renderContainer({
+        isOwner: true,
+        showSpoilers: true,
+        ownerCanClaim: true,
+        ownerClaims: [claim],
+      });
+      expect(screen.getByText('Bob — added by Alice')).toBeInTheDocument();
+      await user.click(
+        screen.getByRole('button', { name: "Remove Bob's claim" })
+      );
+      expect(onRemoveClaim).toHaveBeenCalledWith(claim);
     });
   });
 });

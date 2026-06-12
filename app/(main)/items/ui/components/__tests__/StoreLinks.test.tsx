@@ -241,21 +241,6 @@ describe('StoreLinks', () => {
   });
 
   describe('EmptyState', () => {
-    it('NoValidStoreWithChildren_RendersActionRowWithChildren', () => {
-      const { container } = render(
-        <StoreLinks item={makeItem([])}>
-          <button type="button">Claim</button>
-        </StoreLinks>
-      );
-      const row = container.querySelector('.item-action-row');
-      expect(row).not.toBeNull();
-      expect(row).toContainElement(
-        screen.getByRole('button', { name: 'Claim' })
-      );
-      expect(container.querySelector('.item-price-row')).toBeNull();
-      expect(container.querySelector('.storeLinks')).toBeNull();
-    });
-
     it('NoValidStoreNoChildren_RendersNull', () => {
       const { container } = render(<StoreLinks item={makeItem([])} />);
       expect(container).toBeEmptyDOMElement();
@@ -478,6 +463,48 @@ describe('StoreLinks', () => {
       expect(screen.getByRole('menu')).toBeInTheDocument();
       act(() => {
         vi.advanceTimersByTime(220);
+      });
+      expect(screen.queryByRole('menu')).toBeNull();
+    });
+
+    it('UnmountDuringCollapseGrace_ClearsPendingTimer', () => {
+      vi.useFakeTimers();
+      const { container, unmount } = render(
+        <StoreLinks item={makeItem(twoStores())} />
+      );
+      const anchor = container.querySelector(
+        '.storeLinks-more-anchor'
+      ) as Element;
+      fireEvent.mouseEnter(anchor);
+      fireEvent.mouseLeave(anchor);
+      // Delta, not absolute zero: React's scheduler can hold its own
+      // setTimeout under fake timers, independent of the collapse timer.
+      const pendingBeforeUnmount = vi.getTimerCount();
+      expect(pendingBeforeUnmount).toBeGreaterThan(0);
+      unmount();
+      expect(vi.getTimerCount()).toBe(pendingBeforeUnmount - 1);
+    });
+
+    it('SecondMouseLeaveBeforeGrace_RestartsGraceFromScratch', () => {
+      vi.useFakeTimers();
+      const { container } = render(<StoreLinks item={makeItem(twoStores())} />);
+      const anchor = container.querySelector(
+        '.storeLinks-more-anchor'
+      ) as Element;
+      fireEvent.mouseEnter(anchor);
+      fireEvent.mouseLeave(anchor);
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      // A second leave restarts the 220ms grace; the first leave's pending
+      // timer must be cleared so it can't close the menu at its original 220.
+      fireEvent.mouseLeave(anchor);
+      act(() => {
+        vi.advanceTimersByTime(150);
+      });
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(100);
       });
       expect(screen.queryByRole('menu')).toBeNull();
     });

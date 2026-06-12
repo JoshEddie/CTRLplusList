@@ -18,11 +18,18 @@ test('AttributedClaim_PickMutualFromPicker_PersistsBobAsPurchaser', async ({
   const item = firstClaimableSingleItem(page);
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
-  // Open the claim modal; the picker lists Alice's mutuals. Search narrows
-  // the live pool, and tapping the row claims immediately — no second screen.
-  await item.getByRole('button', { name: 'Claim this item' }).click();
+  // Open the purchase modal and expand the collapsed disclosure; the picker
+  // lists Alice's mutuals. Search narrows the live pool; tapping a row
+  // selects it and Confirm records the claim — expand-inline, no second screen.
+  await item.getByRole('button', { name: 'Get this gift' }).click();
+  await page
+    .getByRole('button', { name: /Claiming for someone else\?/ })
+    .click();
   await page.getByLabel("Search Alice's circle").fill('Bob');
   await page.getByRole('button', { name: 'Bob Example' }).click();
+  await page
+    .getByRole('button', { name: 'Confirm — Bob Example', exact: true })
+    .click();
 
   // The viewer asserted the claim for Bob; the banner names the attributed
   // user (linked-account first name, not a typed guest label) and the
@@ -50,9 +57,9 @@ test('OwnerList_SpoilersOff_ShowsNoClaimOrUnclaimAffordances', async ({
 }) => {
   await page.goto(OWN_LIST);
   await expect(page.locator('.item-container').first()).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Claim this item' })).toHaveCount(
-    0
-  );
+  await expect(
+    page.getByRole('button', { name: 'Mark as claimed' })
+  ).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Remove .*claim/ })).toHaveCount(
     0
   );
@@ -69,10 +76,10 @@ test('OwnerList_SpoilersOnSelfClaim_ShowsYouRowInSpoilerBanner', async ({
   // is the same one viewers get, with the owner copy variant.
   const item = page
     .locator('.item-container')
-    .filter({ has: page.getByRole('button', { name: 'Claim this item' }) })
+    .filter({ has: page.getByRole('button', { name: 'Mark as claimed' }) })
     .first();
   const itemName = (await item.locator('.itemName').innerText()).trim();
-  await item.getByRole('button', { name: 'Claim this item' }).click();
+  await item.getByRole('button', { name: 'Mark as claimed' }).click();
   // exact: the dnd-kit sortable wrapper is also a role=button whose
   // accessible name swallows the modal's text on the owner's sortable grid.
   await page
@@ -99,17 +106,25 @@ test('OwnerList_SpoilersOnMasterUnclaim_RemovesSeededAttributedClaim', async ({
   await page.goto(`${OWN_LIST}?spoilers=1`);
 
   // The seeded attributed claim (Alice marked Bob) renders with the claimer
-  // identified; the owner did not create it but can remove it.
-  const row = page.locator('.spoiler-claim-row', {
+  // identified in the spoiler banner; once any claim exists the card affordance
+  // is "Manage claims", and master unclaim is dispatched from the modal's
+  // claims list — the owner did not create the claim but can remove it.
+  const item = page.locator('.item-container', {
     hasText: 'Bob — added by Alice',
   });
-  await expect(row).toBeVisible();
-  await row.getByRole('button', { name: "Remove Bob's claim" }).click();
+  await expect(item).toBeVisible();
+  await item.getByRole('button', { name: 'Manage claims' }).click();
+  // exact: the dnd-kit sortable wrapper is also a role=button whose accessible
+  // name swallows the modal's text on the owner's sortable grid.
+  await page
+    .getByRole('button', { name: "Remove Bob's claim", exact: true })
+    .click();
   await expect(
     page.locator('.spoiler-claim-row', { hasText: 'Bob — added by Alice' })
   ).toHaveCount(0);
 
   // Gone for real, not just optimistically: a fresh server render agrees.
+  await page.locator('.close-button').click();
   await page.reload();
   await expect(page.locator('.item-container').first()).toBeVisible();
   await expect(
