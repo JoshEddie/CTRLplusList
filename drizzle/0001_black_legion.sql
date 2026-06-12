@@ -31,7 +31,7 @@ BEGIN
 END $$;
 --> statement-breakpoint
 
-CREATE TABLE "list_visits" (
+CREATE TABLE IF NOT EXISTS "list_visits" (
 	"user_id" text NOT NULL,
 	"list_id" text NOT NULL,
 	"last_visited_at" timestamp DEFAULT now() NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE "list_visits" (
 	CONSTRAINT "list_visits_user_id_list_id_pk" PRIMARY KEY("user_id","list_id")
 );
 --> statement-breakpoint
-CREATE TABLE "user_blocks" (
+CREATE TABLE IF NOT EXISTS "user_blocks" (
 	"blocker_id" text NOT NULL,
 	"blocked_id" text NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE "user_blocks" (
 	CONSTRAINT "user_blocks_blocker_not_blocked" CHECK ("blocker_id" <> "blocked_id")
 );
 --> statement-breakpoint
-CREATE TABLE "user_follows" (
+CREATE TABLE IF NOT EXISTS "user_follows" (
 	"follower_id" text NOT NULL,
 	"followee_id" text NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
@@ -56,15 +56,39 @@ CREATE TABLE "user_follows" (
 	CONSTRAINT "user_follows_follower_not_followee" CHECK ("follower_id" <> "followee_id")
 );
 --> statement-breakpoint
-ALTER TABLE "lists" ADD COLUMN "visibility" text DEFAULT 'private' NOT NULL;--> statement-breakpoint
-ALTER TABLE "lists" ADD COLUMN "shared_at" timestamp;--> statement-breakpoint
-ALTER TABLE "user" ADD COLUMN "last_seen_following_at" timestamp;--> statement-breakpoint
-ALTER TABLE "list_visits" ADD CONSTRAINT "list_visits_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "list_visits" ADD CONSTRAINT "list_visits_list_id_lists_id_fk" FOREIGN KEY ("list_id") REFERENCES "public"."lists"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_blocks" ADD CONSTRAINT "user_blocks_blocker_id_user_id_fk" FOREIGN KEY ("blocker_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_blocks" ADD CONSTRAINT "user_blocks_blocked_id_user_id_fk" FOREIGN KEY ("blocked_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_follows" ADD CONSTRAINT "user_follows_follower_id_user_id_fk" FOREIGN KEY ("follower_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_follows" ADD CONSTRAINT "user_follows_followee_id_user_id_fk" FOREIGN KEY ("followee_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "lists" ADD COLUMN IF NOT EXISTS "visibility" text DEFAULT 'private' NOT NULL;--> statement-breakpoint
+ALTER TABLE "lists" ADD COLUMN IF NOT EXISTS "shared_at" timestamp;--> statement-breakpoint
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "last_seen_following_at" timestamp;--> statement-breakpoint
+DO $$ BEGIN
+	IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'list_visits_user_id_user_id_fk') THEN
+		ALTER TABLE "list_visits" ADD CONSTRAINT "list_visits_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+	END IF;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+	IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'list_visits_list_id_lists_id_fk') THEN
+		ALTER TABLE "list_visits" ADD CONSTRAINT "list_visits_list_id_lists_id_fk" FOREIGN KEY ("list_id") REFERENCES "public"."lists"("id") ON DELETE cascade ON UPDATE no action;
+	END IF;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+	IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_blocks_blocker_id_user_id_fk') THEN
+		ALTER TABLE "user_blocks" ADD CONSTRAINT "user_blocks_blocker_id_user_id_fk" FOREIGN KEY ("blocker_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+	END IF;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+	IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_blocks_blocked_id_user_id_fk') THEN
+		ALTER TABLE "user_blocks" ADD CONSTRAINT "user_blocks_blocked_id_user_id_fk" FOREIGN KEY ("blocked_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+	END IF;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+	IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_follows_follower_id_user_id_fk') THEN
+		ALTER TABLE "user_follows" ADD CONSTRAINT "user_follows_follower_id_user_id_fk" FOREIGN KEY ("follower_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+	END IF;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+	IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'user_follows_followee_id_user_id_fk') THEN
+		ALTER TABLE "user_follows" ADD CONSTRAINT "user_follows_followee_id_user_id_fk" FOREIGN KEY ("followee_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+	END IF;
+END $$;--> statement-breakpoint
 
 -- Data backfill: derive visibility + shared_at from the legacy shared boolean.
 -- Conservative: previously-shared lists become 'unlisted' (link-only), not 'public'.

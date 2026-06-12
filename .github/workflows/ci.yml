@@ -122,7 +122,7 @@ jobs:
         if: steps.guard.outputs.active == 'true'
         env:
           DATABASE_URL: ${{ steps.neon-branch.outputs.db_url }}
-        run: npx drizzle-kit migrate
+        run: npx tsx scripts/ci/replay-migrations.ts
       - name: Re-seed the fixture and smoke-read through the neon-http driver
         if: steps.guard.outputs.active == 'true'
         env:
