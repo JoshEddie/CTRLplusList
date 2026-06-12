@@ -31,15 +31,11 @@ const makeError = (digest?: string) =>
 
 describe('MainError', () => {
   describe('Content', () => {
-    it('Render_ShowsSomethingWentWrongHeading', () => {
+    it('Render_ShowsSomethingWentWrongHeading-OmitsRawErrorMessage', () => {
       render(<MainError error={makeError()} reset={vi.fn()} />);
       expect(screen.getByRole('heading', { level: 3 }).textContent).toBe(
         'Something went wrong'
       );
-    });
-
-    it('Render_OmitsRawErrorMessage', () => {
-      render(<MainError error={makeError()} reset={vi.fn()} />);
       expect(screen.queryByText(/secret internal failure/)).toBeNull();
     });
   });
