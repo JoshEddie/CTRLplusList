@@ -85,6 +85,10 @@ export type ItemStoreTable = {
   name: string;
   link: string;
   price: string;
+  /** Automated price-fetch capture time (Date from the DB, ISO string from the client); null/absent for manual rows. */
+  price_fetched_at?: Date | string | null;
+  canonical_url?: string | null;
+  currency?: string | null;
 };
 
 export type PurchaseTable = {

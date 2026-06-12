@@ -50,6 +50,13 @@
       "when": 1781131323857,
       "tag": "0006_add_claimed_by",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781294768310,
+      "tag": "0007_purple_luke_cage",
+      "breakpoints": true
     }
   ]
 }

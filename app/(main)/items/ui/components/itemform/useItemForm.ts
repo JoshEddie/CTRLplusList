@@ -5,7 +5,12 @@ import { ItemDetails, ItemStoreTable, ItemTable, ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { storeLinkError, storeNameError, storePriceError } from './utils';
+import {
+  itemNameError,
+  storeLinkError,
+  storeNameError,
+  storePriceError,
+} from './utils';
 
 const useDebounce = <T extends (...args: never[]) => void>(
   callback: T,
@@ -44,11 +49,18 @@ interface FormErrors {
   lists: string;
 }
 
+export type ItemFormInitial = Partial<
+  Pick<
+    ItemTable,
+    'id' | 'name' | 'description' | 'image_url' | 'quantity_limit'
+  >
+> & {
+  stores?: ItemStoreTable[];
+  lists?: ListTable[];
+};
+
 export function useItemForm(
-  initialItem?: ItemTable & {
-    stores: ItemStoreTable[];
-    lists: ListTable[];
-  },
+  initialItem?: ItemFormInitial,
   returnTo?: string,
   onSuccess?: () => void
 ) {
@@ -65,7 +77,14 @@ export function useItemForm(
         ? 1
         : initialItem.quantity_limit,
     stores: initialItem?.stores?.length
-      ? initialItem.stores
+      ? initialItem.stores.map((store) => ({
+          ...store,
+          // DB rows carry Date; the action schema expects an ISO string.
+          price_fetched_at:
+            store.price_fetched_at instanceof Date
+              ? store.price_fetched_at.toISOString()
+              : (store.price_fetched_at ?? null),
+        }))
       : [{ name: '', link: '', price: '' }],
     lists:
       initialItem?.lists?.map((list) => {
@@ -77,7 +96,10 @@ export function useItemForm(
   });
 
   const [errors, setErrors] = useState<FormErrors>({
-    name: '',
+    // A prefilled name (e.g. a 200-char marketplace title) can violate the
+    // server bounds — surface that immediately; an empty name stays quiet
+    // until the user interacts.
+    name: initialItem?.name ? itemNameError(initialItem.name) : '',
     description: '',
     image_url: '',
     quantity_limit: '',
@@ -93,11 +115,7 @@ export function useItemForm(
       const newErrors = { ...errors };
 
       if (type === 'name') {
-        if (!value) {
-          newErrors.name = 'Name is required';
-        } else {
-          newErrors.name = '';
-        }
+        newErrors.name = itemNameError(value);
       }
 
       if (type === 'image_url') {
@@ -200,6 +218,10 @@ export function useItemForm(
       // Update the form state immediately
       const newStores = [...formState.stores];
       newStores[index] = { ...newStores[index], [field]: value };
+      // An edited price is no longer the fetched snapshot — drop its capture time.
+      if (field === 'price') {
+        newStores[index].price_fetched_at = null;
+      }
       setFormState((prev) => ({ ...prev, stores: newStores }));
 
       // Clear errors for this field
@@ -349,6 +371,7 @@ export function useItemForm(
     formState,
     errors,
     isPending,
+    isFormValid,
     handleNameChange,
     handleDescriptionChange,
     handleImageUrlChange,

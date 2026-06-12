@@ -50,6 +50,9 @@ export const ItemSchema = z.object({
         name: z.string().optional(),
         link: z.string().optional(),
         price: z.string().optional(),
+        price_fetched_at: z.string().datetime().nullable().optional(),
+        canonical_url: z.string().nullable().optional(),
+        currency: z.string().nullable().optional(),
       })
     )
     .optional()

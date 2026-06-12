@@ -177,6 +177,118 @@ describe('ItemForm', () => {
     ).toBeInTheDocument();
   });
 
+  describe('PrefillAffordances', () => {
+    it('FetchedBadge_RendersStoreUrlAndChange-InvokesOnChange', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(
+        <ItemForm
+          user_id="u1"
+          lists={LISTS}
+          fetchedBadge={{
+            store: 'Amazon',
+            url: 'https://a.co/d/x',
+            onChange,
+          }}
+        />
+      );
+      expect(screen.getByText(/Fetched from Amazon/)).toBeInTheDocument();
+      expect(screen.getByText('https://a.co/d/x')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'change' }));
+      expect(onChange).toHaveBeenCalledOnce();
+    });
+
+    it('FetchFailedNotice_RendersCouldNotFetchText', () => {
+      render(<ItemForm user_id="u1" lists={LISTS} showFetchFailedNotice />);
+      expect(
+        screen.getByText(/couldn't fetch that automatically/)
+      ).toBeInTheDocument();
+    });
+
+    it('OnUseLinkInstead_RendersEscape-InvokesCallback', async () => {
+      const user = userEvent.setup();
+      const onUseLink = vi.fn();
+      render(
+        <ItemForm user_id="u1" lists={LISTS} onUseLinkInstead={onUseLink} />
+      );
+      await user.click(
+        screen.getByRole('button', { name: '← Use a link instead' })
+      );
+      expect(onUseLink).toHaveBeenCalledOnce();
+    });
+
+    it('PrefillValues_PopulateNameAndStoreFields', () => {
+      render(
+        <ItemForm
+          user_id="u1"
+          lists={LISTS}
+          prefill={{
+            name: 'Acme Widget',
+            description: 'A fine widget',
+            image_url: 'https://example.com/w.jpg',
+            stores: [
+              { name: 'Amazon', link: 'https://a.co/d/x', price: '24.50' },
+            ],
+          }}
+        />
+      );
+      expect(screen.getByLabelText(/Name/)).toHaveValue('Acme Widget');
+      expect(screen.getByLabelText('Description')).toHaveValue('A fine widget');
+      expect(screen.getByLabelText('Store')).toHaveValue('Amazon');
+      expect(screen.getByLabelText('Link')).toHaveValue('https://a.co/d/x');
+      expect(
+        screen.getByRole('button', { name: 'Create Item' })
+      ).toBeInTheDocument();
+    });
+
+    it('OverlongPrefilledName_ShowsMaxLengthError-DisablesCreate', async () => {
+      const user = userEvent.setup();
+      render(
+        <ItemForm
+          user_id="u1"
+          lists={LISTS}
+          prefill={{ name: 'Sport Silicone Band '.repeat(11) }}
+        />
+      );
+      expect(
+        screen.getByText('Title must be less than 100 characters')
+      ).toBeInTheDocument();
+      const create = screen.getByRole('button', { name: 'Create Item' });
+      expect(create).toBeDisabled();
+      const nameField = screen.getByLabelText(/Name/);
+      await user.clear(nameField);
+      await user.type(nameField, 'Sport Silicone Band');
+      expect(create).toBeEnabled();
+    });
+
+    it('EmptyName_DisablesCreateUntilNameTyped', async () => {
+      const user = userEvent.setup();
+      render(<ItemForm user_id="u1" lists={LISTS} />);
+      const create = screen.getByRole('button', { name: 'Create Item' });
+      expect(create).toBeDisabled();
+      await user.type(screen.getByLabelText(/Name/), 'Hat');
+      expect(create).toBeEnabled();
+    });
+
+    it('PrefillSubmit_CallsCreateItemWithPrefilledValues', async () => {
+      const user = userEvent.setup();
+      render(
+        <ItemForm
+          user_id="u1"
+          lists={LISTS}
+          prefill={{ name: 'Acme Widget' }}
+        />
+      );
+      await user.click(screen.getByRole('button', { name: 'Create Item' }));
+      await waitFor(() =>
+        expect(createItem).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'Acme Widget' })
+        )
+      );
+      expect(updateItem).not.toHaveBeenCalled();
+    });
+  });
+
   it('EditEmptyName_TitleFallsBackToItem', () => {
     render(
       <ItemForm

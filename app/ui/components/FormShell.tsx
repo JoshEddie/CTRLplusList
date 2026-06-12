@@ -83,12 +83,14 @@ export function FormShellFooter({
   deleteSlot,
   submitLabel,
   isPending,
+  submitDisabled,
 }: {
   cancelHref?: string;
   onCancel?: () => void;
   deleteSlot?: React.ReactNode;
   submitLabel: string;
   isPending?: boolean;
+  submitDisabled?: boolean;
 }) {
   const dismiss = useDismiss(onCancel, cancelHref);
 
@@ -99,7 +101,12 @@ export function FormShellFooter({
       </Button>
       <div className="form-shell-ft-right">
         {deleteSlot}
-        <Button type="submit" variant="primary" isLoading={isPending}>
+        <Button
+          type="submit"
+          variant="primary"
+          isLoading={isPending}
+          disabled={submitDisabled}
+        >
           {submitLabel}
         </Button>
       </div>
