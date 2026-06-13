@@ -2,6 +2,8 @@ export type ProductData = {
   title: string;
   description?: string;
   imageUrl?: string;
+  /** Ordered image candidates, deduped, capped at 10; first equals imageUrl. */
+  imageUrls?: string[];
   price?: string;
   currency?: string;
   canonicalUrl?: string;
@@ -19,6 +21,7 @@ export type ExtractedProduct = {
   title?: string;
   description?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   price?: string;
   currency?: string;
   canonicalUrl?: string;

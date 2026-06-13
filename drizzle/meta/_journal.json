@@ -57,6 +57,13 @@
       "when": 1781294768310,
       "tag": "0007_purple_luke_cage",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781360905380,
+      "tag": "0008_marvelous_wind_dancer",
+      "breakpoints": true
     }
   ]
 }

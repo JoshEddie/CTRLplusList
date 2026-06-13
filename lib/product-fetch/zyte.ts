@@ -1,5 +1,5 @@
-import { normalizePrice } from '@/lib/product-fetch/tier1';
 import type { ExtractedProduct } from '@/lib/product-fetch/types';
+import { normalizeImageUrls, normalizePrice } from '@/lib/product-fetch/utils';
 
 const ZYTE_ENDPOINT = 'https://api.zyte.com/v1/extract';
 
@@ -36,13 +36,15 @@ export async function fetchZyte(
         'Content-Type': 'application/json',
       },
       // extractFrom httpResponseBody = HTTP-based extraction (cheaper and
-      // much faster than the default browser rendering) and the only mode
-      // where followRedirect is accepted — bare `product: true` defaults to
-      // browser params and 422s on followRedirect.
+      // much faster than browser rendering) and the only mode where
+      // followRedirect is accepted — bare `product: true` defaults to browser
+      // params and 422s on followRedirect. ai:true turns on AI extraction,
+      // which recovers the full image gallery from the same raw HTML where the
+      // rule-based extractor returns only the main image.
       body: JSON.stringify({
         url,
         product: true,
-        productOptions: { extractFrom: 'httpResponseBody' },
+        productOptions: { extractFrom: 'httpResponseBody', ai: true },
         followRedirect: true,
       }),
     });
@@ -61,10 +63,16 @@ export async function fetchZyte(
   const product = payload.product;
   if (!product?.name) return undefined;
 
+  const imageUrls = normalizeImageUrls([
+    product.mainImage?.url,
+    ...(product.images ?? []).map((image) => image.url),
+  ]);
+
   return {
     title: product.name,
     description: product.description || undefined,
-    imageUrl: product.mainImage?.url || product.images?.[0]?.url || undefined,
+    imageUrl: imageUrls?.[0],
+    imageUrls,
     price: normalizePrice(product.price),
     currency: product.currency || product.currencyRaw || undefined,
     canonicalUrl: product.canonicalUrl || undefined,

@@ -27,6 +27,7 @@ function prefillFrom(
     return {
       name: product.title,
       image_url: product.imageUrl ?? '',
+      image_candidates: product.imageUrls,
       stores: [
         {
           name: product.store,
@@ -54,7 +55,11 @@ const ItemFormContainer = ({
 }: {
   user_id: string;
   lists: ListTable[];
-  item?: ItemTable & { stores: ItemStoreTable[]; lists: ListTable[] };
+  item?: ItemTable & {
+    stores: ItemStoreTable[];
+    lists: ListTable[];
+    image_candidates?: string[];
+  };
   onClose: () => void;
   onSuccess?: () => void;
 }) => {

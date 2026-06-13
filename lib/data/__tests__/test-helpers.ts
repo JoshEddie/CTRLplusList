@@ -1,4 +1,5 @@
 import {
+  item_images,
   item_stores,
   items,
   list_items,
@@ -120,6 +121,21 @@ export async function seedListVisit(
     visit_count: visit.visit_count ?? 1,
     favorited_at: visit.favorited_at ?? null,
   });
+}
+
+export async function seedItemImages(
+  db: TestDb,
+  itemId: string,
+  urls: string[],
+  activeUrl: string = urls[0]
+): Promise<void> {
+  await db.insert(item_images).values(
+    urls.map((url) => ({
+      item_id: itemId,
+      url,
+      active: url === activeUrl,
+    }))
+  );
 }
 
 export async function seedItemStore(

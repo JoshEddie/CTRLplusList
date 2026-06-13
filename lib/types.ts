@@ -70,6 +70,8 @@ export type ItemDetails = {
   name: string;
   description: string;
   image_url?: string | null;
+  /** Fetched image-candidate pool; present only when the form session originated from a product fetch. */
+  image_candidates?: string[];
   quantity_limit: number | null;
   stores: ItemStoreTable[];
   lists: OptionType[];

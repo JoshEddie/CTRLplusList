@@ -1,5 +1,12 @@
 import { db } from '@/db';
-import { item_stores, items, list_items, lists, users } from '@/db/schema';
+import {
+  item_images,
+  item_stores,
+  items,
+  list_items,
+  lists,
+  users,
+} from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { touchLists } from '@/lib/data/list.touch';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
@@ -120,6 +127,52 @@ export async function updateItemStores(
     console.error('Database Error:', error);
     throw new Error('Failed to update item stores.');
   }
+}
+
+// Replaces the item's image pool wholesale and marks the active image — the
+// active pointer lives here, not on items.image_url. `activeUrl` (the form's
+// image_url) is always folded into the set so "every image the user picked" is
+// persisted, including a hand-entered URL outside the fetched candidate set;
+// the row whose url matches it is the only one flagged active (none if
+// activeUrl is empty). The neon-http driver has no transactions, so a crash
+// between delete and insert can leave an empty pool — accepted residual; the
+// next save repopulates.
+export async function replaceItemImages(
+  candidates: string[],
+  activeUrl: string | null,
+  itemId: string
+): Promise<void> {
+  try {
+    const urls = [...candidates];
+    if (activeUrl && !urls.includes(activeUrl)) urls.push(activeUrl);
+
+    await db.delete(item_images).where(eq(item_images.item_id, itemId));
+    if (urls.length > 0) {
+      // Insertion order = serial id order = display order (main image first).
+      await db.insert(item_images).values(
+        urls.map((url) => ({
+          item_id: itemId,
+          url,
+          active: url === activeUrl,
+        }))
+      );
+    }
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to update item images.');
+  }
+}
+
+// Existing pool URLs in id order — used by updateItem to preserve the
+// pool when a save carries no candidate list (a manual edit that didn't
+// refetch), while still re-pointing the active image.
+export async function getItemImageUrls(itemId: string): Promise<string[]> {
+  const rows = await db
+    .select({ url: item_images.url })
+    .from(item_images)
+    .where(eq(item_images.item_id, itemId))
+    .orderBy(asc(item_images.id));
+  return rows.map((r) => r.url);
 }
 
 export async function updateItemLists(

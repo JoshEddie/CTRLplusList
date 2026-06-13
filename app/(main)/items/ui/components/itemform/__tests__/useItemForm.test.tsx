@@ -99,6 +99,68 @@ describe('useItemForm', () => {
     });
   });
 
+  describe('ImageCandidates', () => {
+    const POOL = ['https://img/a.jpg', 'https://img/b.jpg', 'https://img/c.jpg'];
+
+    it('FetchSeededCreate_SubmitsCandidatesWithPayload', async () => {
+      const { result } = renderHook(() =>
+        useItemForm({ name: 'Fetched Gift', image_candidates: POOL })
+      );
+      expect(result.current.formState.image_candidates).toEqual(POOL);
+      await act(() => result.current.handleSubmit(submit()));
+      await waitFor(() =>
+        expect(createItem).toHaveBeenCalledWith(
+          expect.objectContaining({ image_candidates: POOL })
+        )
+      );
+    });
+
+    it('StoredPoolEdit_SeedsCandidates-SubmitsThemOnUpdate', async () => {
+      const { result } = renderHook(() =>
+        useItemForm({ ...EXISTING, image_candidates: POOL } as never)
+      );
+      expect(result.current.formState.image_candidates).toEqual(POOL);
+      await act(() => result.current.handleSubmit(submit()));
+      await waitFor(() =>
+        expect(updateItem).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'i1', image_candidates: POOL })
+        )
+      );
+    });
+
+    it('ManualSession_SubmitsUndefinedCandidates', async () => {
+      const { result } = renderHook(() => useItemForm({ name: 'Manual Gift' }));
+      expect(result.current.formState.image_candidates).toBeUndefined();
+      await act(() => result.current.handleSubmit(submit()));
+      await waitFor(() =>
+        expect(createItem).toHaveBeenCalledWith(
+          expect.objectContaining({ image_candidates: undefined })
+        )
+      );
+    });
+
+    it('CandidateSelection_RoutesThroughImageLoadValidation', async () => {
+      vi.useFakeTimers();
+      try {
+        imageMode = 'error';
+        const { result } = renderHook(() =>
+          useItemForm({ name: 'Fetched Gift', image_candidates: POOL })
+        );
+        act(() => result.current.handleImageUrlChange(POOL[1]));
+        expect(result.current.formState.image_url).toBe(POOL[1]);
+        // Selection runs the same debounced image-load validation a typed URL gets.
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1000);
+        });
+        expect(result.current.errors.image_url).toBe(
+          'Please provide a valid image URL'
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   describe('FetchedPriceProvenance', () => {
     const FETCHED_STORE = {
       name: 'Amazon',

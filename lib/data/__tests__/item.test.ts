@@ -6,6 +6,7 @@ import { seedUsers } from '@/test/helpers/seedFollowGraph';
 
 import {
   seedItem,
+  seedItemImages,
   seedItemStore,
   seedList,
   seedListItem,
@@ -179,6 +180,33 @@ describe('getItemById', () => {
       (item?.lists ?? []).map((l) => [l.id, l.position])
     );
     expect(byListId).toEqual({ l1: 5, l2: 9 });
+  });
+
+  it('ItemWithImagePool_ReturnsCandidatesInInsertionOrder-ActiveAsImageUrl', async () => {
+    await seedUsers(db, [{ id: 'u' }]);
+    await seedItem(db, { id: 'i1', user_id: 'u' });
+    await seedItemImages(
+      db,
+      'i1',
+      ['https://img.test/a.jpg', 'https://img.test/b.jpg'],
+      'https://img.test/b.jpg'
+    );
+
+    const item = await dal.getItemById('i1', 'u');
+    expect(item?.image_candidates).toEqual([
+      'https://img.test/a.jpg',
+      'https://img.test/b.jpg',
+    ]);
+    // image_url is sourced from the active row, not items.image_url.
+    expect(item?.image_url).toBe('https://img.test/b.jpg');
+  });
+
+  it('ItemWithoutImagePool_ReturnsEmptyCandidates-NullImageUrl', async () => {
+    await seedUsers(db, [{ id: 'u' }]);
+    await seedItem(db, { id: 'i1', user_id: 'u' });
+    const item = await dal.getItemById('i1', 'u');
+    expect(item?.image_candidates).toEqual([]);
+    expect(item?.image_url).toBeNull();
   });
 
   it('UnknownId_ReturnsUndefined', async () => {

@@ -67,6 +67,7 @@ describe('fetchZyte', () => {
       title: 'Zyte Widget',
       description: 'Extracted by Zyte',
       imageUrl: 'https://img/main.jpg',
+      imageUrls: ['https://img/main.jpg'],
       price: '42.00',
       currency: 'USD',
       canonicalUrl: 'https://www.amazon.com/dp/B0TEST',
@@ -86,7 +87,7 @@ describe('fetchZyte', () => {
     expect(JSON.parse(init.body)).toEqual({
       url: 'https://a.co/d/share',
       product: true,
-      productOptions: { extractFrom: 'httpResponseBody' },
+      productOptions: { extractFrom: 'httpResponseBody', ai: true },
       followRedirect: true,
     });
   });
@@ -120,6 +121,48 @@ describe('fetchZyte', () => {
       new AbortController().signal
     );
     expect(result?.imageUrl).toBe('https://img/0.jpg');
+  });
+
+  it('MainImageDuplicatedInImagesArray_ReturnsMainFirstDedupedCappedAtTen', async () => {
+    const images = Array.from({ length: 14 }, (_, i) => ({
+      url: i < 2 ? 'https://img/main.jpg' : `https://img/${i}.jpg`,
+    }));
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        product: {
+          name: 'W',
+          mainImage: { url: 'https://img/main.jpg' },
+          images,
+        },
+      })
+    );
+    const result = await fetchZyte(
+      'https://example.com',
+      new AbortController().signal
+    );
+    expect(result?.imageUrls).toEqual([
+      'https://img/main.jpg',
+      'https://img/2.jpg',
+      'https://img/3.jpg',
+      'https://img/4.jpg',
+      'https://img/5.jpg',
+      'https://img/6.jpg',
+      'https://img/7.jpg',
+      'https://img/8.jpg',
+      'https://img/9.jpg',
+      'https://img/10.jpg',
+    ]);
+    expect(result?.imageUrl).toBe('https://img/main.jpg');
+  });
+
+  it('ImagelessProduct_OmitsImageUrls', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ product: { name: 'W' } }));
+    const result = await fetchZyte(
+      'https://example.com',
+      new AbortController().signal
+    );
+    expect(result?.imageUrls).toBeUndefined();
+    expect(result?.imageUrl).toBeUndefined();
   });
 
   it('UnparseableJsonBody_ReturnsUndefined', async () => {
