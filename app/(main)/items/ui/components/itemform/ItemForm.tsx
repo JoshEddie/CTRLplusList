@@ -28,6 +28,7 @@ interface ItemFormProps {
   item?: ItemTable & {
     stores: ItemStoreTable[];
     lists: ListTable[];
+    image_candidates?: string[];
     archived_at?: Date | null;
   };
   lists?: ListTable[];
@@ -126,6 +127,7 @@ export default function ItemForm({
           error={errors.image_url}
           onChange={handleImageUrlChange}
           disabled={isPending}
+          candidates={formState.image_candidates}
         />
       </Section>
 

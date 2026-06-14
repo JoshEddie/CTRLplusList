@@ -1,7 +1,13 @@
 import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { item_stores, items, list_items, lists } from '@/db/schema';
+import {
+  item_images,
+  item_stores,
+  items,
+  list_items,
+  lists,
+} from '@/db/schema';
 import { auth } from '@/lib/auth';
 import type { ItemDetails } from '@/lib/types';
 import { bootPglite, resetDb } from '@/test/helpers/db';
@@ -10,6 +16,7 @@ import { seedUsers } from '@/test/helpers/seedFollowGraph';
 
 import {
   seedItem,
+  seedItemImages,
   seedItemStore,
   seedList,
   seedListItem,
@@ -72,6 +79,12 @@ const listItemRows = (listId: string) =>
   db.select().from(list_items).where(eq(list_items.list_id, listId));
 const storeRows = (itemId: string) =>
   db.select().from(item_stores).where(eq(item_stores.item_id, itemId));
+const imageRows = (itemId: string) =>
+  db
+    .select()
+    .from(item_images)
+    .where(eq(item_images.item_id, itemId))
+    .orderBy(item_images.id);
 
 beforeAll(async () => {
   const booted = await bootPglite();
@@ -178,7 +191,6 @@ describe('createItem', () => {
       expect(created).toMatchObject({
         name: 'New Gift',
         description: '',
-        image_url: 'https://img.test/x.png',
         quantity_limit: 3,
         user_id: OWNER.id,
       });
@@ -293,7 +305,7 @@ describe('updateItem', () => {
     expect(row?.name).toBe('Old');
   });
 
-  it('DescriptionAndImageUrl_WritesBothFields', async () => {
+  it('DescriptionAndImageUrl_WritesScalarToItem-ImageToActiveRow', async () => {
     await seedItem(db, { id: 'I', user_id: OWNER.id });
     const res = await actions.updateItem({
       id: 'I',
@@ -306,10 +318,11 @@ describe('updateItem', () => {
     });
     expect(res.success).toBe(true);
     const row = (await itemRows()).find((i) => i.id === 'I');
-    expect(row).toMatchObject({
-      description: 'newdesc',
-      image_url: 'https://i.test/p.png',
-    });
+    expect(row).toMatchObject({ description: 'newdesc' });
+    const rows = await imageRows('I');
+    expect(rows.filter((r) => r.active).map((r) => r.url)).toEqual([
+      'https://i.test/p.png',
+    ]);
   });
 
   it('StoreInsertThrows_ReturnsFailedToUpdateItem', async () => {
@@ -459,7 +472,7 @@ describe('updateItem', () => {
       ]);
     });
 
-    it('OnlyImageUrl_WritesImageUrl-LeavesOtherScalarsUnchanged', async () => {
+    it('OnlyImageUrl_SavesActiveRow-LeavesScalarsUnchanged', async () => {
       await seedItem(db, {
         id: 'I',
         user_id: OWNER.id,
@@ -479,8 +492,11 @@ describe('updateItem', () => {
         name: 'Keep',
         description: 'keepdesc',
         quantity_limit: 4,
-        image_url: 'https://x.test/p.png',
       });
+      const rows = await imageRows('I');
+      expect(rows.filter((r) => r.active).map((r) => r.url)).toEqual([
+        'https://x.test/p.png',
+      ]);
     });
 
     it('NoLists_RemovesAllAssociations', async () => {
@@ -591,6 +607,139 @@ describe('deleteItem', () => {
     asGhost();
     const res = await actions.deleteItem('I');
     expect(res.error).toBe('Failed to delete item');
+  });
+});
+
+describe('ImageCandidates', () => {
+  const POOL = [
+    'https://img.test/main.jpg',
+    'https://img.test/alt1.jpg',
+    'https://img.test/alt2.jpg',
+    'https://img.test/alt3.jpg',
+  ];
+
+  describe('createItem', () => {
+    it('FetchedCandidates_PersistsPoolInExtractorOrder-MarksActive', async () => {
+      const res = await actions.createItem(
+        makeItem({ name: 'Fetched Gift', image_url: POOL[0], image_candidates: POOL })
+      );
+      expect(res.success).toBe(true);
+      const created = (await itemRows())[0];
+      const rows = await imageRows(created.id);
+      expect(rows.map((r) => r.url)).toEqual(POOL);
+      expect(rows.filter((r) => r.active).map((r) => r.url)).toEqual([POOL[0]]);
+    });
+
+    it('ManualImageUrlNoCandidates_SavesSingleActiveRow', async () => {
+      const res = await actions.createItem(
+        makeItem({ name: 'Manual Gift', image_url: 'https://img.test/manual.jpg' })
+      );
+      expect(res.success).toBe(true);
+      const created = (await itemRows())[0];
+      const rows = await imageRows(created.id);
+      expect(rows.map((r) => r.url)).toEqual(['https://img.test/manual.jpg']);
+      expect(rows[0].active).toBe(true);
+    });
+
+    it('NoImageNoCandidates_WritesNoPoolRows', async () => {
+      const res = await actions.createItem(makeItem({ name: 'Manual Gift' }));
+      expect(res.success).toBe(true);
+      const created = (await itemRows())[0];
+      expect(await imageRows(created.id)).toHaveLength(0);
+    });
+
+    it('ElevenCandidates_ReturnsImageCandidatesFieldError-NoRow', async () => {
+      const res = await actions.createItem(
+        makeItem({
+          image_candidates: Array.from(
+            { length: 11 },
+            (_, i) => `https://img.test/${i}.jpg`
+          ),
+        })
+      );
+      expect(res.success).toBe(false);
+      expect(res.errors?.image_candidates).toBeDefined();
+      expect(await itemRows()).toHaveLength(0);
+    });
+
+    it('NonHttpCandidate_ReturnsImageCandidatesFieldError-NoRow', async () => {
+      const res = await actions.createItem(
+        makeItem({ image_candidates: ['ftp://img.test/a.jpg'] })
+      );
+      expect(res.success).toBe(false);
+      expect(res.errors?.image_candidates).toBeDefined();
+      expect(await itemRows()).toHaveLength(0);
+    });
+
+    it('UnparseableCandidateUrl_ReturnsImageCandidatesFieldError-NoRow', async () => {
+      const res = await actions.createItem(
+        makeItem({ image_candidates: ['not a url'] })
+      );
+      expect(res.success).toBe(false);
+      expect(res.errors?.image_candidates).toBeDefined();
+      expect(await itemRows()).toHaveLength(0);
+    });
+  });
+
+  describe('updateItem', () => {
+    beforeEach(async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedItemImages(db, 'I', POOL);
+    });
+
+    it('RefetchedCandidates_ReplacesPool-MarksActive', async () => {
+      const refetched = ['https://img.test/new0.jpg', 'https://img.test/new1.jpg'];
+      const res = await actions.updateItem(
+        makeItem({ id: 'I', image_url: refetched[1], image_candidates: refetched })
+      );
+      expect(res.success).toBe(true);
+      const rows = await imageRows('I');
+      expect(rows.map((r) => r.url)).toEqual(refetched);
+      expect(rows.filter((r) => r.active).map((r) => r.url)).toEqual([
+        refetched[1],
+      ]);
+    });
+
+    it('NoCandidatesField_PreservesPool-FoldsInActiveManualUrl', async () => {
+      const handPicked = 'https://elsewhere.test/hand-picked.jpg';
+      const res = await actions.updateItem(
+        makeItem({ id: 'I', name: 'Renamed', image_url: handPicked })
+      );
+      expect(res.success).toBe(true);
+      const rows = await imageRows('I');
+      // The pool is preserved and the hand-entered URL is appended as active.
+      expect(rows.map((r) => r.url)).toEqual([...POOL, handPicked]);
+      expect(rows.filter((r) => r.active).map((r) => r.url)).toEqual([handPicked]);
+    });
+
+    it('PoolDeleteThrows_ReturnsFailedToUpdateItem', async () => {
+      vi.spyOn(db, 'delete').mockImplementationOnce(() => {
+        throw new Error('boom');
+      });
+      const res = await actions.updateItem(
+        makeItem({ id: 'I', image_candidates: ['https://img.test/new.jpg'] })
+      );
+      expect(res.success).toBe(false);
+      expect(res.error).toBe('Failed to update item');
+    });
+
+    it('EmptyCandidatesArray_ClearsPool', async () => {
+      const res = await actions.updateItem(
+        makeItem({ id: 'I', image_candidates: [] })
+      );
+      expect(res.success).toBe(true);
+      expect(await imageRows('I')).toHaveLength(0);
+    });
+  });
+
+  describe('deleteItem', () => {
+    it('ItemWithPool_CascadeRemovesImageRows', async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedItemImages(db, 'I', POOL);
+      const res = await actions.deleteItem('I');
+      expect(res.success).toBe(true);
+      expect(await imageRows('I')).toHaveLength(0);
+    });
   });
 });
 

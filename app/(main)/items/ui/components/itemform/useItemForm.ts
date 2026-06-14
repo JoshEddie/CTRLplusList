@@ -57,6 +57,7 @@ export type ItemFormInitial = Partial<
 > & {
   stores?: ItemStoreTable[];
   lists?: ListTable[];
+  image_candidates?: string[];
 };
 
 export function useItemForm(
@@ -72,6 +73,10 @@ export function useItemForm(
     name: initialItem?.name || '',
     description: initialItem?.description || '',
     image_url: initialItem?.image_url || '',
+    // Present only for fetch-originated sessions (create-after-fetch prefill
+    // or an edit of an item with a stored pool); absent ⇒ the action leaves
+    // the pool untouched.
+    image_candidates: initialItem?.image_candidates,
     quantity_limit:
       initialItem?.quantity_limit === undefined
         ? 1

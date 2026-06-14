@@ -66,13 +66,20 @@ vi.mock('@dnd-kit/sortable', async (orig) => {
 
 vi.mock('../Item', () => ({
   default: (p: {
-    item?: { id: string; name?: string };
+    item?: {
+      id: string;
+      name?: string;
+      image_url?: string | null;
+      stores?: { name: string; price?: string; link?: string }[];
+    };
     showSpoilers?: boolean;
   }) => (
     <div
       data-testid="item"
       data-id={p.item?.id}
       data-name={p.item?.name}
+      data-image={p.item?.image_url ?? ''}
+      data-stores={(p.item?.stores ?? []).map((s) => s.name).join(',')}
       data-show-spoilers={String(p.showSpoilers)}
     />
   ),
@@ -214,6 +221,67 @@ describe('SortItems', () => {
       />
     );
     expect(gridOrder()).toEqual(['Z']);
+  });
+
+  it('SameIdChangedImage_ResyncsState', () => {
+    // Same id + purchases, only the image changed (the edit-an-item case) —
+    // must still re-seed itemsState, not show the stale thumbnail.
+    const { rerender } = render(
+      <SortItems
+        items={[{ id: 'A', name: 'Apple', image_url: 'old.jpg', purchases: [] }] as never}
+        listId="l1"
+        user_id="u1"
+      />
+    );
+    rerender(
+      <SortItems
+        items={[{ id: 'A', name: 'Apple', image_url: 'new.jpg', purchases: [] }] as never}
+        listId="l1"
+        user_id="u1"
+      />
+    );
+    expect(screen.getByTestId('item')).toHaveAttribute('data-image', 'new.jpg');
+  });
+
+  it('SameIdChangedStore_ResyncsState', () => {
+    // Same id + purchases, only a store field changed — the stores segment of
+    // itemsKey must move so the grid re-seeds instead of showing stale stores.
+    const { rerender } = render(
+      <SortItems
+        items={
+          [
+            {
+              id: 'A',
+              name: 'Apple',
+              purchases: [],
+              stores: [{ name: 'OldStore', price: '5', link: 'l' }],
+            },
+          ] as never
+        }
+        listId="l1"
+        user_id="u1"
+      />
+    );
+    rerender(
+      <SortItems
+        items={
+          [
+            {
+              id: 'A',
+              name: 'Apple',
+              purchases: [],
+              stores: [{ name: 'NewStore', price: '5', link: 'l' }],
+            },
+          ] as never
+        }
+        listId="l1"
+        user_id="u1"
+      />
+    );
+    expect(screen.getByTestId('item')).toHaveAttribute(
+      'data-stores',
+      'NewStore'
+    );
   });
 
   describe('SortableItem', () => {

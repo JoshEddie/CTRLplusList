@@ -1,11 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { fetchProduct, storeNameFromUrl } from '../index';
-import {
-  htmlResponse,
-  htmlWithJsonLd,
-  PRODUCT_JSON_LD,
-} from './test-helpers';
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+const ZYTE_BODY = {
+  url: 'https://www.target.com/p/1',
+  product: {
+    name: 'Acme Widget',
+    description: 'A fine widget',
+    mainImage: { url: 'https://img/main.jpg' },
+    images: [{ url: 'https://img/main.jpg' }, { url: 'https://img/alt.jpg' }],
+    price: '24.50',
+    currency: 'USD',
+    canonicalUrl: 'https://www.target.com/p/1',
+    url: 'https://www.target.com/p/1',
+  },
+};
 
 describe('storeNameFromUrl', () => {
   it('AmazonUrl_ReturnsAmazon', () => {
@@ -47,56 +63,54 @@ describe('fetchProduct', () => {
     vi.unstubAllEnvs();
   });
 
-  it('Tier1Success_ReturnsProduct-NoZyteCall', async () => {
+  it('ZyteSuccess_ReturnsNormalizedProduct', async () => {
     vi.stubEnv('ZYTE_API_KEY', 'key');
-    fetchMock.mockResolvedValue(
-      htmlResponse(htmlWithJsonLd(PRODUCT_JSON_LD), 'https://www.target.com/p/1')
-    );
+    fetchMock.mockResolvedValue(jsonResponse(ZYTE_BODY));
     const result = await fetchProduct('https://www.target.com/p/1');
     expect(result).toEqual({
       ok: true,
       product: {
         title: 'Acme Widget',
         description: 'A fine widget',
-        imageUrl: 'https://example.com/widget.jpg',
+        imageUrl: 'https://img/main.jpg',
+        imageUrls: ['https://img/main.jpg', 'https://img/alt.jpg'],
         price: '24.50',
         currency: 'USD',
-        canonicalUrl: 'https://example.com/widget',
+        canonicalUrl: 'https://www.target.com/p/1',
         store: 'Target',
       },
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.zyte.com/v1/extract');
   });
 
-  it('Tier1Fails_FallsToZyte', async () => {
-    vi.stubEnv('ZYTE_API_KEY', 'key');
-    fetchMock
-      .mockResolvedValueOnce(htmlResponse('<html></html>'))
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            product: { name: 'Zyte Widget', url: 'https://www.amazon.com/dp/1' },
-          }),
-          { status: 200 }
-        )
-      );
-    const result = await fetchProduct('https://a.co/d/xyz');
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.product.title).toBe('Zyte Widget');
-      expect(result.product.store).toBe('Amazon');
-    }
-    expect(fetchMock.mock.calls[1][0]).toBe('https://api.zyte.com/v1/extract');
-  });
-
-  it('Tier1FailsKeyUnset_ReturnsFetchFailed-NoZyteCall', async () => {
-    fetchMock.mockResolvedValue(htmlResponse('<html></html>'));
+  it('KeyUnset_ReturnsFetchFailed-NoFetch', async () => {
     const result = await fetchProduct('https://example.com/p/1');
     expect(result).toEqual({ ok: false, error: 'fetch_failed' });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('ZyteNamelessBothAttempts_RetriesThenFetchFailed', async () => {
+    vi.stubEnv('ZYTE_API_KEY', 'key');
+    fetchMock.mockResolvedValue(jsonResponse({ product: { description: 'x' } }));
+    const result = await fetchProduct('https://example.com/p/1');
+    expect(result).toEqual({ ok: false, error: 'fetch_failed' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('ZyteFailsThenSucceeds_RetryReturnsProduct', async () => {
+    vi.stubEnv('ZYTE_API_KEY', 'key');
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ product: { description: 'x' } }))
+      .mockResolvedValueOnce(jsonResponse(ZYTE_BODY));
+    const result = await fetchProduct('https://www.target.com/p/1');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.product.title).toBe('Acme Widget');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('CallerSignalAborted_ReturnsTimeout', async () => {
+    vi.stubEnv('ZYTE_API_KEY', 'key');
     const controller = new AbortController();
     fetchMock.mockImplementation((_url, init: RequestInit) => {
       controller.abort();
@@ -112,10 +126,9 @@ describe('fetchProduct', () => {
     expect(result).toEqual({ ok: false, error: 'timeout' });
   });
 
-  it('FinalUrlMissing_DerivesStoreFromPastedUrl', async () => {
-    fetchMock.mockResolvedValue(
-      htmlResponse(htmlWithJsonLd({ '@type': 'Product', name: 'W' }))
-    );
+  it('NoCanonicalOrFinalUrl_DerivesStoreFromPastedUrl', async () => {
+    vi.stubEnv('ZYTE_API_KEY', 'key');
+    fetchMock.mockResolvedValue(jsonResponse({ product: { name: 'W' } }));
     const result = await fetchProduct('https://www.etsy.com/listing/1');
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.product.store).toBe('Etsy');

@@ -3,7 +3,12 @@
 import { db } from '@/db';
 import { items, list_items, users } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { updateItemLists, updateItemStores } from '@/lib/data/item.associations';
+import {
+  getItemImageUrls,
+  replaceItemImages,
+  updateItemLists,
+  updateItemStores,
+} from '@/lib/data/item.associations';
 import { touchLists } from '@/lib/data/list.touch';
 import { ItemSchema } from '@/lib/data/item.schema';
 import { type ActionResponse, ItemDetails } from '@/lib/types';
@@ -47,11 +52,12 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
 
     const id = nanoid();
     const validatedData = validationResult.data;
+    // image_url is no longer written here — the active image lives in
+    // item_images.active, set below via replaceItemImages.
     await db.insert(items).values({
       id,
       name: validatedData.name,
       description: validatedData.description || '',
-      image_url: validatedData.image_url,
       created_at: new Date(),
       updated_at: new Date(),
       user_id: sessionUser.id,
@@ -72,6 +78,11 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
         canonical_url: store.canonical_url ?? null,
         currency: store.currency ?? null,
       })),
+      id
+    );
+    await replaceItemImages(
+      validatedData.image_candidates ?? [],
+      validatedData.image_url || null,
       id
     );
 
@@ -141,12 +152,14 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
     if (validatedData.name !== undefined) updateData.name = validatedData.name;
     if (validatedData.description !== undefined)
       updateData.description = validatedData.description;
-    if (validatedData.image_url !== undefined)
-      updateData.image_url = validatedData.image_url;
+    // image_url is no longer a column write — the active image lives in
+    // item_images.active, re-pointed below.
     if (validatedData.quantity_limit !== undefined)
       updateData.quantity_limit = validatedData.quantity_limit;
 
-    await db.update(items).set(updateData).where(eq(items.id, data.id));
+    if (Object.keys(updateData).length > 0) {
+      await db.update(items).set(updateData).where(eq(items.id, data.id));
+    }
 
     // Call updateItemLists even with empty array to properly remove all associations
     const lists = validatedData.lists || [];
@@ -164,6 +177,17 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
       })),
       data.id
     );
+    // Re-sync images when the payload carries image fields. Without a candidate
+    // list (a manual edit that didn't refetch), preserve the existing pool and
+    // only re-point the active image.
+    if (
+      validatedData.image_url !== undefined ||
+      validatedData.image_candidates !== undefined
+    ) {
+      const base =
+        validatedData.image_candidates ?? (await getItemImageUrls(data.id));
+      await replaceItemImages(base, validatedData.image_url || null, data.id);
+    }
 
     updateTag('items');
 

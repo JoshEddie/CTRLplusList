@@ -24,6 +24,63 @@
   cursor: not-allowed;
 }
 
+/* ---- Item-form image field ----------------------------------------------- */
+
+.image-field {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ---- Candidate grid (paginated 2x2) -------------------------------------- */
+
+.cand-grid {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cand-grid-tiles {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* Reserves a tile-sized cell so short final pages keep the 2x2 footprint. */
+.cand-grid-placeholder {
+  aspect-ratio: 3 / 2;
+  border: 2px solid transparent;
+}
+
+.cand-grid-nav {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--neutral-border-color);
+  border-radius: 50%;
+  color: var(--secondary-color);
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    opacity 0.15s;
+}
+
+.cand-grid-nav:hover:not(:disabled) {
+  background-color: var(--secondary-background-color);
+}
+
+.cand-grid-nav:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 /* ---- Modal --------------------------------------------------------------- */
 
 .image-modal-backdrop {
@@ -228,6 +285,24 @@
   height: 100%;
   object-fit: cover;
   background-color: var(--secondary-background-color);
+}
+
+.image-thumbnail-active {
+  border-color: var(--primary-color);
+}
+
+.image-thumbnail-current {
+  position: absolute;
+  top: 0.375rem;
+  left: 0.375rem;
+  padding: 0.125rem 0.375rem;
+  background-color: var(--primary-color);
+  color: white;
+  font-size: 0.75rem;
+  font-family: var(--font-roboto-condensed);
+  font-weight: 400;
+  border-radius: 4px;
+  pointer-events: none;
 }
 
 .image-search-note {

@@ -56,12 +56,19 @@ export default function SortItems({
   showSpoilers,
 }: ItemsProps) {
   const router = useRouter();
+  // Re-sync key: changes whenever any card-visible field changes, so an edit
+  // (image, name, quantity, stores) or a claim/unclaim re-seeds itemsState.
+  // Omitting the edit fields left the grid stale after edits until a full
+  // remount.
   const itemsKey = items
     .map((i) => {
       const pkey = (i.purchases ?? [])
         .map((p) => `${p.id}:${p.firstName}:${p.by}`)
         .join('|');
-      return `${i.id}[${pkey}]`;
+      const skey = (i.stores ?? [])
+        .map((s) => `${s.name}:${s.price}:${s.link}`)
+        .join('|');
+      return `${i.id}:${i.name}:${i.image_url ?? ''}:${i.quantity_limit ?? ''}[${pkey}][${skey}]`;
     })
     .join(';');
   const dndId = useId();

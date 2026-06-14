@@ -31,6 +31,23 @@ export const ItemSchema = z.object({
       }
     }),
 
+  image_candidates: z
+    .array(
+      z.string().refine(
+        (val) => {
+          try {
+            const url = new URL(val);
+            return url.protocol === 'http:' || url.protocol === 'https:';
+          } catch {
+            return false;
+          }
+        },
+        { message: 'Image candidates must be valid http(s) URLs' }
+      )
+    )
+    .max(10, 'At most 10 image candidates are allowed')
+    .optional(),
+
   quantity_limit: z
     .number()
     .int('Quantity limit must be a whole number')

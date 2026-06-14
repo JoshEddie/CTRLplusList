@@ -4,6 +4,7 @@ import {
   integer,
   pgTable,
   primaryKey,
+  serial,
   text,
   timestamp,
   uniqueIndex,
@@ -165,6 +166,19 @@ export const item_stores = pgTable('item_stores', {
   currency: text('currency'),
 });
 
+export const item_images = pgTable('item_images', {
+  id: serial('id').primaryKey(),
+  item_id: text('item_id')
+    .references(() => items.id, { onDelete: 'cascade' })
+    .notNull(),
+  url: text('url').notNull(),
+  // Marks the item's active image. At most one row per item should be active;
+  // enforced in the write path, not the DB, and reads resolve
+  // `active ORDER BY id LIMIT 1` so a stray double-active still yields one
+  // image and self-heals on the next write.
+  active: boolean('active').notNull().default(false),
+});
+
 export const purchases = pgTable(
   'purchases',
   {
@@ -204,6 +218,14 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   purchases: many(purchases),
   stores: many(item_stores),
   list_items: many(list_items),
+  images: many(item_images),
+}));
+
+export const item_imagesRelations = relations(item_images, ({ one }) => ({
+  item: one(items, {
+    fields: [item_images.item_id],
+    references: [items.id],
+  }),
 }));
 
 export const purchasesRelations = relations(purchases, ({ one }) => ({

@@ -100,6 +100,32 @@ describe('ItemForm', () => {
       ).not.toBeInTheDocument();
     });
 
+    it('NoItem_RendersNoImageSearchAffordance', () => {
+      render(<ItemForm user_id="u1" lists={LISTS} />);
+      expect(
+        screen.queryByText(/Search for an image/)
+      ).not.toBeInTheDocument();
+    });
+
+    it('PrefillWithCandidates_RendersInlineGrid-SubmitsCandidates', async () => {
+      const user = userEvent.setup();
+      const pool = ['https://img/a.jpg', 'https://img/b.jpg', 'https://img/c.jpg'];
+      render(
+        <ItemForm
+          user_id="u1"
+          lists={LISTS}
+          prefill={{ name: 'Fetched Hat', image_candidates: pool }}
+        />
+      );
+      expect(screen.getAllByAltText('Product image')).toHaveLength(pool.length);
+      await user.click(screen.getByRole('button', { name: 'Create Item' }));
+      await waitFor(() =>
+        expect(createItem).toHaveBeenCalledWith(
+          expect.objectContaining({ image_candidates: pool })
+        )
+      );
+    });
+
     it('SubmitWithName_CallsCreateItem', async () => {
       const user = userEvent.setup();
       render(<ItemForm user_id="u1" lists={LISTS} />);

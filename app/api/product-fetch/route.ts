@@ -2,11 +2,13 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { fetchProduct } from '@/lib/product-fetch';
-import { isPrivateHostname } from '@/lib/product-fetch/ssrf';
+import { isPrivateHostname } from '@/lib/product-fetch/utils';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-// Comfortably above the seam's ~20s app-side abort (design D1).
+// Vercel Hobby's hard cap. The seam's own abort budget (FETCH_TIMEOUT_MS)
+// sits under this, so a slow fetch returns a graceful timeout before the
+// platform would kill the function here.
 export const maxDuration = 60;
 
 const MAX_URL_LENGTH = 2048;
@@ -29,9 +31,9 @@ function checkRateLimit(userId: string): boolean {
   return true;
 }
 
-// String-level SSRF pre-check only; the DNS-resolving, per-redirect-hop guard
-// lives in lib/product-fetch (tier 1 is the only path that fetches from our
-// own network).
+// String-level SSRF hygiene only. Zyte fetches the page on its own
+// infrastructure, so the app never resolves or fetches the URL itself —
+// there is no DNS-rebinding surface of our own to guard.
 function validateUrl(url: unknown): URL | null {
   if (typeof url !== 'string' || url.length === 0 || url.length > MAX_URL_LENGTH) {
     return null;

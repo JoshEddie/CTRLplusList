@@ -25,6 +25,7 @@ import 'dotenv/config';
 import { inArray, sql } from 'drizzle-orm';
 import { db } from '../db';
 import {
+  item_images,
   item_stores,
   items,
   list_items,
@@ -777,6 +778,34 @@ async function main() {
       },
     });
   console.log(`  item_stores: ${storeRows.length} upserted`);
+
+  // Active-image rows + candidate pools. The active pointer now lives in
+  // item_images.active, not items.image_url, so every item gets one active row
+  // mirroring its seeded image_url. A couple of fetched-style items get extra
+  // non-active alt candidates so the picker grid / pagination states are
+  // reachable straight from the seed; the rest keep a single-image pool so the
+  // no-grid state is also covered. Re-runs are idempotent via delete-then-insert
+  // (serial ids — nothing stable to upsert on).
+  const POOL_SIZE: Record<string, number> = {
+    'dev-list-viewer-birthday-item-1': 4,
+    'dev-list-alice-baby-item-2': 3,
+  };
+  const imageRows = itemRows.flatMap((item) => {
+    const main = { item_id: item.id, url: item.image_url, active: true };
+    const altCount = (POOL_SIZE[item.id] ?? 1) - 1;
+    const alts = Array.from({ length: altCount }, (_, i) => ({
+      item_id: item.id,
+      url: `https://picsum.photos/seed/${item.id}-alt-${i + 1}/400/400`,
+      active: false,
+    }));
+    return [main, ...alts];
+  });
+  const seededItemIds = itemRows.map((item) => item.id);
+  await db
+    .delete(item_images)
+    .where(inArray(item_images.item_id, seededItemIds));
+  await db.insert(item_images).values(imageRows);
+  console.log(`  item_images: ${imageRows.length} inserted`);
 
   // Purchases on viewer-owned items: friends + occasional guests buy the
   // viewer's wishlist items. Higher rate on archived since "purchased" is the
