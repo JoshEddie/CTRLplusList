@@ -3,9 +3,7 @@
 ## Purpose
 
 The `product-link-prefill` capability lets users paste a product URL into the New Item modal and have name, image, price, and store auto-filled from the page. A tiered waterfall (schema.org JSON-LD → OpenGraph/meta → Zyte extract API) runs server-side behind a swappable seam, gated by auth and rate-limiting. Prefilled fields land in the existing item form fully editable; failures fall through to manual entry with the URL preserved.
-
 ## Requirements
-
 ### Requirement: The create-item modal SHALL open in a URL-first entry state
 
 When the New Item modal opens in create mode (not edit mode), it SHALL render a URL entry state inside the existing `FormShell` before the item form: a hint line ("Paste a product link to auto-fill details"), a URL paste field rendered as a `TextField type="url"` inside a `FormField` (per `form-field-system`), a primary "Fetch Details" `<Button>` (per `button-system`), and a "Fill in details manually →" link-variant affordance that switches to the manual form. Edit mode SHALL open directly into the form as today. The `FormShell` dismissal and navigation-context (`returnTo`) contracts owned by `form-shell-system` and `list-item-management` SHALL be preserved across all pre-form states.
@@ -53,6 +51,8 @@ While a fetch is in flight the modal SHALL render: the shared `<LoadingIndicator
 
 On a successful fetch the modal SHALL transition to the existing item form with: Name = fetched title; Image URL = fetched image URL (when present); exactly one store row prefilled with store name derived from the product page's hostname, the fetched price, and the pasted URL as the store link. The Description field SHALL be left empty — extracted descriptions are marketing copy at best and the wrong page block on some sites (e.g. Amazon book pages yield Editorial Reviews; see issue #157) — the user authors their own notes. A "Fetched from {store}" badge SHALL render above the form with a truncated-URL "change" affordance returning to URL entry. Every prefilled field SHALL remain editable, and submission SHALL flow through the existing create action unchanged. The prefilled store row SHALL satisfy the store-validity rule owned by `item-store-links` (name + link + numeric price) whenever a numeric price was fetched; when no price was fetched the price field SHALL be left empty for the user.
 
+When the fetch result carries `imageUrls`, the full candidate list SHALL be handed to the form session so the candidate-picker affordance can render and the list can be persisted with the created item; the affordance, picker behavior, and persistence semantics are owned by `item-image-candidates`, not this capability.
+
 #### Scenario: Fetched values land in the form
 
 - **WHEN** a fetch resolves with title, description, image, price, and store
@@ -72,6 +72,11 @@ On a successful fetch the modal SHALL transition to the existing item form with:
 
 - **WHEN** the user edits the prefilled price before submitting
 - **THEN** the stored row SHALL NOT carry `price_fetched_at` (the price is no longer the fetched snapshot)
+
+#### Scenario: Multi-image result seeds the form's candidate list
+
+- **WHEN** a fetch resolves with `imageUrls` holding 5 candidates
+- **THEN** the form session receives all 5 (Image URL prefilled with the first) and the candidate affordance defined by `item-image-candidates` becomes available
 
 ### Requirement: A failed or timed-out fetch SHALL fall through to manual entry
 
@@ -118,36 +123,49 @@ The endpoint SHALL `await auth()` at handler entry and return 401 JSON for unaut
 - **WHEN** the body `url` targets localhost, a literal IP, or a private hostname
 - **THEN** the handler SHALL return 400 and SHALL NOT issue any server-side fetch to it
 
-### Requirement: Product fetching SHALL run a tiered waterfall behind a swappable seam
+### Requirement: Product fetching SHALL delegate to Zyte behind a thin seam
 
-A `fetchProduct(url, {signal})` seam SHALL encapsulate the fetch strategy: tier 1 — server-side fetch of the page following redirects, extracting schema.org JSON-LD `Product` data first and OpenGraph/meta fallbacks second; tier 2 — Zyte extract API (`product: true` with `extractFrom: httpResponseBody`, basic auth with `ZYTE_API_KEY`) attempted only when tier 1 yields no title AND the key is configured; tier 3 is the UI's manual fallback. The whole waterfall SHALL be bounded by an app-side abort timeout of ~20 seconds, and the route's `maxDuration` SHALL comfortably exceed it. The seam's result SHALL normalize to `{ title, description?, imageUrl?, price?, currency?, canonicalUrl?, store }` with price emitted only when strictly numeric. The route handler SHALL contain no parsing logic — vendors swap inside the seam.
+A `fetchProduct(url, {signal})` seam SHALL encapsulate the fetch strategy: when `ZYTE_API_KEY` is configured it SHALL call the Zyte extract API (`product: true` with `extractFrom: httpResponseBody` and `ai: true`, basic auth) and normalize the response; when the key is absent (local dev, e2e) or Zyte yields no title it SHALL return a failure result, and the UI's manual entry is the fallback. A no-title result SHALL be retried once automatically, server-side (bot-walled sites like Etsy extract intermittently — Zyte may hit a challenge page on one attempt and clean HTML on the next, and rotates IPs per call); both attempts share the abort signal so the retry stays inside the timeout budget. The retry is fully automatic — there is no user-facing "try again" control (a client re-request would cost a second rate-limit token and a full auth/DB round-trip for no extra reliability over the server-side re-roll). The system SHALL NOT do its own page fetching/HTML parsing — Zyte renders and extracts on its own infrastructure, so the app holds no SSRF surface for arbitrary user URLs (only the route's string-level `isPrivateHostname` pre-check remains). AI extraction (`ai: true`) recovers the full image gallery that rule-based extraction reduces to the main image alone. The fetch SHALL be bounded by an app-side abort timeout that sits under the route's `maxDuration` (on Vercel Hobby, `maxDuration` is the 60s hard cap), so it returns a graceful `timeout` before the platform kills the function; that budget is shared across the retry attempts. The exact duration is an implementation tuning value, not a figure this spec pins down. The seam's result SHALL normalize to `{ title, description?, imageUrl?, imageUrls?, price?, currency?, canonicalUrl?, store }` with price emitted only when strictly numeric. The route handler SHALL contain no extraction or parsing logic — it calls the seam, which encapsulates the vendor (today Zyte); changing or stacking vendors is a seam-internal change that does not touch the route.
 
-#### Scenario: Structured-data site resolves at tier 1
+`imageUrls`, when present, SHALL be an ordered, exact-string-deduped list of at most 10 http(s) URLs whose first element equals `imageUrl`, populated from `[mainImage.url, ...images[].url]`. `imageUrl` SHALL remain present and first whenever any image was extracted — the field addition is backward compatible.
 
-- **WHEN** the URL serves schema.org `Product` JSON-LD with name and offer price
-- **THEN** the result SHALL come from tier 1 with no Zyte call made
+#### Scenario: Configured site resolves via Zyte
 
-#### Scenario: Resistant site falls to Zyte
+- **WHEN** a URL is fetched and `ZYTE_API_KEY` is configured
+- **THEN** the seam SHALL call Zyte with `{url, product: true, productOptions: {extractFrom: httpResponseBody, ai: true}, followRedirect: true}` and normalize its product response
 
-- **WHEN** tier 1 yields no title and `ZYTE_API_KEY` is configured
-- **THEN** the seam SHALL call Zyte with `{url, product: true, productOptions: {extractFrom: httpResponseBody}, followRedirect: true}` and normalize its product response
+#### Scenario: Missing key returns failure
 
-#### Scenario: Missing key skips tier 2
+- **WHEN** `ZYTE_API_KEY` is unset
+- **THEN** the seam SHALL return a failure result without any outbound fetch (local dev and e2e never require the key; e2e stubs the route)
 
-- **WHEN** tier 1 fails and `ZYTE_API_KEY` is unset
-- **THEN** the seam SHALL return a failure result without attempting Zyte (local dev and e2e never require the key)
+#### Scenario: Nameless Zyte response is retried then fails
 
-#### Scenario: Timeout aborts the waterfall
+- **WHEN** Zyte responds without a product name on both attempts
+- **THEN** the seam SHALL call Zyte twice and return `{ ok: false, error: 'fetch_failed' }`
 
-- **WHEN** the waterfall exceeds the app-side timeout
-- **THEN** all in-flight fetches SHALL be aborted and the endpoint SHALL return `{ ok: false, error: 'timeout' }`
+#### Scenario: Retry recovers an intermittent failure
+
+- **WHEN** the first Zyte attempt yields no title but the retry returns a product
+- **THEN** the seam SHALL return the retry's normalized product
+
+#### Scenario: Timeout aborts the fetch
+
+- **WHEN** the fetch exceeds the app-side timeout
+- **THEN** the in-flight request SHALL be aborted and the endpoint SHALL return `{ ok: false, error: 'timeout' }`
 
 #### Scenario: Redirecting share links resolve
 
 - **WHEN** the pasted URL is a redirecting share link (e.g. `a.co/...`)
-- **THEN** redirects SHALL be followed so extraction runs against the final product page
+- **THEN** redirects SHALL be followed (`followRedirect: true`) so extraction runs against the final product page
 
 #### Scenario: Non-numeric price is dropped, not passed through
 
 - **WHEN** extraction produces a price value that does not coerce to a number
 - **THEN** the normalized result SHALL omit `price` rather than emit a non-numeric value
+
+#### Scenario: Zyte multi-image response yields a capped, deduped candidate list
+
+- **WHEN** Zyte returns `mainImage` plus 14 `images` entries including duplicates of `mainImage.url`
+- **THEN** the normalized `imageUrls` SHALL start with `mainImage.url`, contain no exact-string duplicates, and hold at most 10 entries; `imageUrl` SHALL equal its first entry
+
