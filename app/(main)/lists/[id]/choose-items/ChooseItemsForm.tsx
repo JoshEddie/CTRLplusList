@@ -303,7 +303,6 @@ export default function ChooseItemsForm({
       {showNewItem && (
         <ItemFormContainer
           lists={lists}
-          user_id={user_id}
           onClose={() => setShowNewItem(false)}
           onSuccess={() => setShowNewItem(false)}
         />

@@ -9,11 +9,14 @@ export const ItemSchema = z.object({
     .min(3, 'Title must be at least 3 characters')
     .max(100, 'Title must be less than 100 characters'),
 
-  description: z.string().optional(),
+  description: z
+    .string()
+    .max(100, 'Description must be less than 100 characters')
+    .optional(),
 
   image_url: z
     .string()
-    .optional()
+    .nullish()
     .superRefine((val, ctx) => {
       // If the value is empty or undefined, it's valid
       if (!val) return true;
@@ -37,12 +40,16 @@ export const ItemSchema = z.object({
         (val) => {
           try {
             const url = new URL(val);
-            return url.protocol === 'http:' || url.protocol === 'https:';
+            return (
+              url.protocol === 'http:' ||
+              url.protocol === 'https:' ||
+              url.protocol === 'data:'
+            );
           } catch {
             return false;
           }
         },
-        { message: 'Image candidates must be valid http(s) URLs' }
+        { message: 'Image candidates must be valid image URLs' }
       )
     )
     .max(10, 'At most 10 image candidates are allowed')

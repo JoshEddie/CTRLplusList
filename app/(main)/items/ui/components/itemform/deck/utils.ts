@@ -1,0 +1,143 @@
+// Pure validation/tier helpers shared by the deck cards, Focus editors,
+// Triage, Preview, and the submit gate — the single source for the
+// title/price/description rules so they can't drift between surfaces.
+
+// Candidates whose natural dimensions fall below this (px, both axes) are
+// dropped. Extractors routinely include tiny thumbnails (e.g. Amazon's 40px
+// `_AC_US40_` variant) that are useless as the item image.
+const MIN_IMAGE_PX = 200;
+
+// A stalled load shouldn't block the deck from opening.
+const PROBE_TIMEOUT_MS = 6000;
+
+export const TITLE_MIN = 3;
+export const TITLE_MAX = 100;
+export const TITLE_SNAPPY = 50;
+export const DESCRIPTION_MAX = 100;
+
+export type Tier = 'good' | 'warn' | 'error';
+
+export interface TierResult {
+  tier: Tier;
+  note: string;
+}
+
+// Matches storePriceError's accepted shape (optional $, integer or 2dp): a
+// price is "good" only when it parses to a real amount.
+const PRICE_PATTERN = /^\$?[0-9]+(\.[0-9][0-9]?)?$/;
+
+export function titleTier(name: string | null | undefined): TierResult {
+  const value = name ?? '';
+  if (!value.trim()) {
+    return { tier: 'error', note: 'An item needs a name.' };
+  }
+  if (value.length < TITLE_MIN) {
+    return {
+      tier: 'error',
+      note: `An item name needs at least ${TITLE_MIN} characters.`,
+    };
+  }
+  if (value.length > TITLE_MAX) {
+    return {
+      tier: 'error',
+      note: `That's over the ${TITLE_MAX}-character limit — trim it before saving.`,
+    };
+  }
+  if (value.length > TITLE_SNAPPY) {
+    return {
+      tier: 'warn',
+      note: `Longer than ${TITLE_SNAPPY} characters — we suggest trimming; extra detail belongs in a description.`,
+    };
+  }
+  return { tier: 'good', note: '' };
+}
+
+export function priceTier(price: string | null | undefined): TierResult {
+  const value = (price ?? '').trim();
+  if (!value) {
+    return { tier: 'error', note: 'Add a price so people know the cost.' };
+  }
+  if (!PRICE_PATTERN.test(value)) {
+    return { tier: 'error', note: 'Use a number like 19.99.' };
+  }
+  return { tier: 'good', note: '' };
+}
+
+function probe(url: string): Promise<{ url: string; ok: boolean }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    let settled = false;
+    const done = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve({ url, ok });
+    };
+    img.onload = () =>
+      done(
+        img.naturalWidth >= MIN_IMAGE_PX && img.naturalHeight >= MIN_IMAGE_PX
+      );
+    img.onerror = () => done(false);
+    // A stalled load shouldn't hang the deck — keep it (benefit of the doubt).
+    // The `settled` guard makes this a no-op if the probe already resolved.
+    setTimeout(() => done(true), PROBE_TIMEOUT_MS);
+    img.src = url;
+  });
+}
+
+// Probe each candidate's natural size client-side (we never fetch bytes
+// server-side — no SSRF surface) and drop undersized or unloadable images.
+// Run ONCE at fetch time, before the deck is built, so the photo count, the
+// step decision (selector / single-image bypass / zero-image error), and the
+// selector itself all reflect the same set of usable photos.
+export function prunePhotos(urls: string[]): Promise<string[]> {
+  // 0 or 1 candidate: nothing to choose or prune.
+  if (urls.length < 2) return Promise.resolve(urls);
+  return Promise.all(urls.map(probe)).then((results) => {
+    const survivors = results.filter((r) => r.ok).map((r) => r.url);
+    // Never collapse a real candidate list to "no images" — if every probe
+    // failed the size check, keep the extractor's main as a best effort.
+    return survivors.length > 0 ? survivors : urls.slice(0, 1);
+  });
+}
+
+// Bridge the string-based store price (view-model / schema) and PriceField's
+// numeric (dollars) interface. An empty/non-numeric price maps to null so
+// PriceField shows a blank field rather than "0.00".
+export function priceToAmount(price: string): number | null {
+  const trimmed = (price ?? '').trim();
+  if (trimmed === '') return null;
+  const n = Number(trimmed);
+  return Number.isNaN(n) ? null : n;
+}
+
+// Serialize PriceField's numeric value to a clean 2dp string. 0 is a real price
+// a user may type ($0.00 is valid — D6); the "never silently $0.00" guard lives
+// at the fetch seam (normalizePrice rejects a fetched 0), not here. An unset
+// price is the never-entered "" state, surfaced by priceToAmount as a blank field.
+export function amountToPrice(value: number): string {
+  return value.toFixed(2);
+}
+
+// Offer a shorter name by cutting at the first natural clause boundary that
+// fits the snappy budget — the lead clause is almost always the core product
+// name, and the trailing detail (size/color/variant) is what belongs in a
+// description. Spaced dashes/pipes/colons/semicolons, commas, and opening
+// parens count as boundaries; intra-word hyphens (e.g. "T-Shirt") do not.
+export function suggestTrim(name: string | null | undefined): string {
+  const value = (name ?? '').trim();
+  if (value.length <= TITLE_SNAPPY) return value;
+
+  const boundary = /\s[—–\-|:;]\s|,|\s\(/g;
+  let cut = -1;
+  for (let m = boundary.exec(value); m; m = boundary.exec(value)) {
+    if (m.index > 0 && m.index <= TITLE_SNAPPY) {
+      cut = m.index;
+      break;
+    }
+  }
+  if (cut > 0) return value.slice(0, cut).trim();
+
+  const window = value.slice(0, TITLE_SNAPPY);
+  const lastSpace = window.lastIndexOf(' ');
+  return (lastSpace > 0 ? window.slice(0, lastSpace) : window).trim();
+}

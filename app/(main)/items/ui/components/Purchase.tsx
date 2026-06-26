@@ -11,7 +11,8 @@ type PurchaseProps = {
   ownerClaim?: boolean;
   /** Owner's spoiler-gated claim management — the modal lists removable claims. */
   ownerManage?: boolean;
-  handlePurchaseClick: () => void;
+  /** Absent only in the non-interactive item-form preview, which never renders a claim control. */
+  handlePurchaseClick?: () => void;
   className?: string;
 };
 

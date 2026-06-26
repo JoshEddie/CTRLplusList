@@ -1,6 +1,6 @@
 import { ButtonHTMLAttributes, forwardRef } from 'react';
 import { buttonClasses } from './buttonClasses';
-import type { ButtonSize, ButtonVariant } from './types';
+import type { ButtonSize, ButtonVariant, ButtonWidth } from './types';
 
 type ButtonProps = Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -10,6 +10,7 @@ type ButtonProps = Omit<
   size?: ButtonSize;
   isLoading?: boolean;
   pressed?: boolean;
+  width?: ButtonWidth
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -17,6 +18,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     {
       variant,
       size,
+      width,
       isLoading,
       pressed,
       className,
@@ -27,7 +29,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) {
-    const composed = buttonClasses({ variant, size, extra: className });
+    const composed = buttonClasses({ variant, size, width, extra: className });
 
     return (
       <button

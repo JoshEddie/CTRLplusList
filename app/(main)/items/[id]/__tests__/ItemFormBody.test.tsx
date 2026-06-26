@@ -24,16 +24,14 @@ const redirectMock = vi.hoisted(() =>
 );
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
 
-vi.mock('@/app/(main)/items/ui/components/itemform/ItemForm', () => ({
+vi.mock('@/app/(main)/items/ui/components/itemform/ItemFormContainer', () => ({
   default: (p: {
-    user_id: string;
     item: { id: string };
     lists: unknown[];
     returnTo?: string;
   }) => (
     <div
       data-testid="item-form"
-      data-user-id={p.user_id}
       data-item-id={p.item.id}
       data-lists-count={String(p.lists.length)}
       data-return-to={p.returnTo ?? ''}
@@ -105,7 +103,6 @@ describe('ItemFormBody', () => {
       expect(getItemById).toHaveBeenCalledWith('i1', 'u1');
       const form = screen.getByTestId('item-form');
       expect(form).toHaveAttribute('data-item-id', 'i1');
-      expect(form).toHaveAttribute('data-user-id', 'u1');
       expect(form).toHaveAttribute('data-lists-count', '2');
       expect(form).toHaveAttribute('data-return-to', '/lists/l1');
     });

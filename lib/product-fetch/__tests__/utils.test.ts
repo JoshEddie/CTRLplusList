@@ -43,4 +43,12 @@ describe('normalizePrice', () => {
   it('EmptyString_ReturnsUndefined', () => {
     expect(normalizePrice('')).toBeUndefined();
   });
+
+  it('NonPositivePrice_ReturnsUndefined-NeverAutoPopulatesZero', () => {
+    expect(normalizePrice(0)).toBeUndefined();
+    expect(normalizePrice('0')).toBeUndefined();
+    expect(normalizePrice('0.00')).toBeUndefined();
+    expect(normalizePrice(-5)).toBeUndefined();
+    expect(normalizePrice('-5')).toBeUndefined();
+  });
 });

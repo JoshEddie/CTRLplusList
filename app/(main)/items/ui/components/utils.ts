@@ -46,7 +46,13 @@ export function firstToken(name: string): string {
 }
 
 export function isValidStore(store: ItemStoreTable | null | undefined): boolean {
-  return !!store?.name && !!store?.link && !Number.isNaN(Number(store.price));
+  const price = store?.price ?? '';
+  return (
+    !!store?.name &&
+    !!store?.link &&
+    price.trim() !== '' &&
+    !Number.isNaN(Number(price))
+  );
 }
 
 export function sortedValidStores(
