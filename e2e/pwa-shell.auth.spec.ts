@@ -50,8 +50,8 @@ test('PwaShell_FetchManifest_MeetsInstallContract', async ({ request }) => {
   expect(manifest.start_url).toBe('/');
   expect(manifest.display).toBe('standalone');
   expect(manifest.orientation).toBe('portrait');
-  expect(manifest.background_color).toBe('#25194e');
-  expect(manifest.theme_color).toBe('#25194e');
+  expect(manifest.background_color).toBe('#2a2060');
+  expect(manifest.theme_color).toBe('#2a2060');
 
   for (const size of ['192', '512']) {
     for (const purpose of ['any', 'maskable']) {

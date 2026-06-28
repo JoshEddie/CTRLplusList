@@ -3,6 +3,7 @@
 import { Button } from '@/app/ui/components/button';
 import { TextField } from '@/app/ui/components/field';
 import { useState } from 'react';
+import { PiStarFourFill } from 'react-icons/pi';
 import './prefill.css';
 import { isValidProductUrl } from './utils';
 
@@ -30,8 +31,8 @@ export function UrlEntryStep({
   };
 
   return (
-    <div className="prefill-url-step">
-      <p className="prefill-hint">Paste a product link to auto-fill details</p>
+    <div className="deck">
+      <p className="prefill-hint">Paste a product link, we&apos;ll pull the details, then walk you through anything that still needs attention.</p>
       <TextField
         label="Product link"
         type="url"
@@ -52,6 +53,7 @@ export function UrlEntryStep({
       />
       <div className="prefill-url-actions">
         <Button variant="primary" onClick={handleFetch}>
+          <PiStarFourFill />
           Fetch Details
         </Button>
         <Button variant="link" onClick={onManual}>

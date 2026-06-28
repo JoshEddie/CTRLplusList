@@ -94,7 +94,7 @@ The suite SHALL keep e2e assertions over the regression family fixed by commits 
 #### Scenario: Status-bar zone shows the app background
 
 - **WHEN** a spec loads any route
-- **THEN** the `html` element's computed background color is `#25194e` (the backstop visible through the translucent iOS status bar)
+- **THEN** the `html` element's computed background color is `#2a2060` (the backstop visible through the translucent iOS status bar)
 
 ### Requirement: PWA/offline specs SHALL run under the foundation harness without redefining it
 

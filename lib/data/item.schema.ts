@@ -1,3 +1,4 @@
+import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 import { z } from 'zod';
 
 // Define Zod schema for item validation. The actor's user_id is resolved
@@ -6,14 +7,17 @@ import { z } from 'zod';
 export const ItemSchema = z.object({
   name: z
     .string()
-    .min(3, 'Title must be at least 3 characters')
-    .max(100, 'Title must be less than 100 characters'),
+    .min(3, 'Item name must be at least 3 characters')
+    .max(100, 'Item name must be less than 100 characters'),
 
-  description: z.string().optional(),
+  description: z
+    .string()
+    .max(100, 'Description must be less than 100 characters')
+    .optional(),
 
   image_url: z
     .string()
-    .optional()
+    .nullish()
     .superRefine((val, ctx) => {
       // If the value is empty or undefined, it's valid
       if (!val) return true;
@@ -37,15 +41,22 @@ export const ItemSchema = z.object({
         (val) => {
           try {
             const url = new URL(val);
-            return url.protocol === 'http:' || url.protocol === 'https:';
+            return (
+              url.protocol === 'http:' ||
+              url.protocol === 'https:' ||
+              url.protocol === 'data:'
+            );
           } catch {
             return false;
           }
         },
-        { message: 'Image candidates must be valid http(s) URLs' }
+        { message: 'Image candidates must be valid image URLs' }
       )
     )
-    .max(10, 'At most 10 image candidates are allowed')
+    .max(
+      MAX_IMAGE_CANDIDATES,
+      `At most ${MAX_IMAGE_CANDIDATES} image candidates are allowed`
+    )
     .optional(),
 
   quantity_limit: z

@@ -120,7 +120,7 @@ export function ImageSearch({
     if (e.target === backdropRef.current) onClose();
   };
 
-  // Intercept Enter so it does NOT bubble up to the outer ItemForm's <form>
+  // Intercept Enter so it does NOT bubble up to submit any ancestor <form>
   // via React's synthetic event tree (portal or not).
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {

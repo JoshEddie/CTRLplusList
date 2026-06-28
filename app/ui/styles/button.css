@@ -64,12 +64,25 @@
   min-width: var(--btn-sm-min-width);
 }
 
+.btn.full {
+  width: 100%;
+}
+
 /* Variants */
 
 .btn.primary {
-  background-color: transparent;
-  border-color: var(--primary-color);
-  color: var(--primary-color);
+  background-color: var(--primary-color-dark);  
+  background: linear-gradient(
+    120deg,
+    var(--secondary-color) 0%,
+    var(--primary-color-dark) 50%,
+    var(--primary-color-dark) 100%
+  );
+  background-size: 400% 100%;
+  background-position: 100% 0%; /* solid primary-dark shows */
+  transition: background-position 0.5s ease;
+  border-color: var(--primary-color-dark);
+  color: #ffffff;
 }
 
 .btn.secondary {
@@ -81,7 +94,7 @@
 .btn.ghost {
   background-color: transparent;
   color: var(--primary-text-color);
-  border-color: transparent;
+  border-color: var(--neutral-border-color);
 }
 
 .btn.danger {
@@ -132,8 +145,9 @@
 
 @media (hover: hover) {
   .btn.primary:hover {
-    background-color: var(--primary-color);
+    background-position: 0% 0%; /* gradient fills from right */
     color: #ffffff;
+    border-color: var(--secondary-color);
   }
 
   .btn.secondary:hover {

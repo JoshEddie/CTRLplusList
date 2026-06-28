@@ -104,7 +104,6 @@ export default function ItemsPage({
       {showNewItem && (
         <ItemFormContainer
           lists={lists || []}
-          user_id={user_id || ''}
           onClose={() => setShowNewItem(false)}
         />
       )}

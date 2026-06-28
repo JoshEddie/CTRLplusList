@@ -8,6 +8,8 @@ export type ButtonVariant =
 
 export type ButtonSize = 'sm' | 'md';
 
+export type ButtonWidth = 'auto' | 'full';
+
 export interface SharedButtonProps {
   variant: ButtonVariant;
   size?: ButtonSize;

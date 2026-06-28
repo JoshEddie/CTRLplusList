@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ItemFormContainer from '../ItemFormContainer';
@@ -10,42 +10,19 @@ const router = vi.hoisted(() => ({
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
 
-vi.mock('../ItemForm', () => ({
-  default: (p: {
-    user_id: string;
-    item?: { id: string };
-    prefill?: unknown;
-    fetchedBadge?: { store: string; url: string; onChange: () => void };
-    showFetchFailedNotice?: boolean;
-    onUseLinkInstead?: () => void;
-  }) => (
-    <div
-      data-testid="item-form"
-      data-has-item={String(!!p.item)}
-      data-prefill={JSON.stringify(p.prefill ?? null)}
-      data-badge-store={p.fetchedBadge?.store ?? ''}
-      data-badge-url={p.fetchedBadge?.url ?? ''}
-      data-notice={String(!!p.showFetchFailedNotice)}
-    >
-      {p.onUseLinkInstead && (
-        <button type="button" onClick={p.onUseLinkInstead}>
-          ← Use a link instead
-        </button>
-      )}
-      {p.fetchedBadge && (
-        <button type="button" onClick={p.fetchedBadge.onChange}>
-          badge-change
-        </button>
-      )}
-    </div>
-  ),
+// Stub the server actions so importing the container doesn't pull in the
+// neon-http db client (no DATABASE_URL in the unit env).
+vi.mock('@/lib/data/item.actions', () => ({
+  createItem: vi.fn().mockResolvedValue({ success: true, message: 'ok' }),
+  updateItem: vi.fn().mockResolvedValue({ success: true, message: 'ok' }),
+  archiveItem: vi.fn().mockResolvedValue({ success: true, message: 'ok' }),
+  deleteItem: vi.fn().mockResolvedValue({ success: true, message: 'ok' }),
 }));
 
 const PRODUCT_RESPONSE = {
   ok: true,
   product: {
     title: 'Acme Widget',
-    description: 'A fine widget',
     imageUrl: 'https://example.com/w.jpg',
     price: '24.50',
     currency: 'USD',
@@ -61,9 +38,7 @@ function jsonOk(body: unknown): Response {
 let fetchMock: ReturnType<typeof vi.fn>;
 
 function renderCreate() {
-  return render(
-    <ItemFormContainer user_id="u1" lists={[] as never} onClose={vi.fn()} />
-  );
+  return render(<ItemFormContainer lists={[]} onClose={vi.fn()} />);
 }
 
 async function fetchUrl(url = 'https://www.amazon.com/dp/B0TEST') {
@@ -84,98 +59,154 @@ afterEach(() => {
 });
 
 describe('ItemFormContainer', () => {
-  describe('PhaseEntry', () => {
-    it('CreateMode_OpensUrlEntry-NoFormFields', () => {
+  describe('Entry', () => {
+    it('CreateMode_OpensUrlEntry', () => {
       renderCreate();
-      expect(
-        screen.getByText('Paste a product link to auto-fill details')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: 'Fetch Details' })
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
+      expect(screen.getByText(/Paste a product link/)).toBeInTheDocument();
     });
 
-    it('EditMode_OpensFormDirectly-NoUrlEntry-NoUseLinkAffordance', () => {
+    it('EditMode_OpensPreviewSeededWithSaveChanges', () => {
       render(
         <ItemFormContainer
-          user_id="u1"
-          lists={[] as never}
-          item={{ id: 'i1', stores: [], lists: [] } as never}
+          lists={[]}
+          item={
+            {
+              id: 'i1',
+              name: 'Gift',
+              quantity_limit: 1,
+              stores: [],
+              lists: [],
+            } as never
+          }
+          returnTo="/items"
+        />
+      );
+      expect(
+        screen.getByRole('button', { name: 'Save changes' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Gift' })
+      ).toBeInTheDocument();
+    });
+
+    it('EditWithoutReturnTo_RendersPreview', () => {
+      render(
+        <ItemFormContainer
+          lists={[]}
+          item={
+            {
+              id: 'i1',
+              name: 'Gift',
+              quantity_limit: 1,
+              stores: [],
+              lists: [],
+            } as never
+          }
+        />
+      );
+      expect(
+        screen.getByRole('button', { name: 'Save changes' })
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('Manual', () => {
+    it('ClickManual_OpensBlankPreview', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await user.click(
+        screen.getByRole('button', { name: 'Fill in details manually →' })
+      );
+      expect(screen.getByText('Last look')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Create item' })
+      ).toBeInTheDocument();
+    });
+
+    it('WithLists_ListsSheetRendersOptions', async () => {
+      const user = userEvent.setup();
+      render(
+        <ItemFormContainer
+          lists={[{ id: 'l1', name: 'Birthday' } as never]}
           onClose={vi.fn()}
         />
       );
-      expect(screen.getByTestId('item-form')).toHaveAttribute(
-        'data-has-item',
-        'true'
+      await user.click(
+        screen.getByRole('button', { name: 'Fill in details manually →' })
       );
+      await user.click(screen.getByRole('button', { name: /Lists & quantity/ }));
       expect(
-        screen.queryByText('Paste a product link to auto-fill details')
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('button', { name: '← Use a link instead' })
-      ).not.toBeInTheDocument();
+        screen.getByRole('checkbox', { name: 'Birthday' })
+      ).toBeInTheDocument();
     });
-  });
 
-  describe('ManualToggle', () => {
-    it('ClickManual_RendersFormWithUseLinkEscape-NoPrefill', async () => {
+    it('FullNavigation_VisitsTriageFocusSheetsThenCreates', async () => {
+      const { createItem } = await import('@/lib/data/item.actions');
       const user = userEvent.setup();
       renderCreate();
       await user.click(
         screen.getByRole('button', { name: 'Fill in details manually →' })
       );
-      const form = screen.getByTestId('item-form');
-      expect(form).toHaveAttribute('data-prefill', 'null');
-      expect(form).toHaveAttribute('data-notice', 'false');
-      expect(
-        screen.getByRole('button', { name: '← Use a link instead' })
-      ).toBeInTheDocument();
+
+      // Preview → Triage → Name focus → set name → back to Triage → Preview.
+      await user.click(
+        screen.getByRole('button', { name: /Need to change something/ })
+      );
+      expect(screen.getByText('Review anything')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /Item name/ }));
+      await user.type(screen.getByLabelText('Item name'), 'Nav Item');
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+      await user.click(
+        screen.getByRole('button', { name: /Back to preview/ })
+      );
+
+      // Preview → Stores sheet → fill → Done.
+      await user.click(screen.getByRole('button', { name: /Store links/ }));
+      await user.type(screen.getByLabelText('Store name'), 'Nav Store');
+      await user.type(screen.getByLabelText('Link'), 'https://nav.test/p');
+      await user.type(screen.getByLabelText('Price'), '12.00');
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+
+      // Preview → Lists & quantity sheet → Done.
+      await user.click(screen.getByRole('button', { name: /Lists & quantity/ }));
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+
+      // Preview → Add a note focus → Done.
+      await user.click(screen.getByRole('button', { name: /Add a note/ }));
+      await user.type(screen.getByLabelText('Description'), 'A nav note');
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+
+      // Create flows through the action.
+      await user.click(screen.getByRole('button', { name: 'Create item' }));
+      await waitFor(() => expect(createItem).toHaveBeenCalledOnce());
     });
 
-    it('ClickUseLinkInstead_ReturnsToUrlEntry', async () => {
+    it('TriageStoreRow_OpensStoresSheet', async () => {
       const user = userEvent.setup();
       renderCreate();
       await user.click(
         screen.getByRole('button', { name: 'Fill in details manually →' })
       );
       await user.click(
-        screen.getByRole('button', { name: '← Use a link instead' })
+        screen.getByRole('button', { name: /Need to change something/ })
       );
-      expect(
-        screen.getByText('Paste a product link to auto-fill details')
-      ).toBeInTheDocument();
-      expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('UrlValidation', () => {
-    it('InvalidUrl_ShowsFieldError-NoRequest', async () => {
-      const user = userEvent.setup();
-      renderCreate();
-      await user.type(screen.getByLabelText(/Product link/), 'not a url');
-      await user.click(screen.getByRole('button', { name: 'Fetch Details' }));
-      expect(
-        screen.getByText('Please enter a valid product link (http or https)')
-      ).toBeInTheDocument();
-      expect(fetchMock).not.toHaveBeenCalled();
+      await user.click(screen.getByRole('button', { name: /Store/ }));
+      expect(screen.getByLabelText('Store name')).toBeInTheDocument();
     });
   });
 
   describe('Fetching', () => {
-    it('FetchInFlight_ShowsSpinner-CyclingMsg-MomentLine-UrlStrip', async () => {
+    it('FetchInFlight_ShowsSpinnerAndUrlStrip', async () => {
       fetchMock.mockReturnValue(new Promise(() => {}));
       renderCreate();
       await fetchUrl();
       expect(screen.getByRole('status')).toBeInTheDocument();
-      expect(screen.getByText('Fetching item details…')).toBeInTheDocument();
-      expect(screen.getByText('This may take a moment.')).toBeInTheDocument();
       expect(
         screen.getByText('https://www.amazon.com/dp/B0TEST')
       ).toBeInTheDocument();
     });
 
-    it('ClickCancel_AbortsRequest-ReturnsToUrlEntryWithUrlRetained', async () => {
+    it('ClickCancel_AbortsRequest-ReturnsToUrlEntry', async () => {
       let abortSignal: AbortSignal | undefined;
       fetchMock.mockImplementation((_url, init: RequestInit) => {
         abortSignal = init.signal ?? undefined;
@@ -189,87 +220,97 @@ describe('ItemFormContainer', () => {
         'https://www.amazon.com/dp/B0TEST'
       );
     });
-
-    it('ClickChange_AbortsRequest-ReturnsToUrlEntry', async () => {
-      let abortSignal: AbortSignal | undefined;
-      fetchMock.mockImplementation((_url, init: RequestInit) => {
-        abortSignal = init.signal ?? undefined;
-        return new Promise(() => {});
-      });
-      renderCreate();
-      const user = await fetchUrl();
-      await user.click(screen.getByRole('button', { name: 'change' }));
-      expect(abortSignal?.aborted).toBe(true);
-      expect(
-        screen.getByText('Paste a product link to auto-fill details')
-      ).toBeInTheDocument();
-    });
   });
 
   describe('FetchSuccess', () => {
-    it('ProductResolved_PrefillsFormAndBadge-StoreRowCarriesProvenance', async () => {
+    it('ProductResolved_EntersDeckWithAutoFilledEyebrow', async () => {
       fetchMock.mockResolvedValue(jsonOk(PRODUCT_RESPONSE));
       renderCreate();
       await fetchUrl();
-      const form = await screen.findByTestId('item-form');
-      const prefill = JSON.parse(form.getAttribute('data-prefill')!);
-      expect(prefill.name).toBe('Acme Widget');
-      // Fetched descriptions are never prefilled (wrong/noisy content).
-      expect(prefill.description).toBeUndefined();
-      expect(prefill.image_url).toBe('https://example.com/w.jpg');
-      expect(prefill.stores).toHaveLength(1);
-      expect(prefill.stores[0]).toMatchObject({
-        name: 'Amazon',
-        link: 'https://www.amazon.com/dp/B0TEST',
-        price: '24.50',
-        canonical_url: 'https://example.com/widget',
-        currency: 'USD',
-      });
-      expect(typeof prefill.stores[0].price_fetched_at).toBe('string');
-      expect(form).toHaveAttribute('data-badge-store', 'Amazon');
-      expect(form).toHaveAttribute(
-        'data-badge-url',
-        'https://www.amazon.com/dp/B0TEST'
-      );
-      expect(form).toHaveAttribute('data-notice', 'false');
       expect(
-        screen.queryByRole('button', { name: '← Use a link instead' })
-      ).not.toBeInTheDocument();
+        await screen.findByText('Auto-filled from Amazon')
+      ).toBeInTheDocument();
+      expect(screen.getByText("Here's what we pulled.")).toBeInTheDocument();
     });
 
-    it('PricelessProduct_PrefillsWithoutPriceOrFetchedAt', async () => {
+    it('NoStoreName_DeckOmitsEyebrow', async () => {
       fetchMock.mockResolvedValue(
-        jsonOk({
-          ok: true,
-          product: { title: 'Acme Widget', store: 'Amazon' },
-        })
+        jsonOk({ ok: true, product: { title: 'No Store Widget' } })
       );
       renderCreate();
       await fetchUrl();
-      const form = await screen.findByTestId('item-form');
-      const prefill = JSON.parse(form.getAttribute('data-prefill')!);
-      expect(prefill.stores[0].price).toBe('');
-      expect(prefill.stores[0].price_fetched_at).toBeNull();
+      expect(await screen.findByText("Here's what we pulled.")).toBeInTheDocument();
+      expect(screen.queryByText(/Auto-filled from/)).not.toBeInTheDocument();
     });
 
-    it('BadgeChange_ReturnsToUrlEntry', async () => {
+    it('DeckCompleted_LandsOnPreview', async () => {
       fetchMock.mockResolvedValue(jsonOk(PRODUCT_RESPONSE));
       renderCreate();
       const user = await fetchUrl();
-      await screen.findByTestId('item-form');
-      await user.click(screen.getByRole('button', { name: 'badge-change' }));
-      expect(
-        screen.getByText('Paste a product link to auto-fill details')
-      ).toBeInTheDocument();
+      await screen.findByText("Here's what we pulled.");
+      // Acme Widget (good title, price, single image): steps = intro, note.
+      await user.click(screen.getByRole('button', { name: "Let's go" }));
+      await user.click(screen.getByRole('button', { name: 'Continue' }));
+      expect(screen.getByText('Last look')).toBeInTheDocument();
+    });
+
+    it('AbortDuringPhotoPrune_DoesNotEnterDeck', async () => {
+      // Hold the image probes open so we can cancel mid-prune, then resolve.
+      const probes: { onload: (() => void) | null; naturalWidth: number; naturalHeight: number }[] = [];
+      class HoldImage {
+        naturalWidth = 0;
+        naturalHeight = 0;
+        onload: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        set src(_v: string) {
+          probes.push(this);
+        }
+      }
+      vi.stubGlobal('Image', HoldImage);
+      fetchMock.mockResolvedValue(
+        jsonOk({
+          ok: true,
+          product: {
+            title: 'Multi Image',
+            imageUrls: ['https://a/1', 'https://a/2'],
+            store: 'Amazon',
+          },
+        })
+      );
+      renderCreate();
+      const user = await fetchUrl();
+      await waitFor(() => expect(probes.length).toBe(2));
+
+      // Cancel while the prune is still pending.
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+      // Now let the probes resolve — the aborted guard must skip the deck.
+      await act(async () => {
+        probes.forEach((p) => {
+          p.naturalWidth = 400;
+          p.naturalHeight = 400;
+          p.onload?.();
+        });
+      });
+
+      expect(screen.getByText(/Paste a product link/)).toBeInTheDocument();
+      expect(screen.queryByText("Here's what we pulled.")).not.toBeInTheDocument();
+      vi.unstubAllGlobals();
+    });
+
+    it('DeckExit_ReturnsToUrlEntry', async () => {
+      fetchMock.mockResolvedValue(jsonOk(PRODUCT_RESPONSE));
+      renderCreate();
+      const user = await fetchUrl();
+      await screen.findByText("Here's what we pulled.");
+      await user.click(screen.getByRole('button', { name: 'Change link' }));
+      expect(screen.getByText(/Paste a product link/)).toBeInTheDocument();
     });
   });
 
   describe('RateLimited', () => {
-    it('Status429_StaysOnUrlEntryWithSlowDownError-UrlRetained-NoForm', async () => {
+    it('Status429_StaysOnUrlEntryWithSlowDownError', async () => {
       fetchMock.mockResolvedValue(
-        new Response(JSON.stringify({ error: 'rate_limited' }), {
-          status: 429,
-        })
+        new Response(JSON.stringify({ error: 'rate_limited' }), { status: 429 })
       );
       renderCreate();
       await fetchUrl();
@@ -281,38 +322,43 @@ describe('ItemFormContainer', () => {
       expect(screen.getByLabelText(/Product link/)).toHaveValue(
         'https://www.amazon.com/dp/B0TEST'
       );
-      expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
     });
   });
 
   describe('FetchFailure', () => {
-    it('TimeoutResult_RendersFormWithNotice-LinkPrefilled-UseLinkEscape', async () => {
+    it('FailureResult_ShowsTimeoutScreen', async () => {
       fetchMock.mockResolvedValue(jsonOk({ ok: false, error: 'timeout' }));
       renderCreate();
       await fetchUrl();
-      const form = await screen.findByTestId('item-form');
-      expect(form).toHaveAttribute('data-notice', 'true');
-      const prefill = JSON.parse(form.getAttribute('data-prefill')!);
-      expect(prefill.stores[0]).toEqual({
-        name: '',
-        link: 'https://www.amazon.com/dp/B0TEST',
-        price: '',
-      });
       expect(
-        screen.getByRole('button', { name: '← Use a link instead' })
+        await screen.findByText("That link wouldn't load")
       ).toBeInTheDocument();
     });
 
-    it('NetworkError_RendersFormWithNotice', async () => {
+    it('NetworkError_ShowsTimeoutScreen', async () => {
       fetchMock.mockRejectedValue(new TypeError('fetch failed'));
       const consoleError = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
       renderCreate();
       await fetchUrl();
-      const form = await screen.findByTestId('item-form');
-      expect(form).toHaveAttribute('data-notice', 'true');
+      expect(
+        await screen.findByText("That link wouldn't load")
+      ).toBeInTheDocument();
       await waitFor(() => expect(consoleError).toHaveBeenCalled());
+    });
+
+    it('BuildByHand_OpensBlankPreviewWithUrlSeededInStoreLink', async () => {
+      fetchMock.mockResolvedValue(jsonOk({ ok: false, error: 'timeout' }));
+      renderCreate();
+      const user = await fetchUrl();
+      await screen.findByText("That link wouldn't load");
+      await user.click(screen.getByRole('button', { name: 'Build it by hand' }));
+      expect(screen.getByText('Last look')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /Store links/ }));
+      expect(screen.getByLabelText('Link')).toHaveValue(
+        'https://www.amazon.com/dp/B0TEST'
+      );
     });
   });
 });

@@ -1,4 +1,4 @@
-const MAX_IMAGE_CANDIDATES = 10;
+import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 
 /**
  * Cheap string-level pre-check before a URL is handed to Zyte — rejects the
@@ -17,16 +17,19 @@ export function isPrivateHostname(hostname: string): boolean {
 }
 
 /**
- * Coerces an extractor's price into a bare numeric string, or undefined when
- * it isn't strictly numeric (currency symbols, empty, NaN all reject).
+ * Coerces an extractor's price into a bare numeric string, or undefined when it
+ * isn't a strictly-positive number (currency symbols, empty, NaN, and any value
+ * <= 0 all reject). A fetched 0 is a fetch miss, not a real price — we never
+ * auto-populate $0.00; a user may still type 0 themselves, which doesn't pass
+ * through this coercion.
  */
 export function normalizePrice(value: unknown): string | undefined {
   if (typeof value === 'number' && Number.isFinite(value)) {
-    return String(value);
+    return value > 0 ? String(value) : undefined;
   }
   if (typeof value === 'string') {
     const trimmed = value.trim();
-    if (trimmed !== '' && Number.isFinite(Number(trimmed))) {
+    if (trimmed !== '' && Number.isFinite(Number(trimmed)) && Number(trimmed) > 0) {
       return trimmed;
     }
   }

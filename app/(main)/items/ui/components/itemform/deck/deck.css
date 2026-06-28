@@ -1,0 +1,763 @@
+/* Decision Deck + Preview surface. Built on global.css tokens and the app's
+   Button/FormField/SegmentedControl primitives — the mockup's standalone
+   palette is intentionally not reproduced (design D9). Composite tappable
+   controls are page-scoped <button>s sized to the 44px WCAG floor with
+   :focus-visible rings. */
+
+:root {
+  --ink-soft: #5d6470;
+  --good: #1c7146;
+  --good-bg: #e6f4ec;
+  --good-line: #bfe3cd;
+  --warn: #845309;
+  --warn-bg: #fbf1d9;
+  --warn-line: #ecd49a;
+  --error: #b91c1c;
+  --error-bg: #fbe5e2;
+  --error-line: #f0bdb6;
+}
+
+.deck,
+.deck-card,
+.deck-preview,
+.deck-triage,
+.deck-focus,
+.deck-stores,
+.deck-lists,
+.deck-sheet,
+.deck-timeout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.deck {
+  padding: 8px 24px 24px;
+}
+
+/* ---- Shared focus ring --------------------------------------------------- */
+
+.deck-photo-nav:focus-visible,
+.deck-photo-thumb:focus-visible,
+.deck-actrow:focus-visible,
+.deck-triage-row:focus-visible,
+.deck-list-opt:focus-visible,
+.deck-stepper-btn:focus-visible,
+.deck-store-rm:focus-visible,
+.deck-trim-chip:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* ---- Card chrome --------------------------------------------------------- */
+
+.deck-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.deck-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.deck-card-title,
+.deck-preview-title,
+.deck-triage-title,
+.deck-focus-title,
+.deck-timeout-title {
+  margin: 0;
+  font-family: var(--font-roboto);
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+  color: var(--heading-text-color);
+}
+
+.deck-card-sub,
+.deck-preview-sub,
+.deck-triage-sub,
+.deck-timeout-sub {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted-text-color);
+}
+
+.deck-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.deck-card-foot {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.deck-card-foot-end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ---- Progress dots ------------------------------------------------------- */
+
+.deck-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.deck-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--third-background-color);
+  transition:
+    width 0.2s ease,
+    background-color 0.2s ease;
+}
+
+/* Current step reads as a wide pill; completed steps stay filled dots. */
+.deck-dot-done {
+  background: var(--primary-color);
+}
+
+.deck-dot-active {
+  width: 26px;
+  background: var(--primary-color);
+}
+
+/* ---- Intro --------------------------------------------------------------- */
+
+.deck-intro-confirmed {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.deck-intro-confirmed .deck-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-size: 16px;
+  color: var(--neutral-text-color);
+}
+
+.deck-row-icon {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  border-radius: 50%;
+  font-weight: 700;
+}
+
+.deck-row-icon svg {
+  width: 22px;
+  height: auto;
+}
+
+.deck-row-icon.check {
+  color: var(--good);
+}
+
+.deck-row-icon.warning {
+  color: var(--warn);
+}
+
+.deck-row-icon.error {
+  color: var(--error);
+}
+
+.deck-row-title {
+  color: var(--ink-soft);
+  width: 74px;
+  flex: 0 0 auto;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.deck-row-details {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deck-intro-count {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted-text-color);
+}
+
+/* ---- Photo editor -------------------------------------------------------- */
+
+.deck-photo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.deck-photo-stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deck-photo-frame {
+  flex: 1;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--secondary-background-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deck-photo-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.deck-photo-nav {
+  flex: none;
+  width: var(--WCAG-input-size);
+  height: var(--WCAG-input-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--neutral-border-color);
+  border-radius: 50%;
+  background: var(--light-color);
+  color: var(--secondary-color);
+  cursor: pointer;
+}
+
+.deck-photo-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.deck-photo-strip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.deck-photo-thumb {
+  width: var(--WCAG-input-size);
+  height: var(--WCAG-input-size);
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--secondary-background-color);
+  cursor: pointer;
+}
+
+.deck-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.deck-photo-thumb-active {
+  border-color: var(--primary-color);
+}
+
+.deck-photo-empty {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed var(--neutral-border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--muted-text-color);
+  text-align: center;
+}
+
+.deck-photo-add {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---- Tier notes + counters ----------------------------------------------- */
+
+.deck-tier-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  border: 1px solid transparent;
+}
+
+.deck-tier-icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.deck-tier-good {
+  background: var(--good-bg);
+  border-color: var(--good-line);
+  color: var(--good);
+}
+
+.deck-tier-warn {
+  background: var(--warn-bg);
+  border-color: var(--warn-line);
+  color: var(--warn);
+}
+
+.deck-tier-error {
+  background: var(--error-bg);
+  border-color: var(--error-line);
+  color: var(--error);
+}
+
+.deck-title {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.deck-title-meta {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 12px;
+}
+
+.deck-trim-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--WCAG-input-size);
+  padding: 9px;
+  border: 1px dashed var(--buy-link-border);
+  border-radius: 10px;
+  background: var(--buy-link-bg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.deck-trim-chip:hover {
+  background: var(--buy-link-border);
+}
+
+.deck-trim-chip-label {
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--buy-link-text);
+}
+
+.deck-trim-chip-value {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--neutral-text-color);
+}
+
+.deck-counter {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-text-color);
+}
+
+.deck-counter-warn {
+  color: var(--warn);
+}
+
+.deck-counter-error {
+  color: var(--error);
+}
+
+.deck-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.deck-note .deck-counter,
+.deck-price {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deck-note > .deck-counter {
+  align-self: flex-end;
+}
+
+/* ---- Preview body (card + actions) --------------------------------------- */
+
+/* Query the preview's own width (not the viewport) so the two-column layout
+   keys off the modal, which widens on the preview screen but still collapses
+   on a phone-width shell. */
+.deck-preview {
+  container-type: inline-size;
+  padding: 18px 24px;
+}
+
+.deck-preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Once the shell is wide enough, the card sits to the left of the action rows
+   instead of stacking above them. */
+@container (min-width: 520px) {
+  .deck-preview-body {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .deck-preview-body > .deck-preview-card {
+    flex: none;
+    width: 280px;
+    margin-inline: 0;
+  }
+
+  .deck-preview-body > .deck-preview-actions {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ---- Preview card -------------------------------------------------------- */
+
+/* The card itself is the real <ItemCard> (styled by item.css) so the preview is
+   exactly the production list card. This only frames it at a realistic
+   single-cell width — a full-bleed card would distort the 4:3 photo. */
+.deck-preview-card {
+  width: 100%;
+  max-width: 280px;
+  margin-inline: auto;
+}
+
+/* ---- Action rows --------------------------------------------------------- */
+
+.deck-preview-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deck-actrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--WCAG-input-size);
+  padding: 10px 14px;
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+  background: var(--light-color);
+  text-align: left;
+  cursor: pointer;
+}
+
+.deck-actrow:hover {
+  border-color: var(--card-border-hover-color);
+  background: var(--card-hover-background-color);
+}
+
+.deck-actrow-lavender {
+  background: var(--buy-link-bg);
+  border-color: var(--buy-link-border);
+}
+
+.deck-actrow-icon {
+  flex: none;
+  display: flex;
+  color: var(--primary-color);
+}
+
+.deck-actrow-lavender .deck-actrow-icon {
+  color: var(--buy-link-text);
+}
+
+.deck-actrow-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.deck-actrow-label {
+  font-weight: 600;
+  color: var(--neutral-text-color);
+}
+
+.deck-actrow-lavender .deck-actrow-label {
+  color: var(--buy-link-text);
+}
+
+.deck-actrow-sub {
+  font-size: 13px;
+  color: var(--muted-text-color);
+}
+
+.deck-actrow-chevron {
+  flex: none;
+  color: var(--muted-text-color);
+}
+
+.deck-preview-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deck-preview-submit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.deck-preview-submit > .btn:last-child {
+  margin-left: auto;
+}
+
+/* ---- Triage -------------------------------------------------------------- */
+
+.deck-triage-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deck-triage-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--WCAG-input-size);
+  padding: 10px 14px;
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+  background: var(--light-color);
+  text-align: left;
+  cursor: pointer;
+}
+
+.deck-triage-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.deck-triage-label {
+  font-weight: 600;
+  color: var(--neutral-text-color);
+}
+
+.deck-triage-value {
+  font-size: 14px;
+  color: var(--muted-text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deck-triage-prov {
+  font-size: 12px;
+  color: var(--muted-text-color);
+}
+
+.deck-triage-status {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.deck-triage-status-good {
+  color: var(--good);
+}
+
+.deck-triage-status-warn {
+  color: var(--warn);
+}
+
+.deck-triage-status-error {
+  color: var(--error);
+}
+
+/* ---- Stores sheet -------------------------------------------------------- */
+
+.deck-store-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+}
+
+.deck-store-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.deck-store-num {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-text-color);
+}
+
+.deck-store-rm {
+  width: var(--WCAG-input-size);
+  height: var(--WCAG-input-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--danger-color);
+  cursor: pointer;
+}
+
+.deck-store-rm:hover {
+  background: var(--error-bg);
+}
+
+/* ---- Lists & quantity sheet ---------------------------------------------- */
+
+.deck-lists-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.deck-lists-legend {
+  width: 100%;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-text-color);
+}
+
+.deck-lists-empty {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted-text-color);
+}
+
+.deck-list-opt {
+  min-height: var(--WCAG-input-size);
+  padding: 8px 14px;
+  border: 1px solid var(--neutral-border-color);
+  border-radius: 999px;
+  background: var(--light-color);
+  color: var(--neutral-text-color);
+  cursor: pointer;
+}
+
+.deck-list-opt-on {
+  border-color: var(--primary-color);
+  background: var(--buy-link-bg);
+  color: var(--buy-link-text);
+  font-weight: 600;
+}
+
+.deck-qty {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.deck-qty-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted-text-color);
+}
+
+.deck-stepper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.deck-stepper-btn {
+  width: var(--WCAG-input-size);
+  height: var(--WCAG-input-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border: 1px solid var(--neutral-border-color);
+  border-radius: 8px;
+  background: var(--light-color);
+  color: var(--neutral-text-color);
+  cursor: pointer;
+}
+
+.deck-stepper-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.deck-stepper-value {
+  min-width: 2ch;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Timeout ------------------------------------------------------------- */
+
+.deck-timeout {
+  align-items: center;
+  text-align: center;
+}
+
+.deck-timeout-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* ---- Focus / sheet wrappers ---------------------------------------------- */
+
+.deck-sheet-body,
+.deck-focus-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

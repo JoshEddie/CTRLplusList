@@ -40,7 +40,8 @@ export default function ItemCard({
   counterText: string;
   showOwnerClaimAction: boolean;
   showOwnerManageAction: boolean;
-  onPurchaseClick: () => void;
+  /** Absent only in the non-interactive item-form preview, which renders no claim control. */
+  onPurchaseClick?: () => void;
 }) {
   const viewerClaimed = !isOwner && !!removableClaim;
 
