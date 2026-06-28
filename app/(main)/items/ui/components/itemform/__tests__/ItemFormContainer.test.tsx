@@ -153,7 +153,7 @@ describe('ItemFormContainer', () => {
         screen.getByRole('button', { name: /Need to change something/ })
       );
       expect(screen.getByText('Review anything')).toBeInTheDocument();
-      await user.click(screen.getByRole('button', { name: /Name/ }));
+      await user.click(screen.getByRole('button', { name: /Item name/ }));
       await user.type(screen.getByLabelText('Item name'), 'Nav Item');
       await user.click(screen.getByRole('button', { name: 'Done' }));
       await user.click(

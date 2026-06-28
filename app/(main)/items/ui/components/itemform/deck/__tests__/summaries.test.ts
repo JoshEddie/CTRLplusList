@@ -1,19 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { listsQtySubtext, storesSubtext } from '../summaries';
 import type { ItemViewModel } from '../viewModel';
+import { makeItem } from './test-helpers';
 
 function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
-  return {
-    id: '',
-    name: 'Item',
-    photos: [],
-    photoIndex: 0,
-    description: '',
-    stores: [],
-    lists: [],
-    qty: 1,
-    ...over,
-  };
+  return makeItem({ name: 'Item', photos: [], stores: [], ...over });
 }
 
 describe('summaries', () => {
@@ -53,7 +44,9 @@ describe('summaries', () => {
     it('OneStore_ShowsName', () => {
       expect(
         storesSubtext(
-          vm({ stores: [{ name: 'Etsy', link: 'https://etsy', price: '5.00' }] })
+          vm({
+            stores: [{ name: 'Etsy', link: 'https://etsy', price: '5.00' }],
+          })
         )
       ).toBe('Etsy');
     });

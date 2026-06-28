@@ -54,7 +54,7 @@ describe('Triage', () => {
   it('ClickNameRow_OpensTitleFocus', async () => {
     const user = userEvent.setup();
     const { onFocus } = setup();
-    await user.click(screen.getByRole('button', { name: /Name/ }));
+    await user.click(screen.getByRole('button', { name: /Item name/ }));
     expect(onFocus).toHaveBeenCalledWith('title');
   });
 
@@ -89,7 +89,7 @@ describe('Triage', () => {
   it('ErrorName_NameRowNeedsYou', () => {
     setup({ name: 'a'.repeat(120) });
     expect(
-      screen.getByRole('button', { name: /Name/ })
+      screen.getByRole('button', { name: /Item name/ })
     ).toHaveTextContent('Needs you');
   });
 
@@ -116,9 +116,9 @@ describe('Triage', () => {
 
     it('EmptyName_NameRowShowsNone', () => {
       setup(empty);
-      expect(screen.getByRole('button', { name: /Name/ })).toHaveTextContent(
-        'None'
-      );
+      expect(
+        screen.getByRole('button', { name: /Item name/ })
+      ).toHaveTextContent('None');
     });
 
     it('NoStore_StoreRowNeedsYouNone', () => {

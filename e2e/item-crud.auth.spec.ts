@@ -26,7 +26,7 @@ test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted',
   await expect(page.getByText('Last look')).toBeVisible();
 
   await page.getByRole('button', { name: /Need to change something/ }).click();
-  await page.getByRole('button', { name: /Name/ }).click();
+  await page.getByRole('button', { name: /Item name/ }).click();
   await page.getByLabel('Item name').fill(createdName);
   await page.getByRole('button', { name: 'Done' }).click();
   await page.getByRole('button', { name: /Back to preview/ }).click();
@@ -52,7 +52,7 @@ test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted',
   await expect(page).toHaveURL(/\/items\/[^/?]+\?returnTo=/);
   await expect(page.getByText('Editing')).toBeVisible();
   await page.getByRole('button', { name: /Need to change something/ }).click();
-  await page.getByRole('button', { name: /Name/ }).click();
+  await page.getByRole('button', { name: /Item name/ }).click();
   await page.getByLabel('Item name').fill(renamedName);
   await page.getByRole('button', { name: 'Done' }).click();
   await page.getByRole('button', { name: /Back to preview/ }).click();

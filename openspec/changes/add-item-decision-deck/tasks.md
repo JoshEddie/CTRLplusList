@@ -82,3 +82,12 @@
 - [x] 12.3 `npm run build` — Next production build completes (route types, RSC/client boundaries, bundle)
 - [x] 12.4 `npm run test:coverage` — 2515 tests pass, per-file coverage thresholds met
 - [ ] 12.5 `npm run test:e2e` — _deferred: Playwright e2e requires Docker (localhost Postgres sidecar); specs authored but not executed in this session_
+
+## 13. Name-field copy consistency & autofill safety (D15)
+
+- [x] 13.1 Standardize the user-facing label to **"Item name"**: `Triage.tsx` row "Name" → "Item name"; `IntroCard.tsx` `'Title'` → "Item name" and its "Title is too long" / "Review title for best results" lines reworded to "name"; `FOCUS_LABELS` value → "Item name". The `TitleEditor` field label already reads "Item name" — leave it
+- [x] 13.2 Set `autoComplete="off"` on the name editor's `TextareaField` in `TitleEditor.tsx`; confirm no `name`/`id` of `"name"` reaches the DOM textarea
+- [x] 13.3 Update `lib/data/item.schema.ts` name error strings "Title must be at least 3 characters" / "Title must be less than 100 characters" → "Item name …", matching the `name` field and the visible label
+- [x] 13.4 Rename `FOCUS_TITLES` → `FOCUS_LABELS` in `deck/focus.ts` (it holds labels, not titles); update the two importers (`ItemFormContainer.tsx`, `FocusEditor.tsx`); refresh the stale "'title' reads as 'Name'" comment
+- [x] 13.5 Unit-test: the label reads "Item name" on intro / title card / Triage / Focus; the name input carries `autocomplete="off"`; `item.schema.ts` rejects a 2-char and a 120-char name with an "Item name …" message (also updated `ItemFormContainer.test.tsx` + `item-crud.auth.spec.ts` row selectors to `/Item name/`)
+- [ ] 13.6 _(deferred, separate change)_ Full `title → name` internal rename — `titleTier→nameTier`, `TITLE_MAX→NAME_MAX`, `TitleEditor→NameEditor`, `TitleCard→NameCard`, the `title` deck step / `FocusField` member, and the matching `specs/item-decision-deck` references. Pure hygiene, broad reach; do NOT bundle into this near-complete change — propose on its own for a clean diff (D15)

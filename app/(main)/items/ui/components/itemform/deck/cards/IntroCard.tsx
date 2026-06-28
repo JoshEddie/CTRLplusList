@@ -13,8 +13,8 @@ interface IntroCardProps {
   onContinue: () => void;
   progress?: ReactNode;
 }
-  
-export type titleLine = {title: string, line: string};
+
+export type TitleLine = { title: string; line: string };
 
 // Summarizes what the fetch confirmed (green fields, never bypassed via a global
 // skip) and how much is left. Forward is "Let's go" only (D3, correction #1).
@@ -27,48 +27,48 @@ export function IntroCard({
   progress,
 }: IntroCardProps) {
   const store = item.stores[0];
-  const confirmed: titleLine[] = [];
-  const warning: titleLine[] = [];
-  const error: titleLine[] = [];
+  const confirmed: TitleLine[] = [];
+  const warning: TitleLine[] = [];
+  const error: TitleLine[] = [];
   if (item.photos.length > 0) {
     confirmed.push({
-        title: 'Photos',
-        line: `${item.photos.length} option${item.photos.length === 1 ? '' : 's'} found`
+      title: 'Photos',
+      line: `${item.photos.length} option${item.photos.length === 1 ? '' : 's'} found`,
     });
   }
   if (titleTier(item.name).tier === 'good') {
     confirmed.push({
-      title: 'Title',
-      line: `${item.name}`
+      title: 'Item name',
+      line: `${item.name}`,
     });
   } else if (titleTier(item.name).tier === 'warn') {
     warning.push({
-      title: 'Title',
-      line: 'Review title for best results'
+      title: 'Item name',
+      line: 'Review the name for best results',
     });
   } else {
     error.push({
-      title: 'Title',
-      line: 'Title is too long'
+      title: 'Item name',
+      line: 'Name is too long',
     });
   }
 
   if (store && priceTier(store.price).tier === 'good') {
     confirmed.push({
       title: 'Price',
-      line: `$${store.price.replace(/^\$/, '')}`
+      line: `$${store.price.replace(/^\$/, '')}`,
     });
   } else {
     warning.push({
       title: 'Price',
-      line: 'Unable to find price'
+      line: 'Unable to find price',
     });
   }
 
   if (store?.name && store?.link) {
     confirmed.push({
       title: 'Store',
-      line: `${store.name} • link saved`
+      line: `${store.name} • link saved`,
     });
   }
 
@@ -88,9 +88,9 @@ export function IntroCard({
     >
       {hasSummary && (
         <div className="deck-intro-confirmed">
-          <DeckRow variant="check" titleLine={confirmed} />
-          <DeckRow variant="warning" titleLine={warning} />
-          <DeckRow variant="error" titleLine={error} />
+          <DeckRow variant="check" rows={confirmed} />
+          <DeckRow variant="warning" rows={warning} />
+          <DeckRow variant="error" rows={error} />
         </div>
       )}
       <p className="deck-intro-count">

@@ -5,18 +5,10 @@ import { NoteEditor } from './editors/NoteEditor';
 import { PhotoEditor } from './editors/PhotoEditor';
 import { PriceEditor } from './editors/PriceEditor';
 import { TitleEditor } from './editors/TitleEditor';
+import { FOCUS_LABELS, type FocusField } from './focus';
 import type { ItemActions } from './useItemActions';
 import { DESCRIPTION_MAX, priceTier, titleTier } from './utils';
 import type { ItemViewModel } from './viewModel';
-
-export type FocusField = 'photo' | 'title' | 'price' | 'note';
-
-const TITLES: Record<FocusField, string> = {
-  photo: 'Photo',
-  title: 'Name',
-  price: 'Price',
-  note: 'Note',
-};
 
 interface FocusEditorProps {
   field: FocusField;
@@ -71,13 +63,16 @@ export function FocusEditor({
   } else {
     blocked = item.description.length > DESCRIPTION_MAX;
     body = (
-      <NoteEditor description={item.description} onChange={actions.setDescription} />
+      <NoteEditor
+        description={item.description}
+        onChange={actions.setDescription}
+      />
     );
   }
 
   return (
     <div className="deck-focus">
-      <h2 className="deck-focus-title">{TITLES[field]}</h2>
+      <h2 className="deck-focus-title">{FOCUS_LABELS[field]}</h2>
       <div className="deck-focus-body">{body}</div>
       <Button variant="primary" onClick={onDone} disabled={blocked}>
         Done

@@ -111,6 +111,27 @@ The name SHALL be capped at 100 characters and the description at 100 characters
 - **WHEN** an item with a 100-character description is displayed in the Preview card and on a list
 - **THEN** the full description SHALL be visible with no ellipsis or line clamp, without stretching neighbouring cards beyond the shared height budget
 
+### Requirement: The name field SHALL be labeled "Item name" everywhere and SHALL NOT trigger personal-name autofill
+
+The field that holds the item's `name` SHALL carry the user-facing label **"Item name"** on every surface that names it — the deck `intro` confirmed-summary line, the title card, the Triage row, and the Focus editor heading — matching the label the editor's own field already uses. No surface SHALL present this field as the bare word "Name" or as "Title", so the same field is never given a different name on a different screen. The validation copy in `item.schema.ts` SHALL likewise refer to "Item name" (replacing the legacy "Title must be…" strings), matching the `name` field it guards.
+
+The name input SHALL be rendered so the browser does not offer the signed-in person's given/family name as an autofill candidate: it SHALL set `autoComplete="off"` and SHALL NOT expose a DOM `name`/`id` of `"name"`. This requirement governs the **visible copy and DOM input attributes only**; the persisted column, the schema field, and the view-model property remain `name`, and the internal step/tier/editor identifiers (the `title` step, `titleTier`, `TitleEditor`) are an implementation detail outside its scope.
+
+#### Scenario: The name field reads "Item name" on every surface
+
+- **WHEN** one item flows through the intro summary, the title card, the Triage row, and the Focus editor
+- **THEN** each surface SHALL label the field "Item name" — never "Name" or "Title"
+
+#### Scenario: The name input does not offer personal-name autofill
+
+- **WHEN** the name editor is rendered
+- **THEN** its input SHALL carry `autocomplete="off"` and SHALL NOT expose a `name`/`id` of `"name"`, so the browser does not suggest the user's own name
+
+#### Scenario: Validation copy names the field "Item name"
+
+- **WHEN** a create/edit submission carries a name shorter than 3 or longer than 100 characters
+- **THEN** the field-level error SHALL refer to "Item name" rather than "Title"
+
 ### Requirement: The price SHALL be required with a link to the source page, never silently zero
 
 The `price` card SHALL NOT offer a "Skip" affordance. Its primary continue affordance SHALL be disabled until a non-empty numeric price is entered. The card SHALL show a `link`-variant affordance to open the pasted/store product page in a new tab so the user can check a price that was not pulled. An empty price SHALL never be persisted as `$0.00`; a store row carrying a name and link SHALL require a numeric price per `item-store-links`.

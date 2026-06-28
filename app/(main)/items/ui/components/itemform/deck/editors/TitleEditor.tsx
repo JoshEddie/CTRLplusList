@@ -42,6 +42,7 @@ export function TitleEditor({
         disabled={disabled}
         rows={2}
         placeholder="What is it?"
+        autoComplete="off"
       />
 
       <div className="deck-title-meta">

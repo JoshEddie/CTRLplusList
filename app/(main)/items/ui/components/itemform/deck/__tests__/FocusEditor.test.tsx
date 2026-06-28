@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { FocusEditor, type FocusField } from '../FocusEditor';
+import { FocusEditor } from '../FocusEditor';
+import type { FocusField } from '../focus';
 import { makeItem, mockActions } from './test-helpers';
 
 function setup(field: FocusField, over = {}, productUrl = 'https://shop/p') {
@@ -62,7 +63,9 @@ describe('FocusEditor', () => {
     it('NoProductUrl_UsesStoreLinkForSource', () => {
       setup(
         'price',
-        { stores: [{ name: 'Lodge', link: 'https://store.test/p', price: '' }] },
+        {
+          stores: [{ name: 'Lodge', link: 'https://store.test/p', price: '' }],
+        },
         ''
       );
       expect(
@@ -90,9 +93,7 @@ describe('FocusEditor', () => {
     it('Render_EnablesDone-ShowsStage', () => {
       setup('photo');
       expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled();
-      expect(
-        screen.getByAltText('Selected product image')
-      ).toBeInTheDocument();
+      expect(screen.getByAltText('Selected product image')).toBeInTheDocument();
     });
   });
 });

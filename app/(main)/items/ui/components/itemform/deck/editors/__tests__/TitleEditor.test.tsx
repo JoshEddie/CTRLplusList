@@ -55,6 +55,15 @@ describe('TitleEditor', () => {
       await user.type(screen.getByLabelText('Item name'), 'x');
       expect(onNameChange).toHaveBeenCalledWith('x');
     });
+
+    it('NameInput_OptsOutOfAutofill', () => {
+      // autocomplete="off" + no name/id of "name" so the browser doesn't offer
+      // the signed-in person's first name for the item's name.
+      setup('Cast Iron Skillet');
+      const input = screen.getByLabelText('Item name');
+      expect(input).toHaveAttribute('autocomplete', 'off');
+      expect(input).not.toHaveAttribute('name', 'name');
+    });
   });
 
   describe('WarnTitle', () => {

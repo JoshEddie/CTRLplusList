@@ -3,6 +3,7 @@
 
 import { Button } from '@/app/ui/components/button';
 import { TextField } from '@/app/ui/components/field';
+import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 import { useState } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { isValidProductUrl } from '../../utils';
@@ -30,6 +31,7 @@ export function PhotoEditor({
   const hasPhotos = photos.length > 0;
   const activeUrl = photos[photoIndex];
   const canCycle = photos.length > 1;
+  const atCap = photos.length >= MAX_IMAGE_CANDIDATES;
 
   const cycle = (delta: number) => {
     const pos = photoIndex >= 0 && photoIndex < photos.length ? photoIndex : 0;
@@ -64,7 +66,9 @@ export function PhotoEditor({
               </button>
             )}
             <div className="deck-photo-frame">
-              {activeUrl && <img src={activeUrl} alt="Selected product image" />}
+              {activeUrl && (
+                <img src={activeUrl} alt="Selected product image" />
+              )}
             </div>
             {canCycle && (
               <button
@@ -108,26 +112,34 @@ export function PhotoEditor({
       )}
 
       <div className="deck-photo-add">
-        <TextField
-          type="url"
-          label="Add an image by URL"
-          value={draftUrl}
-          error={addError || undefined}
-          onChange={(e) => {
-            setDraftUrl(e.target.value);
-            setAddError('');
-          }}
-          disabled={disabled}
-          placeholder="https://example.com/image.jpg"
-          autoComplete="off"
-        />
-        <Button
-          variant="secondary"
-          onClick={addPhoto}
-          disabled={disabled || !draftUrl.trim()}
-        >
-          Add image
-        </Button>
+        {atCap ? (
+          <p className="deck-photo-empty">
+            You&apos;ve added the maximum of {MAX_IMAGE_CANDIDATES} images.
+          </p>
+        ) : (
+          <>
+            <TextField
+              type="url"
+              label="Add an image by URL"
+              value={draftUrl}
+              error={addError || undefined}
+              onChange={(e) => {
+                setDraftUrl(e.target.value);
+                setAddError('');
+              }}
+              disabled={disabled}
+              placeholder="https://example.com/image.jpg"
+              autoComplete="off"
+            />
+            <Button
+              variant="secondary"
+              onClick={addPhoto}
+              disabled={disabled || !draftUrl.trim()}
+            >
+              Add image
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );

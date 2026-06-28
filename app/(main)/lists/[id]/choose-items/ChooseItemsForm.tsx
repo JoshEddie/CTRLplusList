@@ -162,7 +162,6 @@ export default function ChooseItemsForm({
       <div className="choose-items-pg-hd">
         <LinkButton
           href={isNew ? '/lists' : `/lists/${list_id}`}
-          // className="choose-items-back"
           variant="secondary"
         >
           <FaArrowLeftLong />

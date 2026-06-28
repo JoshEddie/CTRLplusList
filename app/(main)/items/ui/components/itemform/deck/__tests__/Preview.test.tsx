@@ -2,38 +2,17 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Preview } from '../Preview';
-import type { ItemActions } from '../useItemActions';
 import type { ItemViewModel } from '../viewModel';
-
-function mockActions(): ItemActions {
-  return {
-    setName: vi.fn(),
-    setDescription: vi.fn(),
-    selectPhoto: vi.fn(),
-    addPhoto: vi.fn(),
-    setStore: vi.fn(),
-    addStore: vi.fn(),
-    removeStore: vi.fn(),
-    setLists: vi.fn(),
-    setQty: vi.fn(),
-  };
-}
+import { makeItem, mockActions } from './test-helpers';
 
 function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
-  return {
-    id: '',
-    name: 'Cast Iron Skillet',
-    photos: ['https://img/a.jpg'],
-    photoIndex: 0,
-    description: '',
-    stores: [{ name: 'Lodge', link: 'https://lodge', price: '29.99' }],
-    lists: [],
-    qty: 1,
-    ...over,
-  };
+  return makeItem(over);
 }
 
-function setup(over: Partial<ItemViewModel> = {}, props: Partial<Parameters<typeof Preview>[0]> = {}) {
+function setup(
+  over: Partial<ItemViewModel> = {},
+  props: Partial<Parameters<typeof Preview>[0]> = {}
+) {
   const actions = mockActions();
   const handlers = {
     onSubmit: vi.fn(),
@@ -122,14 +101,18 @@ describe('Preview', () => {
     it('OverMax_DisablesCreate-ShowsTrimAffordance', async () => {
       const user = userEvent.setup();
       const { actions } = setup({ name: 'a'.repeat(120) });
-      expect(screen.getByRole('button', { name: 'Create item' })).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'Create item' })
+      ).toBeDisabled();
       await user.click(screen.getByRole('button', { name: /Tap to use/ }));
       expect(actions.setName).toHaveBeenCalledWith('a'.repeat(50));
     });
 
     it('Empty_DisablesCreate-ShowsNeedsNameLine', () => {
       setup({ name: '' });
-      expect(screen.getByRole('button', { name: 'Create item' })).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'Create item' })
+      ).toBeDisabled();
       expect(screen.getByText('An item needs a name.')).toBeInTheDocument();
     });
   });
@@ -137,7 +120,9 @@ describe('Preview', () => {
   describe('OverCapDescription', () => {
     it('GoodNameButLongDescription_DisablesCreate-ShowsTrimLine', () => {
       setup({ description: 'd'.repeat(150) });
-      expect(screen.getByRole('button', { name: 'Create item' })).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'Create item' })
+      ).toBeDisabled();
       expect(
         screen.getByText(/over the 100-character limit — trim it to save/)
       ).toBeInTheDocument();

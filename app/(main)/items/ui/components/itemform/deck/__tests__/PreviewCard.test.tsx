@@ -2,19 +2,10 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { PreviewCard } from '../PreviewCard';
 import type { ItemViewModel } from '../viewModel';
+import { makeItem } from './test-helpers';
 
 function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
-  return {
-    id: '',
-    name: 'Cast Iron Skillet',
-    photos: ['https://img/a.jpg'],
-    photoIndex: 0,
-    description: '',
-    stores: [{ name: 'Lodge', link: 'https://lodge', price: '29.99' }],
-    lists: [],
-    qty: 1,
-    ...over,
-  };
+  return makeItem(over);
 }
 
 describe('PreviewCard', () => {
@@ -47,7 +38,9 @@ describe('PreviewCard', () => {
   it('StoreWithLinkButNoPrice_OmitsPriceNeverShowsZero', () => {
     render(
       <PreviewCard
-        item={vm({ stores: [{ name: 'Lodge', link: 'https://lodge', price: '' }] })}
+        item={vm({
+          stores: [{ name: 'Lodge', link: 'https://lodge', price: '' }],
+        })}
       />
     );
     // A name+link store with no price is not yet valid — the card must omit it
@@ -60,7 +53,9 @@ describe('PreviewCard', () => {
   it('StoreWithExplicitZeroPrice_ShowsZero', () => {
     render(
       <PreviewCard
-        item={vm({ stores: [{ name: 'Freebie', link: 'https://free', price: '0.00' }] })}
+        item={vm({
+          stores: [{ name: 'Freebie', link: 'https://free', price: '0.00' }],
+        })}
       />
     );
     // A deliberately-entered $0.00 is a real price and renders as such.

@@ -8,7 +8,8 @@ import { useMemo, useRef, useState } from 'react';
 import DeleteItemButton from '../DeleteItemButton';
 import { Deck } from './deck/Deck';
 import './deck/deck.css';
-import { FocusEditor, type FocusField } from './deck/FocusEditor';
+import { FocusEditor } from './deck/FocusEditor';
+import { FOCUS_LABELS, type FocusField } from './deck/focus';
 import { Preview } from './deck/Preview';
 import { ListsQtySheet } from './deck/sheets/ListsQtySheet';
 import { StoresSheet } from './deck/sheets/StoresSheet';
@@ -26,13 +27,7 @@ import {
 import { FetchingStep } from './FetchingStep';
 import { UrlEntryStep } from './UrlEntryStep';
 
-type Screen =
-  | 'start'
-  | 'fetching'
-  | 'deck'
-  | 'preview'
-  | 'triage'
-  | 'timeout';
+type Screen = 'start' | 'fetching' | 'deck' | 'preview' | 'triage' | 'timeout';
 type Sheet = 'stores' | 'lists';
 
 type EditItem = ItemTable & {
@@ -47,8 +42,7 @@ function shellTitle(
   focus: FocusField | null,
   isEditing: boolean
 ): string {
-  if (focus === 'title') return 'Name';
-  if (focus) return focus.charAt(0).toUpperCase() + focus.slice(1);
+  if (focus) return FOCUS_LABELS[focus];
   if (sheet === 'stores') return 'Store links';
   if (sheet === 'lists') return 'Lists & quantity';
   if (screen === 'triage') return 'Review';

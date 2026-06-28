@@ -1,4 +1,4 @@
-const MAX_IMAGE_CANDIDATES = 10;
+import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 
 /**
  * Cheap string-level pre-check before a URL is handed to Zyte — rejects the

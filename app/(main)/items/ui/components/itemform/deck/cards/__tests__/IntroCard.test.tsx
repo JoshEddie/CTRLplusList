@@ -52,7 +52,7 @@ describe('IntroCard', () => {
       photos: [],
       stores: [{ name: '', link: '', price: '' }],
     });
-    expect(screen.getByText('Title is too long')).toBeInTheDocument();
+    expect(screen.getByText('Name is too long')).toBeInTheDocument();
     expect(screen.getByText('Unable to find price')).toBeInTheDocument();
   });
 

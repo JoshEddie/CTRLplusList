@@ -4,14 +4,20 @@ export function buttonClasses({
   variant,
   size = 'md',
   width,
-  extra
+  extra,
 }: {
   variant: ButtonVariant;
   size?: ButtonSize;
-  width?: ButtonWidth
+  width?: ButtonWidth;
   extra?: string;
 }): string {
-  return ['btn', variant, size === 'sm' && 'btn-sm', extra, width]
+  return [
+    'btn',
+    variant,
+    size === 'sm' && 'btn-sm',
+    extra,
+    width === 'full' && 'full',
+  ]
     .filter(Boolean)
     .join(' ');
 }

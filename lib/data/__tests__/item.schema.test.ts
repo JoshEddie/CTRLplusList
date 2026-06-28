@@ -48,14 +48,22 @@ describe('ItemSchema', () => {
       ).toBe(true);
     });
 
-    it('OverCap_Rejects', () => {
-      expect(
-        ItemSchema.safeParse({ ...base, name: 'n'.repeat(101) }).success
-      ).toBe(false);
+    it('OverCap_RejectsWithItemNameMessage', () => {
+      const result = ItemSchema.safeParse({ ...base, name: 'n'.repeat(101) });
+      expect(result.success).toBe(false);
+      const issue = !result.success && result.error.issues[0];
+      expect(issue && issue.message).toBe(
+        'Item name must be less than 100 characters'
+      );
     });
 
-    it('UnderMin_Rejects', () => {
-      expect(ItemSchema.safeParse({ ...base, name: 'ab' }).success).toBe(false);
+    it('UnderMin_RejectsWithItemNameMessage', () => {
+      const result = ItemSchema.safeParse({ ...base, name: 'ab' });
+      expect(result.success).toBe(false);
+      const issue = !result.success && result.error.issues[0];
+      expect(issue && issue.message).toBe(
+        'Item name must be at least 3 characters'
+      );
     });
   });
 });

@@ -1,5 +1,6 @@
 'use client';
 
+import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 import type { OptionType } from '@/lib/types';
 import type { Dispatch, SetStateAction } from 'react';
 import { useMemo } from 'react';
@@ -19,11 +20,15 @@ export function useItemActions(setItem: SetItem) {
       selectPhoto: (photoIndex: number) =>
         setItem((p) => ({ ...p, photoIndex })),
       addPhoto: (url: string) =>
-        setItem((p) => ({
-          ...p,
-          photos: [...p.photos, url],
-          photoIndex: p.photos.length,
-        })),
+        setItem((p) =>
+          p.photos.length >= MAX_IMAGE_CANDIDATES
+            ? p
+            : {
+                ...p,
+                photos: [...p.photos, url],
+                photoIndex: p.photos.length,
+              }
+        ),
       setStore: (
         index: number,
         field: 'name' | 'link' | 'price',

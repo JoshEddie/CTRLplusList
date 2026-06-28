@@ -1,19 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { neededSteps } from '../neededSteps';
 import type { ItemViewModel } from '../viewModel';
+import { makeItem } from './test-helpers';
 
 function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
-  return {
-    id: '',
-    name: 'Cast Iron Skillet',
+  return makeItem({
     photos: ['https://a', 'https://b'],
-    photoIndex: 0,
-    description: '',
     stores: [{ name: 'shop', link: 'https://shop', price: '29.99' }],
-    lists: [],
-    qty: 1,
     ...over,
-  };
+  });
 }
 
 describe('neededSteps', () => {

@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { PhotoEditor } from '../PhotoEditor';
+import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 
 // The pool reaching PhotoEditor is already pruned upstream (prunePhotos at
 // fetch time), so this only tests presentation/selection of what it's given.
@@ -188,6 +189,34 @@ describe('PhotoEditor', () => {
       await user.click(screen.getByRole('button', { name: 'Add image' }));
       expect(screen.getByText(/valid image URL/i)).toBeInTheDocument();
       expect(onAddPhoto).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('AtCap', () => {
+    it('Render_ShowsCapMessage-HidesAddField', () => {
+      const full = Array.from(
+        { length: MAX_IMAGE_CANDIDATES },
+        (_, i) => `https://img/${i}.jpg`
+      );
+      render(
+        <PhotoEditor
+          photos={full}
+          photoIndex={0}
+          onSelect={vi.fn()}
+          onAddPhoto={vi.fn()}
+        />
+      );
+      expect(
+        screen.getByText(
+          new RegExp(`maximum of ${MAX_IMAGE_CANDIDATES} images`, 'i')
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText('Add an image by URL')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Add image' })
+      ).not.toBeInTheDocument();
     });
   });
 });

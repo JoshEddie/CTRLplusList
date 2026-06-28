@@ -34,7 +34,9 @@ describe('buttonClasses', () => {
 
   describe('FalsyExtra', () => {
     it('ExtraEmptyString_ElidesNoTrailingSpace', () => {
-      expect(buttonClasses({ variant: 'primary', extra: '' })).toBe('btn primary');
+      expect(buttonClasses({ variant: 'primary', extra: '' })).toBe(
+        'btn primary'
+      );
     });
     it('ExtraUndefined_Elides', () => {
       expect(buttonClasses({ variant: 'primary', extra: undefined })).toBe(
@@ -48,6 +50,29 @@ describe('buttonClasses', () => {
       expect(
         buttonClasses({ variant: 'primary', size: 'sm', extra: 'page-action' })
       ).toBe('btn primary btn-sm page-action');
+    });
+  });
+
+  describe('WidthAxis', () => {
+    it('WidthFull_AppendsFullAsLastEntry', () => {
+      expect(buttonClasses({ variant: 'primary', width: 'full' })).toBe(
+        'btn primary full'
+      );
+    });
+    it('WidthAuto_EmitsNoModifierClass', () => {
+      expect(buttonClasses({ variant: 'primary', width: 'auto' })).toBe(
+        'btn primary'
+      );
+    });
+    it('WidthOmitted_EmitsNoModifierClass', () => {
+      expect(buttonClasses({ variant: 'primary' })).toBe('btn primary');
+    });
+    // The 44px floor lives on `.btn` (button.css min-height), so the width axis
+    // is independent of it: a full-width button keeps `btn` and its size class.
+    it('WidthFullWithSizeSm_KeepsBtnAndSizeClass', () => {
+      expect(
+        buttonClasses({ variant: 'primary', size: 'sm', width: 'full' })
+      ).toBe('btn primary btn-sm full');
     });
   });
 

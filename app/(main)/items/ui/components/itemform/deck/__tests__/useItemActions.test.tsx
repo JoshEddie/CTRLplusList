@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { useItemActions } from '../useItemActions';
 import { blankItem, seedFromFetch, type ItemViewModel } from '../viewModel';
+import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 import type { ProductData } from '@/lib/product-fetch/types';
 
 function useHarness(initial: ItemViewModel) {
@@ -48,6 +49,19 @@ describe('useItemActions', () => {
     act(() => result.current.actions.addPhoto('https://b'));
     expect(result.current.item.photos).toEqual(['a', 'https://b']);
     expect(result.current.item.photoIndex).toBe(1);
+  });
+
+  it('AddPhoto_NoOpsAtCap', () => {
+    const photos = Array.from(
+      { length: MAX_IMAGE_CANDIDATES },
+      (_, i) => `https://${i}`
+    );
+    const { result } = renderHook(() =>
+      useHarness({ ...blankItem(), photos, photoIndex: 0 })
+    );
+    act(() => result.current.actions.addPhoto('https://overflow'));
+    expect(result.current.item.photos).toEqual(photos);
+    expect(result.current.item.photoIndex).toBe(0);
   });
 
   it('SetStorePrice_UpdatesPrice-DropsProvenance', () => {

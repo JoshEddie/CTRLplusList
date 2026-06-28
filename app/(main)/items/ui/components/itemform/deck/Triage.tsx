@@ -7,7 +7,7 @@ import {
   FaTriangleExclamation,
 } from 'react-icons/fa6';
 import { isValidStore } from '../../utils';
-import type { FocusField } from './FocusEditor';
+import type { FocusField } from './focus';
 import { DESCRIPTION_MAX, priceTier, titleTier, type Tier } from './utils';
 import type { ItemViewModel } from './viewModel';
 
@@ -79,7 +79,7 @@ export function Triage({ item, onBack, onFocus, onOpenStores }: TriageProps) {
           onClick={() => onFocus('photo')}
         />
         <TriageRow
-          label="Name"
+          label="Item name"
           value={item.name || 'None'}
           tier={nameTier.tier}
           onClick={() => onFocus('title')}
@@ -92,7 +92,9 @@ export function Triage({ item, onBack, onFocus, onOpenStores }: TriageProps) {
         />
         <TriageRow
           label="Price"
-          value={store?.price ? `$${store.price.replace(/^\$/, '')}` : 'Not set'}
+          value={
+            store?.price ? `$${store.price.replace(/^\$/, '')}` : 'Not set'
+          }
           provenance={store?.price_fetched_at ? 'from fetch' : undefined}
           tier={priceT.tier}
           onClick={() => onFocus('price')}
