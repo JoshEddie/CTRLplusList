@@ -30,6 +30,13 @@ context: |
     `user.session.ts`). See `openspec/specs/data-layer-organization`.
   - Drizzle schema in `db/schema.ts`
 
+  # Read-first docs
+  Before writing artifacts that touch these areas, read the repo doc
+  that owns the rules: tests -> `TESTING.md` (assertion bar, forbidden
+  patterns, naming); DB/schema/migrations -> `DATABASE.md` (driver
+  limits, migration workflow); everything else -> `CLAUDE.md` (hard
+  rules digest, file-size bands, comment and abstraction policy).
+
   # Spec authority
   Active specs in `openspec/specs/<capability>/spec.md` are the
   authoritative normative contract. Archived changes under
@@ -97,7 +104,8 @@ rules:
       (conventionally the final numbered section, e.g. "## N. Pre-
       merge") with explicit, separately-checkable tasks for ALL FIVE
       of the following gates passing clean:
-        - `npm run lint` (eslint — zero errors, zero warnings)
+        - `npm run lint` (eslint + spec-purpose gate — zero errors,
+          zero warnings)
         - `npx tsc --noEmit` (typescript — zero errors)
         - `npm run build` (next build — completes successfully,
           including type-check and production bundle)
