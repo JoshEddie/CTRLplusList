@@ -1,6 +1,6 @@
 ---
-name: 'OPSX: Explore'
-description: 'Enter explore mode - think through ideas, investigate problems, clarify requirements'
+name: "OPSX: Explore"
+description: "Enter explore mode - think through ideas, investigate problems, clarify requirements"
 category: Workflow
 tags: [workflow, explore, experimental, thinking]
 ---
@@ -11,8 +11,9 @@ Enter explore mode. Think deeply. Visualize freely. Follow the conversation wher
 
 **This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.
 
-**Input**: The argument after `/opsx:explore` is whatever the user wants to think about. Could be:
+**Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
 
+**Input**: The argument after `/opsx:explore` is whatever the user wants to think about. Could be:
 - A vague idea: "real-time collaboration"
 - A specific problem: "the auth system is getting unwieldy"
 - A change name: "add-dark-mode" (to explore in context of that change)
@@ -37,28 +38,24 @@ Enter explore mode. Think deeply. Visualize freely. Follow the conversation wher
 Depending on what the user brings, you might:
 
 **Explore the problem space**
-
 - Ask clarifying questions that emerge from what they said
 - Challenge assumptions
 - Reframe the problem
 - Find analogies
 
 **Investigate the codebase**
-
 - Map existing architecture relevant to the discussion
 - Find integration points
 - Identify patterns already in use
 - Surface hidden complexity
 
 **Compare options**
-
 - Brainstorm multiple approaches
 - Build comparison tables
 - Sketch tradeoffs
 - Recommend a path (if asked)
 
 **Visualize**
-
 ```
 ┌─────────────────────────────────────────┐
 │     Use ASCII diagrams liberally        │
@@ -77,7 +74,6 @@ Depending on what the user brings, you might:
 ```
 
 **Surface risks and unknowns**
-
 - Identify what could go wrong
 - Find gaps in understanding
 - Suggest spikes or investigations
@@ -91,13 +87,11 @@ You have full context of the OpenSpec system. Use it naturally, don't force it.
 ### Check for context
 
 At the start, quickly check what exists:
-
 ```bash
 openspec list --json
 ```
 
 This tells you:
-
 - If there are active changes
 - Their names, schemas, and status
 - What the user might be working on
@@ -115,11 +109,10 @@ Think freely. When insights crystallize, you might offer:
 
 If the user mentions a change or you detect one is relevant:
 
-1. **Read existing artifacts for context**
-   - `openspec/changes/<name>/proposal.md`
-   - `openspec/changes/<name>/design.md`
-   - `openspec/changes/<name>/tasks.md`
-   - etc.
+1. **Resolve and read existing artifacts for context**
+   - Run `openspec status --change "<name>" --json`.
+   - Use `changeRoot`, `artifactPaths`, and `actionContext` from the status JSON.
+   - Read existing files from `artifactPaths.<artifact>.existingOutputPaths`.
 
 2. **Reference them naturally in conversation**
    - "Your design mentions using Redis, but we just realized SQLite fits better..."
@@ -127,14 +120,14 @@ If the user mentions a change or you detect one is relevant:
 
 3. **Offer to capture when decisions are made**
 
-   | Insight Type               | Where to Capture             |
-   | -------------------------- | ---------------------------- |
-   | New requirement discovered | `specs/<capability>/spec.md` |
-   | Requirement changed        | `specs/<capability>/spec.md` |
-   | Design decision made       | `design.md`                  |
-   | Scope changed              | `proposal.md`                |
-   | New work identified        | `tasks.md`                   |
-   | Assumption invalidated     | Relevant artifact            |
+    | Insight Type               | Where to Capture               |
+    |----------------------------|--------------------------------|
+    | New requirement discovered | `specs/<capability>/spec.md` |
+    | Requirement changed        | `specs/<capability>/spec.md` |
+    | Design decision made       | `design.md`                  |
+    | Scope changed              | `proposal.md`                |
+    | New work identified        | `tasks.md`                   |
+    | Assumption invalidated     | Relevant artifact              |
 
    Example offers:
    - "That's a design decision. Capture it in design.md?"
