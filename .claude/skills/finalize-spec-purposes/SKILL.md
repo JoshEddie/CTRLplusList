@@ -8,7 +8,7 @@ metadata:
 
 # /finalize-spec-purposes
 
-The upstream OpenSpec archive/sync workflow stubs `TBD - created by archiving change <X>. Update Purpose after archive.` onto every capability spec it creates — it never writes a real Purpose. This skill is the repo's post-archive step that repairs those stubs. It pairs with the lint gate in [scripts/check-spec-purposes.mjs](../../../scripts/check-spec-purposes.mjs): the gate blocks any TBD stub not grandfathered in its `KNOWN_TBD` baseline, and this skill ratchets that baseline down as it backfills.
+The upstream OpenSpec archive/sync workflow stubs `TBD - created by archiving change <X>. Update Purpose after archive.` onto every capability spec it creates — it never writes a real Purpose. This skill is the repo's post-archive step that repairs those stubs. It pairs with the advisory verifier in [scripts/check-spec-purposes.mjs](../../../scripts/check-spec-purposes.mjs) (run via `npm run check:specs` — deliberately not a merge gate; see `openspec/specs/spec-hygiene`): the verifier flags any TBD stub not grandfathered in its `KNOWN_TBD` baseline, and this skill ratchets that baseline down as it backfills.
 
 Project flow: `/opsx:propose` → `/opsx:apply` → `/opsx:archive` → **this skill**.
 
@@ -41,7 +41,7 @@ Project flow: `/opsx:propose` → `/opsx:apply` → `/opsx:archive` → **this s
 5. **Write and ratchet**
 
    - Replace each stub with its approved Purpose (touch nothing else in the file).
-   - Remove each backfilled capability from the `KNOWN_TBD` set in [scripts/check-spec-purposes.mjs](../../../scripts/check-spec-purposes.mjs) — the gate errors on stale entries, so skipping this fails `npm run lint`.
+   - Remove each backfilled capability from the `KNOWN_TBD` set in [scripts/check-spec-purposes.mjs](../../../scripts/check-spec-purposes.mjs) — the verifier errors on stale entries, so skipping this fails `npm run check:specs`.
 
 6. **Verify**
 
@@ -50,7 +50,7 @@ Project flow: `/opsx:propose` → `/opsx:apply` → `/opsx:archive` → **this s
    npx -y @fission-ai/openspec@latest validate --strict
    ```
 
-   Both must pass. If the openspec CLI is unreachable (offline), the purpose check alone is the required gate.
+   Both must pass. If the openspec CLI is unreachable (offline), the purpose check alone is the required verification.
 
 **Guardrails**
 
