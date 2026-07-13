@@ -1,12 +1,51 @@
 # Claude notes
 
-## Adding or modifying tests? Read [TESTING.md](TESTING.md) first
+## Hard rules at a glance
 
-Substance rules, forbidden patterns (tautologies, execute-for-coverage, snapshot-only), and the assertion bar all live there. Applies to every test in the repo.
+Non-negotiables; each links to its full text.
 
-## Touching DB queries or schema? Read [DATABASE.md](DATABASE.md) first
+- **No interactive DB transactions** — no `db.transaction(...)`, no `SELECT … FOR UPDATE`; the `neon-http` driver runs every query as its own HTTP round-trip. Backstop atomicity with unique / partial-unique indexes and `ON CONFLICT`. ([DATABASE.md](DATABASE.md))
+- **No comments by default** — only a non-obvious WHY earns one. (§ Comments)
+- **File size** — >400 lines of code is a merge-blocking lint error, 300–400 the only tolerated lint warning; never `eslint-disable` either rule. (§ File size)
+- **Tests assert observable behavior** — no execute-for-coverage, no tautologies; names are lint-enforced as `<StateUnderTest>_<ExpectedBehavior>`. ([TESTING.md](TESTING.md))
+- **Every `/* v8 ignore */` carries an inline `--` rationale** naming the unreachable branch; never valid on a redundant guard. ([TESTING.md](TESTING.md))
+- **Five gates, checked separately**: `npm run lint` (pure `eslint .` — zero errors, zero non-size warnings) · `npx tsc --noEmit` · `npm run build` · `npm run test:coverage` · `npm run test:e2e`. Trunk landings run lint + typecheck locally pre-push; CI on the `dev` push runs the full battery. (§ Trunk workflow)
+- **Skills never `git commit`** — stage, report, stop for the owner's signature; never retry a blocked signature. One change at a time on `dev`. (§ Trunk workflow)
+- **Specs are the contract** — `openspec/specs/<capability>/spec.md` is normative; archived changes are history. Every interactive surface routes through a primitive-family spec; no page-scoped one-off UI classes.
+- **Restart the dev server after seeding/reseeding** — `'use cache'` DAL results stay stale otherwise. (§ Local dev)
 
-Key tripwire: the DB layer uses `drizzle-orm/neon-http`. **Interactive transactions are not supported** — no `db.transaction(...)`, no `SELECT … FOR UPDATE`. Full rationale, migration workflow, and driver caveats live in DATABASE.md.
+## Read this before touching that
+
+| Touching… | Read first |
+| --- | --- |
+| Any test | [TESTING.md](TESTING.md) — substance rules, forbidden patterns, fixtures, naming |
+| DB queries, DAL, schema, migrations | [DATABASE.md](DATABASE.md) — driver limits, migration workflow |
+| OpenSpec changes or specs | [openspec/config.yaml](openspec/config.yaml) + the capability spec in `openspec/specs/` (see § Trunk workflow) |
+| UI primitives / any interactive surface | The owning primitive-family spec (`button-system`, `menu-system`, …) in `openspec/specs/` |
+
+## Trunk workflow
+
+Work happens directly on `dev`, one OpenSpec change at a time in the working tree, reviewed **before** any commit exists. Per-change PRs are gone; branches+PRs remain the deliberate escape hatch for large, slow features (reviewed via `/spec-review <PR>` exactly as before).
+
+### Change lifecycle
+
+1. **`/start-change <issue#>`** — hard-gates on trunk preconditions (on `dev`, clean tree, up to date with origin — the clean-tree check enforces one-change-at-a-time), reads the issue, routes by label (`IDEA`/`EXPLORE NEEDED` → explore first, distilled outcome written back to the issue body and the label stripped; a non-viable `IDEA` gets a findings comment + `HOLD` label and stops; `HOLD` → surface the hold comment and confirm before re-exploring), then runs `/opsx:propose` seeded from the issue body.
+2. **`/opsx:apply`** — implement the change's tasks in the working tree.
+3. **`/spec-review`** — no-arg reviews the **staged diff** (staged = reviewed baseline, unstaged = current fix round). Persists its report to `openspec/changes/<name>/review.md` with the shared machine-readable header (format: `.claude/skills/spec-review/reference/finding-format.md`).
+4. **`/recheck-review`** — verifies fixed findings against just the fix delta, appending rounds to the persisted report; escalates to a fresh full review when fixes outgrow a recheck (`outgrew recheck`).
+5. **`/land-change`** — state-driven, two phases. **Land:** gates (latest review-round verdict `clear to land`, tasks all `[x]`, `openspec validate --strict`, local lint + typecheck), stage the `issue-<N>:` work commit, hand off for signing, push to `dev`, report the CI run. **Seal:** only after green CI and the owner's click-test of the live dev deployment — archive the change (`review.md` travels with it), stage the `issue-<N>: archive <change>` commit, then after the signed push: `/finalize-spec-purposes`, milestone-assign, `gh issue close`. Red CI / failed live check → fix-forward commits under the same prefix; the change stays active (spec delta still editable) until the seal.
+
+**Skills never run `git commit`** — every commit point is stage → report → stop for the owner's signature; a blocked signature is never retried.
+
+### Release cut
+
+`dev → x.y.x` stays a PR. **`/release-review`** is its sole gate: preflight (release base pattern + milestone), five inline dimensions (milestone completeness, cross-feature interaction risk, migration ordering, OpenSpec state clean, version bump vs milestone title — drafting/staging the bump when missing), CI rollup read, report persisted to `openspec/reviews/<version>.md` (which doubles as the release record). On `ready to cut`, the owner merges. Release-branch → `main` is a plain merge.
+
+### OpenSpec mechanics
+
+`/opsx:propose` opens with a grilling interview — its `rules.proposal` block in [openspec/config.yaml](openspec/config.yaml) points at the repo-owned [grill-me](.claude/skills/grill-me/SKILL.md) skill, so open decisions are put to the owner one at a time before any artifact is drafted (run `/grill-me` standalone to stress-test a plan outside the flow). `/finalize-spec-purposes` (run in `/land-change`'s seal phase) is a repo-owned skill, not part of the generated OpenSpec set: upstream archive/sync stubs `TBD` Purposes onto newly created capability specs, and the skill repairs them (and ratchets down the `KNOWN_TBD` baseline in [scripts/check-spec-purposes.mjs](scripts/check-spec-purposes.mjs), the advisory verifier exposed as `npm run check:specs` — deliberately not a merge gate; see `openspec/specs/spec-hygiene`). Stubs are prevented at authorship time: a delta introducing a new capability must state that capability's Purpose (enforced by `rules.specs` in [openspec/config.yaml](openspec/config.yaml)) so sync/archive writes it instead of a TBD stub.
+
+The `openspec-*` skills and `opsx/*` commands under `.claude/` are generated by the OpenSpec CLI (`openspec update`) — never hand-edit them; edits are clobbered on the next regeneration. This project generates the custom workflow set `propose, explore, apply, sync, archive, continue`.
 
 ## Writing code: 
 
@@ -18,11 +57,13 @@ Don't explain WHAT the code does — well-named identifiers already do that. Don
 
 ### File size (red / yellow / green):
 
-Lint-enforced bands for production source, counted in lines of **code** (comments and blank lines are free): **red** >400 = error — split by table-cohesion/domain before merge; **yellow** 300–400 = warning — pull easy wins where a clean extraction exists, a cohesive file may stay yellow; **green** <300 = goal, never achieved by scattering one concern across files. Yellow size advisories are the only tolerated lint warnings; no `eslint-disable` for either rule. Canonical homes: the rules in [eslint.config.mjs](eslint.config.mjs), the normative text in `openspec/specs/testing-foundation`.
+Lint-enforced bands for production source (`app/**`, `lib/**`, `hooks/**`, `db/**`; test files and `**/__tests__/**` are exempt — `scripts/**` and `e2e/**` sit outside the scoped set entirely), counted in lines of **code** (comments and blank lines are free): **red** >400 = error — split by table-cohesion/domain before merge; **yellow** 300–400 = warning — pull easy wins where a clean extraction exists, a cohesive file may stay yellow; **green** <300 = goal, never achieved by scattering one concern across files. Yellow size advisories are the only tolerated lint warnings; no `eslint-disable` for either rule. Canonical homes: the rules in [eslint.config.mjs](eslint.config.mjs), the normative text in `openspec/specs/testing-foundation`.
 
 ### Abstraction (DRY · KISS · coupling):
 
 #### Duplication (DRY)
+
+**Decision rule** — extract when ANY of: 3+ copies · the unit has structure (branching, a typed factory, a multi-field literal) · a copy could drift silently (still compiles and passes while its meaning diverges). Stay inline only when ALL of: ≤2 copies · 1–2 lines · no structure · divergence fails loudly. The bullets below are the rationale and edge cases behind that rule.
 
 - Extract duplicated, identical-by-design logic into one home on sight — don't ask whether to, the answer is yes.
 - Keep copies apart only when you can name them as different concepts that will change for different reasons; code that merely looks alike is not a duplication to merge.

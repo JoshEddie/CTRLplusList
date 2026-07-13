@@ -30,6 +30,13 @@ context: |
     `user.session.ts`). See `openspec/specs/data-layer-organization`.
   - Drizzle schema in `db/schema.ts`
 
+  # Read-first docs
+  Before writing artifacts that touch these areas, read the repo doc
+  that owns the rules: tests -> `TESTING.md` (assertion bar, forbidden
+  patterns, naming); DB/schema/migrations -> `DATABASE.md` (driver
+  limits, migration workflow); everything else -> `CLAUDE.md` (hard
+  rules digest, file-size bands, comment and abstraction policy).
+
   # Spec authority
   Active specs in `openspec/specs/<capability>/spec.md` are the
   authoritative normative contract. Archived changes under
@@ -62,6 +69,11 @@ context: |
 rules:
   proposal:
     - |
+      Before drafting, run the `grill-me` skill
+      (`.claude/skills/grill-me/SKILL.md`) to reach shared
+      understanding with the owner. Do not draft the proposal or any
+      later artifact until that interview concludes.
+    - |
       Before drafting, enumerate active specs (`openspec list --specs
       --json` or `ls openspec/specs`) and grep EVERY active spec.md
       for any DOM class, component name, file path, or behavior the
@@ -91,6 +103,13 @@ rules:
       in another capability, name the overlap and defer. Cross-
       capability constraints belong in the capability that owns the
       behavior, not the one that owns the DOM region.
+    - |
+      A delta that introduces a NEW capability MUST state the
+      capability's Purpose (1-3 sentences, derived from the
+      proposal's Why and the delta's requirements) so sync/archive
+      writes that Purpose into the created main spec instead of the
+      generated workflow's default TBD stub. Never leave a new
+      capability's Purpose as TBD.
   tasks:
     - |
       Every tasks.md MUST include a pre-merge verification section

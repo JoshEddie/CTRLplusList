@@ -30,7 +30,6 @@ const eslintConfig = [
     ignores: [
       '**/*.test.*',
       '**/__tests__/**',
-      'app/changelog/releases.ts',
     ],
     plugins: { sonarjs },
     rules: {

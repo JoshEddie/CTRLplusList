@@ -83,8 +83,6 @@ export default defineConfig({
         'app/**/index.ts',
         // constant ReactNode table; no executable behavior. See test-form-field-system design D2.
         'app/ui/components/field/field-icons.tsx',
-        // constant release-log data (types + one literal array); no executable behavior.
-        'app/changelog/releases.ts',
         // pure re-export of NextAuth's handlers — a framework barrel with no logic;
         // the bypass/session behavior behind it is covered by lib/auth.ts tests.
         // `*` matches the literal `[...nextauth]` segment, which written directly

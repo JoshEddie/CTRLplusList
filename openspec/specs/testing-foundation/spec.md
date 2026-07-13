@@ -11,25 +11,23 @@ completed at the `test-coverage` program's close-out, when the Tier-1
 foundation rules accumulated across its sub-proposals (per that change's
 design D13) rolled up here. Carve-out bookkeeping (which slice was tested
 when) lives only in the archived sub-proposals.
-
 ## Requirements
-
 ### Requirement: Test suite SHALL exist and SHALL run as a pre-merge gate
 
-The repository SHALL include an automated test suite executed via `npm test`. The `test` command SHALL exit non-zero if any test fails, and the pre-merge gate SHALL block merge on a non-zero exit. The pre-merge gate SHALL consist of four required tasks executed independently: `lint`, `tsc --noEmit`, `build`, and `test`. The `test` gate SHALL be encoded as a required task alongside the existing three in `openspec/config.yaml`'s `tasks` rule, and every `tasks.md` written after this capability is established SHALL include the four-gate pre-merge section with separately-checkable items.
+The repository SHALL include an automated test suite executed via `npm run test:coverage` (vitest with coverage reporting) and `npm run test:e2e` (Playwright). Each command SHALL exit non-zero if any test fails, and the pre-merge gate SHALL block merge on a non-zero exit. The pre-merge gate SHALL consist of five required tasks executed independently: `npm run lint`, `npx tsc --noEmit`, `npm run build`, `npm run test:coverage`, and `npm run test:e2e`. The five gates SHALL be encoded as required tasks in `openspec/config.yaml`'s `tasks` rule, and every `tasks.md` written after this capability is established SHALL include the five-gate pre-merge section with separately-checkable items. The `lint` gate SHALL run `eslint .` alone — spec-hygiene verification is deliberately not part of any pre-merge gate (owned by `spec-hygiene`).
 
 #### Scenario: Failing test blocks merge
 
 - **WHEN** any test in the suite fails on a branch under review
-- **THEN** `npm test` exits non-zero
+- **THEN** `npm run test:coverage` or `npm run test:e2e` exits non-zero
 - **AND** the pre-merge gate fails
-- **AND** the four-gate pre-merge section of the change's `tasks.md` cannot be checked complete
+- **AND** the five-gate pre-merge section of the change's `tasks.md` cannot be checked complete
 
 #### Scenario: Pre-merge tasks are separately checkable
 
 - **WHEN** a contributor writes a new `tasks.md` after the testing-foundation capability is established
-- **THEN** the pre-merge section contains four discrete tasks (one per gate)
-- **AND** partial failure (e.g., test fails but lint passes) is visible in the checklist
+- **THEN** the pre-merge section contains five discrete tasks (one per gate)
+- **AND** partial failure (e.g., a test gate fails but lint passes) is visible in the checklist
 
 ### Requirement: Test files SHALL colocate with source under a consistent layout
 
@@ -121,7 +119,7 @@ Coverage SHALL be measured and enforced per file, not as a layer or repo-wide ag
 
 The `functions: 100%` floor is non-negotiable: an uninvoked exported function is a real test gap, not slop. Dead code SHALL be deleted, not protected by a lower floor.
 
-Files excluded from coverage enforcement (informational only): `*.d.ts`; generated drizzle artifacts under `drizzle/`; `app/sw.ts`; test files themselves and their `__tests__/` siblings (matched by `**/__tests__/**`); barrel `index.ts` re-exports of zero runtime behavior (matched by `app/**/index.ts` — scoped to `app/`, NOT a global `**/index.ts`, which would silently exclude `db/index.ts` and other top-level index modules that carry runtime; every `index.ts` under `app/` is by convention a pure re-export, and the review bar is that it stays one); type-only `**/types.ts`; layout files without branching logic; constant-data modules holding only literal data with no executable behavior (`app/ui/components/field/field-icons.tsx`, `app/changelog/releases.ts`); the NextAuth framework barrel `app/api/auth/[...nextauth]/route.ts` (matched by `app/api/auth/*/route.ts` — a pure re-export of NextAuth's handlers whose behavior is covered via `lib/auth.ts` tests). The app scope of the index-barrel exclude is invariant: a global `**/index.ts` exclude SHALL NOT be introduced.
+Files excluded from coverage enforcement (informational only): `*.d.ts`; generated drizzle artifacts under `drizzle/`; `app/sw.ts`; test files themselves and their `__tests__/` siblings (matched by `**/__tests__/**`); barrel `index.ts` re-exports of zero runtime behavior (matched by `app/**/index.ts` — scoped to `app/`, NOT a global `**/index.ts`, which would silently exclude `db/index.ts` and other top-level index modules that carry runtime; every `index.ts` under `app/` is by convention a pure re-export, and the review bar is that it stays one); type-only `**/types.ts`; layout files without branching logic; constant-data modules holding only literal data with no executable behavior (`app/ui/components/field/field-icons.tsx`); the NextAuth framework barrel `app/api/auth/[...nextauth]/route.ts` (matched by `app/api/auth/*/route.ts` — a pure re-export of NextAuth's handlers whose behavior is covered via `lib/auth.ts` tests). The app scope of the index-barrel exclude is invariant: a global `**/index.ts` exclude SHALL NOT be introduced.
 
 While the parent `test-coverage` change is in flight, the per-file threshold list in `vitest.config.ts` MAY enumerate only files with landed tests (so files in untested carve-outs do not fail the gate they have no opportunity to pass). When the parent `test-coverage` change archives, the per-file enumeration SHALL be removed and the floor SHALL apply universally across `coverage.include` — at that point, every file in `coverage.include` (subject to `coverage.exclude`) is gated against the universal floor.
 
@@ -280,7 +278,7 @@ Production source files SHALL be held to the repo-wide size bands, enforced in `
 - **Yellow — 300–400 lines is a warning.** `sonarjs/max-lines` configured at `['warn', { maximum: 300 }]`. Yellow is advisory: pull easy wins where a clean extraction exists; a cohesive file MAY remain yellow indefinitely.
 - **Green — under 300 lines.** The goal; no diagnostics.
 
-Scope: the rules SHALL apply to production source (`app/**`, `lib/**`, `hooks/**`, `db/**`) and SHALL NOT apply to test files (`**/*.test.*`, `**/__tests__/**`, `test/**`, `e2e/**`), `scripts/**`, or data-literal modules already carved out of coverage (e.g. `app/changelog/releases.ts`). Test-file size remains governed by this capability's structural conventions (one lane per source module), not a line count.
+Scope: the rules SHALL apply to production source (`app/**`, `lib/**`, `hooks/**`, `db/**`) and SHALL NOT apply to test files (`**/*.test.*`, `**/__tests__/**`, `test/**`, `e2e/**`), `scripts/**`, or data-literal modules already carved out of coverage (e.g. `app/ui/components/field/field-icons.tsx`). Test-file size remains governed by this capability's structural conventions (one lane per source module), not a line count.
 
 Gate interaction: the pre-merge "zero warnings" lint bar SHALL be read as zero warnings **outside the yellow band** — yellow size advisories are the single deliberate warning class and do not block merge. Per-file or per-line `eslint-disable` for either size rule SHALL NOT be added.
 
@@ -838,3 +836,4 @@ Continuous integration SHALL run the Playwright e2e suite in two tiers: (1) a **
 - **WHEN** CI runs in a context lacking the Neon API secret (e.g. a fork PR)
 - **THEN** the pre-promote migration gate is skipped rather than failing
 - **AND** the per-PR e2e tier still runs
+
