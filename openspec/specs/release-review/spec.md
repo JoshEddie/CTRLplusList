@@ -1,7 +1,7 @@
 # release-review Specification
 
 ## Purpose
-TBD - created by archiving change adopt-trunk-flow. Update Purpose after archive.
+Defines the sole review gate for `dev → release-branch` PRs: an inline integration review of the release cut as a whole — milestone completeness, cross-feature interaction, migration ordering, OpenSpec state, and version bump — with a persisted per-release report that doubles as the repo's release record.
 ## Requirements
 ### Requirement: Preflight SHALL hard-gate on release base and milestone
 

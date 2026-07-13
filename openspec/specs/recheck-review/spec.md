@@ -1,7 +1,7 @@
 # recheck-review Specification
 
 ## Purpose
-TBD - created by archiving change adopt-trunk-flow. Update Purpose after archive.
+Defines the lightweight verifier that closes the review loop: after a `/spec-review` or `/release-review` produces findings and fixes are made, `/recheck-review` verifies each open `Fix now` finding against just the fix delta — appending rounds to the persisted report instead of re-running a full multi-agent review — and escalates honestly when fixes outgrow a recheck.
 ## Requirements
 ### Requirement: Recheck SHALL be driven by the persisted report header
 

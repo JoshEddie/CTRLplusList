@@ -1,7 +1,7 @@
 # trunk-workflow Specification
 
 ## Purpose
-TBD - created by archiving change adopt-trunk-flow. Update Purpose after archive.
+Defines the change lifecycle on `dev`: how an issue becomes an OpenSpec change (`/start-change`), how a reviewed change lands in two phases — work commit verified on the live dev deployment, then archive commit (`/land-change`) — and the trunk rules that make review-before-commit safe: one change at a time, CI on every dev push, skills never committing, branches reserved as an escape hatch for long-running work.
 ## Requirements
 ### Requirement: /start-change SHALL gate on trunk preconditions and route by issue label
 
