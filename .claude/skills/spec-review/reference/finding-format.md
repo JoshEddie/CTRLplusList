@@ -1,5 +1,59 @@
 # Finding format
 
+## Persisted-report contract
+
+Every persisted review report — `openspec/changes/<name>/review.md` for a
+spec-review, `openspec/reviews/<version>.md` for a release-review — opens with a
+machine-readable header. The header is the contract three independent skills
+share: the review writes round 1, `/recheck-review` appends rounds and computes
+the fix delta from the header, `/land-change` gates on the latest round's verdict.
+
+```yaml
+---
+review: spec-review | release-review
+target: <change-name | milestone/version>
+anchor: <sha the reviewed diff was computed against>
+diff-source: <the exact diff command or PR reference reviewed>
+round: <highest round number in the file>
+---
+```
+
+- `anchor` — for a spec-review, the HEAD sha at review time (the staged baseline);
+  for a release-review, the PR base sha. `/recheck-review` derives its delta from
+  it: spec-review → the unstaged working-tree diff; release-review →
+  `git diff <anchor>..dev`.
+- `round` — updated in the header each time a round is appended; the body keeps
+  every round.
+
+### Round structure
+
+The body is a sequence of numbered round sections, **append-only** — a new round
+never rewrites or deletes a prior one:
+
+```markdown
+## Round <n> — <spec-review | recheck | release-review> (<date>)
+
+<findings table(s), per the finding-table style below>
+
+**Verdict:** <round verdict>
+```
+
+Round 1 is the full review's consolidated report. Recheck rounds list each prior
+open `Fix now` finding with its resolution status (resolved / still open /
+superseded by a new finding) plus any new findings the fix introduced.
+
+### Round-verdict vocabulary
+
+Exactly one per round:
+
+- Change reviews (spec-review / recheck): `clear to land` (no open `Fix now`
+  findings remain) · `findings remain` · `outgrew recheck` (recheck only —
+  the fix delta outgrew a recheck; run the full review again).
+- Release reviews: `ready to cut` · `not ready` (blockers listed).
+
+Only open `Fix now` findings block a clear/ready verdict; `File issue` and
+`Drop` dispositions never do.
+
 ## Finding shape
 
 Every finding an audit agent emits takes this shape; the workflow's

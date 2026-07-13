@@ -4,7 +4,7 @@ argument-hint: "<change-name | PR | diff>"
 description: Review a spec-driven PR/diff before archiving its OpenSpec change. Differentiators over a generic code review - (1) audits the diff against CLAUDE.md and the supporting docs it points to (TESTING.md, DATABASE.md), and (2) audits the diff against the related OpenSpec change's task-completion and design/spec contract, doubling as a pre-archive readiness gate. Use when reviewing a feature branch or PR that implements an OpenSpec change.
 metadata:
   author: list_eddiefamily
-  version: '1.3'
+  version: '1.4'
 ---
 
 # /spec-review
@@ -28,7 +28,7 @@ A self-contained project code-review skill. It audits a PR/diff against three th
 - the related OpenSpec change's `tasks.md`, `design.md`, `specs/**/spec.md`
 - `openspec validate`
 
-This is the team's **only** review gate: a spec-driven PR is reviewed once, after `propose` + `apply` are pushed, *before* the change is archived, and never re-reviewed. The verdict therefore doubles as a "clear to archive?" decision.
+This is the review family's **full** review: it opens round 1 of a change's review history. Findings are fixed and verified in lightweight `/recheck-review` rounds appended to the same persisted report; a full `/spec-review` runs again only when a recheck escalates (`outgrew recheck`), appending a fresh full round. The latest round's verdict is the gate `/land-change` reads before staging the work commit.
 
 ## Contents
 
@@ -37,6 +37,7 @@ This is the team's **only** review gate: a spec-driven PR is reviewed once, afte
 - **Phase orchestration** — fan out the three review agents via the bundled workflow.
 - **Check CI status** — read CI after the agents return (PR invocations).
 - **Consolidated report** — the fixed output contract and verdict logic.
+- **Persist the report** — write/append `openspec/changes/<name>/review.md`.
 - **Post-review explore handoff** — the closing opt-in prompt.
 - Reference leaves under `.claude/skills/spec-review/reference/`: `archive-state.md` (states + reconciliation latitude), `finding-format.md` (finding shape, table style, dispositions, diagrams).
 
@@ -52,12 +53,12 @@ Each review phase runs as its own **agent** against a bundled brief file; the sk
 /spec-review [change-name | PR | diff]
 ```
 
-- **No argument** → review the current branch diffed against `dev`.
+- **No argument** → review the staged diff (`git diff --staged`), on any branch — the trunk workflow's pre-commit scope. Branch work is never an implicit default: review a branch by naming its PR or an explicit ref range (e.g. `dev...HEAD`).
 - **`<change-name>`** → an active OpenSpec change name; used directly as the contract-audit target without auto-detection.
 - **`<PR>`** → a pull-request reference; the diff is fetched via `gh`.
 - **`<diff>`** → an explicit diff source (e.g. `--staged`, `--local`, a ref range).
 
-**Output-only.** Writes its report to the session; does **not** post comments to the PR. CI owns build/typecheck/lint — this skill does not *run* them. For a `<PR>` invocation it does *read* the CI result via `gh` (see "Check CI status"): a red CI is a Critical `Fix now` blocker on its own, independent of how `tasks.md` is checked off — CI is ground truth, the checkboxes are not.
+**Report-only side effects.** Emits its report to the session and persists it to the change directory (see "Persist the report"); does **not** post comments to the PR. CI owns build/typecheck/lint — this skill does not *run* them. For a `<PR>` invocation it does *read* the CI result via `gh` (see "Check CI status"): a red CI is a Critical `Fix now` blocker on its own, independent of how `tasks.md` is checked off — CI is ground truth, the checkboxes are not.
 
 ---
 
@@ -69,7 +70,7 @@ Do this yourself (not in an agent) — it produces the inputs the agents need.
 
 | Invocation | Diff command |
 | --- | --- |
-| No argument | `git diff dev...HEAD` (current branch vs `dev`) |
+| No argument | `git diff --staged` (staged diff, any branch) |
 | `<PR>` (number/URL) | `gh pr diff <PR>` |
 | `--staged` | `git diff --staged` |
 | `--local` | `git diff` (unstaged working tree) |
@@ -227,6 +228,17 @@ The clear-to-archive gate is moot; state `already archived` and give the verdict
 #### No contract audit (Phase 0c proceed-without)
 
 No change to gate; state `no archive gate (contract audit skipped)`. The verdict is determined solely by the standard/convention dispositions.
+
+---
+
+## Persist the report
+
+After emitting the consolidated report, write it to `openspec/changes/<name>/review.md`:
+
+- The file opens with the shared machine-readable header defined in `reference/finding-format.md` (`review: spec-review`, `target:` the change, `anchor:` the sha the diff was computed against, `diff-source:` the diff command or PR reference, `round:` the highest round in the file).
+- The report body is round 1 (`## Round 1 — spec-review (<date>)`) per the round structure in `reference/finding-format.md`. A repeat full review (after an `outgrew recheck` escalation) **appends** the next round and bumps the header's `round:` — prior rounds are never rewritten.
+- The persisted report is consumed by `/recheck-review` (round appending, delta computation from the header) and `/land-change` (latest-round-verdict gate), and travels with the change directory at archive time.
+- **When the contract audit was skipped** (no related change resolved), there is no change directory to write into: write no file and say so in the report.
 
 ---
 

@@ -2,13 +2,14 @@ name: CI
 
 on:
   pull_request:
-  # Trunk branches (dev, release-*.*.x) always flow through PRs, so the
-  # pull_request trigger already covers them; listing them here too would run
-  # every job twice (once per event) whenever a PR branch matches. push fires
-  # only on main (post-merge), where no PR event exists.
+  # dev is a trunk: /land-change pushes work commits directly, with no PR, so
+  # push must trigger the battery there. Release branches still flow through
+  # PRs (covered by pull_request); listing them under push too would run every
+  # job twice. main's push fires post-merge, where no PR event exists.
   push:
     branches:
       - main
+      - dev
 
 permissions:
   contents: read
