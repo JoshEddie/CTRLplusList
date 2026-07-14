@@ -1,41 +1,4 @@
-# product-fetch-mock Specification
-
-## Purpose
-
-Deterministic, localhost-guarded mock for the product-fetch seam whose primary purpose is on-demand **visual** inspection of every downstream add-item UI state — the class of defect (missing padding, broken truncation, ugly overflow) that unit tests and functional e2e never flag — with deterministic deck-flow e2e as the secondary win. No Zyte quota spent, no live-site nondeterminism. Scenario selection happens per-request through a magic URL pasted into the normal add-item flow; the mock is structurally unable to engage against a real deployment.
-## Requirements
-### Requirement: The mock SHALL be part of local mode, with no flag or surface of its own
-
-The mock SHALL activate exactly when local mode is active (`USE_PG_DRIVER=1` — the same flag `npm run dev:local` and the e2e servers already set), introducing no new environment variable, npm script, or boot guard. Outside local mode the product-fetch path SHALL be byte-for-byte the real one: a `mock.test` URL takes the real path and fails like any dead link. Deploy safety is inherited — deployed environments cannot enter local mode past `USE_PG_DRIVER`'s existing localhost boot guard.
-
-#### Scenario: Local mode serves mock scenarios
-
-- **WHEN** the app is started via `npm run dev:local` and a `https://mock.test/<scenario>` URL is pasted into the add-item flow
-- **THEN** the scenario's fixture result SHALL drive the downstream UI with no outbound Zyte call
-
-#### Scenario: Outside local mode the mock does not exist
-
-- **WHEN** `USE_PG_DRIVER` is unset and a `mock.test` URL is fetched
-- **THEN** `fetchProduct` SHALL behave exactly per `product-link-prefill`'s real path, returning a failure like any unreachable host
-
-### Requirement: Scenario selection SHALL be a per-request magic URL
-
-In local mode, a request whose URL hostname is `mock.test` SHALL resolve to the fixture named by the URL's first path segment, with no server restart between scenarios. Hostnames other than `mock.test` SHALL take the real path even in local mode — real-Zyte behavior stays reachable per-request when a key is configured. An unrecognized scenario name on `mock.test` SHALL return `{ ok: false, error: 'fetch_failed' }`.
-
-#### Scenario: Scenario toggles per request
-
-- **WHEN** `https://mock.test/success` and then `https://mock.test/timeout` are fetched against the same running server
-- **THEN** each request SHALL return its own scenario's fixture
-
-#### Scenario: Non-mock host passes through
-
-- **WHEN** local mode is active and a real product URL is fetched
-- **THEN** the seam SHALL take the real Zyte path unchanged
-
-#### Scenario: Unknown scenario fails like a dead link
-
-- **WHEN** `https://mock.test/no-such-scenario` is fetched in local mode
-- **THEN** the seam SHALL return `{ ok: false, error: 'fetch_failed' }`
+## MODIFIED Requirements
 
 ### Requirement: Fixtures SHALL be compiler-checked against the seam's types and cover each downstream UI state
 
@@ -70,4 +33,3 @@ Fixtures SHALL be TypeScript values typed against `ProductResult`/`ProductData` 
 
 - **WHEN** `https://mock.test/success-long-desc` is fetched, carrying a `description` past `DESCRIPTION_MAX`
 - **THEN** `seedFromFetch` SHALL discard it and the deck SHALL open with an empty note — the fixture guards the deliberate drop, not a rendered long description
-

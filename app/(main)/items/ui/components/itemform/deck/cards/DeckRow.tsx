@@ -3,7 +3,7 @@ import {
   PiWarningDiamondFill,
   PiWarningFill,
 } from 'react-icons/pi';
-import type { TitleLine } from './IntroCard';
+import type { TitleLine } from '../utils';
 
 export type DeckRowVariant = 'check' | 'warning' | 'error';
 

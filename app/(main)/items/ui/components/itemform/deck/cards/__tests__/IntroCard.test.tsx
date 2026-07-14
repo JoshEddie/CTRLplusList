@@ -42,7 +42,12 @@ describe('IntroCard', () => {
     });
     expect(screen.queryByText(/Name:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Price:/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/photo/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/option(s)? found/)).not.toBeInTheDocument();
+  });
+
+  it('ZeroPhotos_ShowsNoPhotosWarningRow', () => {
+    setup({ photos: [] });
+    expect(screen.getByText('No photos found — add one')).toBeInTheDocument();
   });
 
   it('NothingConfirmed_StillShowsWarnAndErrorRows', () => {

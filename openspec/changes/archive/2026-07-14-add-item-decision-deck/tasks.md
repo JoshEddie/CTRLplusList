@@ -44,11 +44,11 @@
 
 ## 7. Screen orchestration & retiring ItemForm
 
-- [x] 7.1 Rewire `ItemFormContainer` into the screen orchestrator (`start | fetching | deck | preview | triage | timeout` + `sheet ∈ {stores,lists}` + `focus`); preserve `FormShell` chrome, dismissal, and `returnTo` contracts
+- [x] 7.1 Rewire `ItemFormContainer` into the screen orchestrator (`start | fetching | deck | preview | triage | failure` + `sheet ∈ {stores,lists}` + `focus`); preserve `FormShell` chrome, dismissal, and `returnTo` contracts
 - [x] 7.2 Route fetch success → deck; manual → blank Preview; edit → Preview seeded from item; keep the URL-entry + fetching states (reskinned) and the shared `<LoadingIndicator>`
-- [x] 7.3 Build the Timeout screen ("That link wouldn't load" / "Try a different link" → URL entry / "Build it by hand" → blank Preview with URL seeded); keep rate-limit → URL entry behavior
+- [x] 7.3 Build the failure screen ("Try a different link" → URL entry / "Build it by hand" → blank Preview with URL seeded); keep rate-limit → URL entry behavior — _superseded by 14.2/14.3: the single "That link wouldn't load" screen this task built became the kind-aware `FetchFailure`_
 - [x] 7.4 Retire `ItemForm.tsx`; remove now-dead components/CSS (old prefill form bits) and update all imports — _the Google image-search files (`ImageSearch`, `ImageResultsViewer`, `/api/image-search`) are intentionally retained, not removed, for a future re-add (D14)_
-- [x] 7.5 Unit-test the orchestrator transitions (success→deck, failure→timeout, rate-limit→url, manual→preview, edit→preview) and that no orphaned `ItemForm` imports remain
+- [x] 7.5 Unit-test the orchestrator transitions (success→deck, failure→failure screen, rate-limit→url, manual→preview, edit→preview) and that no orphaned `ItemForm` imports remain
 
 ## 8. Description-always-shown display
 
@@ -67,13 +67,13 @@
 
 - [x] 10.1 Add a Playwright spec that stubs `**/api/product-fetch` with a **per-URL mock**, returning distinct fixtures so each deck shape is driven: (a) long title (>100) + missing price, (b) warning title (51–100) + price, (c) good title + missing price, (d) no issues (good title + price + multiple images), (e) zero images, (f) single image
 - [x] 10.2 Assert per fixture: computed step set; single image bypasses the photo card; zero images shows the error state; inline note on long title ⇒ no standalone note card; price required (no skip); quantity subtext; removed global skip; successful create maps correctly
-- [x] 10.3 Add the failure arc: stub returns a failure → assert the Timeout screen and that "Build it by hand" opens a blank Preview with the URL seeded
+- [x] 10.3 Add the failure arc: stub returns a failure → assert the failure screen and that "Build it by hand" opens a blank Preview with the URL seeded — _the arc covers the timeout kind; the `fetch_failed` kind and the retry cap are covered by unit tests (14.5)_
 - [x] 10.4 Update/replace the existing `e2e/paste-prefill.auth.spec.ts` and `ItemForm.test.tsx` to match the new flow (no stale assertions against the retired form)
 
 ## 11. Local verification
 
-- [ ] 11.1 Run `npm run dev:local` and walk the deck → preview → create flow under the dev auth bypass (fetch path, manual path, edit path), confirming the corrections render as specified — _deferred: requires Docker + the running dev server / preview tooling; not run in this session_
-- [ ] 11.2 App-wide visual-regression pass over the OTHER consumers of the refreshed primitives (every modal via `form-shell`, every `primary`/`ghost` button, every segmented control, the gradient nav + headings) — confirm the deliberate refresh (task 9.4) introduced no unintended regression outside the deck — _outstanding: the real risk of the app-wide scope; not yet verified_
+- [x] 11.1 Run `npm run dev:local` and walk the deck → preview → create flow under the dev auth bypass (fetch path, manual path, edit path), confirming the corrections render as specified — _done: the 14.6 walk covered the deck/preview/create paths; the failure screen was re-walked after 14b/14b.6 changed it, via the #177 mock — `mock.test/timeout` (new sub "The link may still work — a retry often does it", "Try again" primary with "Try a different link" secondary from the first failure), `mock.test/fetch-failed` (uncertainty copy, three actions), the capped state ("That link keeps failing" + "Try a different one, or build it by hand", "Try again" withdrawn, "Try a different link" promoted), and `mock.test/rate-limited` (URL-entry banner, no failure screen). All render as specified. **Out of reach by design:** the post-success retry-cap reset (14b.2) is not walkable — the mock's fixtures are a static `Record<Scenario, ProductResult>` (`lib/product-fetch/mock.ts:37`), so no scenario fails then succeeds for one URL; its coverage is `SameLinkSucceedsAfterFailure_ResetsRetryCount` (unit)_
+- [x] 11.2 App-wide visual-regression pass over the OTHER consumers of the refreshed primitives (every modal via `form-shell`, every `primary`/`ghost` button, every segmented control, the gradient nav + headings) — confirm the deliberate refresh (task 9.4) introduced no unintended regression outside the deck — _done: walked the other consumers of the refreshed primitives; no unintended regression found outside the deck_
 
 ## 12. Pre-merge gates (each verified clean, locally)
 
@@ -81,7 +81,7 @@
 - [x] 12.2 `npx tsc --noEmit` — zero type errors
 - [x] 12.3 `npm run build` — Next production build completes (route types, RSC/client boundaries, bundle)
 - [x] 12.4 `npm run test:coverage` — 2515 tests pass, per-file coverage thresholds met
-- [ ] 12.5 `npm run test:e2e` — _deferred: Playwright e2e requires Docker (localhost Postgres sidecar); specs authored but not executed in this session_
+- [x] 12.5 `npm run test:e2e` — _run locally against the Docker Postgres sidecar; green_
 
 ## 13. Name-field copy consistency & autofill safety (D15)
 
@@ -90,4 +90,24 @@
 - [x] 13.3 Update `lib/data/item.schema.ts` name error strings "Title must be at least 3 characters" / "Title must be less than 100 characters" → "Item name …", matching the `name` field and the visible label
 - [x] 13.4 Rename `FOCUS_TITLES` → `FOCUS_LABELS` in `deck/focus.ts` (it holds labels, not titles); update the two importers (`ItemFormContainer.tsx`, `FocusEditor.tsx`); refresh the stale "'title' reads as 'Name'" comment
 - [x] 13.5 Unit-test: the label reads "Item name" on intro / title card / Triage / Focus; the name input carries `autocomplete="off"`; `item.schema.ts` rejects a 2-char and a 120-char name with an "Item name …" message (also updated `ItemFormContainer.test.tsx` + `item-crud.auth.spec.ts` row selectors to `/Item name/`)
-- [ ] 13.6 _(deferred, separate change)_ Full `title → name` internal rename — `titleTier→nameTier`, `TITLE_MAX→NAME_MAX`, `TitleEditor→NameEditor`, `TitleCard→NameCard`, the `title` deck step / `FocusField` member, and the matching `specs/item-decision-deck` references. Pure hygiene, broad reach; do NOT bundle into this near-complete change — propose on its own for a clean diff (D15)
+- [x] 13.6 _(split out — tracked as [#180](https://github.com/JoshEddie/CTRLplusList/issues/180), `EXPLORE NEEDED`)_ Full `title → name` internal rename — `titleTier→nameTier`, `TITLE_MAX→NAME_MAX`, `TitleEditor→NameEditor`, `TitleCard→NameCard`, the `title` deck step / `FocusField` member, and the matching `specs/item-decision-deck` references. Pure hygiene, broad reach; deliberately NOT bundled into this change — propose on its own for a clean diff (D15)
+
+## 14. Dev-verification defect fixes (issue #175; D10 revision)
+
+Three defects surfaced verifying on dev (issue #175 comment); the mock from #177 makes each state reproducible. Fix-forward while the change is still active.
+
+- [x] 14.1 **Padding (Defect 2):** the failure screen renders edge-to-edge — `FormShell` renders `{children}` directly (not inside `.form-shell-body`), so each deck screen owns its padding, and the failure screen's rule sets only `align-items`/`text-align`. Give it `padding: 8px 24px 24px` to match `.deck` / the other screens.
+- [x] 14.2 **Honest kind-aware failure screen (Defect 3, D10):** generalize `deck/Timeout.tsx` into a `deck/FetchFailure.tsx` that takes a `kind: 'timeout' | 'failed'` and a `canRetrySame: boolean` (from the retry cap), rendering the copy + action set per D10 (timeout → "taking longer than expected" + Try-again-same + build; failed → uncertainty copy + Try-again-same + Try-different + build; capped → drop Try-again, harden copy). Update `deck.css` class(es) accordingly.
+- [x] 14.3 **Container routing + retry cap:** in `ItemFormContainer.tsx`, branch on `result.error` (`timeout` vs `fetch_failed`; network-catch → `failed`) instead of collapsing both to one screen; track a per-link same-link retry count (reset when a different URL is entered), wire a "Try again" handler that re-fetches the current `pastedUrl`, and withdraw it once the cap (2) is reached. Rate-limit path unchanged.
+- [x] 14.4 **Intro no-image warning (Defect 1):** `IntroCard.tsx` — when `photos.length === 0`, push a **warning** row ("No photos found — add one") instead of omitting the photos line, matching the Triage photo `warn` tier and the price-miss warning.
+- [x] 14.5 **Unit tests:** `FetchFailure` renders each kind's copy/actions and the capped state; `ItemFormContainer` routes `timeout`/`fetch_failed`/network-error to the right kind, increments + resets the retry cap, and re-fetches on Try-again; `IntroCard` shows the zero-photo warning row.
+- [x] 14.6 **Verify each state via the #177 mock** under `npm run dev:local`: `mock.test/timeout` (timeout copy + retry-same), `mock.test/fetch-failed` (uncertainty copy; retry cap withdraws after 2), `mock.test/rate-limited` (banner, no failure screen), `mock.test/success-no-image` (intro warning row), and re-check the failure-screen padding. Walked and confirmed good; 11.1 still owns the re-walk after 14.7.
+
+## 14b. Review round-1 fixes (`/spec-review`; see `review.md`)
+
+- [x] 14b.1 **Escape path on the timeout kind (S4/C4):** offer "Try a different link" on *both* kinds from the first failure — a timeout is the slowest failure to observe, so a mistyped link must not cost two timeouts to leave. "Try again" stays primary while uncapped. Updates `FetchFailure.tsx`, the `item-decision-deck` timeout bullet + scenario, and the two tests that asserted the exclusion
+- [x] 14b.2 **Retry counter survives a success (S1):** reset the per-link counter on the ok-result branch, not only when a different URL is entered — a link that fetched successfully was carrying its pre-success failures into a later re-fetch and hardening the copy one failure early. Adds the matching spec scenario + `SameLinkSucceedsAfterFailure_ResetsRetryCount`
+- [x] 14b.3 **Shared `FailureKind` (S3):** export the `'timeout' | 'failed'` union from `FetchFailure.tsx`; drop the three redeclarations (container, `copyFor`, test helper)
+- [x] 14b.4 **Cross-spec drift (C1):** add a `product-fetch-mock` MODIFIED delta — the canonical spec still routed both failure fixtures to "the timeout screen", a screen this change removes
+- [x] 14b.5 **Convention (V2/V3/V4/V5):** drop the `summarize` comment (restated WHAT + named its caller); split the three-trigger `ClickActions_InvokeMatchingHandlers` into one test per trigger; rename `NetworkError_ShowsFailedKind` to name its rendered copy + logged side-effect; restore parent-before-sibling import order in `IntroCard.tsx`
+- [x] 14b.6 **Timeout sub-copy drift (found walking 11.1):** 14b.1 added the third action but left the timeout sub enumerating two ("give it another try, or build the item by hand"). Rather than list all three — which would flatten the hierarchy D10 rests on — the sub now states the cause and lets the buttons carry the actions ("The link may still work — a retry often does it"), matching the failed kind's existing shape. Also reconciles the hardened sub to the spec's quoted wording ("build **it** by hand", matching the button label; was "build the item by hand"). Pins both subs in `FetchFailure.test.tsx` — neither was asserted, which is how the drift landed

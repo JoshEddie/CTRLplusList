@@ -31,28 +31,36 @@ When the fetch result carries `imageUrls`, the full candidate list SHALL be hand
 - **WHEN** the user edits the seeded price before submitting
 - **THEN** the stored row SHALL NOT carry `price_fetched_at` (the price is no longer the fetched snapshot)
 
-### Requirement: A failed or timed-out fetch SHALL fall through to manual entry
+## ADDED Requirements
 
-When the fetch fails, times out, or returns no usable product data, the modal SHALL transition to the **Timeout screen** (content owned by `item-decision-deck`): a non-alarming explanation that the link wouldn't load, a "Try a different link" action returning to URL entry, and a "Build it by hand" action opening the blank Preview with the pasted URL seeded into the first store row's Link field. The failure SHALL never surface fabricated or partial-garbage data as if fetched.
+### Requirement: A failed or timed-out fetch SHALL fall through to the kind-aware failure screen
 
-Rate limiting is the exception: a 429 / `rate_limited` response SHALL return the user to the URL entry state (pasted URL retained) with a friendly field-level error ("You've hit the fetch limit — try again in about a minute.") — retry-in-a-minute is the remedy, not manual entry.
+When the fetch fails, times out, or returns no usable product data, the modal SHALL transition to the **failure screen** (content and actions owned by `item-decision-deck`), passing the failure *kind* so the screen can label the cause honestly: a `timeout` result (the app-side abort budget was exceeded) SHALL route as the **timeout** kind, and a `fetch_failed` result (no usable product returned) SHALL route as the **failed** kind. A network/transport error with no result SHALL route as the **failed** kind. "Build it by hand" (available for every kind) SHALL open the blank Preview with the pasted URL seeded into the first store row's Link field. The failure SHALL never surface fabricated or partial-garbage data as if fetched.
 
-#### Scenario: Timeout shows the Timeout screen
+Rate limiting is the exception: a 429 / `rate_limited` response SHALL return the user to the URL entry state (pasted URL retained) with a friendly field-level error ("You've hit the fetch limit — try again in about a minute.") — retry-in-a-minute is the remedy, and it SHALL NOT route to the failure screen.
+
+#### Scenario: Timeout routes as the timeout kind
 
 - **WHEN** a fetch exceeds the app-side timeout
-- **THEN** the Timeout screen SHALL render with "Try a different link" and "Build it by hand" actions, and SHALL NOT auto-render a populated form
+- **THEN** the failure screen SHALL render as the timeout kind (retry re-fetches the same link) and SHALL NOT auto-render a populated form
+
+#### Scenario: Fetch failure routes as the failed kind
+
+- **WHEN** the endpoint returns a `fetch_failed` result, or the request errors with no result
+- **THEN** the failure screen SHALL render as the failed kind (copy that does not blame the link), and SHALL NOT auto-render a populated form
 
 #### Scenario: Build-by-hand opens a blank Preview with the URL
 
-- **WHEN** the user activates "Build it by hand" on the Timeout screen
+- **WHEN** the user activates "Build it by hand" on the failure screen
 - **THEN** a blank Preview SHALL open with the pasted URL seeded into the first store row's Link field
 
 #### Scenario: Rate-limited fetch stays on URL entry
 
 - **WHEN** the endpoint returns 429 `{ error: 'rate_limited' }`
-- **THEN** the URL entry state SHALL render with the pasted URL retained and the slow-down field error, and neither the Timeout screen nor the Preview SHALL render
+- **THEN** the URL entry state SHALL render with the pasted URL retained and the slow-down field error, and neither the failure screen nor the Preview SHALL render
 
-#### Scenario: Fetch failure shows the Timeout screen
+## REMOVED Requirements
 
-- **WHEN** the endpoint returns a failure result
-- **THEN** the Timeout screen SHALL render — no fabricated data and no dead-end state
+### Requirement: A failed or timed-out fetch SHALL fall through to manual entry
+
+**Reason**: Falling through to a populated manual form is exactly the behavior this change removes. The old requirement mandated that any failure auto-render the manual item form with a "We couldn't fetch that automatically" notice; failures now route to a dedicated, kind-aware failure screen that labels the cause honestly (timeout vs. failed) and makes manual entry one explicit choice among three ("Build it by hand"), rather than the automatic destination. Its rate-limit exception carries forward unchanged into the replacement. The requirement is replaced wholesale rather than amended — its name, its central SHALL, and all three of its scenarios change — so it is removed and a new requirement added (see "A failed or timed-out fetch SHALL fall through to the kind-aware failure screen").

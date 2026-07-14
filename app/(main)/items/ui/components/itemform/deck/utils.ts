@@ -2,6 +2,8 @@
 // Triage, Preview, and the submit gate — the single source for the
 // title/price/description rules so they can't drift between surfaces.
 
+import type { ItemViewModel } from './viewModel';
+
 // Candidates whose natural dimensions fall below this (px, both axes) are
 // dropped. Extractors routinely include tiny thumbnails (e.g. Amazon's 40px
 // `_AC_US40_` variant) that are useless as the item image.
@@ -140,4 +142,50 @@ export function suggestTrim(name: string | null | undefined): string {
   const window = value.slice(0, TITLE_SNAPPY);
   const lastSpace = window.lastIndexOf(' ');
   return (lastSpace > 0 ? window.slice(0, lastSpace) : window).trim();
+}
+
+export type TitleLine = { title: string; line: string };
+
+type IntroSummary = {
+  confirmed: TitleLine[];
+  warning: TitleLine[];
+  error: TitleLine[];
+};
+
+export function summarize(item: ItemViewModel): IntroSummary {
+  const store = item.stores[0];
+  const confirmed: TitleLine[] = [];
+  const warning: TitleLine[] = [];
+  const error: TitleLine[] = [];
+
+  if (item.photos.length > 0) {
+    const count = item.photos.length;
+    confirmed.push({
+      title: 'Photos',
+      line: `${count} option${count === 1 ? '' : 's'} found`,
+    });
+  } else {
+    warning.push({ title: 'Photos', line: 'No photos found — add one' });
+  }
+
+  const nameTier = titleTier(item.name).tier;
+  if (nameTier === 'good') {
+    confirmed.push({ title: 'Item name', line: item.name });
+  } else if (nameTier === 'warn') {
+    warning.push({ title: 'Item name', line: 'Review the name for best results' });
+  } else {
+    error.push({ title: 'Item name', line: 'Name is too long' });
+  }
+
+  if (store && priceTier(store.price).tier === 'good') {
+    confirmed.push({ title: 'Price', line: `$${store.price.replace(/^\$/, '')}` });
+  } else {
+    warning.push({ title: 'Price', line: 'Unable to find price' });
+  }
+
+  if (store?.name && store?.link) {
+    confirmed.push({ title: 'Store', line: `${store.name} • link saved` });
+  }
+
+  return { confirmed, warning, error };
 }

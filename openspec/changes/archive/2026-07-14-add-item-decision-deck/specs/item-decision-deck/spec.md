@@ -30,10 +30,17 @@ Validated ("good") title and price SHALL NOT get their own card but SHALL be lis
 
 The `intro` card SHALL show an "Auto-filled from {store}" eyebrow, a heading, a confirmed-summary list (photos found, name when its tier is `good`, store + link saved), and a single count line stating how many steps remain — the cards still to come (the photo pick, any flagged field, and an optional note), i.e. the computed step count excluding the intro itself. Its only action SHALL be a primary "Let's go" advance to the first remaining card.
 
+When the fetch returned zero images, the summary SHALL surface that gap as a **warning** row ("No photos found — add one") rather than omitting the photos line — the summary that shows what was pulled SHALL NOT stay silent about a missing photo. The severity is `warning`, not `error`: a null image is permitted, matching the Triage photo row's `warn` tier and the missing-price warning.
+
 #### Scenario: Intro reflects confirmed and pending fields
 
 - **WHEN** the deck opens with a clean price, a flagged title, and multiple images
 - **THEN** the intro SHALL confirm photos and store, omit the name from the confirmed list, and indicate two remaining steps (the photo pick and the one flagged field)
+
+#### Scenario: Intro flags a zero-image fetch as a warning
+
+- **WHEN** the deck opens from a fetch that returned no images
+- **THEN** the intro summary SHALL show a warning row indicating no photos were found, not omit the photos line
 
 ### Requirement: The photo card SHALL show whenever there is a choice or a problem
 
@@ -225,14 +232,41 @@ The item view-model SHALL initialize quantity to a limit of 1 (matching the `qua
 - **WHEN** the user sets quantity to Unlimited
 - **THEN** the Lists & quantity subtext SHALL reflect "· Unlimited"
 
-### Requirement: A hard fetch failure SHALL show a Timeout screen
+### Requirement: A failed fetch SHALL show a kind-aware, attempt-aware failure screen
 
-When `product-link-prefill` routes a hard failure or timeout to the deck flow, the modal SHALL show a dedicated Timeout screen ("That link wouldn't load") offering "Try a different link" (return to URL entry) and "Build it by hand" (open the blank Preview). The routing of failures is owned by `product-link-prefill`; this requirement owns the screen's content and actions. Rate-limit responses are out of scope here (they stay on URL entry per `product-link-prefill`).
+When `product-link-prefill` routes a failure to the deck flow, the modal SHALL show a single failure screen whose copy and actions are keyed to the failure *kind*, so a slow fetch and an unreadable link are not labeled identically. The routing of failures (and which kind each result maps to) is owned by `product-link-prefill`; this requirement owns the screen's content, actions, and attempt behavior. Rate-limit responses are out of scope here (they stay on URL entry per `product-link-prefill`).
 
-#### Scenario: Timeout offers retry and manual
+- **Timeout kind:** the screen SHALL explain the fetch was slow ("This is taking longer than expected") and offer **"Try again"** (re-fetch the *same* link) as the primary action, plus "Try a different link" (return to URL entry) and "Build it by hand" (open the blank Preview). It SHALL NOT imply the link is bad.
+- **Failed kind:** the screen SHALL explain the fetch returned no usable product without blaming the link ("We couldn't load that link — it might be the link, or a hiccup on our end") and offer **"Try again"** (same link), **"Try a different link"** (return to URL entry), and "Build it by hand".
 
-- **WHEN** a fetch fails or times out
-- **THEN** the Timeout screen SHALL render with "Try a different link" returning to URL entry and "Build it by hand" opening the blank Preview
+Both kinds SHALL offer "Try a different link" from the first failure: a timeout is the slowest failure to observe, so a user who pasted the wrong link SHALL NOT have to spend the retry cap to return to URL entry. The kinds differ in copy and in which action leads, not in the escape paths offered.
+
+The screen SHALL be attempt-aware to prevent same-link "Try again" from grinding into the rate limit: a per-link retry counter (reset when a different URL is entered, and when the link fetches successfully) SHALL permit the same-link "Try again" for the first two failures of a given link, after which the "Try again" action SHALL be withdrawn and the copy SHALL harden ("That link keeps failing — try a different one, or build it by hand"), leaving only "Try a different link" and "Build it by hand".
+
+#### Scenario: Timeout kind offers retry-same, a different link, and manual
+
+- **WHEN** a fetch times out (timeout kind) on a link not yet past its retry cap
+- **THEN** the failure screen SHALL render with a "taking longer than expected" message, a "Try again" action that re-fetches the same link, a "Try a different link" returning to URL entry, and "Build it by hand" opening the blank Preview
+
+#### Scenario: Failed kind admits uncertainty and offers both paths
+
+- **WHEN** a fetch returns no usable product (failed kind) on a link not yet past its retry cap
+- **THEN** the failure screen SHALL render with copy that does not blame the link, a "Try again" (same link), a "Try a different link" returning to URL entry, and "Build it by hand"
+
+#### Scenario: Retry cap withdraws Try again and hardens copy
+
+- **WHEN** the same link has failed twice and the failure screen renders a third time for that link
+- **THEN** the "Try again" action SHALL NOT be offered, the copy SHALL state the link keeps failing, and only "Try a different link" and "Build it by hand" SHALL remain
+
+#### Scenario: A different link resets the retry cap
+
+- **WHEN** the user enters a different URL after a link exhausted its retry cap
+- **THEN** the new link's failure screen SHALL again offer "Try again" from the first failure
+
+#### Scenario: A successful fetch resets the retry cap for that link
+
+- **WHEN** a link that previously failed fetches successfully, and the user returns to URL entry and fetches the same link again
+- **THEN** the retry counter SHALL have restarted, so the link SHALL again offer "Try again" for its first two failures rather than carrying its pre-success failures
 
 ### Requirement: The submit adapter SHALL map the view-model to the persisted item shape
 

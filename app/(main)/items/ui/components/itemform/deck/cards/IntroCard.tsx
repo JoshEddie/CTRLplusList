@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { DeckStep } from '../neededSteps';
-import { priceTier, titleTier } from '../utils';
+import { summarize } from '../utils';
 import type { ItemViewModel } from '../viewModel';
 import { DeckCard } from './DeckCard';
 import { DeckRow } from './DeckRow';
@@ -14,8 +14,6 @@ interface IntroCardProps {
   progress?: ReactNode;
 }
 
-export type TitleLine = { title: string; line: string };
-
 // Summarizes what the fetch confirmed (green fields, never bypassed via a global
 // skip) and how much is left. Forward is "Let's go" only (D3, correction #1).
 export function IntroCard({
@@ -26,52 +24,7 @@ export function IntroCard({
   onContinue,
   progress,
 }: IntroCardProps) {
-  const store = item.stores[0];
-  const confirmed: TitleLine[] = [];
-  const warning: TitleLine[] = [];
-  const error: TitleLine[] = [];
-  if (item.photos.length > 0) {
-    confirmed.push({
-      title: 'Photos',
-      line: `${item.photos.length} option${item.photos.length === 1 ? '' : 's'} found`,
-    });
-  }
-  if (titleTier(item.name).tier === 'good') {
-    confirmed.push({
-      title: 'Item name',
-      line: `${item.name}`,
-    });
-  } else if (titleTier(item.name).tier === 'warn') {
-    warning.push({
-      title: 'Item name',
-      line: 'Review the name for best results',
-    });
-  } else {
-    error.push({
-      title: 'Item name',
-      line: 'Name is too long',
-    });
-  }
-
-  if (store && priceTier(store.price).tier === 'good') {
-    confirmed.push({
-      title: 'Price',
-      line: `$${store.price.replace(/^\$/, '')}`,
-    });
-  } else {
-    warning.push({
-      title: 'Price',
-      line: 'Unable to find price',
-    });
-  }
-
-  if (store?.name && store?.link) {
-    confirmed.push({
-      title: 'Store',
-      line: `${store.name} • link saved`,
-    });
-  }
-
+  const { confirmed, warning, error } = summarize(item);
   const remaining = steps.length - 1;
   const hasSummary = confirmed.length + warning.length + error.length > 0;
 

@@ -326,16 +326,37 @@ describe('ItemFormContainer', () => {
   });
 
   describe('FetchFailure', () => {
-    it('FailureResult_ShowsTimeoutScreen', async () => {
+    it('TimeoutResult_ShowsTimeoutCopyWithSameLinkRetry', async () => {
       fetchMock.mockResolvedValue(jsonOk({ ok: false, error: 'timeout' }));
       renderCreate();
       await fetchUrl();
       expect(
-        await screen.findByText("That link wouldn't load")
+        await screen.findByText('This is taking longer than expected')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Try again' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Try a different link' })
       ).toBeInTheDocument();
     });
 
-    it('NetworkError_ShowsTimeoutScreen', async () => {
+    it('FetchFailedResult_ShowsUncertaintyCopyWithAllActions', async () => {
+      fetchMock.mockResolvedValue(jsonOk({ ok: false, error: 'fetch_failed' }));
+      renderCreate();
+      await fetchUrl();
+      expect(
+        await screen.findByText("We couldn't load that link")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Try again' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Try a different link' })
+      ).toBeInTheDocument();
+    });
+
+    it('NetworkError_ShowsUncertaintyCopy-LogsError', async () => {
       fetchMock.mockRejectedValue(new TypeError('fetch failed'));
       const consoleError = vi
         .spyOn(console, 'error')
@@ -343,16 +364,99 @@ describe('ItemFormContainer', () => {
       renderCreate();
       await fetchUrl();
       expect(
-        await screen.findByText("That link wouldn't load")
+        await screen.findByText("We couldn't load that link")
       ).toBeInTheDocument();
       await waitFor(() => expect(consoleError).toHaveBeenCalled());
+    });
+
+    it('TryAgain_RefetchesSameLink', async () => {
+      fetchMock.mockImplementation(() =>
+        Promise.resolve(jsonOk({ ok: false, error: 'timeout' }))
+      );
+      renderCreate();
+      const user = await fetchUrl();
+      await screen.findByText('This is taking longer than expected');
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      await screen.findByText('This is taking longer than expected');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(JSON.parse(fetchMock.mock.calls[1][1].body).url).toBe(
+        'https://www.amazon.com/dp/B0TEST'
+      );
+    });
+
+    it('ThirdSameLinkFailure_WithdrawsTryAgainAndHardensCopy', async () => {
+      fetchMock.mockImplementation(() =>
+        Promise.resolve(jsonOk({ ok: false, error: 'fetch_failed' }))
+      );
+      renderCreate();
+      const user = await fetchUrl();
+      await screen.findByText("We couldn't load that link");
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      await screen.findByText("We couldn't load that link");
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      expect(
+        await screen.findByText('That link keeps failing')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Try again' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('DifferentLinkAfterCap_ResetsRetryCount', async () => {
+      fetchMock.mockImplementation(() =>
+        Promise.resolve(jsonOk({ ok: false, error: 'fetch_failed' }))
+      );
+      renderCreate();
+      const user = await fetchUrl();
+      await screen.findByText("We couldn't load that link");
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      await screen.findByText("We couldn't load that link");
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      await screen.findByText('That link keeps failing');
+
+      // Enter a different URL → the cap resets and Try again returns.
+      await user.click(
+        screen.getByRole('button', { name: 'Try a different link' })
+      );
+      const input = screen.getByLabelText(/Product link/);
+      await user.clear(input);
+      await user.type(input, 'https://www.amazon.com/dp/B0OTHER');
+      await user.click(screen.getByRole('button', { name: 'Fetch Details' }));
+      await screen.findByText("We couldn't load that link");
+      expect(
+        screen.getByRole('button', { name: 'Try again' })
+      ).toBeInTheDocument();
+    });
+
+    it('SameLinkSucceedsAfterFailure_ResetsRetryCount', async () => {
+      fetchMock
+        .mockResolvedValueOnce(jsonOk({ ok: false, error: 'timeout' }))
+        .mockResolvedValueOnce(jsonOk(PRODUCT_RESPONSE))
+        .mockResolvedValueOnce(jsonOk({ ok: false, error: 'timeout' }))
+        .mockResolvedValueOnce(jsonOk({ ok: false, error: 'timeout' }));
+      renderCreate();
+      const user = await fetchUrl();
+      await screen.findByText('This is taking longer than expected');
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      await screen.findByText("Here's what we pulled.");
+
+      // Back to the same link after it succeeded: the earlier failure is spent,
+      // so the cap allows two fresh failures before withdrawing Try again.
+      await user.click(screen.getByRole('button', { name: 'Change link' }));
+      await user.click(screen.getByRole('button', { name: 'Fetch Details' }));
+      await screen.findByText('This is taking longer than expected');
+      await user.click(screen.getByRole('button', { name: 'Try again' }));
+      await screen.findByText('This is taking longer than expected');
+      expect(
+        screen.getByRole('button', { name: 'Try again' })
+      ).toBeInTheDocument();
     });
 
     it('BuildByHand_OpensBlankPreviewWithUrlSeededInStoreLink', async () => {
       fetchMock.mockResolvedValue(jsonOk({ ok: false, error: 'timeout' }));
       renderCreate();
       const user = await fetchUrl();
-      await screen.findByText("That link wouldn't load");
+      await screen.findByText('This is taking longer than expected');
       await user.click(screen.getByRole('button', { name: 'Build it by hand' }));
       expect(screen.getByText('Last look')).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: /Store links/ }));

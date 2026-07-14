@@ -13,7 +13,7 @@ import { FOCUS_LABELS, type FocusField } from './deck/focus';
 import { Preview } from './deck/Preview';
 import { ListsQtySheet } from './deck/sheets/ListsQtySheet';
 import { StoresSheet } from './deck/sheets/StoresSheet';
-import { Timeout } from './deck/Timeout';
+import { FetchFailure, type FailureKind } from './deck/FetchFailure';
 import { Triage } from './deck/Triage';
 import { useItemActions } from './deck/useItemActions';
 import { useItemSubmit } from './deck/useItemSubmit';
@@ -27,7 +27,12 @@ import {
 import { FetchingStep } from './FetchingStep';
 import { UrlEntryStep } from './UrlEntryStep';
 
-type Screen = 'start' | 'fetching' | 'deck' | 'preview' | 'triage' | 'timeout';
+type Screen = 'start' | 'fetching' | 'deck' | 'preview' | 'triage' | 'failure';
+
+// Same-link "Try again" is allowed for the first two failures, then withdrawn
+// (D10) — each retry is a real fetch, and the cap keeps a frustrated user from
+// grinding into the route's rate limit.
+const RETRY_CAP = 2;
 type Sheet = 'stores' | 'lists';
 
 type EditItem = ItemTable & {
@@ -72,6 +77,8 @@ const ItemFormContainer = ({
   const [focus, setFocus] = useState<FocusField | null>(null);
   const [pastedUrl, setPastedUrl] = useState('');
   const [urlStepError, setUrlStepError] = useState('');
+  const [failureKind, setFailureKind] = useState<FailureKind>('failed');
+  const [failCount, setFailCount] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   const actions = useItemActions(setViewModel);
@@ -96,7 +103,15 @@ const ItemFormContainer = ({
     setScreen('start');
   };
 
+  const failFetch = (kind: FailureKind, priorFails: number) => {
+    setFailureKind(kind);
+    setFailCount(priorFails + 1);
+    setScreen('failure');
+  };
+
   const startFetch = async (url: string) => {
+    const priorFails = url === pastedUrl ? failCount : 0;
+    if (url !== pastedUrl) setFailCount(0);
     setPastedUrl(url);
     setUrlStepError('');
     setScreen('fetching');
@@ -130,14 +145,15 @@ const ItemFormContainer = ({
         const photos = await prunePhotos(seeded.photos);
         if (controller.signal.aborted) return;
         setViewModel({ ...seeded, photos, photoIndex: 0 });
+        setFailCount(0);
         setScreen('deck');
       } else {
-        setScreen('timeout');
+        failFetch(result.error === 'timeout' ? 'timeout' : 'failed', priorFails);
       }
     } catch (error) {
       if (controller.signal.aborted) return;
       console.error('Product fetch failed:', error);
-      setScreen('timeout');
+      failFetch('failed', priorFails);
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
     }
@@ -221,8 +237,16 @@ const ItemFormContainer = ({
             onOpenStores={() => setSheet('stores')}
           />
         );
-      case 'timeout':
-        return <Timeout onRetry={returnToUrl} onManual={buildByHand} />;
+      case 'failure':
+        return (
+          <FetchFailure
+            kind={failureKind}
+            canRetrySame={failCount <= RETRY_CAP}
+            onRetrySame={() => startFetch(pastedUrl)}
+            onTryDifferent={returnToUrl}
+            onManual={buildByHand}
+          />
+        );
       case 'preview':
       default:
         return (
