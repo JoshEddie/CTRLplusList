@@ -37,7 +37,7 @@ Each recheck SHALL append a numbered round section to the target report (never r
 
 #### Scenario: Clean round clears landing
 - **WHEN** a recheck finds every open `Fix now` finding resolved and no new issues
-- **THEN** it appends a round with verdict `clear to land`, satisfying `/land-change`'s review gate
+- **THEN** it appends a round with verdict `clear to land`, satisfying `/landfall`'s review gate
 
 #### Scenario: Sprawling fixes escalate
 - **WHEN** the fix delta modifies files the original review never covered
