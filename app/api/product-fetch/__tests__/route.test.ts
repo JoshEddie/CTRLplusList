@@ -1,4 +1,5 @@
 import {
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -162,6 +163,55 @@ describe('RateLimit', () => {
     expect(r.status).toBe(429);
     expect(await r.json()).toEqual({ error: 'rate_limited' });
     expect(fetchProduct).toHaveBeenCalledTimes(RATE_LIMIT_PER_WINDOW);
+  });
+});
+
+describe('MockHandling', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('LocalModeRateLimitedScenario_Returns429FirstRequest-BucketUntouched', async () => {
+    vi.stubEnv('USE_PG_DRIVER', '1');
+    const POST = await loadRoute();
+    const r = await POST(req({ url: 'https://mock.test/rate-limited' }));
+    expect(r.status).toBe(429);
+    expect(await r.json()).toEqual({ error: 'rate_limited' });
+    expect(fetchProduct).not.toHaveBeenCalled();
+    for (let i = 0; i < RATE_LIMIT_PER_WINDOW; i++) {
+      const real = await POST(req({ url: 'https://example.com/p/1' }));
+      expect(real.status).toBe(200);
+    }
+  });
+
+  it('LocalModeMockScenarios_ElevenPlusRequestsNeverTripBucket', async () => {
+    vi.stubEnv('USE_PG_DRIVER', '1');
+    const POST = await loadRoute();
+    for (let i = 0; i < RATE_LIMIT_PER_WINDOW + 2; i++) {
+      const r = await POST(req({ url: 'https://mock.test/success' }));
+      expect(r.status).toBe(200);
+    }
+    expect(fetchProduct).toHaveBeenCalledTimes(RATE_LIMIT_PER_WINDOW + 2);
+  });
+
+  it('InvalidUrl_Returns400-BucketUntouched', async () => {
+    const POST = await loadRoute();
+    const bad = await POST(req({ url: 'just words' }));
+    expect(bad.status).toBe(400);
+    for (let i = 0; i < RATE_LIMIT_PER_WINDOW; i++) {
+      const real = await POST(req({ url: 'https://example.com/p/1' }));
+      expect(real.status).toBe(200);
+    }
+  });
+
+  it('NonLocalMockHost_TakesRealPath', async () => {
+    const POST = await loadRoute();
+    const r = await POST(req({ url: 'https://mock.test/rate-limited' }));
+    expect(r.status).toBe(200);
+    expect(fetchProduct).toHaveBeenCalledWith(
+      'https://mock.test/rate-limited',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
   });
 });
 

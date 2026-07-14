@@ -29,7 +29,7 @@ Work happens directly on `dev`, one OpenSpec change at a time in the working tre
 
 ### Change lifecycle
 
-1. **`/start-change <issue#>`** — hard-gates on trunk preconditions (on `dev`, clean tree, up to date with origin — the clean-tree check enforces one-change-at-a-time), reads the issue, routes by label (`IDEA`/`EXPLORE NEEDED` → explore first, distilled outcome written back to the issue body and the label stripped; a non-viable `IDEA` gets a findings comment + `HOLD` label and stops; `HOLD` → surface the hold comment and confirm before re-exploring), then runs `/opsx:propose` seeded from the issue body.
+1. **`/start-change <issue#>`** — hard-gates on trunk preconditions (on `dev`, clean tree, up to date with origin — the clean-tree check enforces one-change-at-a-time), reads the issue, routes by label. `IDEA`/`EXPLORE NEEDED` → an interactive explore session **only**: owner-approved distilled outcome written back to the issue body, label stripped, stop (a non-viable `IDEA` gets a findings comment + `HOLD` label instead); `HOLD` → surface the hold comment and confirm before re-exploring; no routing label → `/opsx:propose` seeded from the issue body (typically the re-run after a prior explore). Explore never chains into propose in one invocation.
 2. **`/opsx:apply`** — implement the change's tasks in the working tree.
 3. **`/spec-review`** — no-arg reviews the **staged diff** (staged = reviewed baseline, unstaged = current fix round). Persists its report to `openspec/changes/<name>/review.md` with the shared machine-readable header (format: `.claude/skills/spec-review/reference/finding-format.md`).
 4. **`/recheck-review`** — verifies fixed findings against just the fix delta, appending rounds to the persisted report; escalates to a fresh full review when fixes outgrow a recheck (`outgrew recheck`).
@@ -133,6 +133,10 @@ The app gates every protected page on Google OAuth via NextAuth, which makes it 
 - [scripts/seed-dev-users.ts](scripts/seed-dev-users.ts) — idempotent; refuses to run on prod; upserts most tables via Drizzle `.insert().onConflictDoUpdate()` (a few use `.onConflictDoNothing()`) so reseeds pick up edits.
 - [scripts/setup-e2e-db.sh](scripts/setup-e2e-db.sh) / [scripts/dev-local.sh](scripts/dev-local.sh) / [scripts/test-e2e.sh](scripts/test-e2e.sh) — `setup-e2e-db.sh` is Docker bring-up + schema only; the data-state step is the caller's: `dev:local` seeds (preserves UI-created rows), `test:e2e` runs `db:reset:dev` (cascade wipe + reseed) so every e2e run starts from identical state. `dev:local` and `test:e2e` wrap them.
 - Route-handler / middleware overloads of `auth(req, ctx)` pass through to real NextAuth — production auth path is unchanged.
+
+## Product-fetch mock (local mode)
+
+In local mode (`USE_PG_DRIVER=1` — same flag as the auth bypass, no flag of its own), pasting `https://mock.test/<scenario>` into the add-item flow returns a deterministic fixture instead of calling Zyte — every downstream deck state reachable in seconds, zero quota. Scenario is the URL's first path segment, toggled per request with no restart; any other hostname takes the real path even locally (paste a real URL with a key configured to test real Zyte). Unknown scenario → `fetch_failed`. Scenario table (fixture → UI state) lives in `openspec/specs/product-fetch-mock/spec.md`; fixtures in [lib/product-fetch/mock.ts](lib/product-fetch/mock.ts). Mock requests bypass the product-fetch rate-limit bucket; `https://mock.test/rate-limited` returns the route-level 429. Outside local mode the mock does not exist — `mock.test` fails like any dead link.
 
 ## /api/image-search auth + rate limit
 

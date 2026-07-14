@@ -1,3 +1,4 @@
+import { resolveMockResult } from '@/lib/product-fetch/mock';
 import type {
   ExtractedProduct,
   ProductResult,
@@ -70,6 +71,9 @@ export async function fetchProduct(
   url: string,
   opts: { signal?: AbortSignal } = {}
 ): Promise<ProductResult> {
+  const mocked = resolveMockResult(url);
+  if (mocked) return mocked;
+
   const signals = [AbortSignal.timeout(FETCH_TIMEOUT_MS)];
   if (opts.signal) signals.push(opts.signal);
   const signal = AbortSignal.any(signals);

@@ -2,6 +2,10 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { fetchProduct } from '@/lib/product-fetch';
+import {
+  RATE_LIMITED_SCENARIO,
+  mockScenarioOf,
+} from '@/lib/product-fetch/mock';
 import { isPrivateHostname } from '@/lib/product-fetch/utils';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -63,10 +67,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  if (!checkRateLimit(sessionUser.id)) {
-    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
-  }
-
   let body: { url?: unknown };
   try {
     body = await request.json();
@@ -77,6 +77,18 @@ export async function POST(request: Request) {
   const parsed = validateUrl(body.url);
   if (!parsed) {
     return NextResponse.json({ error: 'invalid_url' }, { status: 400 });
+  }
+
+  // Local-mode mock requests never reach Zyte, so they skip the bucket the
+  // quota-protecting limit exists for; `rate-limited` is the one scenario
+  // whose 429 originates here rather than at the seam. Dead branch outside
+  // local mode (mockScenarioOf returns null).
+  const mockScenario = mockScenarioOf(parsed.toString());
+  if (mockScenario === RATE_LIMITED_SCENARIO) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+  }
+  if (mockScenario === null && !checkRateLimit(sessionUser.id)) {
+    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
   const result = await fetchProduct(parsed.toString(), {

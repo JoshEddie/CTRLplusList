@@ -126,6 +126,40 @@ describe('fetchProduct', () => {
     expect(result).toEqual({ ok: false, error: 'timeout' });
   });
 
+  it('LocalModeMockHost_ReturnsFixtureWithoutFetch', async () => {
+    vi.stubEnv('USE_PG_DRIVER', '1');
+    vi.stubEnv('ZYTE_API_KEY', 'key');
+    const result = await fetchProduct('https://mock.test/success');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.product.title).toBe('Mock Espresso Machine');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('LocalModeUnknownScenario_ReturnsFetchFailedWithoutFetch', async () => {
+    vi.stubEnv('USE_PG_DRIVER', '1');
+    vi.stubEnv('ZYTE_API_KEY', 'key');
+    const result = await fetchProduct('https://mock.test/no-such-scenario');
+    expect(result).toEqual({ ok: false, error: 'fetch_failed' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('LocalModeEmptyScenario_ReturnsFetchFailedWithoutFetch', async () => {
+    vi.stubEnv('USE_PG_DRIVER', '1');
+    vi.stubEnv('ZYTE_API_KEY', 'key');
+    const result = await fetchProduct('https://mock.test/');
+    expect(result).toEqual({ ok: false, error: 'fetch_failed' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('LocalModeRealHost_TakesRealPath', async () => {
+    vi.stubEnv('USE_PG_DRIVER', '1');
+    vi.stubEnv('ZYTE_API_KEY', 'key');
+    fetchMock.mockResolvedValue(jsonResponse(ZYTE_BODY));
+    const result = await fetchProduct('https://www.target.com/p/1');
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('NoCanonicalOrFinalUrl_DerivesStoreFromPastedUrl', async () => {
     vi.stubEnv('ZYTE_API_KEY', 'key');
     fetchMock.mockResolvedValue(jsonResponse({ product: { name: 'W' } }));

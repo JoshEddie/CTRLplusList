@@ -88,6 +88,9 @@ export default defineConfig({
         // `*` matches the literal `[...nextauth]` segment, which written directly
         // would parse as a character class.
         'app/api/auth/*/route.ts',
+        // dev-only scenario fixtures, dead outside local mode; the gating
+        // behavior is asserted through its callers (seam + route tests).
+        'lib/product-fetch/mock.ts',
       ],
       thresholds: {
         perFile: true,
