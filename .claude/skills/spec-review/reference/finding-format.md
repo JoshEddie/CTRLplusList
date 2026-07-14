@@ -6,7 +6,7 @@ Every persisted review report — `openspec/changes/<name>/review.md` for a
 spec-review, `openspec/reviews/<version>.md` for a release-review — opens with a
 machine-readable header. The header is the contract three independent skills
 share: the review writes round 1, `/recheck-review` appends rounds and computes
-the fix delta from the header, `/land-change` gates on the latest round's verdict.
+the fix delta from the header, `/landfall` gates on the latest round's verdict.
 
 ```yaml
 ---

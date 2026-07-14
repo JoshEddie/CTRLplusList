@@ -9,7 +9,7 @@ metadata:
 
 # /recheck-review
 
-Closes the review loop: after `/spec-review` or `/release-review` produced findings and fixes were made, verify each open `Fix now` finding against **just the fix delta**, append a numbered round to the persisted report, and emit a verdict `/land-change` can gate on.
+Closes the review loop: after `/spec-review` or `/release-review` produced findings and fixes were made, verify each open `Fix now` finding against **just the fix delta**, append a numbered round to the persisted report, and emit a verdict `/landfall` can gate on.
 
 Shared formats (header, round structure, verdict vocabulary) live in `.claude/skills/spec-review/reference/finding-format.md` — read it first. This skill reads that reference for format only; it takes no runtime dependency on the spec-review skill.
 

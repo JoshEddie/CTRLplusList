@@ -28,7 +28,7 @@ A self-contained project code-review skill. It audits a PR/diff against three th
 - the related OpenSpec change's `tasks.md`, `design.md`, `specs/**/spec.md`
 - `openspec validate`
 
-This is the review family's **full** review: it opens round 1 of a change's review history. Findings are fixed and verified in lightweight `/recheck-review` rounds appended to the same persisted report; a full `/spec-review` runs again only when a recheck escalates (`outgrew recheck`), appending a fresh full round. The latest round's verdict is the gate `/land-change` reads before staging the work commit.
+This is the review family's **full** review: it opens round 1 of a change's review history. Findings are fixed and verified in lightweight `/recheck-review` rounds appended to the same persisted report; a full `/spec-review` runs again only when a recheck escalates (`outgrew recheck`), appending a fresh full round. The latest round's verdict is the gate `/landfall` reads before staging the work commit.
 
 ## Contents
 
@@ -237,7 +237,7 @@ After emitting the consolidated report, write it to `openspec/changes/<name>/rev
 
 - The file opens with the shared machine-readable header defined in `reference/finding-format.md` (`review: spec-review`, `target:` the change, `anchor:` the sha the diff was computed against, `diff-source:` the diff command or PR reference, `round:` the highest round in the file).
 - The report body is round 1 (`## Round 1 — spec-review (<date>)`) per the round structure in `reference/finding-format.md`. A repeat full review (after an `outgrew recheck` escalation) **appends** the next round and bumps the header's `round:` — prior rounds are never rewritten.
-- The persisted report is consumed by `/recheck-review` (round appending, delta computation from the header) and `/land-change` (latest-round-verdict gate), and travels with the change directory at archive time.
+- The persisted report is consumed by `/recheck-review` (round appending, delta computation from the header) and `/landfall` (latest-round-verdict gate), and travels with the change directory at archive time.
 - **When the contract audit was skipped** (no related change resolved), there is no change directory to write into: write no file and say so in the report.
 
 ---

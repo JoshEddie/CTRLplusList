@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-  # dev is a trunk: /land-change pushes work commits directly, with no PR, so
+  # dev is a trunk: /landfall pushes work commits directly, with no PR, so
   # push must trigger the battery there. Release branches still flow through
   # PRs (covered by pull_request); listing them under push too would run every
   # job twice. main's push fires post-merge, where no PR event exists.
