@@ -3,7 +3,7 @@ review: spec-review
 target: build-by-hand-text-link
 anchor: 5194965
 diff-source: git diff --staged
-round: 1
+round: 2
 -->
 
 # Review — build-by-hand-text-link
@@ -42,5 +42,21 @@ _none_
 ## Verdict
 
 Request changes — not yet clear to archive (blockers: C1 open; CI unverified — a staged-diff invocation has no PR checks to read, so the local gate notes in tasks 3.1–3.5 are the only evidence).
+
+## Round 2 — recheck (2026-07-15)
+
+**Fix delta:** the header's rule for a `spec-review` target is the unstaged working-tree diff, which is empty here — the fix was committed and pushed rather than left unstaged. Delta taken instead as `5194965..97a3cbf` (the work commit) net of the reviewed staged baseline: one blank-line deletion in `FetchFailure.test.tsx`, plus this report's own Round 1 file. No source file outside the reviewed diff is touched, and the delta is a single line — no escalation tell fires.
+
+| # | Prior finding | Status | Notes |
+|---|---------------|--------|-------|
+| C1 | Stray blank line before the closing `});` of the top-level `describe` in `FetchFailure.test.tsx` | resolved | Verified in the committed file, not the diff: `FetchFailure.test.tsx:120-121` is now `});` immediately followed by `});`, with no blank line between. Line counts corroborate — the reviewed baseline was +201/−19 across 10 files; the commit is +246/−19 across 11, and the extra file is this report at +46, leaving +200 of source: exactly one insertion fewer than reviewed. |
+
+The round-1 verdict's second blocker — CI unverified — is also cleared: workflow `CI` run [29412939058](https://github.com/josheddie/list_eddiefamily_com/actions/runs/29412939058) concluded `success` on head sha `97a3cbf63ba0db97d9d05a372a75bdb0c6563712`, which is the current `dev` HEAD. The full battery now has real evidence behind it, superseding the local gate notes in tasks 3.1–3.5.
+
+### New findings
+
+_none_ — a one-line whitespace deletion introduces no fresh defect.
+
+**Verdict:** clear to land
 
 C1 is a one-line deletion. Once it's gone, the archive gate rests on CI alone.
