@@ -8,13 +8,15 @@ Routing labels are **ALL CAPS** and are the only labels skills route on. Each li
 | --- | --- | --- |
 | `OFF THE MAP` | Logged, not yet charted — map's intake queue | Any session logging a discovery |
 | `CHARTED` | Cleared for work — `/embark`'s only accepted target | `/map` (chart or exit) |
-| `UNCHARTED` | A map chunk not cleared — born gated at exit, or demoted | `/map` (exit), `/anchor` (demote/discard) |
+| `UNCHARTED` | A map chunk not cleared — born gated at exit, demoted, or migrated | `/map` (exit), `/anchor` (demote/discard), `/split-map` (migrate) |
 | `UNDER SAIL` | An OpenSpec change occupies the tree | `/set-sail` |
 | `IN PORT` | Landed and sealed, awaiting inspection | `/landfall` |
 | `ADRIFT` | Voyage interrupted with recoverable work | `/anchor` (park) |
-| `MAP` | Index issue for an epic | `/map` (chart) |
-| `PLOTTING` | Decision ticket, HITL | `/map`, `/anchor` (promote) |
+| `MAP` | Index issue for an epic — sole milestone carrier (stamped at exit) | `/map` (chart), `/split-map` (successor) |
+| `PLOTTING` | Decision ticket, HITL | `/map`, `/anchor` (promote), `/split-map` (re-orientation) |
 | `SCOUTING` | Decision ticket, AFK | `/map`, `/anchor` (promote) |
+
+Milestones are not labels but follow one routing invariant: the milestone lives **only on the `MAP` issue** — chunks, tickets, and every other issue carry none. `/map` exit stamps it; `/split-map` stamps the successor's and relabels migrated chunks `UNCHARTED` behind its re-orientation ticket.
 
 Lowercase labels (`bug`, `idea`, `debt`, `hold`, …) are **human triage only** — no skill routes on them, with one carve-out: when map's intake recharts an issue carrying `hold`, surface its parked findings comment to the owner before any charting proceeds.
 

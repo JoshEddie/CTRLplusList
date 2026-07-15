@@ -1,7 +1,7 @@
 ---
 name: release-review
 argument-hint: "[PR#]"
-description: The sole review gate for dev -> release-branch PRs - preflight hard gates (release base pattern, milestone present), five inline integration dimensions (milestone completeness, cross-feature interaction risk, migration ordering, OpenSpec state clean, version bump vs milestone), CI rollup read, and a persisted per-release report in openspec/reviews/. Verdict is ready to cut / not ready. Use when cutting a release from dev.
+description: The sole review gate for dev -> release-branch PRs - preflight hard gates (release base pattern, milestone present), five inline integration dimensions (map closure, cross-feature interaction risk, migration ordering, OpenSpec state clean, version bump vs milestone), CI rollup read, and a persisted per-release report in openspec/reviews/. Verdict is ready to cut / not ready. Use when cutting a release from dev.
 metadata:
   author: list_eddiefamily
   version: '1.0'
@@ -30,9 +30,9 @@ Resolve the PR (`gh pr view <PR> --json baseRefName,milestone,number,title`):
 
 ## The five dimensions — single inline pass
 
-### 1. Milestone completeness
+### 1. Map closure
 
-Every issue in the milestone is **closed** and its work is present in the PR's commit range; conversely, no substantial diff content lacks a milestone home. An open milestone issue is a finding.
+Every `MAP` issue assigned to the milestone is **closed** — which per `map-workflow` is reachable only through `/close-map`'s inspection walk (all chunks closed, leftovers dispatched via `/split-map`). A **blocking finding**: an open map, an open chunk under a milestoned map, or a chunk still `IN PORT` (uninspected cargo — the owner runs `/close-map` to inspect on the dev deployment before the cut). Resolution options reported are **finish / re-milestone the whole map / `/split-map`** — never moving a single chunk to another release. Conversely, no substantial diff content in the PR's commit range lacks a home under one of the milestone's maps.
 
 ### 2. Cross-feature interaction risk
 

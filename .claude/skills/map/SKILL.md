@@ -1,7 +1,7 @@
 ---
 name: map
 argument-hint: "[idea text | issue#]"
-description: The mandatory intake for all work definition - compile any input (spark, documented discovery, epic) toward ready-to-work issues through chart / work / exit phases. Small clear input compiles to a single CHARTED issue with no map; epics get a MAP index with PLOTTING/SCOUTING decision tickets as sub-issues and exit into sequenced, /embark-ready implementation chunks. Use for any new work definition, to work an existing map's tickets, or when an embark grilling routes out as epic-sized.
+description: The mandatory intake for all work definition - compile any input (spark, documented discovery, epic) toward ready-to-work issues through chart / work / exit phases. Small clear input compiles to a single-chunk map (MAP index + one CHARTED chunk, same session); epics get a MAP index with PLOTTING/SCOUTING decision tickets as sub-issues and exit into sequenced, /embark-ready implementation chunks. Use for any new work definition, to work an existing map's tickets, or when an embark grilling routes out as epic-sized.
 disable-model-invocation: true
 metadata:
   author: list_eddiefamily
@@ -36,7 +36,7 @@ The routing labels in [reference/label-machine.md](reference/label-machine.md) m
 
 ## Scale to demand
 
-Persistence machinery only materializes when state must outlive the session. A question answered inline during charting never becomes a ticket; a ticket exists only when a question must *wait* — for another session, a subagent, or manual work. The map issue itself is created only when unresolved decisions must cross a session boundary or the work must split into multiple issues. A small, clear idea compiles to a single distilled issue labeled `CHARTED` with no map artifact at all — that is the skill succeeding at small scale, not declining the job.
+Persistence machinery only materializes when state must outlive the session. A question answered inline during charting never becomes a ticket; a ticket exists only when a question must *wait* — for another session, a subagent, or manual work. **Every work item lives under a map** — the milestone ⇔ map invariant is uniform, so even a small, clear idea compiles to a single-chunk map: the `MAP` index created in the same session with one distilled `CHARTED` chunk as its sub-issue and no decision tickets. That is the skill succeeding at small scale, not ceremony: two issues, one owner approval, one session.
 
 ## The label machine
 
@@ -72,7 +72,7 @@ Map body — exactly these five sections:
     ## Out of scope
     <consciously ruled out; never graduates>
 
-The map carries **no milestone** — implementation chunks are milestone-assigned individually at exit.
+The milestone lives **only on the map issue**, stamped at exit — chunks, tickets, and every other issue carry none. A map is atomic with respect to a release: all its chunks ship together, and `/split-map` is the only operation that cuts a map at the landed boundary.
 
 ## Tickets
 
@@ -124,10 +124,10 @@ gh api --paginate repos/{owner}/{repo}/issues/<n>/dependencies/blocked_by --jq '
 1. **Intake.** If the input is an existing issue, read it (`gh issue view <N> --json title,body,labels,comments`). If it carries `hold`, surface the most recent parked findings comment to the owner verbatim before proceeding.
 2. **Seeded from an aborted embark grilling?** When `/embark`'s propose grilling routed out as epic-sized and handed off in-session, open with a **re-validation sweep**: every already-given answer is a **candidate, not a decision** — answers given under a one-change framing may not survive the epic reframing. Each is either confirmed into Decisions so far as a plain unlinked gist line (no ticket — an answer that never waited never earns one) or demoted to fog or a fresh ticket. Confirmed answers are not re-asked.
 3. Run `/grill-me` to name the destination — it fixes the scope. Grill breadth-first to surface open decisions, then scale to what surfaced:
-   - **No fog, one-change-sized** — draft the distilled body, get the owner's approval, emit a single issue labeled `CHARTED`, close a prompt issue with a pointer comment, stop. No map is created.
+   - **No fog, one-change-sized** — compile to a **single-chunk map** in this session: draft the distilled chunk body, get the owner's approval, create the `MAP` index (five-section body, milestone stamped) with exactly one `CHARTED` chunk as its sub-issue and no decision tickets, close a prompt issue with a pointer comment, stop.
    - **No fog, bigger than one change** — skip the decision phase: create the map purely as the epic index and proceed straight to Exit.
    - **Fog** — continue charting.
-4. Create the map (label `MAP`, five-section body, no milestone), fog sketched into Not yet specified. Close a prompt issue with a pointer comment.
+4. Create the map (label `MAP`, five-section body; the milestone is stamped at exit), fog sketched into Not yet specified. Close a prompt issue with a pointer comment.
 5. Create the tickets you can specify now as sub-issues, each labeled exactly one of `PLOTTING`/`SCOUTING`; wire blocked-by in a second pass.
 6. **Scouting fires now:** for each `SCOUTING` ticket just created, spawn a background subagent to answer it in parallel. As results return, post each finding as the resolution comment, close the ticket, and append its gist to Decisions so far marked *unreviewed*. Plotting tickets are never auto-resolved — they wait for their sessions.
 7. Stop — charting hand-resolves nothing else.
@@ -149,9 +149,11 @@ Bearing moves — promote (fog → ticket) and demote (mirage) — are `/anchor`
 
 The gate is **relaxed**: exit runs when the chunking is drafteable and the frontier chunk is unblocked — not only when every decision has closed. Residual open decision tickets are wired blocked-by onto the chunks they gate, and **those chunks are born `UNCHARTED`; unblocked chunks are born `CHARTED`**. Fog scoped to later chunks may persist in Not yet specified. Implementation chunks are created **only at exit**, never incrementally during the decision phase.
 
+Exit cuts **one release's worth of chunks** — the map is atomic with respect to its release, so everything it chunks ships together. Scope beyond that release never becomes a chunk here: it routes to a successor map or stays as fog until `/split-map` or `/close-map` dispatches it.
+
 1. Draft the chunking: implementation issues each sized for one OpenSpec change, sequenced with blocked-by, bodies pre-distilled — problem, settled decisions (linked from the map), constraints — so `/embark` consumes each without re-exploring. Each body links the map issue so the propose grilling inherits its Decisions so far.
 2. **Propose the split to the owner before creating anything; the chunking is theirs to approve.** No issue exists until they say yes.
-3. On approval, create the chunks as sub-issues of the map, wire the blocked-by sequence plus any residual decision tickets onto the chunks they gate, label each `CHARTED` or `UNCHARTED` per its blocking, and milestone-assign each individually; the map carries no milestone.
+3. On approval, create the chunks as sub-issues of the map, wire the blocked-by sequence plus any residual decision tickets onto the chunks they gate, and label each `CHARTED` or `UNCHARTED` per its blocking. **Stamp the target milestone on the map issue; chunks are created with no milestone.**
 4. The map stays open as the epic's living index. Chunks land as `IN PORT` via `/landfall`; `/close-map` inspects them and closes the map when the last chunk closes.
 
 Decisions recorded on tickets are provenance; when a chunk becomes an OpenSpec change, the decisions it builds on land in that change's design/spec deltas as usual. OpenSpec remains the contract of record.
