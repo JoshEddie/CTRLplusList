@@ -31,7 +31,7 @@ export function UrlEntryStep({
   };
 
   return (
-    <div className="deck">
+    <div className="deck deck-body">
       <p className="prefill-hint">Paste a product link, we&apos;ll pull the details, then walk you through anything that still needs attention.</p>
       <TextField
         label="Product link"

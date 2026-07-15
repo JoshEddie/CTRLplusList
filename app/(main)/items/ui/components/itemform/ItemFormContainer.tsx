@@ -178,7 +178,7 @@ const ItemFormContainer = ({
     }
     if (sheet) {
       return (
-        <div className="deck-sheet">
+        <div className="deck-sheet deck-body">
           <div className="deck-sheet-body">
             {sheet === 'stores' ? (
               <StoresSheet item={viewModel} actions={actions} />

@@ -41,7 +41,7 @@ export function FetchFailure({
 }: FetchFailureProps) {
   const { title, sub } = copyFor(kind, canRetrySame);
   return (
-    <div className="deck-failure">
+    <div className="deck-failure deck-body">
       <h2 className="deck-failure-title">{title}</h2>
       <p className="deck-failure-sub">{sub}</p>
       <div className="deck-failure-actions">

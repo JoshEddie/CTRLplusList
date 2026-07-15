@@ -65,7 +65,7 @@ export function Triage({ item, onBack, onFocus, onOpenStores }: TriageProps) {
   const noteOver = item.description.length > DESCRIPTION_MAX;
 
   return (
-    <div className="deck-triage">
+    <div className="deck-triage deck-body">
       <header className="deck-triage-head">
         <h2 className="deck-triage-title">Review anything</h2>
         <p className="deck-triage-sub">Tap a field to fix it.</p>

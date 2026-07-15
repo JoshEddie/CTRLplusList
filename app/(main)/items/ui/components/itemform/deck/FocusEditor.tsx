@@ -71,7 +71,7 @@ export function FocusEditor({
   }
 
   return (
-    <div className="deck-focus">
+    <div className="deck-focus deck-body">
       <h2 className="deck-focus-title">{FOCUS_LABELS[field]}</h2>
       <div className="deck-focus-body">{body}</div>
       <Button variant="primary" onClick={onDone} disabled={blocked}>

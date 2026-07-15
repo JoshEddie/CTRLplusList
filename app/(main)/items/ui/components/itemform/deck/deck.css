@@ -17,21 +17,17 @@
   --error-line: #f0bdb6;
 }
 
-.deck,
+.deck-body,
 .deck-card,
 .deck-preview,
-.deck-triage,
-.deck-focus,
 .deck-stores,
-.deck-lists,
-.deck-sheet,
-.deck-failure {
+.deck-lists {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.deck {
+.deck-body {
   padding: 8px 24px 24px;
 }
 
@@ -742,7 +738,6 @@
 /* ---- Fetch failure -------------------------------------------------------- */
 
 .deck-failure {
-  padding: 8px 24px 24px;
   align-items: center;
   text-align: center;
 }

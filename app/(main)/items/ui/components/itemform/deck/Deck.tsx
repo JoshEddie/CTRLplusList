@@ -45,7 +45,7 @@ export function Deck({
   const step = steps[index];
 
   return (
-    <div className="deck">
+    <div className="deck deck-body">
       {step === 'intro' && (
         <IntroCard
           item={item}
