@@ -162,12 +162,12 @@ test('Deck_SingleImage_BypassesPhotoCard', async ({ page }) => {
   await expect(page.getByText('Add a note')).toBeVisible();
 });
 
-test('Deck_FetchFails_TimeoutThenBuildByHandSeedsUrl', async ({ page }) => {
+test('Deck_FetchFails_TimeoutThenManualEntrySeedsUrl', async ({ page }) => {
   await openDeck(page, 'https://x.test/fail-link');
   await expect(
     page.getByText('This is taking longer than expected')
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Build it by hand' }).click();
+  await page.getByRole('button', { name: 'Fill in details manually →' }).click();
   await expect(page.getByText('Last look')).toBeVisible();
   await page.getByRole('button', { name: /Store links/ }).click();
   await expect(page.getByLabel('Link')).toHaveValue('https://x.test/fail-link');

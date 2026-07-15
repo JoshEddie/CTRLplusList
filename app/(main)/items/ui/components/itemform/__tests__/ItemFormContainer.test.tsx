@@ -452,12 +452,14 @@ describe('ItemFormContainer', () => {
       ).toBeInTheDocument();
     });
 
-    it('BuildByHand_OpensBlankPreviewWithUrlSeededInStoreLink', async () => {
+    it('ManualEntry_OpensBlankPreviewWithUrlSeededInStoreLink', async () => {
       fetchMock.mockResolvedValue(jsonOk({ ok: false, error: 'timeout' }));
       renderCreate();
       const user = await fetchUrl();
       await screen.findByText('This is taking longer than expected');
-      await user.click(screen.getByRole('button', { name: 'Build it by hand' }));
+      await user.click(
+        screen.getByRole('button', { name: 'Fill in details manually →' })
+      );
       expect(screen.getByText('Last look')).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: /Store links/ }));
       expect(screen.getByLabelText('Link')).toHaveValue(

@@ -14,7 +14,7 @@ function copyFor(kind: FailureKind, canRetrySame: boolean) {
   if (!canRetrySame) {
     return {
       title: 'That link keeps failing',
-      sub: 'Try a different one, or build it by hand.',
+      sub: 'Try a different one, or fill in the details manually.',
     };
   }
   if (kind === 'timeout') {
@@ -56,8 +56,8 @@ export function FetchFailure({
         >
           Try a different link
         </Button>
-        <Button variant="secondary" onClick={onManual}>
-          Build it by hand
+        <Button variant="link" onClick={onManual}>
+          Fill in details manually →
         </Button>
       </div>
     </div>

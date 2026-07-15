@@ -23,6 +23,18 @@ function renderFailure(
   );
 }
 
+// The manual escape must read as a text link below the stack, never a peer
+// button: de-emphasis is the whole point of the affordance.
+function expectManualEntryIsLinkBelowStack() {
+  const manual = screen.getByRole('button', {
+    name: 'Fill in details manually →',
+  });
+  expect(manual).toHaveClass('link');
+  expect(manual).not.toHaveClass('secondary');
+  const buttons = screen.getAllByRole('button');
+  expect(buttons[buttons.length - 1]).toBe(manual);
+}
+
 describe('FetchFailure', () => {
   it('TimeoutKind_ShowsSlownessCopyWithAllThreeActions', () => {
     renderFailure('timeout', true);
@@ -38,9 +50,7 @@ describe('FetchFailure', () => {
     expect(
       screen.getByRole('button', { name: 'Try a different link' })
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Build it by hand' })
-    ).toBeInTheDocument();
+    expectManualEntryIsLinkBelowStack();
   });
 
   it('FailedKind_ShowsUncertaintyCopyWithAllThreeActions', () => {
@@ -55,16 +65,14 @@ describe('FetchFailure', () => {
     expect(
       screen.getByRole('button', { name: 'Try a different link' })
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Build it by hand' })
-    ).toBeInTheDocument();
+    expectManualEntryIsLinkBelowStack();
   });
 
   it('RetryCapReached_WithdrawsTryAgainAndHardensCopy', () => {
     renderFailure('failed', false);
     expect(screen.getByText('That link keeps failing')).toBeInTheDocument();
     expect(
-      screen.getByText(/Try a different one, or build it by hand/)
+      screen.getByText(/Try a different one, or fill in the details manually/)
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Try again' })
@@ -72,9 +80,7 @@ describe('FetchFailure', () => {
     expect(
       screen.getByRole('button', { name: 'Try a different link' })
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Build it by hand' })
-    ).toBeInTheDocument();
+    expectManualEntryIsLinkBelowStack();
   });
 
   it('TimeoutKindCapped_AlsoWithdrawsTryAgain', () => {
@@ -103,11 +109,13 @@ describe('FetchFailure', () => {
     expect(onTryDifferent).toHaveBeenCalledOnce();
   });
 
-  it('BuildItByHandClicked_InvokesManualHandler', async () => {
+  it('ManualEntryLinkClicked_InvokesManualHandler', async () => {
     const onManual = vi.fn();
     const user = userEvent.setup();
     renderFailure('failed', true, { onManual });
-    await user.click(screen.getByRole('button', { name: 'Build it by hand' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Fill in details manually →' })
+    );
     expect(onManual).toHaveBeenCalledOnce();
   });
 });
