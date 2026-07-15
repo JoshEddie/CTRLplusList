@@ -1,7 +1,7 @@
 ---
 name: embark
 argument-hint: "<issue#>"
-description: Board and prep a CHARTED issue for the voyage - gate on trunk preconditions (on dev, up to date), verify the issue is cleared for work, run the terrain check against current code and specs, then run OpenSpec propose seeded from the issue body with inherited map decisions. CHARTED is the only state it acts on; anything else stops. Use when picking up a cleared issue to start a new change on dev.
+description: Board and prep a CHARTED issue for the voyage - gate on trunk preconditions (on dev, up to date), verify the issue is cleared for work (label CHARTED AND zero open blockers), run the terrain check against current code and specs, then run OpenSpec propose seeded from the issue body with inherited map decisions. CHARTED with no open blocker is the only state it acts on; anything else stops. Use when picking up a cleared issue to start a new change on dev.
 metadata:
   author: list_eddiefamily
   version: '2.0'
@@ -28,13 +28,22 @@ Both must hold before the issue is even read; on failure report exactly which fa
 
 The one-change-mid-apply gate is **not** here — it lives in `/set-sail`, at the moment the tree becomes occupied. Proposal artifacts coexisting in the tree don't block an embark.
 
-## Boarding check — `CHARTED` or stop
+## Boarding check — `CHARTED` and unblocked, or stop
 
 ```bash
 gh issue view <N> --json title,body,labels,comments
 ```
 
 `CHARTED` is the only state embark acts on. Anything else stops — report the routing labels found; [the label machine](../map/reference/label-machine.md) names the skill that owns each. Lowercase labels are human triage and never route.
+
+The label alone does not board. Verify zero open blockers:
+
+```bash
+gh api --paginate repos/{owner}/{repo}/issues/<n>/dependencies/blocked_by \
+  --jq '.[] | {number, state, title}'
+```
+
+Any blocker with state `open` stops embark — report each blocking issue by number and title. Closed blockers are sequencing history, not gates. A failed query stops loudly too: an error is never read as "no blockers".
 
 ## Terrain check — before proposing
 

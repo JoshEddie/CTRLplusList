@@ -7,8 +7,8 @@ Routing labels are **ALL CAPS** and are the only labels skills route on. Each li
 | Label | Meaning | Stamped by |
 | --- | --- | --- |
 | `OFF THE MAP` | Logged, not yet charted — map's intake queue | Any session logging a discovery |
-| `CHARTED` | Cleared for work — `/embark`'s only accepted target | `/map` (chart or exit) |
-| `UNCHARTED` | A map chunk not cleared — born gated at exit, demoted, or migrated | `/map` (exit), `/anchor` (demote/discard), `/split-map` (migrate) |
+| `CHARTED` | Scope settled, cleared for work — even while sequenced behind an open blocker; `/embark`'s only accepted target | `/map` (chart or exit) |
+| `UNCHARTED` | Fog only: a map chunk whose scope is not settled — born gated by an open decision ticket at exit, demoted, or migrated. NOT a blocked marker | `/map` (exit), `/anchor` (demote/discard), `/split-map` (migrate) |
 | `UNDER SAIL` | An OpenSpec change occupies the tree | `/set-sail` |
 | `IN PORT` | Landed and sealed, awaiting inspection | `/landfall` |
 | `ADRIFT` | Voyage interrupted with recoverable work | `/anchor` (park) |
@@ -20,6 +20,6 @@ Milestones are not labels but follow one routing invariant: the milestone lives 
 
 Lowercase labels (`bug`, `idea`, `debt`, `hold`, …) are **human triage only** — no skill routes on them, with one carve-out: when map's intake recharts an issue carrying `hold`, surface its parked findings comment to the owner before any charting proceeds.
 
-There is no separate not-cleared marker: `/embark` acts only on `CHARTED` and stops on everything else.
+Sequencing between issues lives exclusively in native blocked-by relationships, never in labels: a blocker landing moves no label and fires no skill — the `CHARTED` chunk behind it becomes frontier automatically. `/embark` gates on both signals: label `CHARTED` AND zero open blockers; anything else stops it.
 
 Every label above must already exist in the repo. Skills stamp them and never create them — creation is a one-time repo-setup step (deliberately not documented here: this file is read on every routing decision, and setup happened once, at adoption), so a missing label surfaces as a loud `gh` failure rather than being silently repaired. Repair by recreating the label from the table above (`gh label create`).

@@ -147,13 +147,13 @@ Bearing moves — promote (fog → ticket) and demote (mirage) — are `/anchor`
 
 ## Exit (way clear enough to chunk)
 
-The gate is **relaxed**: exit runs when the chunking is drafteable and the frontier chunk is unblocked — not only when every decision has closed. Residual open decision tickets are wired blocked-by onto the chunks they gate, and **those chunks are born `UNCHARTED`; unblocked chunks are born `CHARTED`**. Fog scoped to later chunks may persist in Not yet specified. Implementation chunks are created **only at exit**, never incrementally during the decision phase.
+The gate is **relaxed**: exit runs when the chunking is drafteable and the frontier chunk is unblocked — not only when every decision has closed. Birth labels split by gate type: chunks gated by residual open **decision tickets** (wired blocked-by) are born `UNCHARTED` — an open decision means scope not settled; chunks merely sequenced behind other **chunks** are born `CHARTED` with blocked-by wired — sequencing is not fog, and no relabel is owed when the predecessor lands; unblocked settled chunks are born `CHARTED` as before. Fog scoped to later chunks may persist in Not yet specified. Implementation chunks are created **only at exit**, never incrementally during the decision phase.
 
 Exit cuts **one release's worth of chunks** — the map is atomic with respect to its release, so everything it chunks ships together. Scope beyond that release never becomes a chunk here: it routes to a successor map or stays as fog until `/split-map` or `/close-map` dispatches it.
 
 1. Draft the chunking: implementation issues each sized for one OpenSpec change, sequenced with blocked-by, bodies pre-distilled — problem, settled decisions (linked from the map), constraints — so `/embark` consumes each without re-exploring. Each body links the map issue so the propose grilling inherits its Decisions so far.
 2. **Propose the split to the owner before creating anything; the chunking is theirs to approve.** No issue exists until they say yes.
-3. On approval, create the chunks as sub-issues of the map, wire the blocked-by sequence plus any residual decision tickets onto the chunks they gate, and label each `CHARTED` or `UNCHARTED` per its blocking. **Stamp the target milestone on the map issue; chunks are created with no milestone.**
+3. On approval, create the chunks as sub-issues of the map, wire the blocked-by sequence plus any residual decision tickets onto the chunks they gate, and label each per its gate type: `UNCHARTED` only when an open decision ticket gates it directly, `CHARTED` otherwise (chunk-only blockers included). **Stamp the target milestone on the map issue; chunks are created with no milestone.**
 4. The map stays open as the epic's living index. Chunks land as `IN PORT` via `/landfall`; `/close-map` inspects them and closes the map when the last chunk closes.
 
 Decisions recorded on tickets are provenance; when a chunk becomes an OpenSpec change, the decisions it builds on land in that change's design/spec deltas as usual. OpenSpec remains the contract of record.
