@@ -13,7 +13,7 @@ One command, driven by repository state. Landing a change is two owner-signed co
 
 **Skills never commit.** At every commit point: stage, state exactly what is ready with the **paste-ready commit message**, and **stop** — the owner signs at the screen. Never run `git commit`; never retry a blocked or unattended signature. Sessions may end at any hand-off; re-invocation resumes from state.
 
-**Landfall docks, never closes.** Bookkeeping labels the issue `IN PORT` — nothing else. Closing is inspection's act — `/close-map`.
+**Landfall docks, never closes.** Bookkeeping labels the issue `IN PORT` — nothing else. Closing is inspection's act — `/port-inspection`.
 
 ## Phase detection — state-driven, self-healing
 

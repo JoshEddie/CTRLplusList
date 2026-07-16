@@ -10,7 +10,7 @@ Routing labels are **ALL CAPS** and are the only labels skills route on. Each li
 | `CHARTED` | Scope settled, cleared for work — even while sequenced behind an open blocker; `/embark`'s only accepted target | `/map` (chart or exit) |
 | `UNCHARTED` | Fog only: a map chunk whose scope is not settled — born gated by an open decision ticket at exit, demoted, or migrated. NOT a blocked marker | `/map` (exit), `/anchor` (demote/discard), `/split-map` (migrate) |
 | `UNDER SAIL` | An OpenSpec change occupies the tree | `/set-sail` |
-| `IN PORT` | Landed and sealed, awaiting inspection | `/landfall` |
+| `IN PORT` | Landed and sealed, awaiting inspection via `/port-inspection` | `/landfall` |
 | `ADRIFT` | Voyage interrupted with recoverable work | `/anchor` (park) |
 | `MAP` | Index issue for an epic — sole milestone carrier (stamped at exit) | `/map` (chart), `/split-map` (successor) |
 | `PLOTTING` | Decision ticket, HITL | `/map`, `/anchor` (promote), `/split-map` (re-orientation) |
