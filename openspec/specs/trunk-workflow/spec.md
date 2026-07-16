@@ -44,15 +44,27 @@ Any other routing state SHALL stop, reporting the routing labels found; an open 
 
 ### Requirement: /set-sail SHALL gate the apply stage and wrap opsx:apply
 
-`/set-sail` SHALL be the only route into implementing a change. It SHALL hard-stop when another change is mid-apply — an active change in `openspec/changes/` with unchecked `tasks.md` items alongside uncommitted code changes; spec artifacts or a fully-implemented change awaiting review or landing SHALL NOT block. On proceed it SHALL flip the issue's label `CHARTED` → `UNDER SAIL` (the board's single "the tree is occupied" beacon), state the mid-voyage disciplines — discoveries are logged as rich `OFF THE MAP` issues without charting; a mirage stops work and fires `/anchor` — and delegate the task loop to `/opsx:apply`. Embark SHALL NOT flip any label: proposal artifacts are tree state, authoritatively recorded by the change directory, and no label mirrors them.
+`/set-sail` SHALL be the only route into implementing a change: it gates on one-change-mid-apply, flips the issue to `UNDER SAIL`, states the mid-voyage disciplines, and delegates the task loop to `/opsx:apply`.
 
 #### Scenario: Mid-apply change blocks a second voyage
-- **WHEN** `/set-sail` runs while an active change has unchecked tasks and uncommitted code in the tree
+- **WHEN** `/set-sail` runs while an active change in `openspec/changes/` has unchecked `tasks.md` items alongside uncommitted code changes
 - **THEN** the skill stops before touching anything, naming the mid-apply change
 
 #### Scenario: Implemented change under review does not block
 - **WHEN** `/set-sail` runs while the tree holds only a fully-implemented change awaiting review or landing plus the new change's artifacts
-- **THEN** the skill proceeds, flips the new issue to `UNDER SAIL`, and enters apply
+- **THEN** the skill proceeds, flips the new issue `CHARTED` → `UNDER SAIL`, and enters apply
+
+#### Scenario: Under sail is the single occupied-tree beacon
+- **WHEN** `/set-sail` flips the issue to `UNDER SAIL`
+- **THEN** that label is the board's only "the tree is occupied" signal
+
+#### Scenario: Discipline defers discovery routing to the definition layer
+- **WHEN** `/set-sail` states the mid-voyage disciplines at the start of a voyage
+- **THEN** it states that a discovery is never folded into the active change, that charting onto an open map runs through `/anchor` (whose charter move is owned by `map-workflow`), and that a mirage stops work and fires `/anchor` — without mandating `OFF THE MAP` as the only route or restating the charter criteria
+
+#### Scenario: Embark flips no label
+- **WHEN** `/embark` produces proposal artifacts
+- **THEN** no label is flipped — proposal artifacts are tree state, authoritatively recorded by the change directory
 
 ### Requirement: A change SHALL land through /landfall with an owner-chosen verification path
 
@@ -101,3 +113,4 @@ Large or slow features MAY still be developed on a feature branch and reviewed t
 #### Scenario: Deliberate branch work stays supported
 - **WHEN** the owner develops a large feature on a branch and opens a PR to `dev`
 - **THEN** `/spec-review <PR>` reviews it exactly as before, including the CI rollup read
+
