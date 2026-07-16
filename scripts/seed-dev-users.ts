@@ -158,18 +158,19 @@ function hash(s: string): number {
 }
 
 // Description pool — mix of short notes and longer paragraphs so layout
-// preview covers single-line, multi-line wrap, and overflow truncation. ~20%
-// of items get an empty description (h % 5 === 0) to keep the empty-state
-// reachable from a fresh seed.
+// preview covers single-line and multi-line wrap; every entry fits the
+// 100-char DESCRIPTION_MAX and one sits exactly at the cap so the
+// rendered-in-full boundary is reachable from a fresh seed. ~20% of items
+// get an empty description (h % 5 === 0) to keep the empty-state reachable.
 const DESCRIPTION_POOL = [
   'Color and finish are flexible — surprise me.',
   'Already have the small size; looking for the larger one this time around.',
   'Matte black preferred, but any neutral works.',
   "Please get the rechargeable version, not battery-powered — we've got a drawer full of AAs already.",
-  "Saw this at a friend's place last month and have been thinking about it ever since. Bonus points if it comes in walnut.",
+  "Saw this one at a friend's place last month and I cannot stop thinking about it. Bonus if in walnut.",
   'No rush on this one — happy to wait for a sale.',
   'Open to any brand as long as the reviews are solid.',
-  'The linked one is ideal, but any comparable model is great. Mostly just want something that actually lasts.',
+  'The linked one is ideal, but any comparable model is great. Mostly want something that lasts.',
   'Would love this in cream or sage; nothing too bright.',
   'For the kitchen remodel — should match the brushed-nickel hardware we already have.',
   'Quality over quantity here. Rather have one good one than two cheap ones.',

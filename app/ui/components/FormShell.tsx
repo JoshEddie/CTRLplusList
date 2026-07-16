@@ -5,7 +5,7 @@ import { LuX } from 'react-icons/lu';
 import { Button } from '@/app/ui/components/button';
 import '@/app/ui/styles/form-shell.css';
 
-type Variant = 'default' | 'wide' | 'split';
+type Variant = 'default' | 'wide';
 
 function useDismiss(
   onClose: (() => void) | undefined,
@@ -45,12 +45,7 @@ export function FormShell({
 }) {
   const dismiss = useDismiss(onClose, closeHref);
 
-  const cls =
-    variant === 'split'
-      ? 'form-shell form-shell-split'
-      : variant === 'wide'
-        ? 'form-shell form-shell-wide'
-        : 'form-shell';
+  const cls = variant === 'wide' ? 'form-shell form-shell-wide' : 'form-shell';
 
   return (
     <div
