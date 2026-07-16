@@ -7,7 +7,6 @@ import { PriceEditor } from './editors/PriceEditor';
 import { TitleEditor } from './editors/TitleEditor';
 import { FOCUS_LABELS, type FocusField } from './focus';
 import type { ItemActions } from './useItemActions';
-import { DESCRIPTION_MAX, priceTier, titleTier } from './utils';
 import type { ItemViewModel } from './viewModel';
 
 interface FocusEditorProps {
@@ -19,8 +18,9 @@ interface FocusEditorProps {
 }
 
 // A single field, edited in place, reusing the same editor components as the
-// deck. "Done" is gated by the same tier helpers, so an error-tier value can't
-// be committed back to Preview (6.2).
+// deck. Edits write into the item as the user types, so "Done" only closes —
+// error-tier values are caught downstream (the Fill-manually advance rule and
+// Preview's Create/Save gate), never by trapping the user here.
 export function FocusEditor({
   field,
   item,
@@ -30,7 +30,6 @@ export function FocusEditor({
 }: FocusEditorProps) {
   const store = item.stores[0];
   let body: React.ReactNode;
-  let blocked = false;
 
   if (field === 'photo') {
     body = (
@@ -42,7 +41,6 @@ export function FocusEditor({
       />
     );
   } else if (field === 'title') {
-    blocked = titleTier(item.name).tier === 'error';
     body = (
       <TitleEditor
         name={item.name}
@@ -52,7 +50,6 @@ export function FocusEditor({
       />
     );
   } else if (field === 'price') {
-    blocked = priceTier(store?.price).tier !== 'good';
     body = (
       <PriceEditor
         price={store?.price ?? ''}
@@ -61,7 +58,6 @@ export function FocusEditor({
       />
     );
   } else {
-    blocked = item.description.length > DESCRIPTION_MAX;
     body = (
       <NoteEditor
         description={item.description}
@@ -74,7 +70,7 @@ export function FocusEditor({
     <div className="deck-focus deck-body">
       <h2 className="deck-focus-title">{FOCUS_LABELS[field]}</h2>
       <div className="deck-focus-body">{body}</div>
-      <Button variant="primary" onClick={onDone} disabled={blocked}>
+      <Button variant="primary" onClick={onDone}>
         Done
       </Button>
     </div>

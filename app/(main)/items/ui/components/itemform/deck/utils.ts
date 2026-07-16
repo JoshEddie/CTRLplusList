@@ -2,7 +2,8 @@
 // Triage, Preview, and the submit gate — the single source for the
 // title/price/description rules so they can't drift between surfaces.
 
-import type { ItemViewModel } from './viewModel';
+import type { FocusField } from './focus';
+import type { DeckStore, ItemViewModel } from './viewModel';
 
 // Candidates whose natural dimensions fall below this (px, both axes) are
 // dropped. Extractors routinely include tiny thumbnails (e.g. Amazon's 40px
@@ -63,6 +64,85 @@ export function priceTier(price: string | null | undefined): TierResult {
     return { tier: 'error', note: 'Use a number like 19.99.' };
   }
   return { tier: 'good', note: '' };
+}
+
+export function photoTier(photos: string[]): TierResult {
+  if (photos.length === 0) {
+    return { tier: 'warn', note: 'No photo yet — add one.' };
+  }
+  return { tier: 'good', note: '' };
+}
+
+// Reproduces isValidStore's classification (name && link && numeric price)
+// without touching it — whether a linkless store is legal at all is an open,
+// separately-tracked question, so the boundary must not move here.
+export function storeTier(
+  store: Pick<DeckStore, 'name' | 'link' | 'price'> | null | undefined
+): TierResult {
+  const price = (store?.price ?? '').trim();
+  if (!store || (!store.name && !store.link && !price)) {
+    return { tier: 'warn', note: 'No store yet — add where to buy it.' };
+  }
+  if (!store.name) {
+    return { tier: 'warn', note: 'The store needs a name.' };
+  }
+  if (!store.link) {
+    return { tier: 'warn', note: 'The store needs a link.' };
+  }
+  if (!price || Number.isNaN(Number(price))) {
+    return { tier: 'warn', note: 'The store needs a price.' };
+  }
+  return { tier: 'good', note: '' };
+}
+
+// Measures user-entered work only: a failure-path seeded store link and the
+// qty default are not effort worth guarding, so they don't count.
+export function isDirtyDraft(item: ItemViewModel): boolean {
+  return (
+    item.name.trim() !== '' ||
+    item.description.trim() !== '' ||
+    item.photos.length > 0 ||
+    item.stores.some(
+      (store) => store.name.trim() !== '' || store.price.trim() !== ''
+    )
+  );
+}
+
+export type RowField = FocusField | 'store';
+
+export type RowTiers = Record<RowField, TierResult>;
+
+export function rowTiers(item: ItemViewModel): RowTiers {
+  return {
+    photo: photoTier(item.photos),
+    title: titleTier(item.name),
+    // The note is the one field whose emptiness is fine by design — "Looks
+    // good" on absent content would be a false verdict, so the good tier
+    // carries "Optional" until something is written.
+    note:
+      item.description.length > DESCRIPTION_MAX
+        ? {
+            tier: 'error',
+            note: `Over the ${DESCRIPTION_MAX}-character limit — trim it.`,
+          }
+        : { tier: 'good', note: item.description ? '' : 'Optional' },
+    price: priceTier(item.stores[0]?.price),
+    store: storeTier(item.stores[0]),
+  };
+}
+
+// The Fill-manually advance rule: no error anywhere, every warn seen at least
+// once. Expressed over tiers alone — a field whose tier rules change later is
+// governed here without amendment.
+export function manualAdvanceReady(
+  tiers: RowTiers,
+  visited: ReadonlySet<RowField>
+): boolean {
+  const rows = Object.entries(tiers) as [RowField, TierResult][];
+  return (
+    rows.every(([, row]) => row.tier !== 'error') &&
+    rows.every(([field, row]) => row.tier !== 'warn' || visited.has(field))
+  );
 }
 
 function probe(url: string): Promise<{ url: string; ok: boolean }> {

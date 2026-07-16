@@ -2,58 +2,43 @@
 
 import { Button } from '@/app/ui/components/button';
 import { FormShell } from '@/app/ui/components/FormShell';
-import type { ProductData } from '@/lib/product-fetch/types';
 import type { ItemStoreTable, ItemTable, ListTable } from '@/lib/types';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import DeleteItemButton from '../DeleteItemButton';
 import { Deck } from './deck/Deck';
 import './deck/deck.css';
 import { FocusEditor } from './deck/FocusEditor';
-import { FOCUS_LABELS, type FocusField } from './deck/focus';
+import type { FocusField } from './deck/focus';
 import { Preview } from './deck/Preview';
 import { ListsQtySheet } from './deck/sheets/ListsQtySheet';
 import { StoresSheet } from './deck/sheets/StoresSheet';
-import { FetchFailure, type FailureKind } from './deck/FetchFailure';
+import { FetchFailure } from './deck/FetchFailure';
+import { FillManually } from './deck/FillManually';
 import { Triage } from './deck/Triage';
 import { useItemActions } from './deck/useItemActions';
 import { useItemSubmit } from './deck/useItemSubmit';
-import { prunePhotos } from './deck/utils';
+import { useProductFetch } from './deck/useProductFetch';
+import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
+import {
+  isDirtyDraft,
+  manualAdvanceReady,
+  rowTiers,
+  type RowField,
+} from './deck/utils';
 import {
   blankItem,
-  seedFromFetch,
   seedFromItem,
   type ItemViewModel,
 } from './deck/viewModel';
 import { FetchingStep } from './FetchingStep';
 import { UrlEntryStep } from './UrlEntryStep';
-
-type Screen = 'start' | 'fetching' | 'deck' | 'preview' | 'triage' | 'failure';
-
-// Same-link "Try again" is allowed for the first two failures, then withdrawn
-// (D10) — each retry is a real fetch, and the cap keeps a frustrated user from
-// grinding into the route's rate limit.
-const RETRY_CAP = 2;
-type Sheet = 'stores' | 'lists';
+import { shellTitle, type Screen, type Sheet } from './utils';
 
 type EditItem = ItemTable & {
   stores: ItemStoreTable[];
   lists: ListTable[];
   image_candidates?: string[];
 };
-
-function shellTitle(
-  screen: Screen,
-  sheet: Sheet | null,
-  focus: FocusField | null,
-  isEditing: boolean
-): string {
-  if (focus) return FOCUS_LABELS[focus];
-  if (sheet === 'stores') return 'Store links';
-  if (sheet === 'lists') return 'Lists & quantity';
-  if (screen === 'triage') return 'Review';
-  if (screen === 'preview') return isEditing ? 'Edit item' : 'Add an item';
-  return 'Add an item';
-}
 
 const ItemFormContainer = ({
   lists,
@@ -75,12 +60,27 @@ const ItemFormContainer = ({
   const [screen, setScreen] = useState<Screen>(isEditing ? 'preview' : 'start');
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [focus, setFocus] = useState<FocusField | null>(null);
-  const [pastedUrl, setPastedUrl] = useState('');
-  const [urlStepError, setUrlStepError] = useState('');
-  const [failureKind, setFailureKind] = useState<FailureKind>('failed');
-  const [failCount, setFailCount] = useState(0);
-  const abortRef = useRef<AbortController | null>(null);
+  const [manualVisited, setManualVisited] = useState<ReadonlySet<RowField>>(
+    () => new Set()
+  );
+  const [draftPrompt, setDraftPrompt] = useState<'entry' | 'failure' | null>(
+    null
+  );
+  // Distinguishes a manual-authored draft from fetch-seeded values: only the
+  // former is user-entered work the discard prompt guards.
+  const [manualDraftLive, setManualDraftLive] = useState(false);
 
+  const {
+    pastedUrl,
+    urlStepError,
+    failureKind,
+    canRetrySame,
+    startFetch,
+    returnToUrl,
+  } = useProductFetch((vm) => {
+    setManualDraftLive(false);
+    setViewModel(vm);
+  }, setScreen);
   const actions = useItemActions(setViewModel);
   const { submit, isPending } = useItemSubmit(
     viewModel,
@@ -93,75 +93,65 @@ const ItemFormContainer = ({
     [lists]
   );
 
-  const abortFetch = () => {
-    abortRef.current?.abort();
-    abortRef.current = null;
+  const buildByHand = () => {
+    setViewModel(blankItem(pastedUrl));
+    setManualVisited(new Set());
+    setManualDraftLive(true);
+    setScreen('manual');
   };
 
-  const returnToUrl = () => {
-    abortFetch();
-    setScreen('start');
+  // The entry card's manual path deliberately drops an unfetched pasted URL —
+  // a link the user abandoned without fetching is never seeded into the item.
+  const startBlankManual = () => {
+    setViewModel(blankItem());
+    setManualVisited(new Set());
+    setManualDraftLive(true);
+    setScreen('manual');
   };
 
-  const failFetch = (kind: FailureKind, priorFails: number) => {
-    setFailureKind(kind);
-    setFailCount(priorFails + 1);
-    setScreen('failure');
+  // Leaving the manual shell never discards; the wipe is these re-seed
+  // handlers. A dirty draft therefore prompts here — the actual discard
+  // moment — never on the back action.
+  const requestManual = (path: 'entry' | 'failure') => {
+    if (manualDraftLive && isDirtyDraft(viewModel)) {
+      setDraftPrompt(path);
+      return;
+    }
+    (path === 'entry' ? startBlankManual : buildByHand)();
   };
 
-  const startFetch = async (url: string) => {
-    const priorFails = url === pastedUrl ? failCount : 0;
-    if (url !== pastedUrl) setFailCount(0);
-    setPastedUrl(url);
-    setUrlStepError('');
-    setScreen('fetching');
-    const controller = new AbortController();
-    abortRef.current = controller;
-    try {
-      const response = await fetch('/api/product-fetch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
-        signal: controller.signal,
-      });
-      const result = await response.json();
-      // Rate limiting is retry-in-a-minute, not a reason to hand-type the
-      // item — stay on the URL step with the link intact.
-      if (response.status === 429 || result.error === 'rate_limited') {
-        setUrlStepError(
-          "You've hit the fetch limit — try again in about a minute."
-        );
-        setScreen('start');
-        return;
-      }
-      if (result.ok) {
-        const seeded = seedFromFetch(
-          result.product as ProductData,
-          url,
-          new Date().toISOString()
-        );
-        // Prune undersized images BEFORE building the deck so the photo count,
-        // the step decision, and the selector all agree on the usable set.
-        const photos = await prunePhotos(seeded.photos);
-        if (controller.signal.aborted) return;
-        setViewModel({ ...seeded, photos, photoIndex: 0 });
-        setFailCount(0);
-        setScreen('deck');
-      } else {
-        failFetch(result.error === 'timeout' ? 'timeout' : 'failed', priorFails);
-      }
-    } catch (error) {
-      if (controller.signal.aborted) return;
-      console.error('Product fetch failed:', error);
-      failFetch('failed', priorFails);
-    } finally {
-      if (abortRef.current === controller) abortRef.current = null;
+  const keepDraft = () => {
+    setDraftPrompt(null);
+    setScreen('manual');
+  };
+
+  const startOver = () => {
+    (draftPrompt === 'failure' ? buildByHand : startBlankManual)();
+  };
+
+  // A row counts as visited once its overlay has opened and closed; evaluating
+  // here (overlay close), not on each view-model write, keeps the advance from
+  // firing mid-edit.
+  const visitManualRow = (field: RowField) => {
+    const visited = new Set(manualVisited).add(field);
+    setManualVisited(visited);
+    if (manualAdvanceReady(rowTiers(viewModel), visited)) {
+      setScreen('preview');
     }
   };
 
-  const buildByHand = () => {
-    setViewModel(blankItem(pastedUrl));
-    setScreen('preview');
+  const closeFocus = () => {
+    const field = focus;
+    setFocus(null);
+    if (screen === 'manual' && field) visitManualRow(field);
+  };
+
+  const openStores = () => setSheet('stores');
+
+  const closeSheet = () => {
+    const wasStores = sheet === 'stores';
+    setSheet(null);
+    if (screen === 'manual' && wasStores) visitManualRow('store');
   };
 
   const body = () => {
@@ -172,7 +162,7 @@ const ItemFormContainer = ({
           item={viewModel}
           actions={actions}
           productUrl={pastedUrl}
-          onDone={() => setFocus(null)}
+          onDone={closeFocus}
         />
       );
     }
@@ -190,7 +180,7 @@ const ItemFormContainer = ({
               />
             )}
           </div>
-          <Button variant="primary" onClick={() => setSheet(null)}>
+          <Button variant="primary" onClick={closeSheet}>
             Done
           </Button>
         </div>
@@ -203,10 +193,7 @@ const ItemFormContainer = ({
             initialUrl={pastedUrl}
             initialError={urlStepError}
             onFetch={startFetch}
-            onManual={() => {
-              setViewModel(blankItem());
-              setScreen('preview');
-            }}
+            onManual={() => requestManual('entry')}
           />
         );
       case 'fetching':
@@ -234,17 +221,26 @@ const ItemFormContainer = ({
             item={viewModel}
             onBack={() => setScreen('preview')}
             onFocus={setFocus}
-            onOpenStores={() => setSheet('stores')}
+            onOpenStores={openStores}
+          />
+        );
+      case 'manual':
+        return (
+          <FillManually
+            item={viewModel}
+            onBack={returnToUrl}
+            onFocus={setFocus}
+            onOpenStores={openStores}
           />
         );
       case 'failure':
         return (
           <FetchFailure
             kind={failureKind}
-            canRetrySame={failCount <= RETRY_CAP}
+            canRetrySame={canRetrySame}
             onRetrySame={() => startFetch(pastedUrl)}
             onTryDifferent={returnToUrl}
-            onManual={buildByHand}
+            onManual={() => requestManual('failure')}
           />
         );
       case 'preview':
@@ -257,7 +253,7 @@ const ItemFormContainer = ({
             isPending={isPending}
             onSubmit={submit}
             onOpenTriage={() => setScreen('triage')}
-            onOpenStores={() => setSheet('stores')}
+            onOpenStores={openStores}
             onOpenLists={() => setSheet('lists')}
             onAddNote={() => setFocus('note')}
             deleteSlot={
@@ -287,6 +283,15 @@ const ItemFormContainer = ({
       onClose={onClose}
     >
       {body()}
+      <ConfirmDialog
+        isOpen={draftPrompt !== null}
+        onClose={keepDraft}
+        onConfirm={startOver}
+        title="You have a draft in progress"
+        message="Keep filling it in, or start over?"
+        confirmText="Start over"
+        cancelText="Keep filling"
+      />
     </FormShell>
   );
 };

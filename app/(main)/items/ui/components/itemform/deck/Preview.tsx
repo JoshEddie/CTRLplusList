@@ -68,7 +68,7 @@ export function Preview({
             variant="lavender"
             icon={<FaPen />}
             label="Need to change something?"
-            sub="Fix anything we got wrong"
+            sub="Fix anything that looks wrong"
             onClick={onOpenTriage}
           />
           <ActionRow

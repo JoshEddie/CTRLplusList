@@ -58,6 +58,14 @@ describe('Preview', () => {
     expect(screen.queryByText(/Something's off/)).not.toBeInTheDocument();
   });
 
+  it('TriageEntrySub_ClaimsNoSystemAuthorship', () => {
+    setup();
+    expect(
+      screen.getByText('Fix anything that looks wrong')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/we got wrong/)).not.toBeInTheDocument();
+  });
+
   it('ClickTriageEntry_CallsOnOpenTriage', async () => {
     const user = userEvent.setup();
     const { onOpenTriage } = setup();

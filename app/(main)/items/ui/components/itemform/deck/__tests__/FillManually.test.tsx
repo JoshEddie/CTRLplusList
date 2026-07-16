@@ -1,0 +1,82 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import { FillManually } from '../FillManually';
+import { makeItem } from './test-helpers';
+
+function setup(over = {}, handlers = {}) {
+  const props = {
+    onBack: vi.fn(),
+    onFocus: vi.fn(),
+    onOpenStores: vi.fn(),
+    ...handlers,
+  };
+  render(<FillManually item={makeItem(over)} {...props} />);
+  return props;
+}
+
+const blank = {
+  name: '',
+  photos: [],
+  stores: [{ name: '', link: '', price: '' }],
+};
+
+describe('FillManually', () => {
+  it('Render_ShowsFillCopy', () => {
+    setup(blank);
+    expect(
+      screen.getByRole('heading', { name: 'Add the details' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('Tap a field to fill it in.')).toBeInTheDocument();
+  });
+
+  it('Render_HasNoBackToPreviewExit', () => {
+    setup(blank);
+    expect(
+      screen.queryByRole('button', { name: /Back to preview/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('ClickUseALinkInstead_InvokesBack', async () => {
+    const user = userEvent.setup();
+    const { onBack } = setup(blank);
+    await user.click(
+      screen.getByRole('button', { name: /Use a link instead/ })
+    );
+    expect(onBack).toHaveBeenCalledOnce();
+  });
+
+  it('BackExit_IsSecondaryRetreatNotPrimary', () => {
+    setup(blank);
+    const back = screen.getByRole('button', { name: /Use a link instead/ });
+    expect(back).toHaveClass('secondary');
+    expect(back).not.toHaveClass('primary');
+  });
+
+  it('BlankItem_RowsStateTheirIssues', () => {
+    setup(blank);
+    expect(screen.getByText('An item needs a name.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Add a price so people know the cost.')
+    ).toBeInTheDocument();
+    expect(screen.getByText('No photo yet — add one.')).toBeInTheDocument();
+    expect(
+      screen.getByText('No store yet — add where to buy it.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Needs you')).not.toBeInTheDocument();
+  });
+
+  it('ClickNameRow_OpensTitleFocus', async () => {
+    const user = userEvent.setup();
+    const { onFocus } = setup(blank);
+    await user.click(screen.getByRole('button', { name: /Item name/ }));
+    expect(onFocus).toHaveBeenCalledWith('title');
+  });
+
+  it('ClickStoreRow_OpensStoresSheet', async () => {
+    const user = userEvent.setup();
+    const { onOpenStores } = setup(blank);
+    await user.click(screen.getByRole('button', { name: /Store/ }));
+    expect(onOpenStores).toHaveBeenCalledOnce();
+  });
+});

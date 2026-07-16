@@ -168,8 +168,10 @@ test('Deck_FetchFails_TimeoutThenManualEntrySeedsUrl', async ({ page }) => {
     page.getByText('This is taking longer than expected')
   ).toBeVisible();
   await page.getByRole('button', { name: 'Fill in details manually →' }).click();
-  await expect(page.getByText('Last look')).toBeVisible();
-  await page.getByRole('button', { name: /Store links/ }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Add the details' })
+  ).toBeVisible();
+  await page.getByRole('button', { name: /^Store / }).click();
   await expect(page.getByLabel('Link')).toHaveValue('https://x.test/fail-link');
 });
 

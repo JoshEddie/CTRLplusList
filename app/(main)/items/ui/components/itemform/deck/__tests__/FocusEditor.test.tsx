@@ -22,9 +22,16 @@ function setup(field: FocusField, over = {}, productUrl = 'https://shop/p') {
 
 describe('FocusEditor', () => {
   describe('Title', () => {
-    it('OverMaxName_DisablesDone', () => {
-      setup('title', { name: 'a'.repeat(120) });
-      expect(screen.getByRole('button', { name: 'Done' })).toBeDisabled();
+    it('OverMaxName_DoneStaysEnabledAndCloses', async () => {
+      // Edits are live, so blocking Done can't keep the error value out of the
+      // item — the floor is Preview's Create/Save gate and the manual advance
+      // rule, never a trapped editor.
+      const user = userEvent.setup();
+      const { onDone } = setup('title', { name: 'a'.repeat(120) });
+      const done = screen.getByRole('button', { name: 'Done' });
+      expect(done).toBeEnabled();
+      await user.click(done);
+      expect(onDone).toHaveBeenCalledOnce();
     });
 
     it('ValidName_EnablesDone-ClickCallsOnDone', async () => {
@@ -38,11 +45,15 @@ describe('FocusEditor', () => {
   });
 
   describe('Price', () => {
-    it('EmptyPrice_DisablesDone', () => {
-      setup('price', {
+    it('EmptyPrice_DoneStaysEnabledAndCloses', async () => {
+      const user = userEvent.setup();
+      const { onDone } = setup('price', {
         stores: [{ name: 'Lodge', link: 'https://l', price: '' }],
       });
-      expect(screen.getByRole('button', { name: 'Done' })).toBeDisabled();
+      const done = screen.getByRole('button', { name: 'Done' });
+      expect(done).toBeEnabled();
+      await user.click(done);
+      expect(onDone).toHaveBeenCalledOnce();
     });
 
     it('ValidPrice_EnablesDone', () => {
@@ -73,9 +84,9 @@ describe('FocusEditor', () => {
       ).toHaveAttribute('href', 'https://store.test/p');
     });
 
-    it('NoStoreRow_BlocksDoneWithProductUrlSource', () => {
+    it('NoStoreRow_DoneEnabledWithProductUrlSource', () => {
       setup('price', { stores: [] }, 'https://pasted.test/p');
-      expect(screen.getByRole('button', { name: 'Done' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled();
       expect(
         screen.getByRole('link', { name: /open the product page/i })
       ).toHaveAttribute('href', 'https://pasted.test/p');
@@ -83,9 +94,9 @@ describe('FocusEditor', () => {
   });
 
   describe('Note', () => {
-    it('OverCapDescription_DisablesDone', () => {
+    it('OverCapDescription_DoneStaysEnabled', () => {
       setup('note', { description: 'd'.repeat(150) });
-      expect(screen.getByRole('button', { name: 'Done' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled();
     });
   });
 

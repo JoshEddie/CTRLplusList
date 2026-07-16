@@ -21,11 +21,12 @@ describe('Triage', () => {
     expect(screen.getAllByText('Looks good').length).toBeGreaterThanOrEqual(3);
   });
 
-  it('NoPrice_PriceRowNeedsYou', () => {
+  it('NoPrice_PriceRowStatesPriceIssue', () => {
     setup({ stores: [{ name: 'Lodge', link: 'https://l', price: '' }] });
     const priceRow = screen.getByRole('button', { name: /Price/ });
     expect(priceRow).toHaveTextContent('Not set');
-    expect(priceRow).toHaveTextContent('Needs you');
+    expect(priceRow).toHaveTextContent('Add a price so people know the cost.');
+    expect(priceRow).not.toHaveTextContent('Needs you');
   });
 
   it('FetchedPrice_ShowsProvenance', () => {
@@ -86,18 +87,40 @@ describe('Triage', () => {
     expect(onBack).toHaveBeenCalledOnce();
   });
 
-  it('ErrorName_NameRowNeedsYou', () => {
+  it('BackExit_IsPrimaryForwardAction', () => {
+    setup();
+    expect(
+      screen.getByRole('button', { name: /Back to preview/ })
+    ).toHaveClass('primary');
+  });
+
+  it('ErrorName_NameRowStatesLimitIssue', () => {
     setup({ name: 'a'.repeat(120) });
     expect(
       screen.getByRole('button', { name: /Item name/ })
-    ).toHaveTextContent('Needs you');
+    ).toHaveTextContent('over the 100-character limit');
   });
 
-  it('OverCapDescription_NoteRowNeedsYou', () => {
+  it('EmptyNote_NoteRowReadsOptionalNotLooksGood', () => {
+    setup({ description: '' });
+    const row = screen.getByRole('button', { name: /Note/ });
+    expect(row).toHaveTextContent('Optional');
+    expect(row).not.toHaveTextContent('Looks good');
+    expect(row.className).toContain('deck-triage-good');
+  });
+
+  it('FilledNote_NoteRowReadsLooksGood', () => {
+    setup({ description: 'A tidy note' });
+    expect(
+      screen.getByRole('button', { name: /Note/ })
+    ).toHaveTextContent('Looks good');
+  });
+
+  it('OverCapDescription_NoteRowStatesTrimIssue', () => {
     setup({ description: 'x'.repeat(120) });
     expect(
       screen.getByRole('button', { name: /Note/ })
-    ).toHaveTextContent('Needs you');
+    ).toHaveTextContent('Over the 100-character limit — trim it.');
   });
 
   describe('EmptyShape', () => {
@@ -107,25 +130,30 @@ describe('Triage', () => {
       stores: [{ name: '', link: '', price: '' }],
     };
 
-    it('NoPhotos_PhotoRowNeedsYouNone', () => {
+    it('NoPhotos_PhotoRowStatesNoPhoto', () => {
       setup(empty);
       const row = screen.getByRole('button', { name: /Photo/ });
       expect(row).toHaveTextContent('None');
-      expect(row).toHaveTextContent('Needs you');
+      expect(row).toHaveTextContent('No photo yet — add one.');
     });
 
-    it('EmptyName_NameRowShowsNone', () => {
+    it('EmptyName_NameRowShowsNoneAndNeedsNameIssue', () => {
       setup(empty);
-      expect(
-        screen.getByRole('button', { name: /Item name/ })
-      ).toHaveTextContent('None');
+      const row = screen.getByRole('button', { name: /Item name/ });
+      expect(row).toHaveTextContent('None');
+      expect(row).toHaveTextContent('An item needs a name.');
     });
 
-    it('NoStore_StoreRowNeedsYouNone', () => {
+    it('NoStore_StoreRowStatesNoStore', () => {
       setup(empty);
       const row = screen.getByRole('button', { name: /Store/ });
       expect(row).toHaveTextContent('None');
-      expect(row).toHaveTextContent('Needs you');
+      expect(row).toHaveTextContent('No store yet — add where to buy it.');
+    });
+
+    it('AnyState_NoRowReadsNeedsYou', () => {
+      setup(empty);
+      expect(screen.queryByText('Needs you')).not.toBeInTheDocument();
     });
   });
 });

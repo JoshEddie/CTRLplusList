@@ -4,12 +4,19 @@ import {
   TITLE_MAX,
   TITLE_SNAPPY,
   amountToPrice,
+  isDirtyDraft,
+  manualAdvanceReady,
+  photoTier,
   priceTier,
   priceToAmount,
   prunePhotos,
+  rowTiers,
+  storeTier,
   suggestTrim,
   titleTier,
+  type RowField,
 } from '../utils';
+import type { ItemViewModel } from '../viewModel';
 
 describe('deckUtils', () => {
   describe('constants', () => {
@@ -90,6 +97,227 @@ describe('deckUtils', () => {
 
     it('DollarPrefixed_ReturnsGood', () => {
       expect(priceTier('$19.99').tier).toBe('good');
+    });
+  });
+
+  describe('photoTier', () => {
+    it('NoPhotos_ReturnsWarnStatingNoPhoto', () => {
+      const result = photoTier([]);
+      expect(result.tier).toBe('warn');
+      expect(result.note).toContain('No photo');
+    });
+
+    it('HasPhoto_ReturnsGood', () => {
+      expect(photoTier(['https://img/a.jpg'])).toEqual({
+        tier: 'good',
+        note: '',
+      });
+    });
+  });
+
+  describe('storeTier', () => {
+    it('Undefined_ReturnsWarnNoStore', () => {
+      const result = storeTier(undefined);
+      expect(result.tier).toBe('warn');
+      expect(result.note).toContain('No store');
+    });
+
+    it('AllEmpty_ReturnsWarnNoStore', () => {
+      const result = storeTier({ name: '', link: '', price: '' });
+      expect(result.tier).toBe('warn');
+      expect(result.note).toContain('No store');
+    });
+
+    it('MissingName_ReturnsWarnNamingName', () => {
+      const result = storeTier({ name: '', link: 'https://l', price: '9.99' });
+      expect(result.tier).toBe('warn');
+      expect(result.note).toContain('name');
+    });
+
+    it('MissingLink_ReturnsWarnNamingLink', () => {
+      const result = storeTier({ name: 'Lodge', link: '', price: '9.99' });
+      expect(result.tier).toBe('warn');
+      expect(result.note).toContain('link');
+    });
+
+    it('NonNumericPrice_ReturnsWarnNamingPrice', () => {
+      // Mirrors isValidStore's Number() check — its classification is frozen
+      // until linkless-store validity is settled separately.
+      const result = storeTier({ name: 'Lodge', link: 'https://l', price: 'x' });
+      expect(result.tier).toBe('warn');
+      expect(result.note).toContain('price');
+    });
+
+    it('EmptyPrice_ReturnsWarnNamingPrice', () => {
+      const result = storeTier({ name: 'Lodge', link: 'https://l', price: ' ' });
+      expect(result.tier).toBe('warn');
+      expect(result.note).toContain('price');
+    });
+
+    it('Complete_ReturnsGood', () => {
+      expect(
+        storeTier({ name: 'Lodge', link: 'https://l', price: '29.99' })
+      ).toEqual({ tier: 'good', note: '' });
+    });
+  });
+
+  describe('rowTiers', () => {
+    const item = (over: Partial<ItemViewModel> = {}): ItemViewModel => ({
+      id: '',
+      name: 'Cast Iron Skillet',
+      photos: ['https://img/a.jpg'],
+      photoIndex: 0,
+      description: '',
+      stores: [{ name: 'Lodge', link: 'https://lodge', price: '29.99' }],
+      lists: [],
+      qty: 1,
+      ...over,
+    });
+
+    it('CompleteItem_AllRowsGood', () => {
+      const tiers = rowTiers(item());
+      expect(Object.values(tiers).map((r) => r.tier)).toEqual([
+        'good',
+        'good',
+        'good',
+        'good',
+        'good',
+      ]);
+    });
+
+    it('BlankItem_TitlePriceErrorPhotoStoreWarnNoteGood', () => {
+      const tiers = rowTiers(
+        item({
+          name: '',
+          photos: [],
+          stores: [{ name: '', link: '', price: '' }],
+        })
+      );
+      expect(tiers.title.tier).toBe('error');
+      expect(tiers.price.tier).toBe('error');
+      expect(tiers.photo.tier).toBe('warn');
+      expect(tiers.store.tier).toBe('warn');
+      expect(tiers.note.tier).toBe('good');
+    });
+
+    it('OverCapDescription_NoteRowErrorWithTrimNote', () => {
+      const tiers = rowTiers(item({ description: 'x'.repeat(120) }));
+      expect(tiers.note.tier).toBe('error');
+      expect(tiers.note.note).toContain('limit');
+    });
+
+    it('EmptyDescription_NoteRowGoodWithOptionalNote', () => {
+      expect(rowTiers(item({ description: '' })).note).toEqual({
+        tier: 'good',
+        note: 'Optional',
+      });
+    });
+
+    it('FilledDescription_NoteRowGoodWithNoNote', () => {
+      expect(rowTiers(item({ description: 'A tidy note' })).note).toEqual({
+        tier: 'good',
+        note: '',
+      });
+    });
+  });
+
+  describe('isDirtyDraft', () => {
+    const blank = (): ItemViewModel => ({
+      id: '',
+      name: '',
+      photos: [],
+      photoIndex: 0,
+      description: '',
+      stores: [{ name: '', link: '', price: '' }],
+      lists: [],
+      qty: 1,
+    });
+
+    it('PristineBlank_IsNotDirty', () => {
+      expect(isDirtyDraft(blank())).toBe(false);
+    });
+
+    it('FailureSeededLinkOnly_IsNotDirty', () => {
+      const vm = blank();
+      vm.stores = [{ name: '', link: 'https://x.test/p', price: '' }];
+      expect(isDirtyDraft(vm)).toBe(false);
+    });
+
+    it('Name_MakesDirty', () => {
+      expect(isDirtyDraft({ ...blank(), name: 'Skillet' })).toBe(true);
+    });
+
+    it('Description_MakesDirty', () => {
+      expect(isDirtyDraft({ ...blank(), description: 'note' })).toBe(true);
+    });
+
+    it('Photo_MakesDirty', () => {
+      expect(isDirtyDraft({ ...blank(), photos: ['https://img/a'] })).toBe(
+        true
+      );
+    });
+
+    it('StoreName_MakesDirty', () => {
+      const vm = blank();
+      vm.stores = [{ name: 'Lodge', link: '', price: '' }];
+      expect(isDirtyDraft(vm)).toBe(true);
+    });
+
+    it('StorePrice_MakesDirty', () => {
+      const vm = blank();
+      vm.stores = [{ name: '', link: '', price: '9.99' }];
+      expect(isDirtyDraft(vm)).toBe(true);
+    });
+  });
+
+  describe('manualAdvanceReady', () => {
+    const good = { tier: 'good', note: '' } as const;
+    const warn = { tier: 'warn', note: 'n' } as const;
+    const error = { tier: 'error', note: 'n' } as const;
+    const tiers = (over = {}) => ({
+      photo: good,
+      title: good,
+      note: good,
+      price: good,
+      store: good,
+      ...over,
+    });
+
+    const visited = (...fields: RowField[]) => new Set<RowField>(fields);
+
+    it('AllGoodNoVisits_ReturnsTrue', () => {
+      expect(manualAdvanceReady(tiers(), visited())).toBe(true);
+    });
+
+    it('AnyError_ReturnsFalseEvenAllVisited', () => {
+      expect(
+        manualAdvanceReady(
+          tiers({ price: error }),
+          visited('photo', 'title', 'note', 'price', 'store')
+        )
+      ).toBe(false);
+    });
+
+    it('UnvisitedWarn_ReturnsFalse', () => {
+      expect(manualAdvanceReady(tiers({ photo: warn }), visited())).toBe(false);
+    });
+
+    it('EveryWarnVisited_ReturnsTrue', () => {
+      expect(
+        manualAdvanceReady(
+          tiers({ photo: warn, store: warn }),
+          visited('photo', 'store')
+        )
+      ).toBe(true);
+    });
+
+    it('VisitedGoodDoesNotSubstituteForUnvisitedWarn_ReturnsFalse', () => {
+      expect(
+        manualAdvanceReady(
+          tiers({ photo: warn, store: warn }),
+          visited('photo', 'title', 'note', 'price')
+        )
+      ).toBe(false);
     });
   });
 

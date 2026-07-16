@@ -7,9 +7,11 @@ import { expect, test } from '@playwright/test';
 // against the shared dev DB from colliding and keep "old name gone" assertions
 // unambiguous.
 //
-// Manual entry opens a blank Preview; fields are edited via Triage → Focus and
-// the Stores sheet (no all-fields-at-once form). Each assertion is a fresh
-// server read after a `'use server'` write, pinning the `items` cache-tag loop.
+// Manual entry opens the Fill-manually shell; fields are filled via its rows
+// (Focus editors and the Stores sheet), and the shell advances to Preview once
+// no row is in error and every warn row has been visited. Each assertion is a
+// fresh server read after a `'use server'` write, pinning the `items`
+// cache-tag loop.
 test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted', async ({
   page,
 }) => {
@@ -17,25 +19,31 @@ test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted',
   const createdName = `E2E Item ${stamp}A`;
   const renamedName = `E2E Item ${stamp}B`;
 
-  // Create — "New Item" opens the URL-entry step; "manually" drops to a blank
-  // Preview. Set the name via Triage → the Name focus editor, and the store via
-  // the Stores sheet (all-or-nothing: name + link + price together).
+  // Create — "New Item" opens the URL-entry step; "manually" opens the
+  // Fill-manually shell. Name via its row's focus editor, store via the Stores
+  // sheet (all-or-nothing: name + link + price — which also satisfies the
+  // Price row), then a photo-row visit completes the advance rule and the
+  // shell advances to Preview on its own.
   await page.goto('/items');
   await page.getByRole('button', { name: 'New Item' }).click();
   await page.getByRole('button', { name: 'Fill in details manually →' }).click();
-  await expect(page.getByText('Last look')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Add the details' })
+  ).toBeVisible();
 
-  await page.getByRole('button', { name: /Need to change something/ }).click();
   await page.getByRole('button', { name: /Item name/ }).click();
   await page.getByLabel('Item name').fill(createdName);
   await page.getByRole('button', { name: 'Done' }).click();
-  await page.getByRole('button', { name: /Back to preview/ }).click();
 
-  await page.getByRole('button', { name: /Store links/ }).click();
+  await page.getByRole('button', { name: /^Store / }).click();
   await page.getByLabel('Store name').fill('E2E Store');
   await page.getByLabel('Link').fill('https://example.com/e2e-item');
   await page.getByLabel('Price').fill('19.99');
   await page.getByRole('button', { name: 'Done' }).click();
+
+  await page.getByRole('button', { name: /^Photo/ }).click();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByText('Last look')).toBeVisible();
 
   await page.getByRole('button', { name: 'Create item' }).click();
   await expect(page.getByText('Item created successfully')).toBeVisible();

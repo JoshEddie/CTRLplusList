@@ -111,12 +111,110 @@ describe('ItemFormContainer', () => {
   });
 
   describe('Manual', () => {
-    it('ClickManual_OpensBlankPreview', async () => {
-      const user = userEvent.setup();
-      renderCreate();
+    async function openManual(user: ReturnType<typeof userEvent.setup>) {
       await user.click(
         screen.getByRole('button', { name: 'Fill in details manually →' })
       );
+    }
+
+    // Drives the blank manual item to the advance point: name and price
+    // become good, photo and store stay warn but get visited.
+    async function fillManualItem(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole('button', { name: /Item name/ }));
+      await user.type(screen.getByLabelText('Item name'), 'Nav Item');
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+
+      await user.click(screen.getByRole('button', { name: /^Price/ }));
+      // PriceField is cents-based: "1200" → $12.00.
+      await user.type(screen.getByLabelText('Price'), '1200');
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+
+      await user.click(screen.getByRole('button', { name: /Photo/ }));
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+
+      await user.click(screen.getByRole('button', { name: /Store/ }));
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+    }
+
+    it('ClickManual_OpensFillManuallyShellNotPreview', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      expect(
+        screen.getByRole('heading', { name: 'Add the details' })
+      ).toBeInTheDocument();
+      expect(screen.getByText('Add an item')).toBeInTheDocument();
+      expect(screen.queryByText('Last look')).not.toBeInTheDocument();
+    });
+
+    it('EntryCardManual_SeedsNoStoreLink', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      await user.click(screen.getByRole('button', { name: /Store/ }));
+      expect(screen.getByLabelText('Link')).toHaveValue('');
+    });
+
+    it('ClickUseALinkInstead_ReturnsToUrlEntry', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      await user.click(
+        screen.getByRole('button', { name: /Use a link instead/ })
+      );
+      expect(screen.getByText(/Paste a product link/)).toBeInTheDocument();
+    });
+
+    it('UnvisitedWarnRows_HoldTheShell', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      // Name and price become good; photo and store warn rows stay unvisited.
+      await user.click(screen.getByRole('button', { name: /Item name/ }));
+      await user.type(screen.getByLabelText('Item name'), 'Held Item');
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+      await user.click(screen.getByRole('button', { name: /^Price/ }));
+      await user.type(screen.getByLabelText('Price'), '1200');
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+
+      expect(
+        screen.getByRole('heading', { name: 'Add the details' })
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Last look')).not.toBeInTheDocument();
+    });
+
+    it('ErrorRow_HoldsShellEvenWithEveryWarnVisited', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      // Visit both warn rows but leave name and price at error tier.
+      await user.click(screen.getByRole('button', { name: /Photo/ }));
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+      await user.click(screen.getByRole('button', { name: /Store/ }));
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+
+      expect(
+        screen.getByRole('heading', { name: 'Add the details' })
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Last look')).not.toBeInTheDocument();
+    });
+
+    it('VisitedWarnRow_StillRendersItsWarnIssue', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      await user.click(screen.getByRole('button', { name: /Photo/ }));
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+      expect(
+        screen.getByRole('button', { name: /Photo/ })
+      ).toHaveTextContent('No photo yet — add one.');
+    });
+
+    it('NoErrorAndEveryWarnVisited_AdvancesToPreview', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      await fillManualItem(user);
       expect(screen.getByText('Last look')).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: 'Create item' })
@@ -131,44 +229,37 @@ describe('ItemFormContainer', () => {
           onClose={vi.fn()}
         />
       );
-      await user.click(
-        screen.getByRole('button', { name: 'Fill in details manually →' })
-      );
+      await openManual(user);
+      await fillManualItem(user);
       await user.click(screen.getByRole('button', { name: /Lists & quantity/ }));
       expect(
         screen.getByRole('checkbox', { name: 'Birthday' })
       ).toBeInTheDocument();
     });
 
-    it('FullNavigation_VisitsTriageFocusSheetsThenCreates', async () => {
+    it('FullNavigation_FillsAdvancesVisitsTriageThenCreates', async () => {
       const { createItem } = await import('@/lib/data/item.actions');
       const user = userEvent.setup();
       renderCreate();
-      await user.click(
-        screen.getByRole('button', { name: 'Fill in details manually →' })
-      );
+      await openManual(user);
+      await fillManualItem(user);
 
-      // Preview → Triage → Name focus → set name → back to Triage → Preview.
+      // Preview → Triage → back: the Review shell never auto-advances.
       await user.click(
         screen.getByRole('button', { name: /Need to change something/ })
       );
       expect(screen.getByText('Review anything')).toBeInTheDocument();
-      await user.click(screen.getByRole('button', { name: /Item name/ }));
-      await user.type(screen.getByLabelText('Item name'), 'Nav Item');
+      await user.click(screen.getByRole('button', { name: /Photo/ }));
       await user.click(screen.getByRole('button', { name: 'Done' }));
+      expect(screen.getByText('Review anything')).toBeInTheDocument();
       await user.click(
         screen.getByRole('button', { name: /Back to preview/ })
       );
 
-      // Preview → Stores sheet → fill → Done.
+      // Preview → Stores sheet → complete the store → Done.
       await user.click(screen.getByRole('button', { name: /Store links/ }));
       await user.type(screen.getByLabelText('Store name'), 'Nav Store');
       await user.type(screen.getByLabelText('Link'), 'https://nav.test/p');
-      await user.type(screen.getByLabelText('Price'), '12.00');
-      await user.click(screen.getByRole('button', { name: 'Done' }));
-
-      // Preview → Lists & quantity sheet → Done.
-      await user.click(screen.getByRole('button', { name: /Lists & quantity/ }));
       await user.click(screen.getByRole('button', { name: 'Done' }));
 
       // Preview → Add a note focus → Done.
@@ -181,17 +272,174 @@ describe('ItemFormContainer', () => {
       await waitFor(() => expect(createItem).toHaveBeenCalledOnce());
     });
 
+    it('ManualStoreRow_OpensStoresSheet', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      await user.click(screen.getByRole('button', { name: /Store/ }));
+      expect(screen.getByLabelText('Store name')).toBeInTheDocument();
+    });
+
     it('TriageStoreRow_OpensStoresSheet', async () => {
       const user = userEvent.setup();
       renderCreate();
-      await user.click(
-        screen.getByRole('button', { name: 'Fill in details manually →' })
-      );
+      await openManual(user);
+      await fillManualItem(user);
       await user.click(
         screen.getByRole('button', { name: /Need to change something/ })
       );
       await user.click(screen.getByRole('button', { name: /Store/ }));
       expect(screen.getByLabelText('Store name')).toBeInTheDocument();
+    });
+  });
+
+  describe('DraftGuard', () => {
+    const DIALOG_TITLE = 'You have a draft in progress';
+
+    async function openManual(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(
+        screen.getByRole('button', { name: 'Fill in details manually →' })
+      );
+    }
+
+    async function typeName(
+      user: ReturnType<typeof userEvent.setup>,
+      name: string
+    ) {
+      await user.click(screen.getByRole('button', { name: /Item name/ }));
+      await user.type(screen.getByLabelText('Item name'), name);
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+    }
+
+    async function backToUrlEntry(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(
+        screen.getByRole('button', { name: /Use a link instead/ })
+      );
+    }
+
+    it('PristineDraft_ReentryOpensShellWithoutPrompt', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      await backToUrlEntry(user);
+      await openManual(user);
+      expect(screen.queryByText(DIALOG_TITLE)).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Add the details' })
+      ).toBeInTheDocument();
+    });
+
+    it('DirtyDraft_ReentryPromptsInsteadOfBlanking', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      await typeName(user, 'Guarded Item');
+      await backToUrlEntry(user);
+      await openManual(user);
+      expect(screen.getByText(DIALOG_TITLE)).toBeInTheDocument();
+    });
+
+    it('KeepFilling_RestoresValuesAndVisitState', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      // Visit the photo row, then dirty the draft with name + price.
+      await user.click(screen.getByRole('button', { name: /Photo/ }));
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+      await typeName(user, 'Guarded Item');
+      await backToUrlEntry(user);
+      await openManual(user);
+      await user.click(screen.getByRole('button', { name: 'Keep filling' }));
+
+      // Values intact.
+      expect(
+        screen.getByRole('button', { name: /Item name/ })
+      ).toHaveTextContent('Guarded Item');
+      // Visit state intact: completing price and store advances without
+      // ever revisiting the photo row.
+      await user.click(screen.getByRole('button', { name: /^Price/ }));
+      await user.type(screen.getByLabelText('Price'), '1200');
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+      await user.click(screen.getByRole('button', { name: /Store/ }));
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+      expect(screen.getByText('Last look')).toBeInTheDocument();
+    });
+
+    it('StartOverFromEntry_BlanksTheDraft', async () => {
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      await typeName(user, 'Guarded Item');
+      await backToUrlEntry(user);
+      await openManual(user);
+      await user.click(screen.getByRole('button', { name: 'Start over' }));
+      const nameRow = screen.getByRole('button', { name: /Item name/ });
+      expect(nameRow).toHaveTextContent('None');
+      expect(nameRow).not.toHaveTextContent('Guarded Item');
+    });
+
+    it('FailurePathWithDirtyDraft_PromptsAndKeepDoesNotMergeUrl', async () => {
+      fetchMock.mockResolvedValue(jsonOk({ ok: false, error: 'timeout' }));
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      await typeName(user, 'Guarded Item');
+      await backToUrlEntry(user);
+      await fetchUrl();
+      await screen.findByText('This is taking longer than expected');
+      await openManual(user);
+      expect(screen.getByText(DIALOG_TITLE)).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Keep filling' }));
+      await user.click(screen.getByRole('button', { name: /Store/ }));
+      expect(screen.getByLabelText('Link')).toHaveValue('');
+    });
+
+    it('FailurePathStartOver_BlanksAndSeedsPastedUrl', async () => {
+      fetchMock.mockResolvedValue(jsonOk({ ok: false, error: 'timeout' }));
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      await typeName(user, 'Guarded Item');
+      await backToUrlEntry(user);
+      await fetchUrl();
+      await screen.findByText('This is taking longer than expected');
+      await openManual(user);
+      await user.click(screen.getByRole('button', { name: 'Start over' }));
+      expect(
+        screen.getByRole('button', { name: /Item name/ })
+      ).toHaveTextContent('None');
+      await user.click(screen.getByRole('button', { name: /Store/ }));
+      expect(screen.getByLabelText('Link')).toHaveValue(
+        'https://www.amazon.com/dp/B0TEST'
+      );
+    });
+
+    it('SuccessfulFetchOverDirtyDraft_ReplacesSilently', async () => {
+      fetchMock.mockResolvedValue(jsonOk(PRODUCT_RESPONSE));
+      const user = userEvent.setup();
+      renderCreate();
+      await openManual(user);
+      await typeName(user, 'Guarded Item');
+      await backToUrlEntry(user);
+      await fetchUrl();
+      expect(
+        await screen.findByText("Here's what we pulled.")
+      ).toBeInTheDocument();
+      expect(screen.queryByText(DIALOG_TITLE)).not.toBeInTheDocument();
+    });
+
+    it('FetchSeededValues_DoNotTriggerThePrompt', async () => {
+      fetchMock.mockResolvedValue(jsonOk(PRODUCT_RESPONSE));
+      const user = userEvent.setup();
+      renderCreate();
+      await fetchUrl();
+      await screen.findByText("Here's what we pulled.");
+      await user.click(screen.getByRole('button', { name: 'Change link' }));
+      await openManual(user);
+      expect(screen.queryByText(DIALOG_TITLE)).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Add the details' })
+      ).toBeInTheDocument();
     });
   });
 
@@ -452,7 +700,7 @@ describe('ItemFormContainer', () => {
       ).toBeInTheDocument();
     });
 
-    it('ManualEntry_OpensBlankPreviewWithUrlSeededInStoreLink', async () => {
+    it('ManualEntry_OpensFillManuallyWithUrlSeededInStoreLink', async () => {
       fetchMock.mockResolvedValue(jsonOk({ ok: false, error: 'timeout' }));
       renderCreate();
       const user = await fetchUrl();
@@ -460,8 +708,11 @@ describe('ItemFormContainer', () => {
       await user.click(
         screen.getByRole('button', { name: 'Fill in details manually →' })
       );
-      expect(screen.getByText('Last look')).toBeInTheDocument();
-      await user.click(screen.getByRole('button', { name: /Store links/ }));
+      expect(
+        screen.getByRole('heading', { name: 'Add the details' })
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Last look')).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /Store/ }));
       expect(screen.getByLabelText('Link')).toHaveValue(
         'https://www.amazon.com/dp/B0TEST'
       );

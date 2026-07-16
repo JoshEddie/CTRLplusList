@@ -564,6 +564,11 @@
   cursor: pointer;
 }
 
+.deck-triage-row:hover {
+  border-color: var(--card-border-hover-color);
+  background: var(--card-hover-background-color);
+}
+
 .deck-triage-main {
   display: flex;
   flex-direction: column;

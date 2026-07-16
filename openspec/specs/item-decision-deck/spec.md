@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Governs the post-fetch item flow that replaced the all-fields-at-once item form: the stepped Decision Deck that surfaces only the fields a fetch left uncertain and confirms the rest, the Triage and Focus editors and sheets behind it, and the Preview that serves as the universal create, edit, and manual-entry surface. It owns the deck's step selection, the name and price validation tiers with their editing affordances, the failure screen's kind-aware content and attempt behavior, the adapter mapping the view-model to the persisted item shape, and the accessibility and contrast floor for every control it renders. Routing into this flow — and which failure kind each fetch result maps to — is owned by `product-link-prefill`.
+Governs the post-fetch item flow that replaced the all-fields-at-once item form: the stepped Decision Deck that surfaces only the fields a fetch left uncertain and confirms the rest, the Review and Fill-manually shells with the Focus editors and sheets behind them, and the Preview that serves as the universal create/edit surface and sole save point — entered from the fetch and edit paths directly, and from manual entry via the Fill-manually shell. It owns the deck's step selection, the name and price validation tiers with their editing affordances, the failure screen's kind-aware content and attempt behavior, the adapter mapping the view-model to the persisted item shape, and the accessibility and contrast floor for every control it renders. Routing into this flow — and which failure kind each fetch result maps to — is owned by `product-link-prefill`.
 ## Requirements
 ### Requirement: The deck SHALL surface only fields needing a human and offer no global skip
 
