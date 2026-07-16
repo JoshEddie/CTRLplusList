@@ -147,7 +147,7 @@ Bearing moves — promote (fog → ticket) and demote (mirage) — are `/anchor`
 
 ## Exit (way clear enough to chunk)
 
-The gate is **relaxed**: exit runs when the chunking is drafteable and the frontier chunk is unblocked — not only when every decision has closed. Birth labels split by gate type: chunks gated by residual open **decision tickets** (wired blocked-by) are born `UNCHARTED` — an open decision means scope not settled; chunks merely sequenced behind other **chunks** are born `CHARTED` with blocked-by wired — sequencing is not fog, and no relabel is owed when the predecessor lands; unblocked settled chunks are born `CHARTED` as before. Fog scoped to later chunks may persist in Not yet specified. Implementation chunks are created **only at exit**, never incrementally during the decision phase.
+The gate is **relaxed**: exit runs when the chunking is drafteable and the frontier chunk is unblocked — not only when every decision has closed. Birth labels split by gate type: chunks gated by residual open **decision tickets** (wired blocked-by) are born `UNCHARTED` — an open decision means scope not settled; chunks merely sequenced behind other **chunks** are born `CHARTED` with blocked-by wired — sequencing is not fog, and no relabel is owed when the predecessor lands; unblocked settled chunks are born `CHARTED` as before. Fog scoped to later chunks may persist in Not yet specified. Implementation chunks are **never created incrementally during the decision phase**: a map does not dribble out implementation issues while its fog is still being cleared.
 
 Exit cuts **one release's worth of chunks** — the map is atomic with respect to its release, so everything it chunks ships together. Scope beyond that release never becomes a chunk here: it routes to a successor map or stays as fog until `/split-map` or `/close-map` dispatches it.
 
@@ -155,5 +155,11 @@ Exit cuts **one release's worth of chunks** — the map is atomic with respect t
 2. **Propose the split to the owner before creating anything; the chunking is theirs to approve.** No issue exists until they say yes.
 3. On approval, create the chunks as sub-issues of the map, wire the blocked-by sequence plus any residual decision tickets onto the chunks they gate, and label each per its gate type: `UNCHARTED` only when an open decision ticket gates it directly, `CHARTED` otherwise (chunk-only blockers included). **Stamp the target milestone on the map issue; chunks are created with no milestone.**
 4. The map stays open as the epic's living index. Chunks land as `IN PORT` via `/landfall`; `/close-map` inspects them and closes the map when the last chunk closes.
+
+### Exit is re-enterable on an open map
+
+Exit is not a one-shot: it re-enters **per discovery** via [/anchor](../anchor/SKILL.md)'s charter move, which is the sole exception to cutting chunks only at the original exit and applies **only after that exit has run**. Anchor diagnoses against the charter criteria and triggers; the cut runs these same steps — same owner approval, same distilled body, same sub-issue and blocked-by wiring from § GitHub mechanics, same birth labels, same no-milestone-on-chunks rule. No new mechanics exist for it, and the wrapper is transparent: `/map` remains the sole stamper of a chunk's birth label.
+
+This licenses nothing before exit. The decision-phase bar stands exactly as stated above — a map still never dribbles out implementation issues while its fog is being cleared, and a map work session that spots a slice of the build before exit has run cuts nothing.
 
 Decisions recorded on tickets are provenance; when a chunk becomes an OpenSpec change, the decisions it builds on land in that change's design/spec deltas as usual. OpenSpec remains the contract of record.

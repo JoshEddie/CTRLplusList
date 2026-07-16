@@ -16,6 +16,8 @@ Routing labels are **ALL CAPS** and are the only labels skills route on. Each li
 | `PLOTTING` | Decision ticket, HITL | `/map`, `/anchor` (promote), `/split-map` (re-orientation) |
 | `SCOUTING` | Decision ticket, AFK | `/map`, `/anchor` (promote) |
 
+A skill that cuts a chunk as a **thin wrapper** over `/map`'s exit mechanics — `/anchor`'s charter move — is never named the stamper of that chunk's **birth label** above: the wrapper is transparent and exit does the stamping, so `/map` stays the sole origin of a chunk's birth label. Relabelling an existing chunk is a different act and is named normally — `/anchor` (demote/discard) and `/split-map` (migrate) each stamp `UNCHARTED` in their own right.
+
 Milestones are not labels but follow one routing invariant: the milestone lives **only on the `MAP` issue** — chunks, tickets, and every other issue carry none. `/map` exit stamps it; `/split-map` stamps the successor's and relabels migrated chunks `UNCHARTED` behind its re-orientation ticket.
 
 Lowercase labels (`bug`, `idea`, `debt`, `hold`, …) are **human triage only** — no skill routes on them, with one carve-out: when map's intake recharts an issue carrying `hold`, surface its parked findings comment to the owner before any charting proceeds.
