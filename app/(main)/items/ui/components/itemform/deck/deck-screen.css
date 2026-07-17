@@ -346,8 +346,9 @@
   }
 
   /* Footer flows as a normal block so the whole screen scrolls as one region;
-     a sticky/bottom-pinned footer overlaps the well instead of scrolling.
-     `relative` (not static) keeps its scroll-shadow pseudo anchored. */
+     a sticky/bottom-pinned footer eats most of a very short viewport and
+     breaks scrolling the well. `relative` (not static) keeps its
+     scroll-shadow pseudo anchored. */
   .deck-screen-ft {
     position: relative;
   }

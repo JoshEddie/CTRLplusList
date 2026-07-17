@@ -41,6 +41,7 @@ export function FetchingStep({
 
   return (
     <DeckScreen
+      title="Fetching details"
       foot={
         <Button variant="ghost" onClick={onCancel}>
           Cancel

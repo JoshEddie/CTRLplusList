@@ -112,7 +112,7 @@ The footer SHALL contain a step tracker above a full-width primary action; the s
 
 ### Requirement: Deck screens SHALL collapse to a single scroller below a short viewport height
 
-When the viewport height is below approximately 500px (e.g. a landscape phone), a deck screen SHALL collapse to a single root scroller with a sticky footer, so the header scrolls with content while the footer primary action and the floating close remain reachable.
+When the viewport height is below approximately 500px (e.g. a landscape phone), a deck screen SHALL collapse to a single root scroller: header, well, and footer scroll as one region (a sticky footer would eat most of the viewport), the floating close stays pinned, and the footer primary action is reachable by scrolling to the end.
 
 #### Scenario: Landscape phone keeps the action reachable
 

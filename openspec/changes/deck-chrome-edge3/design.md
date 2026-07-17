@@ -86,7 +86,7 @@ Original decision: CSS-only (`animation-timeline: scroll()` or the background-gr
 - **Design drift in apply** (the prior failure) → this design.md carries exact values + the reuse/authoritative rules; tasks reference it per-screen; e2e asserts the observable outcomes.
 - **All-steps reverses a shipped spec requirement** → explicit MODIFIED delta + scenarios; unit tests pin the new `neededSteps` output and `stepBlocked`.
 - **Removing Back leaves no exit from the first step** when it's current with no done node before it → Open Question Q2; default to the X close handling deck-exit, revisit if it regresses "return to URL entry".
-- **Pinned header + footer tracker eat vertical budget** on short/landscape → D2 `<500px` collapse (single scroller, sticky footer, pinned close).
+- **Pinned header + footer tracker eat vertical budget** on short/landscape → D2 `<500px` collapse (single scroller, pinned close; REVISED during apply: the footer scrolls with content — sticky ate most of a very short viewport).
 - **Navigational tracker adds interaction + a11y surface** → scoped: back-only jumps to done nodes, forward gated by `stepBlocked`, final Preview submit remains the real backstop.
 
 ## Migration Plan

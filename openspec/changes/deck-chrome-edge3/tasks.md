@@ -39,7 +39,7 @@
 
 - [x] 6.1 Floating close mirroring `.item-owner-actions-kebab` (item.css:243), ~32px, `aria-label="Close"`, AA target.
 - [x] 6.2 Scroll-shadows at well boundaries via a small scroll/resize listener in `DeckScreen` toggling `-shadow` classes on the pinned header/footer (design.md D7, REVISED during apply — the no-JS `animation-timeline: scroll()` route failed cross-browser).
-- [x] 6.3 `<500px` viewport-height collapse: single root scroller, sticky footer, header scrolls, close pinned (design.md D2 / short-viewport requirement).
+- [x] 6.3 `<500px` viewport-height collapse: single root scroller, footer scrolls with content (REVISED during apply — a sticky footer eats most of a very short viewport), close pinned (design.md D2 / short-viewport requirement).
 
 ## 7. Container wiring
 

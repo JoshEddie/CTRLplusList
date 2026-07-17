@@ -32,6 +32,9 @@ describe('FetchingStep', () => {
     expect(
       screen.getByText('https://www.amazon.com/dp/B0TEST')
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Fetching details' })
+    ).toBeInTheDocument();
   });
 
   it('CycleInterval_FadesOutWhileMessageHolds', () => {

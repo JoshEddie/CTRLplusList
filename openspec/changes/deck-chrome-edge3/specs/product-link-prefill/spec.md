@@ -47,3 +47,22 @@ This prompt guards in-memory state within one modal session only; durable drafts
 
 - **WHEN** the user activates "Fetch Details" with a value that is not a valid http(s) URL
 - **THEN** no request SHALL be sent and the URL field SHALL show a field-level validation error per `form-field-system`
+
+### Requirement: The fetching state SHALL show an honest indeterminate loading treatment
+
+While a fetch is in flight the modal SHALL render, in the deck-owned shell: a pinned header carrying the title "Fetching details" (mirroring the "Fetch Details" action that started it), the shared `<LoadingIndicator>` (per `loading-indicator-system` — no new spinner shape), a cycling status message that fades between entries roughly every 2.5 seconds (e.g. "Fetching item details…", "Looking up the price…", "Finding product images…", "Checking store info…", "Hang tight, almost there…"), a static "This may take a moment." line, and a URL strip showing the pasted URL (truncated) with a "change" affordance returning to URL entry. The state SHALL NOT render a progress bar, skeleton form fields, or any specific time promise. The footer SHALL contain only Cancel, which aborts the in-flight request and returns to URL entry. Cycling message text SHALL NOT be inside an `aria-live` region (the indicator's status region announces loading once; cycling text is visual reassurance only).
+
+#### Scenario: Loading renders spinner and cycling messages
+
+- **WHEN** a product fetch is in flight
+- **THEN** the modal SHALL show the "Fetching details" title, the shared loading indicator, a cycling status message, the static "This may take a moment." line, and the URL strip — and SHALL NOT show a progress bar or skeleton fields
+
+#### Scenario: Cancel aborts the fetch
+
+- **WHEN** the user activates Cancel during a fetch
+- **THEN** the in-flight request SHALL be aborted client-side and the modal SHALL return to the URL entry state with the pasted URL retained
+
+#### Scenario: Change returns to URL entry
+
+- **WHEN** the user activates "change" on the URL strip during a fetch
+- **THEN** the request SHALL be aborted and the URL entry state SHALL render with the URL editable

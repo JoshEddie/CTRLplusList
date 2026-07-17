@@ -3,7 +3,7 @@ review: spec-review
 target: deck-chrome-edge3
 anchor: 3aef53d66a0d9a0490aa88ce3a40924914a051e1
 diff-source: git diff --staged
-round: 3
+round: 4
 -->
 
 # /spec-review — deck-chrome-edge3
@@ -98,6 +98,23 @@ Fix delta: unstaged working tree (StepTracker + test, deck-screen.css, neededSte
 | K8 | Missing footer top hairline | resolved | Recorded as an apply-time decision in design.md (hairlines moved to the well's own edges); `.deck-screen-well` now carries `border-top`/`border-bottom` in deck-screen.css. |
 
 No new findings introduced by the fixes.
+
+**Verdict:** clear to land
+
+## Round 4 — recheck (2026-07-16)
+
+Fix delta: unstaged working tree on top of the work commit `9cc8283`. Round 3 left zero open `Fix now` findings, so there is nothing to re-verify; this round instead covers the post-commit revision the delta carries, checked inline. Delta stays inside the original review's file scope and is small relative to the reviewed diff — no escalation tell fired. `openspec validate deck-chrome-edge3 --strict` passes; FetchingStep suite 6/6 green.
+
+| # | Prior finding | Status | Notes |
+|---|---------------|--------|-------|
+| — | _none open after round 3_ | — | All round-2 findings were resolved and committed in `9cc8283`. |
+
+Post-commit revision reviewed inline (no findings):
+
+- **Short-viewport collapse revised: sticky footer abandoned.** Below 500px height the footer now scrolls with the single root scroller (a sticky footer ate most of a very short viewport). Revision is recorded consistently on every artifact: proposal, design (D2 risk line marked REVISED), task 6.3 marked REVISED, the item-decision-deck delta requirement reworded ("reachable by scrolling to the end"), deck-screen.css comment corrected, and the viewport-matrix e2e updated to `scrollIntoViewIfNeeded()` + `toBeInViewport()` — asserting the revised contract, not the old one.
+- **FetchingStep gains the pinned "Fetching details" title**, asserted by a new unit test, and the product-link-prefill delta gains a fetching-state requirement (shared `LoadingIndicator`, ~2.5s cycling status text outside any `aria-live` region, static "This may take a moment.", URL strip with "change", footer Cancel only, no progress bar/skeleton) with three scenarios. Implementation matches the requirement clause-for-clause ([FetchingStep.tsx](app/(main)/items/ui/components/itemform/FetchingStep.tsx)).
+
+No new findings.
 
 **Verdict:** clear to land
 

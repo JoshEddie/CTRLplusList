@@ -189,8 +189,9 @@ test('Deck_TrackerBackNav_JumpsToDoneStepWithDataIntact', async ({ page }) => {
   await expect(page.getByText('Pick the best photo')).toBeVisible();
 });
 
-// The primary action must be reachable at every viewport — pinned
-// footer on tall screens, sticky footer in the <500px-height collapse.
+// The primary action must be reachable at every viewport — pinned footer on
+// tall screens; in the <500px-height collapse the footer scrolls with the
+// single root scroller, so reachable means scroll-to, not always-on-screen.
 const VIEWPORTS = {
   Desktop: { width: 1280, height: 720 },
   PortraitPhone: { width: 390, height: 844 },
@@ -206,19 +207,18 @@ for (const [label, viewport] of Object.entries(VIEWPORTS)) {
       // inline description on the title card).
       await openDeck(page, 'https://x.test/longtitle');
       await page.getByRole('button', { name: "Let's go" }).click(); // photo
-      await expect(
-        page.getByRole('button', { name: 'Continue' })
-      ).toBeInViewport();
-      await page.getByRole('button', { name: 'Continue' }).click(); // title
+      const continueBtn = page.getByRole('button', { name: 'Continue' });
+      await continueBtn.scrollIntoViewIfNeeded();
+      await expect(continueBtn).toBeInViewport();
+      await continueBtn.click(); // title
 
       await expect(page.getByText('Give it a clear name')).toBeVisible();
       // Overflowing well content is reachable by scrolling…
       await page.getByLabel('Description').scrollIntoViewIfNeeded();
       await expect(page.getByLabel('Description')).toBeInViewport();
-      // …while the footer action stays reachable.
-      await expect(
-        page.getByRole('button', { name: 'Continue' })
-      ).toBeInViewport();
+      // …and so is the footer action.
+      await continueBtn.scrollIntoViewIfNeeded();
+      await expect(continueBtn).toBeInViewport();
 
       await page.getByRole('button', { name: /Tap to use/ }).click();
       await page.getByRole('button', { name: 'Continue' }).click(); // price
@@ -226,9 +226,9 @@ for (const [label, viewport] of Object.entries(VIEWPORTS)) {
       await page.getByRole('button', { name: 'Continue' }).click();
 
       await expect(page.getByText('Last look')).toBeVisible();
-      await expect(
-        page.getByRole('button', { name: 'Create item' })
-      ).toBeInViewport();
+      const createBtn = page.getByRole('button', { name: 'Create item' });
+      await createBtn.scrollIntoViewIfNeeded();
+      await expect(createBtn).toBeInViewport();
     });
   });
 }
