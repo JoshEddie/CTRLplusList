@@ -1,6 +1,6 @@
 /* eslint-disable testing-library/no-container, testing-library/no-node-access --
- * `.itemDescription`, the `.item.purchased` wrapper, and the inert metadata
- * line are class-only with no role, so presence/absence is asserted by class.
+ * `.itemDescription`, the `.item.purchased` wrapper, and the inert price line
+ * are class-only with no role, so presence/absence is asserted by class.
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -37,7 +37,7 @@ function renderCard(
     showPurchased: false,
     showSpoilerInfo: false,
     removableClaim: null,
-    claimActionDisabled: false,
+    fullyClaimed: false,
     showCounter: true,
     counterText: '0/3 claimed',
     showOwnerClaimAction: false,
@@ -49,7 +49,7 @@ function renderCard(
 }
 
 describe('ItemCard', () => {
-  it('Viewer_RendersGetThisGift-CounterAndDescription', () => {
+  it('Viewer_RendersAddClaim-CounterAndDescription', () => {
     renderCard({
       item: {
         id: 'i1',
@@ -61,7 +61,7 @@ describe('ItemCard', () => {
     });
     expect(screen.getByText('A nice mug')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Get this gift' })
+      screen.getByRole('button', { name: 'Add Claim' })
     ).toBeInTheDocument();
     expect(screen.getByText('0/3 claimed')).toBeInTheDocument();
   });
@@ -69,22 +69,49 @@ describe('ItemCard', () => {
   it('ClaimClick_FiresCallbackOnce', async () => {
     const user = userEvent.setup();
     const { props } = renderCard();
-    await user.click(screen.getByRole('button', { name: 'Get this gift' }));
+    await user.click(screen.getByRole('button', { name: 'Add Claim' }));
     expect(props.onPurchaseClick).toHaveBeenCalledTimes(1);
   });
 
-  describe('StoreMetadata', () => {
-    it('Viewer_RendersInertMetadataLine-NoChipRow', () => {
+  describe('PriceLine', () => {
+    it('CompleteStore_RendersInertCheapestStoreLine', () => {
       const { container } = renderCard({
         item: { id: 'i1', name: 'Gift', stores: STORES } as never,
       });
       const metadata = container.querySelector('.item-store-metadata');
-      expect(metadata).toHaveTextContent('· Amazon · Target +1');
+      expect(metadata).toHaveTextContent('· Amazon');
       expect(container.querySelector('.item-price')).toHaveTextContent(
         '$35.50'
       );
-      expect(container.querySelector('.storeLinks')).toBeNull();
       expect(metadata?.closest('a, button')).toBeNull();
+    });
+
+    it('PriceLine_RendersUniformlyAcrossClaimStates', () => {
+      for (const overrides of [
+        { removableClaim: claim },
+        { fullyClaimed: true, showPurchased: true },
+        { isOwner: true },
+      ]) {
+        const { container, unmount } = renderCard({
+          ...overrides,
+          item: { id: 'i1', name: 'Gift', stores: STORES } as never,
+        });
+        expect(
+          container.querySelector('.item-store-metadata')
+        ).toHaveTextContent('· Amazon');
+        unmount();
+      }
+    });
+
+    it('NoCompleteStore_OmitsPriceLine', () => {
+      const { container } = renderCard({
+        item: {
+          id: 'i1',
+          name: 'Gift',
+          stores: [{ name: 'Amazon', link: 'not-a-url', price: '35.50' }],
+        } as never,
+      });
+      expect(container.querySelector('.item-price-row')).toBeNull();
     });
 
     it('CardBodyTap_DoesNotOpenModal', async () => {
@@ -98,14 +125,25 @@ describe('ItemCard', () => {
       await user.click(container.querySelector('.itemName') as HTMLElement);
       expect(props.onPurchaseClick).not.toHaveBeenCalled();
     });
+  });
 
-    it('Owner_RendersChipRow-NoMetadataLine', () => {
-      const { container } = renderCard({
-        isOwner: true,
-        item: { id: 'i1', name: 'Gift', stores: STORES } as never,
-      });
-      expect(container.querySelector('.storeLinks')).toBeInTheDocument();
-      expect(container.querySelector('.item-store-metadata')).toBeNull();
+  describe('ViewItem', () => {
+    it('EveryClaimState_KeepsViewItemTargetingCheapestStore', () => {
+      for (const overrides of [
+        {},
+        { removableClaim: claim },
+        { fullyClaimed: true, showPurchased: true },
+        { isOwner: true },
+      ]) {
+        const { unmount } = renderCard({
+          ...overrides,
+          item: { id: 'i1', name: 'Gift', stores: STORES } as never,
+        });
+        expect(
+          screen.getByRole('link', { name: 'View item — opens in new tab' })
+        ).toHaveAttribute('href', 'https://a.example');
+        unmount();
+      }
     });
   });
 
@@ -115,21 +153,19 @@ describe('ItemCard', () => {
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 
-    it('ShowOwnerClaimActionTrue_RendersMarkAsClaimedButton-HidesChipRow', () => {
+    it('ShowOwnerClaimActionTrue_RendersAddClaimButton', () => {
       const { container } = renderCard({
         isOwner: true,
         showOwnerClaimAction: true,
         item: { id: 'i1', name: 'Gift', stores: STORES } as never,
       });
       expect(
-        screen.getByRole('button', { name: 'Mark as claimed' })
+        screen.getByRole('button', { name: 'Add Claim' })
       ).toBeInTheDocument();
-      expect(container.querySelector('.storeLinks')).toBeNull();
       expect(container.querySelector('.item-price')).toHaveTextContent(
         '$35.50'
       );
     });
-
   });
 
   it('NoDescription_OmitsDescriptionParagraph', () => {
@@ -138,48 +174,58 @@ describe('ItemCard', () => {
   });
 
   describe('FullyClaimed', () => {
-    it('FullyClaimed_ShowsDisabledPill-HidesCounterAndMetadata', () => {
+    it('FullyClaimed_ShowsStatus-HidesCounter-KeepsPriceLine', () => {
       const { container } = renderCard({
-        claimActionDisabled: true,
+        fullyClaimed: true,
         showPurchased: true,
         item: { id: 'i1', name: 'Gift', stores: STORES } as never,
       });
       expect(screen.getByRole('status')).toHaveTextContent('Fully claimed');
       expect(screen.queryByText('0/3 claimed')).not.toBeInTheDocument();
-      expect(container.querySelector('.item-store-metadata')).toBeNull();
       expect(container.querySelector('.item-price')).toHaveTextContent(
         '$35.50'
       );
     });
 
-    it('FullyClaimed_RendersNoClickTarget', () => {
-      renderCard({ claimActionDisabled: true, showPurchased: true });
+    it('FullyClaimedNoStore_RendersNoClickTarget', () => {
+      renderCard({ fullyClaimed: true, showPurchased: true });
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
   });
 
   describe('ViewerClaimed', () => {
-    it('RemovableClaim_RendersPlainPriceAndManageButton-NoMetadata', () => {
+    it('RemovableClaim_RendersManageClaimButton', () => {
       const { container } = renderCard({
         removableClaim: claim,
         item: { id: 'i1', name: 'Gift', stores: STORES } as never,
       });
       expect(
-        screen.getByRole('button', { name: 'Manage your claim' })
+        screen.getByRole('button', { name: 'Manage claim' })
       ).toBeInTheDocument();
       expect(container.querySelector('.item-price')).toHaveTextContent(
         '$35.50'
       );
-      expect(container.querySelector('.item-store-metadata')).toBeNull();
     });
 
     it('ManageClick_FiresCallback', async () => {
       const user = userEvent.setup();
       const { props } = renderCard({ removableClaim: claim });
-      await user.click(
-        screen.getByRole('button', { name: 'Manage your claim' })
-      );
+      await user.click(screen.getByRole('button', { name: 'Manage claim' }));
       expect(props.onPurchaseClick).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('ViewOnly', () => {
+    it('ViewOnlyWithStore_RendersOnlyLiveViewItemAnchor', () => {
+      renderCard({
+        viewOnly: true,
+        onPurchaseClick: undefined,
+        item: { id: 'i1', name: 'Gift', stores: STORES } as never,
+      });
+      expect(
+        screen.getByRole('link', { name: 'View item — opens in new tab' })
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
   });
 
@@ -191,7 +237,13 @@ describe('ItemCard', () => {
   it('CustomClassNameAndEmptyName_AppliesClassAndEmptyTitle', () => {
     const { container } = renderCard({
       className: 'extra',
-      item: { id: 'i1', name: '', description: '', image_url: '', stores: [] } as never,
+      item: {
+        id: 'i1',
+        name: '',
+        description: '',
+        image_url: '',
+        stores: [],
+      } as never,
     });
     const card = container.querySelector('.item.extra');
     expect(card).toBeInTheDocument();

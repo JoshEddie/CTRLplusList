@@ -6,11 +6,17 @@ import { FaList, FaPen, FaPlus, FaTag } from 'react-icons/fa6';
 import { ActionRow } from './ActionRow';
 import { DeckScreen } from './DeckShell';
 import { PreviewCard } from './PreviewCard';
-import { listsQtySubtext, storesSubtext } from './summaries';
+import { listsQtySubtext, storeSubtext } from './summaries';
 import { TierNote } from './TierNote';
 import { TrimChip } from './TrimChip';
 import type { ItemActions } from './useItemActions';
-import { DESCRIPTION_MAX, suggestTrim, titleTier } from './utils';
+import {
+  DESCRIPTION_MAX,
+  priceTier,
+  storeTier,
+  suggestTrim,
+  titleTier,
+} from './utils';
 import type { ItemViewModel } from './viewModel';
 
 interface PreviewProps {
@@ -20,7 +26,7 @@ interface PreviewProps {
   isPending: boolean;
   onSubmit: () => void;
   onOpenTriage: () => void;
-  onOpenStores: () => void;
+  onOpenStore: () => void;
   onOpenLists: () => void;
   onAddNote: () => void;
   /** Delete affordance for the edit path (preserves the retired form's contract). */
@@ -28,8 +34,9 @@ interface PreviewProps {
 }
 
 // The universal create/edit hub: a faithful card plus routes to Triage, the
-// Stores / Lists sheets, and submit. Create/Save is gated on the same tier
-// helpers as the deck so a too-long name can't be saved.
+// Store editor, the Lists sheet, and submit. Create/Save is gated on the same
+// tier helpers as the deck so a too-long name — or an incomplete store or
+// price — can't be saved.
 export function Preview({
   item,
   actions,
@@ -37,7 +44,7 @@ export function Preview({
   isPending,
   onSubmit,
   onOpenTriage,
-  onOpenStores,
+  onOpenStore,
   onOpenLists,
   onAddNote,
   deleteSlot,
@@ -45,8 +52,18 @@ export function Preview({
   const tier = titleTier(item.name);
   const titleBlocked = tier.tier === 'error';
   const noteBlocked = item.description.length > DESCRIPTION_MAX;
-  const blocked = titleBlocked || noteBlocked;
+  const storeBlocked = storeTier(item.stores[0]).tier === 'error';
+  const priceBlocked = priceTier(item.stores[0]?.price).tier === 'error';
+  const blocked = titleBlocked || noteBlocked || storeBlocked || priceBlocked;
   const suggestion = suggestTrim(item.name);
+
+  const blockNote = titleBlocked
+    ? tier.note
+    : noteBlocked
+      ? `Your description is over the ${DESCRIPTION_MAX}-character limit — trim it to save.`
+      : storeBlocked
+        ? storeTier(item.stores[0]).note
+        : priceTier(item.stores[0]?.price).note;
 
   return (
     <DeckScreen
@@ -85,9 +102,9 @@ export function Preview({
             />
             <ActionRow
               icon={<FaTag />}
-              label="Store links"
-              sub={storesSubtext(item)}
-              onClick={onOpenStores}
+              label="Store"
+              sub={storeSubtext(item)}
+              onClick={onOpenStore}
             />
             <ActionRow
               icon={<FaList />}
@@ -108,11 +125,7 @@ export function Preview({
 
         {blocked && (
           <div className="deck-preview-block">
-            <TierNote tier="error">
-              {titleBlocked
-                ? tier.note
-                : `Your description is over the ${DESCRIPTION_MAX}-character limit — trim it to save.`}
-            </TierNote>
+            <TierNote tier="error">{blockNote}</TierNote>
             {titleBlocked && suggestion && suggestion !== item.name.trim() && (
               <TrimChip
                 suggestion={suggestion}

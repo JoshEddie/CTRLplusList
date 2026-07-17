@@ -1,3 +1,4 @@
+import { lowestPricedStore } from '@/app/(main)/items/ui/components/utils';
 import type { ProductData } from '@/lib/product-fetch/types';
 import type {
   ItemDetails,
@@ -103,13 +104,20 @@ export function seedFromItem(item: SeedItem): ItemViewModel {
       ? [item.image_url]
       : [];
   const activeIndex = item.image_url ? photos.indexOf(item.image_url) : -1;
+  // Seed from the primary (lowest-priced complete) store only; a legacy item
+  // with no complete store falls back to its first row so incomplete rows
+  // surface for repair instead of vanishing. Save submits exactly one store —
+  // positional sync then collapses any legacy extras (D4).
+  const primary = item.stores.length
+    ? (lowestPricedStore(item.stores) ?? item.stores[0])
+    : null;
   return {
     id: item.id,
     name: item.name,
     photos,
     photoIndex: activeIndex >= 0 ? activeIndex : 0,
     description: item.description ?? '',
-    stores: item.stores.length ? item.stores.map(toDeckStore) : [emptyStore()],
+    stores: primary ? [toDeckStore(primary)] : [emptyStore()],
     lists: item.lists.map((list) => ({
       value: list.id.toString(),
       label: list.name,

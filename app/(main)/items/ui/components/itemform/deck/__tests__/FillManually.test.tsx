@@ -8,7 +8,6 @@ function setup(over = {}, handlers = {}) {
   const props = {
     onBack: vi.fn(),
     onFocus: vi.fn(),
-    onOpenStores: vi.fn(),
     ...handlers,
   };
   render(<FillManually item={makeItem(over)} {...props} />);
@@ -60,9 +59,7 @@ describe('FillManually', () => {
       screen.getByText('Add a price so people know the cost.')
     ).toBeInTheDocument();
     expect(screen.getByText('No photo yet — add one.')).toBeInTheDocument();
-    expect(
-      screen.getByText('No store yet — add where to buy it.')
-    ).toBeInTheDocument();
+    expect(screen.getByText('The store needs a name.')).toBeInTheDocument();
     expect(screen.queryByText('Needs you')).not.toBeInTheDocument();
   });
 
@@ -73,10 +70,10 @@ describe('FillManually', () => {
     expect(onFocus).toHaveBeenCalledWith('title');
   });
 
-  it('ClickStoreRow_OpensStoresSheet', async () => {
+  it('ClickStoreRow_OpensStoreFocus', async () => {
     const user = userEvent.setup();
-    const { onOpenStores } = setup(blank);
+    const { onFocus } = setup(blank);
     await user.click(screen.getByRole('button', { name: /Store/ }));
-    expect(onOpenStores).toHaveBeenCalledOnce();
+    expect(onFocus).toHaveBeenCalledWith('store');
   });
 });

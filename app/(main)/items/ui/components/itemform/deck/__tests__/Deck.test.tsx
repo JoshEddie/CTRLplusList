@@ -73,6 +73,26 @@ describe('Deck', () => {
     expect(onComplete).toHaveBeenCalledOnce();
   });
 
+  it('FetchWithoutStoreName_StopsOnStoreCardUntilNamed', async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness
+        initial={vm({
+          photos: ['https://only'],
+          stores: [{ name: '', link: 'https://shop', price: '29.99' }],
+        })}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: "Let's go" }));
+    expect(screen.getByText("Where's it from?")).toBeInTheDocument();
+    const cont = screen.getByRole('button', { name: 'Continue' });
+    expect(cont).toBeDisabled();
+    await user.type(screen.getByLabelText('Store name'), 'Shop');
+    expect(cont).toBeEnabled();
+    await user.click(cont);
+    expect(screen.getByText('Add a note')).toBeInTheDocument();
+  });
+
   it('SingleImage_SkipsPhotoCard', async () => {
     const user = userEvent.setup();
     render(<Harness initial={vm({ photos: ['https://only'] })} />);

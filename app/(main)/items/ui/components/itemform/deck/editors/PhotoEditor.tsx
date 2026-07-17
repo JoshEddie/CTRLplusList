@@ -6,7 +6,7 @@ import { TextField } from '@/app/ui/components/field';
 import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 import { useState } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import { isValidProductUrl } from '../../utils';
+import { isValidProductUrl } from '@/lib/storeValidity';
 
 // The photo pool is already pruned of undersized images upstream (prunePhotos
 // runs once at fetch time), so this just presents what it's given.

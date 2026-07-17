@@ -1,0 +1,180 @@
+/* eslint-disable testing-library/no-container, testing-library/no-node-access --
+ * The aria-hidden ↗ icon and the empty-render states expose no roles to
+ * query, so those assertions go through the container.
+ */
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import ItemActions from '../ItemActions';
+
+const STORE = { name: 'Amazon', link: 'https://a.example', price: '35.50' };
+
+function renderActions(
+  overrides: Partial<React.ComponentProps<typeof ItemActions>> = {}
+) {
+  const props: React.ComponentProps<typeof ItemActions> = {
+    isOwner: false,
+    fullyClaimed: false,
+    viewerClaimed: false,
+    showOwnerClaimAction: false,
+    showOwnerManageAction: false,
+    store: STORE,
+    onPurchaseClick: vi.fn(),
+    ...overrides,
+  };
+  return { props, ...render(<ItemActions {...props} />) };
+}
+
+const viewItem = () =>
+  screen.queryByRole('link', { name: 'View item — opens in new tab' });
+
+describe('ItemActions', () => {
+  describe('StateMatrix', () => {
+    it('NonOwnerClaimable_RendersAddClaimWithViewItem-NoManage', () => {
+      renderActions();
+      expect(
+        screen.getByRole('button', { name: 'Add Claim' })
+      ).toBeInTheDocument();
+      expect(viewItem()).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Manage claim' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('ViewerClaimedSlotsRemain_RendersManageClaimViewItemAndAddClaim', () => {
+      renderActions({ viewerClaimed: true });
+      expect(
+        screen.getByRole('button', { name: 'Manage claim' })
+      ).toBeInTheDocument();
+      expect(viewItem()).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Add Claim' })
+      ).toBeInTheDocument();
+    });
+
+    it('ViewerClaimedNoSlots_RendersManageClaimWithViewItemOnly', () => {
+      renderActions({ viewerClaimed: true, fullyClaimed: true });
+      expect(
+        screen.getByRole('button', { name: 'Manage claim' })
+      ).toBeInTheDocument();
+      expect(viewItem()).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Add Claim' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('FullyClaimedByOthers_RendersStatusAndViewItem-NoClaimAffordance', () => {
+      renderActions({ fullyClaimed: true });
+      expect(screen.getByRole('status')).toHaveTextContent('Fully claimed');
+      expect(viewItem()).toBeInTheDocument();
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('NoStoreClaimable_RendersAddClaimWithoutViewItem', () => {
+      renderActions({ store: null });
+      expect(
+        screen.getByRole('button', { name: 'Add Claim' })
+      ).toBeInTheDocument();
+      expect(viewItem()).not.toBeInTheDocument();
+    });
+
+    it('OwnerSpoilersOff_RendersViewItemOnly-PromotedToPrimary', () => {
+      renderActions({ isOwner: true });
+      const link = viewItem();
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveClass('primary');
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('ViewBesideOtherActions_KeepsSecondaryVariant', () => {
+      renderActions();
+      expect(viewItem()).toHaveClass('secondary');
+    });
+
+    it('OwnerSpoilersOnClaimable_RendersAddClaimAndViewItem', () => {
+      renderActions({ isOwner: true, showOwnerClaimAction: true });
+      expect(
+        screen.getByRole('button', { name: 'Add Claim' })
+      ).toBeInTheDocument();
+      expect(viewItem()).toBeInTheDocument();
+    });
+
+    it('OwnerSpoilersOnHasClaims_RendersManageClaimsAndViewItem', () => {
+      renderActions({ isOwner: true, showOwnerManageAction: true });
+      expect(
+        screen.getByRole('button', { name: 'Manage claims' })
+      ).toBeInTheDocument();
+      expect(viewItem()).toBeInTheDocument();
+    });
+
+    it('OwnerSpoilersOffNoStore_RendersNothing', () => {
+      const { container } = renderActions({ isOwner: true, store: null });
+      expect(container.firstChild).toBeNull();
+    });
+  });
+
+  describe('ViewOnly', () => {
+    it('ViewOnlyWithStore_RendersOnlyLiveViewItemAnchor-PromotedToPrimary', () => {
+      renderActions({ viewOnly: true, viewerClaimed: true });
+      const link = viewItem();
+      expect(link).toHaveAttribute('href', STORE.link);
+      expect(link).toHaveClass('primary');
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    it('ViewOnlyNoStore_RendersNothing', () => {
+      const { container } = renderActions({ viewOnly: true, store: null });
+      expect(container.firstChild).toBeNull();
+    });
+  });
+
+  describe('ViewItemSemantics', () => {
+    it('ViewItem_TargetsStoreInNewTabWithHiddenIcon', () => {
+      const { container } = renderActions();
+      const link = viewItem();
+      expect(link).toHaveAttribute('href', STORE.link);
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noreferrer');
+      expect(container.querySelector('a svg')).toHaveAttribute(
+        'aria-hidden',
+        'true'
+      );
+    });
+
+    it('ViewItemClick_DoesNotPropagateToEnclosingHandler', async () => {
+      const user = userEvent.setup();
+      const onEnclosingClick = vi.fn();
+      render(
+        <div onClick={onEnclosingClick}>
+          <ItemActions
+            isOwner={false}
+            fullyClaimed={false}
+            viewerClaimed={false}
+            showOwnerClaimAction={false}
+            showOwnerManageAction={false}
+            store={STORE}
+          />
+        </div>
+      );
+      await user.click(viewItem() as HTMLElement);
+      expect(onEnclosingClick).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('StatusSemantics', () => {
+    it('FullyClaimedStatus_IsNotAButtonAndNotFocusable', () => {
+      renderActions({ fullyClaimed: true });
+      const status = screen.getByRole('status');
+      expect(status.tagName).not.toBe('BUTTON');
+      expect(status).not.toHaveAttribute('tabindex');
+    });
+  });
+
+  it('AddClaimClick_FiresOnPurchaseClickOnce', async () => {
+    const user = userEvent.setup();
+    const { props } = renderActions();
+    await user.click(screen.getByRole('button', { name: 'Add Claim' }));
+    expect(props.onPurchaseClick).toHaveBeenCalledTimes(1);
+  });
+});

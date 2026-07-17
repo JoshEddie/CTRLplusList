@@ -58,7 +58,7 @@ vi.mock('../ItemCard', () => ({
       data-testid="item-card"
       data-show-purchased={String(p.showPurchased)}
       data-show-spoiler={String(p.showSpoilerInfo)}
-      data-disabled={String(p.claimActionDisabled)}
+      data-fully-claimed={String(p.fullyClaimed)}
       data-show-counter={String(p.showCounter)}
       data-counter={p.counterText as string}
       data-is-owner={String(p.isOwner)}
@@ -230,7 +230,7 @@ describe('Item', () => {
   });
 
   describe('DerivedState', () => {
-    it('ViewerFullyClaimed_ForwardsPurchasedAndDisabled', () => {
+    it('ViewerFullyClaimed_ForwardsPurchasedAndFullyClaimed', () => {
       renderItem({
         item: {
           user_id: OWNER,
@@ -242,7 +242,7 @@ describe('Item', () => {
         user_id: 'viewer',
       });
       expect(card()).toHaveAttribute('data-show-purchased', 'true');
-      expect(card()).toHaveAttribute('data-disabled', 'true');
+      expect(card()).toHaveAttribute('data-fully-claimed', 'true');
       expect(banners()).toHaveAttribute('data-claims', 'Sam');
     });
 

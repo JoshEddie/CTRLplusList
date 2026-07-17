@@ -8,6 +8,7 @@ const STEP_LABELS: Record<DeckStep, string> = {
   photo: 'Photo',
   title: 'Name',
   price: 'Price',
+  store: 'Store',
   note: 'Note',
 };
 

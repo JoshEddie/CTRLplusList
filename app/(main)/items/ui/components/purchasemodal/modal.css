@@ -129,11 +129,6 @@
   min-width: 0;
 }
 
-.modal-store-row-more-anchor {
-  position: relative;
-  display: inline-flex;
-}
-
 .guest-purchase {
   display: flex;
   flex-direction: column;

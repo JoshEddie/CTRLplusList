@@ -4,17 +4,16 @@ import { Button } from '@/app/ui/components/button';
 import { FiArrowLeft } from 'react-icons/fi';
 import { DeckScreen } from './DeckShell';
 import { FieldRows } from './FieldRows';
-import type { FocusField } from './focus';
+import type { RowField } from './focus';
 import type { ItemViewModel } from './viewModel';
 
 interface TriageProps {
   item: ItemViewModel;
   onBack: () => void;
-  onFocus: (field: FocusField) => void;
-  onOpenStores: () => void;
+  onFocus: (field: RowField) => void;
 }
 
-export function Triage({ item, onBack, onFocus, onOpenStores }: TriageProps) {
+export function Triage({ item, onBack, onFocus }: TriageProps) {
   return (
     <DeckScreen
       title="Review anything"
@@ -26,7 +25,7 @@ export function Triage({ item, onBack, onFocus, onOpenStores }: TriageProps) {
         </Button>
       }
     >
-      <FieldRows item={item} onFocus={onFocus} onOpenStores={onOpenStores} />
+      <FieldRows item={item} onFocus={onFocus} />
     </DeckScreen>
   );
 }

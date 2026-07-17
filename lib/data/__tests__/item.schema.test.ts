@@ -66,4 +66,26 @@ describe('ItemSchema', () => {
       );
     });
   });
+
+  describe('stores', () => {
+    it('AllEmptyStoreRow_PassesSchema', () => {
+      // Schema-level: an all-empty row is legal (the refine skips it); the
+      // single-store cap in the actions is what rejects it downstream.
+      expect(
+        ItemSchema.safeParse({
+          ...base,
+          stores: [{ name: '', link: '', price: '' }],
+        }).success
+      ).toBe(true);
+    });
+
+    it('PartialStoreRow_FailsSchema', () => {
+      expect(
+        ItemSchema.safeParse({
+          ...base,
+          stores: [{ name: 'Amazon', link: '', price: '' }],
+        }).success
+      ).toBe(false);
+    });
+  });
 });

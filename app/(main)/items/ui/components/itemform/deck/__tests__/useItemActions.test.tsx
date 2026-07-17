@@ -82,32 +82,7 @@ describe('useItemActions', () => {
     expect(result.current.item.stores[0].price_fetched_at).toBe('2026-01-01');
   });
 
-  it('AddStore_AppendsEmptyRow', () => {
-    const { result } = renderHook(() => useHarness(blankItem()));
-    act(() => result.current.actions.addStore());
-    expect(result.current.item.stores).toHaveLength(2);
-    expect(result.current.item.stores[1]).toEqual({
-      name: '',
-      link: '',
-      price: '',
-    });
-  });
 
-  it('RemoveStore_DropsRowAtIndex', () => {
-    const { result } = renderHook(() =>
-      useHarness({
-        ...blankItem(),
-        stores: [
-          { name: 'a', link: 'la', price: '1' },
-          { name: 'b', link: 'lb', price: '2' },
-        ],
-      })
-    );
-    act(() => result.current.actions.removeStore(0));
-    expect(result.current.item.stores).toEqual([
-      { name: 'b', link: 'lb', price: '2' },
-    ]);
-  });
 
   it('SetLists_ReplacesLists', () => {
     const { result } = renderHook(() => useHarness(blankItem()));

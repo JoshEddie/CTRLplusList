@@ -4,13 +4,13 @@ import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 import type { OptionType } from '@/lib/types';
 import type { Dispatch, SetStateAction } from 'react';
 import { useMemo } from 'react';
-import { setStoreField, type DeckStore, type ItemViewModel } from './viewModel';
+import { setStoreField, type ItemViewModel } from './viewModel';
 
 type SetItem = Dispatch<SetStateAction<ItemViewModel>>;
 
 // The single mutation surface for the view-model, shared by the deck cards,
-// Preview, Focus editors, and the Stores / Lists sheets — so no two surfaces
-// hand-roll divergent update logic.
+// Preview, Focus editors, and the Lists sheet — so no two surfaces hand-roll
+// divergent update logic.
 export function useItemActions(setItem: SetItem) {
   return useMemo(
     () => ({
@@ -37,16 +37,6 @@ export function useItemActions(setItem: SetItem) {
         setItem((p) => ({
           ...p,
           stores: setStoreField(p.stores, index, field, value),
-        })),
-      addStore: () =>
-        setItem((p) => ({
-          ...p,
-          stores: [...p.stores, { name: '', link: '', price: '' } as DeckStore],
-        })),
-      removeStore: (index: number) =>
-        setItem((p) => ({
-          ...p,
-          stores: p.stores.filter((_, i) => i !== index),
         })),
       setLists: (lists: OptionType[]) => setItem((p) => ({ ...p, lists })),
       setQty: (qty: number | null) => setItem((p) => ({ ...p, qty })),

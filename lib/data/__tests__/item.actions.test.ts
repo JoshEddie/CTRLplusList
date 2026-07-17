@@ -68,7 +68,8 @@ function makeItem(overrides: Partial<ItemDetails> = {}): ItemDetails {
     name: 'Valid Item Name',
     description: 'desc',
     quantity_limit: null,
-    stores: [],
+    // Exactly one complete store — the single-store cap rejects anything else.
+    stores: [{ name: 'Amazon', link: 'https://a.test', price: '10' }],
     lists: [],
     ...overrides,
   };
@@ -147,6 +148,40 @@ describe('createItem', () => {
       expect(await itemRows()).toHaveLength(0);
     });
 
+    it('StorelessPayload_ReturnsStoresFieldError-NoRow', async () => {
+      const res = await actions.createItem(makeItem({ stores: [] }));
+      expect(res.success).toBe(false);
+      expect(res.errors?.stores).toBeDefined();
+      expect(await itemRows()).toHaveLength(0);
+    });
+
+    it('TwoStores_ReturnsStoresFieldError-NoRow', async () => {
+      const res = await actions.createItem(
+        makeItem({
+          stores: [
+            { name: 'Amazon', link: 'https://a.test', price: '10' },
+            { name: 'Target', link: 'https://t.test', price: '12' },
+          ],
+        })
+      );
+      expect(res.success).toBe(false);
+      expect(res.errors?.stores).toBeDefined();
+      expect(await itemRows()).toHaveLength(0);
+    });
+
+    it('ScientificNotationPrice_ReturnsStoresFieldError-NoRow', async () => {
+      // Number('1e5') parses, so the retired looser check accepted it; the
+      // shared predicate must not.
+      const res = await actions.createItem(
+        makeItem({
+          stores: [{ name: 'Amazon', link: 'https://a.test', price: '1e5' }],
+        })
+      );
+      expect(res.success).toBe(false);
+      expect(res.errors?.stores).toBeDefined();
+      expect(await itemRows()).toHaveLength(0);
+    });
+
     it('QuantityLimitFractional_ReturnsQuantityFieldError-NoRow', async () => {
       const res = await actions.createItem(makeItem({ quantity_limit: 1.5 }));
       expect(res.success).toBe(false);
@@ -163,7 +198,7 @@ describe('createItem', () => {
   });
 
   describe('Success', () => {
-    it('WithListsAndStores_InsertsItem-PlacesListItem-SkipsEmptyStore-CallsUpdateTagItems', async () => {
+    it('WithListsAndStore_InsertsItem-PlacesListItem-CallsUpdateTagItems', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });
       await seedItem(db, { id: 'existing', user_id: OWNER.id });
       await seedListItem(db, {
@@ -179,10 +214,7 @@ describe('createItem', () => {
           image_url: 'https://img.test/x.png',
           quantity_limit: 3,
           lists: [{ value: 'L', label: 'L' }],
-          stores: [
-            { name: 'Amazon', link: 'https://a.test', price: '10' },
-            { name: '', link: '', price: '' },
-          ],
+          stores: [{ name: 'Amazon', link: 'https://a.test', price: '10' }],
         })
       );
       expect(res.success).toBe(true);
@@ -212,9 +244,9 @@ describe('createItem', () => {
       expect(updateTag).toHaveBeenCalledWith('items');
     });
 
-    it('NoListsNoStores_InsertsItemOnly-DefaultsDescriptionEmpty', async () => {
+    it('NoLists_InsertsItemWithStore-DefaultsDescriptionEmpty', async () => {
       const res = await actions.createItem(
-        makeItem({ name: 'Bare Item', description: '', lists: [], stores: [] })
+        makeItem({ name: 'Bare Item', description: '', lists: [] })
       );
       expect(res.success).toBe(true);
 
@@ -226,19 +258,47 @@ describe('createItem', () => {
         user_id: OWNER.id,
       });
       expect(await listItemRows('L')).toHaveLength(0);
-      expect(await storeRows(rows[0].id)).toHaveLength(0);
+      expect(await storeRows(rows[0].id)).toHaveLength(1);
       expect(updateTag).toHaveBeenCalledWith('items');
     });
 
-    it('UndefinedListsAndStores_InsertsItemOnly', async () => {
-      const res = await actions.createItem({
-        id: 'placeholder-id',
-        name: 'Undef Fields',
-        description: 'd',
-        quantity_limit: null,
-        lists: undefined as unknown as ItemDetails['lists'],
-        stores: undefined as unknown as ItemDetails['stores'],
-      });
+    it('StoreProvenanceFields_PersistThroughCreate', async () => {
+      const res = await actions.createItem(
+        makeItem({
+          name: 'Provenance Gift',
+          stores: [
+            {
+              name: 'Amazon',
+              link: 'https://a.test',
+              price: '10',
+              price_fetched_at: '2026-01-01T00:00:00.000Z',
+              canonical_url: 'https://a.test/canonical',
+              currency: 'USD',
+            },
+          ],
+        })
+      );
+      expect(res.success).toBe(true);
+      const created = (await itemRows()).find(
+        (i) => i.name === 'Provenance Gift'
+      )!;
+      expect(await storeRows(created.id)).toEqual([
+        expect.objectContaining({
+          name: 'Amazon',
+          canonical_url: 'https://a.test/canonical',
+          currency: 'USD',
+          price_fetched_at: new Date('2026-01-01T00:00:00.000Z'),
+        }),
+      ]);
+    });
+
+    it('UndefinedLists_InsertsItemWithStore', async () => {
+      const res = await actions.createItem(
+        makeItem({
+          name: 'Undef Fields',
+          lists: undefined as unknown as ItemDetails['lists'],
+        })
+      );
       expect(res.success).toBe(true);
       const rows = await itemRows();
       expect(rows).toHaveLength(1);
@@ -307,15 +367,16 @@ describe('updateItem', () => {
 
   it('DescriptionAndImageUrl_WritesScalarToItem-ImageToActiveRow', async () => {
     await seedItem(db, { id: 'I', user_id: OWNER.id });
-    const res = await actions.updateItem({
-      id: 'I',
-      name: 'New Name',
-      description: 'newdesc',
-      image_url: 'https://i.test/p.png',
-      quantity_limit: 2,
-      lists: undefined as unknown as ItemDetails['lists'],
-      stores: undefined as unknown as ItemDetails['stores'],
-    });
+    const res = await actions.updateItem(
+      makeItem({
+        id: 'I',
+        name: 'New Name',
+        description: 'newdesc',
+        image_url: 'https://i.test/p.png',
+        quantity_limit: 2,
+        lists: undefined as unknown as ItemDetails['lists'],
+      })
+    );
     expect(res.success).toBe(true);
     const row = (await itemRows()).find((i) => i.id === 'I');
     expect(row).toMatchObject({ description: 'newdesc' });
@@ -374,7 +435,7 @@ describe('updateItem', () => {
           name: 'Updated',
           quantity_limit: 5,
           lists: [{ value: 'L2', label: 'L2' }],
-          stores: [{ name: 'a1x', link: 'https://a.test', price: 'p1' }],
+          stores: [{ name: 'a1x', link: 'https://a.test', price: '12.99' }],
         })
       );
       expect(res.success).toBe(true);
@@ -387,19 +448,21 @@ describe('updateItem', () => {
         expect.objectContaining({ item_id: 'I', position: 65536 }),
       ]);
 
+      // The legacy-collapse pass-through: one submitted store updates row 0
+      // and the positional sync deletes the legacy extras.
       const stores = await storeRows('I');
       expect(stores).toEqual([
         expect.objectContaining({
           id: 'S1',
           name: 'a1x',
           link: 'https://a.test',
-          price: 'p1',
+          price: '12.99',
         }),
       ]);
       expect(updateTag).toHaveBeenCalledWith('items');
     });
 
-    it('MoreStoresThanExisting_InsertsOverflow-SkipsEmpty', async () => {
+    it('MultiStorePayload_ReturnsStoresFieldError-NoWrite', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedItemStore(db, {
         id: 'S1',
@@ -414,19 +477,28 @@ describe('updateItem', () => {
         makeItem({
           id: 'I',
           stores: [
-            { name: 'a1x', link: 'https://a.test', price: 'p1' },
+            { name: 'a1x', link: 'https://a.test', price: '10' },
             { name: 'new', link: 'https://b.test', price: '2' },
-            { name: '', link: '', price: '' },
           ],
         })
       );
-      expect(res.success).toBe(true);
-
-      const stores = await storeRows('I');
-      expect(stores).toEqual([
-        expect.objectContaining({ id: 'S1', name: 'a1x', order: 1 }),
-        expect.objectContaining({ name: 'new', link: 'https://b.test', order: 2 }),
+      expect(res.success).toBe(false);
+      expect(res.errors?.stores).toBeDefined();
+      expect(await storeRows('I')).toEqual([
+        expect.objectContaining({ id: 'S1', name: 'a1' }),
       ]);
+    });
+
+    it('IncompleteStorePayload_ReturnsStoresFieldError-NoWrite', async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      const res = await actions.updateItem(
+        makeItem({
+          id: 'I',
+          stores: [{ name: '', link: 'https://a.test', price: '10' }],
+        })
+      );
+      expect(res.success).toBe(false);
+      expect(res.errors?.stores).toBeDefined();
     });
 
     it('UnchangedStore_PreservesRow', async () => {
@@ -436,14 +508,14 @@ describe('updateItem', () => {
         item_id: 'I',
         name: 'a1',
         link: 'https://a.test',
-        price: 'p1',
+        price: '12.00',
         order: 1,
       });
 
       const res = await actions.updateItem(
         makeItem({
           id: 'I',
-          stores: [{ name: 'a1', link: 'https://a.test', price: 'p1' }],
+          stores: [{ name: 'a1', link: 'https://a.test', price: '12.00' }],
         })
       );
       expect(res.success).toBe(true);
@@ -452,7 +524,7 @@ describe('updateItem', () => {
           id: 'S1',
           name: 'a1',
           link: 'https://a.test',
-          price: 'p1',
+          price: '12.00',
           order: 1,
         }),
       ]);
@@ -472,7 +544,7 @@ describe('updateItem', () => {
       ]);
     });
 
-    it('OnlyImageUrl_SavesActiveRow-LeavesScalarsUnchanged', async () => {
+    it('ImageUrlWithoutScalarFields_SavesActiveRow-LeavesScalarsUnchanged', async () => {
       await seedItem(db, {
         id: 'I',
         user_id: OWNER.id,
@@ -484,7 +556,7 @@ describe('updateItem', () => {
         id: 'I',
         image_url: 'https://x.test/p.png',
         lists: [],
-        stores: [],
+        stores: [{ name: 'Amazon', link: 'https://a.test', price: '10' }],
       } as unknown as ItemDetails);
       expect(res.success).toBe(true);
       const row = (await itemRows()).find((i) => i.id === 'I');

@@ -16,12 +16,15 @@ describe('PreviewCard', () => {
     ).toBeInTheDocument();
   });
 
-  it('ValidStore_ShowsFormattedPriceAndRealStoreLink', () => {
+  it('ValidStore_ShowsPriceLineAndLiveViewItemLink', () => {
     render(<PreviewCard item={vm()} />);
     expect(screen.getByText('$29.99')).toBeInTheDocument();
-    // The store affordance is the production LinkButton (an anchor), exactly as
-    // it appears on a list — not a lookalike text span.
-    expect(screen.getByRole('link', { name: /Lodge/ })).toBeInTheDocument();
+    expect(screen.getByText(/· Lodge/)).toBeInTheDocument();
+    // The store affordance is the production View item anchor, exactly as it
+    // appears on a list — not a lookalike text span.
+    expect(
+      screen.getByRole('link', { name: 'View item — opens in new tab' })
+    ).toHaveAttribute('href', 'https://lodge');
   });
 
   it('NoValidStore_OmitsPriceExactlyAsProductionDoes', () => {
@@ -60,10 +63,10 @@ describe('PreviewCard', () => {
     );
     // A deliberately-entered $0.00 is a real price and renders as such.
     expect(screen.getByText('$0.00')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Freebie/ })).toBeInTheDocument();
+    expect(screen.getByText(/· Freebie/)).toBeInTheDocument();
   });
 
-  it('MultipleStores_ShowsCheapestPlusMoreCount', () => {
+  it('LegacyMultiStoreItem_ShowsOnlyTheCheapestStore', () => {
     render(
       <PreviewCard
         item={vm({
@@ -75,10 +78,9 @@ describe('PreviewCard', () => {
       />
     );
     expect(screen.getByText('$29.99')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Lodge/ })).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: /Show 1 more store/ })
-    ).toBeInTheDocument();
+    expect(screen.getByText(/· Lodge/)).toBeInTheDocument();
+    expect(screen.queryByText(/Amazon/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\+1/)).not.toBeInTheDocument();
   });
 
   it('AtCapDescription_RendersInFullWithoutClamp', () => {

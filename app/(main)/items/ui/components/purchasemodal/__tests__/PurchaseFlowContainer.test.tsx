@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getClaimPickerForItem } from '@/lib/data/user.actions';
@@ -86,30 +86,11 @@ describe('PurchaseFlowContainer', () => {
       expect(screen.getByRole('link', { name: /Amazon/ })).toBeInTheDocument();
     });
 
-    it('PlusNStoresTrigger_OpensMenuWithAllStoresPriceAscending', async () => {
+    it('LegacyMultiStoreItem_RendersNoExtrasTriggerOrMenu', async () => {
       renderContainer();
       await screen.findByRole('button', { name: 'Claim this gift' });
-      // fireEvent: userEvent's synthetic hover would open-then-toggle the
-      // hover-opened menu shut.
-      fireEvent.click(screen.getByRole('button', { name: '+1 store' }));
-      const menuItems = screen.getAllByRole('menuitem');
-      expect(menuItems).toHaveLength(2);
-      expect(menuItems[0]).toHaveTextContent('Amazon');
-      expect(menuItems[0]).toHaveTextContent('$35.50');
-      expect(menuItems[1]).toHaveTextContent('Target');
-      expect(menuItems[1]).toHaveTextContent('$38.00');
-    });
-
-    it('EscapeWhileMenuOpen_ClosesMenuOnly', async () => {
-      const user = userEvent.setup();
-      renderContainer();
-      await screen.findByRole('button', { name: 'Claim this gift' });
-      fireEvent.click(screen.getByRole('button', { name: '+1 store' }));
-      await user.keyboard('{Escape}');
+      expect(screen.queryByText(/\+1/)).not.toBeInTheDocument();
       expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: '+1 store' })
-      ).toHaveFocus();
     });
 
     it('NoValidStore_RendersClaimSectionWithoutStoreRow', async () => {

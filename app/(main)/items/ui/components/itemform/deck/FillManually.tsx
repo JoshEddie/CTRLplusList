@@ -4,22 +4,16 @@ import { Button } from '@/app/ui/components/button';
 import { FiArrowLeft } from 'react-icons/fi';
 import { DeckScreen } from './DeckShell';
 import { FieldRows } from './FieldRows';
-import type { FocusField } from './focus';
+import type { RowField } from './focus';
 import type { ItemViewModel } from './viewModel';
 
 interface FillManuallyProps {
   item: ItemViewModel;
   onBack: () => void;
-  onFocus: (field: FocusField) => void;
-  onOpenStores: () => void;
+  onFocus: (field: RowField) => void;
 }
 
-export function FillManually({
-  item,
-  onBack,
-  onFocus,
-  onOpenStores,
-}: FillManuallyProps) {
+export function FillManually({ item, onBack, onFocus }: FillManuallyProps) {
   return (
     <DeckScreen
       title="Add the details"
@@ -31,7 +25,7 @@ export function FillManually({
         </Button>
       }
     >
-      <FieldRows item={item} onFocus={onFocus} onOpenStores={onOpenStores} />
+      <FieldRows item={item} onFocus={onFocus} />
     </DeckScreen>
   );
 }

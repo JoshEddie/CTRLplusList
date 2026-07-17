@@ -116,48 +116,35 @@ describe('deckUtils', () => {
   });
 
   describe('storeTier', () => {
-    it('Undefined_ReturnsWarnNoStore', () => {
+    it('Undefined_ReturnsErrorNamingName', () => {
       const result = storeTier(undefined);
-      expect(result.tier).toBe('warn');
-      expect(result.note).toContain('No store');
-    });
-
-    it('AllEmpty_ReturnsWarnNoStore', () => {
-      const result = storeTier({ name: '', link: '', price: '' });
-      expect(result.tier).toBe('warn');
-      expect(result.note).toContain('No store');
-    });
-
-    it('MissingName_ReturnsWarnNamingName', () => {
-      const result = storeTier({ name: '', link: 'https://l', price: '9.99' });
-      expect(result.tier).toBe('warn');
+      expect(result.tier).toBe('error');
       expect(result.note).toContain('name');
     });
 
-    it('MissingLink_ReturnsWarnNamingLink', () => {
-      const result = storeTier({ name: 'Lodge', link: '', price: '9.99' });
-      expect(result.tier).toBe('warn');
+    it('MissingName_ReturnsErrorNamingName', () => {
+      const result = storeTier({ name: '', link: 'https://l' });
+      expect(result.tier).toBe('error');
+      expect(result.note).toContain('name');
+    });
+
+    it('MissingLink_ReturnsErrorNamingLink', () => {
+      const result = storeTier({ name: 'Lodge', link: '' });
+      expect(result.tier).toBe('error');
       expect(result.note).toContain('link');
     });
 
-    it('NonNumericPrice_ReturnsWarnNamingPrice', () => {
-      // Mirrors isValidStore's Number() check — its classification is frozen
-      // until linkless-store validity is settled separately.
-      const result = storeTier({ name: 'Lodge', link: 'https://l', price: 'x' });
-      expect(result.tier).toBe('warn');
-      expect(result.note).toContain('price');
+    it('InvalidLink_ReturnsErrorNamingLink', () => {
+      const result = storeTier({ name: 'Lodge', link: 'lodge.example' });
+      expect(result.tier).toBe('error');
+      expect(result.note).toContain('link');
     });
 
-    it('EmptyPrice_ReturnsWarnNamingPrice', () => {
-      const result = storeTier({ name: 'Lodge', link: 'https://l', price: ' ' });
-      expect(result.tier).toBe('warn');
-      expect(result.note).toContain('price');
-    });
-
-    it('Complete_ReturnsGood', () => {
-      expect(
-        storeTier({ name: 'Lodge', link: 'https://l', price: '29.99' })
-      ).toEqual({ tier: 'good', note: '' });
+    it('NameAndValidLink_ReturnsGood', () => {
+      expect(storeTier({ name: 'Lodge', link: 'https://l' })).toEqual({
+        tier: 'good',
+        note: '',
+      });
     });
   });
 
@@ -185,7 +172,7 @@ describe('deckUtils', () => {
       ]);
     });
 
-    it('BlankItem_TitlePriceErrorPhotoStoreWarnNoteGood', () => {
+    it('BlankItem_TitlePriceStoreErrorPhotoWarnNoteGood', () => {
       const tiers = rowTiers(
         item({
           name: '',
@@ -196,7 +183,7 @@ describe('deckUtils', () => {
       expect(tiers.title.tier).toBe('error');
       expect(tiers.price.tier).toBe('error');
       expect(tiers.photo.tier).toBe('warn');
-      expect(tiers.store.tier).toBe('warn');
+      expect(tiers.store.tier).toBe('error');
       expect(tiers.note.tier).toBe('good');
     });
 

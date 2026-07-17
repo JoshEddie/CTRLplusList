@@ -1,7 +1,7 @@
-import { DESCRIPTION_MAX, priceTier, titleTier } from './utils';
+import { DESCRIPTION_MAX, priceTier, storeTier, titleTier } from './utils';
 import type { ItemViewModel } from './viewModel';
 
-export type DeckStep = 'photo' | 'title' | 'price' | 'note';
+export type DeckStep = 'photo' | 'title' | 'price' | 'store' | 'note';
 
 export interface DeckStepState {
   step: DeckStep;
@@ -20,6 +20,8 @@ export function isStepComplete(step: DeckStep, item: ItemViewModel): boolean {
       return titleTier(item.name).tier === 'good';
     case 'price':
       return priceTier(item.stores[0]?.price).tier === 'good';
+    case 'store':
+      return storeTier(item.stores[0]).tier === 'good';
     case 'note':
       // Descriptions are never fetched, so the note always needs a human look.
       return false;
@@ -48,6 +50,7 @@ export function neededSteps(item: ItemViewModel): DeckStepState[] {
     { step: 'photo', complete: isStepComplete('photo', item) },
     { step: 'title', complete: titleGood },
     { step: 'price', complete: isStepComplete('price', item) },
+    { step: 'store', complete: isStepComplete('store', item) },
   ];
   // A flagged title surfaces the note inline, so the standalone note step
   // only appears when the title is clean — never both.
@@ -67,6 +70,8 @@ export function stepBlocked(step: DeckStep, item: ItemViewModel): boolean {
       return titleTier(item.name).tier === 'error';
     case 'price':
       return priceTier(item.stores[0]?.price).tier !== 'good';
+    case 'store':
+      return storeTier(item.stores[0]).tier !== 'good';
     case 'note':
       return item.description.length > DESCRIPTION_MAX;
     default:

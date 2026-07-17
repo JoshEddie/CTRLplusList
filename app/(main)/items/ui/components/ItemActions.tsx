@@ -1,0 +1,100 @@
+'use client';
+
+import { Button, LinkButton } from '@/app/ui/components/button';
+import type { ItemStoreTable } from '@/lib/types';
+import { MdCheck, MdOpenInNew } from 'react-icons/md';
+import '../styles/purchase.css';
+
+type ItemActionsProps = {
+  isOwner: boolean;
+  fullyClaimed: boolean;
+  /** The viewer holds a removable claim (their own, or one they recorded). */
+  viewerClaimed: boolean;
+  /** Owner's spoiler-gated claim entry — same modal, purchase-recording copy. */
+  showOwnerClaimAction: boolean;
+  /** Owner's spoiler-gated claim management — the modal lists removable claims. */
+  showOwnerManageAction: boolean;
+  /** The primary (lowest-priced complete) store, or null when none exists. */
+  store: ItemStoreTable | null;
+  /** Non-interactive preview surfaces: only the live View item link renders. */
+  viewOnly?: boolean;
+  onPurchaseClick?: () => void;
+};
+
+// The single owner of the per-item action area (item-actions spec, design D1):
+// the DOM decides which actions show — a flat, fixed-priority list of
+// conditional children — and purchase.css decides their layout (full-width
+// rows by default, the View · Add two-up pair via sibling detection).
+export default function ItemActions({
+  isOwner,
+  fullyClaimed,
+  viewerClaimed,
+  showOwnerClaimAction,
+  showOwnerManageAction,
+  store,
+  viewOnly,
+  onPurchaseClick,
+}: ItemActionsProps) {
+  const showManage =
+    !viewOnly && (isOwner ? showOwnerManageAction : viewerClaimed);
+  const showStatus = !viewOnly && !isOwner && fullyClaimed && !viewerClaimed;
+  const showAdd =
+    !viewOnly &&
+    (isOwner ? showOwnerClaimAction && !showOwnerManageAction : !fullyClaimed);
+  const showView = !!store;
+  // When View item is the card's only action (owner spoilers off, view-only)
+  // it is the primary intent — promote it from the subordinate secondary look.
+  const viewIsOnlyAction = showView && !showManage && !showStatus && !showAdd;
+
+  if (!showManage && !showStatus && !showAdd && !showView) return null;
+
+  return (
+    <div className="item-actions">
+      {showManage && (
+        <Button
+          variant="primary"
+          className="item-actions-claim"
+          onClick={onPurchaseClick}
+        >
+          {isOwner ? 'Manage claims' : 'Manage claim'}
+        </Button>
+      )}
+      {showStatus && (
+        <div
+          className="item-actions-status claimed-state claimed-state--fully"
+          role="status"
+        >
+          <span className="claimed-state-label">
+            <MdCheck aria-hidden />
+            Fully claimed
+          </span>
+        </div>
+      )}
+      {showAdd && (
+        <Button
+          variant="primary"
+          className="item-actions-add"
+          onClick={onPurchaseClick}
+        >
+          Add Claim
+        </Button>
+      )}
+      {showView && (
+        <LinkButton
+          variant={viewIsOnlyAction ? 'primary' : 'secondary'}
+          className="item-actions-view"
+          href={store.link}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="View item — opens in new tab"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span>
+            View <span className="item-actions-view-label">item</span>
+          </span>
+          <MdOpenInNew aria-hidden />
+        </LinkButton>
+      )}
+    </div>
+  );
+}

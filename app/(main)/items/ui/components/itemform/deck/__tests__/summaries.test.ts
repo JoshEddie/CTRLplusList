@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { listsQtySubtext, storesSubtext } from '../summaries';
+import { listsQtySubtext, storeSubtext } from '../summaries';
 import type { ItemViewModel } from '../viewModel';
 import { makeItem } from './test-helpers';
 
@@ -36,14 +36,14 @@ describe('summaries', () => {
     });
   });
 
-  describe('storesSubtext', () => {
-    it('NoValidStore_AddPrompt', () => {
-      expect(storesSubtext(vm())).toBe('Add where to buy it');
+  describe('storeSubtext', () => {
+    it('NoStore_AddPrompt', () => {
+      expect(storeSubtext(vm())).toBe('Add where to buy it');
     });
 
-    it('OneStore_ShowsName', () => {
+    it('CompleteNameAndLink_ShowsName', () => {
       expect(
-        storesSubtext(
+        storeSubtext(
           vm({
             stores: [{ name: 'Etsy', link: 'https://etsy', price: '5.00' }],
           })
@@ -51,17 +51,12 @@ describe('summaries', () => {
       ).toBe('Etsy');
     });
 
-    it('TwoStores_ShowsCheapestPlusMore', () => {
+    it('NamelessStore_AddPrompt', () => {
       expect(
-        storesSubtext(
-          vm({
-            stores: [
-              { name: 'Amazon', link: 'https://a', price: '20.00' },
-              { name: 'Etsy', link: 'https://e', price: '5.00' },
-            ],
-          })
+        storeSubtext(
+          vm({ stores: [{ name: '', link: 'https://etsy', price: '5.00' }] })
         )
-      ).toBe('Etsy +1 more');
+      ).toBe('Add where to buy it');
     });
   });
 });

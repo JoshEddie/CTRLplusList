@@ -1,5 +1,5 @@
+import { storeComplete } from '@/lib/storeValidity';
 import { ItemStoreTable, PurchaseView } from '@/lib/types';
-import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function claimLabel(claim: PurchaseView): string {
   const name = claim.by === 'self' ? 'You' : claim.firstName;
@@ -8,59 +8,23 @@ export function claimLabel(claim: PurchaseView): string {
     : name;
 }
 
-// Hover grace so a glance-away-then-back doesn't snap a hover-opened
-// popover shut. Shared by the card chip row and the modal store row.
-const COLLAPSE_DELAY_MS = 220;
-
-export function useHoverOpenMenu() {
-  const [open, setOpen] = useState(false);
-  const collapseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (collapseTimer.current) clearTimeout(collapseTimer.current);
-    };
-  }, []);
-
-  const cancelCollapseAndOpen = useCallback(() => {
-    if (collapseTimer.current) {
-      clearTimeout(collapseTimer.current);
-      collapseTimer.current = null;
-    }
-    setOpen(true);
-  }, []);
-
-  const scheduleCollapse = useCallback(() => {
-    if (collapseTimer.current) clearTimeout(collapseTimer.current);
-    collapseTimer.current = setTimeout(() => {
-      setOpen(false);
-      collapseTimer.current = null;
-    }, COLLAPSE_DELAY_MS);
-  }, []);
-
-  return { open, setOpen, cancelCollapseAndOpen, scheduleCollapse };
-}
-
 export function firstToken(name: string): string {
   return name.trim().split(/\s+/)[0];
 }
 
-export function isValidStore(store: ItemStoreTable | null | undefined): boolean {
-  const price = store?.price ?? '';
-  return (
-    !!store?.name &&
-    !!store?.link &&
-    price.trim() !== '' &&
-    !Number.isNaN(Number(price))
-  );
+// PRICE_PATTERN accepts an optional leading `$`, which Number() does not.
+function priceAmount(price: string | number): number {
+  return typeof price === 'string'
+    ? Number(price.replace(/^\$/, ''))
+    : price;
 }
 
 export function sortedValidStores(
   stores: ItemStoreTable[] | null | undefined
 ): ItemStoreTable[] {
   return (stores ?? [])
-    .filter(isValidStore)
-    .sort((a, b) => Number(a.price) - Number(b.price));
+    .filter(storeComplete)
+    .sort((a, b) => priceAmount(a.price) - priceAmount(b.price));
 }
 
 export function lowestPricedStore(
@@ -70,8 +34,9 @@ export function lowestPricedStore(
 }
 
 export function formatStorePrice(price: string | number): string {
-  return `$${Number(price).toLocaleString('en-US', {
+  return `$${priceAmount(price).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 }
+

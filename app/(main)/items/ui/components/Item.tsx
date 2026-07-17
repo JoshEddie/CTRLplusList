@@ -197,7 +197,6 @@ export default function Item({
       }
     );
 
-  const claimActionDisabled = isFullyClaimed && !removableClaim;
   const showCounter = quantityLimit !== 1;
   const counterText =
     quantityLimit == null
@@ -216,12 +215,13 @@ export default function Item({
           showPurchased={showPurchased}
           showSpoilerInfo={showSpoilerInfo}
           removableClaim={removableClaim}
-          claimActionDisabled={claimActionDisabled}
+          fullyClaimed={isFullyClaimed}
           showCounter={showCounter}
           counterText={counterText}
           showOwnerClaimAction={showOwnerClaimAction}
           showOwnerManageAction={showOwnerManageAction}
-          onPurchaseClick={handlePurchaseClick}
+          viewOnly={preview}
+          onPurchaseClick={preview ? undefined : handlePurchaseClick}
         />
 
         <ClaimBanners

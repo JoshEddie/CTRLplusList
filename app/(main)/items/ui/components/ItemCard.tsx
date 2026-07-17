@@ -1,19 +1,8 @@
 import { ItemDisplay, PurchaseView } from '@/lib/types';
+import ItemActions from './ItemActions';
 import ItemPhoto from './ItemPhoto';
-import Purchase from './Purchase';
-import StoreLinks from './StoreLinks';
-import StoreMetadataLine from './StoreMetadataLine';
-import { formatStorePrice, lowestPricedStore } from './utils';
-
-function PriceRow({ item }: { item: ItemDisplay }) {
-  const lowest = lowestPricedStore(item.stores);
-  if (!lowest) return null;
-  return (
-    <div className="item-price-row">
-      <span className="item-price">{formatStorePrice(lowest.price)}</span>
-    </div>
-  );
-}
+import PriceLine from './PriceLine';
+import { lowestPricedStore } from './utils';
 
 export default function ItemCard({
   item,
@@ -22,11 +11,12 @@ export default function ItemCard({
   showPurchased,
   showSpoilerInfo,
   removableClaim,
-  claimActionDisabled,
+  fullyClaimed,
   showCounter,
   counterText,
   showOwnerClaimAction,
   showOwnerManageAction,
+  viewOnly,
   onPurchaseClick,
 }: {
   item: ItemDisplay;
@@ -35,12 +25,14 @@ export default function ItemCard({
   showPurchased: boolean;
   showSpoilerInfo: boolean;
   removableClaim: PurchaseView | null;
-  claimActionDisabled: boolean;
+  fullyClaimed: boolean;
   showCounter: boolean;
   counterText: string;
   showOwnerClaimAction: boolean;
   showOwnerManageAction: boolean;
-  /** Absent only in the non-interactive item-form preview, which renders no claim control. */
+  /** Non-interactive preview surfaces render only the live View item link. */
+  viewOnly?: boolean;
+  /** Absent only in view-only mode, which renders no claim control. */
   onPurchaseClick?: () => void;
 }) {
   const viewerClaimed = !isOwner && !!removableClaim;
@@ -58,36 +50,17 @@ export default function ItemCard({
             <p className="itemDescription">{item.description}</p>
           ) : null}
         </div>
-        {isOwner ? (
-          <>
-            {/* Spoilers on is claim-management mode: the claim affordance
-                replaces the chip row (store access lives in its modal).
-                showSpoilerInfo covers claimed items, showOwnerClaimAction
-                the still-claimable ones. */}
-            <StoreLinks
-              item={item}
-              showStores={!showSpoilerInfo && !showOwnerClaimAction}
-            />
-            {showOwnerManageAction ? (
-              <Purchase ownerManage handlePurchaseClick={onPurchaseClick} />
-            ) : showOwnerClaimAction ? (
-              <Purchase ownerClaim handlePurchaseClick={onPurchaseClick} />
-            ) : null}
-          </>
-        ) : (
-          <>
-            {viewerClaimed || claimActionDisabled ? (
-              <PriceRow item={item} />
-            ) : (
-              <StoreMetadataLine item={item} />
-            )}
-            <Purchase
-              viewerClaimed={viewerClaimed}
-              fullyClaimed={claimActionDisabled}
-              handlePurchaseClick={onPurchaseClick}
-            />
-          </>
-        )}
+        <PriceLine item={item} />
+        <ItemActions
+          isOwner={isOwner}
+          fullyClaimed={fullyClaimed}
+          viewerClaimed={viewerClaimed}
+          showOwnerClaimAction={showOwnerClaimAction}
+          showOwnerManageAction={showOwnerManageAction}
+          store={lowestPricedStore(item.stores)}
+          viewOnly={viewOnly}
+          onPurchaseClick={onPurchaseClick}
+        />
         {showCounter && !isOwner && !showPurchased && (
           <div className="claim-counter">{counterText}</div>
         )}

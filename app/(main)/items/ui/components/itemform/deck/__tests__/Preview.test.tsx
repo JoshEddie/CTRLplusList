@@ -17,7 +17,7 @@ function setup(
   const handlers = {
     onSubmit: vi.fn(),
     onOpenTriage: vi.fn(),
-    onOpenStores: vi.fn(),
+    onOpenStore: vi.fn(),
     onOpenLists: vi.fn(),
     onAddNote: vi.fn(),
   };
@@ -122,6 +122,52 @@ describe('Preview', () => {
         screen.getByRole('button', { name: 'Create item' })
       ).toBeDisabled();
       expect(screen.getByText('An item needs a name.')).toBeInTheDocument();
+    });
+  });
+
+  describe('StoreRow', () => {
+    it('CompleteStore_RowReadsStoreWithStoreName', () => {
+      setup();
+      const row = screen.getByRole('button', { name: /^Store/ });
+      expect(row).toHaveTextContent('Lodge');
+      expect(screen.queryByText('Store links')).not.toBeInTheDocument();
+    });
+
+    it('ClickStoreRow_CallsOnOpenStore', async () => {
+      const user = userEvent.setup();
+      const { onOpenStore } = setup();
+      await user.click(screen.getByRole('button', { name: /^Store/ }));
+      expect(onOpenStore).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('IncompleteStoreOrPrice', () => {
+    it('NamelessStore_DisablesCreate-ShowsStoreLine', () => {
+      setup({ stores: [{ name: '', link: 'https://l', price: '29.99' }] });
+      expect(
+        screen.getByRole('button', { name: 'Create item' })
+      ).toBeDisabled();
+      expect(screen.getByText('The store needs a name.')).toBeInTheDocument();
+    });
+
+    it('InvalidLink_DisablesCreate-ShowsLinkLine', () => {
+      setup({ stores: [{ name: 'Lodge', link: 'lodge', price: '29.99' }] });
+      expect(
+        screen.getByRole('button', { name: 'Create item' })
+      ).toBeDisabled();
+      expect(
+        screen.getByText('The store needs a valid link.')
+      ).toBeInTheDocument();
+    });
+
+    it('MissingPrice_DisablesCreate-ShowsPriceLine', () => {
+      setup({ stores: [{ name: 'Lodge', link: 'https://l', price: '' }] });
+      expect(
+        screen.getByRole('button', { name: 'Create item' })
+      ).toBeDisabled();
+      expect(
+        screen.getByText('Add a price so people know the cost.')
+      ).toBeInTheDocument();
     });
   });
 

@@ -1,4 +1,4 @@
-import { sortedValidStores } from '../../utils';
+import { storeTier } from './utils';
 import type { ItemViewModel } from './viewModel';
 
 // "Not on a list · Qty 1", "Birthday · Unlimited" — quantity surfaced alongside
@@ -11,9 +11,9 @@ export function listsQtySubtext(item: ItemViewModel): string {
   return `${lists} · ${qty}`;
 }
 
-export function storesSubtext(item: ItemViewModel): string {
-  const stores = sortedValidStores(item.stores);
-  if (stores.length === 0) return 'Add where to buy it';
-  if (stores.length === 1) return stores[0].name;
-  return `${stores[0].name} +${stores.length - 1} more`;
+export function storeSubtext(item: ItemViewModel): string {
+  const store = item.stores[0];
+  return store && storeTier(store).tier === 'good'
+    ? store.name
+    : 'Add where to buy it';
 }

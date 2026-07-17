@@ -14,11 +14,9 @@
   line-height: 1;
 }
 
-/* Inert store-name metadata on viewer-facing cards ("$35.50 · Amazon ·
-   Target +1"). Plain muted text — never a tap target. Single line: the
-   component drops named stores (growing +N) when they overflow; if even
-   one name can't fit, the name ellipsis-truncates while the price and the
-   +N count stay fully visible. */
+/* Inert single-store metadata ("$35.50 · Amazon"). Plain muted text — never
+   a tap target. Single line: the store name ellipsis-truncates while the
+   price stays fully visible. */
 .item-price-row--metadata {
   min-width: 0;
 }
@@ -28,43 +26,19 @@
 }
 
 .item-store-metadata {
-  display: inline-flex;
-  align-items: baseline;
+  display: inline-block;
   min-width: 0;
   color: var(--muted-text-color);
   font-size: 13px;
-}
-
-.item-store-metadata-names {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
 }
 
-.item-store-metadata-count {
-  white-space: nowrap;
-  flex: 0 0 auto;
-}
-
-/* Buy-link row. Single-row grid — extras live in a popover, not inline.
-   Single store: one column stretching to fill (primary chip).
-   Multi-store: primary stretches; +N trigger hugs its content. */
-.storeLinks {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 5px;
-  width: 100%;
-}
-
-.storeLinks.has-extras {
-  grid-template-columns: 1fr auto;
-}
-
-/* Store-link chips opt out of the design system's standard variant colors —
-   buy-links carry their own "filled lavender CTA" treatment to signal
-   "leave the page to purchase." Sizing/typography stay at the system's
-   `sm` tier (32px floor, 13px font). Documented exception per
+/* Store-link chip (purchase-modal store row) opts out of the design system's
+   standard variant colors — buy-links carry their own "filled lavender CTA"
+   treatment to signal "leave the page to purchase." Sizing/typography stay at
+   the system's `sm` tier (32px floor, 13px font). Documented exception per
    openspec/changes/standardize-buttons. */
 .btn.storeLinks-link {
   background: var(--buy-link-bg);
@@ -86,65 +60,3 @@
     color: var(--buy-link-hover-text);
   }
 }
-
-/* Anchor wrapper for the +N Button and its <Menu> popover. Position
-   relative so .menu-popover (position:absolute) anchors here, not to
-   the card or the items grid. */
-.storeLinks-more-anchor {
-  position: relative;
-  display: inline-flex;
-}
-
-/* Placement is computed at open-time by StoreLinks.tsx (see
-   `computePlacement`). The default `placement-above` overlays the card
-   body — preferred because the chip row sits at the bottom of the card,
-   so a downward-opening panel would be clipped by/cover the card below.
-   `placement-below` is used when there's not enough room above (top-row
-   items in the list view, especially) and falls through to the
-   `.menu-popover` default from menu.css. */
-.storeLinks-more-anchor.placement-above .menu-popover {
-  top: auto;
-  bottom: calc(100% + 6px);
-}
-
-/* Menu rows render as [external-link icon] [store name] [price]. Name
-   stretches to push price to the right edge; price uses the same accent
-   treatment as the card's primary price for visual continuity. */
-.storeLinks-menu-item .storeLinks-menu-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.storeLinks-menu-item .storeLinks-menu-price {
-  flex: 0 0 auto;
-  font-family: var(--font-roboto-condensed);
-  font-weight: 700;
-  color: var(--primary-color);
-}
-
-.btn.storeLinks-more {
-  background-color: var(--secondary-background-color);
-  border-color: var(--card-border-color);
-  color: var(--muted-text-color);
-  transition:
-    background-color 0.13s ease,
-    border-color 0.13s ease,
-    color 0.13s ease;
-}
-
-@media (hover: hover) {
-  .btn.storeLinks-more:hover {
-    background-color: var(--buy-link-bg);
-    border-color: var(--buy-link-border);
-    color: var(--buy-link-text);
-  }
-}
-
-/* Fade store-links on the item card when the item has been purchased */
-.item.purchased .storeLinks-link,
-.item.purchased .storeLinks-more {
-  opacity: 0.5;
-}
-

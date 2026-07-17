@@ -12,10 +12,11 @@ function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
 }
 
 describe('neededSteps', () => {
-  it('CleanGoodTitlePriceMultiImage_TitlePriceDoneThenPhotoNote', () => {
+  it('CleanGoodTitlePriceStoreMultiImage_DoneStepsThenPhotoNote', () => {
     expect(neededSteps(vm())).toEqual([
       { step: 'title', complete: true },
       { step: 'price', complete: true },
+      { step: 'store', complete: true },
       { step: 'photo', complete: false },
       { step: 'note', complete: false },
     ]);
@@ -24,33 +25,55 @@ describe('neededSteps', () => {
   it('WarnTitleWithPriceMultiImage_TitleIncompleteAndNoNoteStep', () => {
     expect(neededSteps(vm({ name: 'x'.repeat(60) }))).toEqual([
       { step: 'price', complete: true },
+      { step: 'store', complete: true },
       { step: 'photo', complete: false },
       { step: 'title', complete: false },
     ]);
   });
 
-  it('ErrorTitleNoPriceMultiImage_AllIncompleteInCanonicalOrder', () => {
+  it('ErrorTitleNoPriceNoStoreNameMultiImage_AllIncompleteInCanonicalOrder', () => {
     expect(
       neededSteps(
         vm({
           name: 'x'.repeat(120),
-          stores: [{ name: 'shop', link: 'https://shop', price: '' }],
+          stores: [{ name: '', link: 'https://shop', price: '' }],
         })
       )
     ).toEqual([
       { step: 'photo', complete: false },
       { step: 'title', complete: false },
       { step: 'price', complete: false },
+      { step: 'store', complete: false },
     ]);
   });
 
-  it('GoodTitleNoPriceMultiImage_TitleDoneThenPhotoPriceNote', () => {
+  it('GoodTitleNoPrice_TitleStoreDoneThenPhotoPriceNote', () => {
     expect(
-      neededSteps(vm({ stores: [{ name: 's', link: 'l', price: '' }] }))
+      neededSteps(
+        vm({ stores: [{ name: 's', link: 'https://shop', price: '' }] })
+      )
     ).toEqual([
       { step: 'title', complete: true },
+      { step: 'store', complete: true },
       { step: 'photo', complete: false },
       { step: 'price', complete: false },
+      { step: 'note', complete: false },
+    ]);
+  });
+
+  it('FetchWithoutStoreName_StoreIncompleteAfterDoneSteps', () => {
+    expect(
+      neededSteps(
+        vm({
+          photos: ['https://only'],
+          stores: [{ name: '', link: 'https://shop', price: '29.99' }],
+        })
+      )
+    ).toEqual([
+      { step: 'photo', complete: true },
+      { step: 'title', complete: true },
+      { step: 'price', complete: true },
+      { step: 'store', complete: false },
       { step: 'note', complete: false },
     ]);
   });
@@ -60,6 +83,7 @@ describe('neededSteps', () => {
       { step: 'photo', complete: true },
       { step: 'title', complete: true },
       { step: 'price', complete: true },
+      { step: 'store', complete: true },
       { step: 'note', complete: false },
     ]);
   });
@@ -68,6 +92,7 @@ describe('neededSteps', () => {
     expect(neededSteps(vm({ photos: [] }))).toEqual([
       { step: 'title', complete: true },
       { step: 'price', complete: true },
+      { step: 'store', complete: true },
       { step: 'photo', complete: false },
       { step: 'note', complete: false },
     ]);
@@ -104,6 +129,28 @@ describe('stepBlocked', () => {
 
   it('ParsablePrice_DoesNotBlockPriceStep', () => {
     expect(stepBlocked('price', vm())).toBe(false);
+  });
+
+  it('MissingStoreName_BlocksStoreStep', () => {
+    expect(
+      stepBlocked(
+        'store',
+        vm({ stores: [{ name: '', link: 'https://shop', price: '29.99' }] })
+      )
+    ).toBe(true);
+  });
+
+  it('InvalidStoreLink_BlocksStoreStep', () => {
+    expect(
+      stepBlocked(
+        'store',
+        vm({ stores: [{ name: 's', link: 'shop', price: '29.99' }] })
+      )
+    ).toBe(true);
+  });
+
+  it('NameAndValidLink_DoesNotBlockStoreStep', () => {
+    expect(stepBlocked('store', vm())).toBe(false);
   });
 
   it('OverLimitDescription_BlocksNoteStep', () => {

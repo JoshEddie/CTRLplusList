@@ -3,9 +3,13 @@
 // `title` while the label it maps to is the user-facing "Item name".
 export type FocusField = 'photo' | 'title' | 'price' | 'note';
 
-export const FOCUS_LABELS: Record<FocusField, string> = {
+/** Every field row: the per-field Focus editors plus the grouped store row. */
+export type RowField = FocusField | 'store';
+
+export const ROW_LABELS: Record<RowField, string> = {
   photo: 'Photo',
   title: 'Item name',
   price: 'Price',
   note: 'Note',
+  store: 'Store',
 };

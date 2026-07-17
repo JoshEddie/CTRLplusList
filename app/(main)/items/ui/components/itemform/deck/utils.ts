@@ -2,8 +2,17 @@
 // Triage, Preview, and the submit gate — the single source for the
 // title/price/description rules so they can't drift between surfaces.
 
-import type { FocusField } from './focus';
+import {
+  isValidProductUrl,
+  priceTier,
+  type TierResult,
+} from '@/lib/storeValidity';
+import type { RowField } from './focus';
 import type { DeckStore, ItemViewModel } from './viewModel';
+
+export { priceTier };
+export type { Tier, TierResult } from '@/lib/storeValidity';
+export type { RowField } from './focus';
 
 // Candidates whose natural dimensions fall below this (px, both axes) are
 // dropped. Extractors routinely include tiny thumbnails (e.g. Amazon's 40px
@@ -17,17 +26,6 @@ export const TITLE_MIN = 3;
 export const TITLE_MAX = 100;
 export const TITLE_SNAPPY = 50;
 export const DESCRIPTION_MAX = 100;
-
-export type Tier = 'good' | 'warn' | 'error';
-
-export interface TierResult {
-  tier: Tier;
-  note: string;
-}
-
-// Matches storePriceError's accepted shape (optional $, integer or 2dp): a
-// price is "good" only when it parses to a real amount.
-const PRICE_PATTERN = /^\$?[0-9]+(\.[0-9][0-9]?)?$/;
 
 export function titleTier(name: string | null | undefined): TierResult {
   const value = name ?? '';
@@ -55,17 +53,6 @@ export function titleTier(name: string | null | undefined): TierResult {
   return { tier: 'good', note: '' };
 }
 
-export function priceTier(price: string | null | undefined): TierResult {
-  const value = (price ?? '').trim();
-  if (!value) {
-    return { tier: 'error', note: 'Add a price so people know the cost.' };
-  }
-  if (!PRICE_PATTERN.test(value)) {
-    return { tier: 'error', note: 'Use a number like 19.99.' };
-  }
-  return { tier: 'good', note: '' };
-}
-
 export function photoTier(photos: string[]): TierResult {
   if (photos.length === 0) {
     return { tier: 'warn', note: 'No photo yet — add one.' };
@@ -73,24 +60,16 @@ export function photoTier(photos: string[]): TierResult {
   return { tier: 'good', note: '' };
 }
 
-// Reproduces isValidStore's classification (name && link && numeric price)
-// without touching it — whether a linkless store is legal at all is an open,
-// separately-tracked question, so the boundary must not move here.
+// The store row covers the name + link pair only (price is owned by
+// priceTier). A link is required — there is no warn tier for the store.
 export function storeTier(
-  store: Pick<DeckStore, 'name' | 'link' | 'price'> | null | undefined
+  store: Pick<DeckStore, 'name' | 'link'> | null | undefined
 ): TierResult {
-  const price = (store?.price ?? '').trim();
-  if (!store || (!store.name && !store.link && !price)) {
-    return { tier: 'warn', note: 'No store yet — add where to buy it.' };
+  if (!store?.name?.trim()) {
+    return { tier: 'error', note: 'The store needs a name.' };
   }
-  if (!store.name) {
-    return { tier: 'warn', note: 'The store needs a name.' };
-  }
-  if (!store.link) {
-    return { tier: 'warn', note: 'The store needs a link.' };
-  }
-  if (!price || Number.isNaN(Number(price))) {
-    return { tier: 'warn', note: 'The store needs a price.' };
+  if (!isValidProductUrl(store.link)) {
+    return { tier: 'error', note: 'The store needs a valid link.' };
   }
   return { tier: 'good', note: '' };
 }
@@ -107,8 +86,6 @@ export function isDirtyDraft(item: ItemViewModel): boolean {
     )
   );
 }
-
-export type RowField = FocusField | 'store';
 
 export type RowTiers = Record<RowField, TierResult>;
 
@@ -263,8 +240,10 @@ export function summarize(item: ItemViewModel): IntroSummary {
     warning.push({ title: 'Price', line: 'Unable to find price' });
   }
 
-  if (store?.name && store?.link) {
+  if (store && storeTier(store).tier === 'good') {
     confirmed.push({ title: 'Store', line: `${store.name} • link saved` });
+  } else {
+    warning.push({ title: 'Store', line: 'Unable to find the store name' });
   }
 
   return { confirmed, warning, error };

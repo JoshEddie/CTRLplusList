@@ -98,6 +98,50 @@ describe('updateItemStores', () => {
       );
     });
   });
+
+  // Positional-sync behaviors the capped actions no longer exercise end to
+  // end (they submit exactly one non-empty store) but the sync itself still
+  // implements: overflow rows insert in order, all-empty rows are skipped.
+  describe('PositionalSync', () => {
+    const storeRows = async (itemId: string) => {
+      const { item_stores } = await import('@/db/schema');
+      const { eq } = await import('drizzle-orm');
+      return db
+        .select()
+        .from(item_stores)
+        .where(eq(item_stores.item_id, itemId))
+        .orderBy(item_stores.order);
+    };
+
+    it('MoreStoresThanExisting_InsertsOverflowInOrder', async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await associations.updateItemStores(
+        [
+          { name: 'a1', link: 'https://a.test', price: '10' },
+          { name: 'a2', link: 'https://b.test', price: '12' },
+        ],
+        'I'
+      );
+      const rows = await storeRows('I');
+      expect(rows).toEqual([
+        expect.objectContaining({ name: 'a1', order: 1 }),
+        expect.objectContaining({ name: 'a2', order: 2 }),
+      ]);
+    });
+
+    it('AllEmptyStoreRow_IsSkippedNotInserted', async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await associations.updateItemStores(
+        [
+          { name: 'a1', link: 'https://a.test', price: '10' },
+          { name: '', link: '', price: '' },
+        ],
+        'I'
+      );
+      const rows = await storeRows('I');
+      expect(rows).toEqual([expect.objectContaining({ name: 'a1', order: 1 })]);
+    });
+  });
 });
 
 describe('updateItemLists', () => {

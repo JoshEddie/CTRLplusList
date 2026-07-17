@@ -2,7 +2,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { UrlEntryStep } from '../UrlEntryStep';
-import { isValidProductUrl } from '../utils';
 
 const INVALID_MSG = 'Please enter a valid product link (http or https)';
 
@@ -11,39 +10,18 @@ function renderStep(
     initialUrl: string;
     initialError: string;
     onFetch: ReturnType<typeof vi.fn>;
-    onManual: ReturnType<typeof vi.fn>;
   }> = {}
 ) {
   const onFetch = props.onFetch ?? vi.fn();
-  const onManual = props.onManual ?? vi.fn();
   render(
     <UrlEntryStep
       initialUrl={props.initialUrl}
       initialError={props.initialError}
       onFetch={onFetch as never}
-      onManual={onManual as never}
     />
   );
-  return { onFetch, onManual };
+  return { onFetch };
 }
-
-describe('isValidProductUrl', () => {
-  it('HttpsUrl_ReturnsTrue', () => {
-    expect(isValidProductUrl('https://www.amazon.com/x')).toBe(true);
-  });
-
-  it('HttpUrl_ReturnsTrue', () => {
-    expect(isValidProductUrl('http://example.com')).toBe(true);
-  });
-
-  it('FtpUrl_ReturnsFalse', () => {
-    expect(isValidProductUrl('ftp://example.com/file')).toBe(false);
-  });
-
-  it('NonUrlString_ReturnsFalse', () => {
-    expect(isValidProductUrl('not a url')).toBe(false);
-  });
-});
 
 describe('UrlEntryStep', () => {
   it('ValidUrlClickFetch_CallsOnFetchWithTrimmedUrl', () => {
@@ -81,11 +59,10 @@ describe('UrlEntryStep', () => {
     expect(screen.queryByText(INVALID_MSG)).not.toBeInTheDocument();
   });
 
-  it('ClickManual_CallsOnManual', () => {
-    const { onManual } = renderStep();
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Fill in details manually →' })
-    );
-    expect(onManual).toHaveBeenCalledTimes(1);
+  it('EntryState_RendersNoManualEntryAffordance', () => {
+    renderStep();
+    expect(
+      screen.queryByRole('button', { name: 'Fill in details manually →' })
+    ).not.toBeInTheDocument();
   });
 });

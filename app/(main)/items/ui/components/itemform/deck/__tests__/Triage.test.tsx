@@ -8,7 +8,6 @@ function setup(over = {}, handlers = {}) {
   const props = {
     onBack: vi.fn(),
     onFocus: vi.fn(),
-    onOpenStores: vi.fn(),
     ...handlers,
   };
   render(<Triage item={makeItem(over)} {...props} />);
@@ -73,11 +72,11 @@ describe('Triage', () => {
     expect(onFocus).toHaveBeenCalledWith('price');
   });
 
-  it('ClickStoreRow_OpensStoresSheet', async () => {
+  it('ClickStoreRow_OpensStoreFocus', async () => {
     const user = userEvent.setup();
-    const { onOpenStores } = setup();
+    const { onFocus } = setup();
     await user.click(screen.getByRole('button', { name: /Store/ }));
-    expect(onOpenStores).toHaveBeenCalledOnce();
+    expect(onFocus).toHaveBeenCalledWith('store');
   });
 
   it('ClickBack_ReturnsToPreview', async () => {
@@ -144,11 +143,11 @@ describe('Triage', () => {
       expect(row).toHaveTextContent('An item needs a name.');
     });
 
-    it('NoStore_StoreRowStatesNoStore', () => {
+    it('NoStore_StoreRowStatesNameIssue', () => {
       setup(empty);
       const row = screen.getByRole('button', { name: /Store/ });
       expect(row).toHaveTextContent('None');
-      expect(row).toHaveTextContent('No store yet — add where to buy it.');
+      expect(row).toHaveTextContent('The store needs a name.');
     });
 
     it('AnyState_NoRowReadsNeedsYou', () => {

@@ -6,6 +6,7 @@ import { IntroCard } from './cards/IntroCard';
 import { NoteCard } from './cards/NoteCard';
 import { PhotoCard } from './cards/PhotoCard';
 import { PriceCard } from './cards/PriceCard';
+import { StoreCard } from './cards/StoreCard';
 import { TitleCard } from './cards/TitleCard';
 import {
   isStepComplete,
@@ -101,6 +102,7 @@ export function Deck({
       {step === 'photo' && <PhotoCard {...shared} />}
       {step === 'title' && <TitleCard {...shared} />}
       {step === 'price' && <PriceCard {...shared} productUrl={productUrl} />}
+      {step === 'store' && <StoreCard {...shared} />}
       {step === 'note' && <NoteCard {...shared} />}
     </>
   );

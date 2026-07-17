@@ -7,11 +7,13 @@ import { expect, test } from '@playwright/test';
 // against the shared dev DB from colliding and keep "old name gone" assertions
 // unambiguous.
 //
-// Manual entry opens the Fill-manually shell; fields are filled via its rows
-// (Focus editors and the Stores sheet), and the shell advances to Preview once
-// no row is in error and every warn row has been visited. Each assertion is a
-// fresh server read after a `'use server'` write, pinning the `items`
-// cache-tag loop.
+// Manual entry is failure-screen-only: a stubbed failing fetch routes to the
+// failure screen, whose manual affordance opens the Fill-manually shell with
+// the pasted URL seeded as the store link. Fields are filled via its rows
+// (Focus editors and the grouped Store editor), and the shell advances to
+// Preview once no row is in error and every warn row has been visited. Each
+// assertion is a fresh server read after a `'use server'` write, pinning the
+// `items` cache-tag loop.
 test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted', async ({
   page,
 }) => {
@@ -19,13 +21,24 @@ test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted',
   const createdName = `E2E Item ${stamp}A`;
   const renamedName = `E2E Item ${stamp}B`;
 
-  // Create — "New Item" opens the URL-entry step; "manually" opens the
-  // Fill-manually shell. Name via its row's focus editor, store via the Stores
-  // sheet (all-or-nothing: name + link + price — which also satisfies the
-  // Price row), then a photo-row visit completes the advance rule and the
-  // shell advances to Preview on its own.
+  // Create — "New Item" opens the URL-entry step (no manual affordance);
+  // a failed fetch surfaces the failure screen's manual door. Name via its
+  // row's focus editor, store name via the grouped Store editor (the link is
+  // pre-seeded from the pasted URL), price via its own row, then a photo-row
+  // visit completes the advance rule and the shell advances to Preview.
+  await page.route('**/api/product-fetch', (route) =>
+    route.fulfill({ json: { ok: false, error: 'fetch_failed' } })
+  );
   await page.goto('/items');
   await page.getByRole('button', { name: 'New Item' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Fill in details manually →' })
+  ).toHaveCount(0);
+  await page
+    .getByRole('textbox', { name: 'Product link' })
+    .fill('https://example.com/e2e-item');
+  await page.getByRole('button', { name: 'Fetch Details' }).click();
+  await expect(page.getByText("We couldn't load that link")).toBeVisible();
   await page.getByRole('button', { name: 'Fill in details manually →' }).click();
   await expect(
     page.getByRole('heading', { name: 'Add the details' })
@@ -37,8 +50,18 @@ test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted',
 
   await page.getByRole('button', { name: /^Store / }).click();
   await page.getByLabel('Store name').fill('E2E Store');
-  await page.getByLabel('Link').fill('https://example.com/e2e-item');
-  await page.getByLabel('Price').fill('19.99');
+  await expect(page.getByLabel('Link')).toHaveValue(
+    'https://example.com/e2e-item'
+  );
+  await page.getByRole('button', { name: 'Done' }).click();
+
+  // Scoped to the shell's rows: the items-page toolbar behind the modal also
+  // carries a "Price" filter button.
+  await page
+    .locator('.deck-triage-rows')
+    .getByRole('button', { name: /^Price/ })
+    .click();
+  await page.getByLabel('Price', { exact: true }).fill('19.99');
   await page.getByRole('button', { name: 'Done' }).click();
 
   await page.getByRole('button', { name: /^Photo/ }).click();

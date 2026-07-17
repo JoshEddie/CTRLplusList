@@ -11,8 +11,6 @@ export function mockActions(): ItemActions {
     selectPhoto: vi.fn(),
     addPhoto: vi.fn(),
     setStore: vi.fn(),
-    addStore: vi.fn(),
-    removeStore: vi.fn(),
     setLists: vi.fn(),
     setQty: vi.fn(),
   };

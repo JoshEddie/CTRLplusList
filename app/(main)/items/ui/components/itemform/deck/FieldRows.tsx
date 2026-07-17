@@ -5,7 +5,7 @@ import {
   FaCircleExclamation,
   FaTriangleExclamation,
 } from 'react-icons/fa6';
-import type { FocusField } from './focus';
+import type { RowField } from './focus';
 import { rowTiers, type TierResult } from './utils';
 import type { ItemViewModel } from './viewModel';
 
@@ -50,11 +50,10 @@ function FieldRow({
 
 interface FieldRowsProps {
   item: ItemViewModel;
-  onFocus: (field: FocusField) => void;
-  onOpenStores: () => void;
+  onFocus: (field: RowField) => void;
 }
 
-export function FieldRows({ item, onFocus, onOpenStores }: FieldRowsProps) {
+export function FieldRows({ item, onFocus }: FieldRowsProps) {
   const store = item.stores[0];
   const tiers = rowTiers(item);
 
@@ -90,7 +89,7 @@ export function FieldRows({ item, onFocus, onOpenStores }: FieldRowsProps) {
         value={store?.name || 'None'}
         provenance={store?.link ? 'saved from link' : undefined}
         status={tiers.store}
-        onClick={onOpenStores}
+        onClick={() => onFocus('store')}
       />
     </div>
   );

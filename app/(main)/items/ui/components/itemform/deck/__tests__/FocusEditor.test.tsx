@@ -2,10 +2,10 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { FocusEditor } from '../FocusEditor';
-import type { FocusField } from '../focus';
+import type { RowField } from '../focus';
 import { makeItem, mockActions } from './test-helpers';
 
-function setup(field: FocusField, over = {}, productUrl = 'https://shop/p') {
+function setup(field: RowField, over = {}, productUrl = 'https://shop/p') {
   const actions = mockActions();
   const onDone = vi.fn();
   render(
@@ -96,6 +96,51 @@ describe('FocusEditor', () => {
   describe('Note', () => {
     it('OverCapDescription_DoneStaysEnabled', () => {
       setup('note', { description: 'd'.repeat(150) });
+      expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled();
+    });
+  });
+
+  describe('Store', () => {
+    it('Render_ShowsGroupedNameAndLinkFields', () => {
+      setup('store');
+      expect(screen.getByLabelText('Store name')).toHaveValue('Lodge');
+      expect(screen.getByLabelText('Link')).toHaveValue('https://lodge');
+      expect(screen.queryByLabelText('Price')).not.toBeInTheDocument();
+    });
+
+    it('EmptyName_DoneStaysEnabledAndCloses', async () => {
+      const user = userEvent.setup();
+      const { onDone } = setup('store', {
+        stores: [{ name: '', link: 'https://l', price: '9.99' }],
+      });
+      const done = screen.getByRole('button', { name: 'Done' });
+      expect(done).toBeEnabled();
+      await user.click(done);
+      expect(onDone).toHaveBeenCalledOnce();
+    });
+
+    it('TypeName_CallsSetStoreOnPrimaryStore', async () => {
+      const user = userEvent.setup();
+      const { actions } = setup('store', {
+        stores: [{ name: '', link: 'https://l', price: '9.99' }],
+      });
+      await user.type(screen.getByLabelText('Store name'), 'L');
+      expect(actions.setStore).toHaveBeenLastCalledWith(0, 'name', 'L');
+    });
+
+    it('TypeLink_CallsSetStoreOnPrimaryStore', async () => {
+      const user = userEvent.setup();
+      const { actions } = setup('store', {
+        stores: [{ name: 'Lodge', link: '', price: '9.99' }],
+      });
+      await user.type(screen.getByLabelText('Link'), 'h');
+      expect(actions.setStore).toHaveBeenLastCalledWith(0, 'link', 'h');
+    });
+
+    it('NoStoreRow_RendersEmptyFieldsWithDoneEnabled', () => {
+      setup('store', { stores: [] });
+      expect(screen.getByLabelText('Store name')).toHaveValue('');
+      expect(screen.getByLabelText('Link')).toHaveValue('');
       expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled();
     });
   });

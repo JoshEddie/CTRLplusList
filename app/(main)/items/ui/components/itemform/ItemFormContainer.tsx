@@ -8,10 +8,9 @@ import { Deck } from './deck/Deck';
 import './deck/deck.css';
 import { DeckScreen, DeckShell } from './deck/DeckShell';
 import { FocusEditor } from './deck/FocusEditor';
-import type { FocusField } from './deck/focus';
+import type { RowField } from './deck/focus';
 import { Preview } from './deck/Preview';
 import { ListsQtySheet } from './deck/sheets/ListsQtySheet';
-import { StoresSheet } from './deck/sheets/StoresSheet';
 import { FetchFailure } from './deck/FetchFailure';
 import { FillManually } from './deck/FillManually';
 import { Triage } from './deck/Triage';
@@ -19,12 +18,7 @@ import { useItemActions } from './deck/useItemActions';
 import { useItemSubmit } from './deck/useItemSubmit';
 import { useProductFetch } from './deck/useProductFetch';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
-import {
-  isDirtyDraft,
-  manualAdvanceReady,
-  rowTiers,
-  type RowField,
-} from './deck/utils';
+import { isDirtyDraft, manualAdvanceReady, rowTiers } from './deck/utils';
 import {
   blankItem,
   seedFromItem,
@@ -32,7 +26,7 @@ import {
 } from './deck/viewModel';
 import { FetchingStep } from './FetchingStep';
 import { UrlEntryStep } from './UrlEntryStep';
-import type { Screen, Sheet } from './utils';
+import type { Screen } from './utils';
 
 type EditItem = ItemTable & {
   stores: ItemStoreTable[];
@@ -58,14 +52,12 @@ const ItemFormContainer = ({
     item ? seedFromItem(item) : blankItem()
   );
   const [screen, setScreen] = useState<Screen>(isEditing ? 'preview' : 'start');
-  const [sheet, setSheet] = useState<Sheet | null>(null);
-  const [focus, setFocus] = useState<FocusField | null>(null);
+  const [listsSheetOpen, setListsSheetOpen] = useState(false);
+  const [focus, setFocus] = useState<RowField | null>(null);
   const [manualVisited, setManualVisited] = useState<ReadonlySet<RowField>>(
     () => new Set()
   );
-  const [draftPrompt, setDraftPrompt] = useState<'entry' | 'failure' | null>(
-    null
-  );
+  const [draftPromptOpen, setDraftPromptOpen] = useState(false);
   // Distinguishes a manual-authored draft from fetch-seeded values: only the
   // former is user-entered work the discard prompt guards.
   const [manualDraftLive, setManualDraftLive] = useState(false);
@@ -100,33 +92,25 @@ const ItemFormContainer = ({
     setScreen('manual');
   };
 
-  // The entry card's manual path deliberately drops an unfetched pasted URL —
-  // a link the user abandoned without fetching is never seeded into the item.
-  const startBlankManual = () => {
-    setViewModel(blankItem());
-    setManualVisited(new Set());
-    setManualDraftLive(true);
-    setScreen('manual');
-  };
-
-  // Leaving the manual shell never discards; the wipe is these re-seed
-  // handlers. A dirty draft therefore prompts here — the actual discard
+  // Leaving the manual shell never discards; the wipe is the re-seed in
+  // buildByHand. A dirty draft therefore prompts here — the actual discard
   // moment — never on the back action.
-  const requestManual = (path: 'entry' | 'failure') => {
+  const requestManual = () => {
     if (manualDraftLive && isDirtyDraft(viewModel)) {
-      setDraftPrompt(path);
+      setDraftPromptOpen(true);
       return;
     }
-    (path === 'entry' ? startBlankManual : buildByHand)();
+    buildByHand();
   };
 
   const keepDraft = () => {
-    setDraftPrompt(null);
+    setDraftPromptOpen(false);
     setScreen('manual');
   };
 
   const startOver = () => {
-    (draftPrompt === 'failure' ? buildByHand : startBlankManual)();
+    setDraftPromptOpen(false);
+    buildByHand();
   };
 
   // A row counts as visited once its overlay has opened and closed; evaluating
@@ -146,14 +130,6 @@ const ItemFormContainer = ({
     if (screen === 'manual' && field) visitManualRow(field);
   };
 
-  const openStores = () => setSheet('stores');
-
-  const closeSheet = () => {
-    const wasStores = sheet === 'stores';
-    setSheet(null);
-    if (screen === 'manual' && wasStores) visitManualRow('store');
-  };
-
   const body = () => {
     if (focus) {
       return (
@@ -166,25 +142,25 @@ const ItemFormContainer = ({
         />
       );
     }
-    if (sheet) {
+    if (listsSheetOpen) {
       return (
         <DeckScreen
-          title={sheet === 'stores' ? 'Store links' : 'Lists & quantity'}
+          title="Lists & quantity"
           foot={
-            <Button variant="primary" onClick={closeSheet} width="full">
+            <Button
+              variant="primary"
+              onClick={() => setListsSheetOpen(false)}
+              width="full"
+            >
               Done
             </Button>
           }
         >
-          {sheet === 'stores' ? (
-            <StoresSheet item={viewModel} actions={actions} />
-          ) : (
-            <ListsQtySheet
-              item={viewModel}
-              actions={actions}
-              listOptions={listOptions}
-            />
-          )}
+          <ListsQtySheet
+            item={viewModel}
+            actions={actions}
+            listOptions={listOptions}
+          />
         </DeckScreen>
       );
     }
@@ -195,7 +171,6 @@ const ItemFormContainer = ({
             initialUrl={pastedUrl}
             initialError={urlStepError}
             onFetch={startFetch}
-            onManual={() => requestManual('entry')}
           />
         );
       case 'fetching':
@@ -223,7 +198,6 @@ const ItemFormContainer = ({
             item={viewModel}
             onBack={() => setScreen('preview')}
             onFocus={setFocus}
-            onOpenStores={openStores}
           />
         );
       case 'manual':
@@ -232,7 +206,6 @@ const ItemFormContainer = ({
             item={viewModel}
             onBack={returnToUrl}
             onFocus={setFocus}
-            onOpenStores={openStores}
           />
         );
       case 'failure':
@@ -242,7 +215,7 @@ const ItemFormContainer = ({
             canRetrySame={canRetrySame}
             onRetrySame={() => startFetch(pastedUrl)}
             onTryDifferent={returnToUrl}
-            onManual={() => requestManual('failure')}
+            onManual={requestManual}
           />
         );
       case 'preview':
@@ -255,8 +228,8 @@ const ItemFormContainer = ({
             isPending={isPending}
             onSubmit={submit}
             onOpenTriage={() => setScreen('triage')}
-            onOpenStores={openStores}
-            onOpenLists={() => setSheet('lists')}
+            onOpenStore={() => setFocus('store')}
+            onOpenLists={() => setListsSheetOpen(true)}
             onAddNote={() => setFocus('note')}
             deleteSlot={
               item ? (
@@ -286,7 +259,7 @@ const ItemFormContainer = ({
     >
       {body()}
       <ConfirmDialog
-        isOpen={draftPrompt !== null}
+        isOpen={draftPromptOpen}
         onClose={keepDraft}
         onConfirm={startOver}
         title="You have a draft in progress"

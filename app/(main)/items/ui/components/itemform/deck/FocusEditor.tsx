@@ -5,13 +5,14 @@ import { DeckScreen } from './DeckShell';
 import { NoteEditor } from './editors/NoteEditor';
 import { PhotoEditor } from './editors/PhotoEditor';
 import { PriceEditor } from './editors/PriceEditor';
+import { StoreEditor } from './editors/StoreEditor';
 import { TitleEditor } from './editors/TitleEditor';
-import { FOCUS_LABELS, type FocusField } from './focus';
+import { ROW_LABELS, type RowField } from './focus';
 import type { ItemActions } from './useItemActions';
 import type { ItemViewModel } from './viewModel';
 
 interface FocusEditorProps {
-  field: FocusField;
+  field: RowField;
   item: ItemViewModel;
   actions: ItemActions;
   productUrl: string;
@@ -19,9 +20,10 @@ interface FocusEditorProps {
 }
 
 // A single field, edited in place, reusing the same editor components as the
-// deck. Edits write into the item as the user types, so "Done" only closes —
-// error-tier values are caught downstream (the Fill-manually advance rule and
-// Preview's Create/Save gate), never by trapping the user here.
+// deck (the grouped Store editor for the store row). Edits write into the item
+// as the user types, so "Done" only closes — error-tier values are caught
+// downstream (the Fill-manually advance rule and Preview's Create/Save gate),
+// never by trapping the user here.
 export function FocusEditor({
   field,
   item,
@@ -58,6 +60,15 @@ export function FocusEditor({
         productUrl={productUrl || store?.link}
       />
     );
+  } else if (field === 'store') {
+    body = (
+      <StoreEditor
+        name={store?.name ?? ''}
+        link={store?.link ?? ''}
+        onNameChange={(value) => actions.setStore(0, 'name', value)}
+        onLinkChange={(value) => actions.setStore(0, 'link', value)}
+      />
+    );
   } else {
     body = (
       <NoteEditor
@@ -69,7 +80,7 @@ export function FocusEditor({
 
   return (
     <DeckScreen
-      title={FOCUS_LABELS[field]}
+      title={ROW_LABELS[field]}
       foot={
         <Button variant="primary" onClick={onDone} width="full">
           Done
