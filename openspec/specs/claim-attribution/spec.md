@@ -207,12 +207,12 @@ The partial unique index on `purchases (item_id, user_id) WHERE user_id IS NOT N
 
 ### Requirement: The purchase modal SHALL present an already-claimed state with store access and claim removal
 
-When the viewer opens the purchase modal on an item where they hold a removable claim (their own claim, or one they recorded for someone else), the modal SHALL render the already-claimed state: the store row, a confirmation banner ("✓ You claimed this", or naming the attributed person for a claim recorded on someone's behalf), and a "Remove my claim" action. This state replaces the previous confirm-only unclaim dialog — the claimer always retains store-link access from it, so claiming an item never locks the claimer out of the store links needed to buy it. Activating "Remove my claim" SHALL dispatch the removal with no additional confirmation step (the modal state itself is the deliberate surface). The unclaim authorization matrix (claimer, purchaser, owner master unclaim, guest exact-name path) is owned by the existing removal requirement and is unchanged.
+When the viewer opens the purchase modal on an item where they hold a removable claim (their own claim, or one they recorded for someone else), the modal SHALL render the already-claimed state: the store row, a confirmation banner ("✓ You claimed this", or naming the attributed person for a claim recorded on someone's behalf), and a "Remove my claim" action. This state replaces the previous confirm-only unclaim dialog — the claimer always retains store-link access from it, so claiming an item never locks the claimer out of the store link needed to buy it. Activating "Remove my claim" SHALL dispatch the removal with no additional confirmation step (the modal state itself is the deliberate surface). The card affordance opening this state is `Manage claim` (owned by `item-actions`; the former "Manage your claim" label is retired). The unclaim authorization matrix (claimer, purchaser, owner master unclaim, guest exact-name path) is owned by the existing removal requirement and is unchanged.
 
 #### Scenario: Claimer reaches store links after claiming
 
-- **WHEN** a viewer who claimed an item opens the purchase modal (via "Manage your claim" or an undo affordance)
-- **THEN** the store row renders with live store links and the "Remove my claim" action renders below it
+- **WHEN** a viewer who claimed an item opens the purchase modal (via `Manage claim` or an undo affordance)
+- **THEN** the store row renders with the live store link and the "Remove my claim" action renders below it
 
 #### Scenario: Remove my claim removes in one activation
 
@@ -242,3 +242,4 @@ When the eligible-pool fetch fails (network or server error), the picker area SH
 
 - **WHEN** the pool fetch succeeds with zero eligible users
 - **THEN** the picker area renders the "Someone not listed?" free-text entry (no error message, no retry)
+
