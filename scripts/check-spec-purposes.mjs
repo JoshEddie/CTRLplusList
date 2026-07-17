@@ -8,7 +8,6 @@ const KNOWN_TBD = new Set([
   'app-frame',
   'button-system',
   'chip-system',
-  'claim-attribution',
   'confirm-dialog-system',
   'e2e-critical-flows',
   'e2e-management-flows',
