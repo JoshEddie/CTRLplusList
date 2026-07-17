@@ -1,6 +1,8 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
+import { FiArrowLeft } from 'react-icons/fi';
+import { DeckScreen } from './DeckShell';
 import { FieldRows } from './FieldRows';
 import type { FocusField } from './focus';
 import type { ItemViewModel } from './viewModel';
@@ -14,17 +16,17 @@ interface TriageProps {
 
 export function Triage({ item, onBack, onFocus, onOpenStores }: TriageProps) {
   return (
-    <div className="deck-triage deck-body">
-      <header className="deck-triage-head">
-        <h2 className="deck-triage-title">Review anything</h2>
-        <p className="deck-triage-sub">Tap a field to fix it.</p>
-      </header>
-
+    <DeckScreen
+      title="Review anything"
+      subtitle="Tap a field to fix it."
+      foot={
+        <Button variant="primary" onClick={onBack} width="full">
+          <FiArrowLeft />
+          Back to preview
+        </Button>
+      }
+    >
       <FieldRows item={item} onFocus={onFocus} onOpenStores={onOpenStores} />
-
-      <Button variant="primary" onClick={onBack}>
-        ← Back to preview
-      </Button>
-    </div>
+    </DeckScreen>
   );
 }

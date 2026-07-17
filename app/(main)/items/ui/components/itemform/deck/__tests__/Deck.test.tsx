@@ -37,10 +37,10 @@ function Harness({
 }
 
 describe('Deck', () => {
-  it('Open_ShowsIntroWithAutoFilledEyebrow', () => {
+  it('Open_ShowsIntroWithStoreAttribution', () => {
     render(<Harness initial={vm()} />);
     expect(
-      screen.getByText('Auto-filled from example.com')
+      screen.getByText(/Auto-filled from example\.com/)
     ).toBeInTheDocument();
     expect(screen.getByText("Here's what we pulled.")).toBeInTheDocument();
   });
@@ -89,12 +89,131 @@ describe('Deck', () => {
     expect(onExit).toHaveBeenCalledOnce();
   });
 
-  it('CardBack_ReturnsToIntro', async () => {
+  it('FieldCards_HaveNoStandaloneBackButton', async () => {
     const user = userEvent.setup();
     render(<Harness initial={vm()} />);
     await user.click(screen.getByRole('button', { name: "Let's go" }));
-    await user.click(screen.getByRole('button', { name: 'Back' }));
-    expect(screen.getByText("Here's what we pulled.")).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Back' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('TrackerDoneNode_NavigatesBackToCompletedStepWithDataIntact', async () => {
+    const user = userEvent.setup();
+    // Clean fetch: title and price enter done; deck opens on photo.
+    render(<Harness initial={vm()} />);
+    await user.click(screen.getByRole('button', { name: "Let's go" }));
+    expect(screen.getByText('Pick the best photo')).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', { name: 'Go back to The Name' })
+    );
+    expect(screen.getByText('Give it a clear name')).toBeInTheDocument();
+    expect(screen.getByLabelText('Item name')).toHaveValue(
+      'Cast Iron Skillet'
+    );
+  });
+
+  it('ContinueFromViewedDoneStep_AdvancesWithoutMovingFrontier', async () => {
+    const user = userEvent.setup();
+    // Clean fetch: steps are title(done), price(done), photo, note.
+    render(<Harness initial={vm()} />);
+    await user.click(screen.getByRole('button', { name: "Let's go" })); // photo
+    await user.click(
+      screen.getByRole('button', { name: 'Go back to The Name' })
+    );
+    await user.click(screen.getByRole('button', { name: 'Continue' })); // price
+    expect(screen.getByText('What does it cost?')).toBeInTheDocument();
+    // Frontier stays on photo — still reachable ahead as a jump target.
+    expect(
+      screen.getByRole('button', { name: 'Go to The Photo' })
+    ).toBeEnabled();
+    // aria-current follows the on-screen step, not the frontier.
+    expect(
+      screen.getByRole('button', { name: 'Price step' })
+    ).toHaveAttribute('aria-current', 'step');
+  });
+
+  it('ViewedDoneStep_FrontierNodeReturnsToWorkingStep', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={vm()} />);
+    await user.click(screen.getByRole('button', { name: "Let's go" })); // photo
+    await user.click(
+      screen.getByRole('button', { name: 'Go back to The Name' })
+    );
+    await user.click(screen.getByRole('button', { name: 'Go to The Photo' }));
+    expect(screen.getByText('Pick the best photo')).toBeInTheDocument();
+  });
+
+  it('BrokenDoneStep_BlocksEveryForwardPathPastIt', async () => {
+    const user = userEvent.setup();
+    // Single photo + good title done, price missing → deck opens on price.
+    render(
+      <Harness
+        initial={vm({
+          photos: ['https://only'],
+          stores: [{ name: 'shop', link: 'https://shop', price: '' }],
+        })}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: "Let's go" })); // price
+    await user.click(
+      screen.getByRole('button', { name: 'Go back to The Name' })
+    );
+    const nameField = screen.getByLabelText('Item name');
+    await user.clear(nameField);
+    await user.type(nameField, 'x'.repeat(101));
+    // The now-broken name seizes the current ring and disables Continue...
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    // ...and stepping back to a still-valid earlier card does not re-open the
+    // skip past it — price stays locked from the photo card too.
+    await user.click(
+      screen.getByRole('button', { name: 'Go back to The Photo' })
+    );
+    expect(screen.getByRole('button', { name: 'Price step' })).toBeDisabled();
+  });
+
+  it('FixedWorkingStep_FlipsGreenAndUnlocksTheNextStep', async () => {
+    const user = userEvent.setup();
+    // Single photo + good title, price missing → deck opens on price.
+    render(
+      <Harness
+        initial={vm({
+          photos: ['https://only'],
+          stores: [{ name: 'shop', link: 'https://shop', price: '' }],
+        })}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: "Let's go" })); // price
+    // Note is locked while price is unfilled.
+    expect(screen.getByRole('button', { name: 'Note step' })).toBeDisabled();
+    await user.type(screen.getByLabelText('Price'), '19.99');
+    // Price flips green (done) in place, and note becomes a reachable target.
+    expect(screen.getByRole('button', { name: 'Price step' })).toHaveAttribute(
+      'data-status',
+      'done'
+    );
+    expect(
+      screen.getByRole('button', { name: 'Go to The Note' })
+    ).toBeEnabled();
+  });
+
+  it('GatedTitleStep_LocksForwardTrackerNodes', async () => {
+    const user = userEvent.setup();
+    // Error title: steps are price(done), photo, title — title is gated last.
+    render(
+      <Harness
+        initial={vm({
+          name: 'x'.repeat(120),
+        })}
+      />
+    );
+    await user.click(screen.getByRole('button', { name: "Let's go" })); // photo
+    await user.click(screen.getByRole('button', { name: 'Continue' })); // title
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    // Backward stays open while the gated step locks nothing behind it.
+    expect(
+      screen.getByRole('button', { name: 'Go back to The Photo' })
+    ).toBeInTheDocument();
   });
 
   describe('WarnTitle', () => {

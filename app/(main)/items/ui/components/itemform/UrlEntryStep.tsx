@@ -4,6 +4,7 @@ import { Button } from '@/app/ui/components/button';
 import { TextField } from '@/app/ui/components/field';
 import { useState } from 'react';
 import { PiStarFourFill } from 'react-icons/pi';
+import { DeckScreen } from './deck/DeckShell';
 import './prefill.css';
 import { isValidProductUrl } from './utils';
 
@@ -31,8 +32,21 @@ export function UrlEntryStep({
   };
 
   return (
-    <div className="deck deck-body">
-      <p className="prefill-hint">Paste a product link, we&apos;ll pull the details, then walk you through anything that still needs attention.</p>
+    <DeckScreen
+      title="Start with a link"
+      subtitle="Paste a product link, we'll pull the details, then walk you through anything that still needs attention."
+      foot={
+        <div className="deck-screen-ft-stack">
+          <Button variant="primary" onClick={handleFetch} width="full">
+            <PiStarFourFill />
+            Fetch Details
+          </Button>
+          <Button variant="link" onClick={onManual}>
+            Fill in details manually →
+          </Button>
+        </div>
+      }
+    >
       <TextField
         label="Product link"
         type="url"
@@ -51,15 +65,6 @@ export function UrlEntryStep({
           }
         }}
       />
-      <div className="prefill-url-actions">
-        <Button variant="primary" onClick={handleFetch}>
-          <PiStarFourFill />
-          Fetch Details
-        </Button>
-        <Button variant="link" onClick={onManual}>
-          Fill in details manually →
-        </Button>
-      </div>
-    </div>
+    </DeckScreen>
   );
 }

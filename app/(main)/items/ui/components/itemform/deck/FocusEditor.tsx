@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
+import { DeckScreen } from './DeckShell';
 import { NoteEditor } from './editors/NoteEditor';
 import { PhotoEditor } from './editors/PhotoEditor';
 import { PriceEditor } from './editors/PriceEditor';
@@ -67,12 +68,15 @@ export function FocusEditor({
   }
 
   return (
-    <div className="deck-focus deck-body">
-      <h2 className="deck-focus-title">{FOCUS_LABELS[field]}</h2>
-      <div className="deck-focus-body">{body}</div>
-      <Button variant="primary" onClick={onDone}>
-        Done
-      </Button>
-    </div>
+    <DeckScreen
+      title={FOCUS_LABELS[field]}
+      foot={
+        <Button variant="primary" onClick={onDone} width="full">
+          Done
+        </Button>
+      }
+    >
+      {body}
+    </DeckScreen>
   );
 }

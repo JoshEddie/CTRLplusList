@@ -1,0 +1,363 @@
+/* Deck-owned shell: overlay + rounded box + floating close, with the
+   pinned-header / scrolling-well / pinned-footer structure every deck screen
+   shares (.deck-screen-*). */
+
+.deck-screen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  z-index: 60;
+  overflow-y: auto;
+  background: rgba(42, 32, 96, 0.45);
+  backdrop-filter: blur(3px);
+}
+
+.deck-screen {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  max-width: 480px;
+  max-height: 100%;
+  background: var(--light-color);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  color: var(--neutral-text-color);
+}
+
+.deck-screen-wide {
+  max-width: 640px;
+}
+
+/* ---- Pinned header ------------------------------------------------------- */
+
+/* Shell-owned module title (the flow name) — constant chrome above every screen's header. */
+.deck-screen-module-title {
+  display: block;
+  flex: none;
+  /* Right inset keeps the flow name clear of the floating close. */
+  padding: 22px 22px 0 22px;
+  color: var(--primary-color);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.deck-screen-hd {
+  flex: none;
+  padding: 0 22px;
+}
+
+.deck-screen-title {
+  margin: 0;
+  font-size: 27px;
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--neutral-text-color);
+}
+
+.deck-screen-sub {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--muted-text-color);
+}
+
+/* ---- Scrolling well ------------------------------------------------------ */
+
+.deck-screen-well {
+  --deck-well-bg: var(--card-accent-background-color);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 22px;
+  background: var(--deck-well-bg);
+  border-top: 1px solid var(--card-border-color);
+  border-bottom: 1px solid var(--card-border-color);
+}
+
+/* Boundary scroll-shadows hang from the pinned header/footer into the well —
+   outside the scroller, so they never move with content or add scroll height.
+   Visibility comes from DeckScreen's scroll listener (-shadow classes). */
+.deck-screen-hd,
+.deck-screen-ft {
+  position: relative;
+  z-index: 1;
+}
+
+.deck-screen-hd::after,
+.deck-screen-ft::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.deck-screen-hd::after {
+  bottom: -28px;
+  background: linear-gradient(
+    to bottom,
+    rgba(30, 17, 72, 0.3),
+    transparent
+  );
+}
+
+.deck-screen-ft::before {
+  top: -28px;
+  background: linear-gradient(
+    to top,
+    rgba(30, 17, 72, 0.3),
+    transparent
+  );
+}
+
+.deck-screen-hd-shadow::after,
+.deck-screen-ft-shadow::before {
+  opacity: 1;
+}
+
+/* ---- Pinned footer ------------------------------------------------------- */
+
+.deck-screen-ft {
+  flex: none;
+  padding: 0 22px 22px;
+  background: var(--light-color);
+}
+
+/* Footer action row for screens whose footer pairs buttons instead of the
+   tracker + full-width continue. */
+.deck-screen-ft-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Secondary actions keep their natural width; the last (primary) child
+   absorbs the leftover so it can't crush its neighbors into wrapping. */
+.deck-screen-ft-row > * {
+  flex: none;
+  white-space: nowrap;
+}
+
+.deck-screen-ft-row > :last-child {
+  flex: 1;
+}
+
+.deck-screen-ft-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---- Floating close: mirrors the item-card kebab (item.css) --------------- */
+
+.deck-screen-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  color: var(--muted-text-color);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+  z-index: 4;
+}
+
+/* Expand the 36px visual to the 44px WCAG hit floor. */
+.deck-screen-close::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+
+.deck-screen-close:hover {
+  color: var(--primary-color);
+  background: var(--light-color);
+}
+
+.deck-screen-close:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* ---- Step tracker (footer) ------------------------------------------------ */
+
+.deck-steps {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.deck-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  position: relative;
+  background: none;
+  border: none;
+  font: inherit;
+}
+
+.deck-step:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Connector; color = the node it leads INTO. Node center sits 14px down
+   (half the 28px node). */
+.deck-step-track {
+  flex: 1;
+  height: 2px;
+  margin-top: 14px;
+}
+
+.deck-step-node {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--light-color);
+}
+
+.deck-step-label {
+  font-size: 13px;
+}
+
+/* Fill encodes availability, colour encodes status: a clickable node is a
+   solid disc in its status colour; the viewed node is a hollow outline in the
+   same colour (see the [data-viewed] block below); an unavailable node is grey.
+   Done = green, current (the working step) = purple. */
+.deck-step[data-status='done'] .deck-step-node {
+  background: var(--success-text);
+  color: var(--light-color);
+}
+
+.deck-step[data-status='done'] .deck-step-label {
+  color: var(--success-text);
+  font-weight: 700;
+}
+
+.deck-step-track[data-into='done'] {
+  background: var(--success-text);
+}
+
+.deck-step[data-status='current'] .deck-step-node {
+  background: var(--primary-color);
+  color: var(--light-color);
+}
+
+.deck-step[data-status='current'] .deck-step-label {
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+.deck-step-track[data-into='current'] {
+  background: var(--primary-color);
+}
+
+/* The step on screen: hollow outline in its status colour. The 2px ring + label
+   weight keep it distinct from the 1px grey future ring by more than hue only
+   (WCAG 1.4.1). */
+.deck-step[data-viewed] .deck-step-node {
+  background: var(--light-color);
+  border: 2px solid currentColor;
+}
+
+.deck-step[data-status='done'][data-viewed] .deck-step-node {
+  color: var(--success-text);
+}
+
+.deck-step[data-status='current'][data-viewed] .deck-step-node {
+  color: var(--primary-color);
+}
+
+.deck-step[data-status='future'] {
+  cursor: not-allowed;
+}
+
+.deck-step[data-status='future'] .deck-step-node {
+  border: 1px solid var(--neutral-border-color);
+  color: var(--muted-text-color);
+}
+
+.deck-step[data-status='future'] .deck-step-label {
+  color: var(--muted-text-color);
+  font-weight: 500;
+}
+
+.deck-step-track[data-into='future'] {
+  background: var(--neutral-border-color);
+}
+
+/* Solid nodes are the clickable jump targets. */
+.deck-step[data-status='done']:enabled,
+.deck-step[data-status='current']:enabled {
+  cursor: pointer;
+}
+
+.deck-step[data-status='done']:enabled:hover,
+.deck-step[data-status='current']:enabled:hover {
+  opacity: 0.75;
+}
+
+/* ---- Short-viewport collapse (<500px height): single root scroller -------- */
+
+@media (max-height: 500px) {
+  .deck-screen {
+    overflow-y: auto;
+  }
+
+  .deck-screen-well {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+
+  /* Footer flows as a normal block so the whole screen scrolls as one region;
+     a sticky/bottom-pinned footer overlaps the well instead of scrolling.
+     `relative` (not static) keeps its scroll-shadow pseudo anchored. */
+  .deck-screen-ft {
+    position: relative;
+  }
+
+  /* Absolute would scroll away once the root is the scroller; sticky keeps
+     the close pinned. Negative bottom margin removes its layout footprint. */
+  .deck-screen-close {
+    position: sticky;
+    flex: none;
+    align-self: flex-end;
+    margin: 16px 16px -48px 0;
+  }
+}

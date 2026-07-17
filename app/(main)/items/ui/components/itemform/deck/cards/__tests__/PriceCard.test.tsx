@@ -9,7 +9,6 @@ function setup(over = {}, productUrl = '') {
       item={makeItem(over)}
       actions={mockActions()}
       productUrl={productUrl}
-      onBack={vi.fn()}
       onContinue={vi.fn()}
     />
   );

@@ -7,30 +7,26 @@ import { DeckCard } from './DeckCard';
 interface PhotoCardProps {
   item: ItemViewModel;
   actions: ItemActions;
-  onBack: () => void;
   onContinue: () => void;
-  progress?: ReactNode;
+  tracker?: ReactNode;
 }
 
 export function PhotoCard({
   item,
   actions,
-  onBack,
   onContinue,
-  progress,
+  tracker,
 }: PhotoCardProps) {
   const zero = item.photos.length === 0;
   return (
     <DeckCard
-      progress={progress}
-      eyebrow="Step · The photo"
+      tracker={tracker}
       title={zero ? 'Add a photo' : 'Pick the best photo'}
       subtitle={
         zero
           ? 'No image came through — add your own or skip it.'
           : "We grabbed some options for you. Pick your favorite or add your own."
       }
-      onBack={onBack}
       onContinue={onContinue}
     >
       <PhotoEditor

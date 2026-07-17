@@ -1,25 +1,75 @@
-import { priceTier, titleTier } from './utils';
+import { DESCRIPTION_MAX, priceTier, titleTier } from './utils';
 import type { ItemViewModel } from './viewModel';
 
-export type DeckStep = 'intro' | 'photo' | 'title' | 'price' | 'note';
+export type DeckStep = 'photo' | 'title' | 'price' | 'note';
 
-// The smart filter (D3): surface only the steps that need a human, in order.
-// Computed once at deck entry — never recomputed as the user edits, so fixing a
-// field doesn't reshape the deck under them.
-export function neededSteps(item: ItemViewModel): DeckStep[] {
+export interface DeckStepState {
+  step: DeckStep;
+  complete: boolean;
+}
+
+// Live per-step validity, recomputed as the user edits so the tracker can flip
+// a step green the instant it is satisfied. Membership/order is still frozen at
+// entry (see neededSteps) — only status tracks the current item.
+export function isStepComplete(step: DeckStep, item: ItemViewModel): boolean {
+  switch (step) {
+    case 'photo':
+      // A single image is auto-selected; zero or several needs a human pick.
+      return item.photos.length === 1;
+    case 'title':
+      return titleTier(item.name).tier === 'good';
+    case 'price':
+      return priceTier(item.stores[0]?.price).tier === 'good';
+    case 'note':
+      // Descriptions are never fetched, so the note always needs a human look.
+      return false;
+  }
+}
+
+// The colour predicate: a step reads green when it is in a valid state. Mirrors
+// isStepComplete except an optional note is valid whenever it is within the
+// length limit — an empty note is fine, so it goes green the moment it becomes
+// reachable rather than staying flagged. (isStepComplete keeps note incomplete
+// so it stays the last, landing step; only the colour differs.)
+export function isStepValid(step: DeckStep, item: ItemViewModel): boolean {
+  if (step === 'note') return !stepBlocked('note', item);
+  return isStepComplete(step, item);
+}
+
+// The full applicable step set with per-step entry status — auto-satisfied
+// steps render as done rather than being omitted. Computed once at deck entry,
+// never recomputed as the user edits, so fixing a field doesn't reshape the
+// deck under them. Completed steps order first; the deck opens at the first
+// incomplete one.
+export function neededSteps(item: ItemViewModel): DeckStepState[] {
   const titleGood = titleTier(item.name).tier === 'good';
-  const priceGood = priceTier(item.stores[0]?.price).tier === 'good';
 
-  const steps: DeckStep[] = ['intro'];
-
-  // A photo is the one pick a fetch can't make: shown for a real choice (>1) or
-  // a problem (0); bypassed for a single auto-selected image (D13).
-  if (item.photos.length === 0 || item.photos.length > 1) steps.push('photo');
-  if (!titleGood) steps.push('title');
-  if (!priceGood) steps.push('price');
-  // A flagged title surfaces the note inline (D5), so the standalone note card
+  const steps: DeckStepState[] = [
+    { step: 'photo', complete: isStepComplete('photo', item) },
+    { step: 'title', complete: titleGood },
+    { step: 'price', complete: isStepComplete('price', item) },
+  ];
+  // A flagged title surfaces the note inline, so the standalone note step
   // only appears when the title is clean — never both.
-  if (titleGood) steps.push('note');
+  if (titleGood) steps.push({ step: 'note', complete: isStepComplete('note', item) });
 
-  return steps;
+  return [
+    ...steps.filter((s) => s.complete),
+    ...steps.filter((s) => !s.complete),
+  ];
+}
+
+// The single forward gate, consumed by both the card's continue affordance
+// and the tracker's forward lock so the two can't drift.
+export function stepBlocked(step: DeckStep, item: ItemViewModel): boolean {
+  switch (step) {
+    case 'title':
+      return titleTier(item.name).tier === 'error';
+    case 'price':
+      return priceTier(item.stores[0]?.price).tier !== 'good';
+    case 'note':
+      return item.description.length > DESCRIPTION_MAX;
+    default:
+      return false;
+  }
 }

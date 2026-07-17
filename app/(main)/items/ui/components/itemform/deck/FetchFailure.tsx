@@ -1,4 +1,5 @@
 import { Button } from '@/app/ui/components/button';
+import { DeckScreen } from './DeckShell';
 
 export type FailureKind = 'timeout' | 'failed';
 
@@ -29,8 +30,8 @@ function copyFor(kind: FailureKind, canRetrySame: boolean) {
   };
 }
 
-// Kind-aware failure screen (D10): copy and actions match the failure cause,
-// never blaming the link for a slow fetch. Attempt-aware — after the same-link
+// Kind-aware failure screen: copy and actions match the failure cause, never
+// blaming the link for a slow fetch. Attempt-aware — after the same-link
 // retry cap, "Try again" is withdrawn and the copy hardens.
 export function FetchFailure({
   kind,
@@ -41,25 +42,28 @@ export function FetchFailure({
 }: FetchFailureProps) {
   const { title, sub } = copyFor(kind, canRetrySame);
   return (
-    <div className="deck-failure deck-body">
-      <h2 className="deck-failure-title">{title}</h2>
-      <p className="deck-failure-sub">{sub}</p>
-      <div className="deck-failure-actions">
-        {canRetrySame && (
-          <Button variant="primary" onClick={onRetrySame}>
-            Try again
+    <DeckScreen
+      title={title}
+      subtitle={sub}
+      foot={
+        <div className="deck-screen-ft-stack">
+          {canRetrySame && (
+            <Button variant="primary" onClick={onRetrySame} width="full">
+              Try again
+            </Button>
+          )}
+          <Button
+            variant={canRetrySame ? 'secondary' : 'primary'}
+            onClick={onTryDifferent}
+            width="full"
+          >
+            Try a different link
           </Button>
-        )}
-        <Button
-          variant={canRetrySame ? 'secondary' : 'primary'}
-          onClick={onTryDifferent}
-        >
-          Try a different link
-        </Button>
-        <Button variant="link" onClick={onManual}>
-          Fill in details manually →
-        </Button>
-      </div>
-    </div>
+          <Button variant="link" onClick={onManual}>
+            Fill in details manually →
+          </Button>
+        </div>
+      }
+    />
   );
 }

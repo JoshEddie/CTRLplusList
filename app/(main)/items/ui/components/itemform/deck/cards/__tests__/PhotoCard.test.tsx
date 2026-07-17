@@ -8,7 +8,6 @@ function setup(over = {}) {
     <PhotoCard
       item={makeItem(over)}
       actions={mockActions()}
-      onBack={vi.fn()}
       onContinue={vi.fn()}
     />
   );
@@ -18,7 +17,6 @@ describe('PhotoCard', () => {
   it('WithPhotos_TitleIsPickTheBestPhoto', () => {
     setup({ photos: ['https://a', 'https://b'] });
     expect(screen.getByText('Pick the best photo')).toBeInTheDocument();
-    expect(screen.getByText('Step · The photo')).toBeInTheDocument();
   });
 
   it('ZeroPhotos_TitleIsAddAPhoto', () => {

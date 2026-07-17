@@ -119,7 +119,7 @@ test('Deck_LongTitle_InlineNoteNoStandaloneNoteCard-PriceRequiredNoSkip', async 
   await expect(page.getByText('What does it cost?')).toBeVisible();
   await expect(page.getByRole('button', { name: /^skip/i })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled();
-  await page.getByLabel('Price').fill('15.00');
+  await page.getByLabel('Price', { exact: true }).fill('15.00');
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // Straight to Preview — no standalone note card was interposed.
@@ -174,6 +174,64 @@ test('Deck_FetchFails_TimeoutThenManualEntrySeedsUrl', async ({ page }) => {
   await page.getByRole('button', { name: /^Store / }).click();
   await expect(page.getByLabel('Link')).toHaveValue('https://x.test/fail-link');
 });
+
+test('Deck_TrackerBackNav_JumpsToDoneStepWithDataIntact', async ({ page }) => {
+  // Clean fetch: title and price enter done; the deck opens on photo with
+  // done tracker nodes behind it.
+  await openDeck(page, 'https://x.test/clean');
+  await page.getByRole('button', { name: "Let's go" }).click();
+  await expect(page.getByText('Pick the best photo')).toBeVisible();
+  await page.getByRole('button', { name: 'Go back to The Name' }).click();
+  await expect(page.getByText('Give it a clear name')).toBeVisible();
+  await expect(page.getByLabel('Item name')).toHaveValue('Cast Iron Skillet');
+  // The frontier node returns to the working step.
+  await page.getByRole('button', { name: 'Go to The Photo' }).click();
+  await expect(page.getByText('Pick the best photo')).toBeVisible();
+});
+
+// The primary action must be reachable at every viewport — pinned
+// footer on tall screens, sticky footer in the <500px-height collapse.
+const VIEWPORTS = {
+  Desktop: { width: 1280, height: 720 },
+  PortraitPhone: { width: 390, height: 844 },
+  ShortLandscape: { width: 932, height: 430 },
+} as const;
+
+for (const [label, viewport] of Object.entries(VIEWPORTS)) {
+  test.describe(`${label}`, () => {
+    test.use({ viewport });
+
+    test(`Deck_${label}_ContinueAndSubmitReachable`, async ({ page }) => {
+      // longtitle drives the tallest screen (error banner + trim chip +
+      // inline description on the title card).
+      await openDeck(page, 'https://x.test/longtitle');
+      await page.getByRole('button', { name: "Let's go" }).click(); // photo
+      await expect(
+        page.getByRole('button', { name: 'Continue' })
+      ).toBeInViewport();
+      await page.getByRole('button', { name: 'Continue' }).click(); // title
+
+      await expect(page.getByText('Give it a clear name')).toBeVisible();
+      // Overflowing well content is reachable by scrolling…
+      await page.getByLabel('Description').scrollIntoViewIfNeeded();
+      await expect(page.getByLabel('Description')).toBeInViewport();
+      // …while the footer action stays reachable.
+      await expect(
+        page.getByRole('button', { name: 'Continue' })
+      ).toBeInViewport();
+
+      await page.getByRole('button', { name: /Tap to use/ }).click();
+      await page.getByRole('button', { name: 'Continue' }).click(); // price
+      await page.getByLabel('Price', { exact: true }).fill('15.00');
+      await page.getByRole('button', { name: 'Continue' }).click();
+
+      await expect(page.getByText('Last look')).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Create item' })
+      ).toBeInViewport();
+    });
+  });
+}
 
 test('Deck_RateLimited_StaysOnUrlEntry', async ({ page }) => {
   await page.unroute('**/api/product-fetch');

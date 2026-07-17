@@ -7,8 +7,14 @@ import { NoteCard } from './cards/NoteCard';
 import { PhotoCard } from './cards/PhotoCard';
 import { PriceCard } from './cards/PriceCard';
 import { TitleCard } from './cards/TitleCard';
-import { neededSteps, type DeckStep } from './neededSteps';
-import { ProgressDots } from './ProgressDots';
+import {
+  isStepComplete,
+  isStepValid,
+  neededSteps,
+  stepBlocked,
+  type DeckStepState,
+} from './neededSteps';
+import { StepTracker } from './StepTracker';
 import { useItemActions } from './useItemActions';
 import type { ItemViewModel } from './viewModel';
 
@@ -17,7 +23,7 @@ interface DeckProps {
   setItem: Dispatch<SetStateAction<ItemViewModel>>;
   productUrl: string;
   storeName: string;
-  /** Back from the first card (intro). */
+  /** "Change link" from the intro card. */
   onExit: () => void;
   /** Forward from the last card → Preview. */
   onComplete: () => void;
@@ -31,35 +37,71 @@ export function Deck({
   onExit,
   onComplete,
 }: DeckProps) {
-  // Computed once at entry so editing a field never reshapes the deck (D3).
-  const [steps] = useState<DeckStep[]>(() => neededSteps(item));
-  const [index, setIndex] = useState(0);
+  // The step set (membership + order) is frozen at entry so editing a field
+  // never adds/removes/reorders steps; per-step status is recomputed live below.
+  const [steps] = useState<DeckStepState[]>(() => neededSteps(item));
+  const firstIncomplete = Math.max(
+    steps.findIndex((s) => !s.complete),
+    0
+  );
+  const [showIntro, setShowIntro] = useState(true);
+  // `frontier` is the furthest the user has advanced — it keeps steps they
+  // skipped past (an un-picked photo, a warn title) reachable behind them.
+  const [frontier, setFrontier] = useState(firstIncomplete);
+  const [viewed, setViewed] = useState(firstIncomplete);
   const actions = useItemActions(setItem);
 
-  const back = () => (index === 0 ? onExit() : setIndex((i) => i - 1));
-  const next = () =>
-    index >= steps.length - 1 ? onComplete() : setIndex((i) => i + 1);
+  const next = () => {
+    if (viewed >= steps.length - 1) {
+      onComplete();
+      return;
+    }
+    const target = viewed + 1;
+    setViewed(target);
+    if (target > frontier) setFrontier(target);
+  };
 
-  const progress = <ProgressDots count={steps.length} current={index} />;
-  const shared = { item, actions, onBack: back, onContinue: next, progress };
-  const step = steps[index];
+  if (showIntro) {
+    return (
+      <IntroCard
+        item={item}
+        steps={steps}
+        storeName={storeName}
+        onBack={onExit}
+        onContinue={() => setShowIntro(false)}
+      />
+    );
+  }
+
+  const step = steps[viewed].step;
+  // Status is live: a step reads green the instant it is valid. Reach extends to
+  // the working step (first incomplete) — so fixing it unlocks the next — while
+  // the frontier keeps steps the user skipped past reachable behind them, and no
+  // reach ever lands past a hard-invalid (blocked) step.
+  const valid = steps.map((s) => isStepValid(s.step, item));
+  const capOf = (i: number) => (i === -1 ? steps.length : i);
+  const workingStep = capOf(
+    steps.findIndex((s) => !isStepComplete(s.step, item))
+  );
+  const firstBlocked = capOf(steps.findIndex((s) => stepBlocked(s.step, item)));
+  const reachableCap = Math.min(Math.max(frontier, workingStep), firstBlocked);
+  const tracker = (
+    <StepTracker
+      steps={steps}
+      viewed={viewed}
+      valid={valid}
+      reachableCap={reachableCap}
+      onJump={setViewed}
+    />
+  );
+  const shared = { item, actions, onContinue: next, tracker };
 
   return (
-    <div className="deck deck-body">
-      {step === 'intro' && (
-        <IntroCard
-          item={item}
-          steps={steps}
-          storeName={storeName}
-          onBack={back}
-          onContinue={next}
-          progress={progress}
-        />
-      )}
+    <>
       {step === 'photo' && <PhotoCard {...shared} />}
       {step === 'title' && <TitleCard {...shared} />}
       {step === 'price' && <PriceCard {...shared} productUrl={productUrl} />}
       {step === 'note' && <NoteCard {...shared} />}
-    </div>
+    </>
   );
 }

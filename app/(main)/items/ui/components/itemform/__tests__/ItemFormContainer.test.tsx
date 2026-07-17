@@ -471,17 +471,17 @@ describe('ItemFormContainer', () => {
   });
 
   describe('FetchSuccess', () => {
-    it('ProductResolved_EntersDeckWithAutoFilledEyebrow', async () => {
+    it('ProductResolved_EntersDeckWithStoreAttribution', async () => {
       fetchMock.mockResolvedValue(jsonOk(PRODUCT_RESPONSE));
       renderCreate();
       await fetchUrl();
       expect(
-        await screen.findByText('Auto-filled from Amazon')
+        await screen.findByText(/Auto-filled from Amazon/)
       ).toBeInTheDocument();
       expect(screen.getByText("Here's what we pulled.")).toBeInTheDocument();
     });
 
-    it('NoStoreName_DeckOmitsEyebrow', async () => {
+    it('NoStoreName_DeckOmitsAttribution', async () => {
       fetchMock.mockResolvedValue(
         jsonOk({ ok: true, product: { title: 'No Store Widget' } })
       );

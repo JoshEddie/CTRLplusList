@@ -6,8 +6,8 @@ interface ActionRowProps {
   label: string;
   sub?: string;
   onClick: () => void;
-  /** "lavender" is the non-alarming Triage entry (D8). */
-  variant?: 'lavender';
+  /** "accent" is the highlighted route (the Triage entry). */
+  variant?: 'accent';
 }
 
 // Composite tappable row — a page-scoped accessible <button>, not a Button

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { TitleEditor } from '../editors/TitleEditor';
+import { stepBlocked } from '../neededSteps';
 import type { ItemActions } from '../useItemActions';
 import { titleTier } from '../utils';
 import type { ItemViewModel } from '../viewModel';
@@ -8,29 +9,25 @@ import { DeckCard } from './DeckCard';
 interface TitleCardProps {
   item: ItemViewModel;
   actions: ItemActions;
-  onBack: () => void;
   onContinue: () => void;
-  progress?: ReactNode;
+  tracker?: ReactNode;
 }
 
 export function TitleCard({
   item,
   actions,
-  onBack,
   onContinue,
-  progress,
+  tracker,
 }: TitleCardProps) {
   const tier = titleTier(item.name);
   return (
     <DeckCard
-      progress={progress}
-      eyebrow="Step · The name"
+      tracker={tracker}
       title="Give it a clear name"
       subtitle="Scraped names carry junk. Tighten it so it's easy to read."
-      onBack={onBack}
       onContinue={onContinue}
       continueLabel={tier.tier === 'warn' ? 'Keep it anyway' : 'Continue'}
-      continueDisabled={tier.tier === 'error'}
+      continueDisabled={stepBlocked('title', item)}
     >
       <TitleEditor
         name={item.name}

@@ -17,18 +17,12 @@
   --error-line: #f0bdb6;
 }
 
-.deck-body,
-.deck-card,
 .deck-preview,
 .deck-stores,
 .deck-lists {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.deck-body {
-  padding: 8px 24px 24px;
 }
 
 /* ---- Shared focus ring --------------------------------------------------- */
@@ -45,107 +39,12 @@
   outline-offset: 2px;
 }
 
-/* ---- Card chrome --------------------------------------------------------- */
-
-.deck-card-head {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.deck-eyebrow {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--primary-color);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.deck-card-title,
-.deck-preview-title,
-.deck-triage-title,
-.deck-focus-title,
-.deck-failure-title {
-  margin: 0;
-  font-family: var(--font-roboto);
-  font-weight: 700;
-  font-size: 26px;
-  line-height: 1.15;
-  letter-spacing: -0.5px;
-  color: var(--heading-text-color);
-}
-
-.deck-card-sub,
-.deck-preview-sub,
-.deck-triage-sub,
-.deck-failure-sub {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.5;
-  color: var(--muted-text-color);
-}
-
-.deck-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.deck-card-foot {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 8px;
-}
-
-.deck-card-foot-end {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* ---- Progress dots ------------------------------------------------------- */
-
-.deck-dots {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 2px;
-}
-
-.deck-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--third-background-color);
-  transition:
-    width 0.2s ease,
-    background-color 0.2s ease;
-}
-
-/* Current step reads as a wide pill; completed steps stay filled dots. */
-.deck-dot-done {
-  background: var(--primary-color);
-}
-
-.deck-dot-active {
-  width: 26px;
-  background: var(--primary-color);
-}
-
 /* ---- Intro --------------------------------------------------------------- */
 
 .deck-intro-confirmed {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 11px;
 }
 
 .deck-intro-confirmed .deck-row {
@@ -418,7 +317,6 @@
    on a phone-width shell. */
 .deck-preview {
   container-type: inline-size;
-  padding: 18px 24px;
 }
 
 .deck-preview-body {
@@ -466,27 +364,33 @@
   gap: 8px;
 }
 
+/* Standard rows sit flush on the well surface; the accent route is the lone
+   white card so it reads as the highlighted surface. */
 .deck-actrow {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: var(--WCAG-input-size);
   padding: 10px 14px;
-  border: 1px solid var(--card-border-color);
+  border: 1px solid var(--buy-link-border);
   border-radius: 10px;
-  background: var(--light-color);
+  background: transparent;
   text-align: left;
   cursor: pointer;
 }
 
 .deck-actrow:hover {
-  border-color: var(--card-border-hover-color);
-  background: var(--card-hover-background-color);
+  background: var(--buy-link-bg);
 }
 
-.deck-actrow-lavender {
-  background: var(--buy-link-bg);
-  border-color: var(--buy-link-border);
+.deck-actrow-accent {
+  background: var(--light-color);
+  border-color: var(--card-border-color);
+}
+
+.deck-actrow-accent:hover {
+  border-color: var(--card-border-hover-color);
+  background: var(--card-hover-background-color);
 }
 
 .deck-actrow-icon {
@@ -495,7 +399,7 @@
   color: var(--primary-color);
 }
 
-.deck-actrow-lavender .deck-actrow-icon {
+.deck-actrow-accent .deck-actrow-icon {
   color: var(--buy-link-text);
 }
 
@@ -511,7 +415,7 @@
   color: var(--neutral-text-color);
 }
 
-.deck-actrow-lavender .deck-actrow-label {
+.deck-actrow-accent .deck-actrow-label {
   color: var(--buy-link-text);
 }
 
@@ -529,17 +433,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.deck-preview-submit {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.deck-preview-submit > .btn:last-child {
-  margin-left: auto;
 }
 
 /* ---- Triage -------------------------------------------------------------- */
@@ -740,25 +633,3 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- Fetch failure -------------------------------------------------------- */
-
-.deck-failure {
-  align-items: center;
-  text-align: center;
-}
-
-.deck-failure-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-}
-
-/* ---- Focus / sheet wrappers ---------------------------------------------- */
-
-.deck-sheet-body,
-.deck-focus-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}

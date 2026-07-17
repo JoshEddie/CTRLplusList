@@ -3,6 +3,7 @@
 import { Button } from '@/app/ui/components/button';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { useEffect, useState } from 'react';
+import { DeckScreen } from './deck/DeckShell';
 import './prefill.css';
 
 const CYCLE_MS = 2500;
@@ -39,27 +40,30 @@ export function FetchingStep({
   }, []);
 
   return (
-    <div className="prefill-fetching-step">
-      <LoadingIndicator size="rail" />
-      {/* Cycling text stays outside the indicator's live region — decorative reassurance, not an announcement stream. */}
-      <p
-        className={`prefill-cycling-msg${faded ? ' prefill-cycling-msg-faded' : ''}`}
-        aria-hidden="true"
-      >
-        {FETCHING_MESSAGES[messageIndex]}
-      </p>
-      <p className="prefill-moment">This may take a moment.</p>
-      <div className="prefill-url-strip">
-        <span className="prefill-url-text">{url}</span>
-        <Button variant="link" onClick={onChangeUrl}>
-          change
-        </Button>
-      </div>
-      <div className="form-shell-ft">
+    <DeckScreen
+      foot={
         <Button variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
+      }
+    >
+      <div className="prefill-fetching-step">
+        <LoadingIndicator size="rail" />
+        {/* Cycling text stays outside the indicator's live region — decorative reassurance, not an announcement stream. */}
+        <p
+          className={`prefill-cycling-msg${faded ? ' prefill-cycling-msg-faded' : ''}`}
+          aria-hidden="true"
+        >
+          {FETCHING_MESSAGES[messageIndex]}
+        </p>
+        <p className="prefill-moment">This may take a moment.</p>
+        <div className="prefill-url-strip">
+          <span className="prefill-url-text">{url}</span>
+          <Button variant="link" onClick={onChangeUrl}>
+            change
+          </Button>
+        </div>
       </div>
-    </div>
+    </DeckScreen>
   );
 }

@@ -49,12 +49,12 @@ describe('Preview', () => {
     ).toBeInTheDocument();
   });
 
-  it('TriageEntry_IsLavenderInvitationNotAlarm', () => {
+  it('TriageEntry_IsAccentInvitationNotAlarm', () => {
     setup();
     const row = screen.getByRole('button', {
       name: /Need to change something\?/,
     });
-    expect(row.className).toContain('deck-actrow-lavender');
+    expect(row.className).toContain('deck-actrow-accent');
     expect(screen.queryByText(/Something's off/)).not.toBeInTheDocument();
   });
 

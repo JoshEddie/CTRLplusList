@@ -1,12 +1,12 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
-import { FormShell } from '@/app/ui/components/FormShell';
 import type { ItemStoreTable, ItemTable, ListTable } from '@/lib/types';
 import { useMemo, useState } from 'react';
 import DeleteItemButton from '../DeleteItemButton';
 import { Deck } from './deck/Deck';
 import './deck/deck.css';
+import { DeckScreen, DeckShell } from './deck/DeckShell';
 import { FocusEditor } from './deck/FocusEditor';
 import type { FocusField } from './deck/focus';
 import { Preview } from './deck/Preview';
@@ -32,7 +32,7 @@ import {
 } from './deck/viewModel';
 import { FetchingStep } from './FetchingStep';
 import { UrlEntryStep } from './UrlEntryStep';
-import { shellTitle, type Screen, type Sheet } from './utils';
+import type { Screen, Sheet } from './utils';
 
 type EditItem = ItemTable & {
   stores: ItemStoreTable[];
@@ -168,22 +168,24 @@ const ItemFormContainer = ({
     }
     if (sheet) {
       return (
-        <div className="deck-sheet deck-body">
-          <div className="deck-sheet-body">
-            {sheet === 'stores' ? (
-              <StoresSheet item={viewModel} actions={actions} />
-            ) : (
-              <ListsQtySheet
-                item={viewModel}
-                actions={actions}
-                listOptions={listOptions}
-              />
-            )}
-          </div>
-          <Button variant="primary" onClick={closeSheet}>
-            Done
-          </Button>
-        </div>
+        <DeckScreen
+          title={sheet === 'stores' ? 'Store links' : 'Lists & quantity'}
+          foot={
+            <Button variant="primary" onClick={closeSheet} width="full">
+              Done
+            </Button>
+          }
+        >
+          {sheet === 'stores' ? (
+            <StoresSheet item={viewModel} actions={actions} />
+          ) : (
+            <ListsQtySheet
+              item={viewModel}
+              actions={actions}
+              listOptions={listOptions}
+            />
+          )}
+        </DeckScreen>
       );
     }
     switch (screen) {
@@ -272,13 +274,13 @@ const ItemFormContainer = ({
   };
 
   return (
-    <FormShell
+    <DeckShell
       // The preview hub lays the card beside the action rows on a wide shell;
       // the rest of the flow is single-column at the default width. Keyed on the
       // screen (not the overlay) so opening a sheet/focus over preview doesn't
       // resize the modal.
       variant={screen === 'preview' ? 'wide' : 'default'}
-      title={shellTitle(screen, sheet, focus, isEditing)}
+      moduleTitle={isEditing ? 'Edit item' : 'Add an item'}
       closeHref={onClose ? undefined : (returnTo ?? '/items')}
       onClose={onClose}
     >
@@ -292,7 +294,7 @@ const ItemFormContainer = ({
         confirmText="Start over"
         cancelText="Keep filling"
       />
-    </FormShell>
+    </DeckShell>
   );
 };
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { neededSteps } from '../neededSteps';
+import { neededSteps, stepBlocked } from '../neededSteps';
 import type { ItemViewModel } from '../viewModel';
 import { makeItem } from './test-helpers';
 
@@ -12,19 +12,24 @@ function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
 }
 
 describe('neededSteps', () => {
-  it('CleanGoodTitlePriceMultiImage_IntroPhotoNote', () => {
-    expect(neededSteps(vm())).toEqual(['intro', 'photo', 'note']);
-  });
-
-  it('WarnTitleWithPriceMultiImage_IntroPhotoTitleNoNote', () => {
-    expect(neededSteps(vm({ name: 'x'.repeat(60) }))).toEqual([
-      'intro',
-      'photo',
-      'title',
+  it('CleanGoodTitlePriceMultiImage_TitlePriceDoneThenPhotoNote', () => {
+    expect(neededSteps(vm())).toEqual([
+      { step: 'title', complete: true },
+      { step: 'price', complete: true },
+      { step: 'photo', complete: false },
+      { step: 'note', complete: false },
     ]);
   });
 
-  it('ErrorTitleNoPriceMultiImage_IntroPhotoTitlePriceNoNote', () => {
+  it('WarnTitleWithPriceMultiImage_TitleIncompleteAndNoNoteStep', () => {
+    expect(neededSteps(vm({ name: 'x'.repeat(60) }))).toEqual([
+      { step: 'price', complete: true },
+      { step: 'photo', complete: false },
+      { step: 'title', complete: false },
+    ]);
+  });
+
+  it('ErrorTitleNoPriceMultiImage_AllIncompleteInCanonicalOrder', () => {
     expect(
       neededSteps(
         vm({
@@ -32,23 +37,86 @@ describe('neededSteps', () => {
           stores: [{ name: 'shop', link: 'https://shop', price: '' }],
         })
       )
-    ).toEqual(['intro', 'photo', 'title', 'price']);
-  });
-
-  it('GoodTitleNoPriceMultiImage_IntroPhotoPriceNote', () => {
-    expect(
-      neededSteps(vm({ stores: [{ name: 's', link: 'l', price: '' }] }))
-    ).toEqual(['intro', 'photo', 'price', 'note']);
-  });
-
-  it('SingleImage_BypassesPhotoStep', () => {
-    expect(neededSteps(vm({ photos: ['https://only'] }))).toEqual([
-      'intro',
-      'note',
+    ).toEqual([
+      { step: 'photo', complete: false },
+      { step: 'title', complete: false },
+      { step: 'price', complete: false },
     ]);
   });
 
-  it('ZeroImages_IncludesPhotoStep', () => {
-    expect(neededSteps(vm({ photos: [] }))).toEqual(['intro', 'photo', 'note']);
+  it('GoodTitleNoPriceMultiImage_TitleDoneThenPhotoPriceNote', () => {
+    expect(
+      neededSteps(vm({ stores: [{ name: 's', link: 'l', price: '' }] }))
+    ).toEqual([
+      { step: 'title', complete: true },
+      { step: 'photo', complete: false },
+      { step: 'price', complete: false },
+      { step: 'note', complete: false },
+    ]);
+  });
+
+  it('SingleImage_MarksPhotoDoneRatherThanOmitting', () => {
+    expect(neededSteps(vm({ photos: ['https://only'] }))).toEqual([
+      { step: 'photo', complete: true },
+      { step: 'title', complete: true },
+      { step: 'price', complete: true },
+      { step: 'note', complete: false },
+    ]);
+  });
+
+  it('ZeroImages_PhotoIncompleteAfterDoneSteps', () => {
+    expect(neededSteps(vm({ photos: [] }))).toEqual([
+      { step: 'title', complete: true },
+      { step: 'price', complete: true },
+      { step: 'photo', complete: false },
+      { step: 'note', complete: false },
+    ]);
+  });
+});
+
+describe('stepBlocked', () => {
+  it('ErrorTierTitle_BlocksTitleStep', () => {
+    expect(stepBlocked('title', vm({ name: 'x'.repeat(120) }))).toBe(true);
+  });
+
+  it('WarnTierTitle_DoesNotBlockTitleStep', () => {
+    expect(stepBlocked('title', vm({ name: 'x'.repeat(60) }))).toBe(false);
+  });
+
+  it('GoodTitle_DoesNotBlockTitleStep', () => {
+    expect(stepBlocked('title', vm())).toBe(false);
+  });
+
+  it('EmptyPrice_BlocksPriceStep', () => {
+    expect(
+      stepBlocked('price', vm({ stores: [{ name: 's', link: 'l', price: '' }] }))
+    ).toBe(true);
+  });
+
+  it('MalformedPrice_BlocksPriceStep', () => {
+    expect(
+      stepBlocked(
+        'price',
+        vm({ stores: [{ name: 's', link: 'l', price: 'abc' }] })
+      )
+    ).toBe(true);
+  });
+
+  it('ParsablePrice_DoesNotBlockPriceStep', () => {
+    expect(stepBlocked('price', vm())).toBe(false);
+  });
+
+  it('OverLimitDescription_BlocksNoteStep', () => {
+    expect(stepBlocked('note', vm({ description: 'x'.repeat(120) }))).toBe(
+      true
+    );
+  });
+
+  it('DescriptionWithinLimit_DoesNotBlockNoteStep', () => {
+    expect(stepBlocked('note', vm({ description: 'short' }))).toBe(false);
+  });
+
+  it('ZeroPhotos_NeverBlocksPhotoStep', () => {
+    expect(stepBlocked('photo', vm({ photos: [] }))).toBe(false);
   });
 });
