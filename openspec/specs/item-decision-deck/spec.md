@@ -4,35 +4,9 @@
 
 Governs the post-fetch item flow that replaced the all-fields-at-once item form: the stepped Decision Deck that surfaces only the fields a fetch left uncertain and confirms the rest, the Review and Fill-manually shells with the Focus editors and sheets behind them, and the Preview that serves as the universal create/edit surface and sole save point — entered from the fetch and edit paths directly, and from manual entry via the Fill-manually shell. It owns the deck's step selection, the name and price validation tiers with their editing affordances, the failure screen's kind-aware content and attempt behavior, the adapter mapping the view-model to the persisted item shape, and the accessibility and contrast floor for every control it renders. Routing into this flow — and which failure kind each fetch result maps to — is owned by `product-link-prefill`.
 ## Requirements
-### Requirement: The deck SHALL surface only fields needing a human and offer no global skip
-
-After a successful fetch, the modal SHALL render a stepped card deck whose steps are computed from the fetched item, in order `intro → photo → title → price → note`:
-- `intro` SHALL always be first.
-- `photo` SHALL be included when the candidate count is `0` (empty/error state) or greater than `1` (a choice to make), and SHALL be skipped when exactly one image was returned (auto-selected) — see the photo requirement.
-- `title` SHALL be included only when the title tier is not `good`.
-- `price` SHALL be included only when the price tier is not `good`.
-- `note` SHALL be included only when the title tier **is** `good`; when the title tier is not `good` the note editor is surfaced inline on the title card and the standalone note card SHALL NOT also appear.
-
-Validated ("good") title and price SHALL NOT get their own card but SHALL be listed as confirmed on the `intro` summary. The deck SHALL NOT offer any affordance that jumps straight to Preview bypassing the remaining cards — the only forward action is advancing one card at a time. The previous "Skip — straight to preview" link SHALL NOT exist. A progress indicator SHALL reflect the number of computed steps and the current position, and SHALL NOT be placed in an `aria-live` region.
-
-#### Scenario: Clean fields get no card but are confirmed
-
-- **WHEN** a fetch returns a title ≤ 50 characters, a numeric price, and multiple images
-- **THEN** the deck SHALL contain `intro`, `photo`, and `note` only, and the `intro` summary SHALL list the name and price as confirmed
-
-#### Scenario: Flagged fields each get a card and the note is not duplicated
-
-- **WHEN** a fetch returns a title over 100 characters, no price, and multiple images
-- **THEN** the deck SHALL contain `intro`, `photo`, `title`, and `price` — with the note editor inline on the title card and NO standalone `note` card
-
-#### Scenario: No global skip exists
-
-- **WHEN** the `intro` card is shown
-- **THEN** the only forward affordance SHALL advance to the next card, and no control SHALL jump directly to Preview
-
 ### Requirement: The intro card SHALL summarize what was pulled and what needs the user
 
-The `intro` card SHALL show an "Auto-filled from {store}" eyebrow, a heading, a confirmed-summary list (photos found, name when its tier is `good`, store + link saved), and a single count line stating how many steps remain — the cards still to come (the photo pick, any flagged field, and an optional note), i.e. the computed step count excluding the intro itself. Its only action SHALL be a primary "Let's go" advance to the first remaining card.
+The `intro` card SHALL show a heading, a subtitle carrying the fetch attribution ("Auto-filled from {store}" folded into the supporting line, with a store-less fallback) and setting the expectation of a final preview, a confirmed-summary list (photos found, name when its tier is `good`, store + link saved), and a single count line stating how many steps remain — the cards still to come (the photo pick, any flagged field, and an optional note), i.e. the computed step count excluding the intro itself. Its footer SHALL pair a secondary "Change link" affordance returning to the URL entry state (the intro is a pre-step overview outside the tracker, so this back affordance lives here and not on the field cards) with a primary "Let's go" advance to the first remaining card.
 
 When the fetch returned zero images, the summary SHALL surface that gap as a **warning** row ("No photos found — add one") rather than omitting the photos line — the summary that shows what was pulled SHALL NOT stay silent about a missing photo. The severity is `warning`, not `error`: a null image is permitted, matching the Triage photo row's `warn` tier and the missing-price warning.
 
@@ -45,6 +19,11 @@ When the fetch returned zero images, the summary SHALL surface that gap as a **w
 
 - **WHEN** the deck opens from a fetch that returned no images
 - **THEN** the intro summary SHALL show a warning row indicating no photos were found, not omit the photos line
+
+#### Scenario: Change link returns to URL entry
+
+- **WHEN** the user activates "Change link" on the intro card
+- **THEN** the URL entry state SHALL render, and the field cards themselves SHALL offer no standalone Back (backward navigation there is the tracker)
 
 ### Requirement: The photo card SHALL show whenever there is a choice or a problem
 
@@ -168,26 +147,19 @@ The standalone `note` card SHALL appear only when the title tier is `good` (othe
 
 ### Requirement: Manual entry SHALL open a dedicated Fill-manually shell
 
-Manual entry SHALL open a **Fill-manually** shell — not the Preview. The shell SHALL render inside the existing `FormShell` with the title "Add an item" (the same title the URL entry state carries, so the chrome beside the close control does not change under the user mid-flow), an `<h2>` reading "Add the details", and a supporting line reading "Tap a field to fill it in.". It SHALL list every field using the same row unit as the Review shell (photo, item name, note, price, store — each with its current value, its provenance, and its tier status), and activating a row SHALL open that field's Focus editor, or the Stores sheet for the store row.
+Manual entry SHALL open a **Fill-manually** screen — not the Preview. The screen SHALL render inside the **deck-owned shell** (the same shell every deck screen uses), carrying the flow-name eyebrow ("Add an item", so the chrome beside the close control does not change under the user mid-flow), an `<h2>` reading "Add the details", and a supporting line reading "Tap a field to fill it in.". It SHALL list every field using the same row unit as the Review shell (photo, item name, note, price, store — each with its current value, its provenance, and its tier status), and activating a row SHALL open that field's Focus editor, or the Stores sheet for the store row.
 
-The Fill-manually shell and the Review shell SHALL be distinct surfaces that share the field-row unit, not one surface parameterized by entry path: they differ in shell title, heading, supporting line, back target, and advance behavior. Neither SHALL re-implement the row.
+The Fill-manually screen and the Review screen SHALL be distinct surfaces that share the field-row unit, not one surface parameterized by entry path: they differ in shell title, heading, supporting line, back target, and advance behavior. Neither SHALL re-implement the row.
 
-The shell title SHALL flow through the `title` prop `form-shell-system` already owns; no new shell variant is introduced.
+#### Scenario: Manual entry renders in the deck-owned shell with its own heading
 
-#### Scenario: Manual entry renders the Fill-manually shell
+- **WHEN** the user chooses manual entry
+- **THEN** the Fill-manually screen SHALL render in the deck-owned shell with the flow-name eyebrow, an `<h2>` "Add the details", and the supporting line "Tap a field to fill it in."
 
-- **WHEN** the user chooses manual entry from the URL entry state or the failure screen
-- **THEN** the Fill-manually shell SHALL render with the `FormShell` title "Add an item", the heading "Add the details", the line "Tap a field to fill it in.", and a row per field — and the Preview SHALL NOT render
+#### Scenario: Activating a field row opens its Focus editor
 
-#### Scenario: Activating a row opens its editor
-
-- **WHEN** the user activates the item name row on the Fill-manually shell
-- **THEN** the item name Focus editor SHALL open
-
-#### Scenario: Store row opens the Stores sheet
-
-- **WHEN** the user activates the store row on the Fill-manually shell
-- **THEN** the Stores sheet SHALL open rather than a Focus editor
+- **WHEN** the user activates a field row on the Fill-manually screen
+- **THEN** that field's Focus editor SHALL open (or the Stores sheet for the store row)
 
 ### Requirement: The Fill-manually shell SHALL return to the URL entry state
 
@@ -271,12 +243,12 @@ The Preview SHALL render the item exactly as it appears on a list by reusing the
 
 ### Requirement: The edit entry SHALL read as an invitation, not an alarm
 
-The Preview's Triage entry SHALL be labeled "Need to change something?" with a supporting line ("Fix anything that looks wrong") on a light-violet (lavender) surface mapped to an existing token, using an edit affordance rather than a warning flag on a yellow surface. The supporting line SHALL NOT claim system authorship of the item's values ("we got wrong"): Preview is reached by the fetch, manual, and edit routes, and only the first has values the system authored.
+The Preview's Triage entry SHALL be labeled "Need to change something?" with a supporting line ("Fix anything that looks wrong") as an accent-variant action row — a white card resting on a `--buy-link-border` seam that lights to a `--buy-link-bg` fill on hover, reusing the buy-link token family with no new color tokens — using an edit affordance rather than a warning flag on a yellow surface. The supporting line SHALL NOT claim system authorship of the item's values ("we got wrong"): Preview is reached by the fetch, manual, and edit routes, and only the first has values the system authored.
 
 #### Scenario: Triage entry is non-alarming
 
 - **WHEN** the Preview is shown
-- **THEN** the change-entry SHALL read "Need to change something?" on a lavender surface, not "Something's off" on yellow
+- **THEN** the change-entry SHALL read "Need to change something?" as an accent action row on the buy-link tokens, not "Something's off" on yellow
 
 #### Scenario: The supporting line fits every route
 
@@ -411,59 +383,102 @@ Every interactive control SHALL meet the WCAG 2.5.8 44px touch-target floor or t
 - **WHEN** the deck/preview CSS color pairs are evaluated against their backgrounds
 - **THEN** each text/background pair SHALL meet the WCAG AA ratio for its text size via the contrast test engine
 
-### Requirement: Every deck root screen SHALL take its padding from one shared class
+### Requirement: The deck SHALL show every applicable step with status and open at the first incomplete step
 
-Padding for the region below the `<FormShell>` chrome SHALL be declared exactly once, as `.deck-body { padding: 8px 24px 24px; }` in `deck.css`, and SHALL be applied by adding `deck-body` to the root element's class list. No deck screen SHALL declare that padding on its own screen class.
+After a successful fetch, the modal SHALL render a stepped deck whose **full applicable step set** is computed once at entry (never reshaped as the user edits), in the canonical membership rules below, and SHALL display every applicable step in the step tracker with a per-step status of done or needs-attention. The deck SHALL open at the **first incomplete** step; auto-satisfied steps SHALL render as **done** and remain reachable for backward navigation.
 
-The members SHALL be the root elements `ItemFormContainer.body()` returns whose padding is the shared value: `.deck` (the guided card deck and the URL-entry step), `.deck-triage`, `.deck-focus`, `.deck-sheet`, and `.deck-failure`.
+Step membership (which steps apply):
+- `photo` SHALL apply when the candidate count is `0` (empty/error) or greater than `1` (a choice); when exactly one image was returned it is auto-selected and the photo step SHALL be marked done rather than omitted.
+- `title` and `price` SHALL always apply; a `good`-tier title or price SHALL be marked **done** (not hidden).
+- `note` SHALL apply as a standalone step only when the title tier **is** `good`; when the title tier is not `good` the note editor is surfaced inline on the title step and the standalone note step SHALL NOT also appear.
 
-`deck-body` SHALL also confer the deck's shared column layout (`display: flex; flex-direction: column; gap: 16px`), so that membership of that layout is declared once rather than re-listed per screen class. The remaining members of the shared layout rule SHALL be exactly the surfaces that do not carry `deck-body`: `.deck-card`, `.deck-preview`, `.deck-stores`, and `.deck-lists`. Screen classes left without any declaration of their own (`.deck`, `.deck-triage`, `.deck-focus`, `.deck-sheet`) SHALL remain in the markup as screen markers; their absence from `deck.css` is correct, not an omission.
+A single `stepBlocked(step, item)` helper SHALL determine whether a step is incomplete/gated, and SHALL be the sole source consumed by both the step's continue affordance and the tracker's forward-navigation gate. The deck SHALL NOT offer any affordance that jumps straight to Preview bypassing incomplete steps — forward movement advances one step at a time (or via the tracker to an already-reached step), and no "Skip — straight to preview" affordance SHALL exist. Ordering SHALL place completed steps ahead of the first incomplete step.
 
-Two roots keep independent values and SHALL NOT carry `deck-body`: `.deck-preview` (`18px 24px`, whose rule also carries `container-type: inline-size`) and `.prefill-fetching-step` (`32px 24px 0`, owned by `product-link-prefill`).
+#### Scenario: Auto-satisfied fields appear as done, not hidden
 
-Padding SHALL NOT be moved into `<FormShell>`: `form-shell-system` fixes the shell's DOM, rendering children directly after `form-shell-hd` with no body wrapper, and that capability owns any change to it.
+- **WHEN** a fetch returns a `good`-tier title and price with multiple photos
+- **THEN** the tracker SHALL show the title and price steps marked done, the photo step as current/incomplete, and the deck SHALL open on the photo step
 
-#### Scenario: Triage renders with screen padding
+#### Scenario: Deck opens at the first incomplete step
 
-- **WHEN** the Review-anything screen renders
-- **THEN** its root element carries `deck-body` and its content is inset from the modal edges rather than flush
+- **WHEN** a fetch returns a `good` price and single photo but a flagged (long) title
+- **THEN** the price and photo steps SHALL be marked done and the deck SHALL open on the title step, with the completed steps ordered ahead of it and reachable by backward navigation
 
-#### Scenario: The focus editor behind a triage row renders with screen padding
+#### Scenario: No affordance skips forward to Preview
 
-- **WHEN** a triage row is tapped and the focus editor for that field renders
-- **THEN** its root element carries `deck-body` and its content is inset from the modal edges
+- **WHEN** the deck is on any incomplete step
+- **THEN** no control SHALL jump directly to Preview past an incomplete step, and forward advance SHALL move one step at a time
 
-#### Scenario: The stores and lists sheets render with screen padding
+#### Scenario: Flagged title surfaces the inline note and drops the standalone note step
 
-- **WHEN** the Stores sheet or the Lists/quantity sheet opens
-- **THEN** the sheet wrapper carries `deck-body` and its content is inset from the modal edges
+- **WHEN** the title tier is not `good`
+- **THEN** the note editor SHALL be inline on the title step and no standalone `note` step SHALL appear in the tracker
 
-#### Scenario: The shared value has exactly one home
+### Requirement: Deck screens SHALL render in a deck-owned shell with pinned-header, scrolling-well, and pinned-footer regions
 
-- **WHEN** `deck.css` is grepped for the shared padding value
-- **THEN** `8px 24px 24px` appears only in the `.deck-body` rule, and neither `.deck` nor `.deck-failure` declares padding of its own
+Every item-add deck screen SHALL render inside a deck-owned shell (`DeckShell`/`DeckScreen`) — an overlay-wrapped rounded container — rather than as a direct child of `<FormShell>`. Each screen SHALL be composed of three regions: a `flex:none` pinned header, a `flex:1; min-height:0; overflow-y:auto` scrolling well, and a `flex:none` pinned footer, so content past the fold is reachable and the primary action is never off-screen at any viewport. The shell SHALL compose the shared `useDismiss` primitive (per `form-shell-system`), and overlay-self-click SHALL dismiss while descendant clicks SHALL NOT. Preview's `container-type: inline-size` (driving its 520px two-column query) SHALL be preserved. The well content of each screen SHALL be the existing deck field editors/cards re-slotted into the well, not re-implemented.
 
-#### Scenario: The shared column layout is declared once
+Region padding SHALL be declared exactly once, on the shared `.deck-screen-*` region classes in `deck-screen.css` (the well and the pinned header/footer own their insets); no deck screen SHALL re-declare that padding on its own screen class, and surfaces rendered inside the well SHALL inherit its inset rather than carry one of their own. This supersedes the retired `.deck-body` shared-padding vocabulary.
 
-- **WHEN** `deck.css`'s shared `display: flex; flex-direction: column; gap: 16px` rule is read
-- **THEN** its members are `.deck-body` and the four surfaces that do not carry `deck-body` — `.deck-card`, `.deck-preview`, `.deck-stores`, `.deck-lists` — and no screen class that carries `deck-body` is listed a second time
+#### Scenario: Tall content is reachable at all viewports
 
-#### Scenario: Screens with deliberate values are unaffected
+- **WHEN** any deck screen's content exceeds the viewport height (e.g. Preview with a long store list, or the title screen on a portrait phone)
+- **THEN** the well SHALL scroll to reveal the overflow content, and the footer primary action SHALL remain visible and reachable
 
-- **WHEN** the Preview screen or the fetching screen renders
-- **THEN** neither root carries `deck-body`, Preview retains `18px 24px` and its `container-type: inline-size`, and the fetching step retains `32px 24px 0`
+#### Scenario: Header and footer stay pinned while the well scrolls
 
-### Requirement: Nested deck surfaces SHALL NOT carry the screen padding class
+- **WHEN** the user scrolls a deck screen's well
+- **THEN** the header and footer SHALL remain fixed in place and only the well SHALL scroll
 
-Surfaces rendered inside a padded root SHALL inherit that root's padding and SHALL NOT carry `deck-body`, which would inset them twice. This applies at least to `.deck-card` (inside `.deck`) and to `.deck-stores` and `.deck-lists` (inside `.deck-sheet`). The absence of a padding rule on these classes is correct, not an omission.
+### Requirement: The deck shell SHALL present Edge 3.0 chrome using the app design system
 
-#### Scenario: A card inside the guided deck is padded once
+The deck shell SHALL present no titled shell bar. It SHALL render a floating round close control mirroring the item-card kebab treatment (`.item-owner-actions-kebab`), an uppercase eyebrow carrying the flow name ("Add an item" / editing equivalent), and a per-screen title and optional subtitle pinned in the header. All colors, typography, and interactive controls SHALL use the app design system — `global.css` tokens, the app font stack, and existing components (`<Button variant="primary">` for the primary action, form-field-system inputs, the existing suggested-trim and error-tier renderings) — NOT the mock's raw hex, fonts, or inline-styled elements. A new design token SHALL be introduced only where the app has no existing token for a required role.
 
-- **WHEN** any step card of the guided deck renders inside `.deck`
-- **THEN** `.deck-card` does not carry `deck-body`, and the card's inset comes solely from its `.deck` root
+#### Scenario: Close control mirrors the item-card kebab
 
-#### Scenario: A sheet's body is padded once
+- **WHEN** a deck screen renders its shell chrome
+- **THEN** the close control SHALL be a floating round button matching the `.item-owner-actions-kebab` treatment, with `aria-label="Close"`
 
-- **WHEN** `.deck-stores` or `.deck-lists` renders inside the `.deck-sheet` wrapper
-- **THEN** it does not carry `deck-body`, and its inset comes solely from the wrapper
+#### Scenario: Primary action uses the button primitive
+
+- **WHEN** a deck screen renders its footer primary action
+- **THEN** it SHALL render through `<Button variant="primary">` rather than a page-scoped styled button, and SHALL NOT hardcode a brand color literal
+
+### Requirement: A navigational step tracker SHALL occupy the footer with done, current, and future states
+
+The footer SHALL contain a step tracker above a full-width primary action; the standalone Back button SHALL NOT be present (backward navigation is the tracker). A node's appearance SHALL be built from app tokens along two orthogonal axes: **colour tracks live validity** — a currently valid step is `var(--success-text)` (green, done); an invalid-but-reachable step is `var(--primary-color)` (purple, current); an unavailable step is `var(--neutral-border-color)` (grey, future) — and **fill tracks navigability** — the step on screen is a hollow outline in its status colour carrying `aria-current="step"`; a step that can be jumped to is a solid disc in its status colour; a locked step is grey and natively `disabled`. Validity SHALL be recomputed live so a step flips green the instant its field becomes valid, without leaving it, and an optional step that is valid from the moment it is reachable (e.g. an empty note within the length limit) SHALL read green rather than purple. Reach SHALL extend up to and including the working step (the first incomplete step), so validating it unlocks the next step as a jump target — the user MAY then either activate the primary action or click that step — while a step the user has skipped past (an un-picked photo, a warn title) SHALL stay reachable behind them, and reach SHALL never land past a `stepBlocked` step. Backward navigation SHALL remain open at any time (step data is preserved). The states SHALL be distinguishable without relying on colour alone (ring weight, fill, and label weight), each node SHALL carry an accessible label, the group SHALL expose an sr-only "Step N of M" reflecting the step on screen, the tracker SHALL NOT be placed in an `aria-live` region, and each node SHALL meet the 44px touch-target floor.
+
+#### Scenario: Clicking a reachable node navigates to that step
+
+- **WHEN** the user activates a reachable (solid) node in the tracker
+- **THEN** the deck SHALL navigate to that step with its prior data intact
+
+#### Scenario: Validating the working step flips it green and unlocks the next
+
+- **WHEN** the user makes the working (current, purple) step valid — e.g. enters a required price
+- **THEN** that node SHALL flip to done (green) in place and the next step SHALL become a reachable jump target, activatable by either the primary action or a click
+
+#### Scenario: The on-screen step is outlined and locked steps are not navigable
+
+- **WHEN** the current step is gated (e.g. an over-limit item name) and the user attempts to activate a later node
+- **THEN** the on-screen step SHALL be the outlined `aria-current` node, that later node SHALL NOT be interactive, and the deck SHALL remain on the current step
+
+#### Scenario: Breaking a completed step caps forward navigation
+
+- **WHEN** the user navigates back to a completed step, edits it into a `stepBlocked` state, and then moves to a still-valid earlier step
+- **THEN** the broken step SHALL read current (purple) and no node beyond it SHALL be navigable — the still-valid earlier card SHALL NOT re-open a path past it — until it is brought back into good standing
+
+#### Scenario: States are distinguishable without color
+
+- **WHEN** the tracker renders a current node and a future node
+- **THEN** they SHALL differ by more than hue (e.g. fill, ring/label weight), each SHALL carry an accessible label, and the group SHALL expose an sr-only "Step N of M"
+
+### Requirement: Deck screens SHALL collapse to a single scroller below a short viewport height
+
+When the viewport height is below approximately 500px (e.g. a landscape phone), a deck screen SHALL collapse to a single root scroller: header, well, and footer scroll as one region (a sticky footer would eat most of the viewport), the floating close stays pinned, and the footer primary action is reachable by scrolling to the end.
+
+#### Scenario: Landscape phone keeps the action reachable
+
+- **WHEN** a deck screen renders at a viewport height below ~500px
+- **THEN** the screen SHALL scroll as a single region with the footer primary action reachable and the floating close pinned
 
