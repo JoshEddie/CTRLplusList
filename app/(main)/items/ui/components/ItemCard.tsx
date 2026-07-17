@@ -16,8 +16,10 @@ export default function ItemCard({
   counterText,
   showOwnerClaimAction,
   showOwnerManageAction,
+  showBuyClaim,
   viewOnly,
   onPurchaseClick,
+  onBuyClaimClick,
 }: {
   item: ItemDisplay;
   className?: string;
@@ -30,10 +32,13 @@ export default function ItemCard({
   counterText: string;
   showOwnerClaimAction: boolean;
   showOwnerManageAction: boolean;
+  /** Authed non-owner Buy & Claim signal; absent on view-only surfaces. */
+  showBuyClaim?: boolean;
   /** Non-interactive preview surfaces render only the live View item link. */
   viewOnly?: boolean;
   /** Absent only in view-only mode, which renders no claim control. */
   onPurchaseClick?: () => void;
+  onBuyClaimClick?: () => void;
 }) {
   const viewerClaimed = !isOwner && !!removableClaim;
 
@@ -57,9 +62,11 @@ export default function ItemCard({
           viewerClaimed={viewerClaimed}
           showOwnerClaimAction={showOwnerClaimAction}
           showOwnerManageAction={showOwnerManageAction}
+          showBuyClaim={showBuyClaim}
           store={lowestPricedStore(item.stores)}
           viewOnly={viewOnly}
           onPurchaseClick={onPurchaseClick}
+          onBuyClaimClick={onBuyClaimClick}
         />
         {showCounter && !isOwner && !showPurchased && (
           <div className="claim-counter">{counterText}</div>

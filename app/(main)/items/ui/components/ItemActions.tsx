@@ -14,11 +14,14 @@ type ItemActionsProps = {
   showOwnerClaimAction: boolean;
   /** Owner's spoiler-gated claim management — the modal lists removable claims. */
   showOwnerManageAction: boolean;
+  /** Authed non-owner Buy & Claim signal. */
+  showBuyClaim?: boolean;
   /** The primary (lowest-priced complete) store, or null when none exists. */
   store: ItemStoreTable | null;
   /** Non-interactive preview surfaces: only the live View item link renders. */
   viewOnly?: boolean;
   onPurchaseClick?: () => void;
+  onBuyClaimClick?: () => void;
 };
 
 // The single owner of the per-item action area (item-actions spec, design D1):
@@ -31,9 +34,11 @@ export default function ItemActions({
   viewerClaimed,
   showOwnerClaimAction,
   showOwnerManageAction,
+  showBuyClaim,
   store,
   viewOnly,
   onPurchaseClick,
+  onBuyClaimClick,
 }: ItemActionsProps) {
   const showManage =
     !viewOnly && (isOwner ? showOwnerManageAction : viewerClaimed);
@@ -41,6 +46,9 @@ export default function ItemActions({
   const showAdd =
     !viewOnly &&
     (isOwner ? showOwnerClaimAction && !showOwnerManageAction : !fullyClaimed);
+  // Keyed on a navigable link, never mere store presence — a PRICED/linkless
+  // item must keep its Add Claim-only action set (design D-Linkless-256).
+  const showBuy = !viewOnly && !!showBuyClaim && !!store?.link;
   const showView = !!store;
   // When View item is the card's only action (owner spoilers off, view-only)
   // it is the primary intent — promote it from the subordinate secondary look.
@@ -50,6 +58,23 @@ export default function ItemActions({
 
   return (
     <div className="item-actions">
+      {showBuy && (
+        <LinkButton
+          variant="primary"
+          className="item-actions-buy"
+          href={store.link}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Buy & Claim — opens in new tab"
+          onClick={(e) => {
+            e.stopPropagation();
+            onBuyClaimClick?.();
+          }}
+        >
+          <span>Buy &amp; Claim</span>
+          <MdOpenInNew aria-hidden />
+        </LinkButton>
+      )}
       {showManage && (
         <Button
           variant="primary"

@@ -40,3 +40,22 @@ export function formatStorePrice(price: string | number): string {
   })}`;
 }
 
+export function containerClasses(flags: {
+  className?: string;
+  isOwner: boolean;
+  purchased: boolean;
+  hasMyClaim: boolean;
+  preview?: boolean;
+}): string {
+  return [
+    'item-container',
+    flags.className || '',
+    flags.isOwner ? 'owner' : '',
+    flags.purchased ? 'purchased' : '',
+    flags.hasMyClaim ? 'has-my-claim' : '',
+    flags.preview ? 'preview' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+

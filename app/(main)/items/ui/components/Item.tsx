@@ -7,11 +7,12 @@ import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import '../styles/item.css';
 import ClaimBanners from './ClaimBanners';
+import ClaimUndoPopup from './ClaimUndoPopup';
 import ItemCard from './ItemCard';
 import OwnerActions from './OwnerActions';
 import PurchaseModalSlot from './PurchaseModalSlot';
 import { AttributedTarget } from './purchasemodal/PurchaseFlowContainer';
-import { firstToken } from './utils';
+import { containerClasses, firstToken, lowestPricedStore } from './utils';
 
 export default function Item({
   item,
@@ -45,6 +46,10 @@ export default function Item({
     () => searchParams?.get('purchaseItem') === item.id,
     [searchParams, item.id]
   );
+
+  // Ephemeral by design (claim-attribution spec): a reload lands on the
+  // persistent Manage claim affordance, never re-pops the undo nudge.
+  const [showUndoPopup, setShowUndoPopup] = useState(false);
 
   const propPurchases = item.purchases ?? [];
   const propPurchasesKey = propPurchases
@@ -85,6 +90,12 @@ export default function Item({
   // Owner claim management (master unclaim) lives in the purchase modal's
   // claims list; the card affordance is "Manage claims" once any claim exists.
   const showOwnerManageAction = isOwner && !!showSpoilers && hasAnyClaim;
+  const showBuyClaim =
+    !!user_id &&
+    !isOwner &&
+    !isFullyClaimed &&
+    !removableClaim &&
+    !!lowestPricedStore(item.stores)?.link;
 
   const claimSummary = useMemo(() => {
     if (!hasAnyClaim) return '';
@@ -145,7 +156,8 @@ export default function Item({
       guest_name: string | null;
       purchased_by?: string;
     },
-    optimistic: Omit<PurchaseView, 'id'>
+    optimistic: Omit<PurchaseView, 'id'>,
+    onSettled: (succeeded: boolean) => void = handleModalClose
   ) => {
     try {
       const result = await toast.promise(createPurchase(payload), {
@@ -153,29 +165,37 @@ export default function Item({
         success: 'Claim added successfully',
         error: (err: Error) => err?.message || 'Failed to add claim',
       });
-      if (result?.success && result.id) {
-        const id = result.id;
+      const id = result?.success ? result.id : undefined;
+      if (id) {
         setLocalPurchases((prev) =>
           prev.some((p) => p.id === id) ? prev : [...prev, { ...optimistic, id }]
         );
       } else if (!result?.success && result?.message) {
         toast.error(result.message);
       }
-      handleModalClose();
+      onSettled(!!id);
     } catch (error) {
       console.error('Failed to create purchase:', error);
     }
   };
 
-  const handleSelfClaim = () =>
+  const recordSelfClaim = (onSettled?: (succeeded: boolean) => void) =>
     recordClaim(
       { item_id: item.id || '', guest_name: null },
       {
         by: 'self',
         firstName: firstToken(user_name || 'You'),
         claimedByViewer: true,
-      }
+      },
+      onSettled
     );
+
+  const handleSelfClaim = () => recordSelfClaim();
+
+  const handleBuyClaim = () =>
+    recordSelfClaim((succeeded) => {
+      if (succeeded) setShowUndoPopup(true);
+    });
 
   const handleAttributedClaim = (target: AttributedTarget) =>
     recordClaim(
@@ -206,7 +226,13 @@ export default function Item({
   return (
     <>
       <div
-        className={`item-container ${className || ''} ${isOwner ? 'owner' : ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''} ${removableClaim ? 'has-my-claim' : ''} ${preview ? 'preview' : ''}`}
+        className={containerClasses({
+          className,
+          isOwner,
+          purchased: showPurchased || showSpoilerInfo,
+          hasMyClaim: !!removableClaim,
+          preview,
+        })}
       >
         <ItemCard
           item={item}
@@ -220,8 +246,10 @@ export default function Item({
           counterText={counterText}
           showOwnerClaimAction={showOwnerClaimAction}
           showOwnerManageAction={showOwnerManageAction}
+          showBuyClaim={showBuyClaim}
           viewOnly={preview}
           onPurchaseClick={preview ? undefined : handlePurchaseClick}
+          onBuyClaimClick={preview ? undefined : handleBuyClaim}
         />
 
         <ClaimBanners
@@ -264,6 +292,14 @@ export default function Item({
           onGuestClaim={handleGuestClaim}
           onRemoveClaim={removeClaim}
           onUndoConfirm={handleUndoConfirm}
+        />
+      )}
+
+      {!preview && removableClaim && (
+        <ClaimUndoPopup
+          isOpen={showUndoPopup}
+          onClose={() => setShowUndoPopup(false)}
+          onUndo={() => removeClaim(removableClaim)}
         />
       )}
     </>

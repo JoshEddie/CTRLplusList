@@ -27,9 +27,52 @@ function renderActions(
 
 const viewItem = () =>
   screen.queryByRole('link', { name: 'View item — opens in new tab' });
+const buyClaim = () =>
+  screen.queryByRole('link', { name: 'Buy & Claim — opens in new tab' });
 
 describe('ItemActions', () => {
   describe('StateMatrix', () => {
+    it('AuthedClaimableWithLink_RendersBuyClaimPrimaryOverViewAndAdd', () => {
+      renderActions({ showBuyClaim: true });
+      const buy = buyClaim();
+      expect(buy).toBeInTheDocument();
+      expect(buy).toHaveClass('primary');
+      expect(viewItem()).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Add Claim' })
+      ).toBeInTheDocument();
+    });
+
+    it('GuestClaimable_NoBuyClaim-AddClaimStaysPrimary', () => {
+      renderActions();
+      expect(buyClaim()).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Add Claim' })
+      ).toBeInTheDocument();
+    });
+
+    it('StorelessWithBuySignal_RendersAddClaimOnly', () => {
+      renderActions({ showBuyClaim: true, store: null });
+      expect(buyClaim()).not.toBeInTheDocument();
+      expect(viewItem()).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Add Claim' })
+      ).toBeInTheDocument();
+    });
+
+    it('LinklessStoreWithBuySignal_OmitsBuyClaim', () => {
+      renderActions({
+        showBuyClaim: true,
+        store: { name: 'Amazon', link: '', price: '35.50' },
+      });
+      expect(buyClaim()).not.toBeInTheDocument();
+    });
+
+    it('ViewOnlyWithBuySignal_OmitsBuyClaim', () => {
+      renderActions({ showBuyClaim: true, viewOnly: true });
+      expect(buyClaim()).not.toBeInTheDocument();
+    });
+
     it('NonOwnerClaimable_RendersAddClaimWithViewItem-NoManage', () => {
       renderActions();
       expect(
@@ -158,6 +201,40 @@ describe('ItemActions', () => {
         </div>
       );
       await user.click(viewItem() as HTMLElement);
+      expect(onEnclosingClick).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('BuyClaimSemantics', () => {
+    it('BuyClaim_TargetsStoreInNewTabWithHiddenIcon', () => {
+      renderActions({ showBuyClaim: true });
+      const buy = buyClaim();
+      expect(buy).toHaveAttribute('href', STORE.link);
+      expect(buy).toHaveAttribute('target', '_blank');
+      expect(buy).toHaveAttribute('rel', 'noreferrer');
+      expect(buy?.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    it('BuyClaimClick_FiresOnBuyClaimClick-DoesNotPropagate', async () => {
+      const user = userEvent.setup();
+      const onEnclosingClick = vi.fn();
+      const onBuyClaimClick = vi.fn();
+      render(
+        <div onClick={onEnclosingClick}>
+          <ItemActions
+            isOwner={false}
+            fullyClaimed={false}
+            viewerClaimed={false}
+            showOwnerClaimAction={false}
+            showOwnerManageAction={false}
+            showBuyClaim
+            store={STORE}
+            onBuyClaimClick={onBuyClaimClick}
+          />
+        </div>
+      );
+      await user.click(buyClaim() as HTMLElement);
+      expect(onBuyClaimClick).toHaveBeenCalledTimes(1);
       expect(onEnclosingClick).not.toHaveBeenCalled();
     });
   });

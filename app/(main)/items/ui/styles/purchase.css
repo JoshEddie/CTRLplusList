@@ -17,24 +17,51 @@
   min-width: 0;
 }
 
-/* Two-up pair (View · Add Claim). `order` gives the spec's reading order;
-   focus order stays DOM order (Add → View) — accepted in design D1. */
-.item-actions:has(.item-actions-claim):has(.item-actions-add) > .item-actions-view {
+/* Two-up pair (View · Add Claim), formed under either managing top action
+   (Manage claim/claims) or the Buy & Claim primary slot. `order` gives the
+   spec's reading order; focus order stays DOM order (Add → View) — accepted
+   in design D1. */
+.item-actions:has(:is(.item-actions-claim, .item-actions-buy)):has(.item-actions-add)
+  > .item-actions-view {
   grid-column: 1;
   order: 1;
 }
 
-.item-actions:has(.item-actions-claim):has(.item-actions-add) > .item-actions-add {
+.item-actions:has(:is(.item-actions-claim, .item-actions-buy)):has(.item-actions-add)
+  > .item-actions-add {
   grid-column: 2;
   order: 2;
 }
 
 /* The half-width pair slot can't fit "View item" — the visible label drops
    to "View". The aria-label keeps the full phrase for AT. */
-.item-actions:has(.item-actions-claim):has(.item-actions-add)
+.item-actions:has(:is(.item-actions-claim, .item-actions-buy)):has(.item-actions-add)
   > .item-actions-view
   .item-actions-view-label {
   display: none;
+}
+
+/* Undo popup (claim-attribution spec) — content layout only; the shell is
+   the Modal primitive and the buttons keep design-system dimensions. */
+.claim-undo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.claim-undo-title {
+  font-size: 20px;
+  text-align: center;
+}
+
+.claim-undo-message {
+  text-align: center;
+}
+
+.claim-undo-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
 /* Fully-claimed inline status — sized to the standard button floor so the
