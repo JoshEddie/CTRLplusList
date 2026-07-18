@@ -88,4 +88,67 @@ describe('ItemSchema', () => {
       ).toBe(false);
     });
   });
+  describe('image_candidates', () => {
+    const PREFIX = 'data:image/svg+xml;base64,';
+    const urls = (n: number) =>
+      Array.from({ length: n }, (_, i) => `https://img.test/${i}.jpg`);
+    const placeholder = `${PREFIX}${'a'.repeat(100)}`;
+
+    it('FifteenHttpUrls_Accepts', () => {
+      expect(
+        ItemSchema.safeParse({ ...base, image_candidates: urls(15) }).success
+      ).toBe(true);
+    });
+
+    it('SixteenHttpUrls_Rejects', () => {
+      expect(
+        ItemSchema.safeParse({ ...base, image_candidates: urls(16) }).success
+      ).toBe(false);
+    });
+
+    it('FifteenHttpUrlsPlusOnePlaceholder_AcceptsAsExempt', () => {
+      expect(
+        ItemSchema.safeParse({
+          ...base,
+          image_candidates: [...urls(15), placeholder],
+        }).success
+      ).toBe(true);
+    });
+
+    it('TwoPlaceholders_Rejects', () => {
+      expect(
+        ItemSchema.safeParse({
+          ...base,
+          image_candidates: [placeholder, `${PREFIX}${'b'.repeat(100)}`],
+        }).success
+      ).toBe(false);
+    });
+
+    it('OversizedPlaceholder_Rejects', () => {
+      expect(
+        ItemSchema.safeParse({
+          ...base,
+          image_candidates: [`${PREFIX}${'a'.repeat(9000)}`],
+        }).success
+      ).toBe(false);
+    });
+
+    it('NonPlaceholderDataUri_Rejects', () => {
+      expect(
+        ItemSchema.safeParse({
+          ...base,
+          image_candidates: ['data:image/png;base64,aaaa'],
+        }).success
+      ).toBe(false);
+    });
+
+    it('NonUrlEntry_Rejects', () => {
+      expect(
+        ItemSchema.safeParse({
+          ...base,
+          image_candidates: ['not-a-url'],
+        }).success
+      ).toBe(false);
+    });
+  });
 });

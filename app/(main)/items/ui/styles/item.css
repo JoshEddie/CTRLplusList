@@ -139,8 +139,8 @@
   display: block;
 }
 
-.item.purchased .item-image-container {
-  filter: brightness(0.88) saturate(0.5);
+.purchased .item-image {
+  opacity: 0.5;
 }
 
 .item-info {

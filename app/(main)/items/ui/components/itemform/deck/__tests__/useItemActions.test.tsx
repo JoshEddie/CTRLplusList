@@ -64,6 +64,49 @@ describe('useItemActions', () => {
     expect(result.current.item.photoIndex).toBe(0);
   });
 
+  it('SelectPlaceholder_SetsPlaceholderUri', () => {
+    const { result } = renderHook(() =>
+      useHarness({ ...blankItem(), photos: ['a'], photoIndex: 0 })
+    );
+    act(() =>
+      result.current.actions.selectPlaceholder('data:image/svg+xml;base64,YQ==')
+    );
+    expect(result.current.item.placeholder).toBe(
+      'data:image/svg+xml;base64,YQ=='
+    );
+  });
+
+  it('SelectPhoto_ClearsSelectedPlaceholder', () => {
+    const { result } = renderHook(() =>
+      useHarness({
+        ...blankItem(),
+        photos: ['a', 'b'],
+        photoIndex: 0,
+        placeholder: 'data:image/svg+xml;base64,YQ==',
+      })
+    );
+    act(() => result.current.actions.selectPhoto(1));
+    expect(result.current.item.placeholder).toBeNull();
+  });
+
+  it('AddPhoto_ClearsSelectedPlaceholder-SavedPlaceholderExemptFromCap', () => {
+    const photos = [
+      ...Array.from({ length: MAX_IMAGE_CANDIDATES - 1 }, (_, i) => `https://${i}`),
+      'data:image/svg+xml;base64,c2F2ZWQ=',
+    ];
+    const { result } = renderHook(() =>
+      useHarness({
+        ...blankItem(),
+        photos,
+        photoIndex: 0,
+        placeholder: 'data:image/svg+xml;base64,YQ==',
+      })
+    );
+    act(() => result.current.actions.addPhoto('https://new'));
+    expect(result.current.item.photos).toEqual([...photos, 'https://new']);
+    expect(result.current.item.placeholder).toBeNull();
+  });
+
   it('SetStorePrice_UpdatesPrice-DropsProvenance', () => {
     const { result } = renderHook(() =>
       useHarness(seedFromFetch(fetched, 'https://p', '2026-01-01'))

@@ -9,6 +9,7 @@ export function mockActions(): ItemActions {
     setName: vi.fn(),
     setDescription: vi.fn(),
     selectPhoto: vi.fn(),
+    selectPlaceholder: vi.fn(),
     addPhoto: vi.fn(),
     setStore: vi.fn(),
     setLists: vi.fn(),
@@ -22,10 +23,29 @@ export function makeItem(over: Partial<ItemViewModel> = {}): ItemViewModel {
     name: 'Cast Iron Skillet',
     photos: ['https://img/a.jpg'],
     photoIndex: 0,
+    placeholder: null,
     description: '',
     stores: [{ name: 'Lodge', link: 'https://lodge', price: '29.99' }],
     lists: [],
     qty: 1,
     ...over,
+  };
+}
+
+export const MINTED_URL = 'data:image/svg+xml;base64,bWludGVk';
+
+export function placeholderActionsMock() {
+  return {
+    mintItemPlaceholder: vi
+      .fn()
+      .mockResolvedValue({ success: true, message: 'ok', url: MINTED_URL }),
+    previewPlaceholders: vi.fn(async (count: number) => ({
+      success: true,
+      message: 'ok',
+      urls: Array.from(
+        { length: count },
+        (_, i) => `data:image/svg+xml;base64,${'a'.repeat(i + 1)}`
+      ),
+    })),
   };
 }

@@ -123,8 +123,8 @@ describe('fetchZyte', () => {
     expect(result?.imageUrl).toBe('https://img/0.jpg');
   });
 
-  it('MainImageDuplicatedInImagesArray_ReturnsMainFirstDedupedCappedAtTen', async () => {
-    const images = Array.from({ length: 14 }, (_, i) => ({
+  it('MainImageDuplicatedInImagesArray_ReturnsMainFirstDedupedCappedAtFifteen', async () => {
+    const images = Array.from({ length: 19 }, (_, i) => ({
       url: i < 2 ? 'https://img/main.jpg' : `https://img/${i}.jpg`,
     }));
     fetchMock.mockResolvedValue(
@@ -142,15 +142,7 @@ describe('fetchZyte', () => {
     );
     expect(result?.imageUrls).toEqual([
       'https://img/main.jpg',
-      'https://img/2.jpg',
-      'https://img/3.jpg',
-      'https://img/4.jpg',
-      'https://img/5.jpg',
-      'https://img/6.jpg',
-      'https://img/7.jpg',
-      'https://img/8.jpg',
-      'https://img/9.jpg',
-      'https://img/10.jpg',
+      ...Array.from({ length: 14 }, (_, i) => `https://img/${i + 2}.jpg`),
     ]);
     expect(result?.imageUrl).toBe('https://img/main.jpg');
   });

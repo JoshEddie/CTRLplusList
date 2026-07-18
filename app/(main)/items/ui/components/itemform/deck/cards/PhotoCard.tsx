@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { PhotoEditor } from '../editors/PhotoEditor';
 import type { ItemActions } from '../useItemActions';
+import { usePlaceholderPreviews } from '../usePlaceholderPreviews';
 import type { ItemViewModel } from '../viewModel';
 import { DeckCard } from './DeckCard';
 
@@ -17,14 +18,15 @@ export function PhotoCard({
   onContinue,
   tracker,
 }: PhotoCardProps) {
+  const { placeholders, reroll } = usePlaceholderPreviews(item, actions);
   const zero = item.photos.length === 0;
   return (
     <DeckCard
       tracker={tracker}
-      title={zero ? 'Add a photo' : 'Pick the best photo'}
+      title={zero ? 'Pick some art' : 'Pick the best photo'}
       subtitle={
         zero
-          ? 'No image came through — add your own or skip it.'
+          ? 'No image came through — pick some artwork, add your own, or skip it.'
           : "We grabbed some options for you. Pick your favorite or add your own."
       }
       onContinue={onContinue}
@@ -32,7 +34,11 @@ export function PhotoCard({
       <PhotoEditor
         photos={item.photos}
         photoIndex={item.photoIndex}
+        placeholders={placeholders}
+        selectedPlaceholder={item.placeholder}
         onSelect={actions.selectPhoto}
+        onSelectPlaceholder={actions.selectPlaceholder}
+        onReroll={reroll}
         onAddPhoto={actions.addPhoto}
       />
     </DeckCard>

@@ -7,6 +7,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import ItemCard from '../ItemCard';
 
+vi.mock('@/lib/data/item.placeholder.actions', async () =>
+  (await import('../itemform/deck/__tests__/test-helpers')).placeholderActionsMock()
+);
+
 const STORES = [
   { name: 'Target', link: 'https://t.example', price: '38.00' },
   { name: 'Amazon', link: 'https://a.example', price: '35.50' },

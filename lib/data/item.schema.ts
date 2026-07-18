@@ -1,5 +1,18 @@
 import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
+import {
+  PLACEHOLDER_URI_MAX_LENGTH,
+  isPlaceholderUri,
+} from '@/lib/placeholderArt.shared';
 import { z } from 'zod';
+
+function isHttpUrl(val: string): boolean {
+  try {
+    const url = new URL(val);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 // Define Zod schema for item validation. The actor's user_id is resolved
 // server-side from the session, never accepted from the client payload — see
@@ -35,28 +48,39 @@ export const ItemSchema = z.object({
       }
     }),
 
+  // Up to MAX_IMAGE_CANDIDATES http(s) URLs, plus at most one size-capped
+  // placeholder-art data URI that is exempt from the cap — a placeholder never
+  // displaces a real fetched image. Any other data: URI is invalid.
   image_candidates: z
-    .array(
-      z.string().refine(
-        (val) => {
-          try {
-            const url = new URL(val);
-            return (
-              url.protocol === 'http:' ||
-              url.protocol === 'https:' ||
-              url.protocol === 'data:'
-            );
-          } catch {
-            return false;
-          }
-        },
-        { message: 'Image candidates must be valid image URLs' }
-      )
-    )
-    .max(
-      MAX_IMAGE_CANDIDATES,
-      `At most ${MAX_IMAGE_CANDIDATES} image candidates are allowed`
-    )
+    .array(z.string())
+    .superRefine((candidates, ctx) => {
+      const placeholders = candidates.filter(isPlaceholderUri);
+      const rest = candidates.filter((val) => !isPlaceholderUri(val));
+      if (rest.some((val) => !isHttpUrl(val))) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Image candidates must be valid image URLs',
+        });
+      }
+      if (rest.length > MAX_IMAGE_CANDIDATES) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `At most ${MAX_IMAGE_CANDIDATES} image candidates are allowed`,
+        });
+      }
+      if (placeholders.length > 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'At most one placeholder image is allowed',
+        });
+      }
+      if (placeholders.some((val) => val.length > PLACEHOLDER_URI_MAX_LENGTH)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Placeholder image is too large',
+        });
+      }
+    })
     .optional(),
 
   quantity_limit: z

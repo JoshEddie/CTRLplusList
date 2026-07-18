@@ -1,4 +1,5 @@
 import { lowestPricedStore } from '@/app/(main)/items/ui/components/utils';
+import { isPlaceholderUri } from '@/lib/placeholderArt.shared';
 import type { ProductData } from '@/lib/product-fetch/types';
 import type {
   ItemDetails,
@@ -30,6 +31,12 @@ export interface ItemViewModel {
   /** Candidate pool; the active image is photos[photoIndex]. */
   photos: string[];
   photoIndex: number;
+  /**
+   * Selected transient placeholder-art URI, overriding photos[photoIndex] as
+   * the active image while set. Unselected placeholder previews never enter
+   * the view-model, so they can never persist.
+   */
+  placeholder: string | null;
   description: string;
   stores: DeckStore[];
   lists: OptionType[];
@@ -47,6 +54,7 @@ export function blankItem(seedUrl = ''): ItemViewModel {
     name: '',
     photos: [],
     photoIndex: 0,
+    placeholder: null,
     description: '',
     stores: [emptyStore(seedUrl)],
     lists: [],
@@ -69,6 +77,7 @@ export function seedFromFetch(
     name: product.title,
     photos,
     photoIndex: 0,
+    placeholder: null,
     // Descriptions are deliberately not seeded — extracted copy is marketing
     // junk or the wrong page block on some sites. The user authors their
     // own note.
@@ -116,6 +125,9 @@ export function seedFromItem(item: SeedItem): ItemViewModel {
     name: item.name,
     photos,
     photoIndex: activeIndex >= 0 ? activeIndex : 0,
+    // A previously saved placeholder is an ordinary pool image now; the
+    // transient-selection slot starts clear.
+    placeholder: null,
     description: item.description ?? '',
     stores: primary ? [toDeckStore(primary)] : [emptyStore()],
     lists: item.lists.map((list) => ({
@@ -166,8 +178,12 @@ export function toItemDetails(vm: ItemViewModel): ItemDetails {
     id: vm.id,
     name: vm.name,
     description: vm.description,
-    image_url: vm.photos[vm.photoIndex] ?? null,
-    image_candidates: vm.photos,
+    image_url: vm.placeholder ?? vm.photos[vm.photoIndex] ?? null,
+    // A newly selected placeholder displaces any previously saved one in the
+    // pool — server validation admits at most one placeholder URI.
+    image_candidates: vm.placeholder
+      ? [...vm.photos.filter((url) => !isPlaceholderUri(url)), vm.placeholder]
+      : vm.photos,
     quantity_limit: vm.qty,
     stores: vm.stores.map((store) => ({
       name: store.name,
@@ -190,7 +206,7 @@ export function toItemDisplay(vm: ItemViewModel): ItemDisplay {
     id: vm.id || 'preview',
     name: vm.name,
     description: vm.description,
-    image_url: vm.photos[vm.photoIndex] ?? null,
+    image_url: vm.placeholder ?? vm.photos[vm.photoIndex] ?? null,
     created_at: PREVIEW_TIMESTAMP,
     updated_at: PREVIEW_TIMESTAMP,
     user_id: 'preview',

@@ -6,6 +6,10 @@ import { Deck } from '../Deck';
 import type { ItemViewModel } from '../viewModel';
 import { makeItem } from './test-helpers';
 
+vi.mock('@/lib/data/item.placeholder.actions', async () =>
+  (await import('./test-helpers')).placeholderActionsMock()
+);
+
 function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
   return makeItem({
     photos: ['https://a', 'https://b'],
@@ -83,7 +87,8 @@ describe('Deck', () => {
         })}
       />
     );
-    await user.click(screen.getByRole('button', { name: "Let's go" }));
+    await user.click(screen.getByRole('button', { name: "Let's go" })); // photo
+    await user.click(screen.getByRole('button', { name: 'Continue' })); // store
     expect(screen.getByText("Where's it from?")).toBeInTheDocument();
     const cont = screen.getByRole('button', { name: 'Continue' });
     expect(cont).toBeDisabled();
@@ -93,11 +98,17 @@ describe('Deck', () => {
     expect(screen.getByText('Add a note')).toBeInTheDocument();
   });
 
-  it('SingleImage_SkipsPhotoCard', async () => {
+  it('SingleImage_StillShowsPhotoCardWithItPreSelected', async () => {
+    // Placeholder art means every flow carries a real photo choice.
     const user = userEvent.setup();
     render(<Harness initial={vm({ photos: ['https://only'] })} />);
     await user.click(screen.getByRole('button', { name: "Let's go" }));
-    expect(screen.queryByText('Pick the best photo')).not.toBeInTheDocument();
+    expect(screen.getByText('Pick the best photo')).toBeInTheDocument();
+    expect(screen.getByAltText('Selected product image')).toHaveAttribute(
+      'src',
+      'https://only'
+    );
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
     expect(screen.getByText('Add a note')).toBeInTheDocument();
   });
 
@@ -166,7 +177,7 @@ describe('Deck', () => {
 
   it('BrokenDoneStep_BlocksEveryForwardPathPastIt', async () => {
     const user = userEvent.setup();
-    // Single photo + good title done, price missing → deck opens on price.
+    // Good title done, price missing → deck opens on photo, price ahead.
     render(
       <Harness
         initial={vm({
@@ -175,7 +186,7 @@ describe('Deck', () => {
         })}
       />
     );
-    await user.click(screen.getByRole('button', { name: "Let's go" })); // price
+    await user.click(screen.getByRole('button', { name: "Let's go" })); // photo
     await user.click(
       screen.getByRole('button', { name: 'Go back to The Name' })
     );
@@ -184,17 +195,15 @@ describe('Deck', () => {
     await user.type(nameField, 'x'.repeat(101));
     // The now-broken name seizes the current ring and disables Continue...
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-    // ...and stepping back to a still-valid earlier card does not re-open the
-    // skip past it — price stays locked from the photo card too.
-    await user.click(
-      screen.getByRole('button', { name: 'Go back to The Photo' })
-    );
+    // ...and every forward node past the broken step locks, the previously
+    // reachable photo frontier included.
+    expect(screen.getByRole('button', { name: 'Photo step' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Price step' })).toBeDisabled();
   });
 
   it('FixedWorkingStep_FlipsGreenAndUnlocksTheNextStep', async () => {
     const user = userEvent.setup();
-    // Single photo + good title, price missing → deck opens on price.
+    // Good title, price missing → deck opens on photo; price is next.
     render(
       <Harness
         initial={vm({
@@ -203,18 +212,19 @@ describe('Deck', () => {
         })}
       />
     );
-    await user.click(screen.getByRole('button', { name: "Let's go" })); // price
+    await user.click(screen.getByRole('button', { name: "Let's go" })); // photo
+    await user.click(screen.getByRole('button', { name: 'Continue' })); // price
+    expect(screen.getByText('What does it cost?')).toBeInTheDocument();
     // Note is locked while price is unfilled.
     expect(screen.getByRole('button', { name: 'Note step' })).toBeDisabled();
     await user.type(screen.getByLabelText('Price'), '19.99');
-    // Price flips green (done) in place, and note becomes a reachable target.
+    // Price flips green (done) in place and no longer bars the way forward.
     expect(screen.getByRole('button', { name: 'Price step' })).toHaveAttribute(
       'data-status',
       'done'
     );
-    expect(
-      screen.getByRole('button', { name: 'Go to The Note' })
-    ).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByText('Add a note')).toBeInTheDocument();
   });
 
   it('GatedTitleStep_LocksForwardTrackerNodes', async () => {

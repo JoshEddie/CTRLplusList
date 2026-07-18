@@ -647,12 +647,18 @@ async function main() {
       if (idx === 0) quantity_limit = rotation[0];
       else if (idx === 1) quantity_limit = rotation[1];
       else if (idx === lastIdx) quantity_limit = rotation[2];
+      // Every third item on every fourth list seeds imageless so the lazy
+      // placeholder-mint path (empty container -> generated art on first view)
+      // is reachable straight from the seed.
+      const imageless = listIdx % 4 === 3 && idx % 3 === 0;
       itemRows.push({
         id: itemId,
         name,
         description: descriptionFor(itemId),
         user_id: list.user_id,
-        image_url: `https://picsum.photos/seed/${itemId}/400/400`,
+        image_url: imageless
+          ? ''
+          : `https://picsum.photos/seed/${itemId}/400/400`,
         archived_at: archive
           ? new Date(ARCHIVE_EPOCH - (h % 30) * 86400000)
           : null,
@@ -792,6 +798,7 @@ async function main() {
     'dev-list-alice-baby-item-2': 3,
   };
   const imageRows = itemRows.flatMap((item) => {
+    if (!item.image_url) return []; // imageless items mint art on first view
     const main = { item_id: item.id, url: item.image_url, active: true };
     const altCount = (POOL_SIZE[item.id] ?? 1) - 1;
     const alts = Array.from({ length: altCount }, (_, i) => ({

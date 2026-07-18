@@ -5,6 +5,10 @@ import { FocusEditor } from '../FocusEditor';
 import type { RowField } from '../focus';
 import { makeItem, mockActions } from './test-helpers';
 
+vi.mock('@/lib/data/item.placeholder.actions', async () =>
+  (await import('./test-helpers')).placeholderActionsMock()
+);
+
 function setup(field: RowField, over = {}, productUrl = 'https://shop/p') {
   const actions = mockActions();
   const onDone = vi.fn();

@@ -720,11 +720,11 @@ describe('ImageCandidates', () => {
       expect(await imageRows(created.id)).toHaveLength(0);
     });
 
-    it('ElevenCandidates_ReturnsImageCandidatesFieldError-NoRow', async () => {
+    it('SixteenCandidates_ReturnsImageCandidatesFieldError-NoRow', async () => {
       const res = await actions.createItem(
         makeItem({
           image_candidates: Array.from(
-            { length: 11 },
+            { length: 16 },
             (_, i) => `https://img.test/${i}.jpg`
           ),
         })
@@ -876,3 +876,4 @@ describe('UpdateRecency', () => {
     expect(byId.M2.toISOString()).toBe(STALE.toISOString());
   });
 });
+

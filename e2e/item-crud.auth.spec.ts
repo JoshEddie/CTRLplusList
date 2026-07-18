@@ -70,7 +70,7 @@ test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted',
 
   await page.getByRole('button', { name: 'Create item' }).click();
   await expect(page.getByText('Item created successfully')).toBeVisible();
-  await page.getByRole('button', { name: 'Close' }).click();
+  // The form modal closes itself on successful create.
   const createdCard = page.locator('.item-container:not(.preview)', {
     hasText: createdName,
   });

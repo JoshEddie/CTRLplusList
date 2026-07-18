@@ -18,6 +18,9 @@ vi.mock('@/lib/data/item.actions', () => ({
   archiveItem: vi.fn().mockResolvedValue({ success: true, message: 'ok' }),
   deleteItem: vi.fn().mockResolvedValue({ success: true, message: 'ok' }),
 }));
+vi.mock('@/lib/data/item.placeholder.actions', async () =>
+  (await import('../deck/__tests__/test-helpers')).placeholderActionsMock()
+);
 
 const PRODUCT_RESPONSE = {
   ok: true,
@@ -495,8 +498,10 @@ describe('ItemFormContainer', () => {
       renderCreate();
       const user = await fetchUrl();
       await screen.findByText("Here's what we pulled.");
-      // Acme Widget (good title, price, store, single image): steps = intro, note.
+      // Acme Widget (good title, price, store, single image): steps = intro,
+      // photo (always shown), note.
       await user.click(screen.getByRole('button', { name: "Let's go" }));
+      await user.click(screen.getByRole('button', { name: 'Continue' })); // note
       await user.click(screen.getByRole('button', { name: 'Continue' }));
       expect(screen.getByText('Last look')).toBeInTheDocument();
     });

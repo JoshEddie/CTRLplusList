@@ -1,8 +1,12 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PreviewCard } from '../PreviewCard';
 import type { ItemViewModel } from '../viewModel';
 import { makeItem } from './test-helpers';
+
+vi.mock('@/lib/data/item.placeholder.actions', async () =>
+  (await import('./test-helpers')).placeholderActionsMock()
+);
 
 function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
   return makeItem(over);

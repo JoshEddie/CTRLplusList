@@ -33,10 +33,17 @@ vi.mock('../ItemsBrowser', () => ({
   ),
 }));
 vi.mock('../itemform/ItemFormContainer', () => ({
-  default: (props: { lists: unknown[]; onClose: () => void }) => (
+  default: (props: {
+    lists: unknown[];
+    onClose: () => void;
+    onSuccess: () => void;
+  }) => (
     <div data-testid="item-form" data-lists-count={props.lists.length}>
       <button type="button" onClick={props.onClose}>
         close-form
+      </button>
+      <button type="button" onClick={props.onSuccess}>
+        submit-form
       </button>
     </div>
   ),
@@ -162,6 +169,13 @@ describe('ItemsPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
       expect(screen.getByTestId('item-form')).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'close-form' }));
+      expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
+    });
+
+    it('FormOnSuccess_UnmountsItemForm', () => {
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
+      fireEvent.click(screen.getByRole('button', { name: 'submit-form' }));
       expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
     });
 

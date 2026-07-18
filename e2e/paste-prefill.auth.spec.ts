@@ -6,12 +6,14 @@ import { expect, test, type Page } from '@playwright/test';
 // and never burns Zyte quota (ZYTE_API_KEY is unset in e2e regardless). The
 // success arc ends with the created item deleted — zero residue.
 
-// Real, loadable ≥200px images (inline SVG data URIs) so the deck's fetch-time
-// size pruning keeps them — fake .jpg URLs would 404 and get pruned away,
-// collapsing every multi-image fixture to one.
-const img = (hex: string) =>
-  `data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='240'%20viewBox='0%200%20240%20240'%3E%3Crect%20width='240'%20height='240'%20fill='%23${hex}'/%3E%3C/svg%3E`;
+// Real, loadable ≥200px images served from a stubbed http host so the deck's
+// fetch-time size pruning keeps them — fake .jpg URLs would 404 and get pruned
+// away, and data: URIs are no longer valid candidates (server validation only
+// admits the placeholder-art URI shape). stubFetch routes the host below.
+const img = (hex: string) => `https://imgstub.example/${hex}.svg`;
 const IMAGES3 = [img('1d3557'), img('457b9d'), img('a8dadc')];
+const svgBody = (hex: string) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240"><rect width="240" height="240" fill="#${hex}"/></svg>`;
 
 type Fixture = Record<string, unknown>;
 
@@ -39,6 +41,10 @@ const FIXTURES: Record<string, Fixture> = {
 };
 
 async function stubFetch(page: Page) {
+  await page.route('https://imgstub.example/**', (route) => {
+    const hex = route.request().url().split('/').pop()!.replace('.svg', '');
+    return route.fulfill({ contentType: 'image/svg+xml', body: svgBody(hex) });
+  });
   await page.route('**/api/product-fetch', (route) => {
     const url = String(route.request().postDataJSON().url ?? '');
     if (url.includes('fail')) {
@@ -88,7 +94,7 @@ test('Deck_CleanFetch_IntroPhotoNoteThenCreate', async ({ page }) => {
   await expect(page.getByText('Not on a list · Qty 1')).toBeVisible();
   await page.getByRole('button', { name: 'Create item' }).click();
   await expect(page.getByText('Item created successfully')).toBeVisible();
-  await page.getByRole('button', { name: 'Close' }).click();
+  // The form modal closes itself on successful create.
 
   // Cleanup: edit → delete (delete affordance preserved on the edit Preview).
   const card = page.locator('.item-container:not(.preview)', { hasText: name });
@@ -148,17 +154,27 @@ test('Deck_MissingPrice_PriceCardRequiresPrice', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled();
 });
 
-test('Deck_ZeroImages_ShowsPhotoErrorState', async ({ page }) => {
+test('Deck_ZeroImages_SeedsAllPlaceholderStrip', async ({ page }) => {
   await openDeck(page, 'https://x.test/noimages');
   await page.getByRole('button', { name: "Let's go" }).click();
-  await expect(page.getByText(/couldn't find any images/)).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Pick some art' })
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: /Use artwork/ })).toHaveCount(4);
   await expect(page.getByLabel('Add an image by URL')).toBeVisible();
 });
 
-test('Deck_SingleImage_BypassesPhotoCard', async ({ page }) => {
+test('Deck_SingleImage_StillShowsPhotoCardPreSelected', async ({ page }) => {
   await openDeck(page, 'https://x.test/oneimage');
   await page.getByRole('button', { name: "Let's go" }).click();
-  await expect(page.getByText('Pick the best photo')).toHaveCount(0);
+  await expect(page.getByText('Pick the best photo')).toBeVisible();
+  // One real thumb pre-selected plus three placeholder thumbs.
+  await expect(page.getByRole('button', { name: 'Use image 1' })).toHaveAttribute(
+    'aria-pressed',
+    'true'
+  );
+  await expect(page.getByRole('button', { name: /Use artwork/ })).toHaveCount(3);
+  await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByText('Add a note')).toBeVisible();
 });
 

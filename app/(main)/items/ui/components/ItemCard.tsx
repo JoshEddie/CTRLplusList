@@ -47,7 +47,7 @@ export default function ItemCard({
       className={`item ${className || ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''}`}
       title={item.name || ''}
     >
-      <ItemPhoto name={item.name || ''} url={item.image_url || ''} />
+      <ItemPhoto itemId={item.id} name={item.name || ''} url={item.image_url || ''} />
       <div className="item-info">
         <div className="item-name-description">
           <h1 className="itemName">{item.name || ''}</h1>

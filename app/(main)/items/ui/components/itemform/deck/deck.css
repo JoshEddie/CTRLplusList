@@ -119,6 +119,7 @@
 }
 
 .deck-photo-frame {
+  position: relative;
   flex: 1;
   aspect-ratio: 4 / 3;
   border-radius: 8px;
@@ -179,6 +180,12 @@
 
 .deck-photo-thumb-active {
   border-color: var(--primary-color);
+}
+
+.deck-photo-reroll {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
 }
 
 .deck-photo-empty {

@@ -1,6 +1,7 @@
 'use client';
 
 import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
+import { isPlaceholderUri } from '@/lib/placeholderArt.shared';
 import type { OptionType } from '@/lib/types';
 import type { Dispatch, SetStateAction } from 'react';
 import { useMemo } from 'react';
@@ -18,15 +19,21 @@ export function useItemActions(setItem: SetItem) {
       setDescription: (description: string) =>
         setItem((p) => ({ ...p, description })),
       selectPhoto: (photoIndex: number) =>
-        setItem((p) => ({ ...p, photoIndex })),
+        setItem((p) => ({ ...p, photoIndex, placeholder: null })),
+      selectPlaceholder: (placeholder: string) =>
+        setItem((p) => ({ ...p, placeholder })),
       addPhoto: (url: string) =>
         setItem((p) =>
-          p.photos.length >= MAX_IMAGE_CANDIDATES
+          // The cap counts real candidates only — a saved placeholder riding
+          // the pool is exempt, mirroring server validation.
+          p.photos.filter((photo) => !isPlaceholderUri(photo)).length >=
+          MAX_IMAGE_CANDIDATES
             ? p
             : {
                 ...p,
                 photos: [...p.photos, url],
                 photoIndex: p.photos.length,
+                placeholder: null,
               }
         ),
       setStore: (

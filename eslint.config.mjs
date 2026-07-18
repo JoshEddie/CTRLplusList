@@ -30,6 +30,9 @@ const eslintConfig = [
     ignores: [
       '**/*.test.*',
       '**/__tests__/**',
+      // A Drizzle schema is one flat cohort of table declarations — no
+      // domain seam to split on, so the size bands don't apply.
+      'db/schema.ts',
     ],
     plugins: { sonarjs },
     rules: {

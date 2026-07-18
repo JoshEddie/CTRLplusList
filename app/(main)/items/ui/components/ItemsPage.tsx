@@ -109,6 +109,7 @@ export default function ItemsPage({
         <ItemFormContainer
           lists={lists || []}
           onClose={() => setShowNewItem(false)}
+          onSuccess={() => setShowNewItem(false)}
         />
       )}
     </>

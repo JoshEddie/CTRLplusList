@@ -9,6 +9,7 @@ import { StoreEditor } from './editors/StoreEditor';
 import { TitleEditor } from './editors/TitleEditor';
 import { ROW_LABELS, type RowField } from './focus';
 import type { ItemActions } from './useItemActions';
+import { usePlaceholderPreviews } from './usePlaceholderPreviews';
 import type { ItemViewModel } from './viewModel';
 
 interface FocusEditorProps {
@@ -17,6 +18,30 @@ interface FocusEditorProps {
   actions: ItemActions;
   productUrl: string;
   onDone: () => void;
+}
+
+// Hook host: usePlaceholderPreviews must run unconditionally, so the photo
+// body is its own component rather than a branch of FocusEditor.
+function PhotoFocusBody({
+  item,
+  actions,
+}: {
+  item: ItemViewModel;
+  actions: ItemActions;
+}) {
+  const { placeholders, reroll } = usePlaceholderPreviews(item, actions);
+  return (
+    <PhotoEditor
+      photos={item.photos}
+      photoIndex={item.photoIndex}
+      placeholders={placeholders}
+      selectedPlaceholder={item.placeholder}
+      onSelect={actions.selectPhoto}
+      onSelectPlaceholder={actions.selectPlaceholder}
+      onReroll={reroll}
+      onAddPhoto={actions.addPhoto}
+    />
+  );
 }
 
 // A single field, edited in place, reusing the same editor components as the
@@ -35,14 +60,7 @@ export function FocusEditor({
   let body: React.ReactNode;
 
   if (field === 'photo') {
-    body = (
-      <PhotoEditor
-        photos={item.photos}
-        photoIndex={item.photoIndex}
-        onSelect={actions.selectPhoto}
-        onAddPhoto={actions.addPhoto}
-      />
-    );
+    body = <PhotoFocusBody item={item} actions={actions} />;
   } else if (field === 'title') {
     body = (
       <TitleEditor

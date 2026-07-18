@@ -70,20 +70,21 @@ describe('neededSteps', () => {
         })
       )
     ).toEqual([
-      { step: 'photo', complete: true },
       { step: 'title', complete: true },
       { step: 'price', complete: true },
+      { step: 'photo', complete: false },
       { step: 'store', complete: false },
       { step: 'note', complete: false },
     ]);
   });
 
-  it('SingleImage_MarksPhotoDoneRatherThanOmitting', () => {
+  it('SingleImage_PhotoStillNeedsAPick', () => {
+    // Generated placeholder art means every flow carries a real photo choice.
     expect(neededSteps(vm({ photos: ['https://only'] }))).toEqual([
-      { step: 'photo', complete: true },
       { step: 'title', complete: true },
       { step: 'price', complete: true },
       { step: 'store', complete: true },
+      { step: 'photo', complete: false },
       { step: 'note', complete: false },
     ]);
   });

@@ -322,5 +322,41 @@ describe('viewModel', () => {
       vm.stores = setStoreField(vm.stores, 0, 'price', '5.00');
       expect(toItemDetails(vm).stores[0].price_fetched_at).toBeNull();
     });
+
+    it('SelectedPlaceholder_BecomesActiveUrlAndAppendsToCandidates', () => {
+      const art = 'data:image/svg+xml;base64,YXJ0';
+      const vm = seedFromFetch(fetchedProduct, 'https://x.test/p', '2026-01-01');
+      vm.placeholder = art;
+      const details = toItemDetails(vm);
+      expect(details.image_url).toBe(art);
+      expect(details.image_candidates).toEqual([
+        'https://example.com/a.jpg',
+        'https://example.com/b.jpg',
+        art,
+      ]);
+    });
+
+    it('NewPlaceholderSelection_DisplacesSavedPlaceholderInPool', () => {
+      const saved = 'data:image/svg+xml;base64,b2xk';
+      const fresh = 'data:image/svg+xml;base64,bmV3';
+      const vm = {
+        ...blankItem(),
+        photos: ['https://example.com/a.jpg', saved],
+        placeholder: fresh,
+      };
+      expect(toItemDetails(vm).image_candidates).toEqual([
+        'https://example.com/a.jpg',
+        fresh,
+      ]);
+    });
+
+    it('NoPlaceholderSelected_PreviewUrisNeverEnterSubmission', () => {
+      const vm = seedFromFetch(fetchedProduct, 'https://x.test/p', '2026-01-01');
+      const details = toItemDetails(vm);
+      expect(details.image_candidates!.some((url) => url.startsWith('data:'))).toBe(
+        false
+      );
+      expect(details.image_url).toBe('https://example.com/a.jpg');
+    });
   });
 });

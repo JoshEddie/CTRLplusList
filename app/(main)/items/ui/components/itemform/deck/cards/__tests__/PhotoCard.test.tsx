@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { makeItem, mockActions } from '../../__tests__/test-helpers';
 import { PhotoCard } from '../PhotoCard';
 
+vi.mock('@/lib/data/item.placeholder.actions', async () =>
+  (await import('../../__tests__/test-helpers')).placeholderActionsMock()
+);
+
 function setup(over = {}) {
   render(
     <PhotoCard
@@ -19,8 +23,8 @@ describe('PhotoCard', () => {
     expect(screen.getByText('Pick the best photo')).toBeInTheDocument();
   });
 
-  it('ZeroPhotos_TitleIsAddAPhoto', () => {
+  it('ZeroPhotos_TitleIsPickSomeArt', () => {
     setup({ photos: [] });
-    expect(screen.getByText('Add a photo')).toBeInTheDocument();
+    expect(screen.getByText('Pick some art')).toBeInTheDocument();
   });
 });

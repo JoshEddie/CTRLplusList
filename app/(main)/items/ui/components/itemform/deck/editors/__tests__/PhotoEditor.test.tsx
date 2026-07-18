@@ -7,20 +7,45 @@ import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 // The pool reaching PhotoEditor is already pruned upstream (prunePhotos at
 // fetch time), so this only tests presentation/selection of what it's given.
 const POOL = ['https://img/a.jpg', 'https://img/b.jpg', 'https://img/c.jpg'];
+const ART = [
+  'data:image/svg+xml;base64,YXJ0MQ==',
+  'data:image/svg+xml;base64,YXJ0Mg==',
+];
+
+function renderEditor(
+  overrides: Partial<React.ComponentProps<typeof PhotoEditor>> = {}
+) {
+  const props = {
+    photos: POOL,
+    photoIndex: 0,
+    placeholders: [] as string[],
+    selectedPlaceholder: null,
+    onSelect: vi.fn(),
+    onSelectPlaceholder: vi.fn(),
+    onReroll: vi.fn(),
+    onAddPhoto: vi.fn(),
+    ...overrides,
+  };
+  render(<PhotoEditor {...props} />);
+  return props;
+}
 
 describe('PhotoEditor', () => {
   describe('ZeroPhotos', () => {
-    it('Render_ShowsCouldNotFindMessage-AddField', () => {
-      render(
-        <PhotoEditor
-          photos={[]}
-          photoIndex={0}
-          onSelect={vi.fn()}
-          onAddPhoto={vi.fn()}
-        />
-      );
-      expect(screen.getByText(/couldn't find any images/i)).toBeInTheDocument();
+    it('WithPlaceholders_ShowsStageAndAllArtStrip-NoDeadEnd', () => {
+      renderEditor({ photos: [], placeholders: ART });
+      expect(screen.queryByText(/couldn't find/i)).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Use artwork 1' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Use artwork 2' })
+      ).toBeInTheDocument();
       expect(screen.getByLabelText('Add an image by URL')).toBeInTheDocument();
+    });
+
+    it('NothingSelected_StageFrameIsEmpty', () => {
+      renderEditor({ photos: [], placeholders: ART });
       expect(
         screen.queryByAltText('Selected product image')
       ).not.toBeInTheDocument();
@@ -29,14 +54,7 @@ describe('PhotoEditor', () => {
 
   describe('MultiplePhotos', () => {
     it('Render_StageShowsActivePhoto', () => {
-      render(
-        <PhotoEditor
-          photos={POOL}
-          photoIndex={1}
-          onSelect={vi.fn()}
-          onAddPhoto={vi.fn()}
-        />
-      );
+      renderEditor({ photoIndex: 1 });
       expect(screen.getByAltText('Selected product image')).toHaveAttribute(
         'src',
         POOL[1]
@@ -44,14 +62,7 @@ describe('PhotoEditor', () => {
     });
 
     it('Render_StripShowsEveryPhoto', () => {
-      render(
-        <PhotoEditor
-          photos={POOL}
-          photoIndex={0}
-          onSelect={vi.fn()}
-          onAddPhoto={vi.fn()}
-        />
-      );
+      renderEditor();
       expect(
         screen.getByRole('button', { name: 'Use image 3' })
       ).toBeInTheDocument();
@@ -59,77 +70,112 @@ describe('PhotoEditor', () => {
 
     it('ClickThumbnail_CallsOnSelectWithIndex', async () => {
       const user = userEvent.setup();
-      const onSelect = vi.fn();
-      render(
-        <PhotoEditor
-          photos={POOL}
-          photoIndex={0}
-          onSelect={onSelect}
-          onAddPhoto={vi.fn()}
-        />
-      );
+      const { onSelect } = renderEditor();
       await user.click(screen.getByRole('button', { name: 'Use image 3' }));
       expect(onSelect).toHaveBeenCalledWith(2);
     });
 
     it('ClickNext_CallsOnSelectWithNextIndex', async () => {
       const user = userEvent.setup();
-      const onSelect = vi.fn();
-      render(
-        <PhotoEditor
-          photos={POOL}
-          photoIndex={0}
-          onSelect={onSelect}
-          onAddPhoto={vi.fn()}
-        />
-      );
+      const { onSelect } = renderEditor();
       await user.click(screen.getByRole('button', { name: 'Next image' }));
       expect(onSelect).toHaveBeenCalledWith(1);
     });
 
     it('ClickPrevFromFirst_WrapsToLast', async () => {
       const user = userEvent.setup();
-      const onSelect = vi.fn();
-      render(
-        <PhotoEditor
-          photos={POOL}
-          photoIndex={0}
-          onSelect={onSelect}
-          onAddPhoto={vi.fn()}
-        />
-      );
+      const { onSelect } = renderEditor();
       await user.click(screen.getByRole('button', { name: 'Previous image' }));
       expect(onSelect).toHaveBeenCalledWith(2);
+    });
+  });
+
+  describe('PlaceholderThumbs', () => {
+    it('Render_AppendsArtThumbsAfterRealPhotos', () => {
+      renderEditor({ placeholders: ART });
+      const art = screen.getByRole('button', { name: 'Use artwork 1' });
+      const thumbs = screen.getAllByRole('button', { name: /Use / });
+      expect(thumbs).toHaveLength(POOL.length + ART.length);
+      expect(thumbs[POOL.length]).toBe(art);
+    });
+
+    it('ClickArtThumb_CallsOnSelectPlaceholderWithUri', async () => {
+      const user = userEvent.setup();
+      const { onSelectPlaceholder } = renderEditor({ placeholders: ART });
+      await user.click(
+        screen.getByRole('button', { name: 'Use artwork 2' })
+      );
+      expect(onSelectPlaceholder).toHaveBeenCalledWith(ART[1]);
+    });
+
+    it('ArtSelected_StageShowsArtAndThumbReadsActive', () => {
+      renderEditor({ placeholders: ART, selectedPlaceholder: ART[0] });
+      expect(screen.getByAltText('Selected product image')).toHaveAttribute(
+        'src',
+        ART[0]
+      );
+      expect(
+        screen.getByRole('button', { name: 'Use artwork 1' })
+      ).toHaveAttribute('aria-pressed', 'true');
+      expect(
+        screen.getByRole('button', { name: 'Use image 1' })
+      ).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('ClickNextFromLastRealPhoto_SelectsFirstArtThumb', async () => {
+      const user = userEvent.setup();
+      const { onSelectPlaceholder } = renderEditor({
+        photoIndex: 2,
+        placeholders: ART,
+      });
+      await user.click(screen.getByRole('button', { name: 'Next image' }));
+      expect(onSelectPlaceholder).toHaveBeenCalledWith(ART[0]);
+    });
+
+    it('ClickNextFromLastArtThumb_WrapsToFirstRealPhoto', async () => {
+      const user = userEvent.setup();
+      const { onSelect } = renderEditor({
+        placeholders: ART,
+        selectedPlaceholder: ART[1],
+      });
+      await user.click(screen.getByRole('button', { name: 'Next image' }));
+      expect(onSelect).toHaveBeenCalledWith(0);
+    });
+  });
+
+  describe('Reroll', () => {
+    it('ArtSelected_ShowsRerollAndClickCallsOnReroll', async () => {
+      const user = userEvent.setup();
+      const { onReroll } = renderEditor({
+        placeholders: ART,
+        selectedPlaceholder: ART[0],
+      });
+      await user.click(
+        screen.getByRole('button', { name: 'Reroll artwork' })
+      );
+      expect(onReroll).toHaveBeenCalledTimes(1);
+    });
+
+    it('RealPhotoSelected_HidesReroll', () => {
+      renderEditor({ placeholders: ART });
+      expect(
+        screen.queryByRole('button', { name: 'Reroll artwork' })
+      ).not.toBeInTheDocument();
     });
   });
 
   describe('OutOfRangeIndex', () => {
     it('ActiveBeyondPool_NextSelectsFirstVisibleNext', async () => {
       const user = userEvent.setup();
-      const onSelect = vi.fn();
-      render(
-        <PhotoEditor
-          photos={POOL}
-          photoIndex={5}
-          onSelect={onSelect}
-          onAddPhoto={vi.fn()}
-        />
-      );
+      const { onSelect } = renderEditor({ photoIndex: 5 });
       await user.click(screen.getByRole('button', { name: 'Next image' }));
       expect(onSelect).toHaveBeenCalledWith(1);
     });
   });
 
   describe('SinglePhoto', () => {
-    it('Render_NoNavButtonsNoStrip', () => {
-      render(
-        <PhotoEditor
-          photos={[POOL[0]]}
-          photoIndex={0}
-          onSelect={vi.fn()}
-          onAddPhoto={vi.fn()}
-        />
-      );
+    it('NoPlaceholders_NoNavButtonsNoStrip', () => {
+      renderEditor({ photos: [POOL[0]] });
       expect(
         screen.queryByRole('button', { name: 'Next image' })
       ).not.toBeInTheDocument();
@@ -137,19 +183,21 @@ describe('PhotoEditor', () => {
         screen.queryByRole('button', { name: 'Use image 1' })
       ).not.toBeInTheDocument();
     });
+
+    it('WithPlaceholders_ShowsNavAndStrip', () => {
+      renderEditor({ photos: [POOL[0]], placeholders: ART });
+      expect(
+        screen.getByRole('button', { name: 'Next image' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Use image 1' })
+      ).toBeInTheDocument();
+    });
   });
 
   describe('Disabled', () => {
     it('Render_DisablesNavAndAdd', () => {
-      render(
-        <PhotoEditor
-          photos={POOL}
-          photoIndex={0}
-          onSelect={vi.fn()}
-          onAddPhoto={vi.fn()}
-          disabled
-        />
-      );
+      renderEditor({ disabled: true });
       expect(screen.getByRole('button', { name: 'Next image' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Add image' })).toBeDisabled();
     });
@@ -158,15 +206,7 @@ describe('PhotoEditor', () => {
   describe('AddByUrl', () => {
     it('ValidUrl_CallsOnAddPhoto-ClearsInput', async () => {
       const user = userEvent.setup();
-      const onAddPhoto = vi.fn();
-      render(
-        <PhotoEditor
-          photos={POOL}
-          photoIndex={0}
-          onSelect={vi.fn()}
-          onAddPhoto={onAddPhoto}
-        />
-      );
+      const { onAddPhoto } = renderEditor();
       const input = screen.getByLabelText('Add an image by URL');
       await user.type(input, 'https://img/new.jpg');
       await user.click(screen.getByRole('button', { name: 'Add image' }));
@@ -176,15 +216,7 @@ describe('PhotoEditor', () => {
 
     it('InvalidUrl_ShowsError-DoesNotCallOnAddPhoto', async () => {
       const user = userEvent.setup();
-      const onAddPhoto = vi.fn();
-      render(
-        <PhotoEditor
-          photos={POOL}
-          photoIndex={0}
-          onSelect={vi.fn()}
-          onAddPhoto={onAddPhoto}
-        />
-      );
+      const { onAddPhoto } = renderEditor();
       await user.type(screen.getByLabelText('Add an image by URL'), 'not a url');
       await user.click(screen.getByRole('button', { name: 'Add image' }));
       expect(screen.getByText(/valid image URL/i)).toBeInTheDocument();
@@ -193,19 +225,12 @@ describe('PhotoEditor', () => {
   });
 
   describe('AtCap', () => {
-    it('Render_ShowsCapMessage-HidesAddField', () => {
+    it('FullRealPool_ShowsCapMessage-HidesAddField', () => {
       const full = Array.from(
         { length: MAX_IMAGE_CANDIDATES },
         (_, i) => `https://img/${i}.jpg`
       );
-      render(
-        <PhotoEditor
-          photos={full}
-          photoIndex={0}
-          onSelect={vi.fn()}
-          onAddPhoto={vi.fn()}
-        />
-      );
+      renderEditor({ photos: full });
       expect(
         screen.getByText(
           new RegExp(`maximum of ${MAX_IMAGE_CANDIDATES} images`, 'i')
@@ -214,9 +239,15 @@ describe('PhotoEditor', () => {
       expect(
         screen.queryByLabelText('Add an image by URL')
       ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('button', { name: 'Add image' })
-      ).not.toBeInTheDocument();
+    });
+
+    it('FullRealPoolPlusSavedPlaceholder_StillCountsOnlyRealPhotos', () => {
+      const full = Array.from(
+        { length: MAX_IMAGE_CANDIDATES - 1 },
+        (_, i) => `https://img/${i}.jpg`
+      );
+      renderEditor({ photos: [...full, ART[0]] });
+      expect(screen.getByLabelText('Add an image by URL')).toBeInTheDocument();
     });
   });
 });

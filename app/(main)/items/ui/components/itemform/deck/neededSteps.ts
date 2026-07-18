@@ -14,8 +14,9 @@ export interface DeckStepState {
 export function isStepComplete(step: DeckStep, item: ItemViewModel): boolean {
   switch (step) {
     case 'photo':
-      // A single image is auto-selected; zero or several needs a human pick.
-      return item.photos.length === 1;
+      // Placeholder art means every flow carries a real choice (fetched image
+      // vs generated art), so the photo pick always needs a human look.
+      return false;
     case 'title':
       return titleTier(item.name).tier === 'good';
     case 'price':
@@ -35,6 +36,10 @@ export function isStepComplete(step: DeckStep, item: ItemViewModel): boolean {
 // so it stays the last, landing step; only the colour differs.)
 export function isStepValid(step: DeckStep, item: ItemViewModel): boolean {
   if (step === 'note') return !stepBlocked('note', item);
+  // A null image is permitted by the model, so like the note the photo pick is
+  // valid as soon as it's reachable — it stays incomplete only to keep it a
+  // human-visited step.
+  if (step === 'photo') return true;
   return isStepComplete(step, item);
 }
 

@@ -166,18 +166,24 @@ export const item_stores = pgTable('item_stores', {
   currency: text('currency'),
 });
 
-export const item_images = pgTable('item_images', {
-  id: serial('id').primaryKey(),
-  item_id: text('item_id')
-    .references(() => items.id, { onDelete: 'cascade' })
-    .notNull(),
-  url: text('url').notNull(),
-  // Marks the item's active image. At most one row per item should be active;
-  // enforced in the write path, not the DB, and reads resolve
-  // `active ORDER BY id LIMIT 1` so a stray double-active still yields one
-  // image and self-heals on the next write.
-  active: boolean('active').notNull().default(false),
-});
+export const item_images = pgTable(
+  'item_images',
+  {
+    id: serial('id').primaryKey(),
+    item_id: text('item_id')
+      .references(() => items.id, { onDelete: 'cascade' })
+      .notNull(),
+    url: text('url').notNull(),
+    // Marks the item's active image; the partial-unique index below is the
+    // no-transactions backstop for concurrent guest-callable mints.
+    active: boolean('active').notNull().default(false),
+  },
+  (table) => [
+    uniqueIndex('item_images_one_active_idx')
+      .on(table.item_id)
+      .where(sql`${table.active}`),
+  ]
+);
 
 export const purchases = pgTable(
   'purchases',

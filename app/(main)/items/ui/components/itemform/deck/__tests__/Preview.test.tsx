@@ -5,6 +5,10 @@ import { Preview } from '../Preview';
 import type { ItemViewModel } from '../viewModel';
 import { makeItem, mockActions } from './test-helpers';
 
+vi.mock('@/lib/data/item.placeholder.actions', async () =>
+  (await import('./test-helpers')).placeholderActionsMock()
+);
+
 function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
   return makeItem(over);
 }
