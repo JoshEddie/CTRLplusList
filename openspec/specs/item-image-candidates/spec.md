@@ -19,7 +19,7 @@ The system SHALL store image candidates in an `item_images` table — `id` (`ser
 
 ### Requirement: The fetch flow SHALL persist the candidate pool and mark the active image
 
-On create or update the server action SHALL persist the image set and mark the active image: the set is the submitted candidate list together with the chosen active URL (the form's `image_url`), which is always folded in — so a hand-entered URL outside the extractor set is saved too. The action SHALL delete the item's existing `item_images` rows, then batch-insert the set in order with exactly the active-URL row flagged `active`. On an update that carries no candidate list (a manual edit that did not refetch), the existing pool SHALL be read and preserved as the base while the active image is re-pointed. The candidate list SHALL be validated server-side (`item.schema.ts`): at most 10 entries, each a syntactically valid http(s) URL; invalid submissions are rejected by the existing form validation path. A crash between delete and insert leaves an empty pool; this residual is accepted — the next save repopulates.
+On create or update the server action SHALL persist the image set and mark the active image: the set is the submitted candidate list together with the chosen active URL (the form's `image_url`), which is always folded in — so a hand-entered URL outside the extractor set is saved too. The action SHALL delete the item's existing `item_images` rows, then batch-insert the set in order with exactly the active-URL row flagged `active`. On an update that carries no candidate list (a manual edit that did not refetch), the existing pool SHALL be read and preserved as the base while the active image is re-pointed. The candidate list SHALL be validated server-side (`item.schema.ts`): at most 15 entries that are each a syntactically valid http(s) URL, plus at most **one** placeholder entry — a URI matching the placeholder prefix exported by `item-placeholder-art`, size-capped to protect the text column — which is exempt from the 15 (a placeholder never displaces a real fetched image). Any other `data:` URI is invalid. Invalid submissions are rejected by the existing form validation path. A crash between delete and insert leaves an empty pool; this residual is accepted — the next save repopulates.
 
 #### Scenario: Fetched create persists the pool
 
@@ -38,8 +38,13 @@ On create or update the server action SHALL persist the image set and mark the a
 
 #### Scenario: Oversized or malformed candidate list is rejected
 
-- **WHEN** a submission carries more than 10 candidates or a non-http(s) entry
+- **WHEN** a submission carries more than 15 http(s) candidates, more than one placeholder URI, an oversized placeholder URI, or a non-placeholder `data:` entry
 - **THEN** server-side validation rejects the submission and no pool rows are written
+
+#### Scenario: Selected placeholder persists through the normal pool path
+
+- **WHEN** a user saves an item with a placeholder preview selected as the active image alongside 15 real candidates
+- **THEN** the submission validates (the placeholder is exempt from the 15), and the placeholder URI persists as the `active` row
 
 ### Requirement: Pool reads SHALL ride the item read path and existing cache tags
 
@@ -49,50 +54,4 @@ The item detail read in `lib/data/item.ts` SHALL load the item's `item_images` o
 
 - **WHEN** a fetched update replaces an item's pool
 - **THEN** the action's `updateTag('items')` invalidates cached item reads and the next read returns the new pool
-
-### Requirement: The item form SHALL surface the candidate pool as an inline grid, with the Image URL field demoted to a secondary affordance
-
-When the form session has 2 or more image candidates (seeded from the in-flight fetch result on create, or from the item's stored pool on edit), `ImageUrlInput` SHALL render the candidates inline as a compact paginated grid (`ImageCandidateGrid`) with no click-to-reveal step. The grid SHALL show at most 4 candidates per page in a 2×2 layout (bounding vertical height) with previous/next arrow controls to page through the rest; the arrows SHALL NOT render when all candidates fit one page, and SHALL disable at the first/last page. A short final page SHALL be padded with empty cells to preserve the 2×2 footprint so the grid height and arrow positions do not shift between pages. The grid SHALL open on the page containing the active image. The active image SHALL be marked **in place** in extractor order — selecting a tile SHALL NOT reorder the grid (reordering causes a jumpy layout). Selecting a tile SHALL route the URL through the existing `image_url` change handler and its image-load validation — the same path a hand-typed URL takes. The inline grid is the primary selector; the Image URL `TextField` is the secondary affordance, hidden behind an "Edit image URL" link-variant `Button` (per `button-system`) and revealed only when the user activates it OR when surfacing it is forced (a validation error to show, or no candidate grid to fall back on). With fewer than 2 candidates no grid renders and the Image URL `TextField` is shown directly. `ImageCandidateGrid` is a dedicated component, not the dormant image-search `ImageResultsViewer` (the two presentations have diverged); the dormant image-search modal SHALL NOT be reachable from the item form.
-
-The grid SHALL prune undersized candidates: each candidate's natural dimensions are probed client-side (image bytes are never fetched server-side, so size is only knowable in the browser) and any whose width or height falls below a minimum threshold SHALL be dropped from the grid, as extractors routinely include tiny thumbnails (e.g. Amazon's `_AC_US40_` 40px variant). A candidate that fails to load SHALL also be dropped. Two candidates SHALL be exempt from pruning so they stay reselectable: the currently active image (what is set) and the extractor's main image (position 0) — pruning a small main would make it unreselectable once the user picks another tile. Pruning affects display only; the stored pool is unchanged. The threshold count interacts with the 2-candidate floor: if pruning leaves fewer than 2 visible, the grid does not render and the Image URL field is shown.
-
-#### Scenario: Inline grid appears after a multi-image fetch
-
-- **WHEN** a fetch resolves with 5 image candidates and the form renders
-- **THEN** the first 4 candidates render inline as a 2×2 grid with the prefilled first candidate marked current and a next-page arrow for the 5th, and the Image URL field is collapsed behind an "Edit image URL" affordance
-
-#### Scenario: Short final page keeps a stable footprint
-
-- **WHEN** 10 candidates paginate to a final page of 2
-- **THEN** that page renders the 2 tiles plus empty filler cells so the 2×2 grid height and the flanking arrows stay in place
-
-#### Scenario: Picking a candidate updates the active image without reordering
-
-- **WHEN** the user clicks a different candidate tile in the inline grid
-- **THEN** the active image becomes the selected URL, the existing image-load validation runs against it, and the clicked tile stays in its original grid position (no reorder)
-
-#### Scenario: Editing an item with a stored pool re-offers the grid
-
-- **WHEN** the user edits a previously fetched item whose pool holds 3 candidates
-- **THEN** the inline grid renders without any refetch, listing the stored candidates with the current `image_url` first
-
-#### Scenario: No grid without candidates
-
-- **WHEN** the form renders for a manually created item with an empty pool
-- **THEN** no candidate grid renders, the Image URL field is shown directly, and no image-search affordance renders either
-
-#### Scenario: A candidate that fails to load surfaces its error
-
-- **WHEN** a selected candidate fails image-load validation while the URL field is collapsed
-- **THEN** the Image URL field is forced visible so its error is shown
-
-#### Scenario: Undersized candidate is pruned from the grid
-
-- **WHEN** a fetch returns candidates including a thumbnail whose natural size is below the minimum (e.g. an Amazon `_AC_US40_` 40px variant)
-- **THEN** that thumbnail does not appear in the grid while the full-size candidates do, and the stored pool is unchanged
-
-#### Scenario: Small main image stays reselectable after switching
-
-- **WHEN** the extractor's main image (position 0) is undersized and the user switches the active image to a different candidate
-- **THEN** the small main image remains in the grid (reselectable), while other undersized candidates are pruned
 
