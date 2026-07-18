@@ -82,12 +82,16 @@ describe('getItemsByPurchased', () => {
       by: 'self',
       firstName: 'Bea',
       claimedByViewer: false,
+      purchasedAt: expect.any(Date),
+      image: null,
     });
     expect(byId.theirs).toEqual({
       id: 'theirs',
       by: 'other',
       firstName: 'Otto',
       claimedByViewer: false,
+      purchasedAt: expect.any(Date),
+      image: null,
     });
   });
 
@@ -128,7 +132,9 @@ describe('isEligiblePurchaser', () => {
 });
 
 describe('sanitizePurchases', () => {
+  const CLAIMED_AT = new Date('2026-07-01T00:00:00Z');
   const attributedRow = {
+    purchased_at: CLAIMED_AT,
     id: 'p1',
     user_id: 'bea',
     claimed_by: 'carl',
@@ -142,6 +148,8 @@ describe('sanitizePurchases', () => {
       const [view] = dal.sanitizePurchases([attributedRow], 'bea', false);
       expect(view).toEqual({
         id: 'p1',
+        purchasedAt: CLAIMED_AT,
+        image: null,
         by: 'self',
         firstName: 'Bea',
         claimedByViewer: false,
@@ -152,6 +160,8 @@ describe('sanitizePurchases', () => {
       const [view] = dal.sanitizePurchases([attributedRow], 'carl', false);
       expect(view).toEqual({
         id: 'p1',
+        purchasedAt: CLAIMED_AT,
+        image: null,
         by: 'other',
         firstName: 'Bea',
         claimedByViewer: true,
@@ -162,6 +172,8 @@ describe('sanitizePurchases', () => {
       const [view] = dal.sanitizePurchases([attributedRow], 'someone', false);
       expect(view).toEqual({
         id: 'p1',
+        purchasedAt: CLAIMED_AT,
+        image: null,
         by: 'other',
         firstName: 'Bea',
         claimedByViewer: false,
@@ -180,6 +192,8 @@ describe('sanitizePurchases', () => {
       const [view] = dal.sanitizePurchases([attributedRow], 'own', true, true);
       expect(view).toEqual({
         id: 'p1',
+        purchasedAt: CLAIMED_AT,
+        image: null,
         by: 'other',
         firstName: 'Bea',
         claimedByViewer: false,
@@ -192,6 +206,7 @@ describe('sanitizePurchases', () => {
         [
           {
             id: 'p2',
+            purchased_at: CLAIMED_AT,
             user_id: null,
             claimed_by: 'carl',
             guest_name: 'Mom',
@@ -205,6 +220,8 @@ describe('sanitizePurchases', () => {
       );
       expect(view).toEqual({
         id: 'p2',
+        purchasedAt: CLAIMED_AT,
+        image: null,
         by: 'other',
         firstName: 'Mom',
         claimedByViewer: false,
@@ -217,6 +234,7 @@ describe('sanitizePurchases', () => {
         [
           {
             id: 'p3',
+            purchased_at: CLAIMED_AT,
             user_id: 'own',
             claimed_by: 'own',
             guest_name: null,
@@ -230,6 +248,8 @@ describe('sanitizePurchases', () => {
       );
       expect(view).toEqual({
         id: 'p3',
+        purchasedAt: CLAIMED_AT,
+        image: null,
         by: 'self',
         firstName: 'Olive',
         claimedByViewer: true,
@@ -243,6 +263,7 @@ describe('sanitizePurchases', () => {
         [
           {
             id: 'p4',
+            purchased_at: CLAIMED_AT,
             user_id: null,
             claimed_by: null,
             guest_name: 'Grandma',
@@ -255,6 +276,8 @@ describe('sanitizePurchases', () => {
       );
       expect(view).toEqual({
         id: 'p4',
+        purchasedAt: CLAIMED_AT,
+        image: null,
         by: 'other',
         firstName: 'Grandma',
         claimedByViewer: false,
@@ -266,6 +289,7 @@ describe('sanitizePurchases', () => {
         [
           {
             id: 'p5',
+            purchased_at: CLAIMED_AT,
             user_id: 'ghost',
             claimed_by: 'ghost',
             guest_name: null,
@@ -278,6 +302,8 @@ describe('sanitizePurchases', () => {
       );
       expect(view).toEqual({
         id: 'p5',
+        purchasedAt: CLAIMED_AT,
+        image: null,
         by: 'other',
         firstName: 'Someone',
         claimedByViewer: false,

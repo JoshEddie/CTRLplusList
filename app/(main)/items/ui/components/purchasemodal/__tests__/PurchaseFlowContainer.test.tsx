@@ -451,7 +451,8 @@ describe('PurchaseFlowContainer', () => {
         ownerCanClaim: true,
         ownerClaims: [claim],
       });
-      expect(screen.getByText('Bob — added by Alice')).toBeInTheDocument();
+      expect(screen.getByText('Bob')).toBeInTheDocument();
+      expect(screen.getByText('Added by Alice')).toBeInTheDocument();
       await user.click(
         screen.getByRole('button', { name: "Remove Bob's claim" })
       );

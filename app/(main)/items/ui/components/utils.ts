@@ -40,6 +40,18 @@ export function formatStorePrice(price: string | number): string {
   })}`;
 }
 
+// Opening state is affordance-routed (claim-attribution spec): Add Claim sets
+// purchaseView=claim; anything else falls to the default rule. Owner and guest
+// modals render their single viewer-appropriate state from the claim view.
+export function resolveModalView(opts: {
+  isOwner: boolean;
+  purchaseView: string | null | undefined;
+  hasViewerClaim: boolean;
+}): 'manage' | 'claim' {
+  if (opts.isOwner || opts.purchaseView === 'claim') return 'claim';
+  return opts.hasViewerClaim ? 'manage' : 'claim';
+}
+
 export function containerClasses(flags: {
   className?: string;
   isOwner: boolean;

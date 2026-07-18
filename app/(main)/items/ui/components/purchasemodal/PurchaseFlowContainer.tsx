@@ -9,11 +9,12 @@ import {
 } from '@/lib/data/user.actions';
 import { ItemDisplay, PurchaseView } from '@/lib/types';
 import { useCallback, useEffect, useState } from 'react';
-import { claimLabel, firstToken } from '../utils';
+import { firstToken } from '../utils';
 import ClaimDisclosure, {
   type AttributedTarget,
   type PickerStatus,
 } from './ClaimDisclosure';
+import ClaimsList from './ClaimsList';
 import ModalButtons from './ModalButtons';
 import ModalStoreRow from './ModalStoreRow';
 import PurchaseModalHeader from './PurchaseModalHeader';
@@ -55,34 +56,67 @@ function GuestClaimSection({
   );
 }
 
-function OwnerClaimsList({
-  claims,
+function AuthedClaimSection({
+  isOwner,
+  ownerCanClaim,
+  ownerClaims,
+  viewerIsPurchaser,
+  circleLabel,
+  pickerStatus,
+  pool,
+  onRetry,
+  onSelfClaim,
+  onAttributedClaim,
+  onGuestClaim,
   onRemoveClaim,
 }: {
-  claims: PurchaseView[];
+  isOwner: boolean;
+  ownerCanClaim: boolean;
+  ownerClaims: PurchaseView[];
+  viewerIsPurchaser?: boolean;
+  circleLabel: string;
+  pickerStatus: PickerStatus;
+  pool: ClaimPicker['pool'];
+  onRetry: () => void;
+  onSelfClaim: () => void;
+  onAttributedClaim: (target: AttributedTarget) => void;
+  onGuestClaim: (name: string) => void;
   onRemoveClaim: (claim: PurchaseView) => void;
 }) {
-  if (claims.length === 0) return null;
   return (
-    <ul className="owner-claims-list">
-      {claims.map((claim) => (
-        <li key={claim.id} className="owner-claim-row">
-          <span>{claimLabel(claim)}</span>
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => onRemoveClaim(claim)}
-            aria-label={
-              claim.by === 'self'
-                ? 'Remove your claim'
-                : `Remove ${claim.firstName}'s claim`
+    <>
+      {isOwner && (
+        <ClaimsList
+          claims={ownerClaims}
+          canRemove={() => true}
+          onRemoveClaim={onRemoveClaim}
+        />
+      )}
+      {(!isOwner || ownerCanClaim) && (
+        <>
+          {(isOwner || !viewerIsPurchaser) && (
+            <Button
+              variant="primary"
+              className="claim-self-cta"
+              onClick={onSelfClaim}
+            >
+              {isOwner ? 'I bought this myself' : 'Claim this gift'}
+            </Button>
+          )}
+          <ClaimDisclosure
+            label={
+              isOwner ? 'Claiming for someone?' : 'Claiming for someone else?'
             }
-          >
-            Remove
-          </Button>
-        </li>
-      ))}
-    </ul>
+            circleLabel={circleLabel}
+            status={pickerStatus}
+            pool={pool}
+            onRetry={onRetry}
+            onAttributedClaim={onAttributedClaim}
+            onGuestClaim={onGuestClaim}
+          />
+        </>
+      )}
+    </>
   );
 }
 
@@ -92,6 +126,7 @@ export default function PurchaseFlowContainer({
   showSpoilers,
   ownerCanClaim,
   ownerClaims,
+  viewerIsPurchaser,
   item,
   onSelfClaim,
   onAttributedClaim,
@@ -103,6 +138,9 @@ export default function PurchaseFlowContainer({
   showSpoilers: boolean;
   ownerCanClaim: boolean;
   ownerClaims: PurchaseView[];
+  /** The viewer is already the recorded purchaser of one of the item's claims; a second self-claim is unsupported, so the self-claim CTA is suppressed. */
+  // TODO(#230): allow a second self-claim.
+  viewerIsPurchaser?: boolean;
   item: ItemDisplay;
   onSelfClaim: () => void;
   onAttributedClaim: (target: AttributedTarget) => void;
@@ -160,38 +198,20 @@ export default function PurchaseFlowContainer({
       ) : !showClaimSection ? (
         <p className="owner-list-label">Your list</p>
       ) : (
-        <>
-          {isOwner && (
-            <OwnerClaimsList
-              claims={ownerClaims}
-              onRemoveClaim={onRemoveClaim}
-            />
-          )}
-          {(!isOwner || ownerCanClaim) && (
-            <>
-              <Button
-                variant="primary"
-                className="claim-self-cta"
-                onClick={onSelfClaim}
-              >
-                {isOwner ? 'I bought this myself' : 'Claim this gift'}
-              </Button>
-              <ClaimDisclosure
-                label={
-                  isOwner
-                    ? 'Claiming for someone?'
-                    : 'Claiming for someone else?'
-                }
-                circleLabel={circleLabel}
-                status={pickerStatus}
-                pool={picker?.pool ?? []}
-                onRetry={retry}
-                onAttributedClaim={onAttributedClaim}
-                onGuestClaim={onGuestClaim}
-              />
-            </>
-          )}
-        </>
+        <AuthedClaimSection
+          isOwner={isOwner}
+          ownerCanClaim={ownerCanClaim}
+          ownerClaims={ownerClaims}
+          viewerIsPurchaser={viewerIsPurchaser}
+          circleLabel={circleLabel}
+          pickerStatus={pickerStatus}
+          pool={picker?.pool ?? []}
+          onRetry={retry}
+          onSelfClaim={onSelfClaim}
+          onAttributedClaim={onAttributedClaim}
+          onGuestClaim={onGuestClaim}
+          onRemoveClaim={onRemoveClaim}
+        />
       )}
     </div>
   );

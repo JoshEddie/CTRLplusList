@@ -1,4 +1,4 @@
-import { ItemDisplay, PurchaseView } from '@/lib/types';
+import { ItemDisplay } from '@/lib/types';
 import ItemActions from './ItemActions';
 import ItemPhoto from './ItemPhoto';
 import PriceLine from './PriceLine';
@@ -10,7 +10,7 @@ export default function ItemCard({
   isOwner,
   showPurchased,
   showSpoilerInfo,
-  removableClaim,
+  viewerClaimed,
   fullyClaimed,
   showCounter,
   counterText,
@@ -19,6 +19,7 @@ export default function ItemCard({
   showBuyClaim,
   viewOnly,
   onPurchaseClick,
+  onAddClaimClick,
   onBuyClaimClick,
 }: {
   item: ItemDisplay;
@@ -26,7 +27,7 @@ export default function ItemCard({
   isOwner: boolean;
   showPurchased: boolean;
   showSpoilerInfo: boolean;
-  removableClaim: PurchaseView | null;
+  viewerClaimed: boolean;
   fullyClaimed: boolean;
   showCounter: boolean;
   counterText: string;
@@ -38,10 +39,9 @@ export default function ItemCard({
   viewOnly?: boolean;
   /** Absent only in view-only mode, which renders no claim control. */
   onPurchaseClick?: () => void;
+  onAddClaimClick?: () => void;
   onBuyClaimClick?: () => void;
 }) {
-  const viewerClaimed = !isOwner && !!removableClaim;
-
   return (
     <div
       className={`item ${className || ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''}`}
@@ -66,6 +66,7 @@ export default function ItemCard({
           store={lowestPricedStore(item.stores)}
           viewOnly={viewOnly}
           onPurchaseClick={onPurchaseClick}
+          onAddClaimClick={onAddClaimClick}
           onBuyClaimClick={onBuyClaimClick}
         />
         {showCounter && !isOwner && !showPurchased && (

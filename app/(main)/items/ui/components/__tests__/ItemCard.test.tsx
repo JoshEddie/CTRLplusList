@@ -5,15 +5,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { PurchaseView } from '@/lib/types';
 import ItemCard from '../ItemCard';
-
-const claim: PurchaseView = {
-  id: 'p1',
-  by: 'self',
-  firstName: 'You',
-  claimedByViewer: true,
-};
 
 const STORES = [
   { name: 'Target', link: 'https://t.example', price: '38.00' },
@@ -36,13 +28,14 @@ function renderCard(
     isOwner: false,
     showPurchased: false,
     showSpoilerInfo: false,
-    removableClaim: null,
+    viewerClaimed: false,
     fullyClaimed: false,
     showCounter: true,
     counterText: '0/3 claimed',
     showOwnerClaimAction: false,
     showOwnerManageAction: false,
     onPurchaseClick: vi.fn(),
+    onAddClaimClick: vi.fn(),
     ...overrides,
   };
   return { props, ...render(<ItemCard {...props} />) };
@@ -66,11 +59,12 @@ describe('ItemCard', () => {
     expect(screen.getByText('0/3 claimed')).toBeInTheDocument();
   });
 
-  it('ClaimClick_FiresCallbackOnce', async () => {
+  it('ClaimClick_FiresAddClaimCallbackOnce', async () => {
     const user = userEvent.setup();
     const { props } = renderCard();
     await user.click(screen.getByRole('button', { name: 'Add Claim' }));
-    expect(props.onPurchaseClick).toHaveBeenCalledTimes(1);
+    expect(props.onAddClaimClick).toHaveBeenCalledTimes(1);
+    expect(props.onPurchaseClick).not.toHaveBeenCalled();
   });
 
   describe('PriceLine', () => {
@@ -88,7 +82,7 @@ describe('ItemCard', () => {
 
     it('PriceLine_RendersUniformlyAcrossClaimStates', () => {
       for (const overrides of [
-        { removableClaim: claim },
+        { viewerClaimed: true },
         { fullyClaimed: true, showPurchased: true },
         { isOwner: true },
       ]) {
@@ -131,7 +125,7 @@ describe('ItemCard', () => {
     it('EveryClaimState_KeepsViewItemTargetingCheapestStore', () => {
       for (const overrides of [
         {},
-        { removableClaim: claim },
+        { viewerClaimed: true },
         { fullyClaimed: true, showPurchased: true },
         { isOwner: true },
       ]) {
@@ -196,7 +190,7 @@ describe('ItemCard', () => {
   describe('ViewerClaimed', () => {
     it('RemovableClaim_RendersManageClaimButton', () => {
       const { container } = renderCard({
-        removableClaim: claim,
+        viewerClaimed: true,
         item: { id: 'i1', name: 'Gift', stores: STORES } as never,
       });
       expect(
@@ -209,7 +203,7 @@ describe('ItemCard', () => {
 
     it('ManageClick_FiresCallback', async () => {
       const user = userEvent.setup();
-      const { props } = renderCard({ removableClaim: claim });
+      const { props } = renderCard({ viewerClaimed: true });
       await user.click(screen.getByRole('button', { name: 'Manage claim' }));
       expect(props.onPurchaseClick).toHaveBeenCalledTimes(1);
     });

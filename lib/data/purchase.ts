@@ -9,7 +9,8 @@ type RawPurchase = {
   user_id: string | null;
   claimed_by: string | null;
   guest_name: string | null;
-  user: { name: string | null } | null;
+  purchased_at: Date;
+  user: { name: string | null; image?: string | null } | null;
   claimer: { name: string | null } | null;
 };
 
@@ -37,6 +38,8 @@ export function sanitizePurchases(
       by: isSelf ? ('self' as const) : ('other' as const),
       firstName: firstNameOf(p.user?.name ?? p.guest_name),
       claimedByViewer: !!viewerId && p.claimed_by === viewerId,
+      purchasedAt: p.purchased_at,
+      image: p.user?.image ?? null,
     };
     if (isOwner && p.claimed_by && p.claimed_by !== p.user_id) {
       view.claimerFirstName = firstNameOf(p.claimer?.name);
@@ -172,6 +175,7 @@ export async function getItemsByPurchased(userId?: string) {
                 user: {
                   columns: {
                     name: true,
+                    image: true,
                   },
                 },
                 claimer: {

@@ -20,6 +20,7 @@ function renderActions(
     showOwnerManageAction: false,
     store: STORE,
     onPurchaseClick: vi.fn(),
+    onAddClaimClick: vi.fn(),
     ...overrides,
   };
   return { props, ...render(<ItemActions {...props} />) };
@@ -248,10 +249,19 @@ describe('ItemActions', () => {
     });
   });
 
-  it('AddClaimClick_FiresOnPurchaseClickOnce', async () => {
+  it('AddClaimClick_FiresOnAddClaimClickOnce-NotOnPurchaseClick', async () => {
     const user = userEvent.setup();
     const { props } = renderActions();
     await user.click(screen.getByRole('button', { name: 'Add Claim' }));
+    expect(props.onAddClaimClick).toHaveBeenCalledTimes(1);
+    expect(props.onPurchaseClick).not.toHaveBeenCalled();
+  });
+
+  it('ManageClaimClick_FiresOnPurchaseClickOnce-NotOnAddClaimClick', async () => {
+    const user = userEvent.setup();
+    const { props } = renderActions({ viewerClaimed: true });
+    await user.click(screen.getByRole('button', { name: 'Manage claim' }));
     expect(props.onPurchaseClick).toHaveBeenCalledTimes(1);
+    expect(props.onAddClaimClick).not.toHaveBeenCalled();
   });
 });

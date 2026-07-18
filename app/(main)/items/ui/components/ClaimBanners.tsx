@@ -18,9 +18,21 @@ function BannerCheck() {
   );
 }
 
+function myClaimsLabel(myClaims: PurchaseView[]): string {
+  const attributed = myClaims
+    .filter((claim) => claim.by !== 'self')
+    .map((claim) => claim.firstName);
+  const hasSelf = myClaims.some((claim) => claim.by === 'self');
+  if (attributed.length === 0) return 'You claimed this';
+  const names = attributed.join(', ');
+  return hasSelf
+    ? `You claimed this, and for ${names}`
+    : `You claimed this for ${names}`;
+}
+
 export default function ClaimBanners({
   showPurchased,
-  myClaim,
+  myClaims,
   isOwner,
   showSpoilerInfo,
   claims,
@@ -28,7 +40,7 @@ export default function ClaimBanners({
   counterText,
 }: {
   showPurchased: boolean;
-  myClaim: PurchaseView | null;
+  myClaims: PurchaseView[];
   isOwner: boolean;
   showSpoilerInfo: boolean;
   claims: PurchaseView[];
@@ -37,18 +49,16 @@ export default function ClaimBanners({
 }) {
   return (
     <>
-      {showPurchased && !myClaim && (
+      {showPurchased && myClaims.length === 0 && (
         <div className="purchased-banner" role="status">
           <BannerCheck />
           Claimed by {claimSummary}
         </div>
       )}
-      {!isOwner && myClaim && (
+      {!isOwner && myClaims.length > 0 && (
         <div className="purchased-banner purchased-banner--mine" role="status">
           <BannerCheck />
-          {myClaim.by === 'self'
-            ? 'You claimed this'
-            : `You claimed this for ${myClaim.firstName}`}
+          {myClaimsLabel(myClaims)}
         </div>
       )}
       {showSpoilerInfo && (

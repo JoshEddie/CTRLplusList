@@ -21,6 +21,8 @@ type ItemActionsProps = {
   /** Non-interactive preview surfaces: only the live View item link renders. */
   viewOnly?: boolean;
   onPurchaseClick?: () => void;
+  /** Add Claim's own opener — routes the modal to the claim flow even when the viewer already holds a claim (claim-attribution's affordance-routed opening state). */
+  onAddClaimClick?: () => void;
   onBuyClaimClick?: () => void;
 };
 
@@ -38,6 +40,7 @@ export default function ItemActions({
   store,
   viewOnly,
   onPurchaseClick,
+  onAddClaimClick,
   onBuyClaimClick,
 }: ItemActionsProps) {
   const showManage =
@@ -99,7 +102,7 @@ export default function ItemActions({
         <Button
           variant="primary"
           className="item-actions-add"
-          onClick={onPurchaseClick}
+          onClick={onAddClaimClick}
         >
           Add Claim
         </Button>

@@ -137,7 +137,14 @@ describe('getItemsByUser', () => {
 
       const rows = await dal.getItemsByUser('owner', { showSpoilers: true });
       expect(rows[0].purchases).toEqual([
-        { id: 'p1', by: 'other', firstName: 'Cara', claimedByViewer: false },
+        {
+          id: 'p1',
+          by: 'other',
+          firstName: 'Cara',
+          claimedByViewer: false,
+          purchasedAt: expect.any(Date),
+          image: null,
+        },
       ]);
       expect(rows[0].hasPurchases).toBe(true);
     });
@@ -274,12 +281,16 @@ describe('getItemsByListId', () => {
         by: 'self',
         firstName: 'Vic',
         claimedByViewer: false,
+        purchasedAt: expect.any(Date),
+        image: null,
       });
       expect(byId.po).toEqual({
         id: 'po',
         by: 'other',
         firstName: 'Otto',
         claimedByViewer: false,
+        purchasedAt: expect.any(Date),
+        image: null,
       });
     });
 
@@ -304,7 +315,14 @@ describe('getItemsByListId', () => {
 
       const rows = await dal.getItemsByListId('l1', { viewerId: 'viewer' });
       expect(rows[0].purchases).toEqual([
-        { id: 'pg', by: 'other', firstName: 'Gabby', claimedByViewer: false },
+        {
+          id: 'pg',
+          by: 'other',
+          firstName: 'Gabby',
+          claimedByViewer: false,
+          purchasedAt: expect.any(Date),
+          image: null,
+        },
       ]);
     });
   });

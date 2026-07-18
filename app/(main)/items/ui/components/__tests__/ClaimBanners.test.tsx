@@ -33,7 +33,7 @@ function renderBanners(
 ) {
   const props: React.ComponentProps<typeof ClaimBanners> = {
     showPurchased: false,
-    myClaim: null,
+    myClaims: [],
     isOwner: false,
     showSpoilerInfo: false,
     claims: [],
@@ -57,7 +57,7 @@ describe('ClaimBanners', () => {
   it('PurchasedButMine_SuppressesOthersBanner', () => {
     renderBanners({
       showPurchased: true,
-      myClaim: selfClaim,
+      myClaims: [selfClaim],
       claims: [selfClaim],
     });
     expect(screen.queryByText(/Claimed by/)).not.toBeInTheDocument();
@@ -65,20 +65,36 @@ describe('ClaimBanners', () => {
   });
 
   it('SelfClaim_ShowsYouClaimedThis-WithoutUndoAffordance', () => {
-    renderBanners({ myClaim: selfClaim });
+    renderBanners({ myClaims: [selfClaim] });
     expect(screen.getByText('You claimed this')).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('ClaimedByViewerForOther_ShowsYouClaimedThisForFirstName', () => {
-    renderBanners({ myClaim: grandmaClaim });
+    renderBanners({ myClaims: [grandmaClaim] });
     expect(
       screen.getByText('You claimed this for Grandma')
     ).toBeInTheDocument();
   });
 
+  it('TwoAttributedClaims_EnumeratesBothNames', () => {
+    renderBanners({
+      myClaims: [grandmaClaim, { ...joClaim, claimedByViewer: true }],
+    });
+    expect(
+      screen.getByText('You claimed this for Grandma, Jo')
+    ).toBeInTheDocument();
+  });
+
+  it('SelfPlusAttributedClaims_EnumeratesSelfAndNames', () => {
+    renderBanners({ myClaims: [selfClaim, grandmaClaim] });
+    expect(
+      screen.getByText('You claimed this, and for Grandma')
+    ).toBeInTheDocument();
+  });
+
   it('OwnerWithMyClaim_OmitsMineBanner', () => {
-    renderBanners({ myClaim: selfClaim, isOwner: true });
+    renderBanners({ myClaims: [selfClaim], isOwner: true });
     expect(screen.queryByText('You claimed this')).not.toBeInTheDocument();
   });
 

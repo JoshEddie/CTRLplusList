@@ -16,7 +16,7 @@ export function PreviewCard({ item }: { item: ItemViewModel }) {
         isOwner
         showPurchased={false}
         showSpoilerInfo={false}
-        removableClaim={null}
+        viewerClaimed={false}
         fullyClaimed={false}
         showCounter={false}
         counterText=""

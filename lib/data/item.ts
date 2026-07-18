@@ -33,6 +33,7 @@ export async function getItemsByUser(
             user: {
               columns: {
                 name: true,
+                image: true,
               },
             },
             claimer: {
@@ -141,6 +142,7 @@ export async function getItemsByListId(
                 user: {
                   columns: {
                     name: true,
+                    image: true,
                   },
                 },
                 claimer: {

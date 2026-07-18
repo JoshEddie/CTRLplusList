@@ -46,6 +46,10 @@ export type PurchaseView = {
   claimedByViewer: boolean;
   /** Owner spoiler view only: the claimer's first name when the claimer differs from the purchaser. */
   claimerFirstName?: string;
+  /** Absent only on legacy fixtures — every persisted row carries it; optimistic rows stamp client time. */
+  purchasedAt?: Date;
+  /** Purchaser's avatar URL when the purchaser is a linked account; null for guest-name claims. Optimistic rows omit it (initials render until the next server render). */
+  image?: string | null;
 };
 
 export type ItemDisplay = ItemTable & {

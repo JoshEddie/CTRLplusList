@@ -12,7 +12,12 @@ import ItemCard from './ItemCard';
 import OwnerActions from './OwnerActions';
 import PurchaseModalSlot from './PurchaseModalSlot';
 import { AttributedTarget } from './purchasemodal/PurchaseFlowContainer';
-import { containerClasses, firstToken, lowestPricedStore } from './utils';
+import {
+  containerClasses,
+  firstToken,
+  lowestPricedStore,
+  resolveModalView,
+} from './utils';
 
 export default function Item({
   item,
@@ -48,8 +53,9 @@ export default function Item({
   );
 
   // Ephemeral by design (claim-attribution spec): a reload lands on the
-  // persistent Manage claim affordance, never re-pops the undo nudge.
-  const [showUndoPopup, setShowUndoPopup] = useState(false);
+  // persistent Manage claim affordance, never re-pops the undo nudge. Holds
+  // the just-recorded claim so undo can never retarget an older claim.
+  const [undoClaim, setUndoClaim] = useState<PurchaseView | null>(null);
 
   const propPurchases = item.purchases ?? [];
   const propPurchasesKey = propPurchases
@@ -71,13 +77,14 @@ export default function Item({
     quantityLimit !== undefined &&
     claimCount >= quantityLimit;
 
-  // A claim this viewer can remove: their own (purchaser) or one they
+  // Claims this viewer can remove: their own (purchaser) or ones they
   // asserted for someone else (claimed_by).
-  const removableClaim = useMemo(
-    () =>
-      localPurchases.find((p) => p.by === 'self' || p.claimedByViewer) ?? null,
+  const viewerClaims = useMemo(
+    () => localPurchases.filter((p) => p.by === 'self' || p.claimedByViewer),
     [localPurchases]
   );
+  const hasViewerClaim = viewerClaims.length > 0;
+  const viewerIsPurchaser = viewerClaims.some((p) => p.by === 'self');
   const hasAnyClaim = claimCount > 0;
   // "Sold out" treatment (strikethrough price, faded stores, hidden claim
   // button) only fires when the item is fully claimed. Partial multi-claim
@@ -94,8 +101,14 @@ export default function Item({
     !!user_id &&
     !isOwner &&
     !isFullyClaimed &&
-    !removableClaim &&
+    !hasViewerClaim &&
     !!lowestPricedStore(item.stores)?.link;
+
+  const modalView = resolveModalView({
+    isOwner,
+    purchaseView: searchParams?.get('purchaseView'),
+    hasViewerClaim,
+  });
 
   const claimSummary = useMemo(() => {
     if (!hasAnyClaim) return '';
@@ -104,15 +117,17 @@ export default function Item({
       .join(', ');
   }, [localPurchases, hasAnyClaim]);
 
-  const handleModalOpen = () => {
+  const handleModalOpen = (view?: 'claim') => {
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.set('purchaseItem', item.id || '');
+    if (view === 'claim') params.set('purchaseView', 'claim');
     router.push(`${pathname}?${params.toString()}`);
   };
 
   const handleModalClose = async () => {
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.delete('purchaseItem');
+    params.delete('purchaseView');
     router.replace(`${pathname}?${params.toString()}`);
   };
 
@@ -120,8 +135,14 @@ export default function Item({
     /* v8 ignore next -- defensive: item.id is always present for a persisted item. */
     if (!item.id) return;
     /* v8 ignore next -- defensive: the claim affordance is disabled when fully claimed without a personal claim, so this early-return is unreachable from the UI. */
-    if (!isOwner && isFullyClaimed && !removableClaim) return;
+    if (!isOwner && isFullyClaimed && !hasViewerClaim) return;
     handleModalOpen();
+  };
+
+  const handleAddClaimClick = () => {
+    /* v8 ignore next -- defensive: item.id is always present for a persisted item. */
+    if (!item.id) return;
+    handleModalOpen('claim');
   };
 
   // One home for claim removal: dispatch, toast copy, and local-state filter.
@@ -137,17 +158,19 @@ export default function Item({
       );
       if (result?.success) {
         setLocalPurchases((prev) => prev.filter((p) => p.id !== claim.id));
+        return true;
       }
+      return false;
     } catch (error) {
       console.error('Failed to remove purchase:', error);
+      return false;
     }
   };
 
-  const handleUndoConfirm = async () => {
-    /* v8 ignore next -- defensive: the modal only renders the undo flow when a removable claim exists. */
-    if (!removableClaim) return;
-    await removeClaim(removableClaim);
-    handleModalClose();
+  const handleManageRemove = async (claim: PurchaseView) => {
+    const wasLast = viewerClaims.length <= 1;
+    const removed = await removeClaim(claim);
+    if (removed && wasLast) handleModalClose();
   };
 
   const recordClaim = async (
@@ -157,7 +180,7 @@ export default function Item({
       purchased_by?: string;
     },
     optimistic: Omit<PurchaseView, 'id'>,
-    onSettled: (succeeded: boolean) => void = handleModalClose
+    onSettled: (succeeded: boolean, claim?: PurchaseView) => void = handleModalClose
   ) => {
     try {
       const result = await toast.promise(createPurchase(payload), {
@@ -173,19 +196,22 @@ export default function Item({
       } else if (!result?.success && result?.message) {
         toast.error(result.message);
       }
-      onSettled(!!id);
+      onSettled(!!id, id ? { ...optimistic, id } : undefined);
     } catch (error) {
       console.error('Failed to create purchase:', error);
     }
   };
 
-  const recordSelfClaim = (onSettled?: (succeeded: boolean) => void) =>
+  const recordSelfClaim = (
+    onSettled?: (succeeded: boolean, claim?: PurchaseView) => void
+  ) =>
     recordClaim(
       { item_id: item.id || '', guest_name: null },
       {
         by: 'self',
         firstName: firstToken(user_name || 'You'),
         claimedByViewer: true,
+        purchasedAt: new Date(),
       },
       onSettled
     );
@@ -193,8 +219,8 @@ export default function Item({
   const handleSelfClaim = () => recordSelfClaim();
 
   const handleBuyClaim = () =>
-    recordSelfClaim((succeeded) => {
-      if (succeeded) setShowUndoPopup(true);
+    recordSelfClaim((succeeded, claim) => {
+      if (succeeded && claim) setUndoClaim(claim);
     });
 
   const handleAttributedClaim = (target: AttributedTarget) =>
@@ -204,6 +230,7 @@ export default function Item({
         by: target.id === user_id ? 'self' : 'other',
         firstName: firstToken(target.name || 'Someone'),
         claimedByViewer: true,
+        purchasedAt: new Date(),
       }
     );
 
@@ -214,6 +241,7 @@ export default function Item({
         by: 'other',
         firstName: firstToken(name),
         claimedByViewer: !!user_id,
+        purchasedAt: new Date(),
       }
     );
 
@@ -230,7 +258,7 @@ export default function Item({
           className,
           isOwner,
           purchased: showPurchased || showSpoilerInfo,
-          hasMyClaim: !!removableClaim,
+          hasMyClaim: hasViewerClaim,
           preview,
         })}
       >
@@ -240,7 +268,7 @@ export default function Item({
           isOwner={isOwner}
           showPurchased={showPurchased}
           showSpoilerInfo={showSpoilerInfo}
-          removableClaim={removableClaim}
+          viewerClaimed={!isOwner && hasViewerClaim}
           fullyClaimed={isFullyClaimed}
           showCounter={showCounter}
           counterText={counterText}
@@ -249,12 +277,13 @@ export default function Item({
           showBuyClaim={showBuyClaim}
           viewOnly={preview}
           onPurchaseClick={preview ? undefined : handlePurchaseClick}
+          onAddClaimClick={preview ? undefined : handleAddClaimClick}
           onBuyClaimClick={preview ? undefined : handleBuyClaim}
         />
 
         <ClaimBanners
           showPurchased={showPurchased}
-          myClaim={removableClaim}
+          myClaims={viewerClaims}
           isOwner={isOwner}
           showSpoilerInfo={showSpoilerInfo}
           claims={localPurchases}
@@ -277,9 +306,9 @@ export default function Item({
 
       {!preview && showModal && (
         <PurchaseModalSlot
-          // Owner master unclaim lives in the modal's claims list, not a card
-          // affordance, so the owner's modal always opens on the claim flow.
-          removableClaim={isOwner ? null : removableClaim}
+          view={modalView}
+          claims={localPurchases}
+          viewerIsPurchaser={viewerIsPurchaser}
           user_id={user_id}
           isOwner={isOwner}
           showSpoilers={!!showSpoilers}
@@ -290,16 +319,15 @@ export default function Item({
           onSelfClaim={handleSelfClaim}
           onAttributedClaim={handleAttributedClaim}
           onGuestClaim={handleGuestClaim}
-          onRemoveClaim={removeClaim}
-          onUndoConfirm={handleUndoConfirm}
+          onRemoveClaim={isOwner ? removeClaim : handleManageRemove}
         />
       )}
 
-      {!preview && removableClaim && (
+      {!preview && undoClaim && (
         <ClaimUndoPopup
-          isOpen={showUndoPopup}
-          onClose={() => setShowUndoPopup(false)}
-          onUndo={() => removeClaim(removableClaim)}
+          isOpen
+          onClose={() => setUndoClaim(null)}
+          onUndo={() => removeClaim(undoClaim)}
         />
       )}
     </>
