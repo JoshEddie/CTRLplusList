@@ -103,7 +103,7 @@ The post-create redirect after creating a new list and the empty-state CTA shown
 
 ### Requirement: The choose-items page SHALL render a filter/sort toolbar driven by URL params
 
-The choose-items page SHALL render a toolbar containing: a search input, a sort dropdown, a "Show" dropdown for list-status filtering, a store filter popover, and a price filter popover. All toolbar state SHALL be reflected in URL query parameters (`q`, `sort`, `show`, `store` (repeatable), `price_min`, `price_max`) so that back/forward navigation and direct links preserve the user's view. When no toolbar URL params are present, the page SHALL render with default state (no search text, sort by newest, show all items, no store filter, no price filter), matching the page's pre-toolbar behavior.
+The choose-items page SHALL render a toolbar containing: a search input, a sort dropdown, a "Show" dropdown for list-status filtering, a store filter popover, and a price filter popover. All toolbar state SHALL be reflected in URL query parameters (`q`, `sort`, `show`, `store` (repeatable), `price_min`, `price_max`) so that back/forward navigation and direct links preserve the user's view. Store filtering and store-option collection SHALL read each item's single DAL-provided `store` (per `item-store-links`) — dormant legacy rows are absent from the fetched shape and SHALL NOT contribute options or matches. When no toolbar URL params are present, the page SHALL render with default state (no search text, sort by newest, show all items, no store filter, no price filter), matching the page's pre-toolbar behavior.
 
 #### Scenario: Toolbar renders on the choose-items page
 
@@ -143,7 +143,7 @@ The choose-items page SHALL render a toolbar containing: a search input, a sort 
 #### Scenario: Store filter narrows the rendered list
 
 - **WHEN** the owner opens the stores popover and selects one or more stores
-- **THEN** the URL is updated with one repeated `store=<name>` param per selection and the rendered list shows only items whose stores include at least one of the selected names
+- **THEN** the URL is updated with one repeated `store=<name>` param per selection and the rendered list shows only items whose store's name is in the selected set
 
 #### Scenario: Price filter narrows the rendered list
 
