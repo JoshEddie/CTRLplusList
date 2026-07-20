@@ -38,7 +38,7 @@ This is the review family's **full** review: it opens round 1 of a change's revi
 - **Check CI status** — read CI after the agents return (PR invocations).
 - **Consolidated report** — the fixed output contract and verdict logic.
 - **Persist the report** — write/append `openspec/changes/<name>/review.md`.
-- **Post-review explore handoff** — the closing opt-in prompt.
+- **Adjudication handoff** — the closing pointer to `/adjudicate-review`.
 - Reference leaves under `.claude/skills/spec-review/reference/`: `archive-state.md` (states + reconciliation latitude), `finding-format.md` (finding shape, table style, dispositions, diagrams).
 
 Each review phase runs as its own **agent** against a bundled brief file; the skill takes no runtime dependency on any external skill:
@@ -164,7 +164,7 @@ A non-PR invocation has no CI to read — state CI as unverified rather than ass
 
 ## Consolidated report — fixed output contract
 
-Emit a single report in **exactly this order** — do not reorder, omit, or add sections. The finding-table columns, severity labels (text, no emoji), dispositions, and diagram rules are defined in `.claude/skills/spec-review/reference/finding-format.md`. Fill in this skeleton:
+Emit a single report in **exactly this order** — do not reorder, omit, or add sections. The finding-table columns, severity labels (text, no emoji), dispositions, and diagram rules are defined in `.claude/skills/spec-review/reference/finding-format.md`. Column 1 of every findings table is the finding's **durable ID** per that reference's finding-ID scheme — an arena letter (`s` standard, `c` convention, `k` contract) plus an integer that increments globally across the arena tables within the round (`s1`, `s2`, `c3`, `k4`), so every finding is referable by an ID unique within its round. Fill in this skeleton:
 
 ```markdown
 # /spec-review — <change-name | "no related change">
@@ -194,7 +194,7 @@ Emit a single report in **exactly this order** — do not reorder, omit, or add 
 <Approve | Request changes> — <clear to archive | not yet clear to archive (blockers: …) | not yet clear — needs a fresh propose→archive cycle | already archived | blocked — violates merged spec <name>; needs implementation conformance or a fresh proposal | no archive gate (contract audit skipped)>
 
 ---
-Would you like me to enter OpenSpec explore mode to investigate these findings — verify every disposition (Drops included), recommend which to fix, and weigh how each fix would land (pros/cons)?
+To adjudicate these findings, run `/adjudicate-review <change>` (a fresh session is recommended) — it re-grounds every disposition in the cited code, interviews you one finding at a time, and records any changes back into `review.md`.
 ```
 
 A findings group with no findings shows `_none_`; the **Contract** group is omitted when the contract audit was skipped.
@@ -233,22 +233,20 @@ No change to gate; state `no archive gate (contract audit skipped)`. The verdict
 
 ## Persist the report
 
-After emitting the consolidated report, write it to `openspec/changes/<name>/review.md`:
+After emitting the consolidated report, write it to `openspec/changes/<name>/review.md`. The persisted form is a **round**, not the session report verbatim — apply the round structure in `reference/finding-format.md`:
 
 - The file opens with the shared machine-readable header defined in `reference/finding-format.md` (`review: spec-review`, `target:` the change, `anchor:` the sha the diff was computed against, `diff-source:` the diff command or PR reference, `round:` the highest round in the file).
-- The report body is round 1 (`## Round 1 — spec-review (<date>)`) per the round structure in `reference/finding-format.md`. A repeat full review (after an `outgrew recheck` escalation) **appends** the next round and bumps the header's `round:` — prior rounds are never rewritten.
+- The report body is round 1 (`## Round 1 — spec-review (<date>)`). The session report's `# /spec-review` title becomes the `## Round 1` heading; its `### Standard`/`### Convention`/`### Contract` finding tables sit directly under the round (drop the `## Findings` wrapper), and `## What looks good` nests as `### What looks good` — so every part of the round lives at `###` and the round is self-contained (nothing at `##` belongs to it; the next `##` starts the next round). A repeat full review (after an `outgrew recheck` escalation) **appends** the next round and bumps the header's `round:` — prior rounds are never rewritten.
+- **The round ends with a round-vocab `**Verdict:**` line**, not the session `## Verdict` wording: map `Approve → **Verdict:** clear to land` and `Request changes → **Verdict:** findings remain` (list the blockers after `findings remain`). This is the line `/landfall` and `/recheck-review` read, and the line an `### Adjudications` subsection overrides.
 - The persisted report is consumed by `/recheck-review` (round appending, delta computation from the header) and `/landfall` (latest-round-verdict gate), and travels with the change directory at archive time.
 - **When the contract audit was skipped** (no related change resolved), there is no change directory to write into: write no file and say so in the report.
 
 ---
 
-## Post-review explore handoff
+## Adjudication handoff
 
-The **final line** of output is exactly one opt-in prompt. Suggested wording (rewordable):
+The **final line** of output is a pointer to the adjudication step — not an action this skill takes. Suggested wording (rewordable):
 
-> Would you like me to enter OpenSpec explore mode to investigate these findings — verify every disposition (Drops included), recommend which to fix, and weigh how each fix would land (pros/cons)?
+> To adjudicate these findings, run `/adjudicate-review <change>` (a fresh session is recommended) — it re-grounds every disposition in the cited code, interviews you one finding at a time, and records any changes back into `review.md`.
 
-**Never auto-run.** After emitting the prompt, take no further action until the user responds.
-
-- **Explicit yes** → enter OpenSpec explore mode, carrying the **full findings table — every disposition, Drops and File-issues included**, not just the open `Fix now` items. Dispositions are proposals: explore grounds them in the actual code and confirms or reopens them, rather than treating them as settled.
-- **Decline or no response** → the review ends.
+`/spec-review` **invokes nothing** at handoff: it emits the pointer and stops. Adjudication is a separate, file-driven skill (`/adjudicate-review`) whose only input is the persisted `review.md`, so this skill's no-external-dependency invariant stays intact — it enters no explore mode and calls no other skill.

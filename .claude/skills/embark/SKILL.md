@@ -55,6 +55,8 @@ Run the OpenSpec propose flow (`/opsx:propose`) seeded from the issue body. The 
 
 **Inherited map context:** when the issue's body links a `MAP`-labeled index, read that map's Decisions so far first. Settled owner decisions are cited, not re-asked; the grilling covers only what the map left open. Any gist carrying an ***unreviewed*** marker (auto-closed scouting) is suspect — re-validate it with the owner instead of citing it.
 
+**Map tracking is a sailing duty, not `/anchor`.** Keeping a `MAP` body in sync with what a voyage actually built — recording that a chunk shipped a refined-but-in-promise shape — is ordinary set-sail / embark bookkeeping, done by the skill that boarded the work. Only a **bearing change** (a settled map decision now contradicted, a discovery that re-charters the map) routes to [/anchor](../anchor/SKILL.md). A within-promise refinement is tracked, not anchored.
+
 No artifact commit is made — the change lives in the working tree until `/landfall`. Embark flips no label: proposal artifacts are tree state, authoritatively recorded by the change directory; `/set-sail` stamps `UNDER SAIL` when apply begins.
 
 ## Epic route-out

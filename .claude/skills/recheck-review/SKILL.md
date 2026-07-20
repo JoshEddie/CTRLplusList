@@ -37,7 +37,9 @@ One flow after the lookup; nothing else branches on report type.
 
 Run **inline in this session** — no sub-agents, no Workflow fan-out, no briefs. That is the point of a recheck: the full review already ran; this pass only confirms fixes.
 
-For each **open `Fix now` finding in the latest round** (findings dispositioned `File issue` or `Drop` are not re-litigated):
+Read the latest round **as amended** by its `### Adjudications` subsection (the reader rule in `.claude/skills/spec-review/reference/finding-format.md`): a finding's **effective disposition** is the one set by the latest `### Adjudications` entry for its durable ID, and a re-dispositioned finding is **never re-litigated**.
+
+For each finding in the latest round whose **effective disposition** is an open `Fix now` (findings whose effective disposition is `File issue` or `Drop` are not re-litigated):
 
 - **resolved** — the delta addresses it (verify in the actual code, not by diff eyeballing alone).
 - **still open** — the delta doesn't (fully) address it.
@@ -54,7 +56,7 @@ When escalating, still append the round (with the tell that triggered it); do th
 
 ## Append the round
 
-Append a new numbered round section to the report — **never rewrite or delete prior rounds** — per the round structure in the shared reference, and bump the header's `round:`:
+Append a new numbered round section to the report — **never rewrite or delete prior rounds** — per the round structure in the shared reference, and bump the header's `round:`. Reference each prior finding by its **durable ID** (column 1):
 
 ```markdown
 ## Round <n> — recheck (<date>)

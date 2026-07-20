@@ -28,19 +28,40 @@ round: <highest round number in the file>
 ### Round structure
 
 The body is a sequence of numbered round sections, **append-only** — a new round
-never rewrites or deletes a prior one:
+never rewrites or deletes a prior one. A round is **self-contained**: every part
+of it — findings, "what looks good", the verdict, and any later Adjudications —
+nests at `###` (or deeper) **inside** its `## Round <n>` heading. Nothing at `##`
+level ever belongs to a round; the next `##` starts the next round.
 
 ```markdown
 ## Round <n> — <spec-review | recheck | release-review> (<date>)
 
+<one- to two-sentence summary>
+
+**Scope:** <diff source> · <resolved change>
+
+### Standard / ### Convention / ### Contract
 <findings table(s), per the finding-table style below>
+
+### What looks good
+- <short bullets>
 
 **Verdict:** <round verdict>
 ```
 
-Round 1 is the full review's consolidated report. Recheck rounds list each prior
-open `Fix now` finding with its resolution status (resolved / still open /
-superseded by a new finding) plus any new findings the fix introduced.
+The round's **`**Verdict:**` line is the round-verdict vocabulary** (`clear to
+land` / `findings remain` / …), not the session report's `Approve` / `Request
+changes` wording — a persisted spec-review round maps `Approve → clear to land`
+and `Request changes → findings remain` (blockers listed after). It is the last
+line of a round that has no `### Adjudications` subsection; when an Adjudications
+subsection is added it nests below this line and carries the round's new last
+verdict-bearing line (see **Adjudications subsection**).
+
+Round 1 is the full review's consolidated report rendered as a round: its
+sections demoted to `###` under the round heading, its verdict mapped to the
+round vocabulary. Recheck rounds list each prior open `Fix now` finding with its
+resolution status (resolved / still open / superseded by a new finding) plus any
+new findings the fix introduced.
 
 ### Round-verdict vocabulary
 
@@ -53,6 +74,49 @@ Exactly one per round:
 
 Only open `Fix now` findings block a clear/ready verdict; `File issue` and
 `Drop` dispositions never do.
+
+### Adjudications subsection
+
+When the owner's post-review adjudication (`/adjudicate-review`) changes at least
+one finding's disposition — or merges findings — it records those deltas as an
+`### Adjudications (<date>)` subsection **nested inside** the latest `## Round N`
+block, beneath that round's `**Verdict:**` line:
+
+```markdown
+### Adjudications (<date>)
+
+| # | Old → New | Rationale |
+| s1 | Fix now → File issue | out of scope; filed #280 |
+
+**Verdict:** clear to land
+```
+
+Rules:
+
+- **Only on change.** The subsection is written **only when ≥1 disposition
+  changes or findings merge**. When adjudication confirms every disposition as-is,
+  nothing is written — the round's original table and verdict stand.
+- **Delta-only, never a rewrite.** It lists just the changed findings (by durable
+  ID) and never rewrites the round's findings table or any prior round.
+- **Never a new round.** An Adjudications subsection is an addition *within* the
+  latest round block; it does **not** create a new round and does **not** bump the
+  header's `round:`. A subsection may follow the last round with no round after it
+  (e.g. adjudicating round 1 straight to `clear to land` with no recheck).
+
+### Reading a round as amended
+
+Every reader (`/recheck-review`, `/landfall`) reads the latest round **as amended**
+by its `### Adjudications` subsection:
+
+- **Effective findings** = the round's findings table with each finding's
+  disposition overridden by the latest `### Adjudications` entry for that finding ID.
+- **Effective verdict** = the **last verdict-bearing line in the round** — an
+  `### Adjudications` `**Verdict:**` line overrides the round's own `**Verdict:**`.
+  Because the verdict keys off dispositions, not counts, an Adjudications subsection
+  alone can make a round's effective verdict `clear to land`.
+
+A round with no `### Adjudications` subsection reads exactly as written — the
+effective findings and verdict are the round's own.
 
 ## Finding shape
 
@@ -69,6 +133,15 @@ objects, not parsed prose:
 - disposition: Fix now | File issue | Drop
 ```
 
+## Finding IDs
+
+Every finding carries a **durable ID** of the form `<arena-letter><global-round-integer>`:
+
+- **arena letter** — `s` standard · `c` convention · `k` contract. Marks the arena for at-a-glance readability.
+- **global-round integer** — increments **globally across all arena tables within a round**, so every finding in a round has a unique integer on its own (`s1`, `s2`, `c3`, `k4` — note the integer, not the letter, carries uniqueness, dodging the `c`-Convention vs `c`-Contract collision).
+
+The ID is stable: it is how `/adjudicate-review` grills a finding and how `/recheck-review` cites a prior finding. Merges join the IDs with `+` (`s1+c3` = the two are the same defect). The scheme is rename-stable — if the arenas are relettered, the mechanism is unchanged and only the letters swap.
+
 ## Finding-table style
 
 Columns, in order:
@@ -77,6 +150,7 @@ Columns, in order:
 # | Severity | Location | Finding | Disposition | Citation
 ```
 
+- **#** — the finding's durable ID (see **Finding IDs** above): arena letter + global-round integer (`s1`, `c3`, `k4`), merges joined with `+`.
 - **Severity** — text labels `Critical` / `Major` / `Minor`. **No emojis** (repo convention).
 - **Location** — `path:line`.
 - **Finding** — terse, factual. Cite, don't editorialize. No preamble, no restating the diff.
