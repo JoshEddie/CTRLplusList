@@ -34,7 +34,7 @@ This is the review family's **full** review: it opens round 1 of a change's revi
 
 - **Usage** — invocation forms.
 - **Phase 0** — scope and change resolution (you do this; it produces the agents' inputs).
-- **Phase orchestration** — fan out the three review agents via the bundled workflow.
+- **Phase orchestration** — fan out the three review agents as parallel Agent-tool sub-agents; parse and validate their JSON replies.
 - **Check CI status** — read CI after the agents return (PR invocations).
 - **Consolidated report** — the fixed output contract and verdict logic.
 - **Persist the report** — write/append `openspec/changes/<name>/review.md`.
@@ -125,21 +125,36 @@ When a change resolved (0c (b) or auto-detect), classify it per `.claude/skills/
 
 ## Phase orchestration
 
-The three review phases run as a **bundled workflow**, not direct Agent-tool calls. Invoke it with the **Workflow** tool, pointing `scriptPath` at the bundled script and passing the Phase-0-resolved inputs as `args`:
+The review phases run as **direct Agent-tool sub-agents** — issue all phase agents as Agent-tool calls **in a single message** so they run concurrently. The fan-out is bounded: 3 audit agents (standard / convention / contract), or 2 when Phase 0c resolved no change (contract phase skipped).
 
-- **scriptPath**: `.claude/skills/spec-review/fanout.workflow.js`
-- **args**:
-  - `diffCmd` — the diff command resolved in 0a. The workflow's agents each run it; the raw diff is never passed as a giant string.
-  - `changeName` — the resolved change (0c), or `null` when 0c resolved to no change. `null` makes the workflow skip the contract phase.
-  - `archiveState` — `active` / `Type 1 premature` / `Type 2 merged` (from 0d), or `null` when no change.
-  - `briefs` — the three bundled brief paths:
-    - `standard`: `.claude/skills/spec-review/standard-review-brief.md`
-    - `convention`: `.claude/skills/spec-review/convention-audit-brief.md`
-    - `contract`: `.claude/skills/spec-review/contract-audit-brief.md`
+### Per-agent prompt
 
-The skill instructing this call is itself the Workflow opt-in. The fan-out is bounded: 3 audit agents (2 if the contract phase is skipped). It returns `{ findings, deferredToCI }`; the fan-out mechanics live in `fanout.workflow.js`.
+Build each agent's prompt from the Phase-0-resolved inputs:
 
-After the workflow returns, **consolidate** its `findings` into the report below — each is a validated object in the shape defined in `.claude/skills/spec-review/reference/finding-format.md`.
+- **Identity line** — `You are the <phase>-review agent for /spec-review.`
+- **Brief pointer** — `First Read your brief at <brief path> and follow it exactly.` The bundled brief paths:
+  - `standard`: `.claude/skills/spec-review/standard-review-brief.md`
+  - `convention`: `.claude/skills/spec-review/convention-audit-brief.md`
+  - `contract`: `.claude/skills/spec-review/contract-audit-brief.md`
+- **Diff command** — `Produce the diff under review with: <diffCmd>, then review it.` Each agent runs the 0a-resolved command itself; the raw diff is never passed as a giant string.
+- **Phase key** — the agent's own key (`standard` / `convention` / `contract`), which it sets as `phase` on every finding.
+- **Contract agent only** — additionally: the resolved change name (0c), the archive state (0d), `Apply the framing and reconciliation latitude for that state exactly as the brief describes.`, and `Surface any task explicitly deferred to CI as a deferredToCI entry rather than a missing-work finding.`
+
+### Reply convention
+
+Each prompt ends with the reply instruction: reply with **only** a JSON object
+
+```json
+{"findings": [...], "deferredToCI": [...]}
+```
+
+— no prose. Each finding carries exactly the six fields of `reference/finding-format.md` § Finding shape (`phase`, `location`, `description`, `severity`, `citation`, `disposition`), with `phase` set to the agent's own key. `deferredToCI` is meaningful only from the contract agent; absent arrays default to empty.
+
+### Parse, retry, abort
+
+Parse each agent's reply: strip an optional code fence (a fenced JSON block is tolerated), read it as JSON, and check the shape — an object, `findings` an array, every finding carrying the six fields with the enumerated `phase` / `severity` / `disposition` values. On failure, retry **exactly once**: send the same agent a follow-up message via **SendMessage** — "reply was not valid findings JSON; resend only the JSON object" — reusing its existing review context rather than re-running the phase. Still malformed after the retry (or the follow-up cannot reach the agent): **abort the review** — name the failed phase, show the raw reply, and persist no round.
+
+After all replies validate, **consolidate**: concatenate the per-agent `findings` and `deferredToCI` arrays, then render the findings into the report below — each is a validated object in the shape defined in `.claude/skills/spec-review/reference/finding-format.md`.
 
 ## Check CI status (PR invocations)
 
@@ -154,7 +169,7 @@ gh pr view <PR> --json statusCheckRollup       # machine-readable; inspect each 
 
 Read CI every time, regardless of how `tasks.md` is checked off — CI is ground truth, the checkboxes are not. Three outcomes:
 
-- **CI green** → no CI finding. Any task the change deferred to CI (surfaced as `deferredToCI` in the workflow return; e.g. a `[~]` "verified by GitHub PR CI" gate) is thereby confirmed.
+- **CI green** → no CI finding. Any task the change deferred to CI (surfaced as `deferredToCI` in the contract agent's reply; e.g. a `[~]` "verified by GitHub PR CI" gate) is thereby confirmed.
 - **CI red** → raise an open **`Fix now` (Critical)** finding citing the failing check(s), and block the archive gate. Holds whether or not any task is marked complete.
 - **CI still pending** (or no PR / `gh` unavailable) → state CI as **unverified** in the verdict; do not claim clear-to-archive on its basis, and note CI must be re-checked (and any red result fixed) before archiving.
 

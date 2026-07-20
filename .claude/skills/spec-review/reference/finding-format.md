@@ -120,9 +120,10 @@ effective findings and verdict are the round's own.
 
 ## Finding shape
 
-Every finding an audit agent emits takes this shape; the workflow's
-structured-output schema validates it, so the orchestrator consumes validated
-objects, not parsed prose:
+Every finding an audit agent emits takes this shape; each agent replies with
+only a JSON object carrying its findings, which the skill parses and validates
+against this shape, so the orchestrator consumes validated objects, not parsed
+prose:
 
 ```
 - phase:       standard | convention | contract
