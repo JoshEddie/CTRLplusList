@@ -8,33 +8,26 @@ const store = (name: string, link: string, price: string) => ({
   price,
 });
 
-const THREE = [
-  store('Etsy', 'https://e', '41.00'),
-  store('Amazon', 'https://a', '35.50'),
-  store('Target', 'https://t', '38.00'),
-];
-
 describe('ModalStoreRow', () => {
-  it('LegacyMultiStoreItem_RendersOnlyCheapestAsNewTabLink-NoExtrasTrigger', () => {
-    render(<ModalStoreRow stores={THREE} />);
+  it('CompleteStore_RendersNameAndPriceAsNewTabLink', () => {
+    render(<ModalStoreRow store={store('Amazon', 'https://a', '35.50')} />);
     const link = screen.getByRole('link', { name: /Amazon/ });
     expect(link).toHaveAttribute('href', 'https://a');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noreferrer');
+    expect(link).toHaveTextContent('$35.50');
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.queryByText(/\+2/)).not.toBeInTheDocument();
   });
 
-  it('SingleStore_RendersNameAndPriceLink', () => {
-    render(<ModalStoreRow stores={[store('Amazon', 'https://a', '5')]} />);
-    const link = screen.getByRole('link', { name: /Amazon/ });
-    expect(link).toHaveTextContent('$5.00');
-  });
-
-  it('NoValidStore_RendersNothing', () => {
+  it('IncompleteStore_RendersNothing', () => {
     const { container } = render(
-      <ModalStoreRow stores={[store('', 'https://x', '5')]} />
+      <ModalStoreRow store={store('', 'https://x', '5')} />
     );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('NullStore_RendersNothing', () => {
+    const { container } = render(<ModalStoreRow store={null} />);
     expect(container).toBeEmptyDOMElement();
   });
 });

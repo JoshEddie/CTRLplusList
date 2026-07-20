@@ -1,17 +1,18 @@
 'use client';
 
 import { LinkButton } from '@/app/ui/components/button';
+import { storeComplete } from '@/lib/storeValidity';
 import { ItemStoreTable } from '@/lib/types';
 import { MdOpenInNew } from 'react-icons/md';
 import '../../styles/store-links.css';
-import { formatStorePrice, lowestPricedStore } from '../utils';
+import { formatStorePrice } from '../utils';
 
 export default function ModalStoreRow({
-  stores,
+  store,
 }: {
-  stores: ItemStoreTable[] | null | undefined;
+  store: ItemStoreTable | null | undefined;
 }) {
-  const primary = lowestPricedStore(stores);
+  const primary = storeComplete(store) ? store : null;
 
   if (!primary) return null;
 

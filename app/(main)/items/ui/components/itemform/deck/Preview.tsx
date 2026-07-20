@@ -52,8 +52,8 @@ export function Preview({
   const tier = titleTier(item.name);
   const titleBlocked = tier.tier === 'error';
   const noteBlocked = item.description.length > DESCRIPTION_MAX;
-  const storeBlocked = storeTier(item.stores[0]).tier === 'error';
-  const priceBlocked = priceTier(item.stores[0]?.price).tier === 'error';
+  const storeBlocked = storeTier(item.store).tier === 'error';
+  const priceBlocked = priceTier(item.store.price).tier === 'error';
   const blocked = titleBlocked || noteBlocked || storeBlocked || priceBlocked;
   const suggestion = suggestTrim(item.name);
 
@@ -62,8 +62,8 @@ export function Preview({
     : noteBlocked
       ? `Your description is over the ${DESCRIPTION_MAX}-character limit — trim it to save.`
       : storeBlocked
-        ? storeTier(item.stores[0]).note
-        : priceTier(item.stores[0]?.price).note;
+        ? storeTier(item.store).note
+        : priceTier(item.store.price).note;
 
   return (
     <DeckScreen

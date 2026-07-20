@@ -53,7 +53,7 @@ export type PurchaseView = {
 };
 
 export type ItemDisplay = ItemTable & {
-  stores?: ItemStoreTable[];
+  store?: ItemStoreTable | null;
   purchases?: PurchaseView[];
   hasPurchases?: boolean;
 };
@@ -77,7 +77,7 @@ export type ItemDetails = {
   /** Fetched image-candidate pool; present only when the form session originated from a product fetch. */
   image_candidates?: string[];
   quantity_limit: number | null;
-  stores: ItemStoreTable[];
+  store: ItemStoreTable | null;
   lists: OptionType[];
 };
 

@@ -17,7 +17,7 @@ function setup(over = {}, handlers = {}) {
 const blank = {
   name: '',
   photos: [],
-  stores: [{ name: '', link: '', price: '' }],
+  store: { name: '', link: '', price: '' },
 };
 
 describe('FillManually', () => {

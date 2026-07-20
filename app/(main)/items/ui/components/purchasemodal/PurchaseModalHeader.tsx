@@ -1,10 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 
+import { storeComplete } from '@/lib/storeValidity';
 import { ItemDisplay } from '@/lib/types';
-import { formatStorePrice, lowestPricedStore } from '../utils';
+import { formatStorePrice } from '../utils';
 
 export default function PurchaseModalHeader({ item }: { item: ItemDisplay }) {
-  const lowest = lowestPricedStore(item.stores);
+  const lowest = storeComplete(item.store) ? item.store : null;
   return (
     <header className="claim-modal-header">
       <span className="claim-modal-thumb" aria-hidden>

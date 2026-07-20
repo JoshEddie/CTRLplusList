@@ -147,7 +147,7 @@ describe('Preview', () => {
 
   describe('IncompleteStoreOrPrice', () => {
     it('NamelessStore_DisablesCreate-ShowsStoreLine', () => {
-      setup({ stores: [{ name: '', link: 'https://l', price: '29.99' }] });
+      setup({ store: { name: '', link: 'https://l', price: '29.99' } });
       expect(
         screen.getByRole('button', { name: 'Create item' })
       ).toBeDisabled();
@@ -155,7 +155,7 @@ describe('Preview', () => {
     });
 
     it('InvalidLink_DisablesCreate-ShowsLinkLine', () => {
-      setup({ stores: [{ name: 'Lodge', link: 'lodge', price: '29.99' }] });
+      setup({ store: { name: 'Lodge', link: 'lodge', price: '29.99' } });
       expect(
         screen.getByRole('button', { name: 'Create item' })
       ).toBeDisabled();
@@ -165,7 +165,7 @@ describe('Preview', () => {
     });
 
     it('MissingPrice_DisablesCreate-ShowsPriceLine', () => {
-      setup({ stores: [{ name: 'Lodge', link: 'https://l', price: '' }] });
+      setup({ store: { name: 'Lodge', link: 'https://l', price: '' } });
       expect(
         screen.getByRole('button', { name: 'Create item' })
       ).toBeDisabled();

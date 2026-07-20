@@ -191,7 +191,7 @@ export default function PurchaseFlowContainer({
   return (
     <div className="claim-modal">
       <PurchaseModalHeader item={item} />
-      <ModalStoreRow stores={item.stores} />
+      <ModalStoreRow store={item.store} />
 
       {!user_id ? (
         <GuestClaimSection onGuestClaim={onGuestClaim} />

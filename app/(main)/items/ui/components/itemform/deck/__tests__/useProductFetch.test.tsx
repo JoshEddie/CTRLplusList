@@ -63,13 +63,11 @@ describe('useProductFetch', () => {
       expect.objectContaining({
         name: 'Acme Widget',
         photos: ['https://example.com/w.jpg'],
-        stores: [
-          expect.objectContaining({
-            name: 'Amazon',
-            link: 'https://www.amazon.com/dp/B0TEST',
-            price: '24.50',
-          }),
-        ],
+        store: expect.objectContaining({
+          name: 'Amazon',
+          link: 'https://www.amazon.com/dp/B0TEST',
+          price: '24.50',
+        }),
       })
     );
     expect(result.current.pastedUrl).toBe(

@@ -205,7 +205,7 @@ function makeItem(overrides: Record<string, unknown> = {}) {
     image_url: '',
     user_id: OWNER,
     quantity_limit: 1,
-    stores: [],
+    store: null,
     purchases: [],
     created_at: new Date(),
     updated_at: new Date(),
@@ -740,7 +740,7 @@ describe('Item', () => {
       price: '35.50',
     };
     const buyable = {
-      item: { user_id: OWNER, stores: [LINKED_STORE] },
+      item: { user_id: OWNER, store: LINKED_STORE },
       user_id: 'viewer',
       user_name: 'Vicky',
     };
@@ -752,13 +752,13 @@ describe('Item', () => {
     });
 
     it('Guest_ForwardsShowBuyClaimFalse', () => {
-      renderItem({ item: { user_id: OWNER, stores: [LINKED_STORE] } });
+      renderItem({ item: { user_id: OWNER, store: LINKED_STORE } });
       expect(card()).toHaveAttribute('data-show-buy-claim', 'false');
     });
 
     it('Owner_ForwardsShowBuyClaimFalse', () => {
       renderItem({
-        item: { user_id: OWNER, stores: [LINKED_STORE] },
+        item: { user_id: OWNER, store: LINKED_STORE },
         user_id: OWNER,
       });
       expect(card()).toHaveAttribute('data-show-buy-claim', 'false');
@@ -768,7 +768,7 @@ describe('Item', () => {
       renderItem({
         item: {
           user_id: OWNER,
-          stores: [LINKED_STORE],
+          store: LINKED_STORE,
           quantity_limit: 1,
           purchases: [
             { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
@@ -783,7 +783,7 @@ describe('Item', () => {
       renderItem({
         item: {
           user_id: OWNER,
-          stores: [LINKED_STORE],
+          store: LINKED_STORE,
           quantity_limit: 3,
           purchases: [
             { id: 'pm', by: 'self', firstName: 'You', claimedByViewer: true },
@@ -795,7 +795,7 @@ describe('Item', () => {
     });
 
     it('NoCompleteStore_ForwardsShowBuyClaimFalse', () => {
-      renderItem({ item: { user_id: OWNER, stores: [] }, user_id: 'viewer' });
+      renderItem({ item: { user_id: OWNER, store: null }, user_id: 'viewer' });
       expect(card()).toHaveAttribute('data-show-buy-claim', 'false');
     });
 
@@ -860,7 +860,7 @@ describe('Item', () => {
       renderItem({
         item: {
           user_id: OWNER,
-          stores: [LINKED_STORE],
+          store: LINKED_STORE,
           quantity_limit: 3,
           purchases: [
             {

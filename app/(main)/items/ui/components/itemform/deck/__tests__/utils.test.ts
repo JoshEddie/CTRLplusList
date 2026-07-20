@@ -156,7 +156,7 @@ describe('deckUtils', () => {
       photoIndex: 0,
       placeholder: null,
       description: '',
-      stores: [{ name: 'Lodge', link: 'https://lodge', price: '29.99' }],
+      store: { name: 'Lodge', link: 'https://lodge', price: '29.99' },
       lists: [],
       qty: 1,
       ...over,
@@ -178,7 +178,7 @@ describe('deckUtils', () => {
         item({
           name: '',
           photos: [],
-          stores: [{ name: '', link: '', price: '' }],
+          store: { name: '', link: '', price: '' },
         })
       );
       expect(tiers.title.tier).toBe('error');
@@ -217,7 +217,7 @@ describe('deckUtils', () => {
       photoIndex: 0,
       placeholder: null,
       description: '',
-      stores: [{ name: '', link: '', price: '' }],
+      store: { name: '', link: '', price: '' },
       lists: [],
       qty: 1,
     });
@@ -228,7 +228,7 @@ describe('deckUtils', () => {
 
     it('FailureSeededLinkOnly_IsNotDirty', () => {
       const vm = blank();
-      vm.stores = [{ name: '', link: 'https://x.test/p', price: '' }];
+      vm.store = { name: '', link: 'https://x.test/p', price: '' };
       expect(isDirtyDraft(vm)).toBe(false);
     });
 
@@ -248,13 +248,13 @@ describe('deckUtils', () => {
 
     it('StoreName_MakesDirty', () => {
       const vm = blank();
-      vm.stores = [{ name: 'Lodge', link: '', price: '' }];
+      vm.store = { name: 'Lodge', link: '', price: '' };
       expect(isDirtyDraft(vm)).toBe(true);
     });
 
     it('StorePrice_MakesDirty', () => {
       const vm = blank();
-      vm.stores = [{ name: '', link: '', price: '9.99' }];
+      vm.store = { name: '', link: '', price: '9.99' };
       expect(isDirtyDraft(vm)).toBe(true);
     });
   });

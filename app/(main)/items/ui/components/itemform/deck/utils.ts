@@ -81,9 +81,8 @@ export function isDirtyDraft(item: ItemViewModel): boolean {
     item.name.trim() !== '' ||
     item.description.trim() !== '' ||
     item.photos.length > 0 ||
-    item.stores.some(
-      (store) => store.name.trim() !== '' || store.price.trim() !== ''
-    )
+    item.store.name.trim() !== '' ||
+    item.store.price.trim() !== ''
   );
 }
 
@@ -103,8 +102,8 @@ export function rowTiers(item: ItemViewModel): RowTiers {
             note: `Over the ${DESCRIPTION_MAX}-character limit — trim it.`,
           }
         : { tier: 'good', note: item.description ? '' : 'Optional' },
-    price: priceTier(item.stores[0]?.price),
-    store: storeTier(item.stores[0]),
+    price: priceTier(item.store.price),
+    store: storeTier(item.store),
   };
 }
 
@@ -210,7 +209,7 @@ type IntroSummary = {
 };
 
 export function summarize(item: ItemViewModel): IntroSummary {
-  const store = item.stores[0];
+  const store = item.store;
   const confirmed: TitleLine[] = [];
   const warning: TitleLine[] = [];
   const error: TitleLine[] = [];

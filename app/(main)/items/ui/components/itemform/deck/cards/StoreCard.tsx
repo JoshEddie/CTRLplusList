@@ -18,7 +18,7 @@ export function StoreCard({
   onContinue,
   tracker,
 }: StoreCardProps) {
-  const store = item.stores[0];
+  const store = item.store;
   return (
     <DeckCard
       tracker={tracker}
@@ -28,10 +28,10 @@ export function StoreCard({
       continueDisabled={stepBlocked('store', item)}
     >
       <StoreEditor
-        name={store?.name ?? ''}
-        link={store?.link ?? ''}
-        onNameChange={(value) => actions.setStore(0, 'name', value)}
-        onLinkChange={(value) => actions.setStore(0, 'link', value)}
+        name={store.name}
+        link={store.link}
+        onNameChange={(value) => actions.setStore('name', value)}
+        onLinkChange={(value) => actions.setStore('link', value)}
       />
     </DeckCard>
   );

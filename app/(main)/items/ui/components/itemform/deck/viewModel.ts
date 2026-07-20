@@ -1,4 +1,3 @@
-import { lowestPricedStore } from '@/app/(main)/items/ui/components/utils';
 import { isPlaceholderUri } from '@/lib/placeholderArt.shared';
 import type { ProductData } from '@/lib/product-fetch/types';
 import type {
@@ -38,7 +37,7 @@ export interface ItemViewModel {
    */
   placeholder: string | null;
   description: string;
-  stores: DeckStore[];
+  store: DeckStore;
   lists: OptionType[];
   /** null = unlimited; a number = a per-buyer limit. Defaults to a limit of 1. */
   qty: number | null;
@@ -47,7 +46,7 @@ export interface ItemViewModel {
 const emptyStore = (link = ''): DeckStore => ({ name: '', link, price: '' });
 
 // A factory, not a shared const: each blank item gets its own store/list
-// arrays so two sessions can't mutate one another's state.
+// objects so two sessions can't mutate one another's state.
 export function blankItem(seedUrl = ''): ItemViewModel {
   return {
     id: '',
@@ -56,7 +55,7 @@ export function blankItem(seedUrl = ''): ItemViewModel {
     photoIndex: 0,
     placeholder: null,
     description: '',
-    stores: [emptyStore(seedUrl)],
+    store: emptyStore(seedUrl),
     lists: [],
     qty: 1,
   };
@@ -82,16 +81,14 @@ export function seedFromFetch(
     // junk or the wrong page block on some sites. The user authors their
     // own note.
     description: '',
-    stores: [
-      {
-        name: product.store,
-        link: pastedUrl,
-        price: product.price ?? '',
-        price_fetched_at: product.price ? fetchedAt : null,
-        canonical_url: product.canonicalUrl ?? null,
-        currency: product.currency ?? null,
-      },
-    ],
+    store: {
+      name: product.store,
+      link: pastedUrl,
+      price: product.price ?? '',
+      price_fetched_at: product.price ? fetchedAt : null,
+      canonical_url: product.canonicalUrl ?? null,
+      currency: product.currency ?? null,
+    },
     lists: [],
     qty: 1,
   };
@@ -101,7 +98,7 @@ type SeedItem = Pick<
   ItemTable,
   'id' | 'name' | 'description' | 'image_url' | 'quantity_limit'
 > & {
-  stores: ItemStoreTable[];
+  store: ItemStoreTable | null;
   lists: ListTable[];
   image_candidates?: string[];
 };
@@ -113,13 +110,6 @@ export function seedFromItem(item: SeedItem): ItemViewModel {
       ? [item.image_url]
       : [];
   const activeIndex = item.image_url ? photos.indexOf(item.image_url) : -1;
-  // Seed from the primary (lowest-priced complete) store only; a legacy item
-  // with no complete store falls back to its first row so incomplete rows
-  // surface for repair instead of vanishing. Save submits exactly one store —
-  // positional sync then collapses any legacy extras (D4).
-  const primary = item.stores.length
-    ? (lowestPricedStore(item.stores) ?? item.stores[0])
-    : null;
   return {
     id: item.id,
     name: item.name,
@@ -129,7 +119,7 @@ export function seedFromItem(item: SeedItem): ItemViewModel {
     // transient-selection slot starts clear.
     placeholder: null,
     description: item.description ?? '',
-    stores: primary ? [toDeckStore(primary)] : [emptyStore()],
+    store: item.store ? toDeckStore(item.store) : emptyStore(),
     lists: item.lists.map((list) => ({
       value: list.id.toString(),
       label: list.name,
@@ -156,17 +146,13 @@ function toDeckStore(store: ItemStoreTable): DeckStore {
 // Edit a store field immutably. Editing a price means it's no longer the
 // fetched snapshot, so its provenance capture time is dropped (item-store-links).
 export function setStoreField(
-  stores: DeckStore[],
-  index: number,
+  store: DeckStore,
   field: 'name' | 'link' | 'price',
   value: string
-): DeckStore[] {
-  return stores.map((store, i) => {
-    if (i !== index) return store;
-    const next = { ...store, [field]: value };
-    if (field === 'price') next.price_fetched_at = null;
-    return next;
-  });
+): DeckStore {
+  const next = { ...store, [field]: value };
+  if (field === 'price') next.price_fetched_at = null;
+  return next;
 }
 
 // The single view-model → persisted-shape adapter (D2): selected photo becomes
@@ -185,14 +171,14 @@ export function toItemDetails(vm: ItemViewModel): ItemDetails {
       ? [...vm.photos.filter((url) => !isPlaceholderUri(url)), vm.placeholder]
       : vm.photos,
     quantity_limit: vm.qty,
-    stores: vm.stores.map((store) => ({
-      name: store.name,
-      link: store.link,
-      price: store.price,
-      price_fetched_at: store.price_fetched_at ?? null,
-      canonical_url: store.canonical_url ?? null,
-      currency: store.currency ?? null,
-    })),
+    store: {
+      name: vm.store.name,
+      link: vm.store.link,
+      price: vm.store.price,
+      price_fetched_at: vm.store.price_fetched_at ?? null,
+      canonical_url: vm.store.canonical_url ?? null,
+      currency: vm.store.currency ?? null,
+    },
     lists: vm.lists,
   };
 }
@@ -211,6 +197,6 @@ export function toItemDisplay(vm: ItemViewModel): ItemDisplay {
     updated_at: PREVIEW_TIMESTAMP,
     user_id: 'preview',
     quantity_limit: vm.qty,
-    stores: vm.stores,
+    store: vm.store,
   };
 }

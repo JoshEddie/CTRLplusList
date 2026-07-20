@@ -25,7 +25,7 @@ export function makeItem(over: Partial<ItemViewModel> = {}): ItemViewModel {
     photoIndex: 0,
     placeholder: null,
     description: '',
-    stores: [{ name: 'Lodge', link: 'https://lodge', price: '29.99' }],
+    store: { name: 'Lodge', link: 'https://lodge', price: '29.99' },
     lists: [],
     qty: 1,
     ...over,

@@ -44,7 +44,7 @@ export default function PurchaseModalSlot({
       <Modal onClose={onClose}>
         <div className="claim-modal">
           <PurchaseModalHeader item={item} />
-          <ModalStoreRow stores={item.stores} />
+          <ModalStoreRow store={item.store} />
           <ClaimsList
             claims={claims}
             canRemove={(claim) => claim.by === 'self' || claim.claimedByViewer}

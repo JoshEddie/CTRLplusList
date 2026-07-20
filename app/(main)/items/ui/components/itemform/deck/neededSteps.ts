@@ -20,9 +20,9 @@ export function isStepComplete(step: DeckStep, item: ItemViewModel): boolean {
     case 'title':
       return titleTier(item.name).tier === 'good';
     case 'price':
-      return priceTier(item.stores[0]?.price).tier === 'good';
+      return priceTier(item.store.price).tier === 'good';
     case 'store':
-      return storeTier(item.stores[0]).tier === 'good';
+      return storeTier(item.store).tier === 'good';
     case 'note':
       // Descriptions are never fetched, so the note always needs a human look.
       return false;
@@ -74,9 +74,9 @@ export function stepBlocked(step: DeckStep, item: ItemViewModel): boolean {
     case 'title':
       return titleTier(item.name).tier === 'error';
     case 'price':
-      return priceTier(item.stores[0]?.price).tier !== 'good';
+      return priceTier(item.store.price).tier !== 'good';
     case 'store':
-      return storeTier(item.stores[0]).tier !== 'good';
+      return storeTier(item.store).tier !== 'good';
     case 'note':
       return item.description.length > DESCRIPTION_MAX;
     default:

@@ -103,7 +103,7 @@ describe('ItemFormContainer', () => {
               id: 'i1',
               name: 'Gift',
               quantity_limit: 1,
-              stores: [],
+              store: null,
               lists: [],
             } as never
           }
@@ -127,7 +127,7 @@ describe('ItemFormContainer', () => {
               id: 'i1',
               name: 'Gift',
               quantity_limit: 1,
-              stores: [],
+              store: null,
               lists: [],
             } as never
           }

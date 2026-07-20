@@ -103,9 +103,7 @@ export default function ItemsBrowser({
   const storeOptions = useMemo(() => {
     const names = new Set<string>();
     for (const item of items) {
-      for (const store of item.stores ?? []) {
-        if (store.name) names.add(store.name);
-      }
+      if (item.store?.name) names.add(item.store.name);
     }
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [items]);
@@ -127,8 +125,8 @@ export default function ItemsBrowser({
     }
     if (selectedStores.length > 0) {
       const selectedSet = new Set(selectedStores);
-      result = result.filter((item) =>
-        item.stores?.some((s) => selectedSet.has(s.name))
+      result = result.filter(
+        (item) => !!item.store && selectedSet.has(item.store.name)
       );
     }
     if (purchasesParam === 'only') {

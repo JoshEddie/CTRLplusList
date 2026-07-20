@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isValidProductUrl, storeComplete } from '../storeValidity';
+import { isValidProductUrl, primaryStore, storeComplete } from '../storeValidity';
 
 const COMPLETE = {
   name: 'Lodge',
@@ -52,6 +52,31 @@ describe('storeValidity', () => {
     it('NullishStore_Incomplete', () => {
       expect(storeComplete(null)).toBe(false);
       expect(storeComplete(undefined)).toBe(false);
+    });
+  });
+
+  describe('primaryStore', () => {
+    const cheap = { ...COMPLETE, name: 'Cheap', price: '9.99' };
+    const dollar = { ...COMPLETE, name: 'Dollar', price: '$5.00' };
+    const incomplete = { ...COMPLETE, name: 'Broken', link: 'not a url' };
+
+    it('MultipleCompleteStores_LowestPricedWins', () => {
+      expect(primaryStore([COMPLETE, cheap, dollar])).toBe(dollar);
+    });
+
+    it('IncompleteRowsOnly_FirstRowReturned', () => {
+      const second = { ...incomplete, name: 'Broken 2' };
+      expect(primaryStore([incomplete, second])).toBe(incomplete);
+    });
+
+    it('EmptyOrNullishRows_Null', () => {
+      expect(primaryStore([])).toBeNull();
+      expect(primaryStore(null)).toBeNull();
+      expect(primaryStore(undefined)).toBeNull();
+    });
+
+    it('MixedRows_CompleteBeatsEarlierIncomplete', () => {
+      expect(primaryStore([incomplete, COMPLETE])).toBe(COMPLETE);
     });
   });
 });

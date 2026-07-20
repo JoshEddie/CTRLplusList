@@ -26,10 +26,7 @@ const ITEM = {
   name: 'Fancy Mug',
   description: '',
   image_url: '',
-  stores: [
-    { name: 'Target', link: 'https://t.example', price: '38.00' },
-    { name: 'Amazon', link: 'https://a.example', price: '35.50' },
-  ],
+  store: { name: 'Amazon', link: 'https://a.example', price: '35.50' },
 } as never;
 
 function renderContainer(
@@ -68,7 +65,7 @@ beforeEach(() => {
 
 describe('PurchaseFlowContainer', () => {
   describe('StoreRow', () => {
-    it('Authenticated_RendersCheapestStoreAsNewTabGhostLink', () => {
+    it('Authenticated_RendersStoreAsNewTabGhostLink', () => {
       renderContainer();
       const link = screen.getByRole('link', { name: /Amazon/ });
       expect(link).toHaveAttribute('href', 'https://a.example');
@@ -86,16 +83,9 @@ describe('PurchaseFlowContainer', () => {
       expect(screen.getByRole('link', { name: /Amazon/ })).toBeInTheDocument();
     });
 
-    it('LegacyMultiStoreItem_RendersNoExtrasTriggerOrMenu', async () => {
-      renderContainer();
-      await screen.findByRole('button', { name: 'Claim this gift' });
-      expect(screen.queryByText(/\+1/)).not.toBeInTheDocument();
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-    });
-
     it('NoValidStore_RendersClaimSectionWithoutStoreRow', async () => {
       renderContainer({
-        item: { ...((ITEM as object) ?? {}), stores: [] } as never,
+        item: { ...((ITEM as object) ?? {}), store: null } as never,
       });
       expect(screen.queryByRole('link')).not.toBeInTheDocument();
       expect(

@@ -29,7 +29,7 @@ import { UrlEntryStep } from './UrlEntryStep';
 import type { Screen } from './utils';
 
 type EditItem = ItemTable & {
-  stores: ItemStoreTable[];
+  store: ItemStoreTable | null;
   lists: ListTable[];
   image_candidates?: string[];
 };
@@ -187,7 +187,7 @@ const ItemFormContainer = ({
             item={viewModel}
             setItem={setViewModel}
             productUrl={pastedUrl}
-            storeName={viewModel.stores[0]?.name ?? ''}
+            storeName={viewModel.store.name}
             onExit={returnToUrl}
             onComplete={() => setScreen('preview')}
           />

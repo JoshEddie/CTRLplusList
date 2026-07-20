@@ -70,7 +70,7 @@ vi.mock('../Item', () => ({
       id: string;
       name?: string;
       image_url?: string | null;
-      stores?: { name: string; price?: string; link?: string }[];
+      store?: { name: string; price?: string; link?: string } | null;
     };
     showSpoilers?: boolean;
   }) => (
@@ -79,7 +79,7 @@ vi.mock('../Item', () => ({
       data-id={p.item?.id}
       data-name={p.item?.name}
       data-image={p.item?.image_url ?? ''}
-      data-stores={(p.item?.stores ?? []).map((s) => s.name).join(',')}
+      data-store={p.item?.store?.name ?? ''}
       data-show-spoilers={String(p.showSpoilers)}
     />
   ),
@@ -244,8 +244,8 @@ describe('SortItems', () => {
   });
 
   it('SameIdChangedStore_ResyncsState', () => {
-    // Same id + purchases, only a store field changed — the stores segment of
-    // itemsKey must move so the grid re-seeds instead of showing stale stores.
+    // Same id + purchases, only a store field changed — the store segment of
+    // itemsKey must move so the grid re-seeds instead of showing a stale store.
     const { rerender } = render(
       <SortItems
         items={
@@ -254,7 +254,7 @@ describe('SortItems', () => {
               id: 'A',
               name: 'Apple',
               purchases: [],
-              stores: [{ name: 'OldStore', price: '5', link: 'l' }],
+              store: { name: 'OldStore', price: '5', link: 'l' },
             },
           ] as never
         }
@@ -270,7 +270,7 @@ describe('SortItems', () => {
               id: 'A',
               name: 'Apple',
               purchases: [],
-              stores: [{ name: 'NewStore', price: '5', link: 'l' }],
+              store: { name: 'NewStore', price: '5', link: 'l' },
             },
           ] as never
         }
@@ -279,7 +279,7 @@ describe('SortItems', () => {
       />
     );
     expect(screen.getByTestId('item')).toHaveAttribute(
-      'data-stores',
+      'data-store',
       'NewStore'
     );
   });

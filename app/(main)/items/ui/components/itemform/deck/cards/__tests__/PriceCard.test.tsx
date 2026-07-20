@@ -16,19 +16,19 @@ function setup(over = {}, productUrl = '') {
 
 describe('PriceCard', () => {
   it('EmptyPrice_ShowsRequiredNote-DisablesContinue', () => {
-    setup({ stores: [{ name: 'Lodge', link: 'https://l', price: '' }] });
+    setup({ store: { name: 'Lodge', link: 'https://l', price: '' } });
     expect(screen.getByText(/A price is required/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 
   it('ValidPrice_HidesRequiredNote-EnablesContinue', () => {
-    setup({ stores: [{ name: 'Lodge', link: 'https://l', price: '12.00' }] });
+    setup({ store: { name: 'Lodge', link: 'https://l', price: '12.00' } });
     expect(screen.queryByText(/A price is required/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
   it('NoProductUrl_FallsBackToStoreLinkForSourceLink', () => {
-    setup({ stores: [{ name: 'Lodge', link: 'https://store.test/p', price: '' }] }, '');
+    setup({ store: { name: 'Lodge', link: 'https://store.test/p', price: '' } }, '');
     expect(
       screen.getByRole('link', { name: /open the product page/i })
     ).toHaveAttribute('href', 'https://store.test/p');
@@ -36,7 +36,7 @@ describe('PriceCard', () => {
 
   it('WithProductUrl_UsesItForSourceLink', () => {
     setup(
-      { stores: [{ name: 'Lodge', link: 'https://store.test/p', price: '' }] },
+      { store: { name: 'Lodge', link: 'https://store.test/p', price: '' } },
       'https://pasted.test/p'
     );
     expect(
@@ -44,8 +44,8 @@ describe('PriceCard', () => {
     ).toHaveAttribute('href', 'https://pasted.test/p');
   });
 
-  it('NoStoreRow_ShowsRequiredNote-DisablesContinue', () => {
-    setup({ stores: [] }, 'https://pasted.test/p');
+  it('EmptyStore_ShowsRequiredNote-DisablesContinue', () => {
+    setup({ store: { name: '', link: '', price: '' } }, 'https://pasted.test/p');
     expect(screen.getByText(/A price is required/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });

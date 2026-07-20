@@ -52,7 +52,7 @@ describe('FocusEditor', () => {
     it('EmptyPrice_DoneStaysEnabledAndCloses', async () => {
       const user = userEvent.setup();
       const { onDone } = setup('price', {
-        stores: [{ name: 'Lodge', link: 'https://l', price: '' }],
+        store: { name: 'Lodge', link: 'https://l', price: '' },
       });
       const done = screen.getByRole('button', { name: 'Done' });
       expect(done).toBeEnabled();
@@ -65,21 +65,21 @@ describe('FocusEditor', () => {
       expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled();
     });
 
-    it('TypePrice_CallsSetStoreOnPrimaryStore', async () => {
+    it('TypePrice_CallsSetStore', async () => {
       const user = userEvent.setup();
       const { actions } = setup('price', {
-        stores: [{ name: 'Lodge', link: 'https://l', price: '' }],
+        store: { name: 'Lodge', link: 'https://l', price: '' },
       });
       // PriceField is cents-based: "7" → $0.07.
       await user.type(screen.getByLabelText('Price'), '7');
-      expect(actions.setStore).toHaveBeenLastCalledWith(0, 'price', '0.07');
+      expect(actions.setStore).toHaveBeenLastCalledWith('price', '0.07');
     });
 
     it('NoProductUrl_UsesStoreLinkForSource', () => {
       setup(
         'price',
         {
-          stores: [{ name: 'Lodge', link: 'https://store.test/p', price: '' }],
+          store: { name: 'Lodge', link: 'https://store.test/p', price: '' },
         },
         ''
       );
@@ -88,8 +88,8 @@ describe('FocusEditor', () => {
       ).toHaveAttribute('href', 'https://store.test/p');
     });
 
-    it('NoStoreRow_DoneEnabledWithProductUrlSource', () => {
-      setup('price', { stores: [] }, 'https://pasted.test/p');
+    it('EmptyStore_DoneEnabledWithProductUrlSource', () => {
+      setup('price', { store: { name: '', link: '', price: '' } }, 'https://pasted.test/p');
       expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled();
       expect(
         screen.getByRole('link', { name: /open the product page/i })
@@ -115,7 +115,7 @@ describe('FocusEditor', () => {
     it('EmptyName_DoneStaysEnabledAndCloses', async () => {
       const user = userEvent.setup();
       const { onDone } = setup('store', {
-        stores: [{ name: '', link: 'https://l', price: '9.99' }],
+        store: { name: '', link: 'https://l', price: '9.99' },
       });
       const done = screen.getByRole('button', { name: 'Done' });
       expect(done).toBeEnabled();
@@ -123,26 +123,26 @@ describe('FocusEditor', () => {
       expect(onDone).toHaveBeenCalledOnce();
     });
 
-    it('TypeName_CallsSetStoreOnPrimaryStore', async () => {
+    it('TypeName_CallsSetStore', async () => {
       const user = userEvent.setup();
       const { actions } = setup('store', {
-        stores: [{ name: '', link: 'https://l', price: '9.99' }],
+        store: { name: '', link: 'https://l', price: '9.99' },
       });
       await user.type(screen.getByLabelText('Store name'), 'L');
-      expect(actions.setStore).toHaveBeenLastCalledWith(0, 'name', 'L');
+      expect(actions.setStore).toHaveBeenLastCalledWith('name', 'L');
     });
 
-    it('TypeLink_CallsSetStoreOnPrimaryStore', async () => {
+    it('TypeLink_CallsSetStore', async () => {
       const user = userEvent.setup();
       const { actions } = setup('store', {
-        stores: [{ name: 'Lodge', link: '', price: '9.99' }],
+        store: { name: 'Lodge', link: '', price: '9.99' },
       });
       await user.type(screen.getByLabelText('Link'), 'h');
-      expect(actions.setStore).toHaveBeenLastCalledWith(0, 'link', 'h');
+      expect(actions.setStore).toHaveBeenLastCalledWith('link', 'h');
     });
 
-    it('NoStoreRow_RendersEmptyFieldsWithDoneEnabled', () => {
-      setup('store', { stores: [] });
+    it('EmptyStore_RendersEmptyFieldsWithDoneEnabled', () => {
+      setup('store', { store: { name: '', link: '', price: '' } });
       expect(screen.getByLabelText('Store name')).toHaveValue('');
       expect(screen.getByLabelText('Link')).toHaveValue('');
       expect(screen.getByRole('button', { name: 'Done' })).toBeEnabled();

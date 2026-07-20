@@ -1,8 +1,8 @@
+import { storeComplete } from '@/lib/storeValidity';
 import { ItemDisplay } from '@/lib/types';
 import ItemActions from './ItemActions';
 import ItemPhoto from './ItemPhoto';
 import PriceLine from './PriceLine';
-import { lowestPricedStore } from './utils';
 
 export default function ItemCard({
   item,
@@ -63,7 +63,7 @@ export default function ItemCard({
           showOwnerClaimAction={showOwnerClaimAction}
           showOwnerManageAction={showOwnerManageAction}
           showBuyClaim={showBuyClaim}
-          store={lowestPricedStore(item.stores)}
+          store={storeComplete(item.store) ? (item.store ?? null) : null}
           viewOnly={viewOnly}
           onPurchaseClick={onPurchaseClick}
           onAddClaimClick={onAddClaimClick}

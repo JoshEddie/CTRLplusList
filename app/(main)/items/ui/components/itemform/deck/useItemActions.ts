@@ -36,14 +36,10 @@ export function useItemActions(setItem: SetItem) {
                 placeholder: null,
               }
         ),
-      setStore: (
-        index: number,
-        field: 'name' | 'link' | 'price',
-        value: string
-      ) =>
+      setStore: (field: 'name' | 'link' | 'price', value: string) =>
         setItem((p) => ({
           ...p,
-          stores: setStoreField(p.stores, index, field, value),
+          store: setStoreField(p.store, field, value),
         })),
       setLists: (lists: OptionType[]) => setItem((p) => ({ ...p, lists })),
       setQty: (qty: number | null) => setItem((p) => ({ ...p, qty })),

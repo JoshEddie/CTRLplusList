@@ -1,5 +1,6 @@
 import { db } from '@/db';
 import { purchases, user_blocks, user_follows } from '@/db/schema';
+import { primaryStore } from '@/lib/storeValidity';
 import { ActionResponse, PurchaseView } from '@/lib/types';
 import { and, eq, or } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
@@ -191,8 +192,9 @@ export async function getItemsByPurchased(userId?: string) {
       orderBy: (purchases, { desc }) => [desc(purchases.purchased_at)],
     });
 
-    return result.map(({ item }) => ({
+    return result.map(({ item: { stores, ...item } }) => ({
       ...item,
+      store: primaryStore(stores),
       purchases: sanitizePurchases(item.purchases, userId, false),
     }));
   } catch (error) {

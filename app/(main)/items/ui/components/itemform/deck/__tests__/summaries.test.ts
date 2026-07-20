@@ -4,7 +4,7 @@ import type { ItemViewModel } from '../viewModel';
 import { makeItem } from './test-helpers';
 
 function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
-  return makeItem({ name: 'Item', photos: [], stores: [], ...over });
+  return makeItem({ name: 'Item', photos: [], store: { name: '', link: '', price: '' }, ...over });
 }
 
 describe('summaries', () => {
@@ -45,7 +45,7 @@ describe('summaries', () => {
       expect(
         storeSubtext(
           vm({
-            stores: [{ name: 'Etsy', link: 'https://etsy', price: '5.00' }],
+            store: { name: 'Etsy', link: 'https://etsy', price: '5.00' },
           })
         )
       ).toBe('Etsy');
@@ -54,7 +54,7 @@ describe('summaries', () => {
     it('NamelessStore_AddPrompt', () => {
       expect(
         storeSubtext(
-          vm({ stores: [{ name: '', link: 'https://etsy', price: '5.00' }] })
+          vm({ store: { name: '', link: 'https://etsy', price: '5.00' } })
         )
       ).toBe('Add where to buy it');
     });

@@ -26,20 +26,20 @@ describe('viewModel', () => {
       expect(blankItem().qty).toBe(1);
     });
 
-    it('NoArgs_HasOneEmptyStoreRow', () => {
-      expect(blankItem().stores).toEqual([{ name: '', link: '', price: '' }]);
+    it('NoArgs_HasEmptyStore', () => {
+      expect(blankItem().store).toEqual({ name: '', link: '', price: '' });
     });
 
-    it('SeedUrl_PopulatesFirstStoreLink', () => {
-      expect(blankItem('https://x.test/p').stores[0].link).toBe(
+    it('SeedUrl_PopulatesStoreLink', () => {
+      expect(blankItem('https://x.test/p').store.link).toBe(
         'https://x.test/p'
       );
     });
 
-    it('TwoCalls_DoNotShareStoreArray', () => {
+    it('TwoCalls_DoNotShareStoreObject', () => {
       const a = blankItem();
-      a.stores[0].name = 'mutated';
-      expect(blankItem().stores[0].name).toBe('');
+      a.store.name = 'mutated';
+      expect(blankItem().store.name).toBe('');
     });
   });
 
@@ -64,7 +64,7 @@ describe('viewModel', () => {
 
     it('PriceFetched_StoresProvenanceAndFetchTime', () => {
       const vm = seedFromFetch(fetchedProduct, 'https://x.test/p', '2026-01-01');
-      expect(vm.stores[0]).toMatchObject({
+      expect(vm.store).toMatchObject({
         name: 'example.com',
         link: 'https://x.test/p',
         price: '29.99',
@@ -80,8 +80,8 @@ describe('viewModel', () => {
         'https://x.test/p',
         'T'
       );
-      expect(vm.stores[0].canonical_url).toBeNull();
-      expect(vm.stores[0].currency).toBeNull();
+      expect(vm.store.canonical_url).toBeNull();
+      expect(vm.store.currency).toBeNull();
     });
 
     it('NoPrice_LeavesPriceEmptyAndFetchTimeNull', () => {
@@ -90,8 +90,8 @@ describe('viewModel', () => {
         'https://x.test/p',
         'T'
       );
-      expect(vm.stores[0].price).toBe('');
-      expect(vm.stores[0].price_fetched_at).toBeNull();
+      expect(vm.store.price).toBe('');
+      expect(vm.store.price_fetched_at).toBeNull();
     });
 
     it('Always_DefaultsQuantityToOne', () => {
@@ -151,7 +151,7 @@ describe('viewModel', () => {
           'https://example.com/b.jpg',
         ],
         quantity_limit: 3,
-        stores: [baseStore],
+        store: baseStore,
         lists,
       });
       expect(vm.photoIndex).toBe(1);
@@ -166,10 +166,10 @@ describe('viewModel', () => {
         description: '',
         image_url: null,
         quantity_limit: null,
-        stores: [baseStore],
+        store: baseStore,
         lists: [],
       });
-      expect(vm.stores[0].price_fetched_at).toBe('2026-02-02T00:00:00.000Z');
+      expect(vm.store.price_fetched_at).toBe('2026-02-02T00:00:00.000Z');
     });
 
     it('NoCandidatesWithImageUrl_PoolIsActiveOnly', () => {
@@ -179,23 +179,23 @@ describe('viewModel', () => {
         description: '',
         image_url: 'https://example.com/only.jpg',
         quantity_limit: 1,
-        stores: [],
+        store: null,
         lists: [],
       });
       expect(vm.photos).toEqual(['https://example.com/only.jpg']);
     });
 
-    it('NoStores_SeedsOneEmptyStoreRow', () => {
+    it('NoStore_SeedsEmptyStore', () => {
       const vm = seedFromItem({
         id: 'i1',
         name: 'Item',
         description: '',
         image_url: null,
         quantity_limit: 1,
-        stores: [],
+        store: null,
         lists: [],
       });
-      expect(vm.stores).toEqual([{ name: '', link: '', price: '' }]);
+      expect(vm.store).toEqual({ name: '', link: '', price: '' });
     });
 
     it('ActiveImageNotInCandidates_PhotoIndexZero', () => {
@@ -206,7 +206,7 @@ describe('viewModel', () => {
         image_url: 'https://example.com/elsewhere.jpg',
         image_candidates: ['https://example.com/a.jpg'],
         quantity_limit: 1,
-        stores: [],
+        store: null,
         lists: [],
       });
       expect(vm.photoIndex).toBe(0);
@@ -219,10 +219,10 @@ describe('viewModel', () => {
         description: '',
         image_url: null,
         quantity_limit: 1,
-        stores: [{ name: 's', link: 'l', price: '1' }],
+        store: { name: 's', link: 'l', price: '1' },
         lists: [],
       });
-      expect(vm.stores[0].price_fetched_at).toBeNull();
+      expect(vm.store.price_fetched_at).toBeNull();
     });
 
     it('StringProvenance_PassesThroughUnchanged', () => {
@@ -232,17 +232,15 @@ describe('viewModel', () => {
         description: '',
         image_url: null,
         quantity_limit: 1,
-        stores: [
-          {
-            name: 's',
-            link: 'l',
-            price: '1',
-            price_fetched_at: '2026-03-03T00:00:00.000Z',
-          },
-        ],
+        store: {
+          name: 's',
+          link: 'l',
+          price: '1',
+          price_fetched_at: '2026-03-03T00:00:00.000Z',
+        },
         lists: [],
       });
-      expect(vm.stores[0].price_fetched_at).toBe('2026-03-03T00:00:00.000Z');
+      expect(vm.store.price_fetched_at).toBe('2026-03-03T00:00:00.000Z');
     });
   });
 
@@ -254,30 +252,20 @@ describe('viewModel', () => {
     );
 
     it('PriceEdit_DropsFetchProvenance', () => {
-      const next = setStoreField(seeded.stores, 0, 'price', '24.99');
-      expect(next[0].price).toBe('24.99');
-      expect(next[0].price_fetched_at).toBeNull();
+      const next = setStoreField(seeded.store, 'price', '24.99');
+      expect(next.price).toBe('24.99');
+      expect(next.price_fetched_at).toBeNull();
     });
 
     it('NameEdit_PreservesFetchProvenance', () => {
-      const next = setStoreField(seeded.stores, 0, 'name', 'New Store');
-      expect(next[0].name).toBe('New Store');
-      expect(next[0].price_fetched_at).toBe('2026-01-01');
+      const next = setStoreField(seeded.store, 'name', 'New Store');
+      expect(next.name).toBe('New Store');
+      expect(next.price_fetched_at).toBe('2026-01-01');
     });
 
     it('Edit_DoesNotMutateInput', () => {
-      setStoreField(seeded.stores, 0, 'price', '1.00');
-      expect(seeded.stores[0].price).toBe('29.99');
-    });
-
-    it('MultiStore_LeavesOtherRowsUntouched', () => {
-      const stores = [
-        { name: 'a', link: 'la', price: '1' },
-        { name: 'b', link: 'lb', price: '2' },
-      ];
-      const next = setStoreField(stores, 1, 'name', 'B2');
-      expect(next[0]).toEqual({ name: 'a', link: 'la', price: '1' });
-      expect(next[1].name).toBe('B2');
+      setStoreField(seeded.store, 'price', '1.00');
+      expect(seeded.store.price).toBe('29.99');
     });
   });
 
@@ -309,7 +297,7 @@ describe('viewModel', () => {
 
     it('FetchedStore_PreservesProvenance', () => {
       const vm = seedFromFetch(fetchedProduct, 'https://x.test/p', '2026-01-01');
-      expect(toItemDetails(vm).stores[0]).toMatchObject({
+      expect(toItemDetails(vm).store).toMatchObject({
         price: '29.99',
         price_fetched_at: '2026-01-01',
         canonical_url: 'https://shop.example.com/skillet',
@@ -319,8 +307,8 @@ describe('viewModel', () => {
 
     it('EditedPrice_DropsProvenanceThroughAdapter', () => {
       const vm = seedFromFetch(fetchedProduct, 'https://x.test/p', '2026-01-01');
-      vm.stores = setStoreField(vm.stores, 0, 'price', '5.00');
-      expect(toItemDetails(vm).stores[0].price_fetched_at).toBeNull();
+      vm.store = setStoreField(vm.store, 'price', '5.00');
+      expect(toItemDetails(vm).store?.price_fetched_at).toBeNull();
     });
 
     it('SelectedPlaceholder_BecomesActiveUrlAndAppendsToCandidates', () => {

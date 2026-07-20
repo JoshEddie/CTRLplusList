@@ -12,12 +12,8 @@ import ItemCard from './ItemCard';
 import OwnerActions from './OwnerActions';
 import PurchaseModalSlot from './PurchaseModalSlot';
 import { AttributedTarget } from './purchasemodal/PurchaseFlowContainer';
-import {
-  containerClasses,
-  firstToken,
-  lowestPricedStore,
-  resolveModalView,
-} from './utils';
+import { storeComplete } from '@/lib/storeValidity';
+import { containerClasses, firstToken, resolveModalView } from './utils';
 
 export default function Item({
   item,
@@ -102,7 +98,7 @@ export default function Item({
     !isOwner &&
     !isFullyClaimed &&
     !hasViewerClaim &&
-    !!lowestPricedStore(item.stores)?.link;
+    storeComplete(item.store);
 
   const modalView = resolveModalView({
     isOwner,

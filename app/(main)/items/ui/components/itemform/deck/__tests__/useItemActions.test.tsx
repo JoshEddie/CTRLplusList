@@ -111,18 +111,18 @@ describe('useItemActions', () => {
     const { result } = renderHook(() =>
       useHarness(seedFromFetch(fetched, 'https://p', '2026-01-01'))
     );
-    act(() => result.current.actions.setStore(0, 'price', '5.00'));
-    expect(result.current.item.stores[0].price).toBe('5.00');
-    expect(result.current.item.stores[0].price_fetched_at).toBeNull();
+    act(() => result.current.actions.setStore('price', '5.00'));
+    expect(result.current.item.store.price).toBe('5.00');
+    expect(result.current.item.store.price_fetched_at).toBeNull();
   });
 
   it('SetStoreName_UpdatesName-KeepsProvenance', () => {
     const { result } = renderHook(() =>
       useHarness(seedFromFetch(fetched, 'https://p', '2026-01-01'))
     );
-    act(() => result.current.actions.setStore(0, 'name', 'New'));
-    expect(result.current.item.stores[0].name).toBe('New');
-    expect(result.current.item.stores[0].price_fetched_at).toBe('2026-01-01');
+    act(() => result.current.actions.setStore('name', 'New'));
+    expect(result.current.item.store.name).toBe('New');
+    expect(result.current.item.store.price_fetched_at).toBe('2026-01-01');
   });
 
 

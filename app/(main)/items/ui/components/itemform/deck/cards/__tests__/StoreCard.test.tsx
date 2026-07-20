@@ -16,7 +16,7 @@ function setup(over: Partial<ItemViewModel> = {}) {
 
 describe('StoreCard', () => {
   it('MissingStoreName_DisablesContinue', () => {
-    setup({ stores: [{ name: '', link: 'https://shop', price: '29.99' }] });
+    setup({ store: { name: '', link: 'https://shop', price: '29.99' } });
     expect(screen.getByRole('button', { name: /Continue/ })).toBeDisabled();
   });
 
@@ -29,26 +29,26 @@ describe('StoreCard', () => {
     expect(onContinue).toHaveBeenCalledOnce();
   });
 
-  it('TypeName_WritesToPrimaryStore', async () => {
+  it('TypeName_WritesToStore', async () => {
     const user = userEvent.setup();
     const { actions } = setup({
-      stores: [{ name: '', link: 'https://shop', price: '29.99' }],
+      store: { name: '', link: 'https://shop', price: '29.99' },
     });
     await user.type(screen.getByLabelText('Store name'), 'L');
-    expect(actions.setStore).toHaveBeenLastCalledWith(0, 'name', 'L');
+    expect(actions.setStore).toHaveBeenLastCalledWith('name', 'L');
   });
 
-  it('TypeLink_WritesToPrimaryStore', async () => {
+  it('TypeLink_WritesToStore', async () => {
     const user = userEvent.setup();
     const { actions } = setup({
-      stores: [{ name: 'Lodge', link: '', price: '29.99' }],
+      store: { name: 'Lodge', link: '', price: '29.99' },
     });
     await user.type(screen.getByLabelText('Link'), 'h');
-    expect(actions.setStore).toHaveBeenLastCalledWith(0, 'link', 'h');
+    expect(actions.setStore).toHaveBeenLastCalledWith('link', 'h');
   });
 
-  it('NoStoreRow_RendersEmptyFieldsWithContinueDisabled', () => {
-    setup({ stores: [] });
+  it('EmptyStore_RendersEmptyFieldsWithContinueDisabled', () => {
+    setup({ store: { name: '', link: '', price: '' } });
     expect(screen.getByLabelText('Store name')).toHaveValue('');
     expect(screen.getByRole('button', { name: /Continue/ })).toBeDisabled();
   });

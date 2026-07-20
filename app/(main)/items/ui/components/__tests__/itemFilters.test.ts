@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemDisplay, ItemStoreTable } from '@/lib/types';
-import { compareItems, displayPrice, firstStoreName } from '../itemFilters';
+import { compareItems, displayPrice, storeName } from '../itemFilters';
 
 function store(
   name: string,
@@ -24,50 +24,35 @@ function makeItem(overrides: Partial<ItemDisplay> = {}): ItemDisplay {
 }
 
 describe('displayPrice', () => {
-  it('LowestFiniteAcrossValidStores_ReturnsMin', () => {
-    const item = makeItem({
-      stores: [store('A', '10'), store('B', '5'), store('C', '8')],
-    });
-    expect(displayPrice(item)).toBe(5);
+  it('CompleteStore_ReturnsParsedPrice', () => {
+    expect(displayPrice(makeItem({ store: store('A', '10') }))).toBe(10);
+    expect(displayPrice(makeItem({ store: store('A', '$5.50') }))).toBe(5.5);
   });
 
-  it('StoreMissingNameOrLink_Ignored', () => {
-    const item = makeItem({
-      stores: [
-        { name: '', link: 'https://x', price: '1' },
-        { name: 'B', link: '', price: '2' },
-        store('C', '9'),
-      ],
-    });
-    expect(displayPrice(item)).toBe(9);
-  });
-
-  it('NonNumericPrice_Ignored', () => {
-    const item = makeItem({
-      stores: [store('A', 'not-a-number'), store('B', '7')],
-    });
-    expect(displayPrice(item)).toBe(7);
-  });
-
-  it('NoQualifyingStore_ReturnsNaN', () => {
-    expect(displayPrice(makeItem({ stores: undefined }))).toBeNaN();
+  it('IncompleteStore_ReturnsNaN', () => {
     expect(
-      displayPrice(makeItem({ stores: [{ name: 'A', link: '', price: '1' }] }))
+      displayPrice(makeItem({ store: { name: '', link: 'https://x', price: '1' } }))
     ).toBeNaN();
+    expect(
+      displayPrice(makeItem({ store: { name: 'B', link: '', price: '2' } }))
+    ).toBeNaN();
+    expect(displayPrice(makeItem({ store: store('A', 'not-a-number') }))).toBeNaN();
+  });
+
+  it('NoStore_ReturnsNaN', () => {
+    expect(displayPrice(makeItem({ store: undefined }))).toBeNaN();
+    expect(displayPrice(makeItem({ store: null }))).toBeNaN();
   });
 });
 
-describe('firstStoreName', () => {
-  it('MultipleStores_ReturnsAlphabeticallyFirst', () => {
-    const item = makeItem({
-      stores: [store('Zed', '1'), store('Apple', '2'), store('Mango', '3')],
-    });
-    expect(firstStoreName(item)).toBe('Apple');
+describe('storeName', () => {
+  it('StorePresent_ReturnsItsName', () => {
+    expect(storeName(makeItem({ store: store('Apple', '2') }))).toBe('Apple');
   });
 
-  it('NoStores_ReturnsEmptyString', () => {
-    expect(firstStoreName(makeItem({ stores: undefined }))).toBe('');
-    expect(firstStoreName(makeItem({ stores: [] }))).toBe('');
+  it('NoStore_ReturnsEmptyString', () => {
+    expect(storeName(makeItem({ store: undefined }))).toBe('');
+    expect(storeName(makeItem({ store: null }))).toBe('');
   });
 });
 
@@ -103,9 +88,9 @@ describe('compareItems', () => {
   });
 
   describe('StoreOrdering', () => {
-    const apple = makeItem({ stores: [store('Apple', '1')] });
-    const mango = makeItem({ stores: [store('Mango', '1')] });
-    const noStore = makeItem({ stores: [] });
+    const apple = makeItem({ store: store('Apple', '1') });
+    const mango = makeItem({ store: store('Mango', '1') });
+    const noStore = makeItem({ store: null });
 
     it('StoreAsc_OrdersPresentStoresAscending', () => {
       expect(compareItems(apple, mango, 'store_asc')).toBeLessThan(0);
@@ -131,9 +116,9 @@ describe('compareItems', () => {
   });
 
   describe('PriceOrdering', () => {
-    const cheap = makeItem({ stores: [store('A', '5')] });
-    const pricey = makeItem({ stores: [store('A', '50')] });
-    const noPrice = makeItem({ stores: [] });
+    const cheap = makeItem({ store: store('A', '5') });
+    const pricey = makeItem({ store: store('A', '50') });
+    const noPrice = makeItem({ store: null });
 
     it('PriceAsc_OrdersPresentPricesAscending', () => {
       expect(compareItems(cheap, pricey, 'price_asc')).toBeLessThan(0);

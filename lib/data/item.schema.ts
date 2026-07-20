@@ -96,37 +96,33 @@ export const ItemSchema = z.object({
       })
     )
     .optional(),
-  stores: z
-    .array(
-      z.object({
-        name: z.string().optional(),
-        link: z.string().optional(),
-        price: z.string().optional(),
-        price_fetched_at: z.string().datetime().nullable().optional(),
-        canonical_url: z.string().nullable().optional(),
-        currency: z.string().nullable().optional(),
-      })
-    )
-    .optional()
+  store: z
+    .object({
+      name: z.string().optional(),
+      link: z.string().optional(),
+      price: z.string().optional(),
+      price_fetched_at: z.string().datetime().nullable().optional(),
+      canonical_url: z.string().nullable().optional(),
+      currency: z.string().nullable().optional(),
+    })
+    .nullish()
     .refine(
-      (stores) => {
-        if (!stores) return true;
-        return stores.every((store) => {
-          const hasAnyField = store.name || store.link || store.price;
-          if (!hasAnyField) return true;
-          if (!store.name || !store.link || !store.price) return false;
+      (store) => {
+        if (!store) return true;
+        const hasAnyField = store.name || store.link || store.price;
+        if (!hasAnyField) return true;
+        if (!store.name || !store.link || !store.price) return false;
 
-          try {
-            new URL(store.link);
-            return true;
-          } catch {
-            return false;
-          }
-        });
+        try {
+          new URL(store.link);
+          return true;
+        } catch {
+          return false;
+        }
       },
       {
         message: 'Please provide a valid URL',
-        path: ['stores'],
+        path: ['store'],
       }
     ),
 });

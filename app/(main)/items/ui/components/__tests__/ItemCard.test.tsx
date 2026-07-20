@@ -11,11 +11,7 @@ vi.mock('@/lib/data/item.placeholder.actions', async () =>
   (await import('../itemform/deck/__tests__/test-helpers')).placeholderActionsMock()
 );
 
-const STORES = [
-  { name: 'Target', link: 'https://t.example', price: '38.00' },
-  { name: 'Amazon', link: 'https://a.example', price: '35.50' },
-  { name: 'Etsy', link: 'https://e.example', price: '41.00' },
-];
+const STORE = { name: 'Amazon', link: 'https://a.example', price: '35.50' };
 
 function renderCard(
   overrides: Partial<React.ComponentProps<typeof ItemCard>> = {}
@@ -26,7 +22,7 @@ function renderCard(
       name: 'Gift',
       description: '',
       image_url: '',
-      stores: [],
+      store: null,
     } as never,
     className: undefined,
     isOwner: false,
@@ -53,7 +49,7 @@ describe('ItemCard', () => {
         name: 'Gift',
         description: 'A nice mug',
         image_url: '',
-        stores: [],
+        store: null,
       } as never,
     });
     expect(screen.getByText('A nice mug')).toBeInTheDocument();
@@ -72,9 +68,9 @@ describe('ItemCard', () => {
   });
 
   describe('PriceLine', () => {
-    it('CompleteStore_RendersInertCheapestStoreLine', () => {
+    it('CompleteStore_RendersInertStoreLine', () => {
       const { container } = renderCard({
-        item: { id: 'i1', name: 'Gift', stores: STORES } as never,
+        item: { id: 'i1', name: 'Gift', store: STORE } as never,
       });
       const metadata = container.querySelector('.item-store-metadata');
       expect(metadata).toHaveTextContent('· Amazon');
@@ -92,7 +88,7 @@ describe('ItemCard', () => {
       ]) {
         const { container, unmount } = renderCard({
           ...overrides,
-          item: { id: 'i1', name: 'Gift', stores: STORES } as never,
+          item: { id: 'i1', name: 'Gift', store: STORE } as never,
         });
         expect(
           container.querySelector('.item-store-metadata')
@@ -101,21 +97,24 @@ describe('ItemCard', () => {
       }
     });
 
-    it('NoCompleteStore_OmitsPriceLine', () => {
+    it('IncompleteStore_OmitsPriceLineAndViewItem', () => {
       const { container } = renderCard({
         item: {
           id: 'i1',
           name: 'Gift',
-          stores: [{ name: 'Amazon', link: 'not-a-url', price: '35.50' }],
+          store: { name: 'Amazon', link: 'not-a-url', price: '35.50' },
         } as never,
       });
       expect(container.querySelector('.item-price-row')).toBeNull();
+      expect(
+        screen.queryByRole('link', { name: 'View item — opens in new tab' })
+      ).not.toBeInTheDocument();
     });
 
     it('CardBodyTap_DoesNotOpenModal', async () => {
       const user = userEvent.setup();
       const { props, container } = renderCard({
-        item: { id: 'i1', name: 'Gift', stores: STORES } as never,
+        item: { id: 'i1', name: 'Gift', store: STORE } as never,
       });
       await user.click(
         container.querySelector('.item-store-metadata') as HTMLElement
@@ -126,7 +125,7 @@ describe('ItemCard', () => {
   });
 
   describe('ViewItem', () => {
-    it('EveryClaimState_KeepsViewItemTargetingCheapestStore', () => {
+    it('EveryClaimState_KeepsViewItemTargetingStoreLink', () => {
       for (const overrides of [
         {},
         { viewerClaimed: true },
@@ -135,7 +134,7 @@ describe('ItemCard', () => {
       ]) {
         const { unmount } = renderCard({
           ...overrides,
-          item: { id: 'i1', name: 'Gift', stores: STORES } as never,
+          item: { id: 'i1', name: 'Gift', store: STORE } as never,
         });
         expect(
           screen.getByRole('link', { name: 'View item — opens in new tab' })
@@ -155,7 +154,7 @@ describe('ItemCard', () => {
       const { container } = renderCard({
         isOwner: true,
         showOwnerClaimAction: true,
-        item: { id: 'i1', name: 'Gift', stores: STORES } as never,
+        item: { id: 'i1', name: 'Gift', store: STORE } as never,
       });
       expect(
         screen.getByRole('button', { name: 'Add Claim' })
@@ -176,7 +175,7 @@ describe('ItemCard', () => {
       const { container } = renderCard({
         fullyClaimed: true,
         showPurchased: true,
-        item: { id: 'i1', name: 'Gift', stores: STORES } as never,
+        item: { id: 'i1', name: 'Gift', store: STORE } as never,
       });
       expect(screen.getByRole('status')).toHaveTextContent('Fully claimed');
       expect(screen.queryByText('0/3 claimed')).not.toBeInTheDocument();
@@ -195,7 +194,7 @@ describe('ItemCard', () => {
     it('RemovableClaim_RendersManageClaimButton', () => {
       const { container } = renderCard({
         viewerClaimed: true,
-        item: { id: 'i1', name: 'Gift', stores: STORES } as never,
+        item: { id: 'i1', name: 'Gift', store: STORE } as never,
       });
       expect(
         screen.getByRole('button', { name: 'Manage claim' })
@@ -218,7 +217,7 @@ describe('ItemCard', () => {
       renderCard({
         viewOnly: true,
         onPurchaseClick: undefined,
-        item: { id: 'i1', name: 'Gift', stores: STORES } as never,
+        item: { id: 'i1', name: 'Gift', store: STORE } as never,
       });
       expect(
         screen.getByRole('link', { name: 'View item — opens in new tab' })
@@ -240,7 +239,7 @@ describe('ItemCard', () => {
         name: '',
         description: '',
         image_url: '',
-        stores: [],
+        store: null,
       } as never,
     });
     const card = container.querySelector('.item.extra');

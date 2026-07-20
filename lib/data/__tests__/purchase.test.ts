@@ -8,7 +8,12 @@ import {
   seedUsers,
 } from '@/test/helpers/seedFollowGraph';
 
-import { seedItem, seedPurchase, type TestDb } from './test-helpers';
+import {
+  seedItem,
+  seedItemStore,
+  seedPurchase,
+  type TestDb,
+} from './test-helpers';
 
 mockNextCache();
 
@@ -59,6 +64,29 @@ describe('getItemsByPurchased', () => {
 
     const rows = await dal.getItemsByPurchased('buyer');
     expect(rows.map((r) => r.id)).toEqual(['late', 'early']);
+  });
+
+  it('PurchasedItemWithStores_MapsScalarPrimaryStore', async () => {
+    await seedUsers(db, [{ id: 'buyer' }, { id: 'owner' }]);
+    await seedItem(db, { id: 'bought', user_id: 'owner' });
+    await seedPurchase(db, { id: 'p', item_id: 'bought', user_id: 'buyer' });
+    await seedItemStore(db, {
+      id: 's2',
+      item_id: 'bought',
+      name: 'pricey',
+      price: '10',
+      order: 2,
+    });
+    await seedItemStore(db, {
+      id: 's1',
+      item_id: 'bought',
+      name: 'cheap',
+      price: '5',
+      order: 1,
+    });
+
+    const rows = await dal.getItemsByPurchased('buyer');
+    expect(rows[0].store?.name).toBe('cheap');
   });
 
   it('NonOwnerView_TagsViewersOwnPurchaseSelf-OthersOther', async () => {

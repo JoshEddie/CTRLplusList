@@ -67,23 +67,27 @@ describe('ItemSchema', () => {
     });
   });
 
-  describe('stores', () => {
-    it('AllEmptyStoreRow_PassesSchema', () => {
-      // Schema-level: an all-empty row is legal (the refine skips it); the
-      // single-store cap in the actions is what rejects it downstream.
+  describe('store', () => {
+    it('AllEmptyStore_PassesSchema', () => {
+      // Schema-level: an all-empty store is legal (the refine skips it); the
+      // completeness check in the actions is what rejects it downstream.
       expect(
         ItemSchema.safeParse({
           ...base,
-          stores: [{ name: '', link: '', price: '' }],
+          store: { name: '', link: '', price: '' },
         }).success
       ).toBe(true);
     });
 
-    it('PartialStoreRow_FailsSchema', () => {
+    it('NullStore_PassesSchema', () => {
+      expect(ItemSchema.safeParse({ ...base, store: null }).success).toBe(true);
+    });
+
+    it('PartialStore_FailsSchema', () => {
       expect(
         ItemSchema.safeParse({
           ...base,
-          stores: [{ name: 'Amazon', link: '', price: '' }],
+          store: { name: 'Amazon', link: '', price: '' },
         }).success
       ).toBe(false);
     });

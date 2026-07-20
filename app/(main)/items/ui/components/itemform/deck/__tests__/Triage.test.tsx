@@ -21,7 +21,7 @@ describe('Triage', () => {
   });
 
   it('NoPrice_PriceRowStatesPriceIssue', () => {
-    setup({ stores: [{ name: 'Lodge', link: 'https://l', price: '' }] });
+    setup({ store: { name: 'Lodge', link: 'https://l', price: '' } });
     const priceRow = screen.getByRole('button', { name: /Price/ });
     expect(priceRow).toHaveTextContent('Not set');
     expect(priceRow).toHaveTextContent('Add a price so people know the cost.');
@@ -30,14 +30,12 @@ describe('Triage', () => {
 
   it('FetchedPrice_ShowsProvenance', () => {
     setup({
-      stores: [
-        {
-          name: 'Lodge',
-          link: 'https://l',
-          price: '29.99',
-          price_fetched_at: '2026-01-01',
-        },
-      ],
+      store: {
+        name: 'Lodge',
+        link: 'https://l',
+        price: '29.99',
+        price_fetched_at: '2026-01-01',
+      },
     });
     expect(
       screen.getByRole('button', { name: /Price/ })
@@ -126,7 +124,7 @@ describe('Triage', () => {
     const empty = {
       name: '',
       photos: [],
-      stores: [{ name: '', link: '', price: '' }],
+      store: { name: '', link: '', price: '' },
     };
 
     it('NoPhotos_PhotoRowStatesNoPhoto', () => {

@@ -48,3 +48,19 @@ export function storeComplete(
     priceTier(store.price).tier === 'good'
   );
 }
+
+// PRICE_PATTERN accepts an optional leading `$`, which Number() does not.
+export function priceAmount(price: string | number): number {
+  return typeof price === 'string'
+    ? Number(price.replace(/^\$/, ''))
+    : price;
+}
+
+export function primaryStore<T extends StoreFields>(
+  rows: T[] | null | undefined
+): T | null {
+  const complete = (rows ?? [])
+    .filter(storeComplete)
+    .sort((a, b) => priceAmount(a.price) - priceAmount(b.price));
+  return complete[0] ?? rows?.[0] ?? null;
+}

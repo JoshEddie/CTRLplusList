@@ -21,7 +21,7 @@ export function PriceCard({
   onContinue,
   tracker,
 }: PriceCardProps) {
-  const store = item.stores[0];
+  const store = item.store;
   return (
     <DeckCard
       tracker={tracker}
@@ -31,11 +31,11 @@ export function PriceCard({
       continueDisabled={stepBlocked('price', item)}
     >
       <PriceEditor
-        price={store?.price ?? ''}
-        onChange={(value) => actions.setStore(0, 'price', value)}
-        productUrl={productUrl || store?.link}
+        price={store.price}
+        onChange={(value) => actions.setStore('price', value)}
+        productUrl={productUrl || store.link}
       />
-      {!store?.price?.trim() && (
+      {!store.price.trim() && (
         <TierNote tier="error">
           A price is required before you can continue.
         </TierNote>

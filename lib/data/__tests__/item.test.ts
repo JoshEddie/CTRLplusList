@@ -86,7 +86,7 @@ describe('getItemsByUser', () => {
     });
   });
 
-  it('MultipleItems_OrderedByCreatedAtDesc-StoresOrderedByOrderAsc', async () => {
+  it('MultipleItems_OrderedByCreatedAtDesc-LowestPricedStoreSelected', async () => {
     await seedUsers(db, [{ id: 'u' }]);
     await seedItem(db, {
       id: 'old',
@@ -102,18 +102,21 @@ describe('getItemsByUser', () => {
       id: 's2',
       item_id: 'new',
       name: 'second',
+      price: '5',
       order: 2,
     });
     await seedItemStore(db, {
       id: 's1',
       item_id: 'new',
       name: 'first',
+      price: '10',
       order: 1,
     });
 
     const rows = await dal.getItemsByUser('u');
     expect(rows.map((r) => r.id)).toEqual(['new', 'old']);
-    expect(rows[0].stores.map((s) => s.name)).toEqual(['first', 'second']);
+    expect(rows[0].store?.name).toBe('second');
+    expect(rows[1].store).toBeNull();
   });
 
   describe('OwnerSpoilers', () => {
@@ -159,7 +162,7 @@ describe('getItemsByUser', () => {
 });
 
 describe('getItemById', () => {
-  it('ExistingItem_ReshapesListMembershipsWithPosition-OrdersStores', async () => {
+  it('ExistingItem_ReshapesListMembershipsWithPosition-SelectsLowestPricedStore', async () => {
     await seedUsers(db, [{ id: 'u' }]);
     await seedItem(db, { id: 'i1', user_id: 'u', quantity_limit: 3 });
     await seedList(db, { id: 'l1', user_id: 'u' });
@@ -170,19 +173,21 @@ describe('getItemById', () => {
       id: 's2',
       item_id: 'i1',
       name: 'second',
+      price: '5',
       order: 2,
     });
     await seedItemStore(db, {
       id: 's1',
       item_id: 'i1',
       name: 'first',
+      price: '10',
       order: 1,
     });
 
     const item = await dal.getItemById('i1', 'u');
     expect(item?.id).toBe('i1');
     expect(item?.quantity_limit).toBe(3);
-    expect(item?.stores.map((s) => s.name)).toEqual(['first', 'second']);
+    expect(item?.store?.name).toBe('second');
     const byListId = Object.fromEntries(
       (item?.lists ?? []).map((l) => [l.id, l.position])
     );
@@ -240,6 +245,30 @@ describe('getItemsByListId', () => {
 
     const rows = await dal.getItemsByListId('l1');
     expect(rows.map((r) => r.id)).toEqual(['first', 'second']);
+  });
+
+  it('ItemWithStores_MapsScalarPrimaryStore', async () => {
+    await seedUsers(db, [{ id: 'u' }]);
+    await seedList(db, { id: 'l1', user_id: 'u' });
+    await seedItem(db, { id: 'i1', user_id: 'u' });
+    await seedListItem(db, { list_id: 'l1', item_id: 'i1', position: 1 });
+    await seedItemStore(db, {
+      id: 's2',
+      item_id: 'i1',
+      name: 'pricey',
+      price: '10',
+      order: 2,
+    });
+    await seedItemStore(db, {
+      id: 's1',
+      item_id: 'i1',
+      name: 'cheap',
+      price: '5',
+      order: 1,
+    });
+
+    const rows = await dal.getItemsByListId('l1');
+    expect(rows[0].store?.name).toBe('cheap');
   });
 
   describe('SanitizeMatrix', () => {

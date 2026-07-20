@@ -54,7 +54,7 @@ interface FieldRowsProps {
 }
 
 export function FieldRows({ item, onFocus }: FieldRowsProps) {
-  const store = item.stores[0];
+  const store = item.store;
   const tiers = rowTiers(item);
 
   return (

@@ -6,7 +6,7 @@ import { makeItem } from './test-helpers';
 function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
   return makeItem({
     photos: ['https://a', 'https://b'],
-    stores: [{ name: 'shop', link: 'https://shop', price: '29.99' }],
+    store: { name: 'shop', link: 'https://shop', price: '29.99' },
     ...over,
   });
 }
@@ -36,7 +36,7 @@ describe('neededSteps', () => {
       neededSteps(
         vm({
           name: 'x'.repeat(120),
-          stores: [{ name: '', link: 'https://shop', price: '' }],
+          store: { name: '', link: 'https://shop', price: '' },
         })
       )
     ).toEqual([
@@ -50,7 +50,7 @@ describe('neededSteps', () => {
   it('GoodTitleNoPrice_TitleStoreDoneThenPhotoPriceNote', () => {
     expect(
       neededSteps(
-        vm({ stores: [{ name: 's', link: 'https://shop', price: '' }] })
+        vm({ store: { name: 's', link: 'https://shop', price: '' } })
       )
     ).toEqual([
       { step: 'title', complete: true },
@@ -66,7 +66,7 @@ describe('neededSteps', () => {
       neededSteps(
         vm({
           photos: ['https://only'],
-          stores: [{ name: '', link: 'https://shop', price: '29.99' }],
+          store: { name: '', link: 'https://shop', price: '29.99' },
         })
       )
     ).toEqual([
@@ -115,7 +115,7 @@ describe('stepBlocked', () => {
 
   it('EmptyPrice_BlocksPriceStep', () => {
     expect(
-      stepBlocked('price', vm({ stores: [{ name: 's', link: 'l', price: '' }] }))
+      stepBlocked('price', vm({ store: { name: 's', link: 'l', price: '' } }))
     ).toBe(true);
   });
 
@@ -123,7 +123,7 @@ describe('stepBlocked', () => {
     expect(
       stepBlocked(
         'price',
-        vm({ stores: [{ name: 's', link: 'l', price: 'abc' }] })
+        vm({ store: { name: 's', link: 'l', price: 'abc' } })
       )
     ).toBe(true);
   });
@@ -136,7 +136,7 @@ describe('stepBlocked', () => {
     expect(
       stepBlocked(
         'store',
-        vm({ stores: [{ name: '', link: 'https://shop', price: '29.99' }] })
+        vm({ store: { name: '', link: 'https://shop', price: '29.99' } })
       )
     ).toBe(true);
   });
@@ -145,7 +145,7 @@ describe('stepBlocked', () => {
     expect(
       stepBlocked(
         'store',
-        vm({ stores: [{ name: 's', link: 'shop', price: '29.99' }] })
+        vm({ store: { name: 's', link: 'shop', price: '29.99' } })
       )
     ).toBe(true);
   });

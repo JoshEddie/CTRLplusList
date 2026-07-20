@@ -1,6 +1,7 @@
 import { db } from '@/db';
 import { items, list_items } from '@/db/schema';
 import { sanitizePurchases } from '@/lib/data/purchase';
+import { primaryStore } from '@/lib/storeValidity';
 import { ListTable } from '@/lib/types';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
@@ -55,9 +56,10 @@ export async function getItemsByUser(
       orderBy: (items, { desc }) => [desc(items.created_at)],
     });
 
-    return result.map(({ images, ...item }) => ({
+    return result.map(({ images, stores, ...item }) => ({
       ...item,
       image_url: images[0]?.url ?? null,
+      store: primaryStore(stores),
       hasPurchases: item.purchases.length > 0,
       purchases: sanitizePurchases(item.purchases, userId, true, showSpoilers),
     }));
@@ -108,7 +110,7 @@ export async function getItemById(id: string, userId: string) {
       created_at: result.created_at,
       updated_at: result.updated_at,
       archived_at: result.archived_at,
-      stores: result.stores,
+      store: primaryStore(result.stores),
       image_candidates: result.images.map((image) => image.url),
       lists: lists,
     };
@@ -164,9 +166,10 @@ export async function getItemsByListId(
       orderBy: (list_items, { asc }) => [asc(list_items.position)],
     });
 
-    return result.map(({ item: { images, ...item } }) => ({
+    return result.map(({ item: { images, stores, ...item } }) => ({
       ...item,
       image_url: images[0]?.url ?? null,
+      store: primaryStore(stores),
       purchases: sanitizePurchases(
         item.purchases,
         opts.viewerId,

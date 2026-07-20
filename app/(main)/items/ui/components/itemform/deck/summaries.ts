@@ -12,7 +12,7 @@ export function listsQtySubtext(item: ItemViewModel): string {
 }
 
 export function storeSubtext(item: ItemViewModel): string {
-  const store = item.stores[0];
+  const store = item.store;
   return store && storeTier(store).tier === 'good'
     ? store.name
     : 'Add where to buy it';

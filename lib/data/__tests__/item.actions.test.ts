@@ -68,8 +68,8 @@ function makeItem(overrides: Partial<ItemDetails> = {}): ItemDetails {
     name: 'Valid Item Name',
     description: 'desc',
     quantity_limit: null,
-    // Exactly one complete store — the single-store cap rejects anything else.
-    stores: [{ name: 'Amazon', link: 'https://a.test', price: '10' }],
+    // A complete store — the actions reject anything less.
+    store: { name: 'Amazon', link: 'https://a.test', price: '10' },
     lists: [],
     ...overrides,
   };
@@ -130,55 +130,41 @@ describe('createItem', () => {
       expect(await itemRows()).toHaveLength(0);
     });
 
-    it('StorePartialFields_ReturnsStoresFieldError-NoRow', async () => {
+    it('StorePartialFields_ReturnsStoreFieldError-NoRow', async () => {
       const res = await actions.createItem(
-        makeItem({ stores: [{ name: 'Amazon', link: '', price: '' }] })
+        makeItem({ store: { name: 'Amazon', link: '', price: '' } })
       );
       expect(res.success).toBe(false);
-      expect(res.errors?.stores).toBeDefined();
+      expect(res.errors?.store).toBeDefined();
       expect(await itemRows()).toHaveLength(0);
     });
 
-    it('StoreLinkInvalidUrl_ReturnsStoresFieldError-NoRow', async () => {
+    it('StoreLinkInvalidUrl_ReturnsStoreFieldError-NoRow', async () => {
       const res = await actions.createItem(
-        makeItem({ stores: [{ name: 'Amazon', link: 'notaurl', price: '9' }] })
+        makeItem({ store: { name: 'Amazon', link: 'notaurl', price: '9' } })
       );
       expect(res.success).toBe(false);
-      expect(res.errors?.stores).toBeDefined();
+      expect(res.errors?.store).toBeDefined();
       expect(await itemRows()).toHaveLength(0);
     });
 
-    it('StorelessPayload_ReturnsStoresFieldError-NoRow', async () => {
-      const res = await actions.createItem(makeItem({ stores: [] }));
+    it('StorelessPayload_ReturnsStoreFieldError-NoRow', async () => {
+      const res = await actions.createItem(makeItem({ store: null }));
       expect(res.success).toBe(false);
-      expect(res.errors?.stores).toBeDefined();
+      expect(res.errors?.store).toBeDefined();
       expect(await itemRows()).toHaveLength(0);
     });
 
-    it('TwoStores_ReturnsStoresFieldError-NoRow', async () => {
-      const res = await actions.createItem(
-        makeItem({
-          stores: [
-            { name: 'Amazon', link: 'https://a.test', price: '10' },
-            { name: 'Target', link: 'https://t.test', price: '12' },
-          ],
-        })
-      );
-      expect(res.success).toBe(false);
-      expect(res.errors?.stores).toBeDefined();
-      expect(await itemRows()).toHaveLength(0);
-    });
-
-    it('ScientificNotationPrice_ReturnsStoresFieldError-NoRow', async () => {
+    it('ScientificNotationPrice_ReturnsStoreFieldError-NoRow', async () => {
       // Number('1e5') parses, so the retired looser check accepted it; the
       // shared predicate must not.
       const res = await actions.createItem(
         makeItem({
-          stores: [{ name: 'Amazon', link: 'https://a.test', price: '1e5' }],
+          store: { name: 'Amazon', link: 'https://a.test', price: '1e5' },
         })
       );
       expect(res.success).toBe(false);
-      expect(res.errors?.stores).toBeDefined();
+      expect(res.errors?.store).toBeDefined();
       expect(await itemRows()).toHaveLength(0);
     });
 
@@ -214,7 +200,7 @@ describe('createItem', () => {
           image_url: 'https://img.test/x.png',
           quantity_limit: 3,
           lists: [{ value: 'L', label: 'L' }],
-          stores: [{ name: 'Amazon', link: 'https://a.test', price: '10' }],
+          store: { name: 'Amazon', link: 'https://a.test', price: '10' },
         })
       );
       expect(res.success).toBe(true);
@@ -266,16 +252,14 @@ describe('createItem', () => {
       const res = await actions.createItem(
         makeItem({
           name: 'Provenance Gift',
-          stores: [
-            {
-              name: 'Amazon',
-              link: 'https://a.test',
-              price: '10',
-              price_fetched_at: '2026-01-01T00:00:00.000Z',
-              canonical_url: 'https://a.test/canonical',
-              currency: 'USD',
-            },
-          ],
+          store: {
+            name: 'Amazon',
+            link: 'https://a.test',
+            price: '10',
+            price_fetched_at: '2026-01-01T00:00:00.000Z',
+            canonical_url: 'https://a.test/canonical',
+            currency: 'USD',
+          },
         })
       );
       expect(res.success).toBe(true);
@@ -395,7 +379,7 @@ describe('updateItem', () => {
       makeItem({
         id: 'I',
         lists: [],
-        stores: [{ name: 'new', link: 'https://b.test', price: '2' }],
+        store: { name: 'new', link: 'https://b.test', price: '2' },
       })
     );
     expect(res.error).toBe('Failed to update item');
@@ -435,7 +419,7 @@ describe('updateItem', () => {
           name: 'Updated',
           quantity_limit: 5,
           lists: [{ value: 'L2', label: 'L2' }],
-          stores: [{ name: 'a1x', link: 'https://a.test', price: '12.99' }],
+          store: { name: 'a1x', link: 'https://a.test', price: '12.99' },
         })
       );
       expect(res.success).toBe(true);
@@ -462,43 +446,16 @@ describe('updateItem', () => {
       expect(updateTag).toHaveBeenCalledWith('items');
     });
 
-    it('MultiStorePayload_ReturnsStoresFieldError-NoWrite', async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id });
-      await seedItemStore(db, {
-        id: 'S1',
-        item_id: 'I',
-        name: 'a1',
-        link: 'l1',
-        price: 'p1',
-        order: 1,
-      });
-
-      const res = await actions.updateItem(
-        makeItem({
-          id: 'I',
-          stores: [
-            { name: 'a1x', link: 'https://a.test', price: '10' },
-            { name: 'new', link: 'https://b.test', price: '2' },
-          ],
-        })
-      );
-      expect(res.success).toBe(false);
-      expect(res.errors?.stores).toBeDefined();
-      expect(await storeRows('I')).toEqual([
-        expect.objectContaining({ id: 'S1', name: 'a1' }),
-      ]);
-    });
-
-    it('IncompleteStorePayload_ReturnsStoresFieldError-NoWrite', async () => {
+    it('IncompleteStorePayload_ReturnsStoreFieldError-NoWrite', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       const res = await actions.updateItem(
         makeItem({
           id: 'I',
-          stores: [{ name: '', link: 'https://a.test', price: '10' }],
+          store: { name: '', link: 'https://a.test', price: '10' },
         })
       );
       expect(res.success).toBe(false);
-      expect(res.errors?.stores).toBeDefined();
+      expect(res.errors?.store).toBeDefined();
     });
 
     it('UnchangedStore_PreservesRow', async () => {
@@ -515,7 +472,7 @@ describe('updateItem', () => {
       const res = await actions.updateItem(
         makeItem({
           id: 'I',
-          stores: [{ name: 'a1', link: 'https://a.test', price: '12.00' }],
+          store: { name: 'a1', link: 'https://a.test', price: '12.00' },
         })
       );
       expect(res.success).toBe(true);
@@ -556,7 +513,7 @@ describe('updateItem', () => {
         id: 'I',
         image_url: 'https://x.test/p.png',
         lists: [],
-        stores: [{ name: 'Amazon', link: 'https://a.test', price: '10' }],
+        store: { name: 'Amazon', link: 'https://a.test', price: '10' },
       } as unknown as ItemDetails);
       expect(res.success).toBe(true);
       const row = (await itemRows()).find((i) => i.id === 'I');

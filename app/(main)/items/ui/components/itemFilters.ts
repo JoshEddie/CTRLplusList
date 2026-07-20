@@ -1,26 +1,19 @@
+import { priceAmount, storeComplete } from '@/lib/storeValidity';
 import { ItemDisplay, SortKey } from '@/lib/types';
 
-export function firstStoreName(item: ItemDisplay): string {
-  const stores = item.stores;
-  if (!stores || stores.length === 0) return '';
-  return [...stores].map((s) => s.name).sort()[0] ?? '';
+export function storeName(item: ItemDisplay): string {
+  return item.store?.name ?? '';
 }
 
 export function displayPrice(item: ItemDisplay): number {
-  const stores = item.stores ?? [];
-  let lowest = NaN;
-  for (const s of stores) {
-    if (!s?.name || !s?.link) continue;
-    const n = Number(s.price);
-    if (!Number.isFinite(n)) continue;
-    if (!Number.isFinite(lowest) || n < lowest) lowest = n;
-  }
-  return lowest;
+  const store = item.store;
+  if (!store || !storeComplete(store)) return NaN;
+  return priceAmount(store.price);
 }
 
 function compareByStore(a: ItemDisplay, b: ItemDisplay, sort: SortKey): number {
-  const aStore = firstStoreName(a);
-  const bStore = firstStoreName(b);
+  const aStore = storeName(a);
+  const bStore = storeName(b);
   if (!aStore && !bStore) return 0;
   if (!aStore) return 1;
   if (!bStore) return -1;

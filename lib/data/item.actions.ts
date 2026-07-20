@@ -31,22 +31,11 @@ type NormalizedStore = {
   currency: string | null;
 };
 
-function validateSingleStore(
-  stores: ItemData['stores']
+function validateStore(
+  raw: ItemData['store']
 ):
   | { failure: ActionResponse; store?: undefined }
   | { failure?: undefined; store: NormalizedStore } {
-  const rows = stores ?? [];
-  if (rows.length > 1) {
-    return {
-      failure: {
-        success: false,
-        message: 'Validation failed',
-        errors: { stores: ['An item can have only one store'] },
-      },
-    };
-  }
-  const raw = rows[0];
   const store = {
     name: raw?.name ?? '',
     link: raw?.link ?? '',
@@ -60,7 +49,7 @@ function validateSingleStore(
       failure: {
         success: false,
         message: 'Validation failed',
-        errors: { stores: ['A store needs a name, a link, and a price'] },
+        errors: { store: ['A store needs a name, a link, and a price'] },
       },
     };
   }
@@ -101,8 +90,8 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       };
     }
 
-    const storesResult = validateSingleStore(validationResult.data.stores);
-    if (storesResult.failure) return storesResult.failure;
+    const storeResult = validateStore(validationResult.data.store);
+    if (storeResult.failure) return storeResult.failure;
 
     const id = nanoid();
     const validatedData = validationResult.data;
@@ -123,7 +112,7 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       const listIds: string[] = lists.map((list) => list.value);
       await updateItemLists(listIds, id);
     }
-    await updateItemStores([storesResult.store], id);
+    await updateItemStores([storeResult.store], id);
     await replaceItemImages(
       validatedData.image_candidates ?? [],
       validatedData.image_url || null,
@@ -190,8 +179,8 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
       };
     }
 
-    const storesResult = validateSingleStore(validationResult.data.stores);
-    if (storesResult.failure) return storesResult.failure;
+    const storeResult = validateStore(validationResult.data.store);
+    if (storeResult.failure) return storeResult.failure;
 
     const validatedData = validationResult.data;
     const updateData: Record<string, unknown> = {};
@@ -213,7 +202,7 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
     const listIds = lists.map((list) => list.value);
     await updateItemLists(listIds, data.id);
 
-    await updateItemStores([storesResult.store], data.id);
+    await updateItemStores([storeResult.store], data.id);
     // Re-sync images when the payload carries image fields. Without a candidate
     // list (a manual edit that didn't refetch), preserve the existing pool and
     // only re-point the active image.

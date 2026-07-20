@@ -13,7 +13,7 @@ vi.mock('@/lib/data/item.placeholder.actions', async () =>
 function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
   return makeItem({
     photos: ['https://a', 'https://b'],
-    stores: [{ name: 'shop', link: 'https://shop', price: '29.99' }],
+    store: { name: 'shop', link: 'https://shop', price: '29.99' },
     ...over,
   });
 }
@@ -83,7 +83,7 @@ describe('Deck', () => {
       <Harness
         initial={vm({
           photos: ['https://only'],
-          stores: [{ name: '', link: 'https://shop', price: '29.99' }],
+          store: { name: '', link: 'https://shop', price: '29.99' },
         })}
       />
     );
@@ -182,7 +182,7 @@ describe('Deck', () => {
       <Harness
         initial={vm({
           photos: ['https://only'],
-          stores: [{ name: 'shop', link: 'https://shop', price: '' }],
+          store: { name: 'shop', link: 'https://shop', price: '' },
         })}
       />
     );
@@ -208,7 +208,7 @@ describe('Deck', () => {
       <Harness
         initial={vm({
           photos: ['https://only'],
-          stores: [{ name: 'shop', link: 'https://shop', price: '' }],
+          store: { name: 'shop', link: 'https://shop', price: '' },
         })}
       />
     );
@@ -279,7 +279,7 @@ describe('Deck', () => {
       render(
         <Harness
           initial={vm({
-            stores: [{ name: 's', link: 'https://s', price: '' }],
+            store: { name: 's', link: 'https://s', price: '' },
           })}
         />
       );

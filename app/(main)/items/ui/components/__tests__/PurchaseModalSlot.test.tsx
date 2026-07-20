@@ -41,7 +41,7 @@ const ITEM = {
   name: 'Fancy Mug',
   description: '',
   image_url: '',
-  stores: [{ name: 'Amazon', link: 'https://a.example', price: '35.50' }],
+  store: { name: 'Amazon', link: 'https://a.example', price: '35.50' },
 } as never;
 
 function renderSlot(

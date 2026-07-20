@@ -58,7 +58,7 @@ describe('IntroCard', () => {
     setup({
       name: 'x'.repeat(120),
       photos: [],
-      stores: [{ name: '', link: '', price: '' }],
+      store: { name: '', link: '', price: '' },
     });
     expect(screen.queryByText(/Name:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Price:/)).not.toBeInTheDocument();
@@ -75,7 +75,7 @@ describe('IntroCard', () => {
     setup({
       name: 'x'.repeat(120),
       photos: [],
-      stores: [{ name: '', link: '', price: '' }],
+      store: { name: '', link: '', price: '' },
     });
     expect(screen.getByText('Name is too long')).toBeInTheDocument();
     expect(screen.getByText('Unable to find price')).toBeInTheDocument();

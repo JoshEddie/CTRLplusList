@@ -12,7 +12,7 @@ function item(overrides: Partial<ItemDisplay>): ItemDisplay {
     id: 'x',
     name: 'Item',
     description: '',
-    stores: [],
+    store: null,
     purchases: [],
     ...overrides,
   } as ItemDisplay;
@@ -23,12 +23,12 @@ const ITEMS = [
     id: 'a1',
     name: 'Apple',
     description: 'red fruit',
-    stores: [{ name: 'Amazon', price: '5.00', link: 'x' }] as never,
+    store: { name: 'Amazon', price: '5.00', link: 'https://a.example' } as never,
   }),
   item({
     id: 'a2',
     name: 'Banana',
-    stores: [{ name: 'Target', price: '15.00', link: 'y' }] as never,
+    store: { name: 'Target', price: '15.00', link: 'https://t.example' } as never,
   }),
   item({ id: 'a3', name: 'Cherry' }),
 ];
@@ -85,9 +85,11 @@ describe('collectStoreOptions', () => {
   it('CollectsDistinctNames_SortedAndSkipsBlankAndMissing', () => {
     expect(
       collectStoreOptions([
-        item({ stores: [{ name: 'Zebra' }, { name: '' }] as never }),
-        item({ stores: [{ name: 'Apple' }, { name: 'Zebra' }] as never }),
-        item({ stores: undefined as never }),
+        item({ store: { name: 'Zebra' } as never }),
+        item({ store: { name: 'Apple' } as never }),
+        item({ store: { name: '' } as never }),
+        item({ store: { name: 'Zebra' } as never }),
+        item({ store: undefined as never }),
       ])
     ).toEqual(['Apple', 'Zebra']);
   });
@@ -123,6 +125,37 @@ describe('filterAndSortChooseItems', () => {
         })
       )
     ).toEqual(['a2']);
+  });
+
+  it('DormantLegacyStoreName_DoesNotMatch', () => {
+    // The DAL-selected store is Amazon; a legacy second row's name never
+    // reaches the UI, so selecting it matches nothing.
+    expect(
+      ids(
+        filterAndSortChooseItems(ITEMS, new Set(), {
+          ...base,
+          selectedStores: ['LegacyEtsy'],
+        })
+      )
+    ).toEqual([]);
+  });
+
+  it('PriceFilterActive_ExcludesIncompleteStoreItem', () => {
+    const incomplete = item({
+      id: 'a4',
+      name: 'Durian',
+      store: { name: 'Shop', price: '20.00', link: 'not-a-url' } as never,
+    });
+    expect(
+      ids(
+        filterAndSortChooseItems([...ITEMS, incomplete], new Set(), {
+          ...base,
+          priceMin: 1,
+          priceMax: NaN,
+          hasPriceFilter: true,
+        })
+      )
+    ).toEqual(['a1', 'a2']);
   });
 
   it('PriceFilter_BoundsByDisplayPrice', () => {
