@@ -200,7 +200,9 @@ For a merged archive the skill SHALL treat the canonical spec as the fixed contr
 
 ### Requirement: Consolidated report with a defined output contract and a clear-to-archive verdict
 
-The skill SHALL emit a single consolidated report in a fixed, deterministic output contract — explicitly defined order, style, and wording — so that successive reviews are scannable and comparable. The order SHALL be: (1) header naming the resolved change (or "no related change"); (2) a one- to two-sentence summary of overall quality and headline contract status; (3) a scope line stating the diff source and resolved change (or that the contract audit was skipped); (4) findings grouped by phase in the fixed order standard → convention → contract, each as a table whose columns are number, severity, location, finding, disposition, and citation; (5) a short "what looks good" bullet list; (6) the verdict; (7) the explore-mode handoff prompt as the final line.
+The skill SHALL emit a single consolidated report in a fixed, deterministic output contract — explicitly defined order, style, and wording — so that successive reviews are scannable and comparable. The order SHALL be: (1) header naming the resolved change (or "no related change"); (2) a one- to two-sentence summary of overall quality and headline contract status; (3) a scope line stating the diff source and resolved change (or that the contract audit was skipped); (4) findings grouped by phase in the fixed order standard → convention → contract, each as a table whose columns are ID, severity, location, finding, disposition, and citation; (5) a short "what looks good" bullet list; (6) the verdict; (7) a pointer to `/adjudicate-review` as the final line.
+
+Each finding's ID SHALL follow the shared scheme defined in `reference/finding-format.md`: an arena letter (`s` standard, `c` convention, `k` contract) followed by an integer that increments globally across all arena tables within the round, so every finding is referable by an ID unique within its round (e.g. `s1`, `s2`, `c3`, `k4`) and merges are written by joining IDs with `+` (e.g. `s1+c3`).
 
 Severity SHALL use the text labels `Critical` / `Major` / `Minor` with no emojis. Each finding SHALL carry a proposed disposition of exactly one of `Fix now` / `File issue` / `Drop`, and out-of-scope findings SHALL only be proposed as `File issue` when they are sizable enough to warrant their own change cycle. Wording SHALL be terse and factual, citing the offending line and — for convention and contract findings — the specific doc rule or SHALL requirement. The skill SHOULD use an ASCII diagram for a finding when it conveys a relationship (data/control flow, state machine, dependency or task-to-work mapping, before/after of a fix) faster than prose; diagrams serve terseness and SHALL NOT be included as decoration.
 
@@ -210,7 +212,15 @@ The verdict SHALL also state the archive-gate outcome appropriate to the resolve
 
 #### Scenario: Output follows the fixed order and style
 - **WHEN** the skill emits its report
-- **THEN** sections appear in the defined order, findings are grouped standard → convention → contract in tables with the defined columns, severity uses text labels with no emojis, and every finding carries a `Fix now` / `File issue` / `Drop` disposition
+- **THEN** sections appear in the defined order, findings are grouped standard → convention → contract in tables with the defined columns, each finding carries an arena-letter + global-integer ID, severity uses text labels with no emojis, and every finding carries a `Fix now` / `File issue` / `Drop` disposition
+
+#### Scenario: Finding IDs are unique within the round
+- **WHEN** a round contains findings across the standard, convention, and contract arenas
+- **THEN** each finding's integer increments globally across the arenas (e.g. `s1`, `s2`, `c3`, `k4`) so no two findings in the round share an ID and any finding is referable by its ID alone
+
+#### Scenario: Final line points at adjudication
+- **WHEN** the report and verdict have been emitted
+- **THEN** the final output line is a pointer offering `/adjudicate-review <change>` rather than an in-context explore-mode prompt
 
 #### Scenario: Approve verdict despite non-blocking findings
 - **WHEN** the report contains findings but none is dispositioned `Fix now` (all are `File issue` or `Drop`)
@@ -235,22 +245,6 @@ The verdict SHALL also state the archive-gate outcome appropriate to the resolve
 #### Scenario: Merged-archive violation blocks pending a fresh proposal
 - **WHEN** the review runs against a merged archive and an implementation-vs-spec conformance violation is open
 - **THEN** the verdict is `Request changes` and states the PR is blocked pending implementation conformance or a fresh change proposal
-
-### Requirement: Optional explore-mode handoff
-
-After the report and verdict, the skill SHALL present exactly one prompt offering to continue into OpenSpec explore mode to investigate the findings — recommending which to fix and weighing how each fix would land (pros and cons). The skill SHALL NOT enter explore mode automatically; it SHALL enter only on the user's explicit affirmative response.
-
-#### Scenario: Handoff is offered, not auto-run
-- **WHEN** the report and verdict have been emitted
-- **THEN** the final output line is a single prompt offering to enter explore mode, and the skill takes no further action until the user responds
-
-#### Scenario: Enters explore mode only on explicit yes
-- **WHEN** the user answers yes to the handoff prompt
-- **THEN** the skill enters OpenSpec explore mode carrying the findings as context
-
-#### Scenario: Declining or not responding ends the review
-- **WHEN** the user declines or does not respond to the handoff prompt
-- **THEN** the skill does not enter explore mode and the review ends
 
 ### Requirement: Sub-agent briefs are bundled within the skill
 
@@ -366,11 +360,19 @@ independent of whether an automated runner exists.
 
 ### Requirement: The consolidated report SHALL be persisted to the change directory
 
-After emitting the consolidated report, the skill SHALL write it to `openspec/changes/<name>/review.md`, opening with the review family's shared machine-readable header (review type, target change, anchor sha, diff source, round number) as defined in the skill's bundled `reference/finding-format.md`. A repeat full review SHALL append a new round rather than overwriting prior rounds. When no related change was resolved (contract audit skipped), no report file is written and the skill SHALL say so. The persisted report is the contract consumed by `/recheck-review` (round appending) and `/landfall` (latest-verdict gate), and travels with the change directory at archive time.
+After emitting the consolidated report, the skill SHALL write it to `openspec/changes/<name>/review.md`, opening with the review family's shared machine-readable header (review type, target change, anchor sha, diff source, round number) as defined in the skill's bundled `reference/finding-format.md`. The persisted form SHALL be a **self-contained round** per that reference's round structure, not the session report verbatim: the `# /spec-review` title becomes the `## Round 1` heading, every section of the report nests at `###` (or deeper) inside it so nothing at `##` level belongs to the round, and the round SHALL end with a round-vocabulary `**Verdict:**` line — mapping the session verdict `Approve → clear to land` and `Request changes → findings remain` (blockers listed after `findings remain`) — which is the line `/landfall` and `/recheck-review` read and an `### Adjudications` subsection overrides. A repeat full review SHALL append a new round rather than overwriting prior rounds. When no related change was resolved (contract audit skipped), no report file is written and the skill SHALL say so. The persisted report is the contract consumed by `/recheck-review` (round appending) and `/landfall` (latest-verdict gate), and travels with the change directory at archive time.
 
 #### Scenario: Report is written with the shared header
 - **WHEN** `/spec-review` completes against resolved change `add-foo`
 - **THEN** `openspec/changes/add-foo/review.md` exists, beginning with the shared header naming `spec-review`, the change, the anchor sha, the diff source, and the round
+
+#### Scenario: Persisted round is self-contained with a round-vocab verdict
+- **WHEN** `/spec-review` persists its report for resolved change `add-foo`
+- **THEN** `review.md`'s round 1 nests its findings tables, "what looks good", and verdict at `###` under `## Round 1`, and ends with a `**Verdict:** clear to land`/`findings remain` line rather than the session `Approve`/`Request changes` wording
+
+#### Scenario: Adjudication verdict is the round's last verdict-bearing line
+- **WHEN** an `### Adjudications` subsection is appended to a persisted round whose own `**Verdict:**` reads `findings remain`
+- **THEN** the subsection nests inside the same `## Round N` block after that line, so the adjudication's `**Verdict:**` is the round's last verdict-bearing line and the effective verdict
 
 #### Scenario: Repeat review appends a round
 - **WHEN** a full `/spec-review` runs again after an `outgrew recheck` escalation
