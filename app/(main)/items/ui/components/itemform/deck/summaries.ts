@@ -13,7 +13,9 @@ export function listsQtySubtext(item: ItemViewModel): string {
 
 export function storeSubtext(item: ItemViewModel): string {
   const store = item.store;
-  return store && storeTier(store).tier === 'good'
+  // A good-tier store with a name is FULL; a linkless (PRICED/BARE) store has
+  // no name to show, so it falls back to the add prompt.
+  return store && storeTier(store).tier === 'good' && store.name.trim()
     ? store.name
     : 'Add where to buy it';
 }

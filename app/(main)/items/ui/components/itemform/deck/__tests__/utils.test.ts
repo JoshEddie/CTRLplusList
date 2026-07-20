@@ -6,7 +6,9 @@ import {
   amountToPrice,
   isDirtyDraft,
   manualAdvanceReady,
+  LINKLESS_PRICE_NOTE,
   photoTier,
+  pricePairTier,
   priceTier,
   priceToAmount,
   prunePhotos,
@@ -116,10 +118,16 @@ describe('deckUtils', () => {
   });
 
   describe('storeTier', () => {
-    it('Undefined_ReturnsErrorNamingName', () => {
-      const result = storeTier(undefined);
-      expect(result.tier).toBe('error');
-      expect(result.note).toContain('name');
+    it('Undefined_ReturnsGoodOptional', () => {
+      // Both fields empty is a supported linkless state, not a nag.
+      expect(storeTier(undefined)).toEqual({ tier: 'good', note: 'Optional' });
+    });
+
+    it('BothFieldsEmpty_ReturnsGoodOptional', () => {
+      expect(storeTier({ name: '', link: '' })).toEqual({
+        tier: 'good',
+        note: 'Optional',
+      });
     });
 
     it('MissingName_ReturnsErrorNamingName', () => {
@@ -148,6 +156,40 @@ describe('deckUtils', () => {
     });
   });
 
+  describe('pricePairTier', () => {
+    it('LinklessEmptyPrice_GoodWithNeutralNote', () => {
+      expect(pricePairTier({ name: '', link: '', price: '' })).toEqual({
+        tier: 'good',
+        note: LINKLESS_PRICE_NOTE,
+      });
+    });
+
+    it('LinklessMalformedPrice_Error', () => {
+      expect(pricePairTier({ name: '', link: '', price: 'twelve' }).tier).toBe(
+        'error'
+      );
+    });
+
+    it('LinklessGoodPrice_Good', () => {
+      expect(pricePairTier({ name: '', link: '', price: '12.00' })).toEqual({
+        tier: 'good',
+        note: '',
+      });
+    });
+
+    it('LinkedEmptyPrice_Error', () => {
+      expect(
+        pricePairTier({ name: 'Lodge', link: 'https://l', price: '' }).tier
+      ).toBe('error');
+    });
+
+    it('LinkedGoodPrice_Good', () => {
+      expect(
+        pricePairTier({ name: 'Lodge', link: 'https://l', price: '9.99' }).tier
+      ).toBe('good');
+    });
+  });
+
   describe('rowTiers', () => {
     const item = (over: Partial<ItemViewModel> = {}): ItemViewModel => ({
       id: '',
@@ -173,7 +215,9 @@ describe('deckUtils', () => {
       ]);
     });
 
-    it('BlankItem_TitlePriceStoreErrorPhotoWarnNoteGood', () => {
+    it('BlankLinklessItem_TitleErrorPhotoWarnStorePriceNoteGood', () => {
+      // A blank store (name+link both empty) is a supported linkless state —
+      // store and price read good, not error.
       const tiers = rowTiers(
         item({
           name: '',
@@ -182,9 +226,9 @@ describe('deckUtils', () => {
         })
       );
       expect(tiers.title.tier).toBe('error');
-      expect(tiers.price.tier).toBe('error');
+      expect(tiers.price.tier).toBe('good');
       expect(tiers.photo.tier).toBe('warn');
-      expect(tiers.store.tier).toBe('error');
+      expect(tiers.store.tier).toBe('good');
       expect(tiers.note.tier).toBe('good');
     });
 

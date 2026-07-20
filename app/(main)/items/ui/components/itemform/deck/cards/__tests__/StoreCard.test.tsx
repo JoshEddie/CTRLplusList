@@ -47,9 +47,10 @@ describe('StoreCard', () => {
     expect(actions.setStore).toHaveBeenLastCalledWith('link', 'h');
   });
 
-  it('EmptyStore_RendersEmptyFieldsWithContinueDisabled', () => {
+  it('EmptyStore_RendersEmptyFieldsWithContinueEnabledLinkless', () => {
+    // Both fields empty is a supported linkless state — advance is allowed.
     setup({ store: { name: '', link: '', price: '' } });
     expect(screen.getByLabelText('Store name')).toHaveValue('');
-    expect(screen.getByRole('button', { name: /Continue/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Continue/ })).toBeEnabled();
   });
 });

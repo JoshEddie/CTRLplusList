@@ -10,51 +10,12 @@ import {
   updateItemStores,
 } from '@/lib/data/item.associations';
 import { touchLists } from '@/lib/data/list.touch';
-import { ItemSchema, type ItemData } from '@/lib/data/item.schema';
-import { storeComplete } from '@/lib/storeValidity';
+import { ItemSchema } from '@/lib/data/item.schema';
+import { validateStore } from '@/lib/data/item.store';
 import { type ActionResponse, ItemDetails } from '@/lib/types';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
-
-// Input-side single-store cap (item-store-links): exactly one store, and it
-// must pass the shared completeness predicate — the actions mirror the client
-// gate so the API can't persist what the UI forbids. The item_stores schema
-// is unchanged; legacy multi-store rows collapse via positional sync on the
-// first edit-save. Success carries the normalized row updateItemStores writes.
-type NormalizedStore = {
-  name: string;
-  link: string;
-  price: string;
-  price_fetched_at: string | null;
-  canonical_url: string | null;
-  currency: string | null;
-};
-
-function validateStore(
-  raw: ItemData['store']
-):
-  | { failure: ActionResponse; store?: undefined }
-  | { failure?: undefined; store: NormalizedStore } {
-  const store = {
-    name: raw?.name ?? '',
-    link: raw?.link ?? '',
-    price: raw?.price ?? '',
-    price_fetched_at: raw?.price_fetched_at ?? null,
-    canonical_url: raw?.canonical_url ?? null,
-    currency: raw?.currency ?? null,
-  };
-  if (!storeComplete(store)) {
-    return {
-      failure: {
-        success: false,
-        message: 'Validation failed',
-        errors: { store: ['A store needs a name, a link, and a price'] },
-      },
-    };
-  }
-  return { store };
-}
 
 export async function createItem(data: ItemDetails): Promise<ActionResponse> {
   try {
@@ -112,7 +73,7 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       const listIds: string[] = lists.map((list) => list.value);
       await updateItemLists(listIds, id);
     }
-    await updateItemStores([storeResult.store], id);
+    await updateItemStores(storeResult.stores, id);
     await replaceItemImages(
       validatedData.image_candidates ?? [],
       validatedData.image_url || null,
@@ -202,7 +163,7 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
     const listIds = lists.map((list) => list.value);
     await updateItemLists(listIds, data.id);
 
-    await updateItemStores([storeResult.store], data.id);
+    await updateItemStores(storeResult.stores, data.id);
     // Re-sync images when the payload carries image fields. Without a candidate
     // list (a manual edit that didn't refetch), preserve the existing pool and
     // only re-point the active image.

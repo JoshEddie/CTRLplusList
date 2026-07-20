@@ -61,12 +61,13 @@ describe('ItemActions', () => {
       ).toBeInTheDocument();
     });
 
-    it('LinklessStoreWithBuySignal_OmitsBuyClaim', () => {
+    it('LinklessStoreWithBuySignal_OmitsBuyClaimAndViewItem', () => {
       renderActions({
         showBuyClaim: true,
-        store: { name: 'Amazon', link: '', price: '35.50' },
+        store: { name: '', link: '', price: '35.50' },
       });
       expect(buyClaim()).not.toBeInTheDocument();
+      expect(viewItem()).not.toBeInTheDocument();
     });
 
     it('ViewOnlyWithBuySignal_OmitsBuyClaim', () => {

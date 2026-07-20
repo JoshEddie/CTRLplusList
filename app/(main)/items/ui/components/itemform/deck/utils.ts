@@ -61,14 +61,25 @@ export function photoTier(photos: string[]): TierResult {
 }
 
 // The store row covers the name + link pair only (price is owned by
-// priceTier). A link is required — there is no warn tier for the store.
+// priceTier). Symmetric coupling: both empty is a supported linkless state
+// (good); either present requires the other. No warn tier for the store.
 export function storeTier(
   store: Pick<DeckStore, 'name' | 'link'> | null | undefined
 ): TierResult {
-  if (!store?.name?.trim()) {
+  const name = store?.name?.trim() ?? '';
+  const link = store?.link?.trim() ?? '';
+  if (name === '' && link === '') {
+    // Linkless is a valid, optional state — not a found-and-verified store, so
+    // the row reads "Optional" rather than the good-tier "Looks good" default.
+    return { tier: 'good', note: 'Optional' };
+  }
+  if (link === '') {
+    return { tier: 'error', note: 'A store name needs a link.' };
+  }
+  if (name === '') {
     return { tier: 'error', note: 'The store needs a name.' };
   }
-  if (!isValidProductUrl(store.link)) {
+  if (!isValidProductUrl(store!.link)) {
     return { tier: 'error', note: 'The store needs a valid link.' };
   }
   return { tier: 'good', note: '' };
@@ -84,6 +95,24 @@ export function isDirtyDraft(item: ItemViewModel): boolean {
     item.store.name.trim() !== '' ||
     item.store.price.trim() !== ''
   );
+}
+
+export const LINKLESS_PRICE_NOTE = 'No price — saves without one';
+
+// Price validity in store context (D2): priceTier stays a pure format check;
+// the "empty price is fine when linkless" rule composes here. An empty price is
+// good (with a neutral note) only for a linkless store — name and link both
+// empty. A malformed non-empty price is an error regardless.
+export function pricePairTier(
+  store: Pick<DeckStore, 'name' | 'link' | 'price'>
+): TierResult {
+  const linkless =
+    (store.name?.trim() ?? '') === '' && (store.link?.trim() ?? '') === '';
+  const priceEmpty = (store.price ?? '').trim() === '';
+  if (linkless && priceEmpty) {
+    return { tier: 'good', note: LINKLESS_PRICE_NOTE };
+  }
+  return priceTier(store.price);
 }
 
 export type RowTiers = Record<RowField, TierResult>;
@@ -102,7 +131,7 @@ export function rowTiers(item: ItemViewModel): RowTiers {
             note: `Over the ${DESCRIPTION_MAX}-character limit — trim it.`,
           }
         : { tier: 'good', note: item.description ? '' : 'Optional' },
-    price: priceTier(item.store.price),
+    price: pricePairTier(item.store),
     store: storeTier(item.store),
   };
 }

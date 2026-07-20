@@ -44,9 +44,11 @@ describe('PriceCard', () => {
     ).toHaveAttribute('href', 'https://pasted.test/p');
   });
 
-  it('EmptyStore_ShowsRequiredNote-DisablesContinue', () => {
+  it('EmptyLinklessStore_HidesRequiredNote-EnablesContinue', () => {
+    // Linkless (name+link empty): an empty price is fine, so no required note
+    // and Continue is enabled.
     setup({ store: { name: '', link: '', price: '' } }, 'https://pasted.test/p');
-    expect(screen.getByText(/A price is required/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.queryByText(/A price is required/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 });

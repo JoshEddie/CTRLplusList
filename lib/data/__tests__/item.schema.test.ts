@@ -91,6 +91,25 @@ describe('ItemSchema', () => {
         }).success
       ).toBe(false);
     });
+
+    it('PricedStore_PassesSchema', () => {
+      // Price-only (no name, no link) is the PRICED state — schema accepts it;
+      // the action's validateStore checks the price format downstream.
+      expect(
+        ItemSchema.safeParse({
+          ...base,
+          store: { name: '', link: '', price: '12.00' },
+        }).success
+      ).toBe(true);
+    });
+
+    it('PriceOnlyKeysOmitted_PassesSchema', () => {
+      // name/link keys absent entirely (not just empty strings) still resolves
+      // to the PRICED state.
+      expect(
+        ItemSchema.safeParse({ ...base, store: { price: '12.00' } }).success
+      ).toBe(true);
+    });
   });
   describe('image_candidates', () => {
     const PREFIX = 'data:image/svg+xml;base64,';

@@ -49,6 +49,19 @@ export function storeComplete(
   );
 }
 
+// The display/persist-valid predicate: FULL (navigable, storeComplete) or
+// PRICED (price only — link exactly '', name blank, good price). Requiring an
+// empty (not merely invalid) link keeps dormant legacy rows with broken
+// non-empty links filtered out — they never resurrect as valid.
+export function storeValid(store: StoreFields | null | undefined): boolean {
+  if (storeComplete(store)) return true;
+  return (
+    store?.link === '' &&
+    (store?.name?.trim() ?? '') === '' &&
+    priceTier(store.price).tier === 'good'
+  );
+}
+
 // PRICE_PATTERN accepts an optional leading `$`, which Number() does not.
 export function priceAmount(price: string | number): number {
   return typeof price === 'string'
@@ -59,8 +72,8 @@ export function priceAmount(price: string | number): number {
 export function primaryStore<T extends StoreFields>(
   rows: T[] | null | undefined
 ): T | null {
-  const complete = (rows ?? [])
-    .filter(storeComplete)
+  const valid = (rows ?? [])
+    .filter(storeValid)
     .sort((a, b) => priceAmount(a.price) - priceAmount(b.price));
-  return complete[0] ?? rows?.[0] ?? null;
+  return valid[0] ?? rows?.[0] ?? null;
 }

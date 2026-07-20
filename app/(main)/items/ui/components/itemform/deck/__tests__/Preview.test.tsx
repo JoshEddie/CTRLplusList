@@ -175,6 +175,22 @@ describe('Preview', () => {
     });
   });
 
+  describe('LinklessStore', () => {
+    it('BareStore_EnablesCreate', () => {
+      setup({ store: { name: '', link: '', price: '' } });
+      expect(
+        screen.getByRole('button', { name: 'Create item' })
+      ).toBeEnabled();
+    });
+
+    it('PricedStore_EnablesCreate', () => {
+      setup({ store: { name: '', link: '', price: '12.00' } });
+      expect(
+        screen.getByRole('button', { name: 'Create item' })
+      ).toBeEnabled();
+    });
+  });
+
   describe('OverCapDescription', () => {
     it('GoodNameButLongDescription_DisablesCreate-ShowsTrimLine', () => {
       setup({ description: 'd'.repeat(150) });

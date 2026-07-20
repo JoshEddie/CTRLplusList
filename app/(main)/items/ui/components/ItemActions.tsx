@@ -52,7 +52,9 @@ export default function ItemActions({
   // Keyed on a navigable link, never mere store presence — a PRICED/linkless
   // item must keep its Add Claim-only action set (design D-Linkless-256).
   const showBuy = !viewOnly && !!showBuyClaim && !!store?.link;
-  const showView = !!store;
+  // Keyed on a navigable link, never mere store presence — a PRICED/linkless
+  // store carries a price line but no View item link (item-actions spec).
+  const showView = !!store?.link;
   // When View item is the card's only action (owner spoilers off, view-only)
   // it is the primary intent — promote it from the subordinate secondary look.
   const viewIsOnlyAction = showView && !showManage && !showStatus && !showAdd;

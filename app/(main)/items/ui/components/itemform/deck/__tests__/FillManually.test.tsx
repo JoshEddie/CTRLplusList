@@ -52,14 +52,16 @@ describe('FillManually', () => {
     expect(back).not.toHaveClass('primary');
   });
 
-  it('BlankItem_RowsStateTheirIssues', () => {
+  it('BlankItem_NagsNameAndPhotoOnly-NotLinklessStoreOrPrice', () => {
+    // A blank store (name+link both empty) is a supported linkless state, so
+    // the store and price rows don't nag — only name and photo do.
     setup(blank);
     expect(screen.getByText('An item needs a name.')).toBeInTheDocument();
-    expect(
-      screen.getByText('Add a price so people know the cost.')
-    ).toBeInTheDocument();
     expect(screen.getByText('No photo yet — add one.')).toBeInTheDocument();
-    expect(screen.getByText('The store needs a name.')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Add a price so people know the cost.')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('The store needs a name.')).not.toBeInTheDocument();
     expect(screen.queryByText('Needs you')).not.toBeInTheDocument();
   });
 

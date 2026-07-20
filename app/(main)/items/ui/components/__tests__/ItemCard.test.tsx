@@ -97,6 +97,39 @@ describe('ItemCard', () => {
       }
     });
 
+    it('PricedStore_RendersBarePrice-NoStoreName-NoViewOrBuy', () => {
+      const { container } = renderCard({
+        showBuyClaim: true,
+        item: {
+          id: 'i1',
+          name: 'Gift',
+          store: { name: '', link: '', price: '12.00' },
+        } as never,
+      });
+      expect(container.querySelector('.item-price')).toHaveTextContent('$12.00');
+      expect(container.querySelector('.item-store-metadata')).toBeNull();
+      expect(
+        screen.queryByRole('link', { name: 'View item — opens in new tab' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: 'Buy & Claim — opens in new tab' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('BareStore_OmitsPriceLine-ShowsAddClaim', () => {
+      const { container } = renderCard({
+        item: {
+          id: 'i1',
+          name: 'Gift',
+          store: { name: '', link: '', price: '' },
+        } as never,
+      });
+      expect(container.querySelector('.item-price-row')).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Add Claim' })
+      ).toBeInTheDocument();
+    });
+
     it('IncompleteStore_OmitsPriceLineAndViewItem', () => {
       const { container } = renderCard({
         item: {

@@ -12,7 +12,7 @@ import { TrimChip } from './TrimChip';
 import type { ItemActions } from './useItemActions';
 import {
   DESCRIPTION_MAX,
-  priceTier,
+  pricePairTier,
   storeTier,
   suggestTrim,
   titleTier,
@@ -53,7 +53,7 @@ export function Preview({
   const titleBlocked = tier.tier === 'error';
   const noteBlocked = item.description.length > DESCRIPTION_MAX;
   const storeBlocked = storeTier(item.store).tier === 'error';
-  const priceBlocked = priceTier(item.store.price).tier === 'error';
+  const priceBlocked = pricePairTier(item.store).tier === 'error';
   const blocked = titleBlocked || noteBlocked || storeBlocked || priceBlocked;
   const suggestion = suggestTrim(item.name);
 
@@ -63,7 +63,7 @@ export function Preview({
       ? `Your description is over the ${DESCRIPTION_MAX}-character limit — trim it to save.`
       : storeBlocked
         ? storeTier(item.store).note
-        : priceTier(item.store.price).note;
+        : pricePairTier(item.store).note;
 
   return (
     <DeckScreen

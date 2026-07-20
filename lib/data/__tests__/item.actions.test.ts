@@ -148,8 +148,10 @@ describe('createItem', () => {
       expect(await itemRows()).toHaveLength(0);
     });
 
-    it('StorelessPayload_ReturnsStoreFieldError-NoRow', async () => {
-      const res = await actions.createItem(makeItem({ store: null }));
+    it('LinkWithoutName_ReturnsStoreFieldError-NoRow', async () => {
+      const res = await actions.createItem(
+        makeItem({ store: { name: '', link: 'https://a.test', price: '9' } })
+      );
       expect(res.success).toBe(false);
       expect(res.errors?.store).toBeDefined();
       expect(await itemRows()).toHaveLength(0);
@@ -287,6 +289,39 @@ describe('createItem', () => {
       const rows = await itemRows();
       expect(rows).toHaveLength(1);
       expect(rows[0].name).toBe('Undef Fields');
+    });
+
+    it('BareStore_InsertsItem-PersistsZeroStoreRows', async () => {
+      const res = await actions.createItem(
+        makeItem({ name: 'Bare Store', store: null })
+      );
+      expect(res.success).toBe(true);
+      const rows = await itemRows();
+      expect(rows).toHaveLength(1);
+      expect(await storeRows(rows[0].id)).toHaveLength(0);
+    });
+
+    it('PricedStore_InsertsItem-PersistsLinklessRow', async () => {
+      const res = await actions.createItem(
+        makeItem({
+          name: 'Priced Store',
+          store: { name: '', link: '', price: '12.50' },
+        })
+      );
+      expect(res.success).toBe(true);
+      const rows = await itemRows();
+      expect(await storeRows(rows[0].id)).toEqual([
+        expect.objectContaining({ name: '', link: '', price: '12.50', order: 1 }),
+      ]);
+    });
+
+    it('PricedStoreBadPrice_ReturnsStoreFieldError-NoRow', async () => {
+      const res = await actions.createItem(
+        makeItem({ store: { name: '', link: '', price: 'twelve' } })
+      );
+      expect(res.success).toBe(false);
+      expect(res.errors?.store).toBeDefined();
+      expect(await itemRows()).toHaveLength(0);
     });
   });
 
@@ -484,6 +519,40 @@ describe('updateItem', () => {
           price: '12.00',
           order: 1,
         }),
+      ]);
+    });
+
+    it('BareStore_DeletesExistingStoreRows', async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedItemStore(db, {
+        id: 'S1',
+        item_id: 'I',
+        name: 'a1',
+        link: 'https://a.test',
+        price: '12.00',
+        order: 1,
+      });
+      const res = await actions.updateItem(makeItem({ id: 'I', store: null }));
+      expect(res.success).toBe(true);
+      expect(await storeRows('I')).toHaveLength(0);
+    });
+
+    it('PricedStore_CollapsesExistingRowToLinkless', async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedItemStore(db, {
+        id: 'S1',
+        item_id: 'I',
+        name: 'a1',
+        link: 'https://a.test',
+        price: '12.00',
+        order: 1,
+      });
+      const res = await actions.updateItem(
+        makeItem({ id: 'I', store: { name: '', link: '', price: '8.00' } })
+      );
+      expect(res.success).toBe(true);
+      expect(await storeRows('I')).toEqual([
+        expect.objectContaining({ id: 'S1', name: '', link: '', price: '8.00' }),
       ]);
     });
 

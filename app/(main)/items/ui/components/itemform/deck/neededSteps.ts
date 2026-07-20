@@ -1,4 +1,9 @@
-import { DESCRIPTION_MAX, priceTier, storeTier, titleTier } from './utils';
+import {
+  DESCRIPTION_MAX,
+  pricePairTier,
+  storeTier,
+  titleTier,
+} from './utils';
 import type { ItemViewModel } from './viewModel';
 
 export type DeckStep = 'photo' | 'title' | 'price' | 'store' | 'note';
@@ -20,7 +25,7 @@ export function isStepComplete(step: DeckStep, item: ItemViewModel): boolean {
     case 'title':
       return titleTier(item.name).tier === 'good';
     case 'price':
-      return priceTier(item.store.price).tier === 'good';
+      return pricePairTier(item.store).tier === 'good';
     case 'store':
       return storeTier(item.store).tier === 'good';
     case 'note':
@@ -74,7 +79,7 @@ export function stepBlocked(step: DeckStep, item: ItemViewModel): boolean {
     case 'title':
       return titleTier(item.name).tier === 'error';
     case 'price':
-      return priceTier(item.store.price).tier !== 'good';
+      return pricePairTier(item.store).tier !== 'good';
     case 'store':
       return storeTier(item.store).tier !== 'good';
     case 'note':

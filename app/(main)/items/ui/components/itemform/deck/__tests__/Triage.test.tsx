@@ -141,11 +141,15 @@ describe('Triage', () => {
       expect(row).toHaveTextContent('An item needs a name.');
     });
 
-    it('NoStore_StoreRowStatesNameIssue', () => {
+    it('NoStore_StoreRowReadsOptional', () => {
+      // A blank store is a supported linkless state — the row reads "Optional",
+      // not the found-and-verified "Looks good".
       setup(empty);
       const row = screen.getByRole('button', { name: /Store/ });
       expect(row).toHaveTextContent('None');
-      expect(row).toHaveTextContent('The store needs a name.');
+      expect(row).toHaveTextContent('Optional');
+      expect(row).not.toHaveTextContent('Looks good');
+      expect(row).not.toHaveTextContent('The store needs a name.');
     });
 
     it('AnyState_NoRowReadsNeedsYou', () => {

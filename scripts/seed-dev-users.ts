@@ -744,6 +744,12 @@ async function main() {
       price: '1399.00',
     },
   ];
+  // Hand-authored non-link states (non-link-item-states): one PRICED item
+  // (a single linkless priced row) and one BARE item (zero store rows), so
+  // both first-class states are reachable straight from the seed.
+  const PRICED_ITEM = 'dev-list-viewer-birthday-item-5';
+  const BARE_ITEM = 'dev-list-viewer-birthday-item-7';
+  const PRICED_ROWS = [{ name: '', link: '', price: '24.99' }];
   const storeRows: {
     id: string;
     item_id: string;
@@ -753,15 +759,18 @@ async function main() {
     order: number;
   }[] = [];
   for (const item of itemRows) {
+    if (item.id === BARE_ITEM) continue;
     const hash = item.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
     const catalog =
       item.id === LONG_STORE_ITEM
         ? LONG_STORE_ROWS
-        : // 1–3 stores per item, deterministic by item id hash.
-          Array.from(
-            { length: (hash % 3) + 1 },
-            (_, i) => STORE_CATALOG[(hash + i) % STORE_CATALOG.length]
-          );
+        : item.id === PRICED_ITEM
+          ? PRICED_ROWS
+          : // 1–3 stores per item, deterministic by item id hash.
+            Array.from(
+              { length: (hash % 3) + 1 },
+              (_, i) => STORE_CATALOG[(hash + i) % STORE_CATALOG.length]
+            );
     catalog.forEach((store, i) => {
       storeRows.push({
         id: `${item.id}-store-${i + 1}`,

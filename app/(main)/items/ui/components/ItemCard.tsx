@@ -1,4 +1,4 @@
-import { storeComplete } from '@/lib/storeValidity';
+import { storeValid } from '@/lib/storeValidity';
 import { ItemDisplay } from '@/lib/types';
 import ItemActions from './ItemActions';
 import ItemPhoto from './ItemPhoto';
@@ -63,7 +63,7 @@ export default function ItemCard({
           showOwnerClaimAction={showOwnerClaimAction}
           showOwnerManageAction={showOwnerManageAction}
           showBuyClaim={showBuyClaim}
-          store={storeComplete(item.store) ? (item.store ?? null) : null}
+          store={storeValid(item.store) ? (item.store ?? null) : null}
           viewOnly={viewOnly}
           onPurchaseClick={onPurchaseClick}
           onAddClaimClick={onAddClaimClick}

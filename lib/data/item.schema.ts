@@ -108,13 +108,18 @@ export const ItemSchema = z.object({
     .nullish()
     .refine(
       (store) => {
+        // Tri-state acceptance (non-link-item-states): BARE (nothing), PRICED
+        // (price only, no name/link), or FULL (name + valid link + price).
+        // Field-level rejection messaging lives in the server action's
+        // validateStore; the schema only guards the shape.
         if (!store) return true;
-        const hasAnyField = store.name || store.link || store.price;
-        if (!hasAnyField) return true;
-        if (!store.name || !store.link || !store.price) return false;
+        const name = store.name?.trim() ?? '';
+        const link = store.link?.trim() ?? '';
+        if (!name && !link) return true;
+        if (!name || !link || !store.price) return false;
 
         try {
-          new URL(store.link);
+          new URL(store.link!);
           return true;
         } catch {
           return false;

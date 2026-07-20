@@ -26,6 +26,15 @@ describe('ModalStoreRow', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it('PricedLinklessStore_RendersNothing', () => {
+    // A PRICED store has nowhere to navigate — the modal store row stays
+    // FULL-gated even though the price line renders it elsewhere.
+    const { container } = render(
+      <ModalStoreRow store={store('', '', '5')} />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('NullStore_RendersNothing', () => {
     const { container } = render(<ModalStoreRow store={null} />);
     expect(container).toBeEmptyDOMElement();

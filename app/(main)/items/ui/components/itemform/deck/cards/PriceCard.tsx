@@ -35,7 +35,7 @@ export function PriceCard({
         onChange={(value) => actions.setStore('price', value)}
         productUrl={productUrl || store.link}
       />
-      {!store.price.trim() && (
+      {stepBlocked('price', item) && (
         <TierNote tier="error">
           A price is required before you can continue.
         </TierNote>

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isValidProductUrl, primaryStore, storeComplete } from '../storeValidity';
+import {
+  isValidProductUrl,
+  primaryStore,
+  storeComplete,
+  storeValid,
+} from '../storeValidity';
 
 const COMPLETE = {
   name: 'Lodge',
@@ -55,10 +60,59 @@ describe('storeValidity', () => {
     });
   });
 
+  describe('storeValid', () => {
+    const PRICED = { name: '', link: '', price: '12.00' };
+
+    it('FullStore_Valid', () => {
+      expect(storeValid(COMPLETE)).toBe(true);
+    });
+
+    it('PricedRow_ValidButNotComplete', () => {
+      expect(storeValid(PRICED)).toBe(true);
+      expect(storeComplete(PRICED)).toBe(false);
+    });
+
+    it('LegacyInvalidLinkRow_Invalid', () => {
+      // A dormant row with a broken non-empty link must never resurrect: the
+      // empty-link (not merely invalid-link) requirement keeps it filtered.
+      expect(storeValid({ name: '', link: 'lodge.example', price: '12.00' })).toBe(
+        false
+      );
+    });
+
+    it('NameWithoutLink_Invalid', () => {
+      expect(storeValid({ name: 'Lodge', link: '', price: '12.00' })).toBe(false);
+    });
+
+    it('PricedRowWithBadPrice_Invalid', () => {
+      expect(storeValid({ name: '', link: '', price: '' })).toBe(false);
+      expect(storeValid({ name: '', link: '', price: 'twelve' })).toBe(false);
+    });
+
+    it('NullishStore_Invalid', () => {
+      expect(storeValid(null)).toBe(false);
+      expect(storeValid(undefined)).toBe(false);
+    });
+  });
+
   describe('primaryStore', () => {
     const cheap = { ...COMPLETE, name: 'Cheap', price: '9.99' };
     const dollar = { ...COMPLETE, name: 'Dollar', price: '$5.00' };
     const incomplete = { ...COMPLETE, name: 'Broken', link: 'not a url' };
+    const priced = { name: '', link: '', price: '3.00' };
+
+    it('PricedOnlyRows_PricedSelected', () => {
+      expect(primaryStore([priced])).toBe(priced);
+    });
+
+    it('PricedBeatsPricierFull_LowestValidWins', () => {
+      expect(primaryStore([COMPLETE, priced])).toBe(priced);
+    });
+
+    it('InvalidLinkRowsOnly_RepairFallbackFirstRow', () => {
+      const second = { ...incomplete, name: 'Broken 2' };
+      expect(primaryStore([incomplete, second])).toBe(incomplete);
+    });
 
     it('MultipleCompleteStores_LowestPricedWins', () => {
       expect(primaryStore([COMPLETE, cheap, dollar])).toBe(dollar);
