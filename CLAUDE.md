@@ -4,15 +4,15 @@
 
 Non-negotiables; each links to its full text.
 
-- **No interactive DB transactions** — no `db.transaction(...)`, no `SELECT … FOR UPDATE`; the `neon-http` driver runs every query as its own HTTP round-trip. Backstop atomicity with unique / partial-unique indexes and `ON CONFLICT`. ([DATABASE.md](DATABASE.md))
-- **No comments by default** — only a non-obvious WHY earns one. (§ Comments)
-- **File size** — >400 lines of code is a merge-blocking lint error, 300–400 the only tolerated lint warning; never `eslint-disable` either rule. (§ File size)
-- **Tests assert observable behavior** — no execute-for-coverage, no tautologies; names are lint-enforced as `<StateUnderTest>_<ExpectedBehavior>`. ([TESTING.md](TESTING.md))
-- **Every `/* v8 ignore */` carries an inline `--` rationale** naming the unreachable branch; never valid on a redundant guard. ([TESTING.md](TESTING.md))
-- **Five gates, checked separately**: `npm run lint` (pure `eslint .` — zero errors, zero non-size warnings) · `npx tsc --noEmit` · `npm run build` · `npm run test:coverage` · `npm run test:e2e`. Trunk landings run lint + typecheck locally pre-push; CI on the `dev` push runs the full battery. Changes whose every file can't affect test outcomes (markdown/skills/specs, plus comment-only edits elsewhere) may mark the two test gates skipped with an explicit rationale; any executable change voids it, however small. CI still runs everything. (§ Trunk workflow)
-- **Skills never `git commit`** — stage, report, stop for the owner's signature; never retry a blocked signature. One change in the apply stage at a time on `dev`. (§ Trunk workflow)
-- **Specs are the contract** — `openspec/specs/<capability>/spec.md` is normative; archived changes are history. Every interactive surface routes through a primitive-family spec; no page-scoped one-off UI classes.
-- **Restart the dev server after seeding/reseeding** — `'use cache'` DAL results stay stale otherwise. (§ Local dev)
+- **No interactive DB transactions** — no `db.transaction(...)`, no `SELECT … FOR UPDATE`; `neon-http` runs every query as its own HTTP round-trip. Atomicity via unique / partial-unique indexes + `ON CONFLICT`. ([DATABASE.md](DATABASE.md))
+- **No comments by default** — only non-obvious WHY earns one. (§ Comments)
+- **File size** — >400 lines of code = merge-blocking lint error; 300–400 = only tolerated lint warning; never `eslint-disable` either rule. (§ File size)
+- **Tests assert observable behavior** — no execute-for-coverage, no tautologies; names lint-enforced `<StateUnderTest>_<ExpectedBehavior>`. ([TESTING.md](TESTING.md))
+- **Every `/* v8 ignore */` carries inline `--` rationale** naming unreachable branch; never valid on redundant guard. ([TESTING.md](TESTING.md))
+- **Five gates, checked separately**: `npm run lint` (pure `eslint .` — zero errors, zero non-size warnings) · `npx tsc --noEmit` · `npm run build` · `npm run test:coverage` · `npm run test:e2e`. Trunk landings: lint + typecheck locally pre-push; CI on `dev` push runs full battery. Non-executable changes (markdown/skills/specs, comment-only edits) may mark two test gates skipped with explicit rationale; any executable change voids it. CI still runs everything. (§ Trunk workflow)
+- **Skills never `git commit`** — stage, report, stop for owner's signature; never retry blocked signature. One change in apply stage at a time on `dev`. (§ Trunk workflow)
+- **Specs are the contract** — `openspec/specs/<capability>/spec.md` normative; archived changes are history. Every interactive surface routes through a primitive-family spec; no page-scoped one-off UI classes.
+- **Restart dev server after seeding/reseeding** — `'use cache'` DAL results stay stale otherwise. (§ Local dev)
 
 ## Read this before touching that
 
@@ -20,137 +20,95 @@ Non-negotiables; each links to its full text.
 | --- | --- |
 | Any test | [TESTING.md](TESTING.md) — substance rules, forbidden patterns, fixtures, naming |
 | DB queries, DAL, schema, migrations | [DATABASE.md](DATABASE.md) — driver limits, migration workflow |
-| OpenSpec changes or specs | [openspec/config.yaml](openspec/config.yaml) + the capability spec in `openspec/specs/` (see § Trunk workflow) |
-| UI primitives / any interactive surface | The owning primitive-family spec (`button-system`, `menu-system`, …) in `openspec/specs/` |
+| OpenSpec changes or specs | [openspec/config.yaml](openspec/config.yaml) + capability spec in `openspec/specs/` (see § Trunk workflow) |
+| UI primitives / any interactive surface | Owning primitive-family spec (`button-system`, `menu-system`, …) in `openspec/specs/` |
+| Seeded UI states, local-mode internals, product-fetch mock | [LOCALDEV.md](LOCALDEV.md) — only when needed |
 
 ## Trunk workflow
 
-A **two-layer constitution**. The **definition layer** (`map-workflow` spec) governs how work gets defined: every piece of work enters through `/map`, nothing else creates worked issues, and its skills write GitHub issues only — never the tree. The **execution layer** (`trunk-workflow` spec) governs everything after departure: tree, commits, gates, review, landing. Neither layer governs the other, and sharpness is perishable — map clears fog at charting time, embark re-verifies at departure time.
+Normative: `map-workflow` + `trunk-workflow` specs; mechanics: each skill's SKILL.md; labels: [.claude/skills/map/reference/label-machine.md](.claude/skills/map/reference/label-machine.md).
 
-Work happens directly on `dev`, at most one OpenSpec change in the **apply** stage at a time (a next change's spec artifacts may coexist in the tree with an implemented change under review or awaiting landing), reviewed **before** any commit exists. Per-change PRs are gone; branches+PRs remain the deliberate escape hatch for large, slow features (reviewed via `/spec-review <PR>` exactly as before).
+- Route everything through the fleet: `/map` (all work definition) → `/embark` → `/set-sail` → `/spec-review` → `/landfall`, `/anchor` for discoveries, `/port-inspection`/`/close-map` for closure, `/release-review` for release cut. Never improvise a step the fleet owns (issues, ALL-CAPS labels, closing, releasing) by hand.
+- Work on `dev`; review before any commit exists; one change in apply at a time (also in hard rules).
+- Never hand-edit generated `openspec-*`/`opsx/*` files under `.claude/` — `openspec update` clobbers. Repo-owned (safe): `grill-me`, `finalize-spec-purposes`, fleet skills.
 
-### The label machine
+## Writing code
 
-ALL-CAPS routing labels are the only labels skills route on, and each transition is stamped by the skill that causes it: `OFF THE MAP` → `/map` → `CHARTED` ⇄ `UNCHARTED` → `/set-sail` → `UNDER SAIL` → `/landfall` → `IN PORT` → closed by inspection, with `ADRIFT` for an interrupted voyage. Lowercase labels are human triage only. Canonical — every label, meaning, and stamping skill: [.claude/skills/map/reference/label-machine.md](.claude/skills/map/reference/label-machine.md).
+### Comments
 
-### The fleet
+- None by default. Add only when WHY non-obvious — hidden constraint, subtle invariant, workaround for specific bug, surprising behavior.
+- If removing comment wouldn't confuse future reader, don't write it.
+- Never explain WHAT — identifiers do that.
+- Never reference current task/fix/callers ("used by X", "added for Y flow", "handles issue #123") — belongs in PR description, rots.
 
-1. **`/map [idea | issue#]`** — the mandatory intake for all work definition: chart (grill breadth-first, create the `MAP` index with `PLOTTING`/`SCOUTING` sub-issue tickets), work (one plotting ticket per session; scouting auto-resolves via background subagents with *unreviewed* gist markers), exit (owner-approved, change-sized chunks, blocked-by-sequenced, born `CHARTED`/`UNCHARTED` per residual blocking; cuts one release's worth and stamps the milestone **on the map issue** — chunks carry none). Every work item lives under a map: small clear input compiles to a single-chunk map (`MAP` index + one `CHARTED` chunk, same session). Subsumes the retired explore route; preserves its write-back discipline (owner-approved distilled body before any issue is created/edited).
-2. **`/embark <issue#>`** — board and prep: gate (on `dev`, up to date), then an allowlist — `CHARTED` proceeds, every other state stops (no routing table, so a new label can't acquire a route nobody designed). Then terrain check (a shifted map decision fires `/anchor`), then `/opsx:propose` seeded from the issue body — settled map decisions cited, unreviewed scouting gists re-validated. An epic-sized grilling routes out to `/map` chart in the same conversation.
-3. **`/set-sail`** — the apply wrapper: enforces one-change-mid-apply at the moment the tree becomes occupied, flips `CHARTED` → `UNDER SAIL`, states the mid-voyage disciplines (a discovery is never folded into the active change — charter criteria route it, and charting onto an open map runs through `/anchor`; a mirage stops work and fires `/anchor`), delegates to `/opsx:apply`.
-4. **`/spec-review`** — no-arg reviews the **staged diff** (staged = reviewed baseline, unstaged = current fix round). Persists its report to `openspec/changes/<name>/review.md` with the shared machine-readable header (format: `.claude/skills/spec-review/reference/finding-format.md`).
-5. **`/recheck-review`** — verifies fixed findings against just the fix delta, appending rounds to the persisted report; escalates to a fresh full review when fixes outgrow a recheck (`outgrew recheck`).
-6. **`/landfall`** — gates (latest review-round verdict `clear to land`, tasks all `[x]`, `openspec validate --strict`, local lint + typecheck), then one owner question: dev verification before sealing? **Fast path** (no): two signed commits (`issue-<N>:` work, `issue-<N>: archive <change>`), one push, no CI wait. **Verified path** (yes): push the work commit, green CI + owner's live click-test, then seal. Either path: `/finalize-spec-purposes` runs before the seal commit is staged, every hand-off carries the paste-ready commit message, bookkeeping is eager (`IN PORT` label only — **never closes the issue**). Red CI → fix forward under the same prefix. State-driven and self-healing: resumes from repo state, sweeps leftover bookkeeping.
-7. **`/anchor`** — all bearing moves: promote (fog → typed ticket), demote (mirage — reopen the *original* ticket, evidence comment, gist marked *reopened*, affected chunks coin-flipped `UNCHARTED`), charter (a discovery inside an open map's Destination that its release can't ship without → cut as a chunk of that map, a thin wrapper over `/map`'s exit mechanics that leaves the voyage `UNDER SAIL`), map-body re-sync, and mid-voyage triage by blast radius (patch at sea / park to `adrift/issue-<N>` + `ADRIFT` / discard + `UNCHARTED`). Half-finished work never merges to `dev`. Any session may anchor at the moment of discovery; none carries a detection duty.
-8. **`/port-inspection [map#|issue#]`** — the `IN PORT` inspection walk, invokable whenever cargo is in port: a `MAP` issue# walks that map's open `IN PORT` chunks, a chunk issue# inspects just that chunk, no-arg recommends candidates from recent `issue-<N>:` commits on `dev` for the owner to pick. Each stop surfaces "closing this unblocks #N" from the chunk's dependents; verified on the **dev deployment, pre-cut** → close (prod regressions are new bug tickets scoped to a patch release). Closes chunks only, never a map.
-9. **`/close-map`** — the inspection batch-point and the only closer of maps: runs the walk as a thin delegation to `/port-inspection`, then closes the map only when every chunk is closed and no unstarted chunks or residual fog remain (leftovers → `/split-map`).
-10. **`/split-map <map#>`** — the only boundary cutter: permanent thin wrapper over `/map` that cuts a map at the landed boundary — owner-approved successor map on the next milestone, unstarted chunks + gating tickets re-parented, per-line fog dispatch, one re-orientation `PLOTTING` ticket blocked-by-wired onto every migrated chunk (born `UNCHARTED`). Never closes anything; an `UNDER SAIL`/`ADRIFT` chunk pins the split.
+### File size (red / yellow / green)
 
-**Skills never run `git commit`** — every commit point is stage → report → stop for the owner's signature; a blocked signature is never retried.
+- Scope: production source (`app/**`, `lib/**`, `hooks/**`, `db/**`); test files + `**/__tests__/**` exempt; `scripts/**`, `e2e/**` outside scoped set. Counted in lines of **code** (comments + blanks free).
+- **Red** >400 = error — split by table-cohesion/domain before merge.
+- **Yellow** 300–400 = warning — pull easy wins where clean extraction exists; cohesive file may stay yellow. Only tolerated lint warnings.
+- **Green** <300 = goal, never via scattering one concern across files.
+- No `eslint-disable` for either rule.
+- Canonical: rules in [eslint.config.mjs](eslint.config.mjs), normative text in `openspec/specs/testing-foundation`.
 
-### Release cut
-
-`dev → x.y.x` stays a PR. **`/release-review`** is its sole gate: preflight (release base pattern + milestone), five inline dimensions (map closure — every milestoned `MAP` issue closed, open/uninspected cargo blocks with finish / re-milestone whole map / `/split-map` as the options — cross-feature interaction risk, migration ordering, OpenSpec state clean, version bump vs milestone title — drafting/staging the bump when missing), CI rollup read, report persisted to `openspec/reviews/<version>.md` (which doubles as the release record). On `ready to cut`, the owner merges. Release-branch → `main` is a plain merge.
-
-### OpenSpec mechanics
-
-`/opsx:propose` opens with a grilling interview — its `rules.proposal` block in [openspec/config.yaml](openspec/config.yaml) points at the repo-owned [grill-me](.claude/skills/grill-me/SKILL.md) skill, so open decisions are put to the owner one at a time before any artifact is drafted (run `/grill-me` standalone to stress-test a plan outside the flow). `/finalize-spec-purposes` (run by `/landfall` before the seal commit is staged) is a repo-owned skill, not part of the generated OpenSpec set: upstream archive/sync stubs `TBD` Purposes onto newly created capability specs, and the skill repairs them (and ratchets down the `KNOWN_TBD` baseline in [scripts/check-spec-purposes.mjs](scripts/check-spec-purposes.mjs), the advisory verifier exposed as `npm run check:specs` — deliberately not a merge gate; see `openspec/specs/spec-hygiene`). Stubs are prevented at authorship time: a delta introducing a new capability must state that capability's Purpose (enforced by `rules.specs` in [openspec/config.yaml](openspec/config.yaml)) so sync/archive writes it instead of a TBD stub.
-
-The `openspec-*` skills and `opsx/*` commands under `.claude/` are generated by the OpenSpec CLI (`openspec update`) — never hand-edit them; edits are clobbered on the next regeneration. This project generates the custom workflow set `propose, explore, apply, sync, archive, continue`.
-
-## Writing code: 
-
-### Comments:
-
-Default to writing no comments. Only add one when the WHY is non-obvious — a hidden constraint, a subtle invariant, a workaround for a specific bug, behavior that would surprise a reader. If removing the comment wouldn't confuse a future reader, don't write it.
-
-Don't explain WHAT the code does — well-named identifiers already do that. Don't reference the current task, fix, or callers ("used by X", "added for the Y flow", "handles the case from issue #123") — those belong in the PR description and rot as the codebase evolves.
-
-### File size (red / yellow / green):
-
-Lint-enforced bands for production source (`app/**`, `lib/**`, `hooks/**`, `db/**`; test files and `**/__tests__/**` are exempt — `scripts/**` and `e2e/**` sit outside the scoped set entirely), counted in lines of **code** (comments and blank lines are free): **red** >400 = error — split by table-cohesion/domain before merge; **yellow** 300–400 = warning — pull easy wins where a clean extraction exists, a cohesive file may stay yellow; **green** <300 = goal, never achieved by scattering one concern across files. Yellow size advisories are the only tolerated lint warnings; no `eslint-disable` for either rule. Canonical homes: the rules in [eslint.config.mjs](eslint.config.mjs), the normative text in `openspec/specs/testing-foundation`.
-
-### Abstraction (DRY · KISS · coupling):
+### Abstraction (DRY · KISS · coupling)
 
 #### Duplication (DRY)
 
-**Decision rule** — extract when ANY of: 3+ copies · the unit has structure (branching, a typed factory, a multi-field literal) · a copy could drift silently (still compiles and passes while its meaning diverges). Stay inline only when ALL of: ≤2 copies · 1–2 lines · no structure · divergence fails loudly. The bullets below are the rationale and edge cases behind that rule.
+**Decision rule** — extract when ANY of: 3+ copies · unit has structure (branching, typed factory, multi-field literal) · copy could drift silently (still compiles/passes while meaning diverges). Stay inline only when ALL of: ≤2 copies · 1–2 lines · no structure · divergence fails loudly.
 
-- Extract duplicated, identical-by-design logic into one home on sight — don't ask whether to, the answer is yes.
-- Keep copies apart only when you can name them as different concepts that will change for different reasons; code that merely looks alike is not a duplication to merge.
-- The exception is the genuinely trivial: a shared line or two with no structure can stay inline — three similar lines beats a premature abstraction. But *trivial* is the bar, not the copy count. Weigh three forces: **weight** (a line or two can stay; a typed factory, multi-field literal, or anything with branching extracts), **drift hazard** (extract when one copy can fall behind **silently** — still compiles, still passes, but now means something different; inline is fine when divergence fails loudly or doesn't matter), and **count** (three or more extracts even when trivial — but count only escalates, it never overrides weight or drift). Two copies is a judgment call on those forces, not an always-or-never: a heavy or drift-prone unit earns one home even at two.
+- Identical-by-design logic → one home on sight; don't ask.
+- Keep copies apart only when nameable as different concepts changing for different reasons; looks-alike ≠ duplication.
+- Trivial exception: shared line or two, no structure, may stay inline. *Trivial* is the bar, not copy count. Three forces: **weight** (line or two stays; typed factory / multi-field literal / branching extracts), **drift hazard** (extract when copy can fall behind **silently**; inline fine when divergence fails loudly or doesn't matter), **count** (3+ extracts even when trivial — count only escalates, never overrides weight or drift). Two copies = judgment call; heavy or drift-prone earns one home even at two.
 
 #### Over-generality (KISS)
 
-- Don't build generality for cases that don't exist yet — parameters, flags, or branches with no current caller are dead code except when planned for imminent future use.
-- Don't tear down a clean, working, tested abstraction just because it's more general than strictly needed; once it exists and is covered, stripping it is risk for no live defect.
+- No generality for cases that don't exist — parameters/flags/branches with no current caller = dead code, unless planned for imminent use.
+- Don't tear down clean, working, tested abstraction for being more general than needed; stripping covered code = risk, no live defect.
 
 #### Redundant guards
 
-- Don't re-test a condition your own earlier control flow already decided. A guard (`if (cond) redirect()/return/throw`) whose condition is already excluded by an upstream guard or branch in the same function is dead code — remove it and let any narrowing flow from the existing control flow (merge or move the upstream guard, early-return). Never paper over it with a `/* v8 ignore */`.
-- This is NOT a defensive guard, whose condition turns on an invariant established outside the function (framework lifecycle, platform, a third-party/DB contract) the compiler can't prove — that one is legitimate. Tell: a rationale that cites the function's own earlier code ("the guard above already redirects…") is the redundant kind.
+- Don't re-test condition your own earlier control flow decided. Guard (`if (cond) redirect()/return/throw`) whose condition already excluded upstream in same function = dead code — remove, let narrowing flow from existing control flow (merge/move upstream guard, early-return). Never paper over with `/* v8 ignore */`.
+- NOT a defensive guard, whose condition turns on invariant established outside function (framework lifecycle, platform, third-party/DB contract) compiler can't prove — legitimate. Tell: rationale citing function's own earlier code ("guard above already redirects…") = redundant kind.
 
 #### Fragile coupling
 
-- When a shared abstraction's callers diverge, split it back into separate concepts — don't bolt on flags, params, or branches so one thing can serve all of them.
-- Coupling between callers that are genuinely one concept meant to change together is the abstraction doing its job.
+- Shared abstraction's callers diverge → split back into separate concepts; no flags/params/branches so one thing serves all.
+- Coupling between callers that are genuinely one concept changing together = abstraction working.
 
 #### Extraction for leanness
 
-- Extract single-caller helpers to keep files lean — extraction for readability is the norm, not over-abstraction, and doesn't need justifying.
+- Extract single-caller helpers for lean files — readability extraction is norm, needs no justification.
 
 #### Where extracted helpers live
 
-- Small, generic, or pure helpers go in a **co-located `utils.ts`** for that directory (create it if absent) — not in their own single-purpose file. `capRail` lives in `app/(main)/lists/ui/components/rails/utils.ts`, following `app/(main)/users/ui/utils.ts` (`initialsOf`).
-- Reserve a descriptively-named standalone module for a genuine domain/capability concept (`lib/data/user.ts`, `lib/visibility.ts`, `lib/listAccess.ts`). `utils.ts` is for the small stuff, not a dumping ground for domain logic.
+- Small/generic/pure helpers → **co-located `utils.ts`** for that directory (create if absent), not own single-purpose file. `capRail` in `app/(main)/lists/ui/components/rails/utils.ts`, following `app/(main)/users/ui/utils.ts` (`initialsOf`).
+- Descriptively-named standalone module reserved for genuine domain/capability concept (`lib/data/user.ts`, `lib/visibility.ts`, `lib/listAccess.ts`). `utils.ts` = small stuff, not domain-logic dump.
 
 #### Worked example: `Button` / `LinkButton`
 
-One small trio in `app/ui/components/button/` shows the first three forces at once:
+Trio in `app/ui/components/button/`:
 
-- **DRY** — the only thing the two genuinely share, the visual styling, lives in `buttonClasses()`; neither component re-implements it.
-- **Fragile coupling** — they stay separate components instead of collapsing into one polymorphic thing behind an `as`/`href` flag, because the concepts diverge: `Button` is a `<button>` (`ButtonHTMLAttributes` + `type`), `LinkButton` is a Next `<Link>` (`AnchorHTMLAttributes` + `LinkProps`).
-- **KISS** — each carries only the props its concept needs: `Button` has `isLoading`/`disabled`, `LinkButton` doesn't — a link can't load or be disabled, so adding them "for symmetry" would be generality for a caller that doesn't exist.
+- **DRY** — only genuine shared thing, visual styling, lives in `buttonClasses()`.
+- **Fragile coupling** — separate components, not one polymorphic thing behind `as`/`href` flag: `Button` = `<button>` (`ButtonHTMLAttributes` + `type`), `LinkButton` = Next `<Link>` (`AnchorHTMLAttributes` + `LinkProps`).
+- **KISS** — each carries only its concept's props: `Button` has `isLoading`/`disabled`, `LinkButton` doesn't — link can't load or be disabled; adding "for symmetry" = generality for nonexistent caller.
 
-## Local dev + e2e auth bypass (via `USE_PG_DRIVER`)
+### Components, pages, styling
 
-The app gates every protected page on Google OAuth via NextAuth, which makes it impossible to validate UI changes through the preview tools without a real Google sign-in. "Local mode" — a localhost Docker Postgres **plus** synthesized sessions (no real OAuth) — is entered with a single flag, `USE_PG_DRIVER=1`. The same flag points the DB driver at local Postgres (see [db/index.ts](db/index.ts)) and turns off real auth (see [lib/auth.ts](lib/auth.ts)); it is the same flag the e2e servers set. **Docker is a prerequisite** (Docker Desktop on macOS — `dev:local` auto-starts it).
+- **Thin `page.tsx`** — route files = shells forwarding props to co-located `<RouteName>Page.tsx` (`HistoryPage.tsx` next to `page.tsx`). Page component awaits `params`/`searchParams`, owns auth, data fetching, business logic; route file maps URL → component. Touching page with inline logic → split it; no unprompted bulk-refactor.
+- **Extract subcomponents** — JSX block with own identity (row, card, "list + empty state") or past ~5 lines → named subcomponent; no inline nested JSX in parent. `length === 0 ? <empty> : <ul>{map(...)}</ul>` = own component (`BookmarksList`); per-item rendering own (`BookmarkRow`); parent reads like outline. Co-locate next to page, or feature's `ui/components/` if reused. Trivial two-line conditional needs no name.
+- **Reuse existing CSS variables** — applying design mockup: defer to token set + naming in `app/ui/styles/global.css` (`--primary-color`, `--neutral-text-color`, `--secondary-background-color`, …). Map `mockup value → existing var` first; new token only when no existing token's role covers value, named same `--<role>-color` style — never parallel shorthand system (`--p`, `--ink`).
 
-**To run locally bypassed:**
+### Writing markdown (docs, skills, specs)
 
-1. `npm run dev:local` — brings up the localhost Postgres sidecar (`docker-compose.e2e.yml`), applies schema via `drizzle-kit push`, seeds `dev-test-viewer` plus the friend graph (idempotent), then starts `next dev` with `USE_PG_DRIVER=1`. Every protected page renders as `dev-test-viewer` with no sign-in.
-2. Nothing to hand-set: the localhost `DATABASE_URL` lives once in `e2e/.env` (committed, non-secret — only `*.local` env files hold secrets and are gitignored, per the `.env*.local` convention) and is shared by the scripts, `docker-compose.e2e.yml`, and `e2e/helpers/constants.ts`.
+- Titled concept with own sub-points → real `###`/`####` subheading + bullet list — not list item with bolded inline title. Avoid `- **Standard review** — a, b, c.`; prefer `### Standard review` heading over `- a` / `- b` / `- c`. Same for numbered-list-with-bold.
+- Genuinely flat enumerations (ranked signals, condition→action branches, glossary legends) stay plain bullets.
 
-**Choosing the session identity (`BYPASS_SESSION_USER`):** orthogonal to the bypass. Unset ⇒ the default `dev-test-viewer` session; the literal `guest` ⇒ `auth()` resolves to `null` (logged out); any other seeded id ⇒ a session for that id. The two e2e Playwright projects use exactly this: `authenticated` leaves it unset, `guest` sets it to `guest`.
+## Local dev (via `USE_PG_DRIVER`)
 
-**To return to real auth:** run plain `npm run dev` (no `USE_PG_DRIVER`) — Neon + real Google sign-in, exactly as production. This is also the deployed Vercel configuration.
-
-**To reset after drift:** `npm run db:reset:dev` against the local DB — wipes everything owned by the seeded users (including UI-created rows under `dev-test-viewer`) via cascade, then re-seeds the baseline. Use this when local testing has accumulated stray lists/items/purchases and you want a clean slate.
-
-**After seeding/resetting, restart the dev server** — many DAL functions (`getListsByUser`, etc.) are tagged with `'use cache'` and only invalidate when the app calls `revalidateTag`. The seed script runs outside the Next.js process and can't bump tags, so cached results stay stale until the server restarts.
-
-**Hard guardrail:** the bypass is scoped to a localhost DB by the `USE_PG_DRIVER` boot guard in [db/index.ts](db/index.ts) — if `USE_PG_DRIVER=1` is ever set with a non-localhost `DATABASE_URL` (e.g. on Vercel), the app refuses to boot: a loud outage, never a silent bypass or data leak. On Vercel the flag is unset, so production stays neon-http + real auth. This positive localhost requirement replaces the former `NODE_ENV !== 'production'` check.
-
-**Seeded `quantity_limit` coverage:** every seeded list has overrides at positions 0, 1, and last, rotating `(3, null, 1)` → `(null, 1, 3)` → `(1, 3, null)` across consecutive lists. Multi-claim and unlimited items receive multiple deterministic purchase rows (`${itemId}-purchase-${n}`) so partial-claimed, fully-claimed, and multi-buyer-unlimited UI states are reachable directly from the seed without manual clicking.
-
-**Seeded imageless-item coverage:** every third item (positions 0, 3, 6…) on every fourth list (list index 3, 7, 11…) seeds with no image and no `item_images` rows, so the lazy placeholder-mint path (empty container → generated art persisted on first view) is reachable straight from the seed. Reseeding restores them to imageless; art minted by viewing survives until the next `db:reset:dev`.
-
-**Seeded store-metadata edge case:** `dev-list-alice-baby-item-2` carries three hand-authored stores led by a $1,000.00 store whose name ("Really long store name that carries really cool items") overflows even the one-name slot of the card's store-metadata line — the name-truncation + non-truncating `+N` count state is reachable straight from the seed.
-
-**Seeded claim-attribution coverage:** authenticated fan-out purchase rows are self-claims (`claimed_by = user_id`); guest rows keep all-NULL identities. Four hand-authored rows (`dev-purchase-*`, on `dev-list-viewer-birthday-item-1..3` and `dev-list-alice-wedding-item-1`, whose items are excluded from the fan-out) cover the attributed-claim shape (Alice marked Bob), the viewer-as-attributed-purchaser shape, an owner self-claim, and a legacy signed-out-guest row — every unclaim-matrix branch and the owner spoiler "added by" label are reachable from the seed. Alice is seeded mutual with every other friend, so her lists' attributed-purchaser picker has a pool large enough to scroll and targets besides the viewer.
-
-**Files:**
-
-- [db/index.ts](db/index.ts) — `USE_PG_DRIVER` driver-switch (postgres-js vs neon-http) + the localhost boot guard.
-- [lib/auth.ts](lib/auth.ts) — bypass keyed on `USE_PG_DRIVER`; the `BYPASS_SESSION_USER` selector; exports `BYPASS_USER_ID = 'dev-test-viewer'` and `GUEST_SESSION_USER = 'guest'`.
-- [scripts/seed-dev-users.ts](scripts/seed-dev-users.ts) — idempotent; refuses to run on prod; upserts most tables via Drizzle `.insert().onConflictDoUpdate()` (a few use `.onConflictDoNothing()`) so reseeds pick up edits.
-- [scripts/setup-e2e-db.sh](scripts/setup-e2e-db.sh) / [scripts/dev-local.sh](scripts/dev-local.sh) / [scripts/test-e2e.sh](scripts/test-e2e.sh) — `setup-e2e-db.sh` is Docker bring-up + schema only; the data-state step is the caller's: `dev:local` seeds (preserves UI-created rows), `test:e2e` runs `db:reset:dev` (cascade wipe + reseed) so every e2e run starts from identical state. `dev:local` and `test:e2e` wrap them.
-- Route-handler / middleware overloads of `auth(req, ctx)` pass through to real NextAuth — production auth path is unchanged.
-
-## Product-fetch mock (local mode)
-
-In local mode (`USE_PG_DRIVER=1` — same flag as the auth bypass, no flag of its own), pasting `https://mock.test/<scenario>` into the add-item flow returns a deterministic fixture instead of calling Zyte — every downstream deck state reachable in seconds, zero quota. Scenario is the URL's first path segment, toggled per request with no restart; any other hostname takes the real path even locally (paste a real URL with a key configured to test real Zyte). Unknown scenario → `fetch_failed`. Scenario table (fixture → UI state) lives in `openspec/specs/product-fetch-mock/spec.md`; fixtures in [lib/product-fetch/mock.ts](lib/product-fetch/mock.ts). Mock requests bypass the product-fetch rate-limit bucket; `https://mock.test/rate-limited` returns the route-level 429. Outside local mode the mock does not exist — `mock.test` fails like any dead link.
-
-## /api/image-search auth + rate limit
-
-`GET /api/image-search` requires an authenticated session (401 otherwise) and enforces a per-user in-memory token bucket of 30 requests/minute (429 with `{ error: 'rate_limited' }` when exceeded — distinguishable from upstream `quota_exceeded`). Under the dev bypass the session resolves to `dev-test-viewer`, so the route works during preview-driven testing; the 30/min cap is enough headroom for normal iteration. See [app/api/image-search/route.ts](app/api/image-search/route.ts).
+- **Local mode:** `npm run dev:local` — Docker Postgres + synthesized sessions (no real OAuth); every protected page renders as `dev-test-viewer`. Single flag `USE_PG_DRIVER=1` drives both DB driver + auth bypass.
+- **Real auth:** plain `npm run dev` — Neon + real Google sign-in, as production/Vercel.
+- **Reset after drift:** `npm run db:reset:dev` — cascade wipe + reseed.
+- **After seeding/resetting, restart dev server** — `'use cache'` DAL results stale until restart (seed script can't bump `revalidateTag`).
+- **Hard guardrail:** boot guard in [db/index.ts](db/index.ts) refuses `USE_PG_DRIVER=1` with non-localhost `DATABASE_URL` — loud outage, never silent bypass.
+- **Product-fetch mock:** local mode only — paste `https://mock.test/<scenario>` into add-item flow for deterministic Zyte fixture, zero quota.
+- **Everything else** (session identity via `BYPASS_SESSION_USER`, env layout, seeded coverage, file map, mock scenarios, `/api/image-search` limits): [LOCALDEV.md](LOCALDEV.md).
