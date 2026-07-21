@@ -4,9 +4,10 @@
 
 Every persisted review report — `openspec/changes/<name>/review.md` for a
 spec-review, `openspec/reviews/<version>.md` for a release-review — opens with a
-machine-readable header. The header is the contract three independent skills
-share: the review writes round 1, `/recheck-review` appends rounds and computes
-the fix delta from the header, `/landfall` gates on the latest round's verdict.
+machine-readable header. The header is the contract the review family shares:
+the review writes round 1, `/recheck-review` and `/incremental-spec-review`
+append rounds and compute their deltas from the header, `/landfall` gates on the
+latest round's verdict.
 
 ```yaml
 ---
@@ -19,9 +20,10 @@ round: <highest round number in the file>
 ```
 
 - `anchor` — for a spec-review, the HEAD sha at review time (the staged baseline);
-  for a release-review, the PR base sha. `/recheck-review` derives its delta from
-  it: spec-review → the unstaged working-tree diff; release-review →
-  `git diff <anchor>..dev`.
+  for a release-review, the PR base sha. Follow-up reviews derive their scopes from
+  it: recheck on a spec-review target → the unstaged working-tree diff;
+  release-review → `git diff <anchor>..dev`; incremental-spec-review → A/C on
+  `git diff` (unstaged), B on `git diff <anchor>` (whole footprint).
 - `round` — updated in the header each time a round is appended; the body keeps
   every round.
 
@@ -34,13 +36,13 @@ nests at `###` (or deeper) **inside** its `## Round <n>` heading. Nothing at `##
 level ever belongs to a round; the next `##` starts the next round.
 
 ```markdown
-## Round <n> — <spec-review | recheck | release-review> (<date>)
+## Round <n> — <spec-review | recheck | incremental-spec-review | release-review> (<date>)
 
 <one- to two-sentence summary>
 
 **Scope:** <diff source> · <resolved change>
 
-### Standard / ### Convention / ### Contract
+### Alignment / ### Boundary / ### Convention
 <findings table(s), per the finding-table style below>
 
 ### What looks good
@@ -61,15 +63,18 @@ Round 1 is the full review's consolidated report rendered as a round: its
 sections demoted to `###` under the round heading, its verdict mapped to the
 round vocabulary. Recheck rounds list each prior open `Fix now` finding with its
 resolution status (resolved / still open / superseded by a new finding) plus any
-new findings the fix introduced.
+new findings the fix introduced. Incremental-spec-review rounds carry that same
+prior-findings status table **plus** fresh arena findings tables — one round, one
+verdict, subsuming a recheck on a mixed fix delta.
 
 ### Round-verdict vocabulary
 
 Exactly one per round:
 
-- Change reviews (spec-review / recheck): `clear to land` (no open `Fix now`
-  findings remain) · `findings remain` · `outgrew recheck` (recheck only —
-  the fix delta outgrew a recheck; run the full review again).
+- Change reviews (spec-review / recheck / incremental-spec-review): `clear to
+  land` (no open `Fix now` findings remain) · `findings remain` · `outgrew
+  recheck` (recheck only — the fix delta turned out to touch both code and spec
+  artifacts; run `/incremental-spec-review`).
 - Release reviews: `ready to cut` · `not ready` (blockers listed).
 
 Only open `Fix now` findings block a clear/ready verdict; `File issue` and
@@ -86,7 +91,7 @@ block, beneath that round's `**Verdict:**` line:
 ### Adjudications (<date>)
 
 | # | Old → New | Rationale |
-| s1 | Fix now → File issue | out of scope; filed #280 |
+| A1 | Fix now → File issue | exceeds the charter's <boundary>; filed #280 |
 
 **Verdict:** clear to land
 ```
@@ -105,7 +110,7 @@ Rules:
 
 ### Reading a round as amended
 
-Every reader (`/recheck-review`, `/landfall`) reads the latest round **as amended**
+Every reader (`/recheck-review`, `/incremental-spec-review`, `/landfall`) reads the latest round **as amended**
 by its `### Adjudications` subsection:
 
 - **Effective findings** = the round's findings table with each finding's
@@ -126,11 +131,11 @@ against this shape, so the orchestrator consumes validated objects, not parsed
 prose:
 
 ```
-- phase:       standard | convention | contract
+- phase:       alignment | boundary | convention
 - location:    path:line
 - description: terse statement of the problem
 - severity:    Critical | Major | Minor
-- citation:    link to the offending line, and (convention/contract) the doc rule or SHALL violated
+- citation:    link to the offending line, and (alignment) the SHALL violated, (convention) the doc rule or named universal principle
 - disposition: Fix now | File issue | Drop
 ```
 
@@ -138,10 +143,10 @@ prose:
 
 Every finding carries a **durable ID** of the form `<arena-letter><global-round-integer>`:
 
-- **arena letter** — `s` standard · `c` convention · `k` contract. Marks the arena for at-a-glance readability.
-- **global-round integer** — increments **globally across all arena tables within a round**, so every finding in a round has a unique integer on its own (`s1`, `s2`, `c3`, `k4` — note the integer, not the letter, carries uniqueness, dodging the `c`-Convention vs `c`-Contract collision).
+- **arena letter** — capital `A` Alignment · `B` Boundary · `C` Convention. Marks the arena for at-a-glance readability.
+- **global-round integer** — one continuous sequence incrementing **globally across all arena tables within a round**, never restarting per arena, so every finding in a round has a unique integer on its own (`A1`, `B2`, `C3` — never `A1` and `B1` in the same round).
 
-The ID is stable: it is how `/adjudicate-review` grills a finding and how `/recheck-review` cites a prior finding. Merges join the IDs with `+` (`s1+c3` = the two are the same defect). The scheme is rename-stable — if the arenas are relettered, the mechanism is unchanged and only the letters swap.
+The ID is stable: it is how `/adjudicate-review` grills a finding and how follow-up rounds cite a prior finding. Merges join the IDs with `+` (`A1+C3` = the two are the same defect). No sub-lane notation in IDs or prose — house-vs-craft lives in the Citation column. Old persisted rounds carrying `s`/`c`/`k` IDs stay valid history; readers resolve IDs within their own round, so no migration.
 
 ## Finding-table style
 
@@ -151,11 +156,11 @@ Columns, in order:
 # | Severity | Location | Finding | Disposition | Citation
 ```
 
-- **#** — the finding's durable ID (see **Finding IDs** above): arena letter + global-round integer (`s1`, `c3`, `k4`), merges joined with `+`.
+- **#** — the finding's durable ID (see **Finding IDs** above): arena letter + global-round integer (`A1`, `B2`, `C3`), merges joined with `+`.
 - **Severity** — text labels `Critical` / `Major` / `Minor`. **No emojis** (repo convention).
 - **Location** — `path:line`.
 - **Finding** — terse, factual. Cite, don't editorialize. No preamble, no restating the diff.
-- **Citation** — link the offending line; for convention/contract findings, also cite the specific doc rule or SHALL requirement.
+- **Citation** — link the offending line; for alignment findings, also cite the SHALL requirement; for convention findings, the specific doc rule or named universal principle.
 
 ## Disposition
 
@@ -164,19 +169,25 @@ user adjudicates):
 
 ### Fix now
 
-Anything in scope of this change. Default for real findings. For a contract
-**mismatch** finding (neutral framing), "fix" means *reconcile the disagreement in
-this PR* — the reconciliation may edit **either** side (amend the implementation,
-or amend/relax the task or spec), within the archive-state reconciliation latitude.
-Name both options and let the user adjudicate; do not assume the spec is the correct
-side. (The merged-archive case is the one where only the implementation may change.)
+Governed by **scope, never effort**: any in-charter defect at any size, plus any
+fix whose deferral would ship soon-dead code (a follow-up that would delete or
+redo what is merging — that finding is `Fix now` even if arguably out of
+charter). Default for real findings. For an alignment **mismatch** finding
+(neutral framing), "fix" means *reconcile the disagreement in this PR* — the
+reconciliation may edit **either** side (amend the implementation, or amend/relax
+the task or spec), within the archive-state reconciliation latitude. Name both
+options and let the user adjudicate; do not assume the spec is the correct side.
+(The merged-archive case is the one where only the implementation may change.)
 
 ### File issue
 
-For findings that are **both** genuinely out of scope of the current change **and**
-sizable enough to warrant their own `explore → proposal → apply → archive` cycle.
-The only durable form a follow-up may take is an actual GitHub issue
-(`gh issue create`) — never a vague "revisit later" note.
+For findings genuinely out of scope of the current change. The disposition
+**must cite the charter boundary the finding exceeds** — a proposed `File issue`
+with no charter citation is invalid and gets re-dispositioned before the report
+is emitted. The only durable form a follow-up may take is an actual GitHub issue;
+at adjudication, a confirmed `File issue` has the issue created in-interview
+(the owner picks the type: chunk into the open map vs `OFF THE MAP`) with the
+link recorded in the rationale.
 
 ### Drop
 
@@ -186,6 +197,38 @@ A genuine non-issue, with a one-line rationale.
 expensive-and-right is still right. Severity communicates impact but never gates
 inclusion or the now-or-never call.
 
+## Gate sections in tasks.md
+
+Any change-review round (spec-review, incremental-spec-review, recheck) whose
+verdict is adverse (`findings remain`, or recheck's `outgrew recheck`) appends to
+the change's `tasks.md`:
+
+```markdown
+## Gates — round <n>
+
+- [ ] <ID> <one-line finding> — resolved
+```
+
+one item per open `Fix now` finding, referenced by durable ID.
+
+Rules:
+
+- **Append-only per round.** A prior round's gate section is never unchecked or
+  edited. A clearing verdict appends no section.
+- **Exits.** The fixes land and the fixing session checks the section off; or an
+  adjudication re-dispositions every open `Fix now` and — its recomputed verdict
+  now clearing the round — **deletes** that round's pending gate section (a gate
+  for findings that no longer block is dead weight and would wedge `/landfall`'s
+  tasks gate on a cleared round). Deletion is scoped strictly: only the latest
+  adverse round's pending section, never a prior round's checked section, never
+  `review.md` content.
+- **Superseding rounds.** An `outgrew recheck` section's findings are re-verified
+  by the follow-up incremental round; its status table is the authoritative
+  resolution record and licenses checking off or superseding the stale section,
+  same as fixes do.
+- `/landfall`'s existing all-tasks-checked gate is the enforcement mechanism and
+  needs no change of its own.
+
 ## Diagrams
 
 Use an ASCII diagram for a finding **when it conveys a relationship faster than
@@ -193,7 +236,7 @@ prose** — a broken vs. expected data/control flow, a state machine, a dependen
 task↔work mapping, a before/after of a fix. Include one only when it replaces a
 paragraph of explanation. **No decorative diagrams.**
 
-Worked example — a contract mismatch (task marked done, no implementing work). The
+Worked example — an alignment mismatch (task marked done, no implementing work). The
 **bidirectional** arrow shows the two artifacts disagree, not that one is the authority:
 
 ```

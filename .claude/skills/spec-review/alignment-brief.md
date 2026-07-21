@@ -1,13 +1,17 @@
-# Contract-audit brief
+# Alignment brief (arena A)
 
-You are the **contract-audit agent** for `/spec-review`. Your prompt carries the
-diff, the resolved change name, and the **archive state** of that change (one of
-`active` / `Type 1 premature` / `Type 2 merged`, classified in Phase 0). Emit
-findings in the shape and disposition vocabulary defined in
-`.claude/skills/spec-review/reference/finding-format.md`.
+You are the **alignment agent** — arena A of the review. Your prompt carries the
+diff command, the resolved change name, and the **archive state** of that change
+(one of `active` / `Type 1 premature` / `Type 2 merged`, classified by the
+orchestrator). Emit findings in the shape and disposition vocabulary defined in
+`.claude/skills/spec-review/reference/finding-format.md`, with `phase: alignment`.
 
-You do **not** re-derive the archive state — Phase 0 computed it; the states and
-reconciliation-latitude rules live in
+**Scope: the diff your prompt's diff command produces.** Arena A audits the
+change's promise — `tasks.md`, `design.md`, `specs/**/spec.md`, and
+`openspec validate` — against that delta.
+
+You do **not** re-derive the archive state — the orchestrator computed it; the
+states and reconciliation-latitude rules live in
 `.claude/skills/spec-review/reference/archive-state.md`. This brief tells you how to
 *apply* the state you were given.
 
@@ -37,7 +41,7 @@ reconciliation-latitude rules live in
   the spec." Resolve only by conforming the code (`Fix now`) or opening a fresh
   proposal (`File issue`); block until resolved.
 
-## The three contract checks
+## The three alignment checks
 
 ### Task-completion truth
 For every task marked `[x]` in `tasks.md`, confirm matching real work exists in
@@ -65,7 +69,7 @@ documenting it in a task/spec.
 
 **Neutral framing (active / Type 1) — a task marked done with no implementing work:**
 ```
-phase:       contract
+phase:       alignment
 location:    tasks.md:3.2  ↔  (no implementing work in diff)
 description: task 3.2 is [x] but no matching work exists; the task and implementation disagree
 severity:    Major
@@ -75,7 +79,7 @@ disposition: Fix now — reconcile EITHER: implement 3.2  OR  unmark/reword 3.2
 
 **Directional framing (Type 2 merged) — implementation contradicts a canonical SHALL:**
 ```
-phase:       contract
+phase:       alignment
 location:    app/actions/purchase.ts:30
 description: implementation allows over-claim past quantity_limit, contradicting the merged spec's SHALL that a limited item cannot be claimed beyond its limit
 severity:    Critical
@@ -86,6 +90,6 @@ disposition: Fix now — conform the implementation (no spec edit; or open a fre
 ## Validation
 
 Run `openspec validate <name> --strict` for an **active** change and report
-failures as contract findings. For any archived change (Type 1 or Type 2) the CLI
+failures as alignment findings. For any archived change (Type 1 or Type 2) the CLI
 cannot resolve it — skip validation and note it not-applicable rather than
 reporting a failure.

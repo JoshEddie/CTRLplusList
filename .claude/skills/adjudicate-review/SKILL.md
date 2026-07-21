@@ -4,7 +4,7 @@ argument-hint: "<change>"
 description: Owner adjudication over a persisted spec-review report - a fresh-session, file-driven pass that re-grounds each disposition in the cited code, interviews the owner one finding at a time, and appends an ### Adjudications subsection to review.md with a recomputed effective verdict. Reads only the change's review.md; takes no runtime dependency on the spec-review skill. Use after /spec-review or /recheck-review to settle dispositions before landing.
 metadata:
   author: list_eddiefamily
-  version: '1.0'
+  version: '1.1'
 ---
 
 # /adjudicate-review
@@ -55,12 +55,26 @@ merge-group, per `AskUserQuestion`** — never batch unrelated findings into a s
 question. Each question SHALL:
 
 - name the finding ID(s) it covers by their durable IDs (for a merge, name both,
-  e.g. "`s1+c3` are the same defect; this question covers both"),
+  e.g. "`A1+C3` are the same defect; this question covers both"),
 - carry the re-grounded evidence from step 1, and
 - offer a **recommended disposition**.
 
 Walk the findings until the owner has confirmed or changed each. Do not skip the
 interview.
+
+### Confirmed `File issue` → create the issue in-interview
+
+When the owner confirms a finding as `File issue`, ask one follow-up: the
+issue's **type** —
+
+- **chunk into the change's open map** (same-release commitment) → create via
+  `gh issue create`, then wire it as a **sub-issue of the map issue**;
+- **standalone follow-up** → create via `gh issue create --label 'OFF THE MAP'`.
+
+Plain `gh` only — do not invoke `/anchor` or any map-skill mechanics. Record the
+created issue's link in that finding's Adjudications **Rationale** column. A
+confirmed `File issue` with no created issue is not settled — do not record it
+as such.
 
 ## Step 3 — Write the adjudications (only on change)
 
@@ -77,6 +91,17 @@ Per the `### Adjudications` structure in `reference/finding-format.md`:
 - **If nothing changed** (every disposition confirmed as-is) → **write nothing**
   and say so. The round's original table and verdict stand; `round:` is untouched.
 
-**No commits, no staging, no fixes.** This skill re-grounds, interviews, and — when
-a disposition changed — appends to `review.md`. Fixing findings and landing remain
-separate acts.
+### Clearing verdict deletes the pending gate section
+
+When the recomputed effective verdict clears the latest round (`clear to land`),
+**delete** that round's pending `## Gates — round <n>` section from the change's
+`tasks.md` — a gate for findings that no longer block is dead weight and would
+wedge `/landfall`'s all-tasks-checked gate on a cleared round. Scoped strictly:
+only the latest adverse round's pending section; never a prior round's checked
+section, never any other `tasks.md` content, never `review.md` content. When the
+recomputed verdict does not clear the round, the gate section stands.
+
+**No commits, no staging, no fixes.** This skill's side effects are exactly:
+the `review.md` append, the pending gate-section delete on a clearing verdict,
+and `gh issue create` for confirmed `File issue` dispositions. Fixing findings
+and landing remain separate acts.

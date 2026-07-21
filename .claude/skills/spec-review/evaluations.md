@@ -2,15 +2,15 @@
 
 Bundled evaluation scenarios for the gate. No automated runner exists; each
 scenario is a hand-checkable source of truth in the `query` + `inputs` +
-`expected_behavior` shape. They span the three verdict axes — a contract mismatch,
+`expected_behavior` shape. They span the three verdict axes — an alignment mismatch,
 a merged-archive (directional) conformance violation, and the clean approve path.
 Revise them when the skill's behavior intentionally changes.
 
-## 1. False-complete contract mismatch → not clear to archive
+## 1. False-complete alignment mismatch → not clear to archive
 
 ```json
 {
-  "name": "false-complete-contract-mismatch",
+  "name": "false-complete-alignment-mismatch",
   "query": "/spec-review add-quantity-limits",
   "inputs": {
     "diffCmd": "git diff dev...HEAD",
@@ -19,7 +19,7 @@ Revise them when the skill's behavior intentionally changes.
     "archiveState": "active",
     "ci": "green"
   },
-  "expected_behavior": "A Contract finding: task 3.2 is [x] but no matching implementing work exists; the task and implementation disagree. Framing is neutral (the change is active), so the finding is stated as a mismatch — not 'the code is wrong' — with disposition `Fix now` proposing EITHER resolution: implement the guard OR unmark/reword 3.2; the spec is not presumed correct. The clear-to-archive gate fails on the open false-complete finding even though CI is green, so the verdict is `Request changes — not yet clear to archive (blockers: task 3.2 false-complete)`."
+  "expected_behavior": "An Alignment (arena A) finding: task 3.2 is [x] but no matching implementing work exists; the task and implementation disagree. Framing is neutral (the change is active), so the finding is stated as a mismatch — not 'the code is wrong' — with disposition `Fix now` proposing EITHER resolution: implement the guard OR unmark/reword 3.2; the spec is not presumed correct. The clear-to-archive gate fails on the open false-complete finding even though CI is green, so the verdict is `Request changes — not yet clear to archive (blockers: task 3.2 false-complete)`."
 }
 ```
 
@@ -36,7 +36,7 @@ Revise them when the skill's behavior intentionally changes.
     "archiveState": "Type 2 merged",
     "ci": "green"
   },
-  "expected_behavior": "A Contract finding framed directionally — the merged spec is the fixed contract and the implementation is the side that must conform; do NOT offer to amend the spec. Disposition `Fix now` (conform the code) or `File issue` (fresh proposal). The clear-to-archive gate is moot (already archived). The verdict is `Request changes — blocked — violates merged spec add-quantity-limits; needs implementation conformance or a fresh proposal`."
+  "expected_behavior": "An Alignment (arena A) finding framed directionally — the merged spec is the fixed contract and the implementation is the side that must conform; do NOT offer to amend the spec. Disposition `Fix now` (conform the code) or `File issue` (fresh proposal). The clear-to-archive gate is moot (already archived). The verdict is `Request changes — blocked — violates merged spec add-quantity-limits; needs implementation conformance or a fresh proposal`."
 }
 ```
 

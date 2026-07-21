@@ -34,7 +34,7 @@ Signals: `openspec list --json`, `git status --porcelain`, `git log origin/dev..
 
 ## Gates — all must pass before anything is staged
 
-1. **Review verdict** — `openspec/changes/<name>/review.md` exists and the **latest round's effective verdict** is `clear to land`. The effective verdict is the latest round as amended by any `### Adjudications` subsection — the last verdict-bearing line in the round (an `### Adjudications` `**Verdict:**` overriding the round's own), per the reader rule in `.claude/skills/spec-review/reference/finding-format.md` — so an adjudication that clears the findings satisfies this gate on its own. Missing file or any other effective verdict → stop, name the gate (run `/spec-review`, `/recheck-review`, or `/adjudicate-review`).
+1. **Review verdict** — `openspec/changes/<name>/review.md` exists and the **latest round's effective verdict** is `clear to land`. The effective verdict is the latest round as amended by any `### Adjudications` subsection — the last verdict-bearing line in the round (an `### Adjudications` `**Verdict:**` overriding the round's own), per the reader rule in `.claude/skills/spec-review/reference/finding-format.md` — so an adjudication that clears the findings satisfies this gate on its own. Missing file or any other effective verdict → stop, name the gate (run `/spec-review`, `/recheck-review`, `/incremental-spec-review`, or `/adjudicate-review`).
 2. **Tasks complete** — every item in the change's `tasks.md` is `[x]` (doc-only skip markers count as complete).
 3. **`openspec validate <name> --strict`** passes.
 4. **Local fast checks** — `npm run lint` (zero errors, zero non-size warnings) and `npx tsc --noEmit`. The full battery is **not** run locally by this skill — CI runs it after the push.

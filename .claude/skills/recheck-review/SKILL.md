@@ -1,15 +1,17 @@
 ---
 name: recheck-review
 argument-hint: "[change-name | version]"
-description: Verify a prior review's open Fix-now findings against just the fix delta - a lightweight inline pass that appends a round to the persisted report (openspec/changes/<name>/review.md or openspec/reviews/<version>.md) instead of re-running a full multi-agent review. Use after fixing findings from /spec-review or /release-review; escalates honestly to a full re-review when the fixes outgrow a recheck.
+description: Verify a prior review's open Fix-now findings against just the fix delta - a lightweight inline pass that appends a round to the persisted report (openspec/changes/<name>/review.md or openspec/reviews/<version>.md) instead of re-running a full multi-agent review. Scope - a fix delta that changed code OR spec artifacts, never both; a mixed delta routes to /incremental-spec-review. Use after fixing findings from /spec-review or /release-review.
 metadata:
   author: list_eddiefamily
-  version: '1.0'
+  version: '1.1'
 ---
 
 # /recheck-review
 
 Closes the review loop: after `/spec-review` or `/release-review` produced findings and fixes were made, verify each open `Fix now` finding against **just the fix delta**, append a numbered round to the persisted report, and emit a verdict `/landfall` can gate on.
+
+**Routing boundary:** recheck is the lever when the fix delta changed code OR spec artifacts — **never both**. A delta that touched both sides means the contract moved; that is `/incremental-spec-review`'s scope. Delta size is not a routing signal in either direction.
 
 Shared formats (header, round structure, verdict vocabulary) live in `.claude/skills/spec-review/reference/finding-format.md` — read it first. This skill reads that reference for format only; it takes no runtime dependency on the spec-review skill.
 
@@ -45,14 +47,11 @@ For each finding in the latest round whose **effective disposition** is an open 
 - **still open** — the delta doesn't (fully) address it.
 - **superseded by a new finding** — the fix itself introduces a fresh defect; report it as a new finding in the round's table (full finding shape from the shared reference).
 
-## Escalation tells — check before verifying
+## Escalation tell — check before verifying
 
-A recheck must not stretch to cover unreviewed ground. Declare `outgrew recheck` — and direct the owner to run the full review again — when either:
+Exactly one tell: mid-recheck the fix delta turns out to touch **both code and spec artifacts**. Declare `outgrew recheck` and direct the owner to `/incremental-spec-review`. The former tells — files outside the original review's diff, delta size rivaling the original — are retired and never trigger escalation; a large single-sided delta is still recheck-scoped. A full `/spec-review` rerun happens only by explicit owner choice, never as this skill's escalation target.
 
-- the fix delta touches **files outside the original review's diff**, or
-- the fix delta **rivals the original diff in size**.
-
-When escalating, still append the round (with the tell that triggered it); do the finding-status pass only as far as it stays honest.
+When escalating, still append the round (with the tell); do the finding-status pass only as far as it stays honest.
 
 ## Append the round
 
@@ -71,13 +70,17 @@ Append a new numbered round section to the report — **never rewrite or delete 
 
 For a release-review target the clear/blocked vocabulary is `ready to cut` / `not ready` (escalation stays `outgrew recheck`).
 
+### Gate section on an adverse verdict (change-review targets)
+
+When the round's verdict is `findings remain` or `outgrew recheck` against a change-review target, append an unchecked `## Gates — round <n>` section to the change's `tasks.md` per `reference/finding-format.md` § Gate sections — one item per open `Fix now` finding, by durable ID. Never uncheck or edit a prior round's section; `clear to land` appends no section. (An `outgrew recheck` section is later superseded by the incremental round's status table.)
+
 ## Verdict
 
 Exactly one, from the shared vocabulary:
 
 - **`clear to land`** (release: `ready to cut`) — every prior open `Fix now` finding resolved, no new `Fix now` findings.
 - **`findings remain`** (release: `not ready`) — open `Fix now` findings persist (still-open or newly introduced); list them.
-- **`outgrew recheck`** — escalation tell fired; run the full review for the next round.
+- **`outgrew recheck`** — the delta touched both code and spec artifacts; run `/incremental-spec-review` for the next round.
 
 Only open `Fix now` findings block; `File issue` / `Drop` never do.
 
