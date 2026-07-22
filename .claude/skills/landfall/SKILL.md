@@ -25,12 +25,11 @@ Determine position from repo state on every invocation (argument optional — re
 | Work staged/signed but unpushed | Push (fast path: only after both commits are signed) and proceed |
 | Work pushed, change dir still active, verified path | Verification wait (CI + live check) |
 | Seal staged but unsigned | Re-report the hand-off with the message |
-| Seal pushed but bookkeeping incomplete | Finish `IN PORT` labeling silently |
 | No active change, nothing pending | Report nothing to land |
 
 Signals: `openspec list --json`, `git status --porcelain`, `git log origin/dev..dev`, `gh run list --branch dev --limit 5`, `gh issue view <N> --json labels`.
 
-**Bookkeeping sweep:** before handling the current change, any invocation that finds a previously-landed issue missing its `IN PORT` label completes that labeling first.
+The label flip is atomic with archive and cannot lag it, so landfall carries no post-push bookkeeping phase and no leftover-bookkeeping sweep. A stranded `IN PORT` — an abandoned seal whose `issue-<N>: archive <change>` commit never reached `origin/dev` — is reconciled by `/port-inspection`, not by landfall; landfall never detects or flips it back.
 
 ## Gates — all must pass before anything is staged
 
@@ -49,9 +48,8 @@ Ask the owner (AskUserQuestion): **does this change need dev verification (CI + 
 ## Fast path — two signed commits, one push
 
 1. Stage the change's work (per the owner's staging conventions — never blanket `git add` without confirming scope). Hand off with the paste-ready message `issue-<N>: <summary>`; stop for signing.
-2. After the signature: archive the change (`/opsx:archive` semantics; `review.md` travels with it), run `/finalize-spec-purposes` so its repairs ride inside the seal commit, stage the archive move (and any sync/repair output). Hand off with the paste-ready message `issue-<N>: archive <change>`; stop for signing.
+2. After the signature: archive the change (`/opsx:archive` semantics; `review.md` travels with it), run `/finalize-spec-purposes` so its repairs ride inside the seal commit, stage the archive move (and any sync/repair output). **Bookkeeping, in the same swoop as the archive:** flip the issue's label to `IN PORT` (removing `UNDER SAIL`) — independent of staged/committed/pushed state. Never close the issue. Hand off with the paste-ready message `issue-<N>: archive <change>`; stop for signing.
 3. After both signatures: **one push** (`git push origin dev`) — no CI wait. Report the CI run to watch (`gh run list --branch dev --limit 1`).
-4. **Bookkeeping, eagerly now**: flip the issue's label to `IN PORT` (removing `UNDER SAIL`). Never close the issue.
 
 ## Verified path — push, verify, then seal
 
@@ -59,8 +57,7 @@ Ask the owner (AskUserQuestion): **does this change need dev verification (CI + 
 2. After the signature: push to `dev`, report the CI run to watch. The owner click-tests the live dev deployment while CI runs. Stop here if the session ends — re-invocation resumes at the wait.
 3. **CI green** — check the run for the pushed sha. Red → fix forward (below). Pending → report and stop.
 4. **Live check** — ask the owner (AskUserQuestion) to confirm the change checks out on the live dev deployment. Not confirmed → stop (or fix forward if it failed).
-5. Archive the change, run `/finalize-spec-purposes`, stage the seal commit — hand off with `issue-<N>: archive <change>`, stop for signing.
-6. After the signed push: **bookkeeping** — flip to `IN PORT`. Never close the issue.
+5. Archive the change, run `/finalize-spec-purposes`, stage the seal commit. **Bookkeeping, in the same swoop as the archive:** flip to `IN PORT` (removing `UNDER SAIL`) — independent of staged/committed/pushed state. Never close the issue. Hand off with `issue-<N>: archive <change>`, stop for signing.
 
 ## Red CI or failed live check — fix forward
 

@@ -172,7 +172,7 @@ artifacts:
       - tasks
 
 apply:
-  requires: [tasks]
+  requires: [tasks, review]
   tracks: tasks.md
   instruction: |
     Read context files, work through pending tasks, mark complete as you go.
