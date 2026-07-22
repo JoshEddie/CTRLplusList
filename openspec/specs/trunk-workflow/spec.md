@@ -60,7 +60,7 @@ Any other routing state SHALL stop, reporting the routing labels found; an open 
 
 #### Scenario: Discipline defers discovery routing to the definition layer
 - **WHEN** `/set-sail` states the mid-voyage disciplines at the start of a voyage
-- **THEN** it states that a discovery is never folded into the active change, that charting onto an open map runs through `/anchor` (whose charter move is owned by `map-workflow`), and that a mirage stops work and fires `/anchor` — without mandating `OFF THE MAP` as the only route or restating the charter criteria
+- **THEN** it states that a discovery is never folded into the active change, that charting onto an open map runs through `/anchor` (whose charter move is owned by `anchor-and-run-aground`), and that a mirage stops work and fires `/run-aground` (owned by `anchor-and-run-aground`) — without mandating `OFF THE MAP` as the only route or restating the charter criteria
 
 #### Scenario: Embark flips no label
 - **WHEN** `/embark` produces proposal artifacts
