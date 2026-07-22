@@ -55,9 +55,3 @@ gh api --paginate repos/{owner}/{repo}/issues/<n>/dependencies/blocked_by --jq '
 
 - Body is one sharp question a background subagent can answer (codebase, docs, third-party APIs).
 - Born labeled `SCOUTING`; **fires its background subagent at creation**. Findings land as the ticket's resolution comment, the ticket auto-closes, and its gist enters Decisions so far marked *unreviewed*. No scratch branches.
-
-### Deferred `SCOUTING` variant
-
-- Same birth as `SCOUTING`, but **created unfired**: no subagent is spawned at creation.
-- Blocked-by wired at birth; the ticket becomes **fireable only when every blocker is closed**.
-- Which skill fires a deferred scout is owned by that skill's own capability — firing is out of this doc's scope; only the birth is in.

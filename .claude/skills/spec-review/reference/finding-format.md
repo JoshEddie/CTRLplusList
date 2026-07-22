@@ -212,7 +212,8 @@ inclusion or the now-or-never call.
 
 Any change-review round (spec-review, incremental-spec-review, recheck) whose
 verdict is adverse (`findings remain`, or recheck's `outgrew recheck`) appends to
-the change's `tasks.md`. A lead-in under the heading points fix sessions to
+the change's `tasks.md` — as does `/adjudicate-review` when a promotion turns a
+round that cleared its own verdict adverse (see **Adjudication entry**). A lead-in under the heading points fix sessions to
 `review.md` Round `<n>` by durable ID — the terse gate lines carry no severity,
 `path:line`, citation, or reconcile side, all of which live only in the round:
 
@@ -227,9 +228,15 @@ the change's `tasks.md`. A lead-in under the heading points fix sessions to
 - [ ] <N>.3 `npm run lint` — zero errors, zero non-size warnings
 - [ ] <N>.4 `npx tsc --noEmit` — zero errors
 - [ ] <N>.5 `npm run build` — completes successfully
-- [ ] <N>.6 `npm run test:coverage` — <run result | SKIPPED under doc-only exemption>
-- [ ] <N>.7 `npm run test:e2e` — <run result | SKIPPED under doc-only exemption>
+- [ ] <N>.6 `npm run test:coverage` — run result
+- [ ] <N>.7 `npm run test:e2e` — run result
 ```
+
+A gate skipped under the doc-only exemption carries **no checklist item** — a
+never-run gate is not a checkable task. Omit it and note the exemption in a
+lead-in line under the section (naming the skipped gates + the rationale), so the
+skip stays visible without wedging `/landfall`'s all-tasks-checked gate on an item
+that will never be checked.
 
 The section is a **numbered tasks.md section** continuing the file's existing
 sequence (`## <N>. Gates — round <n>`, `<N>` = next section number). It carries
@@ -242,8 +249,9 @@ two blocks:
   lint · tsc · build · test:coverage · test:e2e). Fixing the findings changes
   code, invalidating the already-checked pre-merge section; restating the gates
   under the round forces them re-run before the round can clear. The two test
-  gates inherit that section's doc-only exemption, marked `SKIPPED` with the same
-  rationale when the fix delta touches no executable file.
+  gates inherit that section's doc-only exemption when the fix delta touches no
+  executable file — a skipped gate is **omitted** (no checklist item), the
+  exemption noted in the section's lead-in.
 
 Rules:
 
@@ -258,6 +266,27 @@ Rules:
   tasks gate on a cleared round). Deletion is scoped strictly: only the latest
   adverse round's pending section, never a prior round's checked section, never
   `review.md` content.
+- **Adjudication entry.** The mirror of the clearing exit: when
+  `/adjudicate-review` **promotes** a finding to an open `Fix now` (from `Drop` or
+  `File issue`), that finding owes a gate item in the latest round. If the round
+  had **no** pending gate section (its own verdict cleared it), the skill
+  **appends** the section (the review never wrote one). If the round **already**
+  carries a pending gate section, the skill **inserts one gate line** per promoted
+  finding into that section's finding block and **renumbers** so the verification
+  gates stay last — finding items always precede the gates, which must run after
+  every fix. Either way every open `Fix now` in the round's amended dispositions
+  ends with exactly one gate line, ahead of the verification gates. Scoped
+  strictly: only the latest round's section.
+- **Adjudication demotion.** When `/adjudicate-review` **demotes** a finding out
+  of open `Fix now` (to `Drop` or `File issue`) while the round stays adverse,
+  that finding's existing gate line is **checked off in place** and annotated with
+  a trailing `— _italic note_` naming the disposition change and pointing at the
+  round's Adjudications (`— dropped at adjudication`, `— filed #<N>` for a
+  confirmed `File issue`). Not deleted: the line stays as the record that the
+  finding existed and how it left the open set, and the check stops the fix
+  session chasing an item with no work behind it and stops `/landfall`'s
+  all-tasks-checked gate wedging on it. Scoped strictly: only the latest round's
+  section, only lines for findings this adjudication demoted, no renumbering.
 - **Superseding rounds.** An `outgrew recheck` section's findings are re-verified
   by the follow-up incremental round; its status table is the authoritative
   resolution record and licenses checking off or superseding the stale section,

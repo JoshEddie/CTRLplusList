@@ -31,6 +31,7 @@ Not blockers: spec artifacts for another change, or a fully-implemented change a
 2. **State the mid-voyage disciplines** (they bind every session until landfall):
    - **Discoveries are never folded into the active change.** Out-of-scope work found mid-voyage never joins the change under way; the voyage continues either way. Where it goes instead — chartered onto an open map, a fog line, or an `OFF THE MAP` issue with the richest body the session can write — is decided by the charter criteria, which the definition layer owns; charting onto an open map runs through [/anchor](../anchor/SKILL.md), never by invoking `/map` directly.
    - **A mirage stops work.** A settled decision revealed wrong mid-apply fires [/run-aground](../run-aground/SKILL.md), whose blast-radius call (patch at sea / park `ADRIFT` / discard `UNCHARTED`) is the owner's call.
+   - **Mid-map e2e is minimal keep-green only.** An implementation chunk makes only the smallest e2e edits that keep the suite green; coverage of removed behavior is deleted with the behavior, but coverage of surviving behavior is never deleted to get green. Map-wide e2e coverage — new flows, cross-chunk journeys, consolidating the minimal patches — is owned by the closing e2e chunk the map's e2e scout cuts, not by any implementation chunk.
 3. **Delegate to `/opsx:apply`** for the task loop. Implementation, task check-offs, and pauses are its contract.
 
 ## Never commits

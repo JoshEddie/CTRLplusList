@@ -14,7 +14,7 @@ Routing labels are **ALL CAPS** and are the only labels skills route on. Each li
 | `ADRIFT` | Voyage interrupted with recoverable work | `/run-aground` (park) |
 | `MAP` | Index issue for an epic — sole milestone carrier (stamped at exit) | `/map` (chart), `/split-map` (successor) |
 | `PLOTTING` | Decision ticket, HITL | `/map`, `/anchor` (promote), `/split-map` (re-orientation) |
-| `SCOUTING` | Decision ticket, AFK | `/map`, `/anchor` (promote) |
+| `SCOUTING` | Decision ticket, AFK | `/map`, `/anchor` (promote), `/port-inspection` (map-wide e2e scout, created + fired lazily at map close) |
 
 **Birth labels follow the cut doc.** Whichever skill runs [issue-cut.md](issue-cut.md)'s mechanics — `/map`'s chart and exit, `/anchor`'s charter, `/split-map` — its per-kind rules stamp the birth label; the cut doc is the sole birth-label rule-set, and no citing skill carries birth-label rules of its own. Relabelling an existing chunk is a different act and is named normally above — `/anchor` (demote), `/run-aground` (demote via its always-run Step 1, plus discard), and `/split-map` (migrate) each stamp `UNCHARTED` in their own right.
 

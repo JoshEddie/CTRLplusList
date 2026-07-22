@@ -103,7 +103,57 @@ only the latest adverse round's pending section; never a prior round's checked
 section, never any other `tasks.md` content, never `review.md` content. When the
 recomputed verdict does not clear the round, the gate section stands.
 
+### Adverse promotion owes a gate line for every promoted `Fix now`
+
+The mirror of the clearing case. When adjudication **promotes** a finding to an
+open `Fix now` (from `Drop` or `File issue`), that finding now owes a gate item in
+the latest round's `## Gates — round <n>` section — whichever of two cases holds:
+
+- **Round had no pending gate section** (its own verdict cleared it, so the review
+  never wrote one) → **append** the section to the change's `tasks.md` per the
+  gate-section shape in `reference/finding-format.md`: one item per open `Fix now`
+  finding by durable ID, plus the full pre-merge gate set restated (skipped gates
+  omitted per that doc). Appended as the next numbered section.
+- **Round already carries a pending gate section** (it was adverse before, or an
+  earlier promotion created it) → do **not** add a second section; **insert one
+  gate line** per newly-promoted `Fix now` finding (by durable ID) into the
+  existing section's **finding block**, then **renumber the whole section** so the
+  verification-gate lines keep their fixed order after all finding items. Finding
+  items always precede the gates; the gates must run **after** every fix. A
+  section with `N.1 fix A1 / N.2 lint / N.3 tsc …` promoting `B2` becomes
+  `N.1 fix A1 / N.2 fix B2 / N.3 lint / N.4 tsc …`. A promoted finding whose item
+  is missing is ungated — the existing gates were written for the findings adverse
+  at review time, not the ones adjudication just added.
+
+Either way, every open `Fix now` in the round's amended dispositions has exactly
+one gate line, ahead of the verification gates. Without it the invalidated pre-merge gates stay checked and
+`/landfall`'s all-tasks-checked gate never re-runs them after the promoted fix
+lands. Scoped strictly: only the latest round's section, never a prior round's
+section or any other `tasks.md` content.
+
+### Demotion checks off and annotates the finding's gate line
+
+The opposite move. When adjudication **demotes** a finding out of open `Fix now`
+(to `Drop` or `File issue`) and the round stays adverse, its gate line in the
+latest round's `## Gates — round <n>` section is **checked off in place** and
+**annotated** with the disposition — a trailing `— _italic note_` on the item line
+itself (the repo's tasks.md convention for annotating a checked item), saying
+there is no work to do, naming the disposition change, and pointing at the round's
+`### Adjudications`. `— dropped at adjudication` for a `Drop`, `— filed #<N>` for
+a confirmed `File issue`, carrying the issue number created in-interview.
+
+Not deletion — the line stays as the visible record that the finding existed and
+how it left the open set. Without the check, the fix session faces an item with no
+work behind it and `/landfall`'s all-tasks-checked gate blocks on a finding that
+no longer blocks. Scoped strictly: only the latest round's section, only lines for
+findings this adjudication demoted, no renumbering (the item count is unchanged).
+The annotation is never a lead-in note (too far from the item to stop a fix
+session mid-scan) and never a nested blockquote or GitHub `> [!IMPORTANT]` alert
+(the editor's markdown preview renders the alert marker as literal text).
+
 **No commits, no staging, no fixes.** This skill's side effects are exactly:
 the `review.md` append, the pending gate-section delete on a clearing verdict,
-and `gh issue create` for confirmed `File issue` dispositions. Fixing findings
-and landing remain separate acts.
+the gate line(s) added (or the section created) for each promoted `Fix now`, the
+gate line checked off and annotated for each demoted finding, and
+`gh issue create` for confirmed `File issue` dispositions. Fixing findings and
+landing remain separate acts.

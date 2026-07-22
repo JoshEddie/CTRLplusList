@@ -147,16 +147,15 @@ rules:
       that cannot affect test outcomes — markdown docs, `.claude/**`
       skills/commands, `openspec/**`, and comment-only edits to any
       other file — the `test:coverage` and `test:e2e` gate tasks MAY
-      be marked skipped instead of run, checked with an explicit
-      "skipped — doc-only change" rationale on the task line, never
-      silently. Any executable change voids the exemption however
+      be omitted instead of run, never silently: an exempt gate
+      carries no checklist item (a never-run gate is not a checkable
+      task), and the section's lead-in names the omitted gates and the
+      "doc-only change" rationale. Any executable change voids the exemption however
       small, including one to a file whose other edits qualify. The
       test is what the diff can affect, not which directory it sits
       in: a reworded comment in `ci.yml` qualifies, a changed step in
       it does not. CI on the dev push still runs the full battery, so
-      defense in depth is preserved. The five tasks still appear in
-      every tasks.md; the exemption changes how they may be
-      satisfied, not whether they exist.
+      defense in depth is preserved.
   review:
     - |
       Emit the review.md scaffold VERBATIM from the artifact template — the

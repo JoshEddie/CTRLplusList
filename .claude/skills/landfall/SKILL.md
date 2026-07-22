@@ -13,7 +13,7 @@ One command, driven by repository state. Landing a change is two owner-signed co
 
 **Skills never commit.** At every commit point: stage, state exactly what is ready with the **paste-ready commit message**, and **stop** — the owner signs at the screen. Never run `git commit`; never retry a blocked or unattended signature. Sessions may end at any hand-off; re-invocation resumes from state.
 
-**Landfall docks, never closes.** Bookkeeping labels the issue `IN PORT` — nothing else. Closing is inspection's act — `/port-inspection`.
+**Landfall docks, never closes.** Bookkeeping flips the issue to `IN PORT` and posts one summary comment on it — nothing else. Closing is inspection's act — `/port-inspection`.
 
 ## Phase detection — state-driven, self-healing
 
@@ -34,7 +34,7 @@ The label flip is atomic with archive and cannot lag it, so landfall carries no 
 ## Gates — all must pass before anything is staged
 
 1. **Review verdict** — `openspec/changes/<name>/review.md` exists and the **latest round's effective verdict** is `clear to land`. The effective verdict is the latest round as amended by any `### Adjudications` subsection — the last verdict-bearing line in the round (an `### Adjudications` `**Verdict:**` overriding the round's own), per the reader rule in `.claude/skills/spec-review/reference/finding-format.md` — so an adjudication that clears the findings satisfies this gate on its own. Missing file or any other effective verdict → stop, name the gate (run `/spec-review`, `/recheck-review`, `/incremental-spec-review`, or `/adjudicate-review`).
-2. **Tasks complete** — every item in the change's `tasks.md` is `[x]` (doc-only skip markers count as complete).
+2. **Tasks complete** — every item in the change's `tasks.md` is `[x]`.
 3. **`openspec validate <name> --strict`** passes.
 4. **Local fast checks** — `npm run lint` (zero errors, zero non-size warnings) and `npx tsc --noEmit`. The full battery is **not** run locally by this skill — CI runs it after the push.
 
@@ -48,7 +48,7 @@ Ask the owner (AskUserQuestion): **does this change need dev verification (CI + 
 ## Fast path — two signed commits, one push
 
 1. Stage the change's work (per the owner's staging conventions — never blanket `git add` without confirming scope). Hand off with the paste-ready message `issue-<N>: <summary>`; stop for signing.
-2. After the signature: archive the change (`/opsx:archive` semantics; `review.md` travels with it), run `/finalize-spec-purposes` so its repairs ride inside the seal commit, stage the archive move (and any sync/repair output). **Bookkeeping, in the same swoop as the archive:** flip the issue's label to `IN PORT` (removing `UNDER SAIL`) — independent of staged/committed/pushed state. Never close the issue. Hand off with the paste-ready message `issue-<N>: archive <change>`; stop for signing.
+2. After the signature: archive the change (`/opsx:archive` semantics; `review.md` travels with it), run `/finalize-spec-purposes` so its repairs ride inside the seal commit, stage the archive move (and any sync/repair output). **Bookkeeping, in the same swoop as the archive:** flip the issue's label to `IN PORT` (removing `UNDER SAIL`) and post one summary comment on the landed issue — a short user-visible-changes summary when the change touched UI, a "no user-visible changes" one-liner otherwise (no scout lookup — the comment is harvested later by the map's e2e scout) — independent of staged/committed/pushed state. Never close the issue. Hand off with the paste-ready message `issue-<N>: archive <change>`; stop for signing.
 3. After both signatures: **one push** (`git push origin dev`) — no CI wait. Report the CI run to watch (`gh run list --branch dev --limit 1`).
 
 ## Verified path — push, verify, then seal
@@ -57,7 +57,7 @@ Ask the owner (AskUserQuestion): **does this change need dev verification (CI + 
 2. After the signature: push to `dev`, report the CI run to watch. The owner click-tests the live dev deployment while CI runs. Stop here if the session ends — re-invocation resumes at the wait.
 3. **CI green** — check the run for the pushed sha. Red → fix forward (below). Pending → report and stop.
 4. **Live check** — ask the owner (AskUserQuestion) to confirm the change checks out on the live dev deployment. Not confirmed → stop (or fix forward if it failed).
-5. Archive the change, run `/finalize-spec-purposes`, stage the seal commit. **Bookkeeping, in the same swoop as the archive:** flip to `IN PORT` (removing `UNDER SAIL`) — independent of staged/committed/pushed state. Never close the issue. Hand off with `issue-<N>: archive <change>`, stop for signing.
+5. Archive the change, run `/finalize-spec-purposes`, stage the seal commit. **Bookkeeping, in the same swoop as the archive:** flip to `IN PORT` (removing `UNDER SAIL`) and post one summary comment on the landed issue — UI summary or "no user-visible changes" one-liner, no scout lookup — independent of staged/committed/pushed state. Never close the issue. Hand off with `issue-<N>: archive <change>`, stop for signing.
 
 ## Red CI or failed live check — fix forward
 

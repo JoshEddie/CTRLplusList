@@ -17,12 +17,14 @@ The inspection batch-point and the only skill that closes a map. The `IN PORT` i
 - Side effects are GitHub issue operations only, via `gh`. No trunk preconditions gate; never touches the tree, never commits.
 - A map whose last chunk is merely `IN PORT` SHALL NOT close.
 - A map still holding unstarted chunks or residual Not-yet-specified fog SHALL NOT close — point at `/split-map` to dispatch the leftovers.
+- A map whose e2e scout is absent or unresolved SHALL NOT close — point at [/port-inspection](../port-inspection/SKILL.md), which creates and fires it. Closing never creates, fires, or cuts.
 
 ## Flow
 
 1. Resolve the map (argument, or ask). List its sub-issues (`gh api --paginate repos/{owner}/{repo}/issues/<map#>/sub_issues --jq '.[] | {number, state, title, labels: [.labels[].name]}'`) and partition the implementation chunks: closed / `IN PORT` / anything else still open.
 2. **Walk each open `IN PORT` chunk per [/port-inspection](../port-inspection/SKILL.md)'s Walk section** — followed inline, not restated here. The walk runs whatever else is open — inspecting landed cargo never waits on the epic's frontier.
 3. **Leftover check.** Unstarted chunks (`CHARTED`/`UNCHARTED`) or residual Not-yet-specified fog in the map body → the map cannot close; refuse and point at `/split-map` to migrate the leftovers to a successor map (or demote fog to `OFF THE MAP`).
-4. **Every implementation chunk closed and no leftovers** → close the map itself with a one-line completion comment pointing at the destination reached. Any chunk still open → the map stays open; report what remains. The gate reads issue state, not labels: closed is closed, whatever a chunk is labeled.
+4. **E2e-scout gate.** Every implementation chunk closed but the map's e2e scout is absent or unresolved → the map cannot close; refuse and point at `/port-inspection` to create/fire the scout. An open scout is the one residual ticket that means work remains — an explicit carve-out from the stale-residual-ticket rule; closing never adds tickets or fires scouts.
+5. **Every implementation chunk closed, scout resolved, no leftovers** → close the map itself with a one-line completion comment pointing at the destination reached. Any chunk still open → the map stays open; report what remains. The gate reads issue state, not labels: closed is closed, whatever a chunk is labeled.
 
 Decision tickets don't gate the close — a residual open ticket wired onto no open chunk is stale by construction; flag it to the owner for closing into Out of scope or Decisions so far as part of the walk.
