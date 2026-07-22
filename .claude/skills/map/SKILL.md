@@ -48,29 +48,7 @@ The full machine — every label, meaning, and stamping skill — lives in [refe
 
 One GitHub issue, label `MAP`. Tickets are sub-issues of the map. The map is an index, not a store: a decision lives in exactly one place — its ticket — and the map gists and links it. Refer to every map and ticket by its title (wrapping the link), never a bare number.
 
-Map body — exactly these five sections:
-
-    ## Destination
-    <what done looks like — one or two lines; every session orients
-    to it before choosing a ticket>
-
-    ## Notes
-    <domain context; standing preferences for this effort. Always
-    read first: CLAUDE.md and any capability specs the effort
-    touches — same read-first discipline as openspec/config.yaml>
-
-    ## Decisions so far
-    - [<closed ticket title>](link) — <one-line gist>
-    - [<closed scouting ticket title>](link) — <gist> *(unreviewed)*
-    - <unlinked gist line — an answer that never waited for a ticket>
-
-    ## Not yet specified
-    <in-scope fog too dim to ticket yet; demoted decisions appear
-    here marked *reopened*; manual prerequisites appear as fog
-    lines naming what they wait on>
-
-    ## Out of scope
-    <consciously ruled out; never graduates>
+The body is exactly five sections — Destination, Notes, Decisions so far, Not yet specified, Out of scope. Template and edit discipline live in [reference/map-body.md](reference/map-body.md); creation is editing from blank.
 
 The milestone lives **only on the map issue**, stamped at exit — chunks, tickets, and every other issue carry none. A map is atomic with respect to a release: all its chunks ship together, and `/split-map` is the only operation that cuts a map at the landed boundary.
 
@@ -91,50 +69,22 @@ There is **no task ticket type**: a manual prerequisite ("can't plot X until Y e
 
 **Out of scope:** when a ticket turns out to sit past the destination, close it and add one line to Out of scope with why. It stays out of Decisions so far — never in it.
 
-## GitHub mechanics (verified invocations)
-
-`gh api` substitutes `{owner}`/`{repo}` from the current repo. Both endpoints verified live on this repo (gh 2.88.1).
-
-**Sub-issues.** The POST body takes the numeric issue **id**, not the issue number — look it up first:
-
-```bash
-# id lookup (issue number -> numeric id)
-gh api repos/{owner}/{repo}/issues/<child#> --jq .id
-
-# add child as sub-issue of the map
-gh api repos/{owner}/{repo}/issues/<map#>/sub_issues -X POST -F sub_issue_id=<numeric id>
-
-# list sub-issues in list order (number, state, labels)
-gh api --paginate repos/{owner}/{repo}/issues/<map#>/sub_issues \
-  --jq '.[] | {number, state, title, labels: [.labels[].name]}'
-```
-
-**Blocked-by.** Same id-vs-number rule (`issue_id` = numeric id):
-
-```bash
-# wire: <blocked#> is blocked by <blocker#>
-gh api repos/{owner}/{repo}/issues/<blocked#>/dependencies/blocked_by -X POST -F issue_id=<blocker numeric id>
-
-# read an issue's blockers (open blockers = not frontier)
-gh api --paginate repos/{owner}/{repo}/issues/<n>/dependencies/blocked_by --jq '.[] | {number, state, title}'
-```
-
 ## Chart
 
 1. **Intake.** If the input is an existing issue, read it (`gh issue view <N> --json title,body,labels,comments`). If it carries `hold`, surface the most recent parked findings comment to the owner verbatim before proceeding.
 2. **Seeded from an aborted embark grilling?** When `/embark`'s propose grilling routed out as epic-sized and handed off in-session, open with a **re-validation sweep**: every already-given answer is a **candidate, not a decision** — answers given under a one-change framing may not survive the epic reframing. Each is either confirmed into Decisions so far as a plain unlinked gist line (no ticket — an answer that never waited never earns one) or demoted to fog or a fresh ticket. Confirmed answers are not re-asked.
 3. Run `/grill-me` to name the destination — it fixes the scope. Grill breadth-first to surface open decisions, then scale to what surfaced:
-   - **No fog, one-change-sized** — compile to a **single-chunk map** in this session: draft the distilled chunk body, get the owner's approval, create the `MAP` index (five-section body, milestone stamped) with exactly one `CHARTED` chunk as its sub-issue and no decision tickets, close a prompt issue with a pointer comment, stop.
+   - **No fog, one-change-sized** — compile to a **single-chunk map** in this session: draft the distilled chunk body, get the owner's approval, create the `MAP` index (body per [reference/map-body.md](reference/map-body.md), milestone stamped) with exactly one chunk as its sub-issue per [reference/issue-cut.md](reference/issue-cut.md) and no decision tickets, close a prompt issue with a pointer comment, stop.
    - **No fog, bigger than one change** — skip the decision phase: create the map purely as the epic index and proceed straight to Exit.
    - **Fog** — continue charting.
-4. Create the map (label `MAP`, five-section body; the milestone is stamped at exit), fog sketched into Not yet specified. Close a prompt issue with a pointer comment.
-5. Create the tickets you can specify now as sub-issues, each labeled exactly one of `PLOTTING`/`SCOUTING`; wire blocked-by in a second pass.
+4. Create the map (label `MAP`, body per [reference/map-body.md](reference/map-body.md); the milestone is stamped at exit), fog sketched into Not yet specified. Close a prompt issue with a pointer comment.
+5. Create the tickets you can specify now as sub-issues per [reference/issue-cut.md](reference/issue-cut.md), each labeled exactly one of `PLOTTING`/`SCOUTING`; wire blocked-by in a second pass.
 6. **Scouting fires now:** for each `SCOUTING` ticket just created, spawn a background subagent to answer it in parallel. As results return, post each finding as the resolution comment, close the ticket, and append its gist to Decisions so far marked *unreviewed*. Plotting tickets are never auto-resolved — they wait for their sessions.
 7. Stop — charting hand-resolves nothing else.
 
 ## Work (existing map)
 
-1. Load the map and **re-sync the body against ticket reality** — anchors may have run outside map sessions; the index-not-store discipline keeps the diff small (gist lines and links, never restated content).
+1. Load the map and **re-sync the body against ticket reality** per [reference/map-body.md](reference/map-body.md) — anchors may have run outside map sessions; the index-not-store discipline keeps the diff small.
 2. Pick from the frontier — the open, unblocked sub-issues in list order:
    - User named a ticket → take it.
    - One ready → take it.
@@ -147,18 +97,18 @@ Bearing moves — promote (fog → ticket) and demote (mirage) — are `/anchor`
 
 ## Exit (way clear enough to chunk)
 
-The gate is **relaxed**: exit runs when the chunking is drafteable and the frontier chunk is unblocked — not only when every decision has closed. Birth labels split by gate type: chunks gated by residual open **decision tickets** (wired blocked-by) are born `UNCHARTED` — an open decision means scope not settled; chunks merely sequenced behind other **chunks** are born `CHARTED` with blocked-by wired — sequencing is not fog, and no relabel is owed when the predecessor lands; unblocked settled chunks are born `CHARTED` as before. Fog scoped to later chunks may persist in Not yet specified. Implementation chunks are **never created incrementally during the decision phase**: a map does not dribble out implementation issues while its fog is still being cleared.
+The gate is **relaxed**: exit runs when the chunking is drafteable and the frontier chunk is unblocked — not only when every decision has closed. Chunk creation and birth labels follow [reference/issue-cut.md](reference/issue-cut.md) — the sole birth-label rule-set. Fog scoped to later chunks may persist in Not yet specified. Implementation chunks are **never created incrementally during the decision phase**: a map does not dribble out implementation issues while its fog is still being cleared.
 
 Exit cuts **one release's worth of chunks** — the map is atomic with respect to its release, so everything it chunks ships together. Scope beyond that release never becomes a chunk here: it routes to a successor map or stays as fog until `/split-map` or `/close-map` dispatches it.
 
 1. Draft the chunking: implementation issues each sized for one OpenSpec change, sequenced with blocked-by, bodies pre-distilled — problem, settled decisions (linked from the map), constraints — so `/embark` consumes each without re-exploring. Each body links the map issue so the propose grilling inherits its Decisions so far.
 2. **Propose the split to the owner before creating anything; the chunking is theirs to approve.** No issue exists until they say yes.
-3. On approval, create the chunks as sub-issues of the map, wire the blocked-by sequence plus any residual decision tickets onto the chunks they gate, and label each per its gate type: `UNCHARTED` only when an open decision ticket gates it directly, `CHARTED` otherwise (chunk-only blockers included). **Stamp the target milestone on the map issue; chunks are created with no milestone.**
+3. On approval, create the chunks as sub-issues of the map per [reference/issue-cut.md](reference/issue-cut.md) — its per-kind rules stamp each birth label — and wire the blocked-by sequence plus any residual decision tickets onto the chunks they gate. **Stamp the target milestone on the map issue; chunks are created with no milestone.**
 4. The map stays open as the epic's living index. Chunks land as `IN PORT` via `/landfall`; `/close-map` inspects them and closes the map when the last chunk closes.
 
 ### Exit is re-enterable on an open map
 
-Exit is not a one-shot: it re-enters **per discovery** via [/anchor](../anchor/SKILL.md)'s charter move, which is the sole exception to cutting chunks only at the original exit and applies **only after that exit has run**. Anchor diagnoses against the charter criteria and triggers; the cut runs these same steps — same owner approval, same distilled body, same sub-issue and blocked-by wiring from § GitHub mechanics, same birth labels, same no-milestone-on-chunks rule. No new mechanics exist for it, and the wrapper is transparent: `/map` remains the sole stamper of a chunk's birth label.
+Exit is not a one-shot: it re-enters **per discovery** via [/anchor](../anchor/SKILL.md)'s charter move, which is the sole exception to cutting chunks only at the original exit and applies **only after that exit has run**. Anchor diagnoses against the charter criteria and triggers; the cut runs these same steps — same owner approval, same [reference/issue-cut.md](reference/issue-cut.md) mechanics, whose per-kind rules stamp the birth label whichever skill runs the cut.
 
 This licenses nothing before exit. The decision-phase bar stands exactly as stated above — a map still never dribbles out implementation issues while its fog is being cleared, and a map work session that spots a slice of the build before exit has run cuts nothing.
 

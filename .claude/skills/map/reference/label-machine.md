@@ -8,15 +8,15 @@ Routing labels are **ALL CAPS** and are the only labels skills route on. Each li
 | --- | --- | --- |
 | `OFF THE MAP` | Logged, not yet charted — map's intake queue | Any session logging a discovery |
 | `CHARTED` | Scope settled, cleared for work — even while sequenced behind an open blocker; `/embark`'s only accepted target | `/map` (chart or exit) |
-| `UNCHARTED` | Fog only: a map chunk whose scope is not settled — born gated by an open decision ticket at exit, demoted, or migrated. NOT a blocked marker | `/map` (exit), `/anchor` (demote/discard), `/split-map` (migrate) |
+| `UNCHARTED` | Fog only: a map chunk whose scope is not settled — born gated by an open decision ticket at exit, demoted, discarded, or migrated. NOT a blocked marker | `/map` (exit), `/anchor` (demote), `/run-aground` (demote + discard), `/split-map` (migrate) |
 | `UNDER SAIL` | An OpenSpec change occupies the tree | `/set-sail` |
 | `IN PORT` | Landed and sealed, awaiting inspection via `/port-inspection` | `/landfall` |
-| `ADRIFT` | Voyage interrupted with recoverable work | `/anchor` (park) |
+| `ADRIFT` | Voyage interrupted with recoverable work | `/run-aground` (park) |
 | `MAP` | Index issue for an epic — sole milestone carrier (stamped at exit) | `/map` (chart), `/split-map` (successor) |
 | `PLOTTING` | Decision ticket, HITL | `/map`, `/anchor` (promote), `/split-map` (re-orientation) |
 | `SCOUTING` | Decision ticket, AFK | `/map`, `/anchor` (promote) |
 
-A skill that cuts a chunk as a **thin wrapper** over `/map`'s exit mechanics — `/anchor`'s charter move — is never named the stamper of that chunk's **birth label** above: the wrapper is transparent and exit does the stamping, so `/map` stays the sole origin of a chunk's birth label. Relabelling an existing chunk is a different act and is named normally — `/anchor` (demote/discard) and `/split-map` (migrate) each stamp `UNCHARTED` in their own right.
+**Birth labels follow the cut doc.** Whichever skill runs [issue-cut.md](issue-cut.md)'s mechanics — `/map`'s chart and exit, `/anchor`'s charter, `/split-map` — its per-kind rules stamp the birth label; the cut doc is the sole birth-label rule-set, and no citing skill carries birth-label rules of its own. Relabelling an existing chunk is a different act and is named normally above — `/anchor` (demote), `/run-aground` (demote via its always-run Step 1, plus discard), and `/split-map` (migrate) each stamp `UNCHARTED` in their own right.
 
 Milestones are not labels but follow one routing invariant: the milestone lives **only on the `MAP` issue** — chunks, tickets, and every other issue carry none. `/map` exit stamps it; `/split-map` stamps the successor's and relabels migrated chunks `UNCHARTED` behind its re-orientation ticket.
 

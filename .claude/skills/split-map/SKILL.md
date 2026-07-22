@@ -12,7 +12,7 @@ metadata:
 
 The only operation that cuts a map at the landed boundary. A map is atomic with respect to its release — a single chunk never moves to another release. When a milestoned map will not finish, the options are: finish it, re-milestone the whole map (nothing landed yet), or split it here. The predecessor keeps its landed chunks and its milestone; everything unstarted moves to a successor map on the next milestone.
 
-This is a **permanent thin wrapper** around `/map`'s machinery. Everything not stated here follows [/map](../map/SKILL.md) exactly: guardrails (GitHub issue writes only, never the tree, never commits, ungated), the label machine, the map-body template, ticket types, the write-back discipline (owner approves every body before any issue is created or edited).
+This is a **peer consumer** of the map-owned reference docs: successor-map creation follows [map-body.md](../map/reference/map-body.md), issue creation (including the re-orientation ticket) follows [issue-cut.md](../map/reference/issue-cut.md). Everything not stated here follows [/map](../map/SKILL.md) exactly: guardrails (GitHub issue writes only, never the tree, never commits, ungated), the label machine, ticket types, the write-back discipline (owner approves every body before any issue is created or edited).
 
 ## Usage
 
@@ -24,7 +24,7 @@ This is a **permanent thin wrapper** around `/map`'s machinery. Everything not s
 
 - Everything `/map` never does — no tree, no commits, no push.
 - **Never closes anything** — no issue, no map. Closing is `/close-map`'s act; the predecessor closes through its inspection walk after the split.
-- **An active voyage pins the split.** Any chunk labeled `UNDER SAIL` or `ADRIFT` stops the split before anything migrates — name the voyage; it must resolve via `/landfall` or `/anchor` first.
+- **An active voyage pins the split.** Any chunk labeled `UNDER SAIL` or `ADRIFT` stops the split before anything migrates — name the voyage; it must resolve via `/landfall` or `/run-aground` first.
 
 ## Split policies
 
@@ -38,7 +38,7 @@ This is a **permanent thin wrapper** around `/map`'s machinery. Everything not s
 
 1. Read the map and every sub-issue (`gh api --paginate repos/{owner}/{repo}/issues/<map#>/sub_issues --jq '.[] | {number, state, title, labels: [.labels[].name]}'`). **Stop on any `UNDER SAIL` or `ADRIFT` chunk.** Partition: landed (`IN PORT`/closed) vs unstarted, plus open decision tickets and fog lines.
 2. Present the split line to the owner: what stays (landed), what migrates (unstarted chunks + gating tickets), the per-line fog dispatch choices, and which Decisions-so-far gists travel. Nothing is created or edited until they approve.
-3. Create the successor `MAP` index — five-section body per `/map`'s template, milestone set to the **next release**, Notes carrying the origin link.
+3. Create the successor `MAP` index — five-section body per [map-body.md](../map/reference/map-body.md), milestone set to the **next release**, Notes carrying the origin link.
 4. Re-parent each migrating chunk and gating ticket (endpoints verified live on this repo during the #141 migration; id lookup: `gh api repos/{owner}/{repo}/issues/<n> --jq .id`):
 
    ```bash
@@ -47,7 +47,7 @@ This is a **permanent thin wrapper** around `/map`'s machinery. Everything not s
    gh api repos/{owner}/{repo}/issues/<new-map#>/sub_issues -X POST -F sub_issue_id=<numeric id>
    ```
 
-5. Create the re-orientation `PLOTTING` ticket as a successor sub-issue and wire it blocked-by onto every migrated chunk (`gh api repos/{owner}/{repo}/issues/<chunk#>/dependencies/blocked_by -X POST -F issue_id=<ticket numeric id>`); relabel each migrated chunk `UNCHARTED`.
+5. Create the re-orientation `PLOTTING` ticket as a successor sub-issue per [issue-cut.md](../map/reference/issue-cut.md) and wire it blocked-by onto every migrated chunk; relabel each migrated chunk `UNCHARTED`.
 6. Dispatch fog per the owner's line choices: successor Not yet specified, or a distilled `OFF THE MAP` issue.
 7. Edit both map bodies: cross-links in, migrated scope pruned from the predecessor, copied gists (with links back) into the successor.
 8. Hand off: report the predecessor's remaining close path (`/close-map` once its landed cargo is inspected) and the successor's frontier (the re-orientation ticket).

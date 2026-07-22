@@ -30,7 +30,7 @@ Not blockers: spec artifacts for another change, or a fully-implemented change a
 1. **Flip the label**: `CHARTED` → `UNDER SAIL` on the issue (`gh issue edit <N> --remove-label CHARTED --add-label 'UNDER SAIL'`). This is the board's single "the tree is occupied" beacon — set-sail stamps it, nothing else does.
 2. **State the mid-voyage disciplines** (they bind every session until landfall):
    - **Discoveries are never folded into the active change.** Out-of-scope work found mid-voyage never joins the change under way; the voyage continues either way. Where it goes instead — chartered onto an open map, a fog line, or an `OFF THE MAP` issue with the richest body the session can write — is decided by the charter criteria, which the definition layer owns; charting onto an open map runs through [/anchor](../anchor/SKILL.md), never by invoking `/map` directly.
-   - **A mirage stops work.** A settled decision revealed wrong mid-apply fires [/anchor](../anchor/SKILL.md), whose triage (patch at sea / park `ADRIFT` / discard `UNCHARTED`) is the owner's call.
+   - **A mirage stops work.** A settled decision revealed wrong mid-apply fires [/run-aground](../run-aground/SKILL.md), whose blast-radius call (patch at sea / park `ADRIFT` / discard `UNCHARTED`) is the owner's call.
 3. **Delegate to `/opsx:apply`** for the task loop. Implementation, task check-offs, and pauses are its contract.
 
 ## Never commits

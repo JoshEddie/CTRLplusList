@@ -28,7 +28,7 @@ Non-negotiables; each links to its full text.
 
 Normative: `map-workflow` + `trunk-workflow` specs; mechanics: each skill's SKILL.md; labels: [.claude/skills/map/reference/label-machine.md](.claude/skills/map/reference/label-machine.md).
 
-- Route everything through the fleet: `/map` (all work definition) → `/embark` → `/set-sail` → `/spec-review` → `/landfall`, `/anchor` for discoveries, `/port-inspection`/`/close-map` for closure, `/release-review` for release cut. Never improvise a step the fleet owns (issues, ALL-CAPS labels, closing, releasing) by hand.
+- Route everything through the fleet: `/map` (all work definition) → `/embark` → `/set-sail` → `/spec-review` → `/landfall`, `/anchor` for map bearing moves, `/run-aground` for mid-voyage mirages, `/port-inspection`/`/close-map` for closure, `/release-review` for release cut. Never improvise a step the fleet owns (issues, ALL-CAPS labels, closing, releasing) by hand.
 - Work on `dev`; review before any commit exists; one change in apply at a time (also in hard rules).
 - Never hand-edit generated `openspec-*`/`opsx/*` files under `.claude/` — `openspec update` clobbers. Repo-owned (safe): `grill-me`, `finalize-spec-purposes`, fleet skills.
 

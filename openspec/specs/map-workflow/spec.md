@@ -1,7 +1,7 @@
 # map-workflow Specification
 
 ## Purpose
-The definition layer of the two-layer workflow constitution. Every piece of work enters through `/map`, the mandatory intake that clears fog and emits issues cleared for work; nothing else creates worked issues. Governs the map lifecycle (chart / work / exit), the routing-label machine, ticket types, bearing moves (`/anchor`), and epic completion (`/close-map`). The execution layer (`trunk-workflow`) owns everything after departure: tree, commits, gates, review, landing.
+The definition layer of the two-layer workflow constitution. Every piece of work enters through `/map`, the mandatory intake that clears fog and emits issues cleared for work; nothing else creates worked issues. Governs the map lifecycle (chart / work / exit), the routing-label machine, ticket types, and epic completion (`/close-map`). The execution layer (`trunk-workflow`) owns everything after departure: tree, commits, gates, review, landing.
 ## Requirements
 ### Requirement: /map SHALL be the mandatory intake for all work definition, scaled to demand
 
