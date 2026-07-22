@@ -1,4 +1,4 @@
-schema: spec-driven
+schema: spec-driven-review
 
 # Project context — shown to AI when creating any artifact.
 context: |
@@ -157,3 +157,12 @@ rules:
       defense in depth is preserved. The five tasks still appear in
       every tasks.md; the exemption changes how they may be
       satisfied, not whether they exist.
+  review:
+    - |
+      Emit the review.md scaffold VERBATIM from the artifact template — the
+      review-family machine-readable header with `round: 0` and empty/`TBD`
+      `anchor` and `diff-source`, and no round sections. Do NOT invent findings,
+      rounds, verdicts, or scope. The real review is produced later by the
+      multi-agent `/spec-review` skill, which APPENDS round 1 into this file and
+      fills the header; propose-time generation only guarantees the file exists
+      so a fix session auto-loads it from `/opsx:apply`'s contextFiles.

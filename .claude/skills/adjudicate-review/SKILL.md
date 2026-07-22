@@ -38,9 +38,11 @@ only** — the finding-table shape, the durable finding-ID scheme, the
 ## Step 1 — Re-ground the latest round
 
 Read the target `review.md`, take its **latest round**, and re-ground **every**
-finding in the code it cites — including findings dispositioned `Drop`. This is a
-concise explore pass: follow each finding's citation into the actual code and
-confirm whether the finding (and its proposed disposition) still holds.
+finding in the code it cites — including findings dispositioned `Drop`. Do this
+re-grounding by invoking the **`/opsx:explore`** skill explicitly: follow each
+finding's citation into the actual code under that skill and confirm whether the
+finding (and its proposed disposition) still holds. The invocation is required,
+not optional — "explore" here names the skill, not a loose mode of reading.
 
 Treat the persisted dispositions as **proposals to confirm or reopen**, not as
 settled. A `Drop` may prove real on a second look; a `Fix now` may prove already

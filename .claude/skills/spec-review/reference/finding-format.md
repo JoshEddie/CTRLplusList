@@ -27,6 +27,17 @@ round: <highest round number in the file>
 - `round` — updated in the header each time a round is appended; the body keeps
   every round.
 
+### `round: 0` — the pre-review scaffold
+
+For a spec-review target, `review.md` exists from propose time as a **scaffold**:
+the header with `round: 0`, `TBD`/empty `anchor` and `diff-source`, and **no
+round sections** (owned by the `review-artifact` capability). A round-less
+`round: 0` file is a valid *unreviewed* state, not a malformed report — readers
+treat it as "no rounds yet." `/spec-review`'s first round is **appended** into
+this scaffold: it sets `round: 1`, overwrites the `TBD` `anchor`/`diff-source`
+with real values, and adds `## Round 1`. `/landfall`'s verdict gate rejects a
+`round: 0` scaffold (no clearing verdict exists), so nothing lands unreviewed.
+
 ### Round structure
 
 The body is a sequence of numbered round sections, **append-only** — a new round
@@ -201,20 +212,45 @@ inclusion or the now-or-never call.
 
 Any change-review round (spec-review, incremental-spec-review, recheck) whose
 verdict is adverse (`findings remain`, or recheck's `outgrew recheck`) appends to
-the change's `tasks.md`:
+the change's `tasks.md`. A lead-in under the heading points fix sessions to
+`review.md` Round `<n>` by durable ID — the terse gate lines carry no severity,
+`path:line`, citation, or reconcile side, all of which live only in the round:
 
 ```markdown
-## Gates — round <n>
+## <N>. Gates — round <n>
 
-- [ ] <ID> <one-line finding> — resolved
+> Findings by durable ID (severity, `path:line`, citation, reconcile side) are in
+> `review.md` Round <n>. Resolve each open `Fix now` there before checking it off.
+
+- [ ] <N>.1 <ID> <one-line finding> — resolved
+- [ ] <N>.2 <ID> <one-line finding> — resolved
+- [ ] <N>.3 `npm run lint` — zero errors, zero non-size warnings
+- [ ] <N>.4 `npx tsc --noEmit` — zero errors
+- [ ] <N>.5 `npm run build` — completes successfully
+- [ ] <N>.6 `npm run test:coverage` — <run result | SKIPPED under doc-only exemption>
+- [ ] <N>.7 `npm run test:e2e` — <run result | SKIPPED under doc-only exemption>
 ```
 
-one item per open `Fix now` finding, referenced by durable ID.
+The section is a **numbered tasks.md section** continuing the file's existing
+sequence (`## <N>. Gates — round <n>`, `<N>` = next section number). It carries
+two blocks:
+
+- **One item per open `Fix now` finding**, referenced by durable ID.
+- **The full pre-merge verification gate set restated**, each gate its own
+  checkable item so partial failure stays visible — the same five gates as the
+  change's pre-merge section (defined in `openspec/config.yaml` `rules.tasks`:
+  lint · tsc · build · test:coverage · test:e2e). Fixing the findings changes
+  code, invalidating the already-checked pre-merge section; restating the gates
+  under the round forces them re-run before the round can clear. The two test
+  gates inherit that section's doc-only exemption, marked `SKIPPED` with the same
+  rationale when the fix delta touches no executable file.
 
 Rules:
 
 - **Append-only per round.** A prior round's gate section is never unchecked or
-  edited. A clearing verdict appends no section.
+  edited. A clearing verdict appends no section. Each round restates its own gate
+  items — checking the change's original pre-merge section, or a prior round's,
+  does not check off a later round's gates.
 - **Exits.** The fixes land and the fixing session checks the section off; or an
   adjudication re-dispositions every open `Fix now` and — its recomputed verdict
   now clearing the round — **deletes** that round's pending gate section (a gate
