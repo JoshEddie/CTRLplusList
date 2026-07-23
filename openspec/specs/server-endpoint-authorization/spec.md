@@ -17,7 +17,8 @@ A `purchased_by` target MAY be accepted on the `createPurchase` payload (stored 
 
 Guest write paths SHALL be enumerated in the action's spec by name. They are currently:
 
-- `createPurchase` when a non-empty `guest_name` is provided — by an unauthenticated caller, OR by an authenticated caller recording a claim on behalf of a named non-user. This path SHALL scope writes to a guest-identity field (`guest_name`) that the caller could not have guessed for a third party (e.g. `guest_name` paired with an out-of-band `purchase_id` for subsequent edits). On this path the stored row's `user_id` SHALL be NULL — the named third party is a free-text label — while `claimed_by` SHALL record the authenticated caller when one exists (NULL only for unauthenticated guests). Attributing a claim to a real user account is NOT a guest write path; it is the authenticated attributed-claim path governed by the `claim-attribution` capability's pool re-verification.
+- `createPurchase` when a non-empty `guest_name` is provided — by an unauthenticated caller, OR by an authenticated caller recording a claim on behalf of a named non-user. On this path the stored row's `user_id` SHALL be NULL — the named third party is a free-text label — while `claimed_by` SHALL record the authenticated caller when one exists (NULL only for unauthenticated guests). For the unauthenticated case, subsequent self-service (recognition and removal) is scoped by the server-managed `guest_claims` cookie owned by `guest-claim-identity` — an httpOnly credential holding the browser's own purchase ids, which a caller could not have obtained for another party's claims; the cookie is ambient request state, never a payload field. Attributing a claim to a real user account is NOT a guest write path; it is the authenticated attributed-claim path governed by the `claim-attribution` capability's pool re-verification.
+- `removePurchase` when invoked by an unauthenticated caller — authorized solely by the `guest_claims` cookie path defined in the `claim-attribution` removal matrix (all-NULL-identity row whose id the cookie lists). The former exact-`guest_name`-match authorization is retired and the payload carries no guest-identity field.
 - `mintItemPlaceholder` (owned by `item-placeholder-art`) — an unauthenticated or authenticated viewer materializing an imageless item's placeholder art. The path is admissible without a session because the write carries no caller identity and no caller-supplied content: the payload is the item id alone, the inserted row is fully server-derived (art seeded by the item id), the action is idempotent (no insert when an active image already exists), and it SHALL be gated on the caller's authorization to view the item (`isItemViewable`), the same visibility gate the guest purchase path uses.
 
 #### Scenario: Authenticated mutation uses session identity
@@ -45,6 +46,11 @@ Guest write paths SHALL be enumerated in the action's spec by name. They are cur
 - **WHEN** an authenticated caller invokes `createPurchase` with an attribution target outside the eligible attributed-purchaser pool
 - **THEN** the action rejects without inserting a row, regardless of what the client picker displayed
 
+#### Scenario: Guest removal authorizes from the cookie, never the payload
+
+- **WHEN** an unauthenticated caller invokes `removePurchase` on an all-NULL-identity row
+- **THEN** authorization derives from the request's `guest_claims` cookie alone; no payload field can assert guest identity, and a caller without the row's id in their cookie is rejected with no write
+
 #### Scenario: Guest mint is view-gated and content-free
 
 - **WHEN** an unauthenticated viewer invokes `mintItemPlaceholder` for an imageless item on a list they are authorized to view
@@ -54,7 +60,7 @@ Guest write paths SHALL be enumerated in the action's spec by name. They are cur
 
 Every server action that updates or deletes a row in a user-owned table SHALL load the target row, compare its ownership identity to the session-resolved actor id, and reject with `{ success: false, error: 'Unauthorized' }` if the actor holds no right to the row. The check SHALL occur before any `db.update` / `db.delete` call. This applies to `lists`, `items`, `purchases`, and any future user-owned resource.
 
-For `lists` and `items`, the ownership identity is the row's `user_id` and the actor must equal it. For `purchases`, removal rights are the matrix defined by the `claim-attribution` capability: the actor must equal the row's `claimed_by`, OR the row's purchaser `user_id`, OR the `user_id` of the item the purchase targets (owner master unclaim); the unauthenticated guest-name-match path is unchanged. The purchase-removal check therefore SHALL load both the purchase row and its target item's owner before any delete.
+For `lists` and `items`, the ownership identity is the row's `user_id` and the actor must equal it. For `purchases`, removal rights are the matrix defined by the `claim-attribution` capability: the actor must equal the row's `claimed_by`, OR the row's purchaser `user_id`, OR the `user_id` of the item the purchase targets (owner master unclaim); the unauthenticated path is the `guest_claims` cookie authorization (all-NULL-identity row whose id the cookie lists — the former guest-name-match path is retired). The purchase-removal check therefore SHALL load both the purchase row and its target item's owner before any delete.
 
 Actions whose target row already encodes the relationship in its where-clause SHALL still load the row first when the action's success/error response semantics depend on whether the row existed, to distinguish "no such row" from "not your row".
 
@@ -226,3 +232,4 @@ The behavioral semantics of these actions (self-follow / self-block rejection, b
 
 - **WHEN** a developer inspects the signatures of `followUser`, `unfollowUser`, `removeFollower`, `blockUser`, and `unblockUser`
 - **THEN** each accepts only the relationship target id (`followee_id` / `follower_id` / `blocked_id`); none accepts the actor id, so the actor cannot be spoofed by the caller
+
