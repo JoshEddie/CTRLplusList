@@ -8,8 +8,7 @@ diff command. Emit findings in the shape and disposition vocabulary defined in
 Arena C audits two bodies of law:
 
 - **House law** — the repository root `CLAUDE.md` and the docs it gates
-  (`TESTING.md`, `DATABASE.md`, …), including test substance and
-  coverage-gaming.
+  (`DATABASE.md`, …).
 - **Craft law** — universal convention: security, correctness, single-file
   performance, single-responsibility.
 
@@ -18,7 +17,9 @@ universal principle (craft). A "universal" citation is itself contestable at
 adjudication; if you cannot name the principle, it is not a finding. Defects that
 exist only relative to the wider corpus (duplication against existing code,
 naming fit, doc-vs-code drift, cross-file performance) are arena B's — do not
-duplicate them.
+duplicate them. Test files and `TESTING.md` are arena T's lane: carry no
+test-quality duties here — no `TESTING.md` audit, no missing-test or
+coverage-gaming findings; you read **production code against docs**.
 
 **Always** audit the diff against `CLAUDE.md`.
 
@@ -50,8 +51,11 @@ including ones not listed here.
 
 | Pointer in CLAUDE.md | Trigger — read the doc only when the diff… | Key checks |
 | --- | --- | --- |
-| "Read TESTING.md first" | touches test files (`*.test.ts` / `*.test.tsx`) **or** changes testable behavior with no accompanying test (see "Missing tests are a finding") | substance rules; forbidden patterns (tautologies, execute-for-coverage, snapshot-only); assertion bar; test naming `<State>_<Behavior>` |
 | "Read DATABASE.md first" | touches DB schema or queries | **`neon-http` driver — no interactive transactions** (`db.transaction(...)`, `SELECT … FOR UPDATE` are forbidden); migration workflow; driver caveats |
+
+**Exception — the test-subject pointer is never followed here:** `TESTING.md`
+and test files belong to arena T per its brief, even though `CLAUDE.md` points
+at them. Do not load `TESTING.md` or audit test files.
 
 **Untriggered pointers are not loaded** — e.g. if the diff touches no DB
 schema/queries, do not read `DATABASE.md`. Also audit against the inline
@@ -141,57 +145,5 @@ disposition: Fix now
 - Anything a linter or typechecker already catches (CI owns those).
 - Unmodified lines / context lines shown only for orientation.
 - Pedantic style nits with no correctness, security, or clarity impact.
-- Coverage percentages below threshold — `test:coverage` owns thresholds; audit
-  only test substance and coverage-gaming here.
-
-## Missing tests are a finding, not a skip
-
-A diff that adds or changes behavior but touches **no** test files is itself a red
-flag — it usually means code is being merged without coverage. Do not silently
-skip the test audit in that case:
-
-- Read `TESTING.md` and judge whether the changed behavior warranted a test;
-- If it did, surface a finding (`behavior changed with no test
-  added/updated`), citing the untested code and `TESTING.md`;
-- Only skip the test audit when the diff changes nothing testable (docs,
-  comments, pure config/styling).
-
-A passing coverage gate is **not** proof the behavior is tested — it can be gamed.
-Also flag, as coverage-gaming findings:
-
-- New coverage-suppression directives placed over real behavior instead of
-  testing it;
-- Code commented out or deleted to drop it from the coverage denominator rather
-  than being refactored or tested.
-
-The fix for these is a test or a genuine refactor — not an ignore hint or a
-commented-out block. Treat a new ignore directive on non-trivial logic as Major
-unless it is justified inline (e.g. a genuinely unreachable defensive branch).
-
-### Coverage-gaming examples (this repo's idiom)
-
-- FLAG: a new `/* c8 ignore next */` (or `/* v8 ignore */`, `/* istanbul ignore
-  next */`) added directly above a branch with real logic the diff introduced.
-- FLAG: a function that previously had assertions now wrapped so the body is
-  excluded from the coverage denominator, with no replacement test.
-- FLAG: behavior moved into a commented-out block "to revisit" while its caller
-  still ships.
-- FLAG: a `/* v8 ignore */` over a **redundant guard** — a guard re-testing a
-  condition an earlier guard/branch in the same function already decided
-  (CLAUDE.md `Redundant guards`). The ignore suppresses coverage on code that is
-  dead, not unreachable; the fix is remove + restructure, never ignore. This is
-  coverage-gaming — the ignore is doing the job a deletion should. Tell: the
-  rationale cites the function's own earlier code ("the guard above already redirects…").
-- DON'T FLAG: an ignore on a genuine defensive branch whose condition turns on an
-  invariant established *outside* the function (framework lifecycle, platform, a
-  third-party/DB contract — e.g. an exhaustive-switch `default` that throws),
-  justified inline.
-
-### Test-substance examples (per TESTING.md)
-
-- FLAG a tautology: `expect(mockFn).toHaveBeenCalled()` right after the test
-  itself called `mockFn`, asserting nothing about the unit under test.
-- FLAG a snapshot-only test on logic that has branches a snapshot can't
-  distinguish.
-- FLAG a test whose name doesn't follow `<State>_<Behavior>` and whose body
-  asserts something other than the name implies.
+- Test files, test quality, missing tests, coverage-gaming, and coverage
+  percentages — arena T and `test:coverage` own those lanes.

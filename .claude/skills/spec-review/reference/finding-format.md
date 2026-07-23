@@ -23,7 +23,7 @@ round: <highest round number in the file>
   for a release-review, the PR base sha. Follow-up reviews derive their scopes from
   it: recheck on a spec-review target → the unstaged working-tree diff;
   release-review → `git diff <anchor>..dev`; incremental-spec-review → A/C on
-  `git diff` (unstaged), B on `git diff <anchor>` (whole footprint).
+  `git diff` (unstaged), B/T on `git diff <anchor>` (whole footprint).
 - `round` — updated in the header each time a round is appended; the body keeps
   every round.
 
@@ -53,7 +53,7 @@ level ever belongs to a round; the next `##` starts the next round.
 
 **Scope:** <diff source> · <resolved change>
 
-### Alignment / ### Boundary / ### Convention
+### Alignment / ### Boundary / ### Convention / ### Testing
 <findings table(s), per the finding-table style below>
 
 ### What looks good
@@ -142,11 +142,11 @@ against this shape, so the orchestrator consumes validated objects, not parsed
 prose:
 
 ```
-- phase:       alignment | boundary | convention
+- phase:       alignment | boundary | convention | testing
 - location:    path:line
 - description: terse statement of the problem
 - severity:    Critical | Major | Minor
-- citation:    link to the offending line, and (alignment) the SHALL violated, (convention) the doc rule or named universal principle
+- citation:    link to the offending line, and (alignment) the SHALL violated, (convention) the doc rule or named universal principle, (testing) the TESTING.md rule or the delta-spec scenario/SHALL traced
 - disposition: Fix now | File issue | Drop
 ```
 
@@ -154,8 +154,8 @@ prose:
 
 Every finding carries a **durable ID** of the form `<arena-letter><global-round-integer>`:
 
-- **arena letter** — capital `A` Alignment · `B` Boundary · `C` Convention. Marks the arena for at-a-glance readability.
-- **global-round integer** — one continuous sequence incrementing **globally across all arena tables within a round**, never restarting per arena, so every finding in a round has a unique integer on its own (`A1`, `B2`, `C3` — never `A1` and `B1` in the same round).
+- **arena letter** — capital `A` Alignment · `B` Boundary · `C` Convention · `T` Testing. Marks the arena for at-a-glance readability.
+- **global-round integer** — one continuous sequence incrementing **globally across all arena tables within a round**, never restarting per arena, so every finding in a round has a unique integer on its own (`A1`, `B2`, `T3` — never `A1` and `B1` in the same round).
 
 The ID is stable: it is how `/adjudicate-review` grills a finding and how follow-up rounds cite a prior finding. Merges join the IDs with `+` (`A1+C3` = the two are the same defect). No sub-lane notation in IDs or prose — house-vs-craft lives in the Citation column. Old persisted rounds carrying `s`/`c`/`k` IDs stay valid history; readers resolve IDs within their own round, so no migration.
 
@@ -167,7 +167,7 @@ Columns, in order:
 # | Severity | Location | Finding | Disposition | Citation
 ```
 
-- **#** — the finding's durable ID (see **Finding IDs** above): arena letter + global-round integer (`A1`, `B2`, `C3`), merges joined with `+`.
+- **#** — the finding's durable ID (see **Finding IDs** above): arena letter + global-round integer (`A1`, `B2`, `C3`, `T4`), merges joined with `+`.
 - **Severity** — text labels `Critical` / `Major` / `Minor`. **No emojis** (repo convention).
 - **Location** — `path:line`.
 - **Finding** — terse, factual. Cite, don't editorialize. No preamble, no restating the diff.

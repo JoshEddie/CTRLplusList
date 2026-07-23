@@ -41,7 +41,12 @@ states and reconciliation-latitude rules live in
   the spec." Resolve only by conforming the code (`Fix now`) or opening a fresh
   proposal (`File issue`); block until resolved.
 
-## The four alignment checks
+**Arena boundary:** task-completion truth — including unchecked or
+false-complete "add tests" tasks — stays here in arena A. Test quality,
+substance, and suite staleness against the changed behavior are arena T's; do
+not audit test files or sweep the suite.
+
+## The three alignment checks
 
 ### Task-completion truth
 For every task marked `[x]` in `tasks.md`, confirm matching real work exists in
@@ -59,18 +64,6 @@ only whether the deferral itself is reasonable for the work in scope.
 Confirm completed work conforms to the SHALL requirements in `design.md` and
 `specs/**/spec.md`. Contradiction → **conformance mismatch finding**, citing the
 specific SHALL, framed per the state above.
-
-### Superseded-behavior sweep
-The one check that reads **outside the diff**. For each delta-spec requirement
-that modifies or replaces existing behavior (a changed/removed SHALL, not a
-purely additive one), grep the test suites (unit + e2e) for assertions,
-selectors, or comments encoding the **old** behavior — the diff won't contain
-them, and a green run is no evidence they're aligned (a stale negative
-assertion can keep passing by winning a timing race). Found → **mismatch
-finding**: the untouched test asserts the superseded contract; fix is updating
-the test to the new requirement. Grep by the behavior's stable handles
-(aria-labels, role names, rendered text, route paths) from the changed
-requirement.
 
 ### Scope creep
 Confirm no behavior was added that no task and no spec requirement documents.

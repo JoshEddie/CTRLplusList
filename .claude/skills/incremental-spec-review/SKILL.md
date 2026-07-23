@@ -1,11 +1,11 @@
 ---
 name: incremental-spec-review
 argument-hint: "[change-name]"
-description: Second-stage full-rigor review scoped to the not-yet-reviewed fix delta - for fixes atop a reviewed staged baseline that changed BOTH code and spec artifacts (single-sided deltas stay with /recheck-review). Runs arenas A+C on the unstaged delta and B on the change's whole footprint via spec-review's shared briefs, appends a round subsuming recheck's status table to review.md, and never requires staging the fix delta. Use when a recheck declared outgrew recheck or the fix delta visibly touched both sides.
+description: Second-stage full-rigor review scoped to the not-yet-reviewed fix delta - for fixes atop a reviewed staged baseline that changed BOTH code and spec artifacts (single-sided deltas stay with /recheck-review). Runs arenas A+C on the unstaged delta and B+T on the change's whole footprint via spec-review's shared briefs, appends a round subsuming recheck's status table to review.md, and never requires staging the fix delta. Use when a recheck declared outgrew recheck or the fix delta visibly touched both sides.
 disable-model-invocation: true
 metadata:
   author: list_eddiefamily
-  version: '1.0'
+  version: '1.1'
 ---
 
 # /incremental-spec-review
@@ -59,8 +59,9 @@ staged baseline the original review was computed against. Scopes:
 | A Alignment | `git diff` | the unstaged-atop-staged fix delta |
 | C Convention | `git diff` | the unstaged-atop-staged fix delta |
 | B Boundary | `git diff <anchor>` | the change's whole footprint (staged + unstaged), because corpus-relative defects can be created by the combination of reviewed and unreviewed edits |
+| T Testing | `git diff <anchor>` | the change's whole footprint, because scenario traceability is a whole-change property — a fix delta can silently orphan a scenario pinned in an earlier round; the scenario↔test mapping is re-derived fresh across the footprint |
 
-Arena definitions are spec-review's three-arena contract, carried by the shared
+Arena definitions are spec-review's four-arena contract, carried by the shared
 briefs.
 
 ## Prior findings — read as amended
@@ -74,7 +75,7 @@ status table will account for each.
 
 ## Fan-out
 
-Spawn the three arena agents as parallel Agent-tool sub-agents **in a single
+Spawn the four arena agents as parallel Agent-tool sub-agents **in a single
 message**, exactly per spec-review's orchestration contract:
 
 - **Identity line** — `You are the <arena> agent for /incremental-spec-review.`
@@ -82,12 +83,15 @@ message**, exactly per spec-review's orchestration contract:
   - `alignment`: `.claude/skills/spec-review/alignment-brief.md`
   - `boundary`: `.claude/skills/spec-review/boundary-brief.md`
   - `convention`: `.claude/skills/spec-review/convention-brief.md`
+  - `testing`: `.claude/skills/spec-review/testing-brief.md`
 - **Diff command** — the arena's own command from the scope table above.
-- **Phase key** — `alignment` / `boundary` / `convention`.
+- **Phase key** — `alignment` / `boundary` / `convention` / `testing`.
 - **Alignment agent only** — the resolved change name and archive state (the
   change is active mid-apply; classify per
   `.claude/skills/spec-review/reference/archive-state.md` if in doubt), plus the
   deferred-to-CI instruction.
+- **Testing agent only** — the resolved change name and archive state (no
+  deferred-to-CI instruction).
 
 Reply convention, parse, single retry via **SendMessage**, and
 abort-on-persistent-malformed (name the failed arena, show the raw reply,
@@ -106,13 +110,13 @@ Append to `review.md` — **never rewriting prior rounds** — and bump the head
 
 <one- to two-sentence summary>
 
-**Scope:** A/C `git diff` · B `git diff <anchor>` · <resolved change>
+**Scope:** A/C `git diff` · B/T `git diff <anchor>` · <resolved change>
 
 ### Prior findings
 | # | Prior finding | Status | Notes |
 |---|---------------|--------|-------|
 
-### Alignment / ### Boundary / ### Convention
+### Alignment / ### Boundary / ### Convention / ### Testing
 <fresh findings tables, standard finding shape; IDs continue the capital-letter
 global-integer scheme within this round>
 

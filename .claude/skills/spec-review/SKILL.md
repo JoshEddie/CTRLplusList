@@ -5,12 +5,12 @@ description: Review a spec-driven PR/diff before archiving its OpenSpec change. 
 disable-model-invocation: true
 metadata:
   author: list_eddiefamily
-  version: '1.5'
+  version: '1.6'
 ---
 
 # /spec-review
 
-A self-contained project code-review skill. It audits a PR/diff across three arenas at once:
+A self-contained project code-review skill. It audits a PR/diff across four arenas at once:
 
 ### A — Alignment (delta-scoped)
 
@@ -23,8 +23,12 @@ A self-contained project code-review skill. It audits a PR/diff across three are
 
 ### C — Convention (delta-scoped)
 
-- house law: the repo's `CLAUDE.md` and the supporting docs it points to (e.g. `TESTING.md`, `DATABASE.md`), test substance, coverage-gaming
+- house law: the repo's `CLAUDE.md` and the supporting docs it points to (e.g. `DATABASE.md`) — no test-file or `TESTING.md` duties (arena T's lane)
 - craft law: security, correctness, single-file performance, single-responsibility — every finding citing the doc rule or named universal principle
+
+### T — Testing (delta-scoped, one outside-the-diff look)
+
+- the test suite read against the change's behavior: test substance (the `TESTING.md` audit, coverage-gaming, missing tests), scenario traceability (incl. the suite-wide staleness sweep — its one outward look), testability, semantic test naming
 
 Coverage thresholds belong to no arena — `test:coverage` owns them.
 
@@ -34,7 +38,7 @@ This is the review family's **full** review: it opens round 1 of a change's revi
 
 - **Usage** — invocation forms.
 - **Phase 0** — scope and change resolution (you do this; it produces the agents' inputs).
-- **Phase orchestration** — fan out the three arena agents as parallel Agent-tool sub-agents; parse and validate their JSON replies.
+- **Phase orchestration** — fan out the four arena agents as parallel Agent-tool sub-agents; parse and validate their JSON replies.
 - **Check CI status** — read CI after the agents return (PR invocations).
 - **Consolidated report** — the fixed output contract and verdict logic.
 - **Persist the report** — write/append `openspec/changes/<name>/review.md`, plus the tasks.md gate section on an adverse verdict.
@@ -46,6 +50,7 @@ Each arena runs as its own **agent** against a bundled brief file; the skill tak
 - `alignment-brief.md`
 - `boundary-brief.md`
 - `convention-brief.md`
+- `testing-brief.md`
 
 ## Usage
 
@@ -115,17 +120,17 @@ Ask the user via the **AskUserQuestion** tool whether to
 - (a) proceed with no alignment audit
 - (b) name the change to review against.
 
-On (a), skip the alignment arena and run only the boundary and convention arenas, noting it in the scope line; the verdict reads `no archive gate (alignment audit skipped)`. On (b), use the named change as the alignment-audit target — commonly an already-merged archived one; classify it in 0d and pass the state to the alignment agent.
+On (a), skip the alignment arena and run the boundary, convention, and testing arenas — the testing arena **degraded** per its brief (substance, testability, naming only; traceability noted skipped) — noting it in the scope line; the verdict reads `no archive gate (alignment audit skipped)`. On (b), use the named change as the alignment-audit target — commonly an already-merged archived one; classify it in 0d and pass the state to the alignment agent.
 
 ### 0d. Classify the archive state
 
-When a change resolved (0c (b) or auto-detect), classify it per `.claude/skills/spec-review/reference/archive-state.md` so the orchestrator can pass the state to the alignment agent and use it in the verdict. Compute the state here once; do not make the alignment agent re-derive it.
+When a change resolved (0c (b) or auto-detect), classify it per `.claude/skills/spec-review/reference/archive-state.md` so the orchestrator can pass the state to the alignment and testing agents and use it in the verdict. Compute the state here once; do not make the agents re-derive it.
 
 ---
 
 ## Phase orchestration
 
-The arena reviews run as **direct Agent-tool sub-agents** — issue all arena agents as Agent-tool calls **in a single message** so they run concurrently. The fan-out is bounded: 3 arena agents (alignment / boundary / convention), or 2 when Phase 0c resolved no change (alignment arena skipped).
+The arena reviews run as **direct Agent-tool sub-agents** — issue all arena agents as Agent-tool calls **in a single message** so they run concurrently. The fan-out is bounded: 4 arena agents (alignment / boundary / convention / testing), or 3 when Phase 0c resolved no change (alignment arena skipped; testing runs degraded).
 
 ### Per-agent prompt
 
@@ -136,9 +141,11 @@ Build each agent's prompt from the Phase-0-resolved inputs:
   - `alignment`: `.claude/skills/spec-review/alignment-brief.md`
   - `boundary`: `.claude/skills/spec-review/boundary-brief.md`
   - `convention`: `.claude/skills/spec-review/convention-brief.md`
+  - `testing`: `.claude/skills/spec-review/testing-brief.md`
 - **Diff command** — `Produce the diff under review with: <diffCmd>, then review it.` Each agent runs the 0a-resolved command itself; the raw diff is never passed as a giant string.
-- **Phase key** — the agent's own key (`alignment` / `boundary` / `convention`), which it sets as `phase` on every finding.
+- **Phase key** — the agent's own key (`alignment` / `boundary` / `convention` / `testing`), which it sets as `phase` on every finding.
 - **Alignment agent only** — additionally: the resolved change name (0c), the archive state (0d), `Apply the framing and reconciliation latitude for that state exactly as the brief describes.`, and `Surface any task explicitly deferred to CI as a deferredToCI entry rather than a missing-work finding.`
+- **Testing agent only** — additionally: the resolved change name (0c) and the archive state (0d) so it reads the delta specs from the right location; when no change resolved, state that explicitly so it runs degraded per its brief. It does **not** receive the deferred-to-CI instruction — that stays alignment-only.
 
 ### Reply convention
 
@@ -179,7 +186,7 @@ A non-PR invocation has no CI to read — state CI as unverified rather than ass
 
 ## Consolidated report — fixed output contract
 
-Emit a single report in **exactly this order** — do not reorder, omit, or add sections. The finding-table columns, severity labels (text, no emoji), dispositions, and diagram rules are defined in `.claude/skills/spec-review/reference/finding-format.md`. Column 1 of every findings table is the finding's **durable ID** per that reference's finding-ID scheme — a capital arena letter (`A` alignment, `B` boundary, `C` convention) plus an integer that increments globally across the arena tables within the round in one continuous sequence (`A1`, `B2`, `C3` — never `A1` and `B1` together), so every finding is referable by an ID unique within its round; merges join IDs with `+` (`A1+C3`). Fill in this skeleton:
+Emit a single report in **exactly this order** — do not reorder, omit, or add sections. The finding-table columns, severity labels (text, no emoji), dispositions, and diagram rules are defined in `.claude/skills/spec-review/reference/finding-format.md`. Column 1 of every findings table is the finding's **durable ID** per that reference's finding-ID scheme — a capital arena letter (`A` alignment, `B` boundary, `C` convention, `T` testing) plus an integer that increments globally across the arena tables within the round in one continuous sequence (`A1`, `B2`, `T3` — never `A1` and `B1` together), so every finding is referable by an ID unique within its round; merges join IDs with `+` (`A1+C3`). Fill in this skeleton:
 
 ```markdown
 # /spec-review — <change-name | "no related change">
@@ -199,6 +206,10 @@ Emit a single report in **exactly this order** — do not reorder, omit, or add 
 |---|----------|----------|---------|-------------|----------|
 
 ### Convention
+| # | Severity | Location | Finding | Disposition | Citation |
+|---|----------|----------|---------|-------------|----------|
+
+### Testing
 | # | Severity | Location | Finding | Disposition | Citation |
 |---|----------|----------|---------|-------------|----------|
 
@@ -244,7 +255,7 @@ The clear-to-archive gate is moot; state `already archived` and give the verdict
 
 #### No alignment audit (Phase 0c proceed-without)
 
-No change to gate; state `no archive gate (alignment audit skipped)`. The verdict is determined solely by the boundary/convention dispositions.
+No change to gate; state `no archive gate (alignment audit skipped)`. The verdict is determined solely by the boundary, convention, and (degraded) testing dispositions.
 
 ---
 
@@ -254,7 +265,7 @@ After emitting the consolidated report, persist it to `openspec/changes/<name>/r
 
 - **Append round 1 into the pre-existing `round: 0` scaffold.** A change created via propose already carries a `review.md` scaffold (the `review-artifact` capability: header with `round: 0`, `TBD` `anchor`/`diff-source`, no round sections). Fill that header in place — set `round: 1` and write the real `anchor` sha and `diff-source` over the `TBD` placeholders — and append the round body below it. Do not create the file from scratch when a scaffold exists. **Fallback create path:** when no scaffold exists (an older in-flight change made before this landed, or a `<PR>` review outside any resolved OpenSpec change), write the file fresh with the same header — see the no-related-change note below.
 - The header is the shared machine-readable header defined in `reference/finding-format.md` (`review: spec-review`, `target:` the change, `anchor:` the sha the diff was computed against, `diff-source:` the diff command or PR reference, `round:` the highest round in the file).
-- The report body is round 1 (`## Round 1 — spec-review (<date>)`). The session report's `# /spec-review` title becomes the `## Round 1` heading; its `### Alignment`/`### Boundary`/`### Convention` finding tables sit directly under the round (drop the `## Findings` wrapper), and `## What looks good` nests as `### What looks good` — so every part of the round lives at `###` and the round is self-contained (nothing at `##` belongs to it; the next `##` starts the next round). A repeat full review — run only by explicit owner choice — **appends** the next round and bumps the header's `round:` — prior rounds are never rewritten.
+- The report body is round 1 (`## Round 1 — spec-review (<date>)`). The session report's `# /spec-review` title becomes the `## Round 1` heading; its `### Alignment`/`### Boundary`/`### Convention`/`### Testing` finding tables sit directly under the round (drop the `## Findings` wrapper), and `## What looks good` nests as `### What looks good` — so every part of the round lives at `###` and the round is self-contained (nothing at `##` belongs to it; the next `##` starts the next round). A repeat full review — run only by explicit owner choice — **appends** the next round and bumps the header's `round:` — prior rounds are never rewritten.
 - **The round ends with a round-vocab `**Verdict:**` line**, not the session `## Verdict` wording: map `Approve → **Verdict:** clear to land` and `Request changes → **Verdict:** findings remain` (list the blockers after `findings remain`). This is the line `/landfall`, `/recheck-review`, and `/incremental-spec-review` read, and the line an `### Adjudications` subsection overrides.
 - **When the persisted round's verdict is `findings remain`**, also append the `## Gates — round <n>` section to the change's `tasks.md` per `reference/finding-format.md` § Gate sections — one unchecked item per open `Fix now` finding, by durable ID; never uncheck or edit a prior round's section. A clearing verdict appends no section.
 - The persisted report is consumed by `/recheck-review` and `/incremental-spec-review` (round appending, delta computation from the header) and `/landfall` (latest-round-verdict gate), and travels with the change directory at archive time.
