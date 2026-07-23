@@ -535,6 +535,79 @@ const seedFollows: { follower_id: string; followee_id: string }[] = [
   ]),
 ];
 
+// Hand-authored linkless items (the door path's output): PRICED rows carry a
+// linkless priced store row, BARE rows carry none. Seeded imageless so the
+// placeholder-mint art matches what a door-created item looks like. Appended
+// after each list's pool slice; excluded from the purchase fan-out (it walks
+// itemNames). Returns item_id → price for the PRICED ones, consumed by the
+// store-row loop.
+const LINKLESS_EXTRAS: {
+  list_id: string;
+  name: string;
+  description: string;
+  price: string;
+}[] = [
+  {
+    list_id: 'dev-list-viewer-birthday',
+    name: 'Cash toward the house fund',
+    description: 'Every bit gets us closer to the down payment.',
+    price: '',
+  },
+  {
+    list_id: 'dev-list-viewer-birthday',
+    name: 'Coffee shop gift card',
+    description: 'The one on 5th — I stop there every morning.',
+    price: '25.00',
+  },
+  {
+    list_id: 'dev-list-alice-wedding',
+    name: 'A homemade dinner for two',
+    description: 'Your signature dish, delivered — better than any registry box.',
+    price: '',
+  },
+  {
+    list_id: 'dev-list-alice-wedding',
+    name: 'Spa day gift card',
+    description: 'Anywhere with a sauna — honeymoon recovery fund.',
+    price: '50.00',
+  },
+];
+
+function appendLinklessExtras(
+  itemRows: {
+    id: string;
+    name: string;
+    description: string;
+    user_id: string;
+    image_url: string;
+    archived_at: Date | null;
+    quantity_limit: number | null;
+  }[],
+  listItemRows: { list_id: string; item_id: string; position: number }[]
+): Map<string, string> {
+  const pricedByItem = new Map<string, string>();
+  LINKLESS_EXTRAS.forEach((extra, i) => {
+    const list = seedLists.find((l) => l.id === extra.list_id)!;
+    const itemId = `${extra.list_id}-linkless-${i + 1}`;
+    itemRows.push({
+      id: itemId,
+      name: extra.name,
+      description: extra.description,
+      user_id: list.user_id,
+      image_url: '',
+      archived_at: null,
+      quantity_limit: 1,
+    });
+    listItemRows.push({
+      list_id: extra.list_id,
+      item_id: itemId,
+      position: list.itemNames.length + i,
+    });
+    if (extra.price !== '') pricedByItem.set(itemId, extra.price);
+  });
+  return pricedByItem;
+}
+
 async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) {
@@ -667,6 +740,7 @@ async function main() {
       listItemRows.push({ list_id: list.id, item_id: itemId, position: idx });
     });
   });
+  const linklessPricedByItem = appendLinklessExtras(itemRows, listItemRows);
   // onConflictDoUpdate so re-runs apply new image_url, archived_at, and
   // quantity_limit to previously-seeded rows.
   await db
@@ -758,19 +832,29 @@ async function main() {
     price: string;
     order: number;
   }[] = [];
+  // Store rows for one item, or null for none: BARE items and BARE linkless
+  // extras get zero rows, PRICED linkless items a single linkless priced row,
+  // hand-authored specials their fixed rows, everything else 1–3 catalog
+  // stores deterministic by item id hash.
+  const catalogFor = (
+    itemId: string
+  ): { name: string; link: string; price: string }[] | null => {
+    if (itemId === BARE_ITEM) return null;
+    const linklessPrice = linklessPricedByItem.get(itemId);
+    if (linklessPrice !== undefined)
+      return [{ name: '', link: '', price: linklessPrice }];
+    if (itemId.includes('-linkless-')) return null;
+    if (itemId === LONG_STORE_ITEM) return LONG_STORE_ROWS;
+    if (itemId === PRICED_ITEM) return PRICED_ROWS;
+    const hash = itemId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    return Array.from(
+      { length: (hash % 3) + 1 },
+      (_, i) => STORE_CATALOG[(hash + i) % STORE_CATALOG.length]
+    );
+  };
   for (const item of itemRows) {
-    if (item.id === BARE_ITEM) continue;
-    const hash = item.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    const catalog =
-      item.id === LONG_STORE_ITEM
-        ? LONG_STORE_ROWS
-        : item.id === PRICED_ITEM
-          ? PRICED_ROWS
-          : // 1–3 stores per item, deterministic by item id hash.
-            Array.from(
-              { length: (hash % 3) + 1 },
-              (_, i) => STORE_CATALOG[(hash + i) % STORE_CATALOG.length]
-            );
+    const catalog = catalogFor(item.id);
+    if (!catalog) continue;
     catalog.forEach((store, i) => {
       storeRows.push({
         id: `${item.id}-store-${i + 1}`,

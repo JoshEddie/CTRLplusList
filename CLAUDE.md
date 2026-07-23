@@ -112,4 +112,4 @@ Trio in `app/ui/components/button/`:
 - **After seeding/resetting, restart dev server** — `'use cache'` DAL results stale until restart (seed script can't bump `revalidateTag`).
 - **Hard guardrail:** boot guard in [db/index.ts](db/index.ts) refuses `USE_PG_DRIVER=1` with non-localhost `DATABASE_URL` — loud outage, never silent bypass.
 - **Product-fetch mock:** local mode only — paste `https://mock.test/<scenario>` into add-item flow for deterministic Zyte fixture, zero quota.
-- **Everything else** (session identity via `BYPASS_SESSION_USER`, env layout, seeded coverage, file map, mock scenarios, `/api/image-search` limits): [LOCALDEV.md](LOCALDEV.md).
+- **Everything else** (session identity via `BYPASS_SESSION_USER`, env layout, seeded coverage, file map, mock scenarios): [LOCALDEV.md](LOCALDEV.md).

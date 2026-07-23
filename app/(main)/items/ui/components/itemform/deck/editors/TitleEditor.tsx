@@ -12,6 +12,7 @@ interface TitleEditorProps {
   description: string;
   onNameChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
+  linkless?: boolean;
   disabled?: boolean;
 }
 
@@ -20,6 +21,7 @@ export function TitleEditor({
   description,
   onNameChange,
   onDescriptionChange,
+  linkless,
   disabled,
 }: TitleEditorProps) {
   const tier = titleTier(name);
@@ -70,7 +72,11 @@ export function TitleEditor({
           description={description}
           onChange={onDescriptionChange}
           disabled={disabled}
-          helper="Move size, color, or variant details here so the name stays short."
+          helper={
+            linkless
+              ? 'Optional — size, color, or any detail worth remembering.'
+              : 'Move size, color, or variant details here so the name stays short.'
+          }
         />
       )}
     </div>

@@ -12,10 +12,12 @@ export function UrlEntryStep({
   initialUrl,
   initialError,
   onFetch,
+  onLinkless,
 }: {
   initialUrl?: string;
   initialError?: string;
   onFetch: (url: string) => void;
+  onLinkless: () => void;
 }) {
   const [url, setUrl] = useState(initialUrl ?? '');
   const [error, setError] = useState(initialError ?? '');
@@ -34,10 +36,15 @@ export function UrlEntryStep({
       title="Start with a link"
       subtitle="Paste a product link, we'll pull the details, then walk you through anything that still needs attention."
       foot={
-        <Button variant="primary" onClick={handleFetch} width="full">
-          <PiStarFourFill />
-          Fetch Details
-        </Button>
+        <div className="prefill-url-actions">
+          <Button variant="primary" onClick={handleFetch} width="full">
+            <PiStarFourFill />
+            Fetch Details
+          </Button>
+          <Button variant="ghost" width="full" onClick={onLinkless}>
+            No link? Cash, gift cards & more
+          </Button>
+        </div>
       }
     >
       <TextField

@@ -67,6 +67,7 @@ const ItemFormContainer = ({
     urlStepError,
     failureKind,
     canRetrySame,
+    clearUrl,
     startFetch,
     returnToUrl,
   } = useProductFetch((vm) => {
@@ -84,6 +85,12 @@ const ItemFormContainer = ({
     () => lists.map((l) => ({ value: l.id.toString(), label: l.name })),
     [lists]
   );
+
+  const enterLinkless = () => {
+    clearUrl();
+    setViewModel(blankItem());
+    setScreen('deck');
+  };
 
   const buildByHand = () => {
     setViewModel(blankItem(pastedUrl));
@@ -171,6 +178,7 @@ const ItemFormContainer = ({
             initialUrl={pastedUrl}
             initialError={urlStepError}
             onFetch={startFetch}
+            onLinkless={enterLinkless}
           />
         );
       case 'fetching':
@@ -188,6 +196,7 @@ const ItemFormContainer = ({
             setItem={setViewModel}
             productUrl={pastedUrl}
             storeName={viewModel.store.name}
+            showIntro={pastedUrl !== ''}
             onExit={returnToUrl}
             onComplete={() => setScreen('preview')}
           />

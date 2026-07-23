@@ -139,6 +139,114 @@ describe('ItemFormContainer', () => {
     });
   });
 
+  describe('LinklessDoor', () => {
+    const DOOR = { name: /No link\?/ };
+
+    // Door deck → Preview: photo (always incomplete), then title (needs a
+    // name; the blank-title entry keeps the note inline, so no note step),
+    // then price (optional when linkless). No store step exists.
+    async function walkDoorDeck(
+      user: ReturnType<typeof userEvent.setup>,
+      { price }: { price?: string } = {}
+    ) {
+      await user.click(screen.getByRole('button', DOOR));
+      await user.click(screen.getByRole('button', { name: 'Continue' })); // photo
+      await user.type(screen.getByLabelText('Item name'), 'Door Item');
+      await user.click(screen.getByRole('button', { name: 'Continue' })); // title
+      if (price) await user.type(screen.getByLabelText('Price'), price);
+      await user.click(screen.getByRole('button', { name: 'Continue' })); // price
+    }
+
+    it('DoorClick_OpensDeckDirectly-NoIntroNoFetch', async () => {
+      renderCreate();
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', DOOR));
+      expect(screen.getByText('Pick some art')).toBeInTheDocument();
+      expect(
+        screen.queryByText("Here's what we pulled.")
+      ).not.toBeInTheDocument();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('DoorAfterFailedFetch_ShedsStaleUrl-NoIntroNoSourceLink', async () => {
+      // A failed fetch leaves pastedUrl set; the door must shed it so the
+      // linkless deck never shows the intro card or a source-page link.
+      fetchMock.mockResolvedValue(jsonOk({ ok: false, error: 'timeout' }));
+      renderCreate();
+      const user = await fetchUrl();
+      await user.click(
+        await screen.findByRole('button', { name: 'Try a different link' })
+      );
+      await user.click(screen.getByRole('button', DOOR));
+      expect(screen.getByText('Pick some art')).toBeInTheDocument();
+      expect(
+        screen.queryByText("Here's what we pulled.")
+      ).not.toBeInTheDocument();
+      // Walk to the price card and verify no source-page link renders.
+      await user.click(screen.getByRole('button', { name: 'Continue' })); // photo
+      await user.type(screen.getByLabelText('Item name'), 'Door Item');
+      await user.click(screen.getByRole('button', { name: 'Continue' })); // title
+      expect(screen.getByText('What does it cost?')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: /open the product page/ })
+      ).not.toBeInTheDocument();
+    });
+
+    it('DoorDeck_HasNoStoreStepAndEmptyTitleBlocks', async () => {
+      renderCreate();
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', DOOR));
+      await user.click(screen.getByRole('button', { name: 'Continue' })); // photo
+      expect(screen.getByText('Give it a clear name')).toBeInTheDocument();
+      // Nothing pre-marked: the blank title blocks the continue.
+      expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    });
+
+    it('DoorSaveWithPrice_CreatesPricedStoreShape', async () => {
+      const { createItem } = await import('@/lib/data/item.actions');
+      renderCreate();
+      const user = userEvent.setup();
+      await walkDoorDeck(user, { price: '1200' });
+      expect(screen.getByText('Last look')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Create item' }));
+      await waitFor(() => expect(createItem).toHaveBeenCalledOnce());
+      expect(vi.mocked(createItem).mock.calls[0][0]).toMatchObject({
+        name: 'Door Item',
+        store: { name: '', link: '', price: '12.00' },
+      });
+    });
+
+    it('DoorSaveWithoutPrice_CreatesBareStoreShape', async () => {
+      const { createItem } = await import('@/lib/data/item.actions');
+      renderCreate();
+      const user = userEvent.setup();
+      await walkDoorDeck(user);
+      await user.click(screen.getByRole('button', { name: 'Create item' }));
+      await waitFor(() => expect(createItem).toHaveBeenCalledOnce());
+      expect(vi.mocked(createItem).mock.calls[0][0]).toMatchObject({
+        name: 'Door Item',
+        store: { name: '', link: '', price: '' },
+      });
+    });
+
+    it('DoorPreviewAndTriage_HideStoreAffordances', async () => {
+      renderCreate();
+      const user = userEvent.setup();
+      await walkDoorDeck(user);
+      expect(
+        screen.queryByRole('button', { name: /^Store/ })
+      ).not.toBeInTheDocument();
+      await user.click(
+        screen.getByRole('button', { name: /Need to change something/ })
+      );
+      expect(screen.getByText('Review anything')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /Store/ })
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Price/ })).toBeInTheDocument();
+    });
+  });
+
   describe('Manual', () => {
     // Drives the manual item to the advance point: name, price, and store
     // become good, photo stays warn but gets visited. The store link is

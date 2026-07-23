@@ -112,14 +112,3 @@ export type OptionType = {
   label: string;
 };
 
-export interface ImageSearchResult {
-  link: string;
-  title: string;
-  image: {
-    byteSize: number;
-    contextLink: string;
-    height: number;
-    thumbnailLink: string;
-    width: number;
-  };
-}

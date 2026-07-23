@@ -10,9 +10,12 @@ import type { ItemViewModel } from './viewModel';
 // max(1, 4 − realPhotos) generated-art options. A placeholder the user already
 // selected survives remounts as the first thumb (it lives in the view-model);
 // the rest are fresh random seeds each mount and are never persisted.
+// `preselectFirst` is the deck photo card's zero-real-photo behavior only —
+// the FocusEditor edit path must never silently select art the user didn't pick.
 export function usePlaceholderPreviews(
   item: ItemViewModel,
-  actions: ItemActions
+  actions: ItemActions,
+  preselectFirst = false
 ) {
   const [placeholders, setPlaceholders] = useState<string[]>(
     item.placeholder ? [item.placeholder] : []
@@ -32,9 +35,19 @@ export function usePlaceholderPreviews(
       if (res.success && res.urls) {
         const fresh = res.urls;
         setPlaceholders((prev) => [...prev, ...fresh]);
+        // A zero-photo strip is placeholders-only: pre-select the first so the
+        // stage never renders an empty frame.
+        if (
+          preselectFirst &&
+          item.photos.length === 0 &&
+          !item.placeholder &&
+          fresh[0]
+        ) {
+          actions.selectPlaceholder(fresh[0]);
+        }
       }
     });
-  }, [item.photos, item.placeholder]);
+  }, [item.photos, item.placeholder, actions, preselectFirst]);
 
   const reroll = () => {
     const selected = item.placeholder;

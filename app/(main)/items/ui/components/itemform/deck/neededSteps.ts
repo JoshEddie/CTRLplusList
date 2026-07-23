@@ -1,5 +1,6 @@
 import {
   DESCRIPTION_MAX,
+  isLinkless,
   pricePairTier,
   storeTier,
   titleTier,
@@ -25,7 +26,12 @@ export function isStepComplete(step: DeckStep, item: ItemViewModel): boolean {
     case 'title':
       return titleTier(item.name).tier === 'good';
     case 'price':
-      return pricePairTier(item.store).tier === 'good';
+      // A linkless empty price is a valid save state (BARE), but never a
+      // pre-marked-done step — the door path must still land on the price card.
+      return (
+        pricePairTier(item.store).tier === 'good' &&
+        (item.store.price ?? '').trim() !== ''
+      );
     case 'store':
       return storeTier(item.store).tier === 'good';
     case 'note':
@@ -41,6 +47,9 @@ export function isStepComplete(step: DeckStep, item: ItemViewModel): boolean {
 // so it stays the last, landing step; only the colour differs.)
 export function isStepValid(step: DeckStep, item: ItemViewModel): boolean {
   if (step === 'note') return !stepBlocked('note', item);
+  // A blank linkless price is a valid save state (BARE) even though it is
+  // never pre-marked done — the tracker must read it green, not stuck current.
+  if (step === 'price') return !stepBlocked('price', item);
   // A null image is permitted by the model, so like the note the photo pick is
   // valid as soon as it's reachable — it stays incomplete only to keep it a
   // human-visited step.
@@ -60,8 +69,12 @@ export function neededSteps(item: ItemViewModel): DeckStepState[] {
     { step: 'photo', complete: isStepComplete('photo', item) },
     { step: 'title', complete: titleGood },
     { step: 'price', complete: isStepComplete('price', item) },
-    { step: 'store', complete: isStepComplete('store', item) },
   ];
+  // Linkless items (the door path, linkless edits) carry no store step at
+  // all — absent, not rendered-as-done.
+  if (!isLinkless(item)) {
+    steps.push({ step: 'store', complete: isStepComplete('store', item) });
+  }
   // A flagged title surfaces the note inline, so the standalone note step
   // only appears when the title is clean — never both.
   if (titleGood) steps.push({ step: 'note', complete: isStepComplete('note', item) });

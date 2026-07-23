@@ -44,11 +44,25 @@ describe('PriceCard', () => {
     ).toHaveAttribute('href', 'https://pasted.test/p');
   });
 
+  it('NoProductUrlAndNoStoreLink_RendersNoSourceLink', () => {
+    // The door path: no pasted URL, no store link → no dead link affordance.
+    setup({ store: { name: '', link: '', price: '' } }, '');
+    expect(
+      screen.queryByRole('link', { name: /open the product page/i })
+    ).not.toBeInTheDocument();
+  });
+
   it('EmptyLinklessStore_HidesRequiredNote-EnablesContinue', () => {
     // Linkless (name+link empty): an empty price is fine, so no required note
     // and Continue is enabled.
     setup({ store: { name: '', link: '', price: '' } }, 'https://pasted.test/p');
     expect(screen.queryByText(/A price is required/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('LinklessStore_SubtitleSaysPriceCanStayBlank', () => {
+    setup({ store: { name: '', link: '', price: '' } }, '');
+    expect(screen.getByText(/can stay blank/)).toBeInTheDocument();
+    expect(screen.queryByText(/no skipping/)).not.toBeInTheDocument();
   });
 });

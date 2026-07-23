@@ -25,6 +25,13 @@ export function useProductFetch(
   const [failCount, setFailCount] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
+  // The linkless door must shed any prior fetch state — a stale pastedUrl
+  // would resurrect the intro card and a source-page link on a linkless item.
+  const clearUrl = () => {
+    setPastedUrl('');
+    setUrlStepError('');
+  };
+
   const returnToUrl = () => {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -92,6 +99,7 @@ export function useProductFetch(
     urlStepError,
     failureKind,
     canRetrySame: failCount <= RETRY_CAP,
+    clearUrl,
     startFetch,
     returnToUrl,
   };

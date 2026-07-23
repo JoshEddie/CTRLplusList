@@ -12,6 +12,7 @@ import { TrimChip } from './TrimChip';
 import type { ItemActions } from './useItemActions';
 import {
   DESCRIPTION_MAX,
+  isLinkless,
   pricePairTier,
   storeTier,
   suggestTrim,
@@ -100,12 +101,14 @@ export function Preview({
               sub="Fix anything that looks wrong"
               onClick={onOpenTriage}
             />
-            <ActionRow
-              icon={<FaTag />}
-              label="Store"
-              sub={storeSubtext(item)}
-              onClick={onOpenStore}
-            />
+            {!isLinkless(item) && (
+              <ActionRow
+                icon={<FaTag />}
+                label="Store"
+                sub={storeSubtext(item)}
+                onClick={onOpenStore}
+              />
+            )}
             <ActionRow
               icon={<FaList />}
               label="Lists & quantity"

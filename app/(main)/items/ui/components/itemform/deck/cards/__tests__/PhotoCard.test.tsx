@@ -27,4 +27,17 @@ describe('PhotoCard', () => {
     setup({ photos: [] });
     expect(screen.getByText('Pick some art')).toBeInTheDocument();
   });
+
+  it('ZeroPhotosLinked_SubtitleMentionsNoImageCameThrough', () => {
+    setup({ photos: [] });
+    expect(screen.getByText(/No image came through/)).toBeInTheDocument();
+  });
+
+  it('ZeroPhotosLinkless_SubtitleOmitsFetchFraming', () => {
+    setup({ photos: [], store: { name: '', link: '', price: '' } });
+    expect(screen.queryByText(/No image came through/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Pick some artwork for this one, or add your own image.')
+    ).toBeInTheDocument();
+  });
 });

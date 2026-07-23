@@ -24,6 +24,7 @@ interface DeckProps {
   setItem: Dispatch<SetStateAction<ItemViewModel>>;
   productUrl: string;
   storeName: string;
+  showIntro: boolean;
   /** "Change link" from the intro card. */
   onExit: () => void;
   /** Forward from the last card → Preview. */
@@ -35,6 +36,7 @@ export function Deck({
   setItem,
   productUrl,
   storeName,
+  showIntro: showIntroInitial,
   onExit,
   onComplete,
 }: DeckProps) {
@@ -45,7 +47,7 @@ export function Deck({
     steps.findIndex((s) => !s.complete),
     0
   );
-  const [showIntro, setShowIntro] = useState(true);
+  const [showIntro, setShowIntro] = useState(showIntroInitial);
   // `frontier` is the furthest the user has advanced — it keeps steps they
   // skipped past (an un-picked photo, a warn title) reachable behind them.
   const [frontier, setFrontier] = useState(firstIncomplete);

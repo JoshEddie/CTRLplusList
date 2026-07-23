@@ -53,6 +53,20 @@ describe('Preview', () => {
     ).toBeInTheDocument();
   });
 
+  it('LinklessItem_HidesStoreActionRow', () => {
+    setup({ store: { name: '', link: '', price: '12.00' } });
+    expect(
+      screen.queryByRole('button', { name: /^Store/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it('LinkedItem_ShowsStoreActionRow', () => {
+    setup();
+    expect(
+      screen.getByRole('button', { name: /^Store/ })
+    ).toBeInTheDocument();
+  });
+
   it('TriageEntry_IsAccentInvitationNotAlarm', () => {
     setup();
     const row = screen.getByRole('button', {

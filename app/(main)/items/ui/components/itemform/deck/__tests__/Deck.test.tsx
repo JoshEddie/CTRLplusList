@@ -20,10 +20,12 @@ function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
 
 function Harness({
   initial,
+  showIntro = true,
   onComplete = vi.fn(),
   onExit = vi.fn(),
 }: {
   initial: ItemViewModel;
+  showIntro?: boolean;
   onComplete?: () => void;
   onExit?: () => void;
 }) {
@@ -34,6 +36,7 @@ function Harness({
       setItem={setItem}
       productUrl="https://shop/p"
       storeName="example.com"
+      showIntro={showIntro}
       onExit={onExit}
       onComplete={onComplete}
     />
@@ -47,6 +50,21 @@ describe('Deck', () => {
       screen.getByText(/Auto-filled from example\.com/)
     ).toBeInTheDocument();
     expect(screen.getByText("Here's what we pulled.")).toBeInTheDocument();
+  });
+
+  it('ShowIntroFalse_OpensDirectlyOnFirstCard', () => {
+    render(
+      <Harness
+        initial={vm({
+          name: '',
+          photos: [],
+          store: { name: '', link: '', price: '' },
+        })}
+        showIntro={false}
+      />
+    );
+    expect(screen.queryByText("Here's what we pulled.")).not.toBeInTheDocument();
+    expect(screen.getByText('Pick some art')).toBeInTheDocument();
   });
 
   it('Intro_ConfirmsGoodNameAndPrice', () => {

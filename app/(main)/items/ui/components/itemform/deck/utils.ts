@@ -10,9 +10,9 @@ import {
 import type { RowField } from './focus';
 import type { DeckStore, ItemViewModel } from './viewModel';
 
-export { priceTier };
 export type { Tier, TierResult } from '@/lib/storeValidity';
 export type { RowField } from './focus';
+export { priceTier };
 
 // Candidates whose natural dimensions fall below this (px, both axes) are
 // dropped. Extractors routinely include tiny thumbnails (e.g. Amazon's 40px
@@ -85,6 +85,22 @@ export function storeTier(
   return { tier: 'good', note: '' };
 }
 
+// The single definition of "linkless": store name AND link both empty. A
+// name-only orphan store is NOT linkless — its store affordances must stay
+// visible so the error-tier pair can be repaired or cleared.
+function isBareStore(store: Pick<DeckStore, 'name' | 'link'>): boolean {
+  return (
+    (store.name?.trim() ?? '') === '' && (store.link?.trim() ?? '') === ''
+  );
+}
+
+/** The derived linkless lock: a linkless item is never offered store
+name/link entry (deck step, Preview row, Triage row). State-derived so
+door-created items and legacy PRICED/BARE rows are treated identically. */
+export function isLinkless(item: ItemViewModel): boolean {
+  return isBareStore(item.store);
+}
+
 // Measures user-entered work only: a failure-path seeded store link and the
 // qty default are not effort worth guarding, so they don't count.
 export function isDirtyDraft(item: ItemViewModel): boolean {
@@ -106,10 +122,8 @@ export const LINKLESS_PRICE_NOTE = 'No price — saves without one';
 export function pricePairTier(
   store: Pick<DeckStore, 'name' | 'link' | 'price'>
 ): TierResult {
-  const linkless =
-    (store.name?.trim() ?? '') === '' && (store.link?.trim() ?? '') === '';
   const priceEmpty = (store.price ?? '').trim() === '';
-  if (linkless && priceEmpty) {
+  if (isBareStore(store) && priceEmpty) {
     return { tier: 'good', note: LINKLESS_PRICE_NOTE };
   }
   return priceTier(store.price);

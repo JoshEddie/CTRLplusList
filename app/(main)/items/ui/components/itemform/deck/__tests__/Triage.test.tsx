@@ -20,6 +20,23 @@ describe('Triage', () => {
     expect(screen.getAllByText('Looks good').length).toBeGreaterThanOrEqual(3);
   });
 
+  it('LinklessItem_OmitsStoreRow-KeepsPriceRow', () => {
+    setup({ store: { name: '', link: '', price: '12.00' } });
+    expect(
+      screen.queryByRole('button', { name: /Store/ })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Price/ })
+    ).toBeInTheDocument();
+  });
+
+  it('LinkedItem_ShowsStoreRow', () => {
+    setup();
+    expect(
+      screen.getByRole('button', { name: /Store/ })
+    ).toBeInTheDocument();
+  });
+
   it('NoPrice_PriceRowStatesPriceIssue', () => {
     setup({ store: { name: 'Lodge', link: 'https://l', price: '' } });
     const priceRow = screen.getByRole('button', { name: /Price/ });
@@ -141,15 +158,13 @@ describe('Triage', () => {
       expect(row).toHaveTextContent('An item needs a name.');
     });
 
-    it('NoStore_StoreRowReadsOptional', () => {
-      // A blank store is a supported linkless state — the row reads "Optional",
-      // not the found-and-verified "Looks good".
+    it('NoStore_OmitsStoreRow', () => {
+      // A blank store is the linkless state — the store row is absent, not
+      // rendered as "Optional".
       setup(empty);
-      const row = screen.getByRole('button', { name: /Store/ });
-      expect(row).toHaveTextContent('None');
-      expect(row).toHaveTextContent('Optional');
-      expect(row).not.toHaveTextContent('Looks good');
-      expect(row).not.toHaveTextContent('The store needs a name.');
+      expect(
+        screen.queryByRole('button', { name: /Store/ })
+      ).not.toBeInTheDocument();
     });
 
     it('AnyState_NoRowReadsNeedsYou', () => {

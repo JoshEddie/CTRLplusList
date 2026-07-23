@@ -73,8 +73,13 @@ describe('FillManually', () => {
   });
 
   it('ClickStoreRow_OpensStoreFocus', async () => {
+    // The manual shell is always link-seeded (failure path), so its store row
+    // is present — a linkless item would omit it.
     const user = userEvent.setup();
-    const { onFocus } = setup(blank);
+    const { onFocus } = setup({
+      ...blank,
+      store: { name: '', link: 'https://seeded.test/p', price: '' },
+    });
     await user.click(screen.getByRole('button', { name: /Store/ }));
     expect(onFocus).toHaveBeenCalledWith('store');
   });

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { PhotoEditor } from '../editors/PhotoEditor';
 import type { ItemActions } from '../useItemActions';
 import { usePlaceholderPreviews } from '../usePlaceholderPreviews';
+import { isLinkless } from '../utils';
 import type { ItemViewModel } from '../viewModel';
 import { DeckCard } from './DeckCard';
 
@@ -18,7 +19,7 @@ export function PhotoCard({
   onContinue,
   tracker,
 }: PhotoCardProps) {
-  const { placeholders, reroll } = usePlaceholderPreviews(item, actions);
+  const { placeholders, reroll } = usePlaceholderPreviews(item, actions, true);
   const zero = item.photos.length === 0;
   return (
     <DeckCard
@@ -26,7 +27,9 @@ export function PhotoCard({
       title={zero ? 'Pick some art' : 'Pick the best photo'}
       subtitle={
         zero
-          ? 'No image came through — pick some artwork, add your own, or skip it.'
+          ? isLinkless(item)
+            ? 'Pick some artwork for this one, or add your own image.'
+            : 'No image came through — pick some artwork, add your own, or skip it.'
           : "We grabbed some options for you. Pick your favorite or add your own."
       }
       onContinue={onContinue}

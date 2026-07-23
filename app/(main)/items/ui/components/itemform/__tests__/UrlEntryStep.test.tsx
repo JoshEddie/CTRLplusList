@@ -13,14 +13,16 @@ function renderStep(
   }> = {}
 ) {
   const onFetch = props.onFetch ?? vi.fn();
+  const onLinkless = vi.fn();
   render(
     <UrlEntryStep
       initialUrl={props.initialUrl}
       initialError={props.initialError}
       onFetch={onFetch as never}
+      onLinkless={onLinkless}
     />
   );
-  return { onFetch };
+  return { onFetch, onLinkless };
 }
 
 describe('UrlEntryStep', () => {
@@ -57,6 +59,15 @@ describe('UrlEntryStep', () => {
     expect(screen.getByText(INVALID_MSG)).toBeInTheDocument();
     await user.type(screen.getByLabelText('Product link'), 'x');
     expect(screen.queryByText(INVALID_MSG)).not.toBeInTheDocument();
+  });
+
+  it('LinklessDoorClick_CallsOnLinkless-NoOnFetch', () => {
+    const { onFetch, onLinkless } = renderStep();
+    fireEvent.click(
+      screen.getByRole('button', { name: /No link\?/ })
+    );
+    expect(onLinkless).toHaveBeenCalledOnce();
+    expect(onFetch).not.toHaveBeenCalled();
   });
 
   it('EntryState_RendersNoManualEntryAffordance', () => {

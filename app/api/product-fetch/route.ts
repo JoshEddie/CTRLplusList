@@ -18,7 +18,7 @@ export const maxDuration = 60;
 const MAX_URL_LENGTH = 2048;
 
 // Per-user in-memory token bucket. Low cap because tier 2 burns paid Zyte
-// quota; per-process, same accepted degradation as image-search.
+// quota; per-process degradation accepted.
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_PER_WINDOW = 10;
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();

@@ -9,6 +9,7 @@ import { StoreEditor } from './editors/StoreEditor';
 import { TitleEditor } from './editors/TitleEditor';
 import { ROW_LABELS, type RowField } from './focus';
 import type { ItemActions } from './useItemActions';
+import { isLinkless } from './utils';
 import { usePlaceholderPreviews } from './usePlaceholderPreviews';
 import type { ItemViewModel } from './viewModel';
 
@@ -68,6 +69,7 @@ export function FocusEditor({
         description={item.description}
         onNameChange={actions.setName}
         onDescriptionChange={actions.setDescription}
+        linkless={isLinkless(item)}
       />
     );
   } else if (field === 'price') {

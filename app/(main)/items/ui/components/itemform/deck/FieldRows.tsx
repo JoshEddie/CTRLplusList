@@ -6,7 +6,7 @@ import {
   FaTriangleExclamation,
 } from 'react-icons/fa6';
 import type { RowField } from './focus';
-import { rowTiers, type TierResult } from './utils';
+import { isLinkless, rowTiers, type TierResult } from './utils';
 import type { ItemViewModel } from './viewModel';
 
 const STATUS_ICONS = {
@@ -84,13 +84,15 @@ export function FieldRows({ item, onFocus }: FieldRowsProps) {
         status={tiers.price}
         onClick={() => onFocus('price')}
       />
-      <FieldRow
-        label="Store"
-        value={store?.name || 'None'}
-        provenance={store?.link ? 'saved from link' : undefined}
-        status={tiers.store}
-        onClick={() => onFocus('store')}
-      />
+      {!isLinkless(item) && (
+        <FieldRow
+          label="Store"
+          value={store?.name || 'None'}
+          provenance={store?.link ? 'saved from link' : undefined}
+          status={tiers.store}
+          onClick={() => onFocus('store')}
+        />
+      )}
     </div>
   );
 }

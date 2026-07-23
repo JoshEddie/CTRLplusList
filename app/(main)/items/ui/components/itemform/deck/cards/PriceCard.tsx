@@ -3,6 +3,7 @@ import { PriceEditor } from '../editors/PriceEditor';
 import { TierNote } from '../TierNote';
 import { stepBlocked } from '../neededSteps';
 import type { ItemActions } from '../useItemActions';
+import { isLinkless } from '../utils';
 import type { ItemViewModel } from '../viewModel';
 import { DeckCard } from './DeckCard';
 
@@ -26,7 +27,11 @@ export function PriceCard({
     <DeckCard
       tracker={tracker}
       title="What does it cost?"
-      subtitle="Add a price so people know the cost — there's no skipping this one."
+      subtitle={
+        isLinkless(item)
+          ? 'Add a price if it has one — this one can stay blank.'
+          : "Add a price so people know the cost — there's no skipping this one."
+      }
       onContinue={onContinue}
       continueDisabled={stepBlocked('price', item)}
     >

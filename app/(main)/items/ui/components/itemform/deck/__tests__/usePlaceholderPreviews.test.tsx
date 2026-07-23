@@ -41,6 +41,35 @@ describe('usePlaceholderPreviews', () => {
     expect(previewPlaceholders).toHaveBeenCalledWith(want);
   });
 
+  it('ZeroPhotosNoSelectionWithPreselect_AutoSelectsFirstFreshPlaceholder', async () => {
+    const actions = mockActions();
+    const item = makeItem({ photos: [] });
+    renderHook(() => usePlaceholderPreviews(item, actions, true));
+    await waitFor(() =>
+      expect(actions.selectPlaceholder).toHaveBeenCalledWith(uri(1))
+    );
+  });
+
+  it('ZeroPhotosWithoutPreselect_DoesNotAutoSelectPlaceholder', async () => {
+    // The FocusEditor edit path: an imageless item must never silently gain
+    // a placeholder the user didn't pick.
+    const actions = mockActions();
+    const item = makeItem({ photos: [] });
+    const { result } = renderHook(() => usePlaceholderPreviews(item, actions));
+    await waitFor(() => expect(result.current.placeholders).toHaveLength(4));
+    expect(actions.selectPlaceholder).not.toHaveBeenCalled();
+  });
+
+  it('RealPhotosPresent_DoesNotAutoSelectPlaceholder', async () => {
+    const actions = mockActions();
+    const item = makeItem({ photos: ['https://img/a.jpg'] });
+    const { result } = renderHook(() =>
+      usePlaceholderPreviews(item, actions, true)
+    );
+    await waitFor(() => expect(result.current.placeholders).toHaveLength(3));
+    expect(actions.selectPlaceholder).not.toHaveBeenCalled();
+  });
+
   it('SavedPlaceholderInPool_DoesNotCountAsRealPhoto', async () => {
     const item = makeItem({
       photos: ['https://img/a.jpg', uri(30)],

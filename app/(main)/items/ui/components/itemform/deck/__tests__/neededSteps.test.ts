@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { neededSteps, stepBlocked } from '../neededSteps';
+import { isStepValid, neededSteps, stepBlocked } from '../neededSteps';
 import type { ItemViewModel } from '../viewModel';
 import { makeItem } from './test-helpers';
 
@@ -89,6 +89,45 @@ describe('neededSteps', () => {
     ]);
   });
 
+  it('LinklessEntry_NoStoreStepAtAll', () => {
+    // The door path: blank item, no link → photo/title/price only, store absent
+    // (not rendered-as-done). Empty name is error tier, so note stays inline.
+    expect(
+      neededSteps(
+        vm({
+          name: '',
+          photos: [],
+          store: { name: '', link: '', price: '' },
+        })
+      )
+    ).toEqual([
+      { step: 'photo', complete: false },
+      { step: 'title', complete: false },
+      { step: 'price', complete: false },
+    ]);
+  });
+
+  it('LinklessEntryGoodTitle_TitleDoneThenPhotoPriceNote-NoStore', () => {
+    // The empty linkless price is a valid save state but never pre-marked
+    // done — the door path always lands on the price card.
+    expect(
+      neededSteps(vm({ photos: [], store: { name: '', link: '', price: '' } }))
+    ).toEqual([
+      { step: 'title', complete: true },
+      { step: 'photo', complete: false },
+      { step: 'price', complete: false },
+      { step: 'note', complete: false },
+    ]);
+  });
+
+  it('OrphanStoreNameNoLink_KeepsStoreStepForRepair', () => {
+    // Name-only store is NOT linkless — the step must stay so the error-tier
+    // pair can be repaired or cleared.
+    expect(
+      neededSteps(vm({ store: { name: 'shop', link: '', price: '29.99' } }))
+    ).toContainEqual({ step: 'store', complete: false });
+  });
+
   it('ZeroImages_PhotoIncompleteAfterDoneSteps', () => {
     expect(neededSteps(vm({ photos: [] }))).toEqual([
       { step: 'title', complete: true },
@@ -97,6 +136,23 @@ describe('neededSteps', () => {
       { step: 'photo', complete: false },
       { step: 'note', complete: false },
     ]);
+  });
+});
+
+describe('isStepValid', () => {
+  it('BlankLinklessPrice_PriceStepReadsValid', () => {
+    expect(
+      isStepValid('price', vm({ store: { name: '', link: '', price: '' } }))
+    ).toBe(true);
+  });
+
+  it('BlankLinkedPrice_PriceStepReadsInvalid', () => {
+    expect(
+      isStepValid(
+        'price',
+        vm({ store: { name: 's', link: 'https://shop', price: '' } })
+      )
+    ).toBe(false);
   });
 });
 

@@ -35,6 +35,10 @@ Every third item (positions 0, 3, 6…) on every fourth list (list index 3, 7, 1
 
 `dev-list-alice-baby-item-2` carries three hand-authored stores led by $1,000.00 store whose name ("Really long store name that carries really cool items") overflows even one-name slot of card's store-metadata line — name-truncation + non-truncating `+N` count state reachable from seed.
 
+### Linkless-item coverage
+
+Hand-authored non-link states: `dev-list-viewer-birthday-item-5` PRICED (single linkless `$24.99` row), `dev-list-viewer-birthday-item-7` BARE (zero store rows). Linkless extras (`*-linkless-N`, appended after each list's pool slice, imageless → minted art, excluded from purchase fan-out): "Cash toward the house fund" (BARE) + "Coffee shop gift card" (PRICED $25.00) on `dev-list-viewer-birthday`; "A homemade dinner for two" (BARE) + "Spa day gift card" (PRICED $50.00) on `dev-list-alice-wedding` — owner-edit + viewer-claim surfaces for both door-shaped states reachable from seed.
+
 ### Claim-attribution coverage
 
 Authenticated fan-out purchase rows = self-claims (`claimed_by = user_id`); guest rows all-NULL identities. Four hand-authored rows (`dev-purchase-*`, on `dev-list-viewer-birthday-item-1..3` + `dev-list-alice-wedding-item-1`, items excluded from fan-out) cover attributed-claim shape (Alice marked Bob), viewer-as-attributed-purchaser, owner self-claim, legacy signed-out-guest row — every unclaim-matrix branch + owner spoiler "added by" label reachable from seed. Alice seeded mutual with every other friend → her lists' attributed-purchaser picker pool large enough to scroll, targets besides viewer.
@@ -54,9 +58,3 @@ Authenticated fan-out purchase rows = self-claims (`claimed_by = user_id`); gues
 - Scenario table (fixture → UI state): `openspec/specs/product-fetch-mock/spec.md`; fixtures: [lib/product-fetch/mock.ts](lib/product-fetch/mock.ts).
 - Mock requests bypass product-fetch rate-limit bucket; `https://mock.test/rate-limited` returns route-level 429.
 - Outside local mode mock doesn't exist — `mock.test` fails like dead link.
-
-## /api/image-search auth + rate limit
-
-- `GET /api/image-search`: authenticated session required (401 otherwise); per-user in-memory token bucket 30 req/min (429 with `{ error: 'rate_limited' }` — distinguishable from upstream `quota_exceeded`).
-- Under dev bypass session resolves `dev-test-viewer` → route works during preview testing; 30/min = enough headroom.
-- See [app/api/image-search/route.ts](app/api/image-search/route.ts).
