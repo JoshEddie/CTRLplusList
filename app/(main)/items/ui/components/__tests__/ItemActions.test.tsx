@@ -97,6 +97,25 @@ describe('ItemActions', () => {
       ).toBeInTheDocument();
     });
 
+    it('GuestClaimedSlotsRemain_RendersManageClaimWithViewItemOnly-NoAddClaim', () => {
+      renderActions({ viewerClaimed: true, guestViewer: true });
+      expect(
+        screen.getByRole('button', { name: 'Manage claim' })
+      ).toBeInTheDocument();
+      expect(viewItem()).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Add Claim' })
+      ).not.toBeInTheDocument();
+      expect(buyClaim()).not.toBeInTheDocument();
+    });
+
+    it('GuestUnclaimed_KeepsAddClaimDespiteGuestViewer', () => {
+      renderActions({ guestViewer: true });
+      expect(
+        screen.getByRole('button', { name: 'Add Claim' })
+      ).toBeInTheDocument();
+    });
+
     it('ViewerClaimedNoSlots_RendersManageClaimWithViewItemOnly', () => {
       renderActions({ viewerClaimed: true, fullyClaimed: true });
       expect(

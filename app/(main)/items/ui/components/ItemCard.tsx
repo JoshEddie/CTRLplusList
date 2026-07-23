@@ -11,6 +11,7 @@ export default function ItemCard({
   showPurchased,
   showSpoilerInfo,
   viewerClaimed,
+  guestViewer,
   fullyClaimed,
   showCounter,
   counterText,
@@ -28,6 +29,8 @@ export default function ItemCard({
   showPurchased: boolean;
   showSpoilerInfo: boolean;
   viewerClaimed: boolean;
+  /** Signed-out viewer — gates the claimed-guest Add Claim carve-out in ItemActions. */
+  guestViewer?: boolean;
   fullyClaimed: boolean;
   showCounter: boolean;
   counterText: string;
@@ -60,6 +63,7 @@ export default function ItemCard({
           isOwner={isOwner}
           fullyClaimed={fullyClaimed}
           viewerClaimed={viewerClaimed}
+          guestViewer={guestViewer}
           showOwnerClaimAction={showOwnerClaimAction}
           showOwnerManageAction={showOwnerManageAction}
           showBuyClaim={showBuyClaim}

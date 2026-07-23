@@ -26,10 +26,23 @@ test('GuestClaim_PublicList_RecordsGuestPurchase', async ({ page }) => {
   await page.getByLabel('Your name').fill(guestName);
   await page.getByRole('button', { name: 'Claim as Guest' }).click();
 
-  // The single-claim item is now fully claimed and names the guest.
-  await expect(page.getByText(`Claimed by ${guestName}`)).toBeVisible();
+  // The guest_claims cookie marks the claim as the guest's own: "You claimed
+  // this" banner and Manage claim, never a third-party "Claimed by" line.
+  await expect(page.getByText('You claimed this')).toBeVisible();
 
   // The guest's claim persists across a fresh server render.
   await page.reload();
+  await expect(page.getByText('You claimed this')).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Manage claim' })
+  ).toBeVisible();
+
+  // A browser without the guest_claims cookie sees the claim as someone
+  // else's, named after the entered guest name.
+  await page.context().clearCookies();
+  await page.reload();
   await expect(page.getByText(`Claimed by ${guestName}`)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Manage claim' })
+  ).not.toBeVisible();
 });

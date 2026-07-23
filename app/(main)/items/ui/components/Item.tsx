@@ -234,9 +234,11 @@ export default function Item({
     recordClaim(
       { item_id: item.id || '', guest_name: name },
       {
-        by: 'other',
+        // Signed-out guest: the cookie written by the action makes this the
+        // viewer's own claim, matching the server overlay's by:'self' marking.
+        by: user_id ? 'other' : 'self',
         firstName: firstToken(name),
-        claimedByViewer: !!user_id,
+        claimedByViewer: true,
         purchasedAt: new Date(),
       }
     );
@@ -265,6 +267,7 @@ export default function Item({
           showPurchased={showPurchased}
           showSpoilerInfo={showSpoilerInfo}
           viewerClaimed={!isOwner && hasViewerClaim}
+          guestViewer={!user_id}
           fullyClaimed={isFullyClaimed}
           showCounter={showCounter}
           counterText={counterText}

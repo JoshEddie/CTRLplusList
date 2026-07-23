@@ -38,8 +38,10 @@ Do not invent a traceability target.
 
 ### Test substance
 
-The full `TESTING.md` audit: assertion bar, forbidden patterns (tautologies,
-execute-for-coverage, snapshot-only), and coverage-gaming.
+First **Read `TESTING.md` in full** and audit the diff against it — the
+assertion bar, forbidden patterns, fixtures, and `/* v8 ignore */` rationale
+rules live there, not in this brief. Do not audit from memory or this brief's
+paraphrase; open the doc.
 
 The absence of test changes is **not a silent skip**: when the diff adds or
 changes testable behavior but touches no test files, judge whether a test was

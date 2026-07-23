@@ -9,12 +9,21 @@ import {
   duplicateClaimResponse,
   isEligiblePurchaser,
 } from '@/lib/data/purchase';
+import {
+  GUEST_CLAIMS_COOKIE,
+  GUEST_CLAIMS_COOKIE_ATTRIBUTES,
+  appendGuestClaim,
+  parseGuestClaims,
+  pruneGuestClaim,
+  serializeGuestClaims,
+} from '@/lib/data/purchase.cookie';
 import { isItemViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
 import { type ActionResponse } from '@/lib/types';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
+import { cookies } from 'next/headers';
 
 // Postgres unique-violation error code.
 const PG_UNIQUE_VIOLATION = '23505';
@@ -202,6 +211,22 @@ export async function createPurchase(data: {
       throw insertError;
     }
 
+    if (!callerUserId) {
+      const store = await cookies();
+      const claims = appendGuestClaim(
+        parseGuestClaims(store.get(GUEST_CLAIMS_COOKIE)?.value),
+        insertedId,
+        // guestName is non-null here: the signed-out branch of
+        // resolveClaimIdentity rejects an empty name.
+        guestName as string
+      );
+      store.set(
+        GUEST_CLAIMS_COOKIE,
+        serializeGuestClaims(claims),
+        GUEST_CLAIMS_COOKIE_ATTRIBUTES
+      );
+    }
+
     updateTag('items');
 
     return {
@@ -219,7 +244,7 @@ export async function createPurchase(data: {
   }
 }
 
-type RemovePurchaseInput = { purchase_id: string; guest_name?: string | null };
+type RemovePurchaseInput = { purchase_id: string };
 
 export async function removePurchase(
   data: RemovePurchaseInput
@@ -250,7 +275,6 @@ export async function removePurchase(
         item_id: true,
         user_id: true,
         claimed_by: true,
-        guest_name: true,
       },
     });
     if (!row) {
@@ -266,12 +290,18 @@ export async function removePurchase(
       columns: { user_id: true },
     });
 
+    let guestClaims = null;
+    if (!actorUserId) {
+      const store = await cookies();
+      guestClaims = parseGuestClaims(store.get(GUEST_CLAIMS_COOKIE)?.value);
+    }
+
     if (
       !canRemovePurchase(
         row,
         targetItem?.user_id ?? null,
         actorUserId,
-        data.guest_name
+        new Set(guestClaims?.purchases)
       )
     ) {
       return {
@@ -282,6 +312,14 @@ export async function removePurchase(
     }
 
     await db.delete(purchases).where(eq(purchases.id, row.id));
+    if (guestClaims) {
+      const store = await cookies();
+      store.set(
+        GUEST_CLAIMS_COOKIE,
+        serializeGuestClaims(pruneGuestClaim(guestClaims, row.id)),
+        GUEST_CLAIMS_COOKIE_ATTRIBUTES
+      );
+    }
     updateTag('items');
     return {
       success: true,

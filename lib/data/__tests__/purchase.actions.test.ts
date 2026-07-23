@@ -29,6 +29,36 @@ vi.mock('@/db', () => ({
 }));
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
+const cookieJar = vi.hoisted(() => ({ store: new Map<string, string>() }));
+vi.mock('next/headers', () => ({
+  cookies: async () => ({
+    get: (name: string) => {
+      const value = cookieJar.store.get(name);
+      return value === undefined ? undefined : { name, value };
+    },
+    set: (name: string, value: string) => {
+      cookieJar.store.set(name, value);
+    },
+  }),
+}));
+
+function setGuestCookie(claims: {
+  id: string;
+  name: string;
+  purchases: string[];
+}) {
+  cookieJar.store.set('guest_claims', JSON.stringify(claims));
+}
+
+function readGuestCookie() {
+  const raw = cookieJar.store.get('guest_claims');
+  return raw === undefined ? null : (JSON.parse(raw) as {
+    id: string;
+    name: string;
+    purchases: string[];
+  });
+}
+
 // Booting a fresh pglite (full migration set) per test is the dominant per-test
 // cost; doing it for every case turns the full parallel-fork suite into a boot
 // storm that starves hooks and flakes unrelated tests. Instead boot once per
@@ -79,6 +109,7 @@ beforeEach(async () => {
   // Restore any per-test db spies (db is shared across tests now) and reset the
   // auth mock, then start each case from a clean, freshly seeded database.
   vi.restoreAllMocks();
+  cookieJar.store.clear();
   await resetDb(db);
   await seedUsers(db, [OWNER, OTHER, TARGET]);
   updateTag.mockClear();
@@ -169,6 +200,53 @@ describe('createPurchase', () => {
           guest_name: 'Gifty',
         }),
       ]);
+    });
+
+    it('FirstGuestClaim_SetsCookieWithMintedIdAndSingleId', async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'unlisted' });
+      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+      noSession();
+
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: 'Gifty',
+      });
+      expect(res.success).toBe(true);
+      const cookie = readGuestCookie();
+      expect(cookie?.id).toMatch(/^[0-9a-f-]{36}$/);
+      expect(cookie?.name).toBe('Gifty');
+      expect(cookie?.purchases).toEqual([res.id]);
+    });
+
+    it('SecondGuestClaim_KeepsIdPrependsPurchaseUpdatesName', async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'unlisted' });
+      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+      noSession();
+      setGuestCookie({ id: 'g1', name: 'Old Name', purchases: ['prior'] });
+
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: 'New Name',
+      });
+      expect(res.success).toBe(true);
+      expect(readGuestCookie()).toEqual({
+        id: 'g1',
+        name: 'New Name',
+        purchases: [res.id, 'prior'],
+      });
+    });
+
+    it('AuthedClaim_WritesNoCookie', async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      asOwner();
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: 'Aunt May',
+      });
+      expect(res.success).toBe(true);
+      expect(readGuestCookie()).toBeNull();
     });
 
     it('GuestWhitespaceName_ReturnsMissingIdentity-NoRow', async () => {
@@ -596,7 +674,7 @@ describe('removePurchase', () => {
       expect(await purchaseRows('I')).toHaveLength(1);
     });
 
-    it('GuestMatchingName_DeletesGuestRow', async () => {
+    it('GuestCookieListedRow_DeletesRow-PrunesCookie', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedPurchase(db, {
         id: 'p1',
@@ -605,59 +683,46 @@ describe('removePurchase', () => {
         guest_name: 'Gifty',
       });
       noSession();
-      const res = await actions.removePurchase({
-        purchase_id: 'p1',
-        guest_name: 'Gifty',
-      });
+      setGuestCookie({ id: 'g1', name: 'Gifty', purchases: ['p1', 'p2'] });
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
       expect(res.success).toBe(true);
       expect(await purchaseRows('I')).toHaveLength(0);
+      expect(readGuestCookie()).toEqual({
+        id: 'g1',
+        name: 'Gifty',
+        purchases: ['p2'],
+      });
     });
 
-    it('GuestOnAuthedRow_ReturnsNotYourClaim-RowPersists', async () => {
+    it('GuestCookieOnIdentityBearingRow_ReturnsNotYourClaim-RowPersists', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedPurchase(db, { id: 'p1', item_id: 'I', user_id: OWNER.id });
       noSession();
-      const res = await actions.removePurchase({
-        purchase_id: 'p1',
-        guest_name: 'whatever',
+      setGuestCookie({ id: 'g1', name: 'Gifty', purchases: ['p1'] });
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
+      expect(res.error).toBe('Not your claim');
+      expect(await purchaseRows('I')).toHaveLength(1);
+      expect(readGuestCookie()?.purchases).toEqual(['p1']);
+    });
+
+    it('GuestCookieWithoutRowId_ReturnsNotYourClaim-RowPersists', async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        user_id: null,
+        guest_name: 'Gifty',
       });
+      noSession();
+      setGuestCookie({ id: 'g1', name: 'Gifty', purchases: ['other'] });
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
       expect(res.error).toBe('Not your claim');
       expect(await purchaseRows('I')).toHaveLength(1);
     });
 
-    it('GuestWrongName_ReturnsNotYourClaim', async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id });
-      await seedPurchase(db, {
-        id: 'p1',
-        item_id: 'I',
-        user_id: null,
-        guest_name: 'Gifty',
-      });
-      noSession();
-      const res = await actions.removePurchase({
-        purchase_id: 'p1',
-        guest_name: 'Wrong',
-      });
-      expect(res.error).toBe('Not your claim');
-    });
-
-    it('GuestEmptyName_ReturnsNotYourClaim', async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id });
-      await seedPurchase(db, {
-        id: 'p1',
-        item_id: 'I',
-        user_id: null,
-        guest_name: 'Gifty',
-      });
-      noSession();
-      const res = await actions.removePurchase({
-        purchase_id: 'p1',
-        guest_name: '',
-      });
-      expect(res.error).toBe('Not your claim');
-    });
-
-    it('GhostSessionMatchingGuestRow_DeletesRow', async () => {
+    it('GhostSessionWithCookieListedRow_DeletesRow', async () => {
+      // A session email with no users row falls to the guest path, where the
+      // cookie authorizes exactly as for a sessionless caller.
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedPurchase(db, {
         id: 'p1',
@@ -666,15 +731,13 @@ describe('removePurchase', () => {
         guest_name: 'Gifty',
       });
       asGhost();
-      const res = await actions.removePurchase({
-        purchase_id: 'p1',
-        guest_name: 'Gifty',
-      });
+      setGuestCookie({ id: 'g1', name: 'Gifty', purchases: ['p1'] });
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
       expect(res.success).toBe(true);
       expect(await purchaseRows('I')).toHaveLength(0);
     });
 
-    it('GuestNoNameSupplied_ReturnsNotYourClaim', async () => {
+    it('GuestNoCookie_ReturnsNotYourClaim-RowPersists', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedPurchase(db, {
         id: 'p1',
@@ -794,9 +857,9 @@ describe('removePurchase', () => {
       expect(await purchaseRows('I')).toHaveLength(0);
     });
 
-    it('GuestNameMatchOnClaimedRow_ReturnsNotYourClaim-RowPersists', async () => {
-      // The unauthenticated name-match path only covers claimed_by-NULL rows;
-      // an authenticated caller's guest-name claim is not guest-removable.
+    it('GuestCookieOnClaimedRow_ReturnsNotYourClaim-RowPersists', async () => {
+      // The cookie path only covers all-NULL-identity rows; an authenticated
+      // caller's guest-name claim is not guest-removable.
       await seedPurchase(db, {
         id: 'p1',
         item_id: 'I',
@@ -805,10 +868,8 @@ describe('removePurchase', () => {
         guest_name: 'Mom',
       });
       noSession();
-      const res = await actions.removePurchase({
-        purchase_id: 'p1',
-        guest_name: 'Mom',
-      });
+      setGuestCookie({ id: 'g1', name: 'Mom', purchases: ['p1'] });
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
       expect(res.error).toBe('Not your claim');
       expect(await purchaseRows('I')).toHaveLength(1);
     });

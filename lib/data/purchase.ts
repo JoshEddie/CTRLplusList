@@ -133,18 +133,18 @@ export function claimConflictResponse(
 }
 
 // Removal rights matrix: the claimer (claimed_by), the purchaser (user_id),
-// or the item owner (master unclaim). Unauthenticated callers keep the
-// legacy guest path: a claimed_by-NULL row plus the exact stored name —
-// without the name match, any guest who knew a purchase id could revoke it.
+// or the item owner (master unclaim). Unauthenticated callers are authorized
+// only on all-NULL-identity rows whose id their guest_claims cookie lists —
+// the cookie is ambient request state, never a payload field.
 export function canRemovePurchase(
   row: {
+    id: string;
     user_id: string | null;
     claimed_by: string | null;
-    guest_name: string | null;
   },
   itemOwnerId: string | null,
   actorUserId: string | null,
-  suppliedGuestName: string | null | undefined
+  cookiePurchaseIds: ReadonlySet<string>
 ): boolean {
   if (actorUserId) {
     return (
@@ -154,8 +154,7 @@ export function canRemovePurchase(
     );
   }
   if (row.claimed_by !== null || row.user_id !== null) return false;
-  const supplied = suppliedGuestName?.trim() ?? '';
-  return supplied !== '' && row.guest_name === supplied;
+  return cookiePurchaseIds.has(row.id);
 }
 
 export async function getItemsByPurchased(userId?: string) {

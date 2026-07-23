@@ -10,6 +10,8 @@ type ItemActionsProps = {
   fullyClaimed: boolean;
   /** The viewer holds a removable claim (their own, or one they recorded). */
   viewerClaimed: boolean;
+  /** Signed-out viewer — a claimed guest is never offered Add Claim (cannot attribute, no repeat self-claim). */
+  guestViewer?: boolean;
   /** Owner's spoiler-gated claim entry — same modal, purchase-recording copy. */
   showOwnerClaimAction: boolean;
   /** Owner's spoiler-gated claim management — the modal lists removable claims. */
@@ -34,6 +36,7 @@ export default function ItemActions({
   isOwner,
   fullyClaimed,
   viewerClaimed,
+  guestViewer,
   showOwnerClaimAction,
   showOwnerManageAction,
   showBuyClaim,
@@ -46,9 +49,10 @@ export default function ItemActions({
   const showManage =
     !viewOnly && (isOwner ? showOwnerManageAction : viewerClaimed);
   const showStatus = !viewOnly && !isOwner && fullyClaimed && !viewerClaimed;
-  const showAdd =
-    !viewOnly &&
-    (isOwner ? showOwnerClaimAction && !showOwnerManageAction : !fullyClaimed);
+  const ownerCanAdd = showOwnerClaimAction && !showOwnerManageAction;
+  const claimedGuest = !!guestViewer && viewerClaimed;
+  const nonOwnerCanAdd = !fullyClaimed && !claimedGuest;
+  const showAdd = !viewOnly && (isOwner ? ownerCanAdd : nonOwnerCanAdd);
   // Keyed on a navigable link, never mere store presence — a PRICED/linkless
   // item must keep its Add Claim-only action set (design D-Linkless-256).
   const showBuy = !viewOnly && !!showBuyClaim && !!store?.link;
