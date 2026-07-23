@@ -78,12 +78,12 @@ Test-only files inside `__tests__/` directories (including local `test-helpers.*
 
 ### Requirement: Tests SHALL NOT call rate-limited external services
 
-Tests SHALL mock the network boundary of any external service whose real provider imposes a quota, charges money per call, or requires interactive credentials. Known boundaries in this category at the time of writing: the `app/api/image-search` upstream provider, NextAuth Google OAuth, and any third-party service added later. The mocks SHALL replace the network call (e.g., `fetch` interception, MSW handlers, or framework-equivalent), NOT internal application modules. Internal modules — DAL functions, server actions, `lib/`, hooks — SHALL NOT be mocked when their dependencies are local; integration tests SHALL exercise them against the real test database.
+Tests SHALL mock the network boundary of any external service whose real provider imposes a quota, charges money per call, or requires interactive credentials. Known boundaries in this category at the time of writing: the `app/api/product-fetch` upstream provider (Zyte), NextAuth Google OAuth, and any third-party service added later. The mocks SHALL replace the network call (e.g., `fetch` interception, MSW handlers, or framework-equivalent), NOT internal application modules. Internal modules — DAL functions, server actions, `lib/`, hooks — SHALL NOT be mocked when their dependencies are local; integration tests SHALL exercise them against the real test database.
 
-#### Scenario: Image-search upstream is mocked
+#### Scenario: Product-fetch upstream is mocked
 
-- **WHEN** a test exercises `GET /api/image-search`
-- **THEN** the upstream image provider's network endpoint is intercepted at the `fetch` boundary
+- **WHEN** a test exercises `POST /api/product-fetch`
+- **THEN** the upstream provider's network endpoint is intercepted at the `fetch` boundary (or the deterministic `product-fetch-mock` seam is used)
 - **AND** the test asserts on the route's auth + rate-limit + response-shape behavior against the intercepted response
 - **AND** no real call to the upstream provider occurs in CI or local runs
 
@@ -92,12 +92,6 @@ Tests SHALL mock the network boundary of any external service whose real provide
 - **WHEN** a test requires an authenticated session
 - **THEN** the test uses the local-mode auth bypass (`USE_PG_DRIVER=1`, with the `BYPASS_SESSION_USER` identity selector — see the e2e execution-model requirements below) or an equivalent fixture
 - **AND** no OAuth handshake to a real Google endpoint occurs
-
-#### Scenario: DAL functions are not mocked from action tests
-
-- **WHEN** a server-action test exercises a mutation that calls a DAL read
-- **THEN** the test runs against the real test database (per the DB-under-test choice)
-- **AND** the DAL function is NOT mocked or stubbed
 
 ### Requirement: Seed-as-fixture for E2E SHALL be versioned and audited for negative cases
 
@@ -873,4 +867,3 @@ Continuous integration SHALL run the Playwright e2e suite in two tiers: (1) a **
 - **WHEN** CI runs in a context lacking the Neon API secret (e.g. a fork PR)
 - **THEN** the pre-promote migration gate is skipped rather than failing
 - **AND** the per-PR e2e tier still runs
-

@@ -604,35 +604,9 @@ This requirement governs the **UI's target resolution and dispatch payload**; th
 - **WHEN** the `items` prop changes because an item's image (or name, price, quantity) was edited elsewhere, with item identities unchanged
 - **THEN** the surface re-seeds its rendered list from the new prop, so the edit is shown without a hard refresh
 
-### Requirement: The image-search modal SHALL distinguish capacity errors from generic upstream failures in the UI
-
-The image-search modal (`ImageSearch.tsx`) is **retained but unwired**: it has no caller in the item form (the `ImageUrlInput` affordance that opened it is replaced by the candidate picker owned by `item-image-candidates`), and it is kept — with its tests, `ImageResultsViewer`, `image-search.css`, and `GET /api/image-search` — for prospective reuse by a future generic-lists feature. While retained, the component SHALL keep its existing contract: it SHALL request results from `GET /api/image-search` and SHALL surface a **temporarily-unavailable** state — distinct from a generic load failure — for the endpoint's capacity errors: the per-user rate-limit (HTTP 429) and the upstream provider quota (`{ error: 'quota_exceeded' }`). Both capacity shapes map to the same retryable "temporarily unavailable — paste an image URL instead" message; any other failure (a non-ok response, a network error, or a malformed body) SHALL surface a generic "failed to load — try again later" message. A transient capacity error SHALL NOT be presented as a generic permanent failure, and vice versa.
-
-This requirement governs the **UI's consumption** of the endpoint; the endpoint's session gate and the 30-requests-per-minute token bucket are owned by `server-endpoint-authorization` (and exercised by the API-route carve-out `test-image-search-api`). The UI test mocks `fetch` at the boundary and asserts the rendered state per error shape; it does not assert the route's auth or bucket SHALLs. (Implementation note: the source intentionally collapses the 429 rate-limit and the `quota_exceeded` quota into one capacity state rather than two — this requirement binds the UI to that behaviour, not to a finer rate-limit-vs-quota split.)
-
-#### Scenario: Rate-limited response shows the temporarily-unavailable state
-
-- **WHEN** the image-search request resolves with HTTP 429
-- **THEN** the modal surfaces the temporarily-unavailable state (retryable, advising the user to paste an image URL), distinct from the generic load-failure state
-
-#### Scenario: Quota-exceeded response shows the same temporarily-unavailable state
-
-- **WHEN** the image-search request resolves with `{ error: 'quota_exceeded' }`
-- **THEN** the modal surfaces the same temporarily-unavailable state it shows for a rate-limit
-
-#### Scenario: Other failures show a generic error
-
-- **WHEN** the image-search request fails for any other reason (a non-ok response, a network error, or a malformed body)
-- **THEN** the modal surfaces a generic load-failure state, not the temporarily-unavailable capacity state
-
-#### Scenario: Item form no longer reaches image search
-
-- **WHEN** the item form renders in create or edit mode
-- **THEN** no affordance opens `ImageSearch.tsx`, and the component remains in the codebase with its tests passing
-
 ### Requirement: The shared Modal SHALL render through a portal to document.body
 
-The shared `Modal` component (`app/(main)/items/ui/components/purchasemodal/Modal.tsx`), used by the purchase/claim modal (`PurchaseModalSlot`) and the share modal (`ShareButton`), SHALL render its `.modal-overlay` via `createPortal` targeting `document.body`, guarded so nothing renders before client mount (SSR-safe, matching the `ImageSearch.tsx` pattern). The overlay therefore escapes every page-level scroll container and ancestor stacking context and paints above all page chrome (list hero, items toolbar, pagination overlay) on all engines, including iOS WebKit compositing (PWA and iOS browsers).
+The shared `Modal` component (`app/(main)/items/ui/components/purchasemodal/Modal.tsx`), used by the purchase/claim modal (`PurchaseModalSlot`) and the share modal (`ShareButton`), SHALL render its `.modal-overlay` via `createPortal` targeting `document.body`, guarded so nothing renders before client mount (SSR-safe). The overlay therefore escapes every page-level scroll container and ancestor stacking context and paints above all page chrome (list hero, items toolbar, pagination overlay) on all engines, including iOS WebKit compositing (PWA and iOS browsers).
 
 This requirement governs layering/placement only; the modal's content, flows, and mounting triggers remain governed by the existing purchase-modal requirements in this capability and by `claim-attribution`. `ConfirmDialog` layering is owned by `confirm-dialog-system` and is not constrained here.
 
@@ -681,4 +655,3 @@ The projection SHALL obey these rules, keyed on whether the viewer owns the item
 - **WHEN** an authenticated non-owner reads items (`getItemsByListId` with a `viewerId`, or `getItemsByPurchased`)
 - **THEN** a claim whose `user_id` equals the `viewerId` is tagged `{ by: 'self' }` and every other claim `{ by: 'other' }`
 - **AND** only `firstName` is exposed for each claim — never a full name, email, user id, or raw guest identity
-
