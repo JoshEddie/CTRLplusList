@@ -2,6 +2,7 @@
 name: set-sail
 argument-hint: "[change-name]"
 description: Begin implementing a proposed OpenSpec change - enforce the one-change-mid-apply gate at the moment the tree becomes occupied, flip the issue's label CHARTED -> UNDER SAIL, state the mid-voyage disciplines, and delegate the task loop to /opsx:apply. The only route into the apply stage. Use when a change's artifacts are ready and implementation should start.
+disable-model-invocation: true
 metadata:
   author: list_eddiefamily
   version: '1.0'

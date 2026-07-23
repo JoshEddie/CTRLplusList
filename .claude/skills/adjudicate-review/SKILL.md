@@ -2,6 +2,7 @@
 name: adjudicate-review
 argument-hint: "<change>"
 description: Owner adjudication over a persisted spec-review report - a fresh-session, file-driven pass that re-grounds each disposition in the cited code, interviews the owner one finding at a time, and appends an ### Adjudications subsection to review.md with a recomputed effective verdict. Reads only the change's review.md; takes no runtime dependency on the spec-review skill. Use after /spec-review or /recheck-review to settle dispositions before landing.
+disable-model-invocation: true
 metadata:
   author: list_eddiefamily
   version: '1.1'

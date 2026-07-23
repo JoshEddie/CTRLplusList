@@ -2,6 +2,7 @@
 name: embark
 argument-hint: "<issue#>"
 description: Board and prep a CHARTED issue for the voyage - gate on trunk preconditions (on dev, up to date), verify the issue is cleared for work (label CHARTED AND zero open blockers), run the terrain check against current code and specs, then run OpenSpec propose seeded from the issue body with inherited map decisions. CHARTED with no open blocker is the only state it acts on; anything else stops. Use when picking up a cleared issue to start a new change on dev.
+disable-model-invocation: true
 metadata:
   author: list_eddiefamily
   version: '2.0'

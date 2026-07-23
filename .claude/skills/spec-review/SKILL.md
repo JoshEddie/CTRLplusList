@@ -2,6 +2,7 @@
 name: spec-review
 argument-hint: "<change-name | PR | diff>"
 description: Review a spec-driven PR/diff before archiving its OpenSpec change. Differentiators over a generic code review - (1) audits the diff against CLAUDE.md and the supporting docs it points to (TESTING.md, DATABASE.md), and (2) audits the diff against the related OpenSpec change's task-completion and design/spec contract, doubling as a pre-archive readiness gate. Use when reviewing a feature branch or PR that implements an OpenSpec change.
+disable-model-invocation: true
 metadata:
   author: list_eddiefamily
   version: '1.5'

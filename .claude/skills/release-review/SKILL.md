@@ -2,6 +2,7 @@
 name: release-review
 argument-hint: "[PR#]"
 description: The sole review gate for dev -> release-branch PRs - preflight hard gates (release base pattern, milestone present), five inline integration dimensions (map closure, cross-feature interaction risk, migration ordering, OpenSpec state clean, version bump vs milestone), CI rollup read, and a persisted per-release report in openspec/reviews/. Verdict is ready to cut / not ready. Use when cutting a release from dev.
+disable-model-invocation: true
 metadata:
   author: list_eddiefamily
   version: '1.0'

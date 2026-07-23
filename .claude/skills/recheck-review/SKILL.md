@@ -2,6 +2,7 @@
 name: recheck-review
 argument-hint: "[change-name | version]"
 description: Verify a prior review's open Fix-now findings against just the fix delta - a lightweight inline pass that appends a round to the persisted report (openspec/changes/<name>/review.md or openspec/reviews/<version>.md) instead of re-running a full multi-agent review. Scope - a fix delta that changed code OR spec artifacts, never both; a mixed delta routes to /incremental-spec-review. Use after fixing findings from /spec-review or /release-review.
+disable-model-invocation: true
 metadata:
   author: list_eddiefamily
   version: '1.1'

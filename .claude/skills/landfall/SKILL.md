@@ -2,6 +2,7 @@
 name: landfall
 argument-hint: "[change-name]"
 description: Land the active OpenSpec change on dev - gate checks, then an owner-chosen verification path. Fast path (no dev verification needed) stages both signed commits for one push with no CI wait; verified path pushes the work commit, waits for green CI and the owner's live click-test, then seals. Runs finalize-spec-purposes before the seal commit, hands off paste-ready commit messages, labels the issue IN PORT (never closes it). State-driven, self-healing, never runs git commit. Use when a change is implemented, reviewed clear, and ready to land, or to resume a landing in progress.
+disable-model-invocation: true
 metadata:
   author: list_eddiefamily
   version: '2.0'

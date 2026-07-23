@@ -1,6 +1,7 @@
 ---
 name: finalize-spec-purposes
 description: Finalize spec Purposes after archiving an OpenSpec change - replaces the TBD stubs upstream archive/sync leaves on capability specs. The standing last step of the OpenSpec workflow; also use whenever any spec Purpose reads "TBD". Idempotent - safe to run any time; reports "nothing to finalize" when all Purposes are real.
+disable-model-invocation: false
 metadata:
   author: list_eddiefamily
   version: '1.0'

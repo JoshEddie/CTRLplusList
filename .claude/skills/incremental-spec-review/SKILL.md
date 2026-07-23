@@ -2,6 +2,7 @@
 name: incremental-spec-review
 argument-hint: "[change-name]"
 description: Second-stage full-rigor review scoped to the not-yet-reviewed fix delta - for fixes atop a reviewed staged baseline that changed BOTH code and spec artifacts (single-sided deltas stay with /recheck-review). Runs arenas A+C on the unstaged delta and B on the change's whole footprint via spec-review's shared briefs, appends a round subsuming recheck's status table to review.md, and never requires staging the fix delta. Use when a recheck declared outgrew recheck or the fix delta visibly touched both sides.
+disable-model-invocation: true
 metadata:
   author: list_eddiefamily
   version: '1.0'
