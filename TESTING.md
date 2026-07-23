@@ -13,6 +13,7 @@ Any test you add MUST assert observable behavior — what the production code re
 - **Vague assertions on values your test built** — asserting `expect(result).toBeTruthy()` on something you just created with `createList(...)` proves nothing about `createList`.
 - **Assertions on values your mocks just returned** — round-tripping a mock's return value through production code and asserting on it tests the mock, not the production code.
 - **Snapshot-only tests against machine-generated snapshots** — if the snapshot is the only assertion AND you authored it by running the test once and accepting whatever came out, you've locked in current behavior without verifying it's correct behavior.
+- **Race-prone absence assertions** — asserting UI absence (`toHaveCount(0)`, `not.toBeVisible`, `queryBy* → null`) immediately after mount/navigation when the element is gated on async work (a server action, a fetch, an effect). The assertion passes whenever the first poll beats the async round-trip — a green result proves the race's timing, not the behavior. First await the settle signal that gates the element (the response landing, a sibling element that renders on resolution), then assert absence.
 
 **Do write** assertions that constrain specific properties: exact return values, expected error messages or types, exact rendered text or structure, specific DB rows after a mutation, specific `fetch` call arguments, specific persisted state.
 

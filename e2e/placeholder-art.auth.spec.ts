@@ -52,8 +52,10 @@ test('Deck_SelectedPlaceholder_RerollsInPlaceAndPersistsAsActiveImage', async ({
   await expect(
     page.getByRole('heading', { name: 'Pick some art' })
   ).toBeVisible();
-  // Reroll only renders while a placeholder is selected.
-  await expect(page.getByRole('button', { name: 'Reroll artwork' })).toHaveCount(0);
+  // A zero-photo deck preselects the first placeholder, so reroll is offered.
+  await expect(
+    page.getByRole('button', { name: 'Reroll artwork' })
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Use artwork 1' }).click();
   const stage = page.locator('.deck-photo-frame img');
   await expect(stage).toHaveAttribute('src', /^data:image\/svg\+xml;base64,/);
