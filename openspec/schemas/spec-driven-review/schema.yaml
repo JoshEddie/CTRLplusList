@@ -6,9 +6,10 @@ description: spec-driven + a propose-time review.md scaffold artifact (repo fork
 # reachable. Changes select it via `schema: spec-driven-review` in config.yaml
 # (default for new changes) and each change's `.openspec.yaml`.
 # The proposal/specs/design/tasks artifacts + apply block below are a verbatim
-# copy of the package schema; the trailing `review` artifact is the local
-# addition (see the review-artifact capability). Reconcile against the package
-# `spec-driven` schema on `openspec update` — see CLAUDE.md, trunk-workflow.
+# copy of the package schema; the trailing `review` and `acceptance` artifacts
+# are the local additions (see the review-artifact and acceptance-artifact
+# capabilities). Reconcile against the package `spec-driven` schema on
+# `openspec update` — see CLAUDE.md, trunk-workflow.
 artifacts:
   - id: proposal
     generates: proposal.md
@@ -171,9 +172,46 @@ artifacts:
     requires:
       - tasks
 
+  - id: acceptance
+    generates: acceptance.md
+    description: Chained Given/When/Then user-journey acceptance flows
+    template: acceptance.md
+    instruction: |
+      Draft user-journey acceptance flows by chaining the change's touched
+      `#### Scenario:` blocks together with pre-existing links found in
+      canonical `openspec/specs/**/spec.md` — grep the corpus, same discipline
+      as rules.proposal.
+
+      The draft is a spec-completeness probe: a journey that cannot be chained
+      from existing or delta scenarios reveals missing connective tissue. Fold
+      that gap back into the change's delta specs and chain through it — never
+      paper over it in the flow.
+
+      Format: every flow is a uniform chained **Given** / **When** / **Then**
+      row set, with optional **And** rows after any stage — no prose-vs-GWT
+      judgment call. `Given` carries the viewer and precondition state.
+      Granularity is per flow: one flow chains however many scenarios its user
+      journey spans, not one row per scenario. A requirement with no
+      human-observable surface is listed as "no manual path — fully automated",
+      never forced into a flow. Canonical spec scenarios stay WHEN/THEN; GWT
+      is exclusive to acceptance.md.
+
+      Lifecycle: this propose-time draft is later refined at apply time with
+      literal handles (real button text, real routes) — refine, not rewrite;
+      flow identity and journey scope stay as drafted.
+
+      No test-plan content: no scenario→test-layer mapping, no coverage
+      claims. Flows are walk scripts for the owner's pre-landfall walk and
+      /port-inspection's map-wide e2e scout, nothing more.
+    requires:
+      - specs
+
 apply:
-  requires: [tasks, review]
+  requires: [tasks, review, acceptance]
   tracks: tasks.md
   instruction: |
     Read context files, work through pending tasks, mark complete as you go.
+    acceptance.md is the end-state picture the implementation works toward:
+    as concrete surfaces land, refine its flows with literal handles (real
+    button text, real routes) — refine, not rewrite.
     Pause if you hit blockers or need clarification.
