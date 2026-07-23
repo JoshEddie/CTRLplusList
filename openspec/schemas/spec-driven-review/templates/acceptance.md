@@ -1,6 +1,9 @@
 # Acceptance — <change-name>
 
-<!-- Chained Given/When/(And…)/Then user-journey flows for this change.
+<!-- Given/When/(And…)/Then user-journey flows for this change.
+     One atom per row: a single action or a single assertion. Stages in
+     strict order of appearance — any stage recurring after a later one
+     (When after Then, Given after When) = a new flow; split it.
      Drafted at propose time from the change's scenarios + pre-existing
      canonical-spec links; refined at apply time with literal handles
      (real button text, real routes) — refine, not rewrite.
@@ -10,12 +13,12 @@
 
 ### Flow: <user journey name>
 
-- **Given** <viewer and precondition state>
-- **And** <further preconditions — optional, after any stage>
-- **When** <first user action>
-- **And** <next step — as many as the journey spans>
-- **Then** <observable outcome>
-- **And** <further observable outcomes — optional>
+- **Given** <binary distinguishing precondition state>
+- **And** <further precondition — optional, one per row>
+- **When** <one concrete user action, literal UI handle>
+- **And** <next single action — as many rows as the journey spans>
+- **Then** <one observable assertion>
+- **And** <further single assertions — including explicit negatives>
 
 ## No manual path — fully automated
 

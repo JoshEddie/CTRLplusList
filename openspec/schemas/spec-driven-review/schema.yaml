@@ -187,14 +187,20 @@ artifacts:
       that gap back into the change's delta specs and chain through it — never
       paper over it in the flow.
 
-      Format: every flow is a uniform chained **Given** / **When** / **Then**
-      row set, with optional **And** rows after any stage — no prose-vs-GWT
-      judgment call. `Given` carries the viewer and precondition state.
-      Granularity is per flow: one flow chains however many scenarios its user
-      journey spans, not one row per scenario. A requirement with no
-      human-observable surface is listed as "no manual path — fully automated",
-      never forced into a flow. Canonical spec scenarios stay WHEN/THEN; GWT
-      is exclusive to acceptance.md.
+      Format: one Given→When→Then arc per flow, stages in strict order
+      of appearance — a stage recurring after a later one (When after
+      Then, Given after When) starts a new flow. One atom per row: a
+      single concrete action (literal UI verbs and handles — "clicks
+      `Claim as Guest`") or a single observable assertion; `And`
+      continues the current stage. Givens open on the binary
+      distinguishing state, no `And` restating what's implied. Thens
+      state implied negatives explicitly; no parenthetical commentary,
+      no unobservable claims. Convert vague prose to a concrete
+      observable ("reads as theirs" → "the banner reads `You`"); none
+      findable = a spec gap to surface. A requirement with no
+      human-observable surface is listed as "no manual path — fully
+      automated", never forced into a flow. Canonical spec scenarios
+      stay WHEN/THEN; GWT is exclusive to acceptance.md.
 
       Lifecycle: this propose-time draft is later refined at apply time with
       literal handles (real button text, real routes) — refine, not rewrite;

@@ -46,20 +46,32 @@ be papered over in the flow.
 
 ### Requirement: Flows use uniform chained Given/When/Then rows
 
-Every flow in `acceptance.md` SHALL use the uniform chained format — **Given**
-/ **When** / **Then**, with optional **And** rows after any stage — with no
-prose-vs-GWT judgment call.
-`Given` SHALL carry the viewer and precondition state. Granularity is per flow:
-one flow chains however many scenarios its user journey spans. A requirement
-with no human-observable surface SHALL be marked "no manual path — fully
-automated" and never forced into a flow. Canonical spec scenarios remain
-WHEN/THEN; the GWT format is exclusive to acceptance.md.
+Every flow in `acceptance.md` SHALL be one Given→When→Then arc in strict
+order of appearance — a stage recurring after a later one (When after
+Then, Given after When) SHALL start a new flow. Rows SHALL be atomic:
+one concrete user action (literal UI verbs and handles) or one
+observable assertion per row, **And** continuing the current stage.
+Givens SHALL open on the binary distinguishing state, with no `And`
+restating what it implies. Thens SHALL state implied negatives
+explicitly and carry no parenthetical commentary or unobservable claims.
+Vague proposal prose SHALL be converted to a concrete observable;
+failure to find one is a spec gap the artifact exists to surface. A
+requirement with no human-observable surface SHALL be marked "no manual
+path — fully automated" and never forced into a flow. Canonical spec
+scenarios remain WHEN/THEN; the GWT format is exclusive to
+acceptance.md.
 
-#### Scenario: A flow chains multiple scenarios
+#### Scenario: A journey spanning multiple arcs splits into multiple flows
 
-- **WHEN** a user journey spans several atomic scenarios
-- **THEN** acceptance.md carries one Given/When/And…/Then flow walking the
-  whole journey, not one row per scenario
+- **WHEN** a user journey would need a stage after a later one (e.g. a
+  When after a Then)
+- **THEN** acceptance.md carries a separate flow per arc, each with its
+  own Given
+
+#### Scenario: Compound rows are split into atoms
+
+- **WHEN** a draft row bundles several actions or several assertions
+- **THEN** the flow renders one action or assertion per row
 
 #### Scenario: A fully-automated requirement is exempt
 
