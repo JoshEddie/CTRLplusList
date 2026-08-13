@@ -9,7 +9,8 @@ Routing labels are **ALL CAPS** and are the only labels skills route on. Each li
 | `OFF THE MAP` | Logged, not yet charted — map's intake queue | Any session logging a discovery |
 | `CHARTED` | Scope settled, cleared for work — even while sequenced behind an open blocker; `/embark`'s only accepted target | `/map` (chart or exit) |
 | `UNCHARTED` | Fog only: a map chunk whose scope is not settled — born gated by an open decision ticket at exit, demoted, discarded, or migrated. NOT a blocked marker | `/map` (exit), `/anchor` (demote), `/run-aground` (demote + discard), `/split-map` (migrate) |
-| `UNDER SAIL` | An OpenSpec change occupies the tree | `/set-sail` |
+| `MUSTER` | Coverage roll-call chunk cut by the map's e2e scout — plan in ticket body, no spec delta, skips `/embark`; `/set-sail`'s direct-work target. Never comes off: the lane marker rides through the voyage and into port | `/port-inspection` (scout's cut, per issue-cut.md's birth rule) |
+| `UNDER SAIL` | A voyage occupies the tree — an OpenSpec change or a MUSTER voyage | `/set-sail` (adds it, removing `CHARTED` if present; `MUSTER` stays) |
 | `IN PORT` | Landed and sealed, awaiting inspection via `/port-inspection` | `/landfall` |
 | `ADRIFT` | Voyage interrupted with recoverable work | `/run-aground` (park) |
 | `MAP` | Index issue for an epic — sole milestone carrier (stamped at exit) | `/map` (chart), `/split-map` (successor) |

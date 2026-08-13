@@ -44,6 +44,7 @@ gh api --paginate repos/{owner}/{repo}/issues/<n>/dependencies/blocked_by --jq '
 
 - Body pre-distilled — problem, settled decisions linked from the map, constraints — and links the map issue so `/embark` inherits its Decisions so far.
 - **Birth label:** `CHARTED`, unless an open **decision ticket** gates it directly — then `UNCHARTED`. Sequencing behind another **chunk** is not fog: a chunk-only blocker leaves it `CHARTED`, and no relabel is owed when the predecessor lands.
+- **Exception — the scout's closing e2e chunk:** the map-wide e2e coverage chunk cut on the e2e scout's recommendation is born `MUSTER`, not `CHARTED` — its plan (coverage rows plus deliberate skips) lives in the ticket body, it gets no OpenSpec change, and it enters work through `/set-sail`'s MUSTER lane, never `/embark`.
 - Blocked-by wired onto everything it builds on: predecessor chunks and any gating decision tickets.
 
 ### `PLOTTING` ticket

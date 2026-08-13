@@ -54,7 +54,7 @@ artifacts:
       - **RENAMED Requirements**: Name changes only - use FROM:/TO: format
 
       Format requirements:
-      - Each requirement: `### Requirement: <name>` followed by description
+      - Each requirement: `### Requirement: <name>` followed by a concise description
       - Use SHALL/MUST for normative requirements (avoid should/may)
       - Each scenario: `#### Scenario: <name>` with WHEN/THEN format
       - **CRITICAL**: Scenarios MUST use exactly 4 hashtags (`####`). Using 3 hashtags or bullets will fail silently.
@@ -65,6 +65,7 @@ artifacts:
       2. Copy the ENTIRE requirement block (from `### Requirement:` through all scenarios)
       3. Paste under `## MODIFIED Requirements` and edit to reflect new behavior
       4. Ensure header text matches exactly (whitespace-insensitive)
+      5. If possible edit the requirement description to be concise
 
       Common pitfall: Using MODIFIED with partial content loses detail at archive time.
       If adding new concerns without changing existing behavior, use ADDED instead.
@@ -115,7 +116,7 @@ artifacts:
       Focus on architecture and approach, not line-by-line implementation.
       Reference the proposal for motivation and specs for requirements.
 
-      Good design docs explain the "why" behind technical decisions.
+      Good design docs concisely explain the "why" behind technical decisions.
     requires:
       - proposal
 

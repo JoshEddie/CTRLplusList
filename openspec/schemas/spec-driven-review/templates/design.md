@@ -1,6 +1,6 @@
 ## Context
 
-<!-- Background and current state -->
+<!-- Background and current state — keep concise -->
 
 ## Goals / Non-Goals
 
@@ -12,7 +12,7 @@
 
 ## Decisions
 
-<!-- Key design decisions and rationale -->
+<!-- Key design decisions and concise rationale -->
 
 ## Risks / Trade-offs
 

@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: <!-- requirement name -->
-<!-- requirement text -->
+<!-- concise requirement text -->
 
 #### Scenario: <!-- scenario name -->
 - **WHEN** <!-- condition -->

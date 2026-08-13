@@ -10,7 +10,7 @@ metadata:
 
 # /landfall
 
-One command, driven by repository state. Landing a change is two owner-signed commits: the `issue-<N>:` **work commit** (implementation) and the `issue-<N>: archive <change>` **seal commit** (the archived change directory, including its `review.md`, making the spec delta canonical). Whether dev verification happens between them is the owner's call, asked once up front.
+One command, driven by repository state. Landing a change is two owner-signed commits: the `issue-<N>:` **work commit** (implementation) and the `issue-<N>: archive <change>` **seal commit** (the archived change directory, including its `review.md`, making the spec delta canonical). Whether dev verification happens between them is the owner's call, asked once up front. A **MUSTER voyage** (tests-only, no change directory) lands through its own no-seal branch below instead.
 
 **Skills never commit.** At every commit point: stage, state exactly what is ready with the **paste-ready commit message**, and **stop** — the owner signs at the screen. Never run `git commit`; never retry a blocked or unattended signature. Sessions may end at any hand-off; re-invocation resumes from state.
 
@@ -22,6 +22,7 @@ Determine position from repo state on every invocation (argument optional — re
 
 | State | Position |
 | --- | --- |
+| An issue labeled both `MUSTER` and `UNDER SAIL` | MUSTER branch (below) — its own gates and flow |
 | Active change, work uncommitted | Start: gates, then the verification question |
 | Work staged/signed but unpushed | Push (fast path: only after both commits are signed) and proceed |
 | Work pushed, change dir still active, verified path | Verification wait (CI + live check) |
@@ -59,6 +60,24 @@ Ask the owner (AskUserQuestion): **does this change need dev verification (CI + 
 3. **CI green** — check the run for the pushed sha. Red → fix forward (below). Pending → report and stop.
 4. **Live check** — ask the owner (AskUserQuestion) to confirm the change checks out on the live dev deployment. Not confirmed → stop (or fix forward if it failed).
 5. Archive the change, run `/finalize-spec-purposes`, stage the seal commit. **Bookkeeping, in the same swoop as the archive:** flip to `IN PORT` (removing `UNDER SAIL`) and post one summary comment on the landed issue — UI summary or "no user-visible changes" one-liner, no scout lookup — independent of staged/committed/pushed state. Never close the issue. Hand off with `issue-<N>: archive <change>`, stop for signing.
+
+## MUSTER branch — one commit, no seal, always CI-verified
+
+A MUSTER voyage is tests-only: no change directory, so no `review.md`, no `tasks.md`, no `openspec validate`, and nothing to archive or seal.
+
+**Gates:**
+
+1. **Muster-review verdict** — ask the owner (AskUserQuestion) to confirm the latest `/muster-review` round's verdict reads `clear to land` (the verdict is reported in the review session, not persisted). No round run, or verdict not clear → stop, point at `/muster-review`.
+2. **Local fast checks** — `npm run lint` (zero errors, zero non-size warnings) and `npx tsc --noEmit`.
+
+**No verification question.** A MUSTER landing is always CI-verified: the e2e battery is the deliverable's own verification, and there is no live surface to click-test.
+
+**Flow:**
+
+1. Stage the tests-only work (never blanket-stage unasked). Hand off with the paste-ready message `issue-<N>: <summary>`; stop for signing.
+2. After the signature: push to `dev`, report the CI run to watch.
+3. **Green CI** → remove `UNDER SAIL`, add `IN PORT` — `MUSTER` stays as the lane marker. No summary comment (this chunk is the e2e scout's own output — there is no later scout to feed), no archive, no seal commit. The issue stays open for inspection to close.
+4. **Red CI** → fix forward under the same `issue-<N>:` prefix, run a fresh `/muster-review` round, then hand off the follow-up commit. The issue stays `UNDER SAIL` until CI is green.
 
 ## Red CI or failed live check — fix forward
 
