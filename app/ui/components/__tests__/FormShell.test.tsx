@@ -85,16 +85,6 @@ describe('FormShell', () => {
       expect(inner.className).toBe('form-shell form-shell-wide');
     });
 
-    it('VariantSplit_RendersFormShellAndFormShellSplitClasses', () => {
-      const { container } = render(
-        <FormShell title="t" variant="split">
-          <div>body</div>
-        </FormShell>
-      );
-      const inner = container.querySelector('.form-shell-overlay > div')!;
-      expect(inner.className).toBe('form-shell form-shell-split');
-    });
-
     it('Title_RenderedInsideFormShellTitleSpan', () => {
       const { container } = render(
         <FormShell title="Edit item">

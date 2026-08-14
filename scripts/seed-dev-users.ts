@@ -25,6 +25,7 @@ import 'dotenv/config';
 import { inArray, sql } from 'drizzle-orm';
 import { db } from '../db';
 import {
+  item_images,
   item_stores,
   items,
   list_items,
@@ -157,18 +158,19 @@ function hash(s: string): number {
 }
 
 // Description pool — mix of short notes and longer paragraphs so layout
-// preview covers single-line, multi-line wrap, and overflow truncation. ~20%
-// of items get an empty description (h % 5 === 0) to keep the empty-state
-// reachable from a fresh seed.
+// preview covers single-line and multi-line wrap; every entry fits the
+// 100-char DESCRIPTION_MAX and one sits exactly at the cap so the
+// rendered-in-full boundary is reachable from a fresh seed. ~20% of items
+// get an empty description (h % 5 === 0) to keep the empty-state reachable.
 const DESCRIPTION_POOL = [
   'Color and finish are flexible — surprise me.',
   'Already have the small size; looking for the larger one this time around.',
   'Matte black preferred, but any neutral works.',
   "Please get the rechargeable version, not battery-powered — we've got a drawer full of AAs already.",
-  "Saw this at a friend's place last month and have been thinking about it ever since. Bonus points if it comes in walnut.",
+  "Saw this one at a friend's place last month and I cannot stop thinking about it. Bonus if in walnut.",
   'No rush on this one — happy to wait for a sale.',
   'Open to any brand as long as the reviews are solid.',
-  'The linked one is ideal, but any comparable model is great. Mostly just want something that actually lasts.',
+  'The linked one is ideal, but any comparable model is great. Mostly want something that lasts.',
   'Would love this in cream or sage; nothing too bright.',
   'For the kitchen remodel — should match the brushed-nickel hardware we already have.',
   'Quality over quantity here. Rather have one good one than two cheap ones.',
@@ -533,6 +535,79 @@ const seedFollows: { follower_id: string; followee_id: string }[] = [
   ]),
 ];
 
+// Hand-authored linkless items (the door path's output): PRICED rows carry a
+// linkless priced store row, BARE rows carry none. Seeded imageless so the
+// placeholder-mint art matches what a door-created item looks like. Appended
+// after each list's pool slice; excluded from the purchase fan-out (it walks
+// itemNames). Returns item_id → price for the PRICED ones, consumed by the
+// store-row loop.
+const LINKLESS_EXTRAS: {
+  list_id: string;
+  name: string;
+  description: string;
+  price: string;
+}[] = [
+  {
+    list_id: 'dev-list-viewer-birthday',
+    name: 'Cash toward the house fund',
+    description: 'Every bit gets us closer to the down payment.',
+    price: '',
+  },
+  {
+    list_id: 'dev-list-viewer-birthday',
+    name: 'Coffee shop gift card',
+    description: 'The one on 5th — I stop there every morning.',
+    price: '25.00',
+  },
+  {
+    list_id: 'dev-list-alice-wedding',
+    name: 'A homemade dinner for two',
+    description: 'Your signature dish, delivered — better than any registry box.',
+    price: '',
+  },
+  {
+    list_id: 'dev-list-alice-wedding',
+    name: 'Spa day gift card',
+    description: 'Anywhere with a sauna — honeymoon recovery fund.',
+    price: '50.00',
+  },
+];
+
+function appendLinklessExtras(
+  itemRows: {
+    id: string;
+    name: string;
+    description: string;
+    user_id: string;
+    image_url: string;
+    archived_at: Date | null;
+    quantity_limit: number | null;
+  }[],
+  listItemRows: { list_id: string; item_id: string; position: number }[]
+): Map<string, string> {
+  const pricedByItem = new Map<string, string>();
+  LINKLESS_EXTRAS.forEach((extra, i) => {
+    const list = seedLists.find((l) => l.id === extra.list_id)!;
+    const itemId = `${extra.list_id}-linkless-${i + 1}`;
+    itemRows.push({
+      id: itemId,
+      name: extra.name,
+      description: extra.description,
+      user_id: list.user_id,
+      image_url: '',
+      archived_at: null,
+      quantity_limit: 1,
+    });
+    listItemRows.push({
+      list_id: extra.list_id,
+      item_id: itemId,
+      position: list.itemNames.length + i,
+    });
+    if (extra.price !== '') pricedByItem.set(itemId, extra.price);
+  });
+  return pricedByItem;
+}
+
 async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) {
@@ -645,12 +720,18 @@ async function main() {
       if (idx === 0) quantity_limit = rotation[0];
       else if (idx === 1) quantity_limit = rotation[1];
       else if (idx === lastIdx) quantity_limit = rotation[2];
+      // Every third item on every fourth list seeds imageless so the lazy
+      // placeholder-mint path (empty container -> generated art on first view)
+      // is reachable straight from the seed.
+      const imageless = listIdx % 4 === 3 && idx % 3 === 0;
       itemRows.push({
         id: itemId,
         name,
         description: descriptionFor(itemId),
         user_id: list.user_id,
-        image_url: `https://picsum.photos/seed/${itemId}/400/400`,
+        image_url: imageless
+          ? ''
+          : `https://picsum.photos/seed/${itemId}/400/400`,
         archived_at: archive
           ? new Date(ARCHIVE_EPOCH - (h % 30) * 86400000)
           : null,
@@ -659,6 +740,7 @@ async function main() {
       listItemRows.push({ list_id: list.id, item_id: itemId, position: idx });
     });
   });
+  const linklessPricedByItem = appendLinklessExtras(itemRows, listItemRows);
   // onConflictDoUpdate so re-runs apply new image_url, archived_at, and
   // quantity_limit to previously-seeded rows.
   await db
@@ -736,6 +818,12 @@ async function main() {
       price: '1399.00',
     },
   ];
+  // Hand-authored non-link states (non-link-item-states): one PRICED item
+  // (a single linkless priced row) and one BARE item (zero store rows), so
+  // both first-class states are reachable straight from the seed.
+  const PRICED_ITEM = 'dev-list-viewer-birthday-item-5';
+  const BARE_ITEM = 'dev-list-viewer-birthday-item-7';
+  const PRICED_ROWS = [{ name: '', link: '', price: '24.99' }];
   const storeRows: {
     id: string;
     item_id: string;
@@ -744,16 +832,29 @@ async function main() {
     price: string;
     order: number;
   }[] = [];
+  // Store rows for one item, or null for none: BARE items and BARE linkless
+  // extras get zero rows, PRICED linkless items a single linkless priced row,
+  // hand-authored specials their fixed rows, everything else 1–3 catalog
+  // stores deterministic by item id hash.
+  const catalogFor = (
+    itemId: string
+  ): { name: string; link: string; price: string }[] | null => {
+    if (itemId === BARE_ITEM) return null;
+    const linklessPrice = linklessPricedByItem.get(itemId);
+    if (linklessPrice !== undefined)
+      return [{ name: '', link: '', price: linklessPrice }];
+    if (itemId.includes('-linkless-')) return null;
+    if (itemId === LONG_STORE_ITEM) return LONG_STORE_ROWS;
+    if (itemId === PRICED_ITEM) return PRICED_ROWS;
+    const hash = itemId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    return Array.from(
+      { length: (hash % 3) + 1 },
+      (_, i) => STORE_CATALOG[(hash + i) % STORE_CATALOG.length]
+    );
+  };
   for (const item of itemRows) {
-    const hash = item.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    const catalog =
-      item.id === LONG_STORE_ITEM
-        ? LONG_STORE_ROWS
-        : // 1–3 stores per item, deterministic by item id hash.
-          Array.from(
-            { length: (hash % 3) + 1 },
-            (_, i) => STORE_CATALOG[(hash + i) % STORE_CATALOG.length]
-          );
+    const catalog = catalogFor(item.id);
+    if (!catalog) continue;
     catalog.forEach((store, i) => {
       storeRows.push({
         id: `${item.id}-store-${i + 1}`,
@@ -777,6 +878,35 @@ async function main() {
       },
     });
   console.log(`  item_stores: ${storeRows.length} upserted`);
+
+  // Active-image rows + candidate pools. The active pointer now lives in
+  // item_images.active, not items.image_url, so every item gets one active row
+  // mirroring its seeded image_url. A couple of fetched-style items get extra
+  // non-active alt candidates so the picker grid / pagination states are
+  // reachable straight from the seed; the rest keep a single-image pool so the
+  // no-grid state is also covered. Re-runs are idempotent via delete-then-insert
+  // (serial ids — nothing stable to upsert on).
+  const POOL_SIZE: Record<string, number> = {
+    'dev-list-viewer-birthday-item-1': 4,
+    'dev-list-alice-baby-item-2': 3,
+  };
+  const imageRows = itemRows.flatMap((item) => {
+    if (!item.image_url) return []; // imageless items mint art on first view
+    const main = { item_id: item.id, url: item.image_url, active: true };
+    const altCount = (POOL_SIZE[item.id] ?? 1) - 1;
+    const alts = Array.from({ length: altCount }, (_, i) => ({
+      item_id: item.id,
+      url: `https://picsum.photos/seed/${item.id}-alt-${i + 1}/400/400`,
+      active: false,
+    }));
+    return [main, ...alts];
+  });
+  const seededItemIds = itemRows.map((item) => item.id);
+  await db
+    .delete(item_images)
+    .where(inArray(item_images.item_id, seededItemIds));
+  await db.insert(item_images).values(imageRows);
+  console.log(`  item_images: ${imageRows.length} inserted`);
 
   // Purchases on viewer-owned items: friends + occasional guests buy the
   // viewer's wishlist items. Higher rate on archived since "purchased" is the

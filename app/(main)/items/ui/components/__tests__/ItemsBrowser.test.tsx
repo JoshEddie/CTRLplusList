@@ -36,7 +36,11 @@ vi.mock('../Item', () => ({
   ),
 }));
 vi.mock('../PriceFilterPopover', () => ({ default: () => <div /> }));
-vi.mock('../StoreFilterPopover', () => ({ default: () => <div /> }));
+vi.mock('../StoreFilterPopover', () => ({
+  default: ({ storeOptions }: { storeOptions: string[] }) => (
+    <div data-testid="store-filter-stub" data-options={storeOptions.join(',')} />
+  ),
+}));
 
 function store(
   name: string,
@@ -104,23 +108,35 @@ describe('ItemsBrowser', () => {
       nav.search = 'store=Amazon&store=Etsy&purchases=only';
       renderBrowser([
         makeItem('amazonBought', {
-          stores: [store('Amazon', '20')],
+          store: store('Amazon', '20'),
           hasPurchases: true,
         }),
         makeItem('etsyBought', {
-          stores: [store('Etsy', '20')],
+          store: store('Etsy', '20'),
           hasPurchases: true,
         }),
         makeItem('amazonUnbought', {
-          stores: [store('Amazon', '20')],
+          store: store('Amazon', '20'),
           hasPurchases: false,
         }),
         makeItem('otherBought', {
-          stores: [store('Other', '20')],
+          store: store('Other', '20'),
           hasPurchases: true,
         }),
       ]);
       expect(visibleIds().sort()).toEqual(['amazonBought', 'etsyBought']);
+    });
+
+    it('DormantLegacyStoreName_NeitherMatchesNorAppearsAsOption', () => {
+      // The DAL selected Amazon; the legacy second row (Etsy) never reaches
+      // the UI, so filtering on it matches nothing and offers no option.
+      nav.search = 'store=Etsy';
+      renderBrowser([
+        makeItem('legacy', { store: store('Amazon', '20') }),
+      ]);
+      expect(visibleIds()).toEqual([]);
+      const stubs = screen.getAllByTestId('store-filter-stub');
+      expect(stubs[0]).toHaveAttribute('data-options', 'Amazon');
     });
 
     it('PurchasesOnly_KeepsHasPurchases', () => {
@@ -144,11 +160,11 @@ describe('ItemsBrowser', () => {
     it('PriceRange_InclusiveExcludesNonFinitePrice', () => {
       nav.search = 'price_min=10&price_max=50';
       renderBrowser([
-        makeItem('p10', { stores: [store('A', '10')] }),
-        makeItem('p50', { stores: [store('A', '50')] }),
-        makeItem('p5', { stores: [store('A', '5')] }),
-        makeItem('p60', { stores: [store('A', '60')] }),
-        makeItem('pNaN', { stores: [{ name: 'A', link: '', price: '30' }] }),
+        makeItem('p10', { store: store('A', '10') }),
+        makeItem('p50', { store: store('A', '50') }),
+        makeItem('p5', { store: store('A', '5') }),
+        makeItem('p60', { store: store('A', '60') }),
+        makeItem('pNaN', { store: { name: 'A', link: '', price: '30' } }),
       ]);
       expect(visibleIds().sort()).toEqual(['p10', 'p50']);
     });
@@ -156,9 +172,9 @@ describe('ItemsBrowser', () => {
     it('PriceMinOnly_TreatsMaxAsUnbounded', () => {
       nav.search = 'price_min=10';
       renderBrowser([
-        makeItem('p5', { stores: [store('A', '5')] }),
-        makeItem('p10', { stores: [store('A', '10')] }),
-        makeItem('p100', { stores: [store('A', '100')] }),
+        makeItem('p5', { store: store('A', '5') }),
+        makeItem('p10', { store: store('A', '10') }),
+        makeItem('p100', { store: store('A', '100') }),
       ]);
       expect(visibleIds().sort()).toEqual(['p10', 'p100']);
     });
@@ -166,9 +182,9 @@ describe('ItemsBrowser', () => {
     it('PriceMaxOnly_TreatsMinAsUnbounded', () => {
       nav.search = 'price_max=50';
       renderBrowser([
-        makeItem('p5', { stores: [store('A', '5')] }),
-        makeItem('p50', { stores: [store('A', '50')] }),
-        makeItem('p60', { stores: [store('A', '60')] }),
+        makeItem('p5', { store: store('A', '5') }),
+        makeItem('p50', { store: store('A', '50') }),
+        makeItem('p60', { store: store('A', '60') }),
       ]);
       expect(visibleIds().sort()).toEqual(['p5', 'p50']);
     });
@@ -198,27 +214,27 @@ describe('ItemsBrowser', () => {
       renderBrowser([
         makeItem('match', {
           name: 'Gift',
-          stores: [store('Amazon', '20')],
+          store: store('Amazon', '20'),
           hasPurchases: true,
         }),
         makeItem('failStore', {
           name: 'Gift',
-          stores: [store('Other', '20')],
+          store: store('Other', '20'),
           hasPurchases: true,
         }),
         makeItem('failPurch', {
           name: 'Gift',
-          stores: [store('Amazon', '20')],
+          store: store('Amazon', '20'),
           hasPurchases: false,
         }),
         makeItem('failPrice', {
           name: 'Gift',
-          stores: [store('Amazon', '200')],
+          store: store('Amazon', '200'),
           hasPurchases: true,
         }),
         makeItem('failName', {
           name: 'Toy',
-          stores: [store('Amazon', '20')],
+          store: store('Amazon', '20'),
           hasPurchases: true,
         }),
       ]);
@@ -231,9 +247,9 @@ describe('ItemsBrowser', () => {
       nav.search = 'sort=price_asc';
       renderBrowser(
         [
-          makeItem('i1', { stores: [store('A', '30')] }),
-          makeItem('i2', { stores: [store('A', '10')] }),
-          makeItem('i3', { stores: [store('A', '20')] }),
+          makeItem('i1', { store: store('A', '30') }),
+          makeItem('i2', { store: store('A', '10') }),
+          makeItem('i3', { store: store('A', '20') }),
         ],
         { mode: 'items' }
       );
@@ -264,7 +280,7 @@ describe('ItemsBrowser', () => {
   describe('StoreOptions', () => {
     it('StoresAllNameless_ExcludeStoreSortOptions', () => {
       renderBrowser(
-        [makeItem('a', { stores: [{ name: '', link: 'https://x', price: '1' }] })],
+        [makeItem('a', { store: { name: '', link: 'https://x', price: '1' } })],
         { mode: 'list' }
       );
       const select = screen.getByRole('combobox', { name: 'Sort items' });
@@ -274,7 +290,7 @@ describe('ItemsBrowser', () => {
     });
 
     it('NamedStore_IncludesStoreSortOptions', () => {
-      renderBrowser([makeItem('a', { stores: [store('Amazon', '1')] })], {
+      renderBrowser([makeItem('a', { store: store('Amazon', '1') })], {
         mode: 'list',
       });
       const select = screen.getByRole('combobox', { name: 'Sort items' });
@@ -463,8 +479,8 @@ describe('ItemsBrowser', () => {
   describe('MemoBehavior', () => {
     it('StoreSetChange_RecomputesVisibleItems', () => {
       const items = [
-        makeItem('amazon', { stores: [store('Amazon', '10')] }),
-        makeItem('etsy', { stores: [store('Etsy', '10')] }),
+        makeItem('amazon', { store: store('Amazon', '10') }),
+        makeItem('etsy', { store: store('Etsy', '10') }),
       ];
       const { rerender } = renderBrowser(items, { mode: 'list' });
       expect(visibleIds().sort()).toEqual(['amazon', 'etsy']);

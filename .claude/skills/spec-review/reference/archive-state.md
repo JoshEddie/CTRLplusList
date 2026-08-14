@@ -1,6 +1,6 @@
 # Archive-state classification
 
-Classify the resolved change into one of three states; each sets the contract
+Classify the resolved change into one of three states; each sets the alignment
 agent's framing and the in-PR reconciliation latitude below.
 
 ## States
@@ -8,7 +8,7 @@ agent's framing and the in-PR reconciliation latitude below.
 ### Active
 
 `openspec/changes/<name>/` with no archive move. The normal pre-archive flow; the
-contract agent reads from there. An auto-detected change is read from the active
+alignment agent reads from there. An auto-detected change is read from the active
 directory only — never substitute an `archive/` copy for an auto-detected match.
 
 ### Type 1 — premature archive
@@ -38,7 +38,7 @@ Equivalently, the archive path shows as `A` in `git diff --name-status <base>...
 
 **Worked example.** The diff touches `openspec/changes/archive/2026-05-21-add-following/proposal.md`. Run `git cat-file -e "dev:openspec/changes/archive/2026-05-21-add-following/proposal.md"`:
 
-- exits `0` (file exists on base) → **Type 2 merged**; the spec is canonical, contract findings are directional.
+- exits `0` (file exists on base) → **Type 2 merged**; the spec is canonical, alignment findings are directional.
 - exits non-zero (added by this diff) → **Type 1 premature**; neutral framing, reconciliation capped to sync-neutral edits.
 
 ## Reconciliation latitude by archive state

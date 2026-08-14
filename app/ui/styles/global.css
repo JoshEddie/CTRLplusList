@@ -1,8 +1,9 @@
 :root {
   --primary-color: #7324ce;
-  --primary-color-dark: #2f233c;
+  --primary-color-dark: #2a2060;
   --primary-color-light: #cda2ff;
   --secondary-color: #2264c1;
+  --secondary-color-dark: #05155d;
   --primary-color-transparent: #7324ce7f;
   --secondary-color-transparent: #2264c17f;
   --light-color: #ffffff;
@@ -30,10 +31,10 @@
   /* Redesign tokens — see openspec/changes/redesign-home-and-tokens design.md D3 */
   --page-frame-gradient: linear-gradient(
     120deg,
-    rgb(37, 25, 78) 0%,
-    rgb(26, 37, 84) 100%
+    var(--primary-color-dark) 25%,
+    var(--secondary-color-dark) 100%
   );
-  --heading-text-color: #1a1a2e;
+  --heading-text-color: #1f2937;
   --subtitle-text-color: #aaaaaa;
   --meta-text-color: #bbbbbb;
   --date-text-color: #cccccc;
@@ -94,7 +95,7 @@ body {
 }
 
 html {
-  background-color: #25194e;
+  background-color: var(--primary-color-dark);
 }
 
 body {

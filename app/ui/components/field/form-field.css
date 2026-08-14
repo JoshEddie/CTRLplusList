@@ -53,7 +53,9 @@
   display: grid;
   grid-template-columns: 1fr;
   align-items: center;
-  background: transparent;
+  /* Solid, not transparent: fields sit on sunken surfaces (the deck well)
+     as well as white shells. */
+  background: var(--light-color);
   border: 1px solid var(--field-border-color);
   border-radius: var(--field-radius);
   min-height: var(--field-min-height);

@@ -1,8 +1,8 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 // Locates the first item card a non-owner viewer can freshly claim on the
 // current list page. The card:
-//   - exposes an enabled "Get this gift" affordance (so it is not already
+//   - exposes an enabled "Add Claim" affordance (so it is not already
 //     fully claimed), and
 //   - is a single-claim item — no claim counter is rendered (`quantity_limit`
 //     of 1), so claiming it fully claims the item and surfaces the claimer's
@@ -17,10 +17,26 @@ import type { Locator, Page } from '@playwright/test';
 export function firstClaimableSingleItem(page: Page): Locator {
   return page
     .locator('.item-container')
-    .filter({ has: page.getByRole('button', { name: 'Get this gift' }) })
+    .filter({ has: page.getByRole('button', { name: 'Add Claim' }) })
     .filter({ hasNot: page.locator('.claim-counter') })
     .filter({ hasNotText: 'You claimed this' })
     .first();
+}
+
+// Removes an item a spec created, through the affordances a user has: the
+// card's kebab → Edit → the edit Preview's Delete → the confirm dialog. Scope
+// the confirm click to the dialog — the Preview's own delete button carries the
+// same name. Specs that create items call this so a run leaves zero residue.
+export async function deleteItem(page: Page, name: string): Promise<void> {
+  const card = page.locator('.item-container:not(.preview)', { hasText: name });
+  await card.getByRole('button', { name: 'Item actions' }).click();
+  await page.getByRole('menuitem', { name: 'Edit' }).click();
+  await page.getByRole('button', { name: 'Delete' }).click();
+  await page
+    .locator('.confirm-dialog-content')
+    .getByRole('button', { name: 'Delete' })
+    .click();
+  await expect(card).toHaveCount(0);
 }
 
 // Waits until the service worker registered by the current page is active AND

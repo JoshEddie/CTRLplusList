@@ -1,0 +1,131 @@
+.prefill-url-step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.prefill-hint {
+  margin: 0;
+  color: var(--muted-text-color);
+  font-size: 0.9rem;
+}
+
+.prefill-url-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.prefill-fetching-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 24px 0;
+}
+
+.prefill-cycling-msg {
+  margin: 0;
+  color: var(--primary-text-color);
+  font-weight: 500;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.prefill-cycling-msg-faded {
+  opacity: 0;
+}
+
+.prefill-moment {
+  margin: 0;
+  color: var(--muted-text-color);
+  font-size: 0.85rem;
+}
+
+.prefill-url-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--neutral-border-color);
+  border-radius: 8px;
+  background: var(--secondary-background-color);
+}
+
+.prefill-url-strip > button,
+.prefill-badge > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.prefill-url-text {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+  color: var(--muted-text-color);
+  font-size: 0.85rem;
+}
+
+.prefill-url-strip .prefill-url-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.prefill-fetching-step .form-shell-ft {
+  align-self: stretch;
+}
+
+.prefill-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--success-border);
+  border-radius: 8px;
+  background: var(--success-bg);
+  color: var(--success-text);
+  font-size: 0.85rem;
+}
+
+.prefill-badge-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prefill-notice {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--card-border-color);
+  border-radius: 8px;
+  background: var(--card-accent-background-color);
+  color: var(--primary-text-color);
+  font-size: 0.85rem;
+}
+
+.prefill-use-link {
+  margin-bottom: 8px;
+}
+
+.if-store-price {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.price-as-of {
+  color: var(--muted-text-color);
+  font-size: 0.75rem;
+}

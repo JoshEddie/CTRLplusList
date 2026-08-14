@@ -2,15 +2,16 @@
 
 Bundled evaluation scenarios for the gate. No automated runner exists; each
 scenario is a hand-checkable source of truth in the `query` + `inputs` +
-`expected_behavior` shape. They span the three verdict axes — a contract mismatch,
-a merged-archive (directional) conformance violation, and the clean approve path.
+`expected_behavior` shape. They span the four verdict axes — an alignment mismatch,
+a merged-archive (directional) conformance violation, the clean approve path, and
+a stale-suite traceability case caught by arena T.
 Revise them when the skill's behavior intentionally changes.
 
-## 1. False-complete contract mismatch → not clear to archive
+## 1. False-complete alignment mismatch → not clear to archive
 
 ```json
 {
-  "name": "false-complete-contract-mismatch",
+  "name": "false-complete-alignment-mismatch",
   "query": "/spec-review add-quantity-limits",
   "inputs": {
     "diffCmd": "git diff dev...HEAD",
@@ -19,7 +20,7 @@ Revise them when the skill's behavior intentionally changes.
     "archiveState": "active",
     "ci": "green"
   },
-  "expected_behavior": "A Contract finding: task 3.2 is [x] but no matching implementing work exists; the task and implementation disagree. Framing is neutral (the change is active), so the finding is stated as a mismatch — not 'the code is wrong' — with disposition `Fix now` proposing EITHER resolution: implement the guard OR unmark/reword 3.2; the spec is not presumed correct. The clear-to-archive gate fails on the open false-complete finding even though CI is green, so the verdict is `Request changes — not yet clear to archive (blockers: task 3.2 false-complete)`."
+  "expected_behavior": "An Alignment (arena A) finding: task 3.2 is [x] but no matching implementing work exists; the task and implementation disagree. Framing is neutral (the change is active), so the finding is stated as a mismatch — not 'the code is wrong' — with disposition `Fix now` proposing EITHER resolution: implement the guard OR unmark/reword 3.2; the spec is not presumed correct. The clear-to-archive gate fails on the open false-complete finding even though CI is green, so the verdict is `Request changes — not yet clear to archive (blockers: task 3.2 false-complete)`."
 }
 ```
 
@@ -36,7 +37,7 @@ Revise them when the skill's behavior intentionally changes.
     "archiveState": "Type 2 merged",
     "ci": "green"
   },
-  "expected_behavior": "A Contract finding framed directionally — the merged spec is the fixed contract and the implementation is the side that must conform; do NOT offer to amend the spec. Disposition `Fix now` (conform the code) or `File issue` (fresh proposal). The clear-to-archive gate is moot (already archived). The verdict is `Request changes — blocked — violates merged spec add-quantity-limits; needs implementation conformance or a fresh proposal`."
+  "expected_behavior": "An Alignment (arena A) finding framed directionally — the merged spec is the fixed contract and the implementation is the side that must conform; do NOT offer to amend the spec. Disposition `Fix now` (conform the code) or `File issue` (fresh proposal). The clear-to-archive gate is moot (already archived). The verdict is `Request changes — blocked — violates merged spec add-quantity-limits; needs implementation conformance or a fresh proposal`."
 }
 ```
 
@@ -54,5 +55,22 @@ Revise them when the skill's behavior intentionally changes.
     "ci": "green"
   },
   "expected_behavior": "No open `Fix now` findings — the nitpicks are dispositioned `Drop` with a one-line rationale (or omitted). The verdict is `Approve`. The clear-to-archive gate passes on all of: CI green, every task [x], `openspec validate add-list-archive --strict` passes, and no open false-complete or conformance findings — so the archive line reads `clear to archive`. The report still closes with the explore-mode opt-in prompt."
+}
+```
+
+## 4. Stale suite test wins a timing race → arena-T traceability finding
+
+```json
+{
+  "name": "stale-e2e-wins-timing-race",
+  "query": "/spec-review change-deck-preselect",
+  "inputs": {
+    "diffCmd": "git diff --staged",
+    "diff_summary": "The active change's delta spec MODIFIES the deck-open behavior: the deck now preselects the viewer's default profile chip (previously no chip was preselected). The implementation and new unit tests land the new behavior. Untouched e2e test e2e/deck.spec.ts 'deckOpen_noChipPreselected' still asserts the old contract via an absence assertion (expect no selected chip right after open) that keeps passing by running before the async preselect round-trip resolves. CI is green.",
+    "change": "change-deck-preselect",
+    "archiveState": "active",
+    "ci": "green"
+  },
+  "expected_behavior": "The testing agent's staleness sweep — its one outside-the-diff look — greps the suites by the changed requirement's stable handles and finds the untouched absence assertion encoding the superseded contract. A Testing (arena T) finding names the stale test and the changed SHALL, treating the green run as no evidence of alignment (the assertion wins a timing race); disposition `Fix now` — update the test to the new contract. The finding carries a `T<n>` ID in the round's global sequence and sits in the `### Testing` table. Green CI does not clear it, and the verdict is `Request changes — not yet clear to archive (blockers: stale e2e test asserts superseded deck-preselect contract)`."
 }
 ```

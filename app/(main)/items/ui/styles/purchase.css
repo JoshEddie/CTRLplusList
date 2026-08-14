@@ -1,14 +1,71 @@
-/* Viewer-facing claim affordances on the item card. The card's single
-   action is viewer-state-aware: "Get this gift" (unclaimed), a disabled
-   "Fully claimed" pill, or "✓ Claimed" + "Manage your claim". */
-
-.claim-cta-btn,
-.manage-claim-btn {
+/* ItemActions — the per-item action block (item-actions spec, design D1).
+   The DOM renders which actions exist; this grid owns all layout: every
+   action defaults to a full-width row, and sibling detection forms the
+   View · Add two-up pair only when a managing top action coexists with
+   both. Buttons keep design-system dimensions; classes here are purely
+   positional. */
+.item-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
   width: 100%;
 }
 
-/* Fully-claimed inline state — disabled pill sized to the standard button
-   floor so the card footer aligns with the unclaimed CTA. */
+.item-actions > * {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Two-up pair (View · Add Claim), formed under either managing top action
+   (Manage claim/claims) or the Buy & Claim primary slot. `order` gives the
+   spec's reading order; focus order stays DOM order (Add → View) — accepted
+   in design D1. */
+.item-actions:has(:is(.item-actions-claim, .item-actions-buy)):has(.item-actions-add)
+  > .item-actions-view {
+  grid-column: 1;
+  order: 1;
+}
+
+.item-actions:has(:is(.item-actions-claim, .item-actions-buy)):has(.item-actions-add)
+  > .item-actions-add {
+  grid-column: 2;
+  order: 2;
+}
+
+/* The half-width pair slot can't fit "View item" — the visible label drops
+   to "View". The aria-label keeps the full phrase for AT. */
+.item-actions:has(:is(.item-actions-claim, .item-actions-buy)):has(.item-actions-add)
+  > .item-actions-view
+  .item-actions-view-label {
+  display: none;
+}
+
+/* Undo popup (claim-attribution spec) — content layout only; the shell is
+   the Modal primitive and the buttons keep design-system dimensions. */
+.claim-undo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.claim-undo-title {
+  font-size: 20px;
+  text-align: center;
+}
+
+.claim-undo-message {
+  text-align: center;
+}
+
+.claim-undo-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Fully-claimed inline status — sized to the standard button floor so the
+   card footer aligns with the claim CTA, but never a button (role=status). */
 .claimed-state {
   /* Locally-darkened text token — the global --muted-text-color fails
      WCAG 1.4.3 AA contrast against the pill background (4.26:1, below
@@ -37,4 +94,3 @@
   font-size: 14px;
   font-weight: 700;
 }
-

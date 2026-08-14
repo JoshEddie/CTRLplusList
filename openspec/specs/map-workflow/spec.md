@@ -1,0 +1,340 @@
+# map-workflow Specification
+
+## Purpose
+The definition layer of the two-layer workflow constitution. Every piece of work enters through `/map`, the mandatory intake that clears fog and emits issues cleared for work; nothing else creates worked issues. Governs the map lifecycle (chart / work / exit), the routing-label machine, ticket types, and epic completion (`/close-map`). The execution layer (`trunk-workflow`) owns everything after departure: tree, commits, gates, review, landing.
+## Requirements
+### Requirement: /map SHALL be the mandatory intake for all work definition, scaled to demand
+
+`/map` SHALL compile plain text or an existing GitHub issue toward ready-to-work issues through three phases — **chart**, **work**, **exit** — and SHALL be the only origin of issues cleared for work. Issue-birth mechanics (numeric-id lookup, sub-issue POST, blocked-by wiring, owner-approved body, no milestone, per-kind birth labels) SHALL live in the map-owned reference doc `issue-cut.md`, followed by citation by every skill that births an issue on a map — `/map`'s exit, `/anchor`'s charter, `/split-map` — with judgment (what to cut, when, and why) staying in the citing skill.
+
+#### Scenario: Small clear idea compiles to a single-chunk map
+- **WHEN** charting finds no fog and the idea is sized for one OpenSpec change
+- **THEN** `/map` creates a `MAP` index with exactly one distilled `CHARTED` chunk as its sub-issue in the same session, and creates no decision tickets
+
+#### Scenario: Giant but clear idea skips the decision phase
+- **WHEN** charting finds no fog but the work exceeds one OpenSpec change
+- **THEN** the map is created purely as the epic index and the invocation proceeds straight to the exit phase
+
+#### Scenario: Foggy epic charts a map
+- **WHEN** charting surfaces decisions that must wait for later sessions
+- **THEN** a `MAP`-labeled index issue is created with typed tickets as sub-issues, scouting subagents fire in parallel, and the invocation stops without hand-resolving plotting tickets
+
+#### Scenario: Every work item lives under a map
+- **WHEN** any skill that is not a citing consumer of `issue-cut.md` (`/map`'s exit, `/anchor`'s charter, `/split-map`) would create an issue cleared for work
+- **THEN** it does not, and the retired explore route is not used
+
+#### Scenario: Owner approves every body map emits
+- **WHEN** `/map` is about to create or edit any issue
+- **THEN** the body is a distilled, complete, current statement of what to build, and the owner has approved it first
+
+#### Scenario: Prompt issue is consumed, not converted
+- **WHEN** `/map` was invoked on an existing GitHub issue and has created the map
+- **THEN** the prompt issue is closed with a pointer comment to what map created
+
+#### Scenario: Inline answer never becomes a ticket
+- **WHEN** a question raised during charting is answered in the same session
+- **THEN** no ticket is created — persistence materializes only for state that must outlive the session
+
+#### Scenario: Map never plans the build
+- **WHEN** a ticket is created under a map
+- **THEN** it resolves a decision, never a slice of the build, and nothing is implemented from the map
+
+### Requirement: Routing labels SHALL form the machine-read lifecycle, stamped by the skill that causes each transition
+
+Routing labels SHALL be ALL CAPS and SHALL be the only labels skills route on:
+
+- `OFF THE MAP` — logged, not yet charted
+- `CHARTED` — scope settled, cleared for work
+- `UNCHARTED` — fog only, scope not settled; NOT a blocked marker
+- `MUSTER` — coverage roll-call chunk cut by the map's e2e scout
+  - plan in the ticket body, no spec delta, skips the departure arc's planning members
+  - `/embark-apply`'s direct-work target
+  - never comes off — the lane marker rides through the voyage and into port
+- `UNDER SAIL` — a voyage occupies the tree: an OpenSpec change or a MUSTER voyage
+- `IN PORT` — landed and sealed, awaiting inspection
+- `ADRIFT` — voyage interrupted with recoverable work
+- `MAP` — index issue
+- `PLOTTING` / `SCOUTING` — decision tickets
+
+The execution side of the machine SHALL be stamped by exactly one member of the departure arc: `/embark-apply`. The planning members — `/embark-start`, `/embark-design`, `/embark-qualify`, `/embark-write-tasks` — SHALL flip no label, because planning artifacts are tree state recorded by the change directory.
+
+#### Scenario: Label case is the semantics
+- **WHEN** any skill decides how to treat an issue
+- **THEN** only ALL-CAPS routing labels affect the decision, and ticket kind is read from the `PLOTTING`/`SCOUTING` label, never inferred from title or body
+
+#### Scenario: Sequencing is a blocked-by edge, never a label
+- **WHEN** a fully-scope-settled chunk must follow a predecessor chunk
+- **THEN** it is `CHARTED` with native blocked-by wired, and no label expresses the sequencing
+
+#### Scenario: Blocker lands, no label moves
+- **WHEN** a chunk sits `CHARTED` with blocked-by wired onto a predecessor chunk and that predecessor closes
+- **THEN** the chunk is frontier by the dependency graph alone — its label is untouched, no `/anchor` fires, and no skill carries a flip-on-blocker-landing duty
+
+#### Scenario: Each transition is stamped by its causing skill
+- **WHEN** a lifecycle transition occurs
+- **THEN** `/map` applies `CHARTED`/`UNCHARTED`, `/embark-apply` applies `UNDER SAIL` (adding it, removing `CHARTED` if present), `/landfall` applies `IN PORT`, and `/run-aground` applies `ADRIFT` and the discard `UNCHARTED`
+
+#### Scenario: The planning members stamp nothing
+- **WHEN** `/embark-start` boards an issue and the arc runs through to `/embark-write-tasks`
+- **THEN** the issue's labels are untouched until `/embark-apply` stamps `UNDER SAIL` — the arc's four planning members are not in the label machine
+
+#### Scenario: Birth labels follow the cut doc regardless of the cutting skill
+- **WHEN** any citing consumer of `issue-cut.md` births an issue on a map
+- **THEN** `issue-cut.md`'s per-kind rules stamp the birth label — the cut doc is the sole birth-label rule-set, and no citing skill carries birth-label rules of its own
+
+#### Scenario: Relabelling an existing chunk is stamped by the relabeller
+- **WHEN** `/anchor` demotes a chunk, `/run-aground` demotes dependent chunks (its always-run Step 1) or discards one, or `/split-map` migrates one
+- **THEN** that skill stamps `UNCHARTED` in its own right — the cut doc governs birth labels only
+
+#### Scenario: Lowercase labels are human triage only
+- **WHEN** an issue carries `bug`, `idea`, `debt`, `hold`, or any other lowercase label
+- **THEN** no skill routes on it
+
+#### Scenario: Held waters surface their hold note
+- **WHEN** `/map` recharts an `OFF THE MAP` issue carrying the `hold` label
+- **THEN** the parked findings comment is surfaced to the owner before any charting proceeds
+
+#### Scenario: Missing routing label fails loudly
+- **WHEN** a skill stamps a routing label that does not exist in the repo
+- **THEN** the `gh` call fails loudly — skills stamp labels and never create them, label creation being a one-time adoption step
+
+#### Scenario: Embark gates on both signals
+- **WHEN** `/embark-start` boards an issue
+- **THEN** it proceeds only on label `CHARTED` AND zero open blockers, and stops on anything else
+
+#### Scenario: Boarding check never delegates into the definition layer
+- **WHEN** `/embark-start`'s label dispatch rejects an issue
+- **THEN** it stops rather than routing into `/map`; the owner-confirmed epic route-out — reachable from `/embark-start`'s terrain check or `/embark-design`'s grilling, both owned by `trunk-workflow` — is the sole sanctioned entry from the departure arc
+
+#### Scenario: Discovery mid-voyage is logged, not folded
+- **WHEN** a session discovers out-of-scope work during implementation or review that sits outside every open map's Destination
+- **THEN** it writes the richest issue body it can, labels it `OFF THE MAP` (plus any lowercase kind), and returns to its voyage without invoking map
+
+#### Scenario: Release-blocking discovery is chartered onto its open map
+- **WHEN** a session discovers work that sits inside an open map's Destination and that map's release cannot ship without it
+- **THEN** the discovery is chartered onto that map via `/anchor` rather than logged `OFF THE MAP`, and the chunk's birth label is stamped per `issue-cut.md`, not by `/anchor`'s own judgment
+
+### Requirement: The map SHALL be an index issue with typed sub-issue tickets wired by native relationships
+
+The map SHALL be one GitHub issue labeled `MAP`, its body holding exactly five sections: Destination, Notes, Decisions so far, Not yet specified, Out of scope (template and edit discipline in the map-owned reference doc `map-body.md`; creation = editing from blank). The map SHALL be an index, not a store — a decision lives in exactly one place (its ticket) and the map gists and links it; maps and tickets SHALL be referred to by title wrapping the link, never a bare number. Tickets SHALL be sub-issues of the map (REST `sub_issues` via `gh api`, numeric-id lookup per `issue-cut.md`), each labeled exactly one of `PLOTTING` (HITL — run `/mattpocock-skills:grilling`, decisions put to the owner one at a time; the agent SHALL never answer for the helm) or `SCOUTING` (AFK — facts a decision waits on, resolved by a background subagent). Sequencing SHALL use native blocked-by relationships (`dependencies/blocked_by` via `gh api`). There SHALL be no claiming: the frontier is the open, unblocked sub-issues in list order. When multiple tickets are ready, the session SHALL prompt with the actual tickets as options — one recommended for the quickest landing, one for the highest leverage (most likely to flush a mirage before work builds on it) — with ties broken by list order. At most one plotting ticket SHALL be resolved per session. A question SHALL become a ticket only when it can be stated precisely now; otherwise it stays fog in Not yet specified. A ticket found to sit past the destination SHALL be closed into Out of scope with one line of why, never into Decisions so far. A manual prerequisite SHALL be recorded as a fog line naming what it waits on — not a ticket type; when the owner completes it, an anchor graduates the fog.
+
+#### Scenario: Frontier prompt offers real tickets by mode
+- **WHEN** a map work session finds three open, unblocked tickets
+- **THEN** it prompts with the tickets themselves — quickest-landing and highest-leverage recommendations named — and list order breaks any tie
+
+#### Scenario: Plotting waits for the owner
+- **WHEN** a session reaches a `PLOTTING` ticket and the owner is not engaging live
+- **THEN** the ticket stays open — the agent does not answer the plotting questions itself
+
+### Requirement: SCOUTING tickets SHALL auto-resolve with unreviewed markers
+
+A `SCOUTING` ticket SHALL fire its background subagent automatically at creation (e.g. during charting or on graduation from fog — the creation context is owned by the requirement that creates the ticket, not enumerated exhaustively here), with findings landing as the ticket's resolution comment and no scratch branches. The ticket SHALL auto-close, and its gist SHALL enter Decisions so far carrying an *unreviewed* marker until an owner-present session clears it. Downstream, `/embark-design`'s grilling SHALL treat unreviewed scouting decisions as suspect — re-validated with the owner, not cited as settled. `/embark-start` drafts the proposal before that interview runs, so an unreviewed gist it inherits SHALL be carried as provisional and SHALL NOT be recorded as settled.
+
+#### Scenario: Scouting fires at creation
+- **WHEN** a `SCOUTING` ticket is created
+- **THEN** a background subagent is spawned immediately and its findings land as the resolution comment, the ticket closes, and the map gist is marked unreviewed
+
+#### Scenario: Unreviewed finding is re-validated at departure
+- **WHEN** `/embark-design` grills a change whose inherited map decisions include an unreviewed scouting gist
+- **THEN** the grilling re-validates that decision with the owner instead of citing it as settled
+
+#### Scenario: The proposal carries an unreviewed gist as provisional
+- **WHEN** `/embark-start` drafts a proposal for a chunk whose map decisions include an unreviewed scouting gist
+- **THEN** the proposal marks it provisional rather than settled — the interview that clears it has not run yet
+
+### Requirement: Exit SHALL cut owner-approved, change-sized, sequenced chunks, tolerating wired residual fog
+
+Exit SHALL run when the chunking is drafteable and the frontier chunk is unblocked — not only when every decision is closed — and SHALL be re-enterable per-discovery on an open map via `/anchor`'s charter move. Exit's issue-creation mechanics SHALL follow `issue-cut.md`; exit keeps the judgment (drafting the split, sizing to one release, sequencing).
+
+#### Scenario: Exit with a residual decision
+- **WHEN** chunking is drafteable but one decision needs landed code to resolve
+- **THEN** exit proceeds with that ticket open and wired blocked-by onto the chunks it gates, those chunks born `UNCHARTED`, and the frontier chunk born `CHARTED`
+
+#### Scenario: Sequenced chunk is born CHARTED
+- **WHEN** exit creates a fully-scope-settled chunk whose only gate is a predecessor chunk
+- **THEN** the chunk is born `CHARTED` with blocked-by wired onto the predecessor, and no relabel occurs when the predecessor lands
+
+#### Scenario: Owner gates the chunking
+- **WHEN** exit drafts the implementation split
+- **THEN** no issue is created until the owner approves the chunking
+
+#### Scenario: Approved chunks are born ready to embark
+- **WHEN** the owner approves the chunking
+- **THEN** chunks are created as sub-issues of the map, sequenced with native blocked-by, with bodies pre-distilled (problem, settled decisions linked from the map, constraints) and linking the map so `/embark-start` inherits its Decisions so far
+
+#### Scenario: Exit cuts one release's worth
+- **WHEN** exit cuts chunks
+- **THEN** it cuts one release's worth and stamps the milestone on the map issue with chunks carrying none; scope beyond that release routes to a successor map or stays as fog until `/split-map` or `/close-map` dispatches it, and fog scoped to later chunks may persist in Not yet specified
+
+#### Scenario: Decision phase still bars incremental chunks
+- **WHEN** a map work session resolving a plotting ticket identifies a slice of the build before exit has run
+- **THEN** no implementation issue is created — charter applies only to an open map whose exit has already run
+
+#### Scenario: Charter re-enters exit on an open map
+- **WHEN** a session discovers that cargo landed under an open map is broken and that map's release cannot ship without the fix
+- **THEN** `/anchor`'s charter move cuts it as an owner-approved sub-issue chunk of that map per `issue-cut.md`, born `CHARTED` with no milestone and blocked-by wired onto what it builds on
+
+#### Scenario: Chartered chunk gated by an open decision is born UNCHARTED
+- **WHEN** a chartered chunk is gated by an open decision ticket
+- **THEN** it is born `UNCHARTED` with blocked-by wired, by the same `issue-cut.md` mechanics as any other chunk
+
+#### Scenario: In-Destination nice-to-have is put to the owner
+- **WHEN** a discovery sits inside an open map's Destination but the release can ship without it
+- **THEN** the owner chooses per discovery between a fog line on the map and an `OFF THE MAP` issue, and no chunk is cut
+
+#### Scenario: Out-of-Destination discovery is logged
+- **WHEN** a discovery sits outside every open map's Destination
+- **THEN** it is logged `OFF THE MAP` and no chunk is cut
+
+#### Scenario: Charter is silent on release pressure
+- **WHEN** a chartered chunk would push the map past what its release can finish
+- **THEN** the charter criteria alone decide, no scope warning is owed, and the overrun remains `/split-map`'s case
+
+### Requirement: /port-inspection SHALL own the IN PORT inspection walk
+
+`/port-inspection [map#|issue#]` SHALL be the skill that inspects `IN PORT` cargo, invokable whenever cargo is in port — inspection never waits on the epic's frontier. Scoping: a `MAP` issue# walks that map's open `IN PORT` chunks; a chunk issue# inspects just that chunk (discriminated by the `MAP` label on the resolved issue); no argument SHALL NOT walk anything silently — the skill reads recent `issue-<N>:` commits on `dev`, resolves which of those issues are open and `IN PORT`, and recommends candidates for the owner to pick before any walk runs.
+
+At each stop the skill SHALL surface the dependency consequence of closing: one dependents lookup per chunk (`gh api repos/{owner}/{repo}/issues/<n>/dependencies/blocking`), reporting each open dependent as "closing this unblocks #N". A failed lookup SHALL be reported, never read as "no dependents"; the surface is informational and does not gate the stop.
+
+At each stop the skill SHALL also verify the chunk's archive commit actually landed on `origin/dev` before closing — the compensating check for landfall flipping `IN PORT` at archive rather than after push. A chunk whose `issue-<N>: archive <change>` seal commit is not present on `origin/dev` SHALL NOT be closed: the chunk stays open, the stop flags the unpushed/abandoned seal, and the skill flips the chunk's label `IN PORT` → `UNDER SAIL` to un-strand it so `/landfall` can re-run and land it. This flip-back is the sole reconciler of a stranded `IN PORT`; a failed archive-presence check SHALL be reported, never read as "archive landed".
+
+`/port-inspection` SHALL own the map-wide e2e scout end to end: whenever a close (or any invocation's state read) finds every implementation chunk of a map closed and no e2e scout on the map, the skill creates the scout per `issue-cut.md` as an ordinary fire-at-creation `SCOUTING` ticket, and it fires per the map-wide e2e scout requirement. A recommendation for coverage routes to an owner-approved e2e chunk cut via `issue-cut.md` — creating, firing, and cutting are `/port-inspection`'s acts, never `/close-map`'s. A failed sub-issue-state read SHALL be reported, never read as "all chunks closed".
+
+The verification surface is the **dev deployment, before the map's release cuts** — never production; a regression discovered in production after ship is a new bug ticket scoped to a patch release, not a reopened chunk. Owner confirms verified → `gh issue close <N>`; not confirmed → the chunk stays open with what's outstanding noted. Side effects are GitHub issue operations only, via `gh`; no trunk preconditions gate.
+
+#### Scenario: Closing surfaces the unblock
+- **WHEN** `/port-inspection` stops at an `IN PORT` chunk that blocks an open `CHARTED` issue
+- **THEN** the stop reports "closing this unblocks #N" from the dependents lookup, and closing the chunk on the owner's confirmation makes the dependent frontier
+
+#### Scenario: No-arg recommends before walking
+- **WHEN** `/port-inspection` runs with no argument
+- **THEN** it recommends inspection candidates derived from recent `issue-<N>:` commits on `dev` that sit open and `IN PORT`, and walks only what the owner picks
+
+#### Scenario: Single-chunk inspection
+- **WHEN** `/port-inspection <chunk#>` runs against one `IN PORT` chunk whose archive commit is present on `origin/dev`
+- **THEN** only that chunk is inspected — verified on the dev deployment → closed, otherwise left open with the outstanding note
+
+#### Scenario: Unpushed seal keeps the chunk open and un-strands the label
+- **WHEN** `/port-inspection` stops at an `IN PORT` chunk whose `issue-<N>: archive <change>` seal commit is not on `origin/dev`
+- **THEN** the chunk is not closed — the stop flags the unpushed seal and flips the chunk's label `IN PORT` → `UNDER SAIL`, clearing it for `/landfall` to re-run
+
+#### Scenario: Last close births and fires the e2e scout
+- **WHEN** an inspection stop closes the final open implementation chunk of a map that has no e2e scout
+- **THEN** `/port-inspection` creates the scout per `issue-cut.md` and it fires at creation — reading the sub-issues' summary comments and landed code, posting its report, and auto-closing with the ***unreviewed*** marker
+
+#### Scenario: Legacy map gets its scout on demand
+- **WHEN** `/port-inspection` reads a map whose implementation chunks are all already closed but which predates the e2e scout
+- **THEN** the same lazy path applies — the scout is created and fired then, no backfill step and no exemption
+
+### Requirement: /close-map SHALL end the epic through inspection
+
+`/close-map` SHALL be the inspection batch-point and the only skill that closes a map: it runs the `IN PORT` inspection walk as a thin delegation to `/port-inspection` — the walk's rules (dev-deployment verification surface, dependents surface, close-on-confirmation) live in that skill and are followed, never restated — then closes the map when — and only when — every implementation chunk is closed. A map whose last chunk is merely `IN PORT` SHALL NOT close: `IN PORT` is uninspected cargo. `/close-map` SHALL refuse to close a map still holding unstarted chunks or residual Not-yet-specified fog, pointing at `/split-map` to dispatch the leftovers. A map whose e2e scout is absent or unresolved SHALL NOT close — the skill points at `/port-inspection`, which creates and fires the scout; an open e2e scout is an explicit carve-out from the residual-tickets-are-stale rule, the one residual ticket that means work remains. Closing never creates, fires, or cuts. Landfall labels; inspection closes.
+
+#### Scenario: In-port chunks block the close
+- **WHEN** `/close-map` runs while two chunks sit `IN PORT`
+- **THEN** it walks both per `/port-inspection` (closing those the owner confirms verified on the dev deployment) and closes the map only if none remain open
+
+#### Scenario: Leftovers block the close
+- **WHEN** `/close-map` runs on a map whose chunks are all closed but whose body still holds Not-yet-specified fog or an unstarted chunk
+- **THEN** it refuses to close the map and points at `/split-map`
+
+#### Scenario: Missing or unresolved e2e scout blocks the close
+- **WHEN** `/close-map` runs on a map whose chunks are all closed but whose e2e scout is absent or still open
+- **THEN** it refuses to close the map and points at `/port-inspection` to create/fire the scout — closing never adds tickets or fires scouts
+
+### Requirement: The definition layer SHALL only write GitHub issues and SHALL run ungated
+
+`/map`, `/port-inspection`, `/close-map`, and `/split-map` SHALL limit side effects to GitHub issue operations (issues, comments, labels, sub-issue links, blocked-by relationships, map milestone assignment) via `gh`. They SHALL never mutate the working tree, never stage, never run `git commit`, and never push — no exception. They SHALL have no trunk preconditions gate — branch and tree state are irrelevant to issue writes. (`/anchor`'s identical guardrail is owned by `anchor-and-run-aground`; the tree exception formerly carried here lives in `/run-aground`'s park move, also owned there.)
+
+#### Scenario: Dirty tree does not block mapping
+- **WHEN** `/map` is invoked while an implemented change sits uncommitted in the working tree
+- **THEN** the invocation proceeds — the skill touches only GitHub issues
+
+### Requirement: Chart SHALL seed from an aborted departure with a re-validation sweep
+
+When the departure arc routes out as epic-sized (the gate-side behavior is owned by `trunk-workflow`), `/map`'s chart phase SHALL run in the same conversation and SHALL treat everything the aborted session established as candidates, not decisions: chart opens with a re-validation sweep in which each prior answer is either confirmed into Decisions so far as a plain unlinked gist line (no ticket — an answer that never waited never earns one) or demoted to fog or a ticket, because answers given under a one-change framing may not survive the epic reframing.
+
+The route-out is reachable from two members, and the sweep's input differs by which:
+
+- **From `/embark-start`'s terrain check** — no interview has run, so the sweep's input is the issue body and the map decisions the terrain check surfaced. No change directory exists.
+- **From `/embark-design`'s grilling** — the sweep's input is the grilling's answers plus the drafted `proposal.md`, which SHALL itself be treated as a candidate rather than a settled framing.
+
+#### Scenario: Prior answer survives reframing
+- **WHEN** the re-validation sweep confirms an answer given before the epic realization still holds
+- **THEN** it enters Decisions so far as an unlinked gist line and is not re-asked
+
+#### Scenario: Prior answer turns foggy
+- **WHEN** the epic reframing makes a previously clear answer suspect
+- **THEN** the sweep demotes it to Not yet specified or a fresh ticket instead of carrying it forward
+
+#### Scenario: Route-out before any interview has a thinner sweep
+- **WHEN** `/embark-start`'s terrain check routes the issue out as epic-sized
+- **THEN** chart's sweep re-validates the issue body and surfaced map decisions — there are no interview answers to carry, and no change directory to discard
+
+#### Scenario: A drafted proposal is a candidate, not a framing
+- **WHEN** `/embark-design`'s grilling routes out as epic-sized against an existing `proposal.md`
+- **THEN** the sweep treats that proposal's positions as candidates alongside the interview answers rather than as the map's settled scope
+
+### Requirement: The map SHALL be atomic with respect to a release, with /split-map as the only boundary cutter
+
+A map's implementation chunks SHALL all ship in the same release: the milestone lives **only on the `MAP` issue**, stamped at exit, and no chunk, ticket, or other issue SHALL carry one. A map milestoned to a release SHALL be fully closed — via `/close-map`'s inspection walk — before that release cuts (the gate itself is owned by `release-review`). A single chunk SHALL NOT move to another release: when a milestoned map will not finish, the options are finish it, re-milestone the whole map (nothing landed yet), or split it.
+
+`/split-map <map#>` SHALL be the only operation that cuts a map at the landed boundary. It SHALL be a peer consumer of the map-owned reference docs — successor-map creation follows `map-body.md`, issue creation (including the re-orientation ticket) follows `issue-cut.md`, and everything not stated here follows `/map` exactly (guardrails, label machine, write-back discipline). It SHALL: inventory landed (`IN PORT`/closed) versus open chunks and present the split line to the owner; create an owner-approved successor map on the next milestone; migrate every unstarted chunk (re-parent as sub-issue) together with any decision tickets that gate them; migrate residual fog per the owner's per-line choice — into the successor's Not yet specified, or demoted to an `OFF THE MAP` issue when it has drifted from the destination; copy the Decisions-so-far gists relevant to migrated chunks into the successor body with links back; cross-link both bodies (predecessor Notes → continued-in successor, successor Notes → origin); and seed the successor with exactly one re-orientation `PLOTTING` ticket wired blocked-by onto every migrated chunk, so migrated chunks are born `UNCHARTED`. The re-orientation ticket's resolution SHALL verify the predecessor map is fully closed, re-validate each copied decision gist against the shipped terrain (confirmed or demoted to fog), confirm migrated chunk bodies still match landed reality, and sharpen residual fog the shipped release settled. `/split-map` SHALL never close any issue or map, and SHALL NOT migrate an `UNDER SAIL` or `ADRIFT` chunk — an active voyage pins the split until it resolves via `/landfall` or `/run-aground`.
+
+#### Scenario: Split at the landed boundary
+- **WHEN** `/split-map` runs on a map with two chunks landed and three unstarted
+- **THEN** an owner-approved successor map is created on the next milestone, the three unstarted chunks and their gating tickets are re-parented to it, both map bodies are cross-linked, and the predecessor retains only its landed chunks
+
+#### Scenario: Re-orientation ticket gates the successor
+- **WHEN** the successor map's first work session opens its frontier
+- **THEN** the sole unblocked item is the re-orientation `PLOTTING` ticket, every migrated chunk sits `UNCHARTED` behind it, and resolving it verifies the predecessor closed, re-validates inherited gists, and flips unblocked chunks `CHARTED`
+
+#### Scenario: Residual fog is dispatched per line
+- **WHEN** the split reaches a Not-yet-specified line
+- **THEN** the owner chooses per line: carry it into the successor's fog or demote it to an `OFF THE MAP` issue
+
+#### Scenario: Active voyage pins the split
+- **WHEN** `/split-map` finds a chunk labeled `UNDER SAIL` or `ADRIFT`
+- **THEN** it stops without migrating anything, naming the voyage that must resolve first
+
+### Requirement: Every map SHALL pass a map-wide e2e scout before it closes
+
+Every map SHALL be read, after its last implementation chunk closes and before the map closes, by one e2e `SCOUTING` ticket ("what e2e coverage does this map need?").
+
+**Creation.** Created lazily by `/port-inspection` per its requirement, born via `issue-cut.md` as an ordinary fire-at-creation scout with no UI-touching precondition — the scout itself owns the judgment of whether e2e work is needed.
+
+**Sources.**
+
+- The scout's subagent SHALL read the archived `acceptance.md` of each of the map's landed voyages, newest first, as the primary source of that chunk's user-visible behavior, plus the landed code.
+- Per-chunk summary comments (posted by `/landfall`, owned by `trunk-workflow`) and `issue-<N>:` commits SHALL be read as fallback only, for chunks whose archived change carries no `acceptance.md`.
+- A sub-issue carrying no summary comment SHALL NOT be treated as an error or as "no user-visible changes".
+
+**Resolution.**
+
+- Findings land as the resolution comment and the ticket auto-closes with the ***unreviewed*** marker per the scouting requirement.
+- A report recommending coverage SHALL route to an owner-approved map-wide e2e chunk cut via `issue-cut.md`, whose per-kind rule births the closing e2e chunk `MUSTER` with the coverage plan — rows plus deliberate skips — in the ticket body.
+- A report finding no e2e updates needed resolves the ticket with no chunk.
+
+**Mid-map e2e policy.**
+
+- Implementation chunks SHALL make only minimal keep-green e2e edits.
+- Coverage of removed behavior SHALL be deleted with the behavior.
+- Coverage of surviving behavior SHALL NOT be deleted to get green.
+- The closing e2e chunk owns map-wide coverage — new flows, cross-chunk journeys, and consolidating the minimal patches — and runs the MUSTER lane (owned by `trunk-workflow`), not the charted flow.
+
+#### Scenario: Scout runs on a map with no visible UI scope
+- **WHEN** the scout fires on a map whose chunks were entirely non-UI
+- **THEN** it resolves "no e2e updates needed" from the archived acceptance flows and landed code, closes with the ***unreviewed*** marker, and no chunk is cut
+
+#### Scenario: Legacy sub-issue lacks an archived acceptance.md
+- **WHEN** the scout reads a map whose sub-issues predate the `acceptance` artifact
+- **THEN** it falls back for those chunks to the `/landfall` summary comment, and — where that is also missing — derives their user-visible changes from their `issue-<N>:` commits and archived change, neither absence read as "no user-visible changes"
+
+#### Scenario: Scout recommends coverage
+- **WHEN** the fired scout's report recommends map-wide e2e coverage
+- **THEN** `/port-inspection` cuts the e2e chunk via `issue-cut.md` with owner approval — born `MUSTER`, plan in the ticket body — and that chunk blocks `/close-map` like any open implementation chunk
+
+#### Scenario: Chunk keeps e2e minimally green mid-map
+- **WHEN** an implementation chunk breaks an existing e2e spec covering behavior that survives the change
+- **THEN** the chunk patches the spec minimally to keep it green — it does not delete the coverage — and map-wide consolidation waits for the closing e2e chunk
+

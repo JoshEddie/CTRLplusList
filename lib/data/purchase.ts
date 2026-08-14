@@ -1,5 +1,6 @@
 import { db } from '@/db';
 import { purchases, user_blocks, user_follows } from '@/db/schema';
+import { primaryStore } from '@/lib/storeValidity';
 import { ActionResponse, PurchaseView } from '@/lib/types';
 import { and, eq, or } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
@@ -9,7 +10,8 @@ type RawPurchase = {
   user_id: string | null;
   claimed_by: string | null;
   guest_name: string | null;
-  user: { name: string | null } | null;
+  purchased_at: Date;
+  user: { name: string | null; image?: string | null } | null;
   claimer: { name: string | null } | null;
 };
 
@@ -37,6 +39,8 @@ export function sanitizePurchases(
       by: isSelf ? ('self' as const) : ('other' as const),
       firstName: firstNameOf(p.user?.name ?? p.guest_name),
       claimedByViewer: !!viewerId && p.claimed_by === viewerId,
+      purchasedAt: p.purchased_at,
+      image: p.user?.image ?? null,
     };
     if (isOwner && p.claimed_by && p.claimed_by !== p.user_id) {
       view.claimerFirstName = firstNameOf(p.claimer?.name);
@@ -129,18 +133,18 @@ export function claimConflictResponse(
 }
 
 // Removal rights matrix: the claimer (claimed_by), the purchaser (user_id),
-// or the item owner (master unclaim). Unauthenticated callers keep the
-// legacy guest path: a claimed_by-NULL row plus the exact stored name —
-// without the name match, any guest who knew a purchase id could revoke it.
+// or the item owner (master unclaim). Unauthenticated callers are authorized
+// only on all-NULL-identity rows whose id their guest_claims cookie lists —
+// the cookie is ambient request state, never a payload field.
 export function canRemovePurchase(
   row: {
+    id: string;
     user_id: string | null;
     claimed_by: string | null;
-    guest_name: string | null;
   },
   itemOwnerId: string | null,
   actorUserId: string | null,
-  suppliedGuestName: string | null | undefined
+  cookiePurchaseIds: ReadonlySet<string>
 ): boolean {
   if (actorUserId) {
     return (
@@ -150,8 +154,7 @@ export function canRemovePurchase(
     );
   }
   if (row.claimed_by !== null || row.user_id !== null) return false;
-  const supplied = suppliedGuestName?.trim() ?? '';
-  return supplied !== '' && row.guest_name === supplied;
+  return cookiePurchaseIds.has(row.id);
 }
 
 export async function getItemsByPurchased(userId?: string) {
@@ -172,6 +175,7 @@ export async function getItemsByPurchased(userId?: string) {
                 user: {
                   columns: {
                     name: true,
+                    image: true,
                   },
                 },
                 claimer: {
@@ -187,8 +191,9 @@ export async function getItemsByPurchased(userId?: string) {
       orderBy: (purchases, { desc }) => [desc(purchases.purchased_at)],
     });
 
-    return result.map(({ item }) => ({
+    return result.map(({ item: { stores, ...item } }) => ({
       ...item,
+      store: primaryStore(stores),
       purchases: sanitizePurchases(item.purchases, userId, false),
     }));
   } catch (error) {

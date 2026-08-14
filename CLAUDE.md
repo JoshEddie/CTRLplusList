@@ -1,98 +1,115 @@
 # Claude notes
 
-## Adding or modifying tests? Read [TESTING.md](TESTING.md) first
+## Hard rules at a glance
 
-Substance rules, forbidden patterns (tautologies, execute-for-coverage, snapshot-only), and the assertion bar all live there. Applies to every test in the repo.
+Non-negotiables; each links to its full text.
 
-## Touching DB queries or schema? Read [DATABASE.md](DATABASE.md) first
+- **No interactive DB transactions** — no `db.transaction(...)`, no `SELECT … FOR UPDATE`; `neon-http` runs every query as its own HTTP round-trip. Atomicity via unique / partial-unique indexes + `ON CONFLICT`. ([DATABASE.md](DATABASE.md))
+- **No comments by default** — only non-obvious WHY earns one. (§ Comments)
+- **File size** — >400 lines of code = merge-blocking lint error; 300–400 = only tolerated lint warning; never `eslint-disable` either rule. (§ File size)
+- **Tests assert observable behavior** — no execute-for-coverage, no tautologies; names lint-enforced `<StateUnderTest>_<ExpectedBehavior>`. ([TESTING.md](TESTING.md))
+- **Every `/* v8 ignore */` carries inline `--` rationale** naming unreachable branch; never valid on redundant guard. ([TESTING.md](TESTING.md))
+- **Five gates, checked separately**: `npm run lint` (pure `eslint .` — zero errors, zero non-size warnings) · `npx tsc --noEmit` · `npm run build` · `npm run test:coverage` · `npm run test:e2e`. Trunk landings: lint + typecheck locally pre-push; CI on `dev` push runs full battery. Non-executable changes (markdown/skills/specs, comment-only edits) may omit the two test gates — no checklist item, the omission + rationale named in the section's lead-in; any executable change voids it. CI still runs everything. (§ Trunk workflow)
+- **Skills never `git commit`** — stage, report, stop for owner's signature; never retry blocked signature. One change in apply stage at a time on `dev`. (§ Trunk workflow)
+- **Specs are the contract** — `openspec/specs/<capability>/spec.md` normative; archived changes are history. Every interactive surface routes through a primitive-family spec; no page-scoped one-off UI classes.
+- **Restart dev server after seeding/reseeding** — `'use cache'` DAL results stay stale otherwise. (§ Local dev)
 
-Key tripwire: the DB layer uses `drizzle-orm/neon-http`. **Interactive transactions are not supported** — no `db.transaction(...)`, no `SELECT … FOR UPDATE`. Full rationale, migration workflow, and driver caveats live in DATABASE.md.
+## Read this before touching that
 
-## Writing code: 
+| Touching… | Read first |
+| --- | --- |
+| Any test | [TESTING.md](TESTING.md) — substance rules, forbidden patterns, fixtures, naming |
+| DB queries, DAL, schema, migrations | [DATABASE.md](DATABASE.md) — driver limits, migration workflow |
+| OpenSpec changes or specs | [openspec/config.yaml](openspec/config.yaml) + capability spec in `openspec/specs/` (see § Trunk workflow) |
+| UI primitives / any interactive surface | Owning primitive-family spec (`button-system`, `menu-system`, …) in `openspec/specs/` |
+| Seeded UI states, local-mode internals, product-fetch mock | [LOCALDEV.md](LOCALDEV.md) — only when needed |
 
-### Comments:
+## Trunk workflow
 
-Default to writing no comments. Only add one when the WHY is non-obvious — a hidden constraint, a subtle invariant, a workaround for a specific bug, behavior that would surprise a reader. If removing the comment wouldn't confuse a future reader, don't write it.
+Normative: `map-workflow` + `trunk-workflow` specs; mechanics: each skill's SKILL.md; labels: [.claude/skills/map/reference/label-machine.md](.claude/skills/map/reference/label-machine.md).
 
-Don't explain WHAT the code does — well-named identifiers already do that. Don't reference the current task, fix, or callers ("used by X", "added for the Y flow", "handles the case from issue #123") — those belong in the PR description and rot as the codebase evolves.
+- Route everything through the fleet: `/map` (all work definition) → `/embark-start` → `/embark-design` → `/embark-qualify` → `/embark-write-tasks` → `/embark-apply` → `/spec-review` → `/landfall`, `/anchor` for map bearing moves, `/run-aground` for mid-voyage mirages, `/port-inspection`/`/close-map` for closure, `/release-review` for release cut. Never improvise a step the fleet owns (issues, ALL-CAPS labels, closing, releasing) by hand.
+- Work on `dev`; review before any commit exists; one change in apply at a time (also in hard rules).
+- Never hand-edit generated `openspec-*`/`opsx/*` files under `.claude/` — `openspec update` clobbers. Repo-owned (safe): `grill-me`, `finalize-spec-purposes`, fleet skills.
+- `openspec/schemas/spec-driven-review/` is a **repo-owned fork** of the package `@fission-ai/openspec` `spec-driven` schema (full copy — `resolveSchema` reads one file whole, no merge) plus the local `review` artifact that scaffolds `review.md` at propose time and the local `acceptance` artifact that drafts `acceptance.md` user-journey flows. It is **renamed** (not same-named shadowing) so the package `spec-driven` default stays reachable and there is no silent override; changes select it by name via `config.yaml`'s `schema:` default and each change's `.openspec.yaml`. It survives `openspec update` (which only clobbers the package dir). **On `openspec update`, reconcile the fork against the updated package `spec-driven` schema** — copy-forward or diff-and-merge the proposal/specs/design/tasks artifacts + templates, preserving the `review` and `acceptance` additions — so it does not silently drift. `openspec validate --strict` in the pre-merge gate catches a structurally broken fork.
 
-### File size (red / yellow / green):
+## Writing code
 
-Lint-enforced bands for production source, counted in lines of **code** (comments and blank lines are free): **red** >400 = error — split by table-cohesion/domain before merge; **yellow** 300–400 = warning — pull easy wins where a clean extraction exists, a cohesive file may stay yellow; **green** <300 = goal, never achieved by scattering one concern across files. Yellow size advisories are the only tolerated lint warnings; no `eslint-disable` for either rule. Canonical homes: the rules in [eslint.config.mjs](eslint.config.mjs), the normative text in `openspec/specs/testing-foundation`.
+### Comments
 
-### Abstraction (DRY · KISS · coupling):
+- None by default. Add only when WHY non-obvious — hidden constraint, subtle invariant, workaround for specific bug, surprising behavior.
+- If removing comment wouldn't confuse future reader, don't write it.
+- Never explain WHAT — identifiers do that.
+- Never reference current task/fix/callers ("used by X", "added for Y flow", "handles issue #123") — belongs in PR description, rots.
+
+### File size (red / yellow / green)
+
+- Scope: production source (`app/**`, `lib/**`, `hooks/**`, `db/**`); test files + `**/__tests__/**` exempt; `scripts/**`, `e2e/**` outside scoped set. Counted in lines of **code** (comments + blanks free).
+- **Red** >400 = error — split by table-cohesion/domain before merge.
+- **Yellow** 300–400 = warning — pull easy wins where clean extraction exists; cohesive file may stay yellow. Only tolerated lint warnings.
+- **Green** <300 = goal, never via scattering one concern across files.
+- No `eslint-disable` for either rule.
+- Canonical: rules in [eslint.config.mjs](eslint.config.mjs), normative text in `openspec/specs/testing-foundation`.
+
+### Abstraction (DRY · KISS · coupling)
 
 #### Duplication (DRY)
 
-- Extract duplicated, identical-by-design logic into one home on sight — don't ask whether to, the answer is yes.
-- Keep copies apart only when you can name them as different concepts that will change for different reasons; code that merely looks alike is not a duplication to merge.
-- The exception is the genuinely trivial: a shared line or two with no structure can stay inline — three similar lines beats a premature abstraction. But *trivial* is the bar, not the copy count. Weigh three forces: **weight** (a line or two can stay; a typed factory, multi-field literal, or anything with branching extracts), **drift hazard** (extract when one copy can fall behind **silently** — still compiles, still passes, but now means something different; inline is fine when divergence fails loudly or doesn't matter), and **count** (three or more extracts even when trivial — but count only escalates, it never overrides weight or drift). Two copies is a judgment call on those forces, not an always-or-never: a heavy or drift-prone unit earns one home even at two.
+**Decision rule** — extract when ANY of: 3+ copies · unit has structure (branching, typed factory, multi-field literal) · copy could drift silently (still compiles/passes while meaning diverges). Stay inline only when ALL of: ≤2 copies · 1–2 lines · no structure · divergence fails loudly.
+
+- Identical-by-design logic → one home on sight; don't ask.
+- Keep copies apart only when nameable as different concepts changing for different reasons; looks-alike ≠ duplication.
+- Trivial exception: shared line or two, no structure, may stay inline. *Trivial* is the bar, not copy count. Three forces: **weight** (line or two stays; typed factory / multi-field literal / branching extracts), **drift hazard** (extract when copy can fall behind **silently**; inline fine when divergence fails loudly or doesn't matter), **count** (3+ extracts even when trivial — count only escalates, never overrides weight or drift). Two copies = judgment call; heavy or drift-prone earns one home even at two.
 
 #### Over-generality (KISS)
 
-- Don't build generality for cases that don't exist yet — parameters, flags, or branches with no current caller are dead code except when planned for imminent future use.
-- Don't tear down a clean, working, tested abstraction just because it's more general than strictly needed; once it exists and is covered, stripping it is risk for no live defect.
+- No generality for cases that don't exist — parameters/flags/branches with no current caller = dead code, unless planned for imminent use.
+- Don't tear down clean, working, tested abstraction for being more general than needed; stripping covered code = risk, no live defect.
 
 #### Redundant guards
 
-- Don't re-test a condition your own earlier control flow already decided. A guard (`if (cond) redirect()/return/throw`) whose condition is already excluded by an upstream guard or branch in the same function is dead code — remove it and let any narrowing flow from the existing control flow (merge or move the upstream guard, early-return). Never paper over it with a `/* v8 ignore */`.
-- This is NOT a defensive guard, whose condition turns on an invariant established outside the function (framework lifecycle, platform, a third-party/DB contract) the compiler can't prove — that one is legitimate. Tell: a rationale that cites the function's own earlier code ("the guard above already redirects…") is the redundant kind.
+- Don't re-test condition your own earlier control flow decided. Guard (`if (cond) redirect()/return/throw`) whose condition already excluded upstream in same function = dead code — remove, let narrowing flow from existing control flow (merge/move upstream guard, early-return). Never paper over with `/* v8 ignore */`.
+- NOT a defensive guard, whose condition turns on invariant established outside function (framework lifecycle, platform, third-party/DB contract) compiler can't prove — legitimate. Tell: rationale citing function's own earlier code ("guard above already redirects…") = redundant kind.
 
 #### Fragile coupling
 
-- When a shared abstraction's callers diverge, split it back into separate concepts — don't bolt on flags, params, or branches so one thing can serve all of them.
-- Coupling between callers that are genuinely one concept meant to change together is the abstraction doing its job.
+- Shared abstraction's callers diverge → split back into separate concepts; no flags/params/branches so one thing serves all.
+- Coupling between callers that are genuinely one concept changing together = abstraction working.
 
 #### Extraction for leanness
 
-- Extract single-caller helpers to keep files lean — extraction for readability is the norm, not over-abstraction, and doesn't need justifying.
+- Extract single-caller helpers for lean files — readability extraction is norm, needs no justification.
 
 #### Where extracted helpers live
 
-- Small, generic, or pure helpers go in a **co-located `utils.ts`** for that directory (create it if absent) — not in their own single-purpose file. `capRail` lives in `app/(main)/lists/ui/components/rails/utils.ts`, following `app/(main)/users/ui/utils.ts` (`initialsOf`).
-- Reserve a descriptively-named standalone module for a genuine domain/capability concept (`lib/data/user.ts`, `lib/visibility.ts`, `lib/listAccess.ts`). `utils.ts` is for the small stuff, not a dumping ground for domain logic.
+- Small/generic/pure helpers → **co-located `utils.ts`** for that directory (create if absent), not own single-purpose file. `capRail` in `app/(main)/lists/ui/components/rails/utils.ts`, following `app/(main)/users/ui/utils.ts` (`initialsOf`).
+- Descriptively-named standalone module reserved for genuine domain/capability concept (`lib/data/user.ts`, `lib/visibility.ts`, `lib/listAccess.ts`). `utils.ts` = small stuff, not domain-logic dump.
 
 #### Worked example: `Button` / `LinkButton`
 
-One small trio in `app/ui/components/button/` shows the first three forces at once:
+Trio in `app/ui/components/button/`:
 
-- **DRY** — the only thing the two genuinely share, the visual styling, lives in `buttonClasses()`; neither component re-implements it.
-- **Fragile coupling** — they stay separate components instead of collapsing into one polymorphic thing behind an `as`/`href` flag, because the concepts diverge: `Button` is a `<button>` (`ButtonHTMLAttributes` + `type`), `LinkButton` is a Next `<Link>` (`AnchorHTMLAttributes` + `LinkProps`).
-- **KISS** — each carries only the props its concept needs: `Button` has `isLoading`/`disabled`, `LinkButton` doesn't — a link can't load or be disabled, so adding them "for symmetry" would be generality for a caller that doesn't exist.
+- **DRY** — only genuine shared thing, visual styling, lives in `buttonClasses()`.
+- **Fragile coupling** — separate components, not one polymorphic thing behind `as`/`href` flag: `Button` = `<button>` (`ButtonHTMLAttributes` + `type`), `LinkButton` = Next `<Link>` (`AnchorHTMLAttributes` + `LinkProps`).
+- **KISS** — each carries only its concept's props: `Button` has `isLoading`/`disabled`, `LinkButton` doesn't — link can't load or be disabled; adding "for symmetry" = generality for nonexistent caller.
 
-## Local dev + e2e auth bypass (via `USE_PG_DRIVER`)
+### Components, pages, styling
 
-The app gates every protected page on Google OAuth via NextAuth, which makes it impossible to validate UI changes through the preview tools without a real Google sign-in. "Local mode" — a localhost Docker Postgres **plus** synthesized sessions (no real OAuth) — is entered with a single flag, `USE_PG_DRIVER=1`. The same flag points the DB driver at local Postgres (see [db/index.ts](db/index.ts)) and turns off real auth (see [lib/auth.ts](lib/auth.ts)); it is the same flag the e2e servers set. **Docker is a prerequisite** (Docker Desktop on macOS — `dev:local` auto-starts it).
+- **Thin `page.tsx`** — route files = shells forwarding props to co-located `<RouteName>Page.tsx` (`HistoryPage.tsx` next to `page.tsx`). Page component awaits `params`/`searchParams`, owns auth, data fetching, business logic; route file maps URL → component. Touching page with inline logic → split it; no unprompted bulk-refactor.
+- **Extract subcomponents** — JSX block with own identity (row, card, "list + empty state") or past ~5 lines → named subcomponent; no inline nested JSX in parent. `length === 0 ? <empty> : <ul>{map(...)}</ul>` = own component (`BookmarksList`); per-item rendering own (`BookmarkRow`); parent reads like outline. Co-locate next to page, or feature's `ui/components/` if reused. Trivial two-line conditional needs no name.
+- **Reuse existing CSS variables** — applying design mockup: defer to token set + naming in `app/ui/styles/global.css` (`--primary-color`, `--neutral-text-color`, `--secondary-background-color`, …). Map `mockup value → existing var` first; new token only when no existing token's role covers value, named same `--<role>-color` style — never parallel shorthand system (`--p`, `--ink`).
 
-**To run locally bypassed:**
+### Writing markdown (docs, skills, specs)
 
-1. `npm run dev:local` — brings up the localhost Postgres sidecar (`docker-compose.e2e.yml`), applies schema via `drizzle-kit push`, seeds `dev-test-viewer` plus the friend graph (idempotent), then starts `next dev` with `USE_PG_DRIVER=1`. Every protected page renders as `dev-test-viewer` with no sign-in.
-2. Nothing to hand-set: the localhost `DATABASE_URL` lives once in `e2e/.env` (committed, non-secret — only `*.local` env files hold secrets and are gitignored, per the `.env*.local` convention) and is shared by the scripts, `docker-compose.e2e.yml`, and `e2e/helpers/constants.ts`.
+- Titled concept with own sub-points → real `###`/`####` subheading + bullet list — not list item with bolded inline title. Avoid `- **Standard review** — a, b, c.`; prefer `### Standard review` heading over `- a` / `- b` / `- c`. Same for numbered-list-with-bold.
+- Genuinely flat enumerations (ranked signals, condition→action branches, glossary legends) stay plain bullets.
 
-**Choosing the session identity (`BYPASS_SESSION_USER`):** orthogonal to the bypass. Unset ⇒ the default `dev-test-viewer` session; the literal `guest` ⇒ `auth()` resolves to `null` (logged out); any other seeded id ⇒ a session for that id. The two e2e Playwright projects use exactly this: `authenticated` leaves it unset, `guest` sets it to `guest`.
+## Local dev (via `USE_PG_DRIVER`)
 
-**To return to real auth:** run plain `npm run dev` (no `USE_PG_DRIVER`) — Neon + real Google sign-in, exactly as production. This is also the deployed Vercel configuration.
-
-**To reset after drift:** `npm run db:reset:dev` against the local DB — wipes everything owned by the seeded users (including UI-created rows under `dev-test-viewer`) via cascade, then re-seeds the baseline. Use this when local testing has accumulated stray lists/items/purchases and you want a clean slate.
-
-**After seeding/resetting, restart the dev server** — many DAL functions (`getListsByUser`, etc.) are tagged with `'use cache'` and only invalidate when the app calls `revalidateTag`. The seed script runs outside the Next.js process and can't bump tags, so cached results stay stale until the server restarts.
-
-**Hard guardrail:** the bypass is scoped to a localhost DB by the `USE_PG_DRIVER` boot guard in [db/index.ts](db/index.ts) — if `USE_PG_DRIVER=1` is ever set with a non-localhost `DATABASE_URL` (e.g. on Vercel), the app refuses to boot: a loud outage, never a silent bypass or data leak. On Vercel the flag is unset, so production stays neon-http + real auth. This positive localhost requirement replaces the former `NODE_ENV !== 'production'` check.
-
-**Seeded `quantity_limit` coverage:** every seeded list has overrides at positions 0, 1, and last, rotating `(3, null, 1)` → `(null, 1, 3)` → `(1, 3, null)` across consecutive lists. Multi-claim and unlimited items receive multiple deterministic purchase rows (`${itemId}-purchase-${n}`) so partial-claimed, fully-claimed, and multi-buyer-unlimited UI states are reachable directly from the seed without manual clicking.
-
-**Seeded store-metadata edge case:** `dev-list-alice-baby-item-2` carries three hand-authored stores led by a $1,000.00 store whose name ("Really long store name that carries really cool items") overflows even the one-name slot of the card's store-metadata line — the name-truncation + non-truncating `+N` count state is reachable straight from the seed.
-
-**Seeded claim-attribution coverage:** authenticated fan-out purchase rows are self-claims (`claimed_by = user_id`); guest rows keep all-NULL identities. Four hand-authored rows (`dev-purchase-*`, on `dev-list-viewer-birthday-item-1..3` and `dev-list-alice-wedding-item-1`, whose items are excluded from the fan-out) cover the attributed-claim shape (Alice marked Bob), the viewer-as-attributed-purchaser shape, an owner self-claim, and a legacy signed-out-guest row — every unclaim-matrix branch and the owner spoiler "added by" label are reachable from the seed. Alice is seeded mutual with every other friend, so her lists' attributed-purchaser picker has a pool large enough to scroll and targets besides the viewer.
-
-**Files:**
-
-- [db/index.ts](db/index.ts) — `USE_PG_DRIVER` driver-switch (postgres-js vs neon-http) + the localhost boot guard.
-- [lib/auth.ts](lib/auth.ts) — bypass keyed on `USE_PG_DRIVER`; the `BYPASS_SESSION_USER` selector; exports `BYPASS_USER_ID = 'dev-test-viewer'` and `GUEST_SESSION_USER = 'guest'`.
-- [scripts/seed-dev-users.ts](scripts/seed-dev-users.ts) — idempotent; refuses to run on prod; upserts most tables via Drizzle `.insert().onConflictDoUpdate()` (a few use `.onConflictDoNothing()`) so reseeds pick up edits.
-- [scripts/setup-e2e-db.sh](scripts/setup-e2e-db.sh) / [scripts/dev-local.sh](scripts/dev-local.sh) / [scripts/test-e2e.sh](scripts/test-e2e.sh) — `setup-e2e-db.sh` is Docker bring-up + schema only; the data-state step is the caller's: `dev:local` seeds (preserves UI-created rows), `test:e2e` runs `db:reset:dev` (cascade wipe + reseed) so every e2e run starts from identical state. `dev:local` and `test:e2e` wrap them.
-- Route-handler / middleware overloads of `auth(req, ctx)` pass through to real NextAuth — production auth path is unchanged.
-
-## /api/image-search auth + rate limit
-
-`GET /api/image-search` requires an authenticated session (401 otherwise) and enforces a per-user in-memory token bucket of 30 requests/minute (429 with `{ error: 'rate_limited' }` when exceeded — distinguishable from upstream `quota_exceeded`). Under the dev bypass the session resolves to `dev-test-viewer`, so the route works during preview-driven testing; the 30/min cap is enough headroom for normal iteration. See [app/api/image-search/route.ts](app/api/image-search/route.ts).
+- **Local mode:** `npm run dev:local` — Docker Postgres + synthesized sessions (no real OAuth); every protected page renders as `dev-test-viewer`. Single flag `USE_PG_DRIVER=1` drives both DB driver + auth bypass.
+- **Real auth:** plain `npm run dev` — Neon + real Google sign-in, as production/Vercel.
+- **Reset after drift:** `npm run db:reset:dev` — cascade wipe + reseed.
+- **After seeding/resetting, restart dev server** — `'use cache'` DAL results stale until restart (seed script can't bump `revalidateTag`).
+- **Hard guardrail:** boot guard in [db/index.ts](db/index.ts) refuses `USE_PG_DRIVER=1` with non-localhost `DATABASE_URL` — loud outage, never silent bypass.
+- **Product-fetch mock:** local mode only — paste `https://mock.test/<scenario>` into add-item flow for deterministic Zyte fixture, zero quota.
+- **Everything else** (session identity via `BYPASS_SESSION_USER`, env layout, seeded coverage, file map, mock scenarios): [LOCALDEV.md](LOCALDEV.md).

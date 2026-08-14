@@ -11,25 +11,32 @@ completed at the `test-coverage` program's close-out, when the Tier-1
 foundation rules accumulated across its sub-proposals (per that change's
 design D13) rolled up here. Carve-out bookkeeping (which slice was tested
 when) lives only in the archived sub-proposals.
-
 ## Requirements
-
 ### Requirement: Test suite SHALL exist and SHALL run as a pre-merge gate
 
-The repository SHALL include an automated test suite executed via `npm test`. The `test` command SHALL exit non-zero if any test fails, and the pre-merge gate SHALL block merge on a non-zero exit. The pre-merge gate SHALL consist of four required tasks executed independently: `lint`, `tsc --noEmit`, `build`, and `test`. The `test` gate SHALL be encoded as a required task alongside the existing three in `openspec/config.yaml`'s `tasks` rule, and every `tasks.md` written after this capability is established SHALL include the four-gate pre-merge section with separately-checkable items.
+The repository SHALL include an automated test suite executed via `npm run test:coverage` (vitest with coverage reporting) and `npm run test:e2e` (Playwright). Each command SHALL exit non-zero if any test fails, and the pre-merge gate SHALL block merge on a non-zero exit. The pre-merge gate SHALL consist of five required tasks executed independently: `npm run lint`, `npx tsc --noEmit`, `npm run build`, `npm run test:coverage`, and `npm run test:e2e`. The five gates SHALL be encoded as required tasks in `openspec/config.yaml`'s `tasks` rule, and every `tasks.md` written after this capability is established SHALL include the five-gate pre-merge section with separately-checkable items, minus any gate omitted under the doc-only exemption below. The `lint` gate SHALL run `eslint .` alone — spec-hygiene verification is deliberately not part of any pre-merge gate (owned by `spec-hygiene`).
+
+When every file in a change's diff is one that cannot affect test outcomes — markdown docs, `.claude/**` skills/commands, `openspec/**`, and comment-only edits to any other file — the `test:coverage` and `test:e2e` gate tasks MAY be **omitted** from the section instead of run — never silently. An omitted gate SHALL carry no checklist item — a never-run gate is not a checkable task, and a permanently-unchecked item wedges `/landfall`'s all-tasks-checked gate — and the section's lead-in SHALL name the omitted gates and the doc-only rationale, so the omission stays visible. Any executable change SHALL void the exemption however small, including one to a file whose other edits qualify; the test is what the diff can affect, not which directory it sits in. CI on the `dev` push still runs the full battery, preserving defense in depth.
 
 #### Scenario: Failing test blocks merge
 
 - **WHEN** any test in the suite fails on a branch under review
-- **THEN** `npm test` exits non-zero
+- **THEN** `npm run test:coverage` or `npm run test:e2e` exits non-zero
 - **AND** the pre-merge gate fails
-- **AND** the four-gate pre-merge section of the change's `tasks.md` cannot be checked complete
+- **AND** the five-gate pre-merge section of the change's `tasks.md` cannot be checked complete
 
 #### Scenario: Pre-merge tasks are separately checkable
 
 - **WHEN** a contributor writes a new `tasks.md` after the testing-foundation capability is established
-- **THEN** the pre-merge section contains four discrete tasks (one per gate)
-- **AND** partial failure (e.g., test fails but lint passes) is visible in the checklist
+- **THEN** the pre-merge section contains five discrete tasks (one per gate)
+- **AND** partial failure (e.g., a test gate fails but lint passes) is visible in the checklist
+
+#### Scenario: Doc-only change omits the test gates with a lead-in rationale
+
+- **WHEN** a change's diff touches only files that cannot affect test outcomes (markdown docs, `.claude/**`, `openspec/**`, comment-only edits elsewhere) and its author omits the `test:coverage` and `test:e2e` items, naming them and the doc-only rationale in the section's lead-in
+- **THEN** the pre-merge gate treats those two gates as satisfied and the section carries no unchecked item for them
+- **AND** any executable change in the diff voids the exemption — the gates must run and carry their items
+- **AND** a comment-only edit to `.github/workflows/ci.yml` does not void it, while a changed step in the same file does
 
 ### Requirement: Test files SHALL colocate with source under a consistent layout
 
@@ -71,12 +78,12 @@ Test-only files inside `__tests__/` directories (including local `test-helpers.*
 
 ### Requirement: Tests SHALL NOT call rate-limited external services
 
-Tests SHALL mock the network boundary of any external service whose real provider imposes a quota, charges money per call, or requires interactive credentials. Known boundaries in this category at the time of writing: the `app/api/image-search` upstream provider, NextAuth Google OAuth, and any third-party service added later. The mocks SHALL replace the network call (e.g., `fetch` interception, MSW handlers, or framework-equivalent), NOT internal application modules. Internal modules — DAL functions, server actions, `lib/`, hooks — SHALL NOT be mocked when their dependencies are local; integration tests SHALL exercise them against the real test database.
+Tests SHALL mock the network boundary of any external service whose real provider imposes a quota, charges money per call, or requires interactive credentials. Known boundaries in this category at the time of writing: the `app/api/product-fetch` upstream provider (Zyte), NextAuth Google OAuth, and any third-party service added later. The mocks SHALL replace the network call (e.g., `fetch` interception, MSW handlers, or framework-equivalent), NOT internal application modules. Internal modules — DAL functions, server actions, `lib/`, hooks — SHALL NOT be mocked when their dependencies are local; integration tests SHALL exercise them against the real test database.
 
-#### Scenario: Image-search upstream is mocked
+#### Scenario: Product-fetch upstream is mocked
 
-- **WHEN** a test exercises `GET /api/image-search`
-- **THEN** the upstream image provider's network endpoint is intercepted at the `fetch` boundary
+- **WHEN** a test exercises `POST /api/product-fetch`
+- **THEN** the upstream provider's network endpoint is intercepted at the `fetch` boundary (or the deterministic `product-fetch-mock` seam is used)
 - **AND** the test asserts on the route's auth + rate-limit + response-shape behavior against the intercepted response
 - **AND** no real call to the upstream provider occurs in CI or local runs
 
@@ -85,12 +92,6 @@ Tests SHALL mock the network boundary of any external service whose real provide
 - **WHEN** a test requires an authenticated session
 - **THEN** the test uses the local-mode auth bypass (`USE_PG_DRIVER=1`, with the `BYPASS_SESSION_USER` identity selector — see the e2e execution-model requirements below) or an equivalent fixture
 - **AND** no OAuth handshake to a real Google endpoint occurs
-
-#### Scenario: DAL functions are not mocked from action tests
-
-- **WHEN** a server-action test exercises a mutation that calls a DAL read
-- **THEN** the test runs against the real test database (per the DB-under-test choice)
-- **AND** the DAL function is NOT mocked or stubbed
 
 ### Requirement: Seed-as-fixture for E2E SHALL be versioned and audited for negative cases
 
@@ -121,7 +122,7 @@ Coverage SHALL be measured and enforced per file, not as a layer or repo-wide ag
 
 The `functions: 100%` floor is non-negotiable: an uninvoked exported function is a real test gap, not slop. Dead code SHALL be deleted, not protected by a lower floor.
 
-Files excluded from coverage enforcement (informational only): `*.d.ts`; generated drizzle artifacts under `drizzle/`; `app/sw.ts`; test files themselves and their `__tests__/` siblings (matched by `**/__tests__/**`); barrel `index.ts` re-exports of zero runtime behavior (matched by `app/**/index.ts` — scoped to `app/`, NOT a global `**/index.ts`, which would silently exclude `db/index.ts` and other top-level index modules that carry runtime; every `index.ts` under `app/` is by convention a pure re-export, and the review bar is that it stays one); type-only `**/types.ts`; layout files without branching logic; constant-data modules holding only literal data with no executable behavior (`app/ui/components/field/field-icons.tsx`, `app/changelog/releases.ts`); the NextAuth framework barrel `app/api/auth/[...nextauth]/route.ts` (matched by `app/api/auth/*/route.ts` — a pure re-export of NextAuth's handlers whose behavior is covered via `lib/auth.ts` tests). The app scope of the index-barrel exclude is invariant: a global `**/index.ts` exclude SHALL NOT be introduced.
+Files excluded from coverage enforcement (informational only): `*.d.ts`; generated drizzle artifacts under `drizzle/`; `app/sw.ts`; test files themselves and their `__tests__/` siblings (matched by `**/__tests__/**`); barrel `index.ts` re-exports of zero runtime behavior (matched by `app/**/index.ts` — scoped to `app/`, NOT a global `**/index.ts`, which would silently exclude `db/index.ts` and other top-level index modules that carry runtime; every `index.ts` under `app/` is by convention a pure re-export, and the review bar is that it stays one); type-only `**/types.ts`; layout files without branching logic; constant-data modules holding only literal data with no executable behavior (`app/ui/components/field/field-icons.tsx`); the NextAuth framework barrel `app/api/auth/[...nextauth]/route.ts` (matched by `app/api/auth/*/route.ts` — a pure re-export of NextAuth's handlers whose behavior is covered via `lib/auth.ts` tests). The app scope of the index-barrel exclude is invariant: a global `**/index.ts` exclude SHALL NOT be introduced.
 
 While the parent `test-coverage` change is in flight, the per-file threshold list in `vitest.config.ts` MAY enumerate only files with landed tests (so files in untested carve-outs do not fail the gate they have no opportunity to pass). When the parent `test-coverage` change archives, the per-file enumeration SHALL be removed and the floor SHALL apply universally across `coverage.include` — at that point, every file in `coverage.include` (subject to `coverage.exclude`) is gated against the universal floor.
 
@@ -168,7 +169,14 @@ A file matched by `coverage.include` and not excluded by `coverage.exclude` SHAL
 - **(a)** Write the test that exercises the region; OR
 - **(b)** Mark the region with `/* v8 ignore next */` (or `/* v8 ignore start */ … /* v8 ignore stop */` for multi-line regions) and an immediately-preceding one-line comment naming the specific reason the region is uncoverable.
 
-Lowering the floor for a file (or class of files) SHALL NOT be an acceptable disposition. Adding a TODO, follow-up issue, or unaddressed note SHALL NOT be an acceptable disposition. The reviewer of any PR that introduces a `/* v8 ignore */` annotation SHALL verify the rationale comment is specific (names what makes the region uncoverable, not "for coverage") before approving.
+An ignore rationale SHALL be both specific AND valid. Valid means it cites an invariant established **outside** the function — framework lifecycle, platform, a third-party/DB contract (e.g., SQL `COALESCE` always yielding a row) — or a truly external error path that cannot be provoked from a test. Two rationale classes are categorically invalid:
+
+- A rationale citing the function's **own earlier control flow** ("the guard above already decided this") describes a redundant guard. That is dead code, not unreachable code: the disposition is to delete the guard and let narrowing flow from the existing control flow — never to ignore it, and never to test it (its false branch is unreachable by construction).
+- A rationale citing **in-repo callers** ("defense-in-depth; callers already verified the session") is not an external invariant — callers change, and an exported function is itself a public surface. The disposition is to test the guard directly through the export.
+
+A rationale SHALL also be factually true under the runtime model: a branch labeled "unreachable" that a concurrent interleaving can reach (e.g., under the neon-http driver every query is a separate round-trip, so state checked in one round-trip can change before the next) is live behavior and SHALL be tested, not ignored.
+
+Lowering the floor for a file (or class of files) SHALL NOT be an acceptable disposition. Adding a TODO, follow-up issue, or unaddressed note SHALL NOT be an acceptable disposition. The reviewer of any PR that introduces a `/* v8 ignore */` annotation SHALL verify the rationale comment is specific (names what makes the region uncoverable, not "for coverage") AND valid per the criterion above before approving.
 
 #### Scenario: Test-first disposition
 
@@ -194,6 +202,27 @@ Lowering the floor for a file (or class of files) SHALL NOT be an acceptable dis
 - **WHEN** a PR introduces `/* v8 ignore next */` with a preceding comment of "// coverage" or "// can't test"
 - **THEN** the reviewer requests a specific rationale (what runtime contract, what branch, why unreachable)
 - **AND** the PR is not approved until the comment names the specific reason
+
+#### Scenario: Ignore over a redundant guard rejected
+
+- **WHEN** an ignore's rationale cites the same function's earlier control flow (e.g., "lists.length>0 guarantees listIds.length>0, so the empty branch is dead")
+- **THEN** the guard and its ignore are deleted
+- **AND** neither a test nor a reworded rationale is an acceptable alternative disposition
+
+#### Scenario: In-repo-caller rationale rejected on an exported function
+
+- **WHEN** an exported function's auth/ownership guard carries an ignore whose rationale is "defense-in-depth: callers already verified this before calling"
+- **THEN** the ignore is removed and the guard is exercised by calling the export directly (e.g., with no session, or as a non-owner) and asserting the failure
+
+#### Scenario: Factually wrong "unreachable" rationale is reclassified as live behavior
+
+- **WHEN** an ignore claims a null-guard is unreachable because an earlier query confirmed existence, but the check and the guarded query are separate neon-http round-trips
+- **THEN** the branch is treated as live race behavior: the ignore is removed and a test forces the interleaving (e.g., mocking the second query to return nothing once)
+
+#### Scenario: External-invariant rationale remains valid
+
+- **WHEN** an ignore's rationale cites a contract established outside the function, such as SQL `COALESCE` guaranteeing the query yields a row with a numeric value
+- **THEN** the ignore is acceptable and is NOT swept by conformance remediation
 
 ### Requirement: Per-file thresholds SHALL reference a single shared COVERAGE_FLOOR constant
 
@@ -280,7 +309,7 @@ Production source files SHALL be held to the repo-wide size bands, enforced in `
 - **Yellow — 300–400 lines is a warning.** `sonarjs/max-lines` configured at `['warn', { maximum: 300 }]`. Yellow is advisory: pull easy wins where a clean extraction exists; a cohesive file MAY remain yellow indefinitely.
 - **Green — under 300 lines.** The goal; no diagnostics.
 
-Scope: the rules SHALL apply to production source (`app/**`, `lib/**`, `hooks/**`, `db/**`) and SHALL NOT apply to test files (`**/*.test.*`, `**/__tests__/**`, `test/**`, `e2e/**`), `scripts/**`, or data-literal modules already carved out of coverage (e.g. `app/changelog/releases.ts`). Test-file size remains governed by this capability's structural conventions (one lane per source module), not a line count.
+Scope: the rules SHALL apply to production source (`app/**`, `lib/**`, `hooks/**`, `db/**`) and SHALL NOT apply to test files (`**/*.test.*`, `**/__tests__/**`, `test/**`, `e2e/**`), `scripts/**`, or data-literal modules already carved out of coverage (e.g. `app/ui/components/field/field-icons.tsx`). Test-file size remains governed by this capability's structural conventions (one lane per source module), not a line count.
 
 Gate interaction: the pre-merge "zero warnings" lint bar SHALL be read as zero warnings **outside the yellow band** — yellow size advisories are the single deliberate warning class and do not block merge. Per-file or per-line `eslint-disable` for either size rule SHALL NOT be added.
 

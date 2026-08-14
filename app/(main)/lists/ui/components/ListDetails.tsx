@@ -1,6 +1,7 @@
 import Avatar from '@/app/(main)/users/ui/components/Avatar';
 import FollowContainer from '@/app/(main)/users/ui/components/FollowContainer';
 import { LinkButton } from '@/app/ui/components/button';
+import { timeAgo } from '@/lib/timeAgo';
 import { ListTable } from '@/lib/types';
 import {
   VISIBILITY,
@@ -23,40 +24,6 @@ import VisibilityPicker from './VisibilityPicker';
 type ListWithVisibility = ListTable & {
   visibility?: ListVisibility;
 };
-
-// Relative-time helper. Returns "just now", "2 days ago", "3 weeks ago", etc.
-// Inlined here because this is the only caller; promote to a shared util when
-// a second surface needs it.
-function timeAgo(date: Date | string | null | undefined): string {
-  if (!date) return '';
-  const d = typeof date === 'string' ? new Date(date) : date;
-  const diffMs = Date.now() - d.getTime();
-  const diffSec = Math.round(diffMs / 1000);
-  if (diffSec < 60) return 'just now';
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-  const units: [number, Intl.RelativeTimeFormatUnit][] = [
-    [60, 'minute'],
-    [3600, 'hour'],
-    [86400, 'day'],
-    [604800, 'week'],
-    [2592000, 'month'],
-    [31536000, 'year'],
-  ];
-  let value = diffSec;
-  let unit: Intl.RelativeTimeFormatUnit = 'second';
-  for (let i = 0; i < units.length; i++) {
-    const [seconds, u] = units[i];
-    if (diffSec >= seconds) {
-      const next = units[i + 1];
-      if (!next || diffSec < next[0]) {
-        value = Math.round(diffSec / seconds);
-        unit = u;
-        break;
-      }
-    }
-  }
-  return rtf.format(-value, unit);
-}
 
 // The spoiler-toggle, enter-preview, and exit-preview links all depend on the
 // same (showSpoilers, previewMode) pair; derive them together so ListDetails

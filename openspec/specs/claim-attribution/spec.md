@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change expand-claim-attribution. Update Purpose after archive.
+The `claim-attribution` capability governs who may be recorded as an item's purchaser and who may undo that record. It defines the `claimed_by` (asserter) plus `user_id` (purchaser) row model, the eligible attributed-purchaser pool (the list owner's mutual follows, block-filtered, server-re-verified) with a free-text guest fallback, the unclaim-rights matrix (claimer, purchaser, or list-owner master unclaim), spoiler-gated owner claiming, and the viewer-relative claim display. It exists because a purchaser who is a real user needs a linked account, self-marking, and durable unclaim rights that the former free-text-only "someone else purchased it" flow could not provide.
 ## Requirements
 ### Requirement: Purchase rows SHALL record the claimer separately from the purchaser
 
@@ -126,7 +126,7 @@ The pool fetch SHALL begin when the modal opens (not deferred to expansion) so t
 
 ### Requirement: A claim SHALL be removable by its claimer, its purchaser, or the list owner
 
-`removePurchase` SHALL authorize removal when the session-resolved viewer equals the row's `claimed_by`, OR equals the row's purchaser `user_id`, OR equals the `user_id` of the item the purchase targets (owner master unclaim). For unauthenticated callers, the existing guest path is unchanged: removal of a `claimed_by IS NULL` row requires supplying the exact stored `guest_name`. The authorization check SHALL load the target row and its item owner before any delete. Removal rights derive from the row and item ownership only — never from the live follow graph.
+`removePurchase` SHALL authorize removal when the session-resolved viewer equals the row's `claimed_by`, OR equals the row's purchaser `user_id`, OR equals the `user_id` of the item the purchase targets (owner master unclaim). For unauthenticated callers, removal SHALL be authorized only for a row with all-NULL identity (`claimed_by IS NULL AND user_id IS NULL`) whose id appears in the caller's valid `guest_claims` cookie (owned by `guest-claim-identity`); the former exact-`guest_name`-match authorization is retired, and `removePurchase` SHALL NOT accept a `guest_name` field on its payload. The authorization check SHALL load the target row and its item owner before any delete. Removal rights derive from the row, item ownership, and the guest cookie only — never from the live follow graph.
 
 #### Scenario: Claimer removes their attributed claim
 
@@ -152,6 +152,21 @@ The pool fetch SHALL begin when the modal opens (not deferred to expansion) so t
 
 - **WHEN** an authenticated user who recorded a guest-name claim (row has `claimed_by` = them, `user_id` NULL) invokes `removePurchase` on it
 - **THEN** the row is deleted (the legacy lockout where `user_id IS NULL` blocked the creator no longer applies)
+
+#### Scenario: Guest removes their cookie-identified claim
+
+- **WHEN** an unauthenticated caller invokes `removePurchase` on an all-NULL-identity row whose id appears in the request's valid `guest_claims` cookie
+- **THEN** the row is deleted
+
+#### Scenario: Guest cannot remove a claim outside their cookie
+
+- **WHEN** an unauthenticated caller invokes `removePurchase` on an all-NULL-identity row whose id is not in the request's `guest_claims` cookie (or with no valid cookie at all)
+- **THEN** the action rejects and the row is unchanged, regardless of any name the caller supplies
+
+#### Scenario: Cookie ids never authorize removal of identity-bearing rows
+
+- **WHEN** an unauthenticated caller's cookie lists a purchase id whose row has a non-NULL `claimed_by` or `user_id`
+- **THEN** `removePurchase` rejects — the cookie path applies only to all-NULL-identity rows
 
 ### Requirement: Owner claim entry and master unclaim SHALL be surfaced only in the spoiler-enabled view
 
@@ -179,7 +194,7 @@ With spoilers disabled, the owner's view of their own list SHALL show no claim i
 
 ### Requirement: Viewer-relative claim display SHALL key off the purchaser, with the owner's spoiler view able to identify the claimer
 
-`sanitizePurchases` SHALL mark a claim `'self'` when the viewer equals the purchaser `user_id` (not `claimed_by`), so an attributed user sees the claim as their own — this preserves the existing `user_id`-keyed marking unchanged. Display names SHALL continue to resolve as: the purchaser user's name, else `guest_name`, else the existing fallback, rendered via the existing first-name derivation. In the owner's spoiler view, a claim whose `claimed_by` differs from its purchaser MAY additionally identify the claimer, letting the owner distinguish entries they or others recorded from direct gifter claims.
+`sanitizePurchases` SHALL mark a claim `'self'` when the viewer equals the purchaser `user_id` (not `claimed_by`), so an attributed user sees the claim as their own — this preserves the existing `user_id`-keyed marking unchanged. For a signed-out viewer, `guest-claim-identity`'s post-cache overlay SHALL additionally mark the viewer's cookie-identified claims `'self'`, so a guest's own claim presents exactly as an authed self-claim ("You" forms, no "Added by you" attribution line — the guest is the purchaser, not an asserter for a third party). Display names SHALL continue to resolve as: the purchaser user's name, else `guest_name`, else the existing fallback, rendered via the existing first-name derivation. In the owner's spoiler view, a claim whose `claimed_by` differs from its purchaser MAY additionally identify the claimer, letting the owner distinguish entries they or others recorded from direct gifter claims.
 
 #### Scenario: Attributed user sees the claim as self
 
@@ -190,6 +205,11 @@ With spoilers disabled, the owner's view of their own list SHALL show no claim i
 
 - **WHEN** any permitted viewer sees a claim with the purchaser `user_id` set
 - **THEN** the displayed name derives from the linked user's stored name (first-name display), not from `guest_name`
+
+#### Scenario: Cookie-identified guest claim presents as the viewer's own
+
+- **WHEN** a signed-out viewer whose `guest_claims` cookie lists claim P views the item P targets
+- **THEN** P presents as the viewer's own claim ("You" in the card banner, "{first name} (you)" in the manage list) with no "Added by you" attribution line
 
 ### Requirement: The existing purchaser-uniqueness index SHALL be the concurrency backstop for double-marking
 
@@ -207,22 +227,65 @@ The partial unique index on `purchases (item_id, user_id) WHERE user_id IS NOT N
 
 ### Requirement: The purchase modal SHALL present an already-claimed state with store access and claim removal
 
-When the viewer opens the purchase modal on an item where they hold a removable claim (their own claim, or one they recorded for someone else), the modal SHALL render the already-claimed state: the store row, a confirmation banner ("✓ You claimed this", or naming the attributed person for a claim recorded on someone's behalf), and a "Remove my claim" action. This state replaces the previous confirm-only unclaim dialog — the claimer always retains store-link access from it, so claiming an item never locks the claimer out of the store links needed to buy it. Activating "Remove my claim" SHALL dispatch the removal with no additional confirmation step (the modal state itself is the deliberate surface). The unclaim authorization matrix (claimer, purchaser, owner master unclaim, guest exact-name path) is owned by the existing removal requirement and is unchanged.
+When the purchase modal opens in the viewer manage state (via `Manage claim`, or via the default rule when the viewer holds a removable claim), it SHALL render: the store row (owned by `item-store-links`), and a claims list under a "Claimed by" section label containing **every** claim on the item, with a removal action rendered only on rows the viewer may remove (their own claim and each claim they recorded for someone else). The same claims-list component SHALL serve the owner's `Manage claims` modal, where every row carries the removal action (master unclaim). The list presentation SHALL be uniform at every claim count, including a single claim (the former single-claim banner + full-width "Remove my claim" presentation is retired).
+
+A signed-out guest whose claim is cookie-recognized (`claimedByViewer` set by `guest-claim-identity`'s overlay) SHALL reach this state through the same affordances and default rule as an authenticated viewer; their cookie-identified rows carry the removal action.
+
+Each row SHALL render: the purchaser's avatar (their profile image when the purchaser is a linked account, initials derived from the display name otherwise), the claim label — the viewer's own claim as "{first name} (you)", falling back to plain "You" when no viewer name is available, and other claims as the purchaser's first name — the claim's relative date (from the row's `purchased_at`, via the shared relative-time derivation), and, for a claim whose asserter differs from its purchaser, a gender-neutral attribution line ("Added by you" when the viewer recorded it; "Added by {claimer first name}" in the owner's view). The "(you)" long-form label is scoped to this list — the card banner and spoiler banner retain the short "You" form. Removal actions SHALL carry per-claim accessible names distinguishing whose claim they remove. The list region SHALL scroll independently when claims overflow, keeping the modal header and store row in place.
+
+The list SHALL order rows the viewer can remove ahead of all other claims, and SHALL initially render a bounded number of rows with a "See more" control (naming the remaining count) that reveals additional rows in batches — never the whole set at once — so an item with arbitrarily many claims (an unlimited-quantity item with a large audience) cannot render an unbounded list. The bound and batch size are design-recorded constants.
+
+The claimer always retains store-link access from this state, so claiming an item never locks the claimer out of the store link needed to buy it. Activating a removal SHALL dispatch the removal for exactly that claim with no additional confirmation step (the modal state itself is the deliberate surface). Removing the last removable claim SHALL close the modal, returning the item to its viewer-appropriate presentation. The card affordance opening this state is `Manage claim` (owned by `item-actions`). The unclaim authorization matrix (claimer, purchaser, owner master unclaim, guest cookie path) is owned by the removal requirement; listing another viewer's claim SHALL NOT render a removal action for it.
 
 #### Scenario: Claimer reaches store links after claiming
 
-- **WHEN** a viewer who claimed an item opens the purchase modal (via "Manage your claim" or an undo affordance)
-- **THEN** the store row renders with live store links and the "Remove my claim" action renders below it
+- **WHEN** a viewer who claimed an item opens the purchase modal via `Manage claim`
+- **THEN** the store row renders with the live store link and the claims list renders below it
 
-#### Scenario: Remove my claim removes in one activation
+#### Scenario: Manage state lists all claims with removal only on the viewer's own
 
-- **WHEN** the viewer activates "Remove my claim" in the already-claimed state
-- **THEN** `removePurchase` is dispatched for that claim with no intervening confirmation dialog, and the item returns to its claimable presentation
+- **WHEN** a viewer holding a self-claim and one claim recorded for another person opens the manage state on an item that also carries a third claim recorded by someone else
+- **THEN** the claims list SHALL render three rows, the viewer's two rows SHALL carry removal actions, and the third row SHALL render without one
+
+#### Scenario: Own claim is labeled with the viewer's name
+
+- **WHEN** the viewer's own claim renders in the claims list and their first name is available
+- **THEN** the row label SHALL read "{first name} (you)", and a claim they recorded for someone else SHALL carry the "Added by you" attribution line
+
+#### Scenario: Rows show the claim date
+
+- **WHEN** a claim with a recorded `purchased_at` renders in the claims list
+- **THEN** the row SHALL include that date rendered through the shared relative-time derivation
+
+#### Scenario: Viewer-removable rows sort first
+
+- **WHEN** the manage state opens on an item where the viewer's claims were recorded after several other claims
+- **THEN** the viewer's removable rows SHALL render at the top of the list, ahead of every non-removable row
+
+#### Scenario: Many claims render behind a See more control
+
+- **WHEN** the claims list opens on an item whose claim count exceeds the initial render bound
+- **THEN** only the initial batch of rows SHALL render, with a "See more" control naming the remaining count; activating it reveals the next batch, and the control disappears once every claim is rendered
+
+#### Scenario: Per-claim removal removes only the activated claim
+
+- **WHEN** the viewer activates the removal action on one claim among several
+- **THEN** `removePurchase` is dispatched for that claim only, with no intervening confirmation dialog, and the remaining claims stay listed
+
+#### Scenario: Removing the last claim closes the modal
+
+- **WHEN** the viewer removes the only remaining removable claim from the manage state
+- **THEN** the modal SHALL close and the item SHALL return to its claimable presentation
 
 #### Scenario: Store-link click never routes to claim removal
 
-- **WHEN** a viewer with an existing claim activates a store link in the already-claimed modal state
+- **WHEN** a viewer with an existing claim activates a store link in the manage state
 - **THEN** the store opens in a new tab and no unclaim dispatch or unclaim prompt occurs
+
+#### Scenario: Cookie-recognized guest manages their claim
+
+- **WHEN** a signed-out guest whose `guest_claims` cookie lists their claim opens the purchase modal on that item
+- **THEN** the modal opens in the manage state, the guest's cookie-identified row carries a removal action, and activating it removes the claim and returns the item to its claimable presentation
 
 ### Requirement: Picker pool load failures SHALL render an error state distinct from the empty pool
 
@@ -242,3 +305,92 @@ When the eligible-pool fetch fails (network or server error), the picker area SH
 
 - **WHEN** the pool fetch succeeds with zero eligible users
 - **THEN** the picker area renders the "Someone not listed?" free-text entry (no error message, no retry)
+
+### Requirement: Buy & Claim SHALL surface an undo popup on the recorded claim
+
+When an authenticated non-owner records a self-claim via `Buy & Claim ↗` (owned by `item-actions`), the client SHALL open an undo popup in the wishlist tab once the claim is confirmed by `createPurchase`. The popup SHALL be a controlled modal built on the shared `Modal` primitive — a surface distinct from the `Manage claim` already-claimed modal state — presenting:
+
+- a title "You've claimed this";
+- a quantity-agnostic message conveying that the claim can be undone if the purchase did not happen (wrong price, sold out, changed mind), releasing the item for someone else;
+- a left action rendered through `<Button variant="ghost">` labeled "No — undo claim" that SHALL dispatch `removePurchase` on the just-recorded claim with no additional confirmation step, releasing the item to its claimable presentation;
+- a right action rendered through `<Button variant="primary">` labeled "Yes, I purchased it" that SHALL dismiss the popup with the claim intact.
+
+The popup SHALL NOT be rendered through `confirm-dialog-system`'s `ConfirmDialog` (whose Cancel/Confirm slots and destructive-confirm variant lock cannot express a left ghost action with a right primary dismissal). The popup's open state SHALL be ephemeral consumer state — a page reload SHALL NOT re-open it, and the persistent `Manage claim` affordance (owned by the existing already-claimed-state requirement) remains the durable path to release the claim. The popup SHALL open only after `createPurchase` succeeds; a rejected claim SHALL NOT open it.
+
+#### Scenario: Successful Buy & Claim opens the undo popup
+
+- **WHEN** an authenticated non-owner's `Buy & Claim ↗` self-claim is confirmed by `createPurchase`
+- **THEN** an undo popup SHALL open with the title "You've claimed this", a left `ghost` "No — undo claim" button, and a right `primary` "Yes, I purchased it" button
+
+#### Scenario: No — undo claim releases the item
+
+- **WHEN** the viewer activates "No — undo claim" in the undo popup
+- **THEN** `removePurchase` SHALL be dispatched for the just-recorded claim with no intervening confirmation, and the item SHALL return to its claimable presentation
+
+#### Scenario: Yes, I purchased it keeps the claim
+
+- **WHEN** the viewer activates "Yes, I purchased it" in the undo popup
+- **THEN** the popup SHALL dismiss, the claim SHALL persist, and the item SHALL present the viewer's `Manage claim` state
+
+#### Scenario: A rejected claim opens no popup
+
+- **WHEN** the `Buy & Claim ↗` self-claim is rejected by `createPurchase`
+- **THEN** no undo popup SHALL render and the item SHALL remain in its claimable presentation
+
+#### Scenario: Reload does not re-open the popup
+
+- **WHEN** the viewer reloads the page after a `Buy & Claim ↗` self-claim without acting on the popup
+- **THEN** the undo popup SHALL NOT re-open, and the viewer's claim SHALL be reachable via the `Manage claim` affordance
+
+### Requirement: The purchase modal's opening state SHALL be selected by the invoking affordance
+
+The purchase modal SHALL open in the state named by the invoking affordance, carried as a second URL search param alongside `?purchaseItem=<id>`: `Add Claim` SHALL set `purchaseView=claim` and open the claim flow; `Manage claim` (and any opener that sets no `purchaseView`) SHALL open under the default rule — the viewer manage state when the viewer holds a removable claim, the claim flow otherwise, preserving the pre-existing behavior. An absent or unrecognized `purchaseView` value SHALL resolve through the default rule. Closing the modal SHALL clear both `purchaseItem` and `purchaseView` from the URL. The owner's modal and the guest modal are unaffected: their single viewer-appropriate state renders regardless of `purchaseView`. Card affordances are the only router between modal states — neither modal state SHALL offer navigation into the other.
+
+#### Scenario: Add Claim opens the claim flow while the viewer holds a claim
+
+- **WHEN** an authenticated non-owner who already holds a removable claim on a multi-quantity item with slots remaining activates the card's `Add Claim` affordance
+- **THEN** the modal SHALL open in the claim flow (not the manage state), with `purchaseView=claim` present in the URL
+
+#### Scenario: Manage claim opens the manage state
+
+- **WHEN** the same viewer activates the card's `Manage claim` affordance
+- **THEN** the modal SHALL open in the viewer manage state with no `purchaseView` param set
+
+#### Scenario: Param-less open falls back to the default rule
+
+- **WHEN** the modal is opened via a URL carrying only `?purchaseItem=<id>` (reload, deep link, or history navigation)
+- **THEN** the modal SHALL render the manage state if the viewer holds a removable claim and the claim flow otherwise
+
+#### Scenario: Close clears both params
+
+- **WHEN** the viewer closes the modal from either state
+- **THEN** both `purchaseItem` and `purchaseView` SHALL be removed from the URL
+
+### Requirement: The claim flow SHALL suppress the self-claim action for a viewer who is already the recorded purchaser
+
+When the claim flow renders for an authenticated non-owner who is already the recorded purchaser of one of the item's claims (a claim marked `'self'`), the one-tap self-claim CTA ("Claim this gift") SHALL NOT render; the "Claiming for someone else?" disclosure (collapsed by default, per the existing single-screen requirement) and its attributed picker and guest-name fallback SHALL be the available claim paths. A viewer who holds only claims recorded for others (they are the claimer but not the purchaser) SHALL keep the live self-claim CTA — their own self-claim remains permitted by the purchaser-uniqueness backstop. Recording a second claim for the same purchaser remains rejected by the existing purchaser-uniqueness requirement; multi-unit self-claims are out of scope (MAP #230).
+
+#### Scenario: Recorded purchaser sees no self-claim CTA
+
+- **WHEN** a viewer whose self-claim is among the item's claims opens the claim flow via `Add Claim`
+- **THEN** no "Claim this gift" CTA SHALL render, and the disclosure with the attributed picker and guest fallback SHALL render collapsed
+
+#### Scenario: Claimer-only viewer keeps the self-claim CTA
+
+- **WHEN** a viewer who recorded a claim for someone else (and holds no self-claim) opens the claim flow via `Add Claim`
+- **THEN** the "Claim this gift" CTA SHALL render and record their self-claim normally
+
+#### Scenario: Additional attributed claim records from the claim flow
+
+- **WHEN** a recorded purchaser opens the claim flow via `Add Claim` and confirms an eligible attributed target
+- **THEN** a second purchase row SHALL be recorded with the viewer as `claimed_by` and the target as purchaser, and the item SHALL reflect both claims
+
+### Requirement: The card claim banner SHALL enumerate all viewer-removable claims
+
+The card's "You claimed this" banner SHALL name every claim the viewer can remove: the viewer's own claim rendered as "You claimed this" and each claim they recorded for someone else contributing "for {first name}", joined into one banner line via the existing claim-label derivation. The banner SHALL NOT present only the first-match claim when the viewer holds several. The banner's render predicate (any viewer-removable claim) and the `has-my-claim` container treatment are unchanged.
+
+#### Scenario: Banner lists own and attributed claims together
+
+- **WHEN** the viewer holds a self-claim and a claim they recorded for Grandma on the same item
+- **THEN** the card banner SHALL name both ("You claimed this" and "for Grandma"), not just the first-recorded claim
+

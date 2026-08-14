@@ -1,6 +1,7 @@
 import { db } from '@/db';
 import { items, list_items } from '@/db/schema';
 import { sanitizePurchases } from '@/lib/data/purchase';
+import { primaryStore } from '@/lib/storeValidity';
 import { ListTable } from '@/lib/types';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
@@ -33,6 +34,7 @@ export async function getItemsByUser(
             user: {
               columns: {
                 name: true,
+                image: true,
               },
             },
             claimer: {
@@ -42,12 +44,22 @@ export async function getItemsByUser(
             },
           },
         },
+        // Active image only — `image_url` is now sourced from item_images, not
+        // the (inert) items.image_url column. ORDER BY id LIMIT 1 makes a stray
+        // double-active resolve deterministically.
+        images: {
+          where: (images, { eq }) => eq(images.active, true),
+          orderBy: (images, { asc }) => [asc(images.id)],
+          limit: 1,
+        },
       },
       orderBy: (items, { desc }) => [desc(items.created_at)],
     });
 
-    return result.map((item) => ({
+    return result.map(({ images, stores, ...item }) => ({
       ...item,
+      image_url: images[0]?.url ?? null,
+      store: primaryStore(stores),
       hasPurchases: item.purchases.length > 0,
       purchases: sanitizePurchases(item.purchases, userId, true, showSpoilers),
     }));
@@ -65,6 +77,7 @@ export async function getItemById(id: string, userId: string) {
       where: and(eq(items.id, id), eq(items.user_id, userId)),
       with: {
         stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
+        images: { orderBy: (images, { asc }) => [asc(images.id)] },
         list_items: {
           with: {
             list: true,
@@ -89,13 +102,16 @@ export async function getItemById(id: string, userId: string) {
       id: result.id,
       name: result.name,
       description: result.description,
-      image_url: result.image_url,
+      // Active image sourced from item_images (id-ordered, so a stray
+      // double-active resolves deterministically), not items.image_url.
+      image_url: result.images.find((image) => image.active)?.url ?? null,
       quantity_limit: result.quantity_limit,
       user_id: result.user_id,
       created_at: result.created_at,
       updated_at: result.updated_at,
       archived_at: result.archived_at,
-      stores: result.stores,
+      store: primaryStore(result.stores),
+      image_candidates: result.images.map((image) => image.url),
       lists: lists,
     };
 
@@ -128,6 +144,7 @@ export async function getItemsByListId(
                 user: {
                   columns: {
                     name: true,
+                    image: true,
                   },
                 },
                 claimer: {
@@ -137,14 +154,22 @@ export async function getItemsByListId(
                 },
               },
             },
+            // Active image only — source for `image_url` (see getItemsByUser).
+            images: {
+              where: (images, { eq }) => eq(images.active, true),
+              orderBy: (images, { asc }) => [asc(images.id)],
+              limit: 1,
+            },
           },
         },
       },
       orderBy: (list_items, { asc }) => [asc(list_items.position)],
     });
 
-    return result.map(({ item }) => ({
+    return result.map(({ item: { images, stores, ...item } }) => ({
       ...item,
+      image_url: images[0]?.url ?? null,
+      store: primaryStore(stores),
       purchases: sanitizePurchases(
         item.purchases,
         opts.viewerId,

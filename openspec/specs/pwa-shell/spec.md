@@ -17,8 +17,8 @@ The app SHALL declare a Web App Manifest via `app/manifest.ts` exporting a `Meta
 - `start_url: '/'`
 - `display: 'standalone'`
 - `orientation: 'portrait'`
-- `background_color: '#25194e'` (matching the `--page-frame-gradient` start in `app/ui/styles/global.css`)
-- `theme_color: '#25194e'`
+- `background_color: '#2a2060'` (matching the `--page-frame-gradient` start in `app/ui/styles/global.css`)
+- `theme_color: '#2a2060'`
 - Icon entries covering both 192×192 and 512×512 PNGs served from `/icons/`, with both `purpose: 'any'` and `purpose: 'maskable'` represented for each size. (Next's `MetadataRoute.Manifest` type does not accept space-separated `purpose` values, so each size is declared twice — once per purpose — referencing the same file.)
 
 The manifest SHALL NOT declare a `gcm_sender_id`, push-subscription config, or any field tied to Web Push — push notifications are out of scope for this capability.
@@ -128,7 +128,7 @@ The component SHALL render nothing (`return null`) — it contributes no DOM and
 
 The root layout's viewport export SHALL declare `viewportFit: 'cover'` — the setting that makes `env(safe-area-inset-*)` resolve to real values on notched devices and lets the app paint edge-to-edge in standalone mode. With the viewport extended into the notch and home-indicator zones, the app SHALL keep its chrome clear of them:
 
-- The `html` element SHALL carry the background color `#25194e`, the backstop visible through the translucent iOS status bar (and below the content in the home-indicator zone) even where `body` backdrops are clipped.
+- The `html` element SHALL carry the background color `#2a2060`, the backstop visible through the translucent iOS status bar (and below the content in the home-indicator zone) even where `body` backdrops are clipped.
 - The app-nav SHALL absorb `env(safe-area-inset-top)` into its height and top padding so the logo and menu render below the notch, and the `--app-nav-height` token SHALL include the inset so dependent sticky offsets stay correct.
 - The floating items-pagination overlay SHALL include `env(safe-area-inset-bottom)` as an additive term in its bottom padding, so its controls clear the home indicator while the overlay box itself stays flush with its container's bottom edge.
 - The toast container SHALL offset its top and right anchors by `env(safe-area-inset-top)` / `env(safe-area-inset-right)` so top-positioned toasts clear the status-bar zone.
@@ -155,4 +155,4 @@ Ownership note: the *layout* contracts of these regions belong to their owning c
 #### Scenario: Status-bar and home-indicator zones show the app background
 
 - **WHEN** any route renders
-- **THEN** the `html` element's computed background color is `#25194e`
+- **THEN** the `html` element's computed background color is `#2a2060`
