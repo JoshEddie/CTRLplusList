@@ -1,7 +1,7 @@
 ---
 name: anchor
 argument-hint: "[map# | issue#] [what was discovered]"
-description: Execute a bearing move on a map - promote fog into a typed decision ticket, demote a settled decision revealed as a mirage, charter a release-blocking in-Destination discovery onto an open map as a chunk (leaving the voyage under sail), or re-sync the map body against ticket reality. A mirage striking an UNDER SAIL issue is not anchor's move - it routes to /run-aground. Writes GitHub issues only, never the tree. Use at the moment a discovery changes the map's decision state or belongs on its chart, from any session - map work, embark, or mid-apply.
+description: Execute a bearing move on a map - promote fog into a typed decision ticket, demote a settled decision revealed as a mirage, charter a release-blocking in-Destination discovery onto an open map as a chunk (leaving the voyage under sail), or re-sync the map body against ticket reality. A mirage striking an UNDER SAIL issue is not anchor's move - it routes to /run-aground. Writes GitHub issues only, never the tree. Use at the moment a discovery changes the map's decision state or belongs on its chart, from any session - map work, /embark-start, or mid-apply.
 disable-model-invocation: true
 metadata:
   author: list_eddiefamily
@@ -10,7 +10,7 @@ metadata:
 
 # /anchor
 
-Decision state is bidirectional for the epic's whole life: fog sharpens into tickets, and settled decisions dissolve on approach — mirages. Every map-side bearing move runs through this skill. Any session — a map session, `/embark` on a chunk, mid-apply, or the owner simply remembering — MAY anchor at the moment of discovery. **No session carries a proactive detection duty**: anchor is fired by discoveries, not by patrols.
+Decision state is bidirectional for the epic's whole life: fog sharpens into tickets, and settled decisions dissolve on approach — mirages. Every map-side bearing move runs through this skill. Any session — a map session, `/embark-start` on a chunk, mid-apply, or the owner simply remembering — MAY anchor at the moment of discovery. **No session carries a proactive detection duty**: anchor is fired by discoveries, not by patrols.
 
 ## Dispatch — observable state picks exactly one move
 

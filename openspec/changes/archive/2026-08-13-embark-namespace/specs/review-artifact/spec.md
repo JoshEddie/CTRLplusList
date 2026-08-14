@@ -1,15 +1,11 @@
-# review-artifact Specification
+# review-artifact Delta
 
-## Purpose
+## RENAMED Requirements
 
-`review.md` is a first-class OpenSpec artifact: registered in the project-local
-schema and scaffolded during planning so it exists throughout a change's
-lifecycle, which makes it auto-load into `/opsx:apply`'s context and keeps the
-artifact graph free of the drag a post-hoc file would cause. This capability owns
-the artifact registration, the planning-time scaffold, and the repo-owned schema
-fork; the round content written into `review.md` is owned by `spec-review`.
+- FROM: `### Requirement: review.md is a schema-registered artifact scaffolded at propose`
+- TO: `### Requirement: review.md is a schema-registered artifact scaffolded during planning`
 
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: review.md is a schema-registered artifact scaffolded during planning
 
@@ -45,30 +41,3 @@ The `review` artifact SHALL be listed in the schema's `apply.requires`; because 
 - **WHEN** `/opsx:apply` runs on a change whose `review.md` is still the
   `round: 0` scaffold
 - **THEN** apply proceeds normally with the scaffold loaded as context
-
-### Requirement: review.md is auto-loaded into apply context
-
-Because `review` is a schema artifact, `/opsx:apply`'s `contextFiles` SHALL
-include `review.md` whenever the file exists, so a fix session — including one in a
-fresh chat burning down a `## Gates — round <n>` section — reads the round's
-findings without a manual pointer.
-
-#### Scenario: A fix session sees the findings
-
-- **WHEN** `/opsx:apply` runs on a change whose latest round left open `Fix now`
-  findings
-- **THEN** `review.md` appears in the apply instructions' `contextFiles`, giving the
-  session the findings' severity, location, citation, and disposition
-
-### Requirement: The project-local schema is a reconciled fork
-
-`openspec/schemas/` SHALL be treated as a repo-owned fork of the package
-`spec-driven` schema. On `openspec update`, the fork SHALL be reconciled against
-the updated package schema so it does not silently drift, and this obligation SHALL
-be recorded in a durable repo doc.
-
-#### Scenario: Update reconciliation is documented
-
-- **WHEN** `openspec update` changes the package `spec-driven` schema
-- **THEN** a durable repo doc directs the maintainer to reconcile
-  `openspec/schemas/spec-driven-review/` against it (copy-forward or diff-and-merge)

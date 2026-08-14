@@ -1,16 +1,16 @@
 # The label machine
 
-The routing-label vocabulary shared by both layers of the workflow constitution. Neither layer owns it: map stamps the definition-side transitions, `/set-sail` and `/landfall` stamp the execution-side ones. This file is the single home — skills reference it rather than restating it.
+The routing-label vocabulary shared by both layers of the workflow constitution. Neither layer owns it: map stamps the definition-side transitions, `/embark-apply` and `/landfall` stamp the execution-side ones. This file is the single home — skills reference it rather than restating it.
 
 Routing labels are **ALL CAPS** and are the only labels skills route on. Each lifecycle transition is stamped by the skill that causes it:
 
 | Label | Meaning | Stamped by |
 | --- | --- | --- |
 | `OFF THE MAP` | Logged, not yet charted — map's intake queue | Any session logging a discovery |
-| `CHARTED` | Scope settled, cleared for work — even while sequenced behind an open blocker; `/embark`'s only accepted target | `/map` (chart or exit) |
+| `CHARTED` | Scope settled, cleared for work — even while sequenced behind an open blocker; `/embark-start`'s only accepted target | `/map` (chart or exit) |
 | `UNCHARTED` | Fog only: a map chunk whose scope is not settled — born gated by an open decision ticket at exit, demoted, discarded, or migrated. NOT a blocked marker | `/map` (exit), `/anchor` (demote), `/run-aground` (demote + discard), `/split-map` (migrate) |
-| `MUSTER` | Coverage roll-call chunk cut by the map's e2e scout — plan in ticket body, no spec delta, skips `/embark`; `/set-sail`'s direct-work target. Never comes off: the lane marker rides through the voyage and into port | `/port-inspection` (scout's cut, per issue-cut.md's birth rule) |
-| `UNDER SAIL` | A voyage occupies the tree — an OpenSpec change or a MUSTER voyage | `/set-sail` (adds it, removing `CHARTED` if present; `MUSTER` stays) |
+| `MUSTER` | Coverage roll-call chunk cut by the map's e2e scout — plan in ticket body, no spec delta, skips the departure arc's planning members; `/embark-apply`'s direct-work target. Never comes off: the lane marker rides through the voyage and into port | `/port-inspection` (scout's cut, per issue-cut.md's birth rule) |
+| `UNDER SAIL` | A voyage occupies the tree — an OpenSpec change or a MUSTER voyage | `/embark-apply` (adds it, removing `CHARTED` if present; `MUSTER` stays). The arc's four planning members — `/embark-start`, `/embark-design`, `/embark-qualify`, `/embark-write-tasks` — flip no label |
 | `IN PORT` | Landed and sealed, awaiting inspection via `/port-inspection` | `/landfall` |
 | `ADRIFT` | Voyage interrupted with recoverable work | `/run-aground` (park) |
 | `MAP` | Index issue for an epic — sole milestone carrier (stamped at exit) | `/map` (chart), `/split-map` (successor) |
@@ -23,6 +23,6 @@ Milestones are not labels but follow one routing invariant: the milestone lives 
 
 Lowercase labels (`bug`, `idea`, `debt`, `hold`, …) are **human triage only** — no skill routes on them, with one carve-out: when map's intake recharts an issue carrying `hold`, surface its parked findings comment to the owner before any charting proceeds.
 
-Sequencing between issues lives exclusively in native blocked-by relationships, never in labels: a blocker landing moves no label and fires no skill — the `CHARTED` chunk behind it becomes frontier automatically. `/embark` gates on both signals: label `CHARTED` AND zero open blockers; anything else stops it.
+Sequencing between issues lives exclusively in native blocked-by relationships, never in labels: a blocker landing moves no label and fires no skill — the `CHARTED` chunk behind it becomes frontier automatically. `/embark-start` gates on both signals: label `CHARTED` AND zero open blockers; anything else stops it.
 
 Every label above must already exist in the repo. Skills stamp them and never create them — creation is a one-time repo-setup step (deliberately not documented here: this file is read on every routing decision, and setup happened once, at adoption), so a missing label surfaces as a loud `gh` failure rather than being silently repaired. Repair by recreating the label from the table above (`gh label create`).

@@ -1,7 +1,7 @@
 ---
 name: map
 argument-hint: "[idea text | issue#]"
-description: The mandatory intake for all work definition - compile any input (spark, documented discovery, epic) toward ready-to-work issues through chart / work / exit phases. Small clear input compiles to a single-chunk map (MAP index + one CHARTED chunk, same session); epics get a MAP index with PLOTTING/SCOUTING decision tickets as sub-issues and exit into sequenced, /embark-ready implementation chunks. Use for any new work definition, to work an existing map's tickets, or when an embark grilling routes out as epic-sized.
+description: The mandatory intake for all work definition - compile any input (spark, documented discovery, epic) toward ready-to-work issues through chart / work / exit phases. Small clear input compiles to a single-chunk map (MAP index + one CHARTED chunk, same session); epics get a MAP index with PLOTTING/SCOUTING decision tickets as sub-issues and exit into sequenced, /embark-start-ready implementation chunks. Use for any new work definition, to work an existing map's tickets, or when a departure-arc terrain check or grilling routes out as epic-sized.
 disable-model-invocation: true
 metadata:
   author: list_eddiefamily
@@ -16,7 +16,7 @@ metadata:
 
 The **definition layer's** one entry point. Every piece of work enters through `/map`: it accepts plain text or an existing GitHub issue and compiles it toward ready-to-work issues through three phases — **chart** (name the destination, grill breadth-first, create the map and its tickets), **work** (resolve tickets, scouting excepted in parallel), and **exit** (cut the destination into implementation chunks). No other skill creates issues cleared for work. Charting is the one fog engine — the retired explore route is never routed to.
 
-The execution layer (`/embark` → `/set-sail` → `/landfall`) owns everything after departure: tree, commits, gates, review, landing. Neither layer governs the other — map never touches the tree, and the execution skills never chart. Sharpness is perishable: map clears fog at charting time; embark re-verifies at departure time, because terrain shifts between the two.
+The execution layer (`/embark-start` → `/embark-design` → `/embark-qualify` → `/embark-write-tasks` → `/embark-apply` → `/landfall`) owns everything after departure: tree, commits, gates, review, landing. Neither layer governs the other — map never touches the tree, and the execution skills never chart. Sharpness is perishable: map clears fog at charting time; `/embark-start`'s terrain check re-verifies at departure time, because terrain shifts between the two.
 
 **The write-back discipline survives from explore:** every issue map emits carries a distilled body that is the complete, current statement of what to build, **approved by the owner before any issue is created or edited**.
 
@@ -57,7 +57,7 @@ The milestone lives **only on the map issue**, stamped at exit — chunks, ticke
 Sub-issue of the map; body is one sharp question, sized to one session. Ticket kind is read from its label — **never inferred from title or body**. Exactly one of:
 
 - **`PLOTTING`** (HITL — you plot the course) — run `/grill-me` on the question, decisions put to the owner one at a time. The agent never plots for the helm: a plotting session that answers its own questions has broken the contract. If the owner is not engaging live, the ticket stays open.
-- **`SCOUTING`** (AFK — sent out, reports back) — facts a decision waits on (codebase, docs, third-party APIs). A background subagent **fires automatically at ticket creation** (during charting or on graduation from fog); its findings land as the ticket's resolution comment, the ticket **auto-closes**, and its gist enters Decisions so far carrying an ***unreviewed*** marker until an owner-present session clears it. Downstream, `/embark`'s grilling treats unreviewed scouting decisions as suspect — re-validated with the owner, not cited as settled. No scratch branches — trunk stays clean.
+- **`SCOUTING`** (AFK — sent out, reports back) — facts a decision waits on (codebase, docs, third-party APIs). A background subagent **fires automatically at ticket creation** (during charting or on graduation from fog); its findings land as the ticket's resolution comment, the ticket **auto-closes**, and its gist enters Decisions so far carrying an ***unreviewed*** marker until an owner-present session clears it. Downstream, `/embark-design`'s grilling treats unreviewed scouting decisions as suspect — re-validated with the owner, not cited as settled. No scratch branches — trunk stays clean.
 
 There is **no task ticket type**: a manual prerequisite ("can't plot X until Y exists") is a fog line in Not yet specified naming what it waits on; the owner does Y off-map, and an `/anchor` graduates the fog. A ticket that exists only to be a blocked-by target is ceremony.
 
@@ -72,7 +72,9 @@ There is **no task ticket type**: a manual prerequisite ("can't plot X until Y e
 ## Chart
 
 1. **Intake.** If the input is an existing issue, read it (`gh issue view <N> --json title,body,labels,comments`). If it carries `hold`, surface the most recent parked findings comment to the owner verbatim before proceeding.
-2. **Seeded from an aborted embark grilling?** When `/embark`'s propose grilling routed out as epic-sized and handed off in-session, open with a **re-validation sweep**: every already-given answer is a **candidate, not a decision** — answers given under a one-change framing may not survive the epic reframing. Each is either confirmed into Decisions so far as a plain unlinked gist line (no ticket — an answer that never waited never earns one) or demoted to fog or a fresh ticket. Confirmed answers are not re-asked.
+2. **Seeded from an aborted departure?** When the departure arc routed out as epic-sized and handed off in-session, open with a **re-validation sweep**: everything the aborted session established is a **candidate, not a decision** — positions taken under a one-change framing may not survive the epic reframing. Each is either confirmed into Decisions so far as a plain unlinked gist line (no ticket — an answer that never waited never earns one) or demoted to fog or a fresh ticket. Confirmed answers are not re-asked. The sweep's input differs by which member routed out:
+   - **From `/embark-start`'s terrain check** — the issue body and the map decisions the terrain check surfaced. No interview has run, and no change directory exists.
+   - **From `/embark-design`'s grilling** — the grilling's answers plus the drafted `proposal.md`, itself swept as a candidate framing rather than settled scope.
 3. Run `/grill-me` to name the destination — it fixes the scope. Grill breadth-first to surface open decisions, then scale to what surfaced:
    - **No fog, one-change-sized** — compile to a **single-chunk map** in this session: draft the distilled chunk body, get the owner's approval, create the `MAP` index (body per [reference/map-body.md](reference/map-body.md), milestone stamped) with exactly one chunk as its sub-issue per [reference/issue-cut.md](reference/issue-cut.md) and no decision tickets, close a prompt issue with a pointer comment, stop.
    - **No fog, bigger than one change** — skip the decision phase: create the map purely as the epic index and proceed straight to Exit.
@@ -101,7 +103,7 @@ The gate is **relaxed**: exit runs when the chunking is drafteable and the front
 
 Exit cuts **one release's worth of chunks** — the map is atomic with respect to its release, so everything it chunks ships together. Scope beyond that release never becomes a chunk here: it routes to a successor map or stays as fog until `/split-map` or `/close-map` dispatches it.
 
-1. Draft the chunking: implementation issues each sized for one OpenSpec change, sequenced with blocked-by, bodies pre-distilled — problem, settled decisions (linked from the map), constraints — so `/embark` consumes each without re-exploring. Each body links the map issue so the propose grilling inherits its Decisions so far.
+1. Draft the chunking: implementation issues each sized for one OpenSpec change, sequenced with blocked-by, bodies pre-distilled — problem, settled decisions (linked from the map), constraints — so `/embark-start` consumes each without re-exploring. Each body links the map issue so the proposal and the grilling that follows it inherit its Decisions so far.
 2. **Propose the split to the owner before creating anything; the chunking is theirs to approve.** No issue exists until they say yes.
 3. On approval, create the chunks as sub-issues of the map per [reference/issue-cut.md](reference/issue-cut.md) — its per-kind rules stamp each birth label — and wire the blocked-by sequence plus any residual decision tickets onto the chunks they gate. **Stamp the target milestone on the map issue; chunks are created with no milestone.**
 4. The map stays open as the epic's living index. Chunks land as `IN PORT` via `/landfall`; `/close-map` inspects them and closes the map when the last chunk closes.

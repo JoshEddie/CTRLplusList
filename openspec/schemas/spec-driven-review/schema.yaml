@@ -173,6 +173,51 @@ artifacts:
     requires:
       - proposal
 
+  - id: acceptance
+    generates: acceptance.md
+    description: Chained Given/When/Then user-journey acceptance flows
+    template: acceptance.md
+    instruction: |
+      Draft user-journey acceptance flows by chaining the change's touched
+      `#### Scenario:` blocks together with pre-existing links found in
+      canonical `openspec/specs/**/spec.md` — grep the corpus, same discipline
+      as rules.proposal.
+
+      Not a summary: every row is sourced. A step the corpus cannot back is
+      surfaced as a finding, never written around on the flow's own authority.
+
+      design.md never sources behavior — a step chains on a spec scenario or
+      not at all. Where a spec backs the step but names no observable, design.md
+      may supply the concrete surface the row asserts (the handle, not the
+      behavior); that is not a finding. Where design.md is the only thing
+      asserting the behavior itself, or asserts behavior a spec denies, the
+      step is not sourced: surface it.
+
+      Format: one Given→When→Then arc per flow, stages in strict order
+      of appearance — a stage recurring after a later one (When after
+      Then, Given after When) starts a new flow. One atom per row: a
+      single concrete action (literal UI verbs and handles — "clicks
+      `Claim as Guest`") or a single observable assertion; `And`
+      continues the current stage. Givens open on the binary
+      distinguishing state, no `And` restating what's implied. Thens
+      state implied negatives explicitly; no parenthetical commentary,
+      no unobservable claims. Convert vague prose to a concrete
+      observable ("reads as theirs" → "the banner reads `You`"); none
+      findable = surface it. A requirement with no human-observable
+      surface is listed as "no manual path — fully automated", never
+      forced into a flow. Canonical spec scenarios stay WHEN/THEN; GWT
+      is exclusive to acceptance.md.
+
+      Lifecycle: this planning-time draft is later refined at apply time with
+      literal handles (real button text, real routes) — refine, not rewrite;
+      flow identity and journey scope stay as drafted.
+
+      No test-plan content: no scenario→test-layer mapping, no coverage
+      claims. Flows are walk scripts for the owner's pre-landfall walk and
+      /port-inspection's map-wide e2e scout, nothing more.
+    requires:
+      - specs
+
   - id: tasks
     generates: tasks.md
     description: Implementation checklist with trackable tasks
@@ -229,46 +274,6 @@ artifacts:
       openspec/config.yaml and the review-artifact capability.
     requires:
       - tasks
-
-  - id: acceptance
-    generates: acceptance.md
-    description: Chained Given/When/Then user-journey acceptance flows
-    template: acceptance.md
-    instruction: |
-      Draft user-journey acceptance flows by chaining the change's touched
-      `#### Scenario:` blocks together with pre-existing links found in
-      canonical `openspec/specs/**/spec.md` — grep the corpus, same discipline
-      as rules.proposal.
-
-      The draft is a spec-completeness probe: a journey that cannot be chained
-      from existing or delta scenarios reveals missing connective tissue. Fold
-      that gap back into the change's delta specs and chain through it — never
-      paper over it in the flow.
-
-      Format: one Given→When→Then arc per flow, stages in strict order
-      of appearance — a stage recurring after a later one (When after
-      Then, Given after When) starts a new flow. One atom per row: a
-      single concrete action (literal UI verbs and handles — "clicks
-      `Claim as Guest`") or a single observable assertion; `And`
-      continues the current stage. Givens open on the binary
-      distinguishing state, no `And` restating what's implied. Thens
-      state implied negatives explicitly; no parenthetical commentary,
-      no unobservable claims. Convert vague prose to a concrete
-      observable ("reads as theirs" → "the banner reads `You`"); none
-      findable = a spec gap to surface. A requirement with no
-      human-observable surface is listed as "no manual path — fully
-      automated", never forced into a flow. Canonical spec scenarios
-      stay WHEN/THEN; GWT is exclusive to acceptance.md.
-
-      Lifecycle: this propose-time draft is later refined at apply time with
-      literal handles (real button text, real routes) — refine, not rewrite;
-      flow identity and journey scope stay as drafted.
-
-      No test-plan content: no scenario→test-layer mapping, no coverage
-      claims. Flows are walk scripts for the owner's pre-landfall walk and
-      /port-inspection's map-wide e2e scout, nothing more.
-    requires:
-      - specs
 
 apply:
   requires: [tasks, review, acceptance]

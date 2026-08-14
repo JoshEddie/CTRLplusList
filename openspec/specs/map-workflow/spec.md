@@ -47,14 +47,16 @@ Routing labels SHALL be ALL CAPS and SHALL be the only labels skills route on:
 - `CHARTED` — scope settled, cleared for work
 - `UNCHARTED` — fog only, scope not settled; NOT a blocked marker
 - `MUSTER` — coverage roll-call chunk cut by the map's e2e scout
-  - plan in the ticket body, no spec delta, skips `/embark`
-  - `/set-sail`'s direct-work target
+  - plan in the ticket body, no spec delta, skips the departure arc's planning members
+  - `/embark-apply`'s direct-work target
   - never comes off — the lane marker rides through the voyage and into port
 - `UNDER SAIL` — a voyage occupies the tree: an OpenSpec change or a MUSTER voyage
 - `IN PORT` — landed and sealed, awaiting inspection
 - `ADRIFT` — voyage interrupted with recoverable work
 - `MAP` — index issue
 - `PLOTTING` / `SCOUTING` — decision tickets
+
+The execution side of the machine SHALL be stamped by exactly one member of the departure arc: `/embark-apply`. The planning members — `/embark-start`, `/embark-design`, `/embark-qualify`, `/embark-write-tasks` — SHALL flip no label, because planning artifacts are tree state recorded by the change directory.
 
 #### Scenario: Label case is the semantics
 - **WHEN** any skill decides how to treat an issue
@@ -70,7 +72,11 @@ Routing labels SHALL be ALL CAPS and SHALL be the only labels skills route on:
 
 #### Scenario: Each transition is stamped by its causing skill
 - **WHEN** a lifecycle transition occurs
-- **THEN** `/map` applies `CHARTED`/`UNCHARTED`, `/set-sail` applies `UNDER SAIL` (adding it, removing `CHARTED` if present), `/landfall` applies `IN PORT`, and `/run-aground` applies `ADRIFT` and the discard `UNCHARTED`
+- **THEN** `/map` applies `CHARTED`/`UNCHARTED`, `/embark-apply` applies `UNDER SAIL` (adding it, removing `CHARTED` if present), `/landfall` applies `IN PORT`, and `/run-aground` applies `ADRIFT` and the discard `UNCHARTED`
+
+#### Scenario: The planning members stamp nothing
+- **WHEN** `/embark-start` boards an issue and the arc runs through to `/embark-write-tasks`
+- **THEN** the issue's labels are untouched until `/embark-apply` stamps `UNDER SAIL` — the arc's four planning members are not in the label machine
 
 #### Scenario: Birth labels follow the cut doc regardless of the cutting skill
 - **WHEN** any citing consumer of `issue-cut.md` births an issue on a map
@@ -79,8 +85,6 @@ Routing labels SHALL be ALL CAPS and SHALL be the only labels skills route on:
 #### Scenario: Relabelling an existing chunk is stamped by the relabeller
 - **WHEN** `/anchor` demotes a chunk, `/run-aground` demotes dependent chunks (its always-run Step 1) or discards one, or `/split-map` migrates one
 - **THEN** that skill stamps `UNCHARTED` in its own right — the cut doc governs birth labels only
-
-
 
 #### Scenario: Lowercase labels are human triage only
 - **WHEN** an issue carries `bug`, `idea`, `debt`, `hold`, or any other lowercase label
@@ -95,12 +99,12 @@ Routing labels SHALL be ALL CAPS and SHALL be the only labels skills route on:
 - **THEN** the `gh` call fails loudly — skills stamp labels and never create them, label creation being a one-time adoption step
 
 #### Scenario: Embark gates on both signals
-- **WHEN** `/embark` boards an issue
+- **WHEN** `/embark-start` boards an issue
 - **THEN** it proceeds only on label `CHARTED` AND zero open blockers, and stops on anything else
 
 #### Scenario: Boarding check never delegates into the definition layer
-- **WHEN** `/embark`'s label dispatch rejects an issue
-- **THEN** it stops rather than routing into `/map`; the propose grilling's owner-confirmed epic route-out, owned by `trunk-workflow`, is the sole sanctioned entry from embark
+- **WHEN** `/embark-start`'s label dispatch rejects an issue
+- **THEN** it stops rather than routing into `/map`; the owner-confirmed epic route-out — reachable from `/embark-start`'s terrain check or `/embark-design`'s grilling, both owned by `trunk-workflow` — is the sole sanctioned entry from the departure arc
 
 #### Scenario: Discovery mid-voyage is logged, not folded
 - **WHEN** a session discovers out-of-scope work during implementation or review that sits outside every open map's Destination
@@ -124,15 +128,19 @@ The map SHALL be one GitHub issue labeled `MAP`, its body holding exactly five s
 
 ### Requirement: SCOUTING tickets SHALL auto-resolve with unreviewed markers
 
-A `SCOUTING` ticket SHALL fire its background subagent automatically at creation (e.g. during charting or on graduation from fog — the creation context is owned by the requirement that creates the ticket, not enumerated exhaustively here), with findings landing as the ticket's resolution comment and no scratch branches. The ticket SHALL auto-close, and its gist SHALL enter Decisions so far carrying an *unreviewed* marker until an owner-present session clears it. Downstream, `/embark`'s grilling SHALL treat unreviewed scouting decisions as suspect — re-validated with the owner, not cited as settled.
+A `SCOUTING` ticket SHALL fire its background subagent automatically at creation (e.g. during charting or on graduation from fog — the creation context is owned by the requirement that creates the ticket, not enumerated exhaustively here), with findings landing as the ticket's resolution comment and no scratch branches. The ticket SHALL auto-close, and its gist SHALL enter Decisions so far carrying an *unreviewed* marker until an owner-present session clears it. Downstream, `/embark-design`'s grilling SHALL treat unreviewed scouting decisions as suspect — re-validated with the owner, not cited as settled. `/embark-start` drafts the proposal before that interview runs, so an unreviewed gist it inherits SHALL be carried as provisional and SHALL NOT be recorded as settled.
 
 #### Scenario: Scouting fires at creation
 - **WHEN** a `SCOUTING` ticket is created
 - **THEN** a background subagent is spawned immediately and its findings land as the resolution comment, the ticket closes, and the map gist is marked unreviewed
 
 #### Scenario: Unreviewed finding is re-validated at departure
-- **WHEN** `/embark` proposes a chunk whose inherited map decisions include an unreviewed scouting gist
+- **WHEN** `/embark-design` grills a change whose inherited map decisions include an unreviewed scouting gist
 - **THEN** the grilling re-validates that decision with the owner instead of citing it as settled
+
+#### Scenario: The proposal carries an unreviewed gist as provisional
+- **WHEN** `/embark-start` drafts a proposal for a chunk whose map decisions include an unreviewed scouting gist
+- **THEN** the proposal marks it provisional rather than settled — the interview that clears it has not run yet
 
 ### Requirement: Exit SHALL cut owner-approved, change-sized, sequenced chunks, tolerating wired residual fog
 
@@ -152,7 +160,7 @@ Exit SHALL run when the chunking is drafteable and the frontier chunk is unblock
 
 #### Scenario: Approved chunks are born ready to embark
 - **WHEN** the owner approves the chunking
-- **THEN** chunks are created as sub-issues of the map, sequenced with native blocked-by, with bodies pre-distilled (problem, settled decisions linked from the map, constraints) and linking the map so `/embark` inherits its Decisions so far
+- **THEN** chunks are created as sub-issues of the map, sequenced with native blocked-by, with bodies pre-distilled (problem, settled decisions linked from the map, constraints) and linking the map so `/embark-start` inherits its Decisions so far
 
 #### Scenario: Exit cuts one release's worth
 - **WHEN** exit cuts chunks
@@ -242,9 +250,14 @@ The verification surface is the **dev deployment, before the map's release cuts*
 - **WHEN** `/map` is invoked while an implemented change sits uncommitted in the working tree
 - **THEN** the invocation proceeds — the skill touches only GitHub issues
 
-### Requirement: Chart SHALL seed from an aborted embark grilling with a re-validation sweep
+### Requirement: Chart SHALL seed from an aborted departure with a re-validation sweep
 
-When `/embark`'s propose grilling routes out as epic-sized (the gate-side behavior is owned by `trunk-workflow`), `/map`'s chart phase SHALL run in the same conversation and SHALL treat already-given interview answers as candidates, not decisions: chart opens with a re-validation sweep in which each prior answer is either confirmed into Decisions so far as a plain unlinked gist line (no ticket — an answer that never waited never earns one) or demoted to fog or a ticket, because answers given under a one-change framing may not survive the epic reframing.
+When the departure arc routes out as epic-sized (the gate-side behavior is owned by `trunk-workflow`), `/map`'s chart phase SHALL run in the same conversation and SHALL treat everything the aborted session established as candidates, not decisions: chart opens with a re-validation sweep in which each prior answer is either confirmed into Decisions so far as a plain unlinked gist line (no ticket — an answer that never waited never earns one) or demoted to fog or a ticket, because answers given under a one-change framing may not survive the epic reframing.
+
+The route-out is reachable from two members, and the sweep's input differs by which:
+
+- **From `/embark-start`'s terrain check** — no interview has run, so the sweep's input is the issue body and the map decisions the terrain check surfaced. No change directory exists.
+- **From `/embark-design`'s grilling** — the sweep's input is the grilling's answers plus the drafted `proposal.md`, which SHALL itself be treated as a candidate rather than a settled framing.
 
 #### Scenario: Prior answer survives reframing
 - **WHEN** the re-validation sweep confirms an answer given before the epic realization still holds
@@ -253,6 +266,14 @@ When `/embark`'s propose grilling routes out as epic-sized (the gate-side behavi
 #### Scenario: Prior answer turns foggy
 - **WHEN** the epic reframing makes a previously clear answer suspect
 - **THEN** the sweep demotes it to Not yet specified or a fresh ticket instead of carrying it forward
+
+#### Scenario: Route-out before any interview has a thinner sweep
+- **WHEN** `/embark-start`'s terrain check routes the issue out as epic-sized
+- **THEN** chart's sweep re-validates the issue body and surfaced map decisions — there are no interview answers to carry, and no change directory to discard
+
+#### Scenario: A drafted proposal is a candidate, not a framing
+- **WHEN** `/embark-design`'s grilling routes out as epic-sized against an existing `proposal.md`
+- **THEN** the sweep treats that proposal's positions as candidates alongside the interview answers rather than as the map's settled scope
 
 ### Requirement: The map SHALL be atomic with respect to a release, with /split-map as the only boundary cutter
 

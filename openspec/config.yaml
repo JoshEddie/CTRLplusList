@@ -69,11 +69,6 @@ context: |
 rules:
   proposal:
     - |
-      Before drafting, run the `grill-me` skill
-      (`.claude/skills/grill-me/SKILL.md`) to reach shared
-      understanding with the owner. Do not draft the proposal or any
-      later artifact until that interview concludes.
-    - |
       Before drafting, enumerate active specs (`openspec list --specs
       --json` or `ls openspec/specs`) and grep EVERY active spec.md
       for any DOM class, component name, file path, or behavior the
@@ -98,6 +93,10 @@ rules:
       modify it — do not silently override. Keep rejected decisions
       in the doc with rationale so the constraint isn't re-discovered.
   specs:
+    - |
+      The `/mattpocock-skills:grilling` interview must have concluded
+      against the reviewed proposal before specs are drafted. Do not
+      draft specs or any later artifact until it has.
     - |
       When adding a requirement that overlaps semantically with one
       in another capability, name the overlap and defer. Cross-
