@@ -34,7 +34,7 @@ This is a wrapper around `/map`'s chart phase. Everything not stated here follow
 ## Steps
 
 1. Read the governing issue and every sub-issue (`gh issue view <N> --json title,body,labels,state,milestone,comments`; sub-issue list via the endpoint below). Present the migration inventory to the owner: what's closed (to re-parent), what's open (to re-distill), what decisions the body claims (to sweep).
-2. Run `/map`'s chart phase on the governing issue's content with the re-validation sweep of policy 2, plus policy-3 scouting tickets. Chart proceeds exactly as `/map` specifies — destination named via `/grill-me`, fog to Not yet specified, tickets as sub-issues.
+2. Run `/map`'s chart phase on the governing issue's content with the re-validation sweep of policy 2, plus policy-3 scouting tickets. Chart proceeds exactly as `/map` specifies — destination named via `/mattpocock-skills:grilling`, fog to Not yet specified, tickets as sub-issues.
 3. Create the `MAP` index (owner-approved body; the milestone is stamped at exit per policy 7).
 4. Re-parent **closed** sub-issues only (policy 4; open ones stay put per policy 5). The endpoints accept closed issues — verified live on this repo during the #141 migration:
 
