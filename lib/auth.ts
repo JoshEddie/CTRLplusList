@@ -1,6 +1,9 @@
-import { accounts, users } from '@/db/schema';
+import { accounts, profile_members, profiles, users } from '@/db/schema';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
+import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
+import type * as schema from '@/db/schema';
 import NextAuth, { type NextAuthConfig } from 'next-auth';
+import type { AdapterUser } from 'next-auth/adapters';
 import Google from 'next-auth/providers/google';
 import { db } from '../db';
 
@@ -40,6 +43,26 @@ export const sessionCallback: NonNullable<Callbacks['session']> = async ({
   return session;
 };
 
+// Written on the same statements as the phase-1 migration backfill, which is a
+// point-in-time SELECT nothing re-runs: without this, an account created after
+// the migration would hold no profile at all. `signInCallback` mutates the
+// provider user before the adapter inserts it, so `user.name` here is already
+// the composed first + last name the backfill wrote.
+export async function createSelfProfile(
+  database: PgDatabase<PgQueryResultHKT, typeof schema>,
+  user: Pick<AdapterUser, 'id' | 'name'>
+) {
+  const profileId = `self-${user.id}`;
+  await database
+    .insert(profiles)
+    .values({ id: profileId, name: user.name ?? 'UNTITLED', user_id: user.id })
+    .onConflictDoNothing();
+  await database
+    .insert(profile_members)
+    .values({ user_id: user.id, profile_id: profileId, role: 'self' })
+    .onConflictDoNothing();
+}
+
 const nextAuth = NextAuth({
   theme: { logo: 'https://ctrlpluslist.com/ctrlpluslist_logo-hor-white.webp' },
   adapter: DrizzleAdapter(db, {
@@ -53,6 +76,11 @@ const nextAuth = NextAuth({
     signIn: signInCallback,
     jwt: jwtCallback,
     session: sessionCallback,
+  },
+  events: {
+    // The adapter always yields an AdapterUser; the event type widens it to
+    // User, whose `id` is optional.
+    createUser: ({ user }) => createSelfProfile(db, user as AdapterUser),
   },
 });
 
@@ -116,6 +144,12 @@ function synthesizeSession(userId: string) {
     };
   }
   return { user: { id: userId }, expires: BYPASS_EXPIRES };
+}
+
+// Dormant seam for active-profile resolution: nothing consumes it until the
+// resolver exists.
+export function bypassActiveProfile(): string | undefined {
+  return bypassEnabled() ? process.env.BYPASS_ACTIVE_PROFILE : undefined;
 }
 
 export const auth: typeof nextAuth.auth = ((...args: unknown[]) => {

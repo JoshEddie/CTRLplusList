@@ -71,6 +71,13 @@
       "when": 1784379642836,
       "tag": "0009_yielding_romulus",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786712302637,
+      "tag": "0010_late_chamber",
+      "breakpoints": true
     }
   ]
 }

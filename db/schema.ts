@@ -1,6 +1,7 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   integer,
   pgTable,
   primaryKey,
@@ -60,6 +61,9 @@ export const lists = pgTable('lists', {
   user_id: text('user_id')
     .references(() => users.id, { onDelete: 'cascade' })
     .notNull(),
+  updated_by_user_id: text('updated_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
   // Legacy column — dormant during soak (see openspec change add-following-and-history,
   // design Decision 4b). Removed in follow-up archive-legacy-share. Dev code reads
   // `visibility` only; `shared` is dual-written by setListVisibility for main compat.
@@ -78,6 +82,9 @@ export const items = pgTable('items', {
   user_id: text('user_id')
     .references(() => users.id, { onDelete: 'cascade' })
     .notNull(),
+  updated_by_user_id: text('updated_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
   quantity_limit: integer('quantity_limit').default(1),
   archived_at: timestamp('archived_at'),
 });
@@ -208,6 +215,70 @@ export const purchases = pgTable(
   ]
 );
 
+export const profiles = pgTable(
+  'profiles',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    name: text('name').notNull(),
+    // NULL marks a managed (account-less) profile; profiles never cascade from
+    // users, so an account delete detaches the self-profile instead of removing it.
+    user_id: text('user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    created_at: timestamp('created_at').defaultNow().notNull(),
+    updated_at: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('profiles_one_self_per_user_idx')
+      .on(table.user_id)
+      .where(sql`${table.user_id} IS NOT NULL`),
+  ]
+);
+
+export const profile_members = pgTable(
+  'profile_members',
+  {
+    user_id: text('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    profile_id: text('profile_id')
+      .references(() => profiles.id, { onDelete: 'cascade' })
+      .notNull(),
+    role: text('role').notNull(),
+    ride_along: boolean('ride_along').notNull().default(false),
+    created_at: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.user_id, table.profile_id] }),
+    check(
+      'profile_members_role_valid',
+      sql`${table.role} IN ('self', 'owner', 'manager')`
+    ),
+  ]
+);
+
+export const preferences = pgTable('preferences', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  type: text('type').notNull(),
+});
+
+export const profile_preferences = pgTable(
+  'profile_preferences',
+  {
+    profile_id: text('profile_id')
+      .references(() => profiles.id, { onDelete: 'cascade' })
+      .notNull(),
+    preference_id: text('preference_id')
+      .references(() => preferences.id, { onDelete: 'cascade' })
+      .notNull(),
+    value: text('value').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.profile_id, table.preference_id] })]
+);
+
 // Relations between tables
 export const item_storesRelations = relations(item_stores, ({ one }) => ({
   item: one(items, {
@@ -220,6 +291,12 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   user: one(users, {
     fields: [items.user_id],
     references: [users.id],
+    relationName: 'itemOwner',
+  }),
+  updatedBy: one(users, {
+    fields: [items.updated_by_user_id],
+    references: [users.id],
+    relationName: 'itemUpdatedBy',
   }),
   purchases: many(purchases),
   stores: many(item_stores),
@@ -256,6 +333,12 @@ export const listsRelations = relations(lists, ({ one, many }) => ({
   user: one(users, {
     fields: [lists.user_id],
     references: [users.id],
+    relationName: 'listOwner',
+  }),
+  updatedBy: one(users, {
+    fields: [lists.updated_by_user_id],
+    references: [users.id],
+    relationName: 'listUpdatedBy',
   }),
   items: many(list_items),
   saved_lists: many(saved_lists),
@@ -274,8 +357,9 @@ export const saved_listsRelations = relations(saved_lists, ({ one }) => ({
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
-  lists: many(lists),
-  items: many(items),
+  lists: many(lists, { relationName: 'listOwner' }),
+  items: many(items, { relationName: 'itemOwner' }),
+  memberships: many(profile_members),
   purchases: many(purchases, { relationName: 'purchaser' }),
   claimed_purchases: many(purchases, { relationName: 'claimer' }),
   saved_lists: many(saved_lists),
@@ -320,6 +404,47 @@ export const user_followsRelations = relations(user_follows, ({ one }) => ({
     relationName: 'followee',
   }),
 }));
+
+export const profilesRelations = relations(profiles, ({ one, many }) => ({
+  user: one(users, {
+    fields: [profiles.user_id],
+    references: [users.id],
+  }),
+  members: many(profile_members),
+  preferences: many(profile_preferences),
+}));
+
+export const profile_membersRelations = relations(
+  profile_members,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [profile_members.user_id],
+      references: [users.id],
+    }),
+    profile: one(profiles, {
+      fields: [profile_members.profile_id],
+      references: [profiles.id],
+    }),
+  })
+);
+
+export const preferencesRelations = relations(preferences, ({ many }) => ({
+  values: many(profile_preferences),
+}));
+
+export const profile_preferencesRelations = relations(
+  profile_preferences,
+  ({ one }) => ({
+    profile: one(profiles, {
+      fields: [profile_preferences.profile_id],
+      references: [profiles.id],
+    }),
+    preference: one(preferences, {
+      fields: [profile_preferences.preference_id],
+      references: [preferences.id],
+    }),
+  })
+);
 
 export const user_blocksRelations = relations(user_blocks, ({ one }) => ({
   blocker: one(users, {

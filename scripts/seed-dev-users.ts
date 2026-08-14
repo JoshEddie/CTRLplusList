@@ -22,7 +22,7 @@
  * --------------------------------------------------------------------------
  */
 import 'dotenv/config';
-import { inArray, sql } from 'drizzle-orm';
+import { inArray, or, sql } from 'drizzle-orm';
 import { db } from '../db';
 import {
   item_images,
@@ -31,6 +31,8 @@ import {
   list_items,
   list_visits,
   lists,
+  profile_members,
+  profiles,
   purchases,
   user_follows,
   users,
@@ -83,6 +85,11 @@ const seedUsers: SeedUser[] = [
     image: avatar(`${f.first[0]}E`, f.bg),
   })),
 ];
+
+// Same deterministic scheme the phase-1 migration backfill uses, so seeded and
+// backfilled self-profiles are the same rows.
+const selfProfileId = (userId: string) => `self-${userId}`;
+const KIDDO_PROFILE_ID = 'dev-profile-kiddo';
 
 type SeedList = {
   id: string;
@@ -622,6 +629,27 @@ async function main() {
   // viewer that lack a dev-* prefix.
   if (process.argv.includes('--reset')) {
     const seededIds = seedUsers.map((u) => u.id);
+    // Profiles first: they deliberately do NOT cascade from users, and the user
+    // delete below SET-NULLs profiles.user_id and cascades memberships away —
+    // after it, both handles onto a seeded profile are gone and it is stranded.
+    const deletedProfiles = await db
+      .delete(profiles)
+      .where(
+        or(
+          inArray(profiles.user_id, seededIds),
+          inArray(
+            profiles.id,
+            db
+              .select({ id: profile_members.profile_id })
+              .from(profile_members)
+              .where(inArray(profile_members.user_id, seededIds))
+          )
+        )
+      )
+      .returning({ id: profiles.id });
+    console.log(
+      `  reset: deleted ${deletedProfiles.length} profiles reachable from seeded users`
+    );
     const deleted = await db
       .delete(users)
       .where(inArray(users.id, seededIds))
@@ -648,6 +676,40 @@ async function main() {
       set: { name: sql`excluded.name`, image: sql`excluded.image` },
     });
   console.log(`  users: ${seedUsers.length} upserted`);
+
+  // Profiles: one self-profile per seeded user (the invariant the migration
+  // backfill guarantees in Neon) plus one managed fixture. No preference rows —
+  // features that introduce a preference own its catalog row.
+  await db
+    .insert(profiles)
+    .values([
+      ...seedUsers.map((u) => ({
+        id: selfProfileId(u.id),
+        name: u.name,
+        user_id: u.id,
+      })),
+      { id: KIDDO_PROFILE_ID, name: 'Kiddo', user_id: null },
+    ])
+    .onConflictDoNothing();
+  await db
+    .insert(profile_members)
+    .values([
+      ...seedUsers.map((u) => ({
+        user_id: u.id,
+        profile_id: selfProfileId(u.id),
+        role: 'self',
+      })),
+      { user_id: VIEWER_ID, profile_id: KIDDO_PROFILE_ID, role: 'owner' },
+      {
+        user_id: friendId('alice'),
+        profile_id: KIDDO_PROFILE_ID,
+        role: 'manager',
+      },
+    ])
+    .onConflictDoNothing();
+  console.log(
+    `  profiles: ${seedUsers.length} self + 1 managed upserted, profile_members: ${seedUsers.length + 2} upserted`
+  );
 
   const now = Date.now();
   const sharedAt = new Date(now - 1000 * 60 * 60 * 24 * 14); // 2 weeks ago

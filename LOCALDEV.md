@@ -19,6 +19,10 @@ Orthogonal to bypass.
 - Any other seeded id ⇒ session for that id.
 - E2e Playwright projects: `authenticated` unset, `guest` sets `guest`.
 
+## Active profile (`BYPASS_ACTIVE_PROFILE`)
+
+Dormant seam. Read in local mode and exposed as `bypassActiveProfile()`; consumed by nothing — active-profile resolution arrives in phase 2. Setting it changes no behavior, including session synthesis. Outside local mode it always reads undefined.
+
 ## Seeded data coverage
 
 Deterministic states baked into `npm run db:reset:dev` / `dev:local` seed ([scripts/seed-dev-users.ts](scripts/seed-dev-users.ts)). Read when hunting a specific UI state from seed.
@@ -39,6 +43,10 @@ Every third item (positions 0, 3, 6…) on every fourth list (list index 3, 7, 1
 
 Hand-authored non-link states: `dev-list-viewer-birthday-item-5` PRICED (single linkless `$24.99` row), `dev-list-viewer-birthday-item-7` BARE (zero store rows). Linkless extras (`*-linkless-N`, appended after each list's pool slice, imageless → minted art, excluded from purchase fan-out): "Cash toward the house fund" (BARE) + "Coffee shop gift card" (PRICED $25.00) on `dev-list-viewer-birthday`; "A homemade dinner for two" (BARE) + "Spa day gift card" (PRICED $50.00) on `dev-list-alice-wedding` — owner-edit + viewer-claim surfaces for both door-shaped states reachable from seed.
 
+### Profile coverage
+
+One self-profile per seeded user, id `self-<userId>` (`dev-test-viewer` ⇒ `self-dev-test-viewer`), name = the user's, carrying a `self` membership. One managed fixture: `dev-profile-kiddo` (`user_id` null, name "Kiddo") with `dev-test-viewer` as `owner` and `dev-friend-alice` as `manager` — the account-less profile shape, and the id `BYPASS_ACTIVE_PROFILE` takes. No preference rows: `preferences` and `profile_preferences` seed empty, and the feature introducing a preference owns its catalog row. Profile + membership inserts use `.onConflictDoNothing()`, so a reseed does not pick up edits to a seeded profile's name or role — `db:reset:dev` does.
+
 ### Claim-attribution coverage
 
 Authenticated fan-out purchase rows = self-claims (`claimed_by = user_id`); guest rows all-NULL identities. Four hand-authored rows (`dev-purchase-*`, on `dev-list-viewer-birthday-item-1..3` + `dev-list-alice-wedding-item-1`, items excluded from fan-out) cover attributed-claim shape (Alice marked Bob), viewer-as-attributed-purchaser, owner self-claim, legacy signed-out-guest row — every unclaim-matrix branch + owner spoiler "added by" label reachable from seed. Alice seeded mutual with every other friend → her lists' attributed-purchaser picker pool large enough to scroll, targets besides viewer.
@@ -46,7 +54,7 @@ Authenticated fan-out purchase rows = self-claims (`claimed_by = user_id`); gues
 ## Implementation files
 
 - [db/index.ts](db/index.ts) — `USE_PG_DRIVER` driver-switch (postgres-js vs neon-http) + localhost boot guard.
-- [lib/auth.ts](lib/auth.ts) — bypass keyed on `USE_PG_DRIVER`; `BYPASS_SESSION_USER` selector; exports `BYPASS_USER_ID = 'dev-test-viewer'`, `GUEST_SESSION_USER = 'guest'`.
+- [lib/auth.ts](lib/auth.ts) — bypass keyed on `USE_PG_DRIVER`; `BYPASS_SESSION_USER` selector; exports `BYPASS_USER_ID = 'dev-test-viewer'`, `GUEST_SESSION_USER = 'guest'`, `bypassActiveProfile()`.
 - [scripts/seed-dev-users.ts](scripts/seed-dev-users.ts) — idempotent; refuses prod; upserts most tables via Drizzle `.insert().onConflictDoUpdate()` (few `.onConflictDoNothing()`) so reseeds pick up edits.
 - [scripts/setup-e2e-db.sh](scripts/setup-e2e-db.sh) / [scripts/dev-local.sh](scripts/dev-local.sh) / [scripts/test-e2e.sh](scripts/test-e2e.sh) — `setup-e2e-db.sh` = Docker bring-up + schema only; data-state step is caller's: `dev:local` seeds (preserves UI-created rows), `test:e2e` runs `db:reset:dev` (cascade wipe + reseed) so every e2e run starts identical.
 - Route-handler / middleware overloads of `auth(req, ctx)` pass through to real NextAuth — production auth path unchanged.
