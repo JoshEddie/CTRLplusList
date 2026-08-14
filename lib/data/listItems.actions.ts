@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { list_items, lists, users } from '@/db/schema';
+import { list_items, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { touchLists } from '@/lib/data/list.touch';
 import {
@@ -37,11 +37,8 @@ export async function setListItems(
       return { success: false, message: 'List not found', error: 'Not found' };
     }
 
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser || sessionUser.id !== list.user_id) {
+    const userId = await authedUserId();
+    if (!userId || userId !== list.user_id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',

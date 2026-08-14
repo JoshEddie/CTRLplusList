@@ -1,8 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { items, list_items, users } from '@/db/schema';
-import { auth } from '@/lib/auth';
+import { items, list_items } from '@/db/schema';
 import {
   getItemImageUrls,
   replaceItemImages,
@@ -12,6 +11,7 @@ import {
 import { touchLists } from '@/lib/data/list.touch';
 import { ItemSchema } from '@/lib/data/item.schema';
 import { validateStore } from '@/lib/data/item.store';
+import { authedUserId, UNAUTHORIZED_RESPONSE } from '@/lib/data/user.session';
 import { type ActionResponse, ItemDetails } from '@/lib/types';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -19,25 +19,9 @@ import { updateTag } from 'next/cache';
 
 export async function createItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
-    }
-
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      return {
-        success: false,
-        message: 'User not found',
-        error: 'Unauthorized',
-      };
+    const userId = await authedUserId();
+    if (!userId) {
+      return UNAUTHORIZED_RESPONSE;
     }
 
     const validationResult = ItemSchema.safeParse(data);
@@ -64,7 +48,7 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       description: validatedData.description || '',
       created_at: new Date(),
       updated_at: new Date(),
-      user_id: sessionUser.id,
+      user_id: userId,
       quantity_limit: validatedData.quantity_limit,
     });
 
@@ -95,32 +79,16 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
 
 export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
-    }
-
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      return {
-        success: false,
-        message: 'User not found',
-        error: 'Unauthorized',
-      };
+    const userId = await authedUserId();
+    if (!userId) {
+      return UNAUTHORIZED_RESPONSE;
     }
 
     const existing = await db.query.items.findFirst({
       where: eq(items.id, data.id),
       columns: { user_id: true },
     });
-    if (!existing || existing.user_id !== sessionUser.id) {
+    if (!existing || existing.user_id !== userId) {
       return {
         success: false,
         message: 'Unauthorized - item does not belong to you',
@@ -194,32 +162,16 @@ export async function archiveItem(
   archived: boolean
 ): Promise<ActionResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
-    }
-
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      return {
-        success: false,
-        message: 'User not found',
-        error: 'Unauthorized',
-      };
+    const userId = await authedUserId();
+    if (!userId) {
+      return UNAUTHORIZED_RESPONSE;
     }
 
     const item = await db.query.items.findFirst({
       where: eq(items.id, item_id),
       columns: { user_id: true },
     });
-    if (!item || item.user_id !== sessionUser.id) {
+    if (!item || item.user_id !== userId) {
       return {
         success: false,
         message: 'Unauthorized - item does not belong to you',
@@ -250,16 +202,8 @@ export async function archiveItem(
 
 export async function deleteItem(id: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      throw new Error('Unauthorized');
-    }
-
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
+    const userId = await authedUserId();
+    if (!userId) {
       throw new Error('Unauthorized');
     }
 
@@ -269,7 +213,7 @@ export async function deleteItem(id: string) {
       columns: { user_id: true },
     });
 
-    if (!item || item.user_id !== sessionUser.id) {
+    if (!item || item.user_id !== userId) {
       throw new Error('Unauthorized - Item does not belong to you');
     }
 

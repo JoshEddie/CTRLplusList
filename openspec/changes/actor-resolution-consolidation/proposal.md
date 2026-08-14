@@ -64,7 +64,7 @@ None.
 - `lib/data/user.session.ts`, `lib/data/user.ts` — unchanged in shape.
 - Call sites already on a chokepoint (`list.actions.ts`, `visit.actions.ts`, `user.actions.ts`, `item.placeholder.actions.ts`, and the ~19 components on `getUserIdByEmail`) are untouched.
 
-**Tests** — the affected unit suites currently mock `auth()` plus `db.query.users.findFirst` per call site; they move to mocking `authedUserId`. Assertions on `error` codes stand; assertions on the two normalized `message` strings (if any exist in the touched suites) are updated in lockstep. E2E flows (`e2e-critical-flows`, `e2e-management-flows`) exercise these actions end to end and are the guard that observable behavior held — particularly the guest-claim flow, which pins `resolveClaimIdentity`'s preserved branch.
+**Tests** — the affected unit suites mock `auth()` and run their queries against a real per-file pglite database, so `authedUserId` is exercised end to end rather than stubbed and no test-mock migration is needed. Assertions on `error` codes stand; no suite asserts either `message` string, so the normalization moves nothing. E2E flows (`e2e-critical-flows`, `e2e-management-flows`) exercise these actions end to end and are the guard that observable behavior held — particularly the guest-claim flow, which pins `resolveClaimIdentity`'s preserved branch.
 
 **Cache** — no read is added or modified; no `cacheTag` or `updateTag` call changes. `authedUserId` is deliberately uncached (it calls `auth()`); `getUserIdByEmail` is React-`cache`d per request, not `'use cache'`-tagged.
 

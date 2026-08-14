@@ -90,11 +90,12 @@ describe('setListItems', () => {
     expect(res.error).toBe('Forbidden');
   });
 
-  it('UnknownEmail_ReturnsForbidden', async () => {
+  it('UnknownEmail_ReturnsForbidden-NoRow', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     asGhost();
     const res = await actions.setListItems('L', ['I']);
     expect(res.error).toBe('Forbidden');
+    expect(await listItemRows('L')).toHaveLength(0);
   });
 
   it('EmptyItemId_ReturnsInvalidInput', async () => {

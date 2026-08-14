@@ -116,6 +116,7 @@ names the converted site it pins.
 ## No manual path — fully automated
 
 - Both unresolvable-actor causes reject identically (`server-endpoint-authorization`, added) — requires a session whose email matches no `users` row; not producible in a UI walk. Unit-asserted per design D7.
+- Ownership-subsumed rejection still writes nothing (`server-endpoint-authorization`, added) — same stale-session precondition; pinned by `UnknownEmail_ReturnsForbidden` in `lib/data/__tests__/listItems.actions.test.ts`.
 - A stale session does not become a guest (`server-endpoint-authorization`, added) — same stale-session precondition; pinned by the `purchase.actions` unit test and the e2e guest-claim flow.
 - Endpoint resolves the actor without querying the users table (`server-endpoint-authorization`, added) — source inspection, no runtime surface.
 - Route handler gating on identity is governed (`server-endpoint-authorization`, added) — the add-item UI is reachable only signed in; the unauthenticated 401 branch is direct-HTTP only.

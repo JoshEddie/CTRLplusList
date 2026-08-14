@@ -5,10 +5,9 @@ import {
   items,
   list_items,
   lists,
-  users,
 } from '@/db/schema';
-import { auth } from '@/lib/auth';
 import { touchLists } from '@/lib/data/list.touch';
+import { authedUserId } from '@/lib/data/user.session';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
@@ -45,22 +44,15 @@ export async function updateItemStores(
   itemId: string
 ): Promise<void> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      throw new Error('Unauthorized');
-    }
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
+    const userId = await authedUserId();
+    if (!userId) {
       throw new Error('Unauthorized');
     }
     const item = await db.query.items.findFirst({
       where: eq(items.id, itemId),
       columns: { user_id: true },
     });
-    if (!item || item.user_id !== sessionUser.id) {
+    if (!item || item.user_id !== userId) {
       throw new Error('Unauthorized');
     }
 
@@ -180,22 +172,15 @@ export async function updateItemLists(
   itemId: string
 ): Promise<void> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      throw new Error('Unauthorized');
-    }
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
+    const userId = await authedUserId();
+    if (!userId) {
       throw new Error('Unauthorized');
     }
     const item = await db.query.items.findFirst({
       where: eq(items.id, itemId),
       columns: { user_id: true },
     });
-    if (!item || item.user_id !== sessionUser.id) {
+    if (!item || item.user_id !== userId) {
       throw new Error('Unauthorized');
     }
     if (listIds.length > 0) {
@@ -205,7 +190,7 @@ export async function updateItemLists(
         .where(inArray(lists.id, listIds));
       if (
         targetLists.length !== listIds.length ||
-        targetLists.some((l) => l.user_id !== sessionUser.id)
+        targetLists.some((l) => l.user_id !== userId)
       ) {
         throw new Error('Unauthorized');
       }

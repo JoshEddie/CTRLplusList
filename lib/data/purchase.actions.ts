@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { items, purchases, users } from '@/db/schema';
+import { items, purchases } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import {
   canRemovePurchase,
@@ -17,6 +17,7 @@ import {
   pruneGuestClaim,
   serializeGuestClaims,
 } from '@/lib/data/purchase.cookie';
+import { authedUserId } from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
 import { type ActionResponse } from '@/lib/types';
@@ -52,11 +53,8 @@ async function resolveClaimIdentity(
   const session = await auth();
   const trimmed = rawGuestName?.trim() ?? '';
   if (session?.user?.email) {
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
+    const callerId = await authedUserId();
+    if (!callerId) {
       return {
         error: { success: false, message: 'User not found', error: 'Unauthorized' },
       };
@@ -72,16 +70,16 @@ async function resolveClaimIdentity(
     }
     if (purchasedBy) {
       return {
-        callerUserId: sessionUser.id,
+        callerUserId: callerId,
         purchaserUserId: purchasedBy,
         guestName: null,
       };
     }
     return trimmed
-      ? { callerUserId: sessionUser.id, purchaserUserId: null, guestName: trimmed }
+      ? { callerUserId: callerId, purchaserUserId: null, guestName: trimmed }
       : {
-          callerUserId: sessionUser.id,
-          purchaserUserId: sessionUser.id,
+          callerUserId: callerId,
+          purchaserUserId: callerId,
           guestName: null,
         };
   }
@@ -258,15 +256,7 @@ export async function removePurchase(
       };
     }
 
-    const session = await auth();
-    let actorUserId: string | null = null;
-    if (session?.user?.email) {
-      const user = await db.query.users.findFirst({
-        where: eq(users.email, session.user.email),
-        columns: { id: true },
-      });
-      actorUserId = user?.id ?? null;
-    }
+    const actorUserId = await authedUserId();
 
     const row = await db.query.purchases.findFirst({
       where: eq(purchases.id, data.purchase_id),

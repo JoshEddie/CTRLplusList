@@ -52,9 +52,11 @@ Verified site by site rather than assumed:
 | `removePurchase` | already collapses both to `actorUserId = null` | identical |
 | product-fetch `POST` | both return HTTP 401 | identical |
 | `resolveClaimIdentity` | branch is load-bearing | preserved — see D4 |
-| `createItem` / `updateItem` / `archiveItem` | `'Unauthorized access'` vs `'User not found'`, both `error: 'Unauthorized'` | normalized to `'Unauthorized access'` |
+| `createItem` / `updateItem` / `archiveItem` | `'Unauthorized access'` vs `'User not found'`, both `error: 'Unauthorized'` | normalized to the shared `UNAUTHORIZED_RESPONSE` |
 
-So the non-preserving surface is **three `message` strings**, not ten. `message` reaches users through `toast.error(result.message)`; no test or spec asserts either string. `'Unauthorized access'` wins because it describes the caller's situation without asserting a cause the collapsed helper can no longer distinguish.
+So the non-preserving surface is **three `message` strings**, not ten. `message` reaches users through `toast.error(result.message)`; no test or spec asserts either string, and `server-endpoint-authorization` places `message` outside the rejection contract. The three sites therefore return `UNAUTHORIZED_RESPONSE` from `user.session.ts` — the constant every sibling action module already returns — rather than a fourth hand-rolled copy of the literal, and its `message: 'Unauthorized'` is the normalized text.
+
+The unauthorized literals elsewhere in `listItems.actions.ts` (`setListItems`' session gate, `removeListItem`, `updatePriority`) are pre-existing and untouched: only `setListItems`' id lookup is converted here, so folding those into the constant is out of this change's charter.
 
 ### D4 — `resolveClaimIdentity` keeps its own `auth()` call
 
@@ -64,6 +66,8 @@ It therefore keeps `const session = await auth()` for the guest-vs-authenticated
 
 *Trade-off:* two `auth()` calls on this path. Accepted — `auth()` is a cookie read, not a DB round-trip, and the alternative is the tri-state return D1 rejects.
 
+`setListItems` resolves the session twice for the same reason: it keeps its own session-presence gate and then calls `authedUserId()`. This is the shape `server-endpoint-authorization` prescribes — call `auth()` and reject when no session exists, *then* resolve `users.id` through the shared helper — so it is accepted on the same reasoning, not a defect to fix. The one alternative that would drop the second call, resolving the id from the session's email via `getUserIdByEmail`, is barred: the same requirement forbids an endpoint reading the session email and querying `users` itself, and D2 keeps that helper React-cached, full-row, and error-swallowing.
+
 ### D5 — `app/api/product-fetch/route.ts` imports `@/lib/data/user.session`
 
 Direction `app/**` → `lib/data/**` is permitted; the ban is the reverse. `data-layer-organization`'s sentence naming the helper's audience as "the action modules" is widened by this change's delta so the import isn't blocked at review on stale wording.
@@ -72,19 +76,19 @@ Direction `app/**` → `lib/data/**` is permitted; the ban is the reverse. `data
 
 No custom ESLint rule banning `eq(users.email, …)` outside `user.session.ts`. One function is being protected, the violation has an obvious diff signature, and the new requirement makes it normative. If it recurs, write the rule then.
 
-### D7 — Tests move to mocking the chokepoint
+### D7 — Tests keep mocking the session, not the seam
 
-Affected suites currently mock `auth()` *and* `db.query.users.findFirst`; they move to mocking `authedUserId`. Two consequences:
+Affected suites mock `@/lib/auth`'s `auth()` and nothing else on this path: `vi.mock('@/db')` swaps in a real per-file pglite database (`bootPglite`, full migration set, users seeded per test), so no suite mocks `db.query.users.findFirst`. The "session whose email matches no `users` row" case is produced by pointing the session at a ghost email and letting the real query miss. `authedUserId` is therefore exercised end to end rather than stubbed, and the conversion needs no test-mock migration. Two consequences:
 
-- `lib/data/__tests__/purchase.actions.test.ts` must keep mocking `auth()` as well, since D4 leaves a real `auth()` call there — and it is where the stale-session case (session present, `authedUserId` → `null`) gets its assertion, per `server-endpoint-authorization`'s new scenario.
-- Assertions on `error` codes and thrown-`Error` messages stand unchanged. Any assertion on the three normalized `message` strings updates in lockstep. Per `TESTING.md`, no test is added purely to execute the swapped line; the behavior each test names is what it keeps asserting.
+- `lib/data/__tests__/purchase.actions.test.ts` needs no second mock for the real `auth()` call D4 leaves in place — the one `auth()` mock already drives both the guest-vs-authenticated branch and the id resolution. It is where the stale-session case (session present, email matching no `users` row) gets its assertion, per `server-endpoint-authorization`'s new scenario.
+- Assertions on `error` codes and thrown-`Error` messages stand unchanged. No suite asserts any of the affected `message` strings, so the normalization moves nothing. Per `TESTING.md`, no test is added purely to execute the swapped line; the behavior each test names is what it keeps asserting.
 
 ## Risks / Trade-offs
 
 - **A drop-in that isn't** — a site whose guard reads subtly differently than the table in D3 → the table was built by reading each of the ten guards, not by pattern-matching; `tasks.md` converts them one site at a time so a divergence surfaces as a single failing suite rather than a ten-site debug.
 - **Stale session silently becomes a guest** — the failure D4 exists to prevent, and the one with real consequences (an unattributable claim). Mitigated by keeping the branch *and* pinning it with a spec scenario and a unit test, so a later refactor that "simplifies" `resolveClaimIdentity` onto `authedUserId` fails a test rather than shipping.
 - **Three toast strings change** — accepted and stated in the spec delta rather than filed under "pure refactor". No flow depends on the text.
-- **Double `auth()` in `resolveClaimIdentity`** — cookie read, not a DB round-trip. Accepted (D4).
+- **Double `auth()` in `resolveClaimIdentity` and `setListItems`** — cookie read, not a DB round-trip, and the gate-then-helper shape the spec prescribes. Accepted (D4).
 
 ## Migration Plan
 

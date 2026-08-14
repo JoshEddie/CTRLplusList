@@ -271,7 +271,10 @@ describe('createPurchase', () => {
       expect(await purchaseRows('I')).toHaveLength(0);
     });
 
-    it('AuthedUnknownEmail_ReturnsUnauthorized', async () => {
+    it('AuthedUnknownEmail_ReturnsUnauthorized-NoRow', async () => {
+      // A stale session must not fall through to the guest path and write a
+      // purchases row with claimed_by = NULL (server-endpoint-authorization,
+      // "A stale session does not become a guest").
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       asGhost();
       const res = await actions.createPurchase({
@@ -279,6 +282,18 @@ describe('createPurchase', () => {
         guest_name: null,
       });
       expect(res.error).toBe('Unauthorized');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('AuthedUnknownEmailWithGuestName_ReturnsUnauthorized-NoRow', async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      asGhost();
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: 'Gifty',
+      });
+      expect(res.error).toBe('Unauthorized');
+      expect(await purchaseRows('I')).toHaveLength(0);
     });
   });
 
