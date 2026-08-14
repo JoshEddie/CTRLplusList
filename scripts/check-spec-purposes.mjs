@@ -27,7 +27,6 @@ const KNOWN_TBD = new Set([
   'menu-system',
   'popover-trigger-system',
   'segmented-control-system',
-  'server-endpoint-authorization',
   'spec-review',
   'tooltip-system',
   'visit-history',
