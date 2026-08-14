@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { deleteItem } from '../test/helpers/e2e/utils';
 
 // Flow: the post-fetch Decision Deck (item-decision-deck). /api/product-fetch is
 // ALWAYS stubbed via route interception keyed on the pasted URL, so each deck
@@ -96,15 +97,11 @@ test('Deck_CleanFetch_IntroPhotoNoteThenCreate', async ({ page }) => {
   await expect(page.getByText('Item created successfully')).toBeVisible();
   // The form modal closes itself on successful create.
 
-  // Cleanup: edit → delete (delete affordance preserved on the edit Preview).
-  const card = page.locator('.item-container:not(.preview)', { hasText: name });
-  await expect(card).toBeVisible();
-  await card.getByRole('button', { name: 'Item actions' }).click();
-  await page.getByRole('menuitem', { name: 'Edit' }).click();
-  await page.getByRole('button', { name: 'Delete' }).click();
-  const confirm = page.locator('.confirm-dialog-content');
-  await confirm.getByRole('button', { name: 'Delete' }).click();
-  await expect(card).toHaveCount(0);
+  // The created item is on the page, then cleaned up — zero residue.
+  await expect(
+    page.locator('.item-container:not(.preview)', { hasText: name })
+  ).toBeVisible();
+  await deleteItem(page, name);
 });
 
 test('Deck_LongTitle_InlineNoteNoStandaloneNoteCard-PriceRequiredNoSkip', async ({

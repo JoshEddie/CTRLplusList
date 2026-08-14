@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { deleteItem } from '../test/helpers/e2e/utils';
 
 // Flow: item-placeholder-art. The deck's placeholder thumbs (transient
 // previews, reroll, selected-placeholder persistence) and the lazy-mint path
@@ -27,18 +28,6 @@ async function openDeck(page: Page, url: string) {
   await page.getByRole('button', { name: 'New Item' }).click();
   await page.getByRole('textbox', { name: 'Product link' }).fill(url);
   await page.getByRole('button', { name: 'Fetch Details' }).click();
-}
-
-async function deleteItem(page: Page, name: string) {
-  const card = page.locator('.item-container:not(.preview)', { hasText: name });
-  await card.getByRole('button', { name: 'Item actions' }).click();
-  await page.getByRole('menuitem', { name: 'Edit' }).click();
-  await page.getByRole('button', { name: 'Delete' }).click();
-  await page
-    .locator('.confirm-dialog-content')
-    .getByRole('button', { name: 'Delete' })
-    .click();
-  await expect(card).toHaveCount(0);
 }
 
 test('Deck_SelectedPlaceholder_RerollsInPlaceAndPersistsAsActiveImage', async ({
