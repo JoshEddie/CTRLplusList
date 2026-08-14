@@ -103,7 +103,7 @@ The post-create redirect after creating a new list and the empty-state CTA shown
 
 ### Requirement: The choose-items page SHALL render a filter/sort toolbar driven by URL params
 
-The choose-items page SHALL render a toolbar containing: a search input, a sort dropdown, a "Show" dropdown for list-status filtering, a store filter popover, and a price filter popover. All toolbar state SHALL be reflected in URL query parameters (`q`, `sort`, `show`, `store` (repeatable), `price_min`, `price_max`) so that back/forward navigation and direct links preserve the user's view. When no toolbar URL params are present, the page SHALL render with default state (no search text, sort by newest, show all items, no store filter, no price filter), matching the page's pre-toolbar behavior.
+The choose-items page SHALL render a toolbar containing: a search input, a sort dropdown, a "Show" dropdown for list-status filtering, a store filter popover, and a price filter popover. All toolbar state SHALL be reflected in URL query parameters (`q`, `sort`, `show`, `store` (repeatable), `price_min`, `price_max`) so that back/forward navigation and direct links preserve the user's view. Store filtering and store-option collection SHALL read each item's single DAL-provided `store` (per `item-store-links`) — dormant legacy rows are absent from the fetched shape and SHALL NOT contribute options or matches. When no toolbar URL params are present, the page SHALL render with default state (no search text, sort by newest, show all items, no store filter, no price filter), matching the page's pre-toolbar behavior.
 
 #### Scenario: Toolbar renders on the choose-items page
 
@@ -143,7 +143,7 @@ The choose-items page SHALL render a toolbar containing: a search input, a sort 
 #### Scenario: Store filter narrows the rendered list
 
 - **WHEN** the owner opens the stores popover and selects one or more stores
-- **THEN** the URL is updated with one repeated `store=<name>` param per selection and the rendered list shows only items whose stores include at least one of the selected names
+- **THEN** the URL is updated with one repeated `store=<name>` param per selection and the rendered list shows only items whose store's name is in the selected set
 
 #### Scenario: Price filter narrows the rendered list
 
@@ -260,16 +260,16 @@ The `returnTo` value SHALL be validated as a same-origin relative path before us
 
 ### Requirement: The choose-items page SHALL render rows via the shared item row primitive
 
-Each selectable row on `/lists/[id]/choose-items` SHALL be composed of an outer `<label>` element (class `.choose-items-select`) wrapping (a) a `<CheckboxField>` from the `form-field-system` capability and (b) a `<Item />` from `app/(main)/items/ui/components/Item.tsx` rendered with the `preview` prop. The page SHALL NOT implement its own row-shape CSS, JSX, checkbox markup, thumbnail rendering, or buy-link chip markup; all of these SHALL be inherited from the shared row primitive owned by the `item-store-links` capability.
+Each selectable row on `/lists/[id]/choose-items` SHALL be composed of an outer `<label>` element (class `.choose-items-select`) wrapping (a) a `<CheckboxField>` from the `form-field-system` capability and (b) a `<Item />` from `app/(main)/items/ui/components/Item.tsx` rendered with the `preview` prop. The page SHALL NOT implement its own row-shape CSS, JSX, checkbox markup, thumbnail rendering, or action-area markup; all of these SHALL be inherited from the shared row primitive owned by the `item-store-links` capability, with the action area rendered by `ItemActions` in view-only mode (owned by `item-actions`).
 
 The outer `<label>` SHALL use `htmlFor` matching the `<CheckboxField>`'s input id so that clicking anywhere on the row body toggles the checkbox via the native label-input association. The `<CheckboxField>`'s own `<label>` (rendered internally by the primitive) SHALL retain the item name as its accessible label, with the visible label `<span>` hidden via the sr-only pattern.
 
-Selection state SHALL be reflected on the outer `<label>` via the modifier classes `.is-on` (for items currently selected) and `.is-removing` (for items being unchecked from the list). State changes SHALL flow through the checkbox input's `onChange`, not through a row-level `onClick` handler. The page SHALL NOT use `e.stopPropagation()` to prevent click bubbling from interactive children — the new composition has distinct interactive semantics (label-click toggles selection; anchor-click inside a buy-link chip opens a store), eliminating the prior need for that pattern.
+Selection state SHALL be reflected on the outer `<label>` via the modifier classes `.is-on` (for items currently selected) and `.is-removing` (for items being unchecked from the list). State changes SHALL flow through the checkbox input's `onChange`, not through a row-level `onClick` handler. The page SHALL NOT use `e.stopPropagation()` to prevent click bubbling from interactive children at the page level — the composition has distinct interactive semantics (label-click toggles selection; the `View item ↗` anchor inside the row opens a store, with its non-propagation owned by `item-actions`).
 
 #### Scenario: Row body is rendered by <Item preview />
 
 - **WHEN** a choose-items row renders for an item
-- **THEN** the row's DOM contains a `<Item />` instance rendered with the `preview` prop (producing `.item-container.preview` on the inner card), and the row's class list, computed grid template, image size, name typography, price layout, and buy-link chip layout are identical to those of the same item rendered in the items library list view
+- **THEN** the row's DOM contains a `<Item />` instance rendered with the `preview` prop (producing `.item-container.preview` on the inner card), and the row's class list, computed grid template, image size, name typography, price-line layout, and action-area layout are identical to those of the same item rendered in the items library list view
 
 #### Scenario: Checkbox is rendered by <CheckboxField>
 
@@ -284,12 +284,12 @@ Selection state SHALL be reflected on the outer `<label>` via the modifier class
 #### Scenario: Selection state flows through onChange, not onClick
 
 - **WHEN** the user clicks a row to toggle its selection
-- **THEN** the state update SHALL be triggered by the `<input type="checkbox">`'s `onChange` event; no `onClick` handler on the row body SHALL invoke `toggle(id)`; no `e.stopPropagation()` SHALL be present on any interactive child element to defend against bubbling
+- **THEN** the state update SHALL be triggered by the `<input type="checkbox">`'s `onChange` event; no `onClick` handler on the row body SHALL invoke `toggle(id)`
 
 #### Scenario: Page behavior is unchanged
 
 - **WHEN** the user interacts with the picker — applying search/sort/filter, checking/unchecking rows, navigating with the back button, viewing on mobile, clicking the empty-state CTA, clicking "Create new item", or submitting Save changes
-- **THEN** every behavior governed by the other requirements in this capability (toolbar URL params, save diff, selection preservation across filter changes, returnTo plumbing, archived-badge rendering, post-create redirect, empty-state CTA target) SHALL produce identical results to the previous bespoke-row implementation
+- **THEN** every behavior governed by the other requirements in this capability (toolbar URL params, save diff, selection preservation across filter changes, returnTo plumbing, archived-badge rendering, post-create redirect, empty-state CTA target) SHALL produce identical results to the previous implementation
 
 ### Requirement: createPurchase SHALL authenticate the claimer and forbid client-supplied user_id
 
@@ -584,6 +584,8 @@ On success, `createPurchase` SHALL include the inserted `purchases` row's id in 
 
 The list-items drag-reorder UI (`SortItems.tsx`, the capability's sole `@dnd-kit/core` + `@dnd-kit/sortable` consumer, mounted for the list owner via `SortItemsContainer`) SHALL, on a completed drag that lands the moved item on a different target row, (a) optimistically reorder the rendered list immediately via `arrayMove`, and (b) dispatch `updatePriority(item_id, target_id, listId)` where `item_id` is the dragged row and `target_id` is the row it was dropped onto. A drag that ends on the item's own position, or with no drop target, SHALL dispatch nothing and SHALL leave the rendered order unchanged.
 
+Because the surface holds the rendered list in client state for the optimistic reorder, it SHALL re-seed that state from the `items` prop whenever any **displayed** item field changes — image, name, quantity, store fields, or purchase/claim state — keyed on those fields, not item identity alone, so that an item edited or claimed elsewhere is reflected without a full-page reload. A re-render that changes no displayed field SHALL NOT clobber an in-progress drag.
+
 This requirement governs the **UI's target resolution and dispatch payload**; the server-side fractional-position algorithm, rebalance-on-collision, and owner-only authorization for `updatePriority` are owned by this capability's `updatePriority` requirement (locked by the action-layer carve-out `test-list-item-management`).
 
 #### Scenario: Dropping on a different row reorders and dispatches
@@ -597,30 +599,14 @@ This requirement governs the **UI's target resolution and dispatch payload**; th
 - **WHEN** a drag ends with the moved item over its own position, or with no drop target
 - **THEN** `updatePriority` is not called and the rendered order is unchanged
 
-### Requirement: The image-search modal SHALL distinguish capacity errors from generic upstream failures in the UI
+#### Scenario: An item edit re-syncs the rendered grid
 
-The item-form image-search modal (`ImageSearch.tsx`) SHALL request results from `GET /api/image-search` and SHALL surface a **temporarily-unavailable** state — distinct from a generic load failure — for the endpoint's capacity errors: the per-user rate-limit (HTTP 429) and the upstream provider quota (`{ error: 'quota_exceeded' }`). Both capacity shapes map to the same retryable "temporarily unavailable — paste an image URL instead" message; any other failure (a non-ok response, a network error, or a malformed body) SHALL surface a generic "failed to load — try again later" message. A transient capacity error SHALL NOT be presented as a generic permanent failure, and vice versa.
-
-This requirement governs the **UI's consumption** of the endpoint; the endpoint's session gate and the 30-requests-per-minute token bucket are owned by `server-endpoint-authorization` (and exercised by the API-route carve-out `test-image-search-api`). The UI test mocks `fetch` at the boundary and asserts the rendered state per error shape; it does not assert the route's auth or bucket SHALLs. (Implementation note: the source intentionally collapses the 429 rate-limit and the `quota_exceeded` quota into one capacity state rather than two — this requirement binds the UI to that behaviour, not to a finer rate-limit-vs-quota split.)
-
-#### Scenario: Rate-limited response shows the temporarily-unavailable state
-
-- **WHEN** the image-search request resolves with HTTP 429
-- **THEN** the modal surfaces the temporarily-unavailable state (retryable, advising the user to paste an image URL), distinct from the generic load-failure state
-
-#### Scenario: Quota-exceeded response shows the same temporarily-unavailable state
-
-- **WHEN** the image-search request resolves with `{ error: 'quota_exceeded' }`
-- **THEN** the modal surfaces the same temporarily-unavailable state it shows for a rate-limit
-
-#### Scenario: Other failures show a generic error
-
-- **WHEN** the image-search request fails for any other reason (a non-ok response, a network error, or a malformed body)
-- **THEN** the modal surfaces a generic load-failure state, not the temporarily-unavailable capacity state
+- **WHEN** the `items` prop changes because an item's image (or name, price, quantity) was edited elsewhere, with item identities unchanged
+- **THEN** the surface re-seeds its rendered list from the new prop, so the edit is shown without a hard refresh
 
 ### Requirement: The shared Modal SHALL render through a portal to document.body
 
-The shared `Modal` component (`app/(main)/items/ui/components/purchasemodal/Modal.tsx`), used by the purchase/claim modal (`PurchaseModalSlot`) and the share modal (`ShareButton`), SHALL render its `.modal-overlay` via `createPortal` targeting `document.body`, guarded so nothing renders before client mount (SSR-safe, matching the `ImageSearch.tsx` pattern). The overlay therefore escapes every page-level scroll container and ancestor stacking context and paints above all page chrome (list hero, items toolbar, pagination overlay) on all engines, including iOS WebKit compositing (PWA and iOS browsers).
+The shared `Modal` component (`app/(main)/items/ui/components/purchasemodal/Modal.tsx`), used by the purchase/claim modal (`PurchaseModalSlot`) and the share modal (`ShareButton`), SHALL render its `.modal-overlay` via `createPortal` targeting `document.body`, guarded so nothing renders before client mount (SSR-safe). The overlay therefore escapes every page-level scroll container and ancestor stacking context and paints above all page chrome (list hero, items toolbar, pagination overlay) on all engines, including iOS WebKit compositing (PWA and iOS browsers).
 
 This requirement governs layering/placement only; the modal's content, flows, and mounting triggers remain governed by the existing purchase-modal requirements in this capability and by `claim-attribution`. `ConfirmDialog` layering is owned by `confirm-dialog-system` and is not constrained here.
 
@@ -669,4 +655,3 @@ The projection SHALL obey these rules, keyed on whether the viewer owns the item
 - **WHEN** an authenticated non-owner reads items (`getItemsByListId` with a `viewerId`, or `getItemsByPurchased`)
 - **THEN** a claim whose `user_id` equals the `viewerId` is tagged `{ by: 'self' }` and every other claim `{ by: 'other' }`
 - **AND** only `firstName` is exposed for each claim — never a full name, email, user id, or raw guest identity
-

@@ -1,0 +1,46 @@
+---
+name: port-inspection
+argument-hint: "[map#|issue#]"
+description: Inspect IN PORT cargo with the owner - walk a map's open IN PORT chunks (map#), a single chunk (issue#), or recommend candidates from recent dev landings (no arg). Each stop surfaces "closing this unblocks #N" from the chunk's dependents; verified on the dev deployment, before the release cuts -> close. Invokable whenever cargo is in port - inspection never waits on the epic's frontier. Use when landed chunks await inspection or a dependent sits blocked behind IN PORT cargo.
+disable-model-invocation: true
+metadata:
+  author: list_eddiefamily
+  version: '1.0'
+---
+
+# /port-inspection
+
+The `IN PORT` inspection walk. `/landfall` labels a landed chunk `IN PORT` and never closes it — `IN PORT` is uninspected cargo; closing is inspection's act, and inspection is the owner's. Closing is also what unblocks dependents: GitHub blocked-by relationships gate on the blocker's *state*, so a chunk sitting `IN PORT` keeps its dependents off the frontier however long ago its code landed.
+
+**The verification surface is the dev deployment, before the map's release cuts** — never production. A map milestoned to a release must be fully closed before that release cuts (`/release-review` owns the gate), so inspection always happens pre-cut on dev. A regression discovered in production after ship is a **new bug ticket scoped to a patch release**, not a reopened chunk.
+
+## Guardrails
+
+- Side effects are GitHub issue operations only, via `gh`. No trunk preconditions gate; never touches the tree, never commits.
+- Closes chunks only — never a map. `/close-map` is the only closer of maps.
+
+## Scoping
+
+Resolve the argument and discriminate by the `MAP` label on the resolved issue — never by guessing from body shape:
+
+- **`MAP` issue#** — walk that map's open `IN PORT` chunks: `gh api --paginate repos/{owner}/{repo}/issues/<map#>/sub_issues --jq '.[] | {number, state, title, labels: [.labels[].name]}'`, filter open + `IN PORT`.
+- **Chunk issue#** — inspect just that chunk.
+- **No argument** — never walk anything silently. Read recent `issue-<N>:` commits on `dev` (`git log`), resolve which of those issues are open and labeled `IN PORT`, resolve their parent maps, and **recommend** the candidate map(s)/chunk(s) to the owner (AskUserQuestion). The owner picks; only then does a walk run. The heuristic is advisory — recent landings are where uninspected cargo accumulates, but the owner can always pass a map#/issue# directly.
+
+## Walk
+
+Each in-scope chunk gets one stop, walked with the owner one at a time (AskUserQuestion):
+
+1. **Archive-presence check** — verify the chunk's `issue-<N>: archive <change>` seal commit is on `origin/dev` (`git log origin/dev --grep "issue-<N>: archive" --oneline`) before closing. This is the compensating check for landfall flipping `IN PORT` at archive rather than after push. A failed check is reported, never read as "archive landed". If the seal is **absent** (unpushed/abandoned): the chunk is **not** closed — flag the unpushed seal, keep the chunk open, and flip its label `IN PORT` → `UNDER SAIL` (`gh issue edit <N> --remove-label 'IN PORT' --add-label 'UNDER SAIL'`) to un-strand it so `/landfall` can re-run and land it. This flip-back is the sole reconciler of a stranded `IN PORT`. Skip the remaining steps for that chunk.
+2. **Dependents lookup** — `gh api repos/{owner}/{repo}/issues/<n>/dependencies/blocking --jq '.[] | {number, state, title}'`. Each *open* dependent is reported in the stop's question as "closing this unblocks #N — title". No dependents → nothing extra said. A failed lookup is reported, never read as "no dependents"; the stop still proceeds — the surface is informational, not a gate.
+3. **Verification question** — verified on the dev deployment? Confirmed → `gh issue close <N>`. Not confirmed → the chunk stays open; note what's outstanding.
+
+## Map-wide e2e scout
+
+`/port-inspection` owns the scout end to end — create, fire, and cut. On any invocation, after a stop closes a chunk (and whenever the state read runs), check the map: **every implementation chunk closed and no e2e scout on the map** → create the scout now. A failed sub-issue-state read is reported, never read as "all chunks closed".
+
+1. **Create + fire.** Cut an ordinary fire-at-creation `SCOUTING` ticket per [issue-cut.md](../map/reference/issue-cut.md) ("what e2e coverage does this map need?"), wired as a sub-issue of the map. No UI-touching precondition — the scout owns that judgment. It fires its subagent at creation.
+2. **Subagent reads the map.** The `SCOUTING` subagent walks the archived `acceptance.md` files of the map's landed voyages (`openspec/changes/archive/`), newest first — these are the primary source of each chunk's user-visible behavior — plus the landed code. Reconstruction from `/landfall` summary comments and `issue-<N>:` commits is **fallback only**, for chunks whose archived change carries no `acceptance.md` (legacy). Archives get no delta-sync, so a later change can supersede a flow: on mismatch between a flow and the live app, current canonical specs adjudicate; only a spec-confirmed mismatch is a finding, a superseded flow is discarded. A chunk missing both an archived `acceptance.md` and a summary comment is not an error and not "no user-visible changes". It posts its report as the resolution comment and auto-closes with the ***unreviewed*** marker per the scouting mechanic.
+3. **Cut on recommendation.** Report recommends coverage → cut an owner-approved map-wide e2e chunk per [issue-cut.md](../map/reference/issue-cut.md); the chunk blocks `/close-map` like any open implementation chunk. Report finds no e2e updates needed → the resolved scout is enough, no chunk.
+
+Legacy maps take this identical lazy path: a map whose chunks are all already closed but which predates the scout gets its scout created and fired on the next read — no backfill, no exemption. `/close-map` never creates, fires, or cuts.

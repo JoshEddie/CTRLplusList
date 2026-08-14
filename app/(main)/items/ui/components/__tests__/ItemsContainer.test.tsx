@@ -25,14 +25,14 @@ const redirectMock = vi.hoisted(() =>
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
 
 const cookieHolder = vi.hoisted(() => ({
-  value: undefined as string | undefined,
+  store: new Map<string, string>(),
 }));
 vi.mock('next/headers', () => ({
   cookies: vi.fn(async () => ({
-    get: (name: string) =>
-      name === 'items_page_size' && cookieHolder.value !== undefined
-        ? { value: cookieHolder.value }
-        : undefined,
+    get: (name: string) => {
+      const value = cookieHolder.store.get(name);
+      return value === undefined ? undefined : { value };
+    },
   })),
 }));
 
@@ -47,6 +47,7 @@ vi.mock('../ItemsBrowser', () => ({
       data-testid="items-browser"
       data-mode={props.mode}
       data-item-count={props.items.length}
+      data-items={JSON.stringify(props.items)}
       data-initial-page-size={String(props.initialPageSize)}
       data-user-name={props.user_name ?? ''}
     />
@@ -69,7 +70,7 @@ const LIST_ITEMS = [{ id: 'li1' }, { id: 'li2' }];
 
 beforeEach(() => {
   vi.clearAllMocks();
-  cookieHolder.value = undefined;
+  cookieHolder.store.clear();
   vi.mocked(auth).mockResolvedValue({
     user: { email: 'viewer@test.local' },
   } as never);
@@ -106,7 +107,7 @@ describe('ItemsContainer', () => {
 
   describe('ListBranch', () => {
     it('ListIdWithViewerOwnerSpoiler_ReadsListScopedWithThoseFlags', async () => {
-      cookieHolder.value = '48';
+      cookieHolder.store.set('items_page_size', '48');
       render(
         await ItemsContainer({
           listId: 'list1',
@@ -147,6 +148,48 @@ describe('ItemsContainer', () => {
         isOwner: false,
         showSpoilers: false,
       });
+    });
+  });
+
+  describe('GuestClaimOverlay', () => {
+    const CLAIMED_LIST_ITEMS = [
+      {
+        id: 'i1',
+        purchases: [
+          { id: 'p1', by: 'other', firstName: 'Gifty', claimedByViewer: false },
+          { id: 'p2', by: 'other', firstName: 'Someone', claimedByViewer: false },
+        ],
+      },
+    ];
+
+    beforeEach(() => {
+      vi.mocked(getItemsByListId).mockResolvedValue(
+        CLAIMED_LIST_ITEMS as never
+      );
+      cookieHolder.store.set(
+        'guest_claims',
+        JSON.stringify({ id: 'g1', name: 'Gifty', purchases: ['p1'] })
+      );
+    });
+
+    it('SessionlessWithCookie_MarksCookieListedClaimsAsViewerOwn', async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+      render(await ItemsContainer({ listId: 'list1' }));
+      const items = JSON.parse(
+        screen.getByTestId('items-browser').getAttribute('data-items') as string
+      );
+      expect(items[0].purchases).toEqual([
+        { id: 'p1', by: 'self', firstName: 'Gifty', claimedByViewer: true },
+        { id: 'p2', by: 'other', firstName: 'Someone', claimedByViewer: false },
+      ]);
+    });
+
+    it('AuthedWithLeftoverCookie_LeavesClaimsUntouched', async () => {
+      render(await ItemsContainer({ listId: 'list1' }));
+      const items = JSON.parse(
+        screen.getByTestId('items-browser').getAttribute('data-items') as string
+      );
+      expect(items).toEqual(CLAIMED_LIST_ITEMS);
     });
   });
 

@@ -3,9 +3,7 @@
 ## Purpose
 
 TBD - created by archiving change compact-items-mobile-chrome. Update Purpose after archive.
-
 ## Requirements
-
 ### Requirement: Items browser chrome scope
 
 The `items-browser-chrome` capability SHALL govern the layout, positioning, and viewport-adaptive behavior of the chrome surrounding the items grid within `ItemsBrowser` — specifically the `.items-toolbar` row, the view-mode rendering of `.item-grid` / `.item-list`, and the `.items-pagination` control. It SHALL apply to every page that mounts `ItemsBrowser`, which today is `.container--items-library` (the `/items` library) and `.container--list-details` (the list-details page items section).
@@ -107,12 +105,12 @@ The `.items-pagination` control SHALL be positioned absolutely at the bottom of 
 
 ### Requirement: ItemsBrowser SHALL apply active filters, then sort, then paginate, in that order
 
-`ItemsBrowser` SHALL derive the visible item set by applying the active filters, then sorting the filtered result by the active sort key, then slicing to the requested page window — in that fixed order. The filters SHALL compose conjunctively (an item is included only if it passes every active filter):
+`ItemsBrowser` SHALL derive the visible item set by applying the active filters, then sorting the filtered result by the active sort key, then slicing to the requested page window — in that fixed order. Filtering, sorting, and store-option collection SHALL read the item's single DAL-provided `store` (per `item-store-links`); dormant legacy rows are absent from the fetched shape and SHALL NOT contribute filter options or matches. The filters SHALL compose conjunctively (an item is included only if it passes every active filter):
 
 - **Search** (`q`): an item passes when the lowercased concatenation of its `name` and `description` contains the lowercased, trimmed query as a substring. An empty query applies no search filter.
-- **Store** (`store`, repeatable): when one or more stores are selected, an item passes when ANY of its stores' names is in the selected set (OR within the store filter, AND with the other filter types).
+- **Store** (`store`, repeatable): when one or more stores are selected, an item passes when its store's name is in the selected set (OR across the selected names, AND with the other filter types).
 - **Purchases** (`purchases`): `only` includes only items with `hasPurchases`; `none` includes only items without `hasPurchases`; any other value applies no purchases filter.
-- **Price range** (`price_min` / `price_max`): when either bound is a finite number, an item passes when its `displayPrice` is finite AND within the inclusive `[min, max]` range (an absent bound is treated as `-Infinity` / `+Infinity`). Items whose `displayPrice` is non-finite SHALL be excluded whenever a price filter is active.
+- **Price range** (`price_min` / `price_max`): when either bound is a finite number, an item passes when its `displayPrice` — derived from its complete store, non-finite when the store is absent or incomplete — is finite AND within the inclusive `[min, max]` range (an absent bound is treated as `-Infinity` / `+Infinity`). Items whose `displayPrice` is non-finite SHALL be excluded whenever a price filter is active.
 
 After filtering, the result SHALL be sorted by the active sort key via `compareItems`, except that the `list_order` key SHALL preserve the input order (no sort). The sorted result SHALL then be sliced to `[(page-1) * pageSize, page * pageSize)` to produce the visible page.
 
@@ -124,11 +122,16 @@ After filtering, the result SHALL be sorted by the active sort key via `compareI
 #### Scenario: Store filter is OR-within, AND-across
 
 - **WHEN** stores `Amazon` and `Etsy` are selected and a purchases filter `only` is also active
-- **THEN** an item is visible only if it has at least one store named `Amazon` or `Etsy` AND it `hasPurchases`
+- **THEN** an item is visible only if its store is named `Amazon` or `Etsy` AND it `hasPurchases`
+
+#### Scenario: Dormant legacy rows do not filter
+
+- **WHEN** a legacy item's dormant second row is named `Etsy` while its DAL-selected store is `Amazon`, and the store filter selects only `Etsy`
+- **THEN** the item is excluded and `Etsy` from that item SHALL NOT appear among the store filter's options
 
 #### Scenario: Price filter excludes non-finite prices
 
-- **WHEN** a `price_min`/`price_max` range is active and an item has no store with both a name and a link (so its `displayPrice` is non-finite)
+- **WHEN** a `price_min`/`price_max` range is active and an item's store is absent or incomplete (so its `displayPrice` is non-finite)
 - **THEN** that item is excluded from the result even though it has no comparable price
 
 #### Scenario: Pipeline order is filter then sort then paginate
@@ -244,3 +247,4 @@ The pagination control SHALL render its page buttons via a windowing rule: when 
 
 - **WHEN** the control renders with the current page in range
 - **THEN** the current page's button carries `aria-current="page"` and the primary variant, and the other page buttons carry the ghost variant
+

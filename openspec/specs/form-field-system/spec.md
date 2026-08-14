@@ -23,7 +23,7 @@ The system SHALL define a `--field-*` token surface in `global.css` that the sin
 #### Scenario: --neutral-border-color is untouched
 
 - **WHEN** the change lands
-- **THEN** the value of `--neutral-border-color` in `global.css` is identical to its pre-change value, and non-form consumers (avatar borders, image-search backgrounds, etc.) render unchanged
+- **THEN** the value of `--neutral-border-color` in `global.css` is identical to its pre-change value, and non-form consumers (avatar borders, etc.) render unchanged
 
 ### Requirement: All field primitives meet WCAG 2.5.8 touch target floor
 
@@ -405,7 +405,7 @@ The system SHALL migrate every existing `<input>`, `<textarea>`, `<select>`, and
 
 #### Scenario: Search inputs use SearchField
 
-- **WHEN** the items-toolbar search, store-filter popover search, and image-search modal search are rendered after migration
+- **WHEN** the items-toolbar search and the store-filter popover search are rendered after migration
 - **THEN** each is a `<SearchField>` (not a `<TextField type="search">` with page-scoped icon/clear overlays)
 
 #### Scenario: Price inputs use PriceField

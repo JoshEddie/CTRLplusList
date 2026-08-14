@@ -16,11 +16,11 @@ See [db/index.ts](db/index.ts) for the driver instantiation.
 
 ## Migrations
 
-The migration workflow uses Drizzle Kit against the schema declared under [db/schema/](db/schema/).
+The migration workflow uses Drizzle Kit against the schema declared in [db/schema.ts](db/schema.ts).
 
 **Authoring a migration:**
 
-1. Edit the schema files (e.g. add a column, table, or index).
+1. Edit the schema file (e.g. add a column, table, or index).
 2. Generate SQL: `npm run db:generate`. This writes a new `drizzle/NNNN_<slug>.sql` plus a `meta/_journal.json` entry.
 3. **Review the generated SQL before running it.** Drizzle 0.45 occasionally emits over-broad statements (e.g. unnecessary column rewrites) and never adds the safety wrappers we want (pre-flight `DO $$ ... $$` assertions, `IF [NOT] EXISTS` guards on DDL, explicit `ON CONFLICT` clauses, idempotent backfills). Hand-edit the file if needed — see [drizzle/0001_black_legion.sql](drizzle/0001_black_legion.sql) for the conventions (forward-only, no DROPs, `IF [NOT] EXISTS` on every `CREATE`/`ALTER`/`DROP` so a migration still applies cleanly if a table or column was added manually out-of-band, pre-flight assertion blocks, inline rollback notes in comments).
 4. Apply locally: `npm run db:migrate`. Then restart the dev server so any `'use cache'`-tagged DAL functions re-fetch.

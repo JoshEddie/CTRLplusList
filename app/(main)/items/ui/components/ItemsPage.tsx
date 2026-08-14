@@ -50,7 +50,11 @@ export default function ItemsPage({
   return (
     <>
       <Header title="Items">
-        <Button variant="primary" onClick={() => setShowNewItem(true)}>
+        <Button
+          variant="primary"
+          aria-label="New Item"
+          onClick={() => setShowNewItem(true)}
+        >
           <FaPlus size={14} />
           <span className="mobile-hide">New Item</span>
         </Button>
@@ -104,8 +108,8 @@ export default function ItemsPage({
       {showNewItem && (
         <ItemFormContainer
           lists={lists || []}
-          user_id={user_id || ''}
           onClose={() => setShowNewItem(false)}
+          onSuccess={() => setShowNewItem(false)}
         />
       )}
     </>

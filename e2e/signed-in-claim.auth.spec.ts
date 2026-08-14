@@ -34,9 +34,9 @@ test('SignedInClaim_SelfClaimOneTap_ShowsOwnClaim', async ({ page }) => {
   const item = firstClaimableSingleItem(page);
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
-  // Open the purchase modal via the card's "Get this gift" affordance; the
+  // Open the purchase modal via the card's "Add Claim" affordance; the
   // primary CTA self-claims in one tap — no confirmation screen.
-  await item.getByRole('button', { name: 'Get this gift' }).click();
+  await item.getByRole('button', { name: 'Add Claim' }).click();
   await page.getByRole('button', { name: 'Claim this gift' }).click();
 
   // The item reflects the viewer's own claim, and it persists across a fresh
@@ -49,7 +49,7 @@ test('SignedInClaim_SelfClaimOneTap_ShowsOwnClaim', async ({ page }) => {
   await expect(claimedAfter.getByText('You claimed this').first()).toBeVisible();
 });
 
-test('SignedInClaim_StoreLinksReachedOnlyThroughModal_StoreRowBesideClaimCta', async ({
+test('SignedInClaim_ViewItemInEveryClaimState_ModalStillCarriesStoreRow', async ({
   page,
 }) => {
   await page.goto(LIST);
@@ -57,18 +57,45 @@ test('SignedInClaim_StoreLinksReachedOnlyThroughModal_StoreRowBesideClaimCta', a
     page.getByRole('heading', { name: LIST_HEADING }).first()
   ).toBeVisible();
 
-  // No direct store-link affordance exists on the non-owner cards — store
-  // names render only as inert metadata in the price row.
-  await expect(page.locator('.storeLinks')).toHaveCount(0);
+  const viewItemName = 'View item — opens in new tab';
 
-  // Opening the modal surfaces the store row (cheapest store, new tab) in
-  // the same surface as the claim CTA.
-  const item = page
+  // A claimable card with a complete store offers View item ↗ (new tab, store
+  // URL) alongside the claim affordance — the price line stays inert metadata.
+  // Exclude viewer-claimed cards: they also carry a secondary "Add Claim",
+  // but their modal opens in the already-claimed state (no "Claim this gift").
+  const claimable = page
     .locator('.item-container')
-    .filter({ has: page.getByRole('button', { name: 'Get this gift' }) })
+    .filter({ has: page.getByRole('button', { name: 'Add Claim' }) })
+    .filter({ hasNot: page.getByRole('button', { name: 'Manage claim' }) })
+    .filter({ hasNotText: 'You claimed this' })
     .filter({ has: page.locator('.item-store-metadata') })
     .first();
-  await item.getByRole('button', { name: 'Get this gift' }).click();
+  const claimableView = claimable.getByRole('link', { name: viewItemName });
+  await expect(claimableView).toBeVisible();
+  await expect(claimableView).toHaveAttribute('target', '_blank');
+  await expect(claimableView).toHaveAttribute('href', /^https?:\/\//);
+
+  // A fully-claimed card keeps store access: the claim affordance is replaced
+  // by the Fully claimed status, but View item ↗ still renders.
+  const fullyClaimed = page
+    .locator('.item-container')
+    .filter({ hasText: 'Fully claimed' })
+    .first();
+  // Two status regions can coexist on the card (the action-area pill and the
+  // "Claimed by …" banner) — assert the pill specifically.
+  await expect(
+    fullyClaimed.getByRole('status').filter({ hasText: 'Fully claimed' })
+  ).toBeVisible();
+  await expect(
+    fullyClaimed.getByRole('link', { name: viewItemName })
+  ).toBeVisible();
+  await expect(
+    fullyClaimed.getByRole('button', { name: 'Add Claim' })
+  ).toHaveCount(0);
+
+  // Opening the modal still surfaces the store row (cheapest store, new tab)
+  // in the same surface as the claim CTA.
+  await claimable.getByRole('button', { name: 'Add Claim' }).click();
   const storeLink = page.locator('.modal-store-row').getByRole('link').first();
   await expect(storeLink).toBeVisible();
   await expect(storeLink).toHaveAttribute('target', '_blank');
@@ -92,7 +119,7 @@ test('SignedInClaim_NameFallbackForNonUser_ShowsClaimerBannerWithName', async ({
 
   // Open the purchase modal, expand the attributed-claim disclosure, and use
   // the "Someone not listed?" fallback for a purchaser without an account.
-  await item.getByRole('button', { name: 'Get this gift' }).click();
+  await item.getByRole('button', { name: 'Add Claim' }).click();
   await page
     .getByRole('button', { name: /Claiming for someone else\?/ })
     .click();

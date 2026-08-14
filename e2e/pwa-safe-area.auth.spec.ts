@@ -94,6 +94,6 @@ test('PwaSafeArea_LoadRoute_HtmlBackgroundIsAppGradientBase', async ({
   await page.goto('/');
   await expect(page.locator('html')).toHaveCSS(
     'background-color',
-    'rgb(37, 25, 78)'
+    'rgb(42, 32, 96)'
   );
 });

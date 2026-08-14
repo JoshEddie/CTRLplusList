@@ -46,10 +46,14 @@ export type PurchaseView = {
   claimedByViewer: boolean;
   /** Owner spoiler view only: the claimer's first name when the claimer differs from the purchaser. */
   claimerFirstName?: string;
+  /** Absent only on legacy fixtures — every persisted row carries it; optimistic rows stamp client time. */
+  purchasedAt?: Date;
+  /** Purchaser's avatar URL when the purchaser is a linked account; null for guest-name claims. Optimistic rows omit it (initials render until the next server render). */
+  image?: string | null;
 };
 
 export type ItemDisplay = ItemTable & {
-  stores?: ItemStoreTable[];
+  store?: ItemStoreTable | null;
   purchases?: PurchaseView[];
   hasPurchases?: boolean;
 };
@@ -70,8 +74,10 @@ export type ItemDetails = {
   name: string;
   description: string;
   image_url?: string | null;
+  /** Fetched image-candidate pool; present only when the form session originated from a product fetch. */
+  image_candidates?: string[];
   quantity_limit: number | null;
-  stores: ItemStoreTable[];
+  store: ItemStoreTable | null;
   lists: OptionType[];
 };
 
@@ -85,6 +91,10 @@ export type ItemStoreTable = {
   name: string;
   link: string;
   price: string;
+  /** Automated price-fetch capture time (Date from the DB, ISO string from the client); null/absent for manual rows. */
+  price_fetched_at?: Date | string | null;
+  canonical_url?: string | null;
+  currency?: string | null;
 };
 
 export type PurchaseTable = {
@@ -102,14 +112,3 @@ export type OptionType = {
   label: string;
 };
 
-export interface ImageSearchResult {
-  link: string;
-  title: string;
-  image: {
-    byteSize: number;
-    contextLink: string;
-    height: number;
-    thumbnailLink: string;
-    width: number;
-  };
-}

@@ -18,8 +18,7 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  padding-top: 7px;
+  min-height: 100dvh;
 }
 
 /* Surface chain allows fixed-height children (e.g. container--items-library)

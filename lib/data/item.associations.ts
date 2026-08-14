@@ -1,5 +1,12 @@
 import { db } from '@/db';
-import { item_stores, items, list_items, lists, users } from '@/db/schema';
+import {
+  item_images,
+  item_stores,
+  items,
+  list_items,
+  lists,
+  users,
+} from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { touchLists } from '@/lib/data/list.touch';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
@@ -10,12 +17,31 @@ import { updateTag } from 'next/cache';
 // only by the item actions. Deliberately NOT in a 'use server' module:
 // exporting them from one would expose them as client-callable endpoints.
 
-function emptyStore(store: { name: string; link: string; price: string }) {
+export type StoreInput = {
+  name: string;
+  link: string;
+  price: string;
+  price_fetched_at?: string | null;
+  canonical_url?: string | null;
+  currency?: string | null;
+};
+
+function emptyStore(store: StoreInput) {
   return store.name === '' && store.link === '' && store.price === '';
 }
 
+function provenanceOf(store: StoreInput) {
+  return {
+    price_fetched_at: store.price_fetched_at
+      ? new Date(store.price_fetched_at)
+      : null,
+    canonical_url: store.canonical_url ?? null,
+    currency: store.currency ?? null,
+  };
+}
+
 export async function updateItemStores(
-  stores: { name: string; link: string; price: string }[],
+  stores: StoreInput[],
   itemId: string
 ): Promise<void> {
   try {
@@ -47,10 +73,15 @@ export async function updateItemStores(
     let count = 0;
 
     while (count < stores.length && count < currentAssociations.length) {
+      const provenance = provenanceOf(stores[count]);
       if (
         stores[count].name !== currentAssociations[count].name ||
         stores[count].link !== currentAssociations[count].link ||
-        stores[count].price !== currentAssociations[count].price
+        stores[count].price !== currentAssociations[count].price ||
+        provenance.price_fetched_at?.getTime() !==
+          currentAssociations[count].price_fetched_at?.getTime() ||
+        provenance.canonical_url !== currentAssociations[count].canonical_url ||
+        provenance.currency !== currentAssociations[count].currency
       ) {
         await db
           .update(item_stores)
@@ -58,6 +89,7 @@ export async function updateItemStores(
             name: stores[count].name,
             link: stores[count].link,
             price: stores[count].price,
+            ...provenance,
           })
           .where(eq(item_stores.id, currentAssociations[count].id));
       }
@@ -76,6 +108,7 @@ export async function updateItemStores(
             link: store.link,
             price: store.price,
             order: currentOrder,
+            ...provenanceOf(store),
           });
         })
       );
@@ -94,6 +127,52 @@ export async function updateItemStores(
     console.error('Database Error:', error);
     throw new Error('Failed to update item stores.');
   }
+}
+
+// Replaces the item's image pool wholesale and marks the active image — the
+// active pointer lives here, not on items.image_url. `activeUrl` (the form's
+// image_url) is always folded into the set so "every image the user picked" is
+// persisted, including a hand-entered URL outside the fetched candidate set;
+// the row whose url matches it is the only one flagged active (none if
+// activeUrl is empty). The neon-http driver has no transactions, so a crash
+// between delete and insert can leave an empty pool — accepted residual; the
+// next save repopulates.
+export async function replaceItemImages(
+  candidates: string[],
+  activeUrl: string | null,
+  itemId: string
+): Promise<void> {
+  try {
+    const urls = [...candidates];
+    if (activeUrl && !urls.includes(activeUrl)) urls.push(activeUrl);
+
+    await db.delete(item_images).where(eq(item_images.item_id, itemId));
+    if (urls.length > 0) {
+      // Insertion order = serial id order = display order (main image first).
+      await db.insert(item_images).values(
+        urls.map((url) => ({
+          item_id: itemId,
+          url,
+          active: url === activeUrl,
+        }))
+      );
+    }
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to update item images.');
+  }
+}
+
+// Existing pool URLs in id order — used by updateItem to preserve the
+// pool when a save carries no candidate list (a manual edit that didn't
+// refetch), while still re-pointing the active image.
+export async function getItemImageUrls(itemId: string): Promise<string[]> {
+  const rows = await db
+    .select({ url: item_images.url })
+    .from(item_images)
+    .where(eq(item_images.item_id, itemId))
+    .orderBy(asc(item_images.id));
+  return rows.map((r) => r.url);
 }
 
 export async function updateItemLists(

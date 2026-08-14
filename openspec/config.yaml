@@ -1,4 +1,4 @@
-schema: spec-driven
+schema: spec-driven-review
 
 # Project context — shown to AI when creating any artifact.
 context: |
@@ -29,6 +29,13 @@ context: |
     non-endpoint modules (`item.schema.ts`, `item.associations.ts`,
     `user.session.ts`). See `openspec/specs/data-layer-organization`.
   - Drizzle schema in `db/schema.ts`
+
+  # Read-first docs
+  Before writing artifacts that touch these areas, read the repo doc
+  that owns the rules: tests -> `TESTING.md` (assertion bar, forbidden
+  patterns, naming); DB/schema/migrations -> `DATABASE.md` (driver
+  limits, migration workflow); everything else -> `CLAUDE.md` (hard
+  rules digest, file-size bands, comment and abstraction policy).
 
   # Spec authority
   Active specs in `openspec/specs/<capability>/spec.md` are the
@@ -87,10 +94,21 @@ rules:
       in the doc with rationale so the constraint isn't re-discovered.
   specs:
     - |
+      The `/mattpocock-skills:grilling` interview must have concluded
+      against the reviewed proposal before specs are drafted. Do not
+      draft specs or any later artifact until it has.
+    - |
       When adding a requirement that overlaps semantically with one
       in another capability, name the overlap and defer. Cross-
       capability constraints belong in the capability that owns the
       behavior, not the one that owns the DOM region.
+    - |
+      A delta that introduces a NEW capability MUST state the
+      capability's Purpose (1-3 sentences, derived from the
+      proposal's Why and the delta's requirements) so sync/archive
+      writes that Purpose into the created main spec instead of the
+      generated workflow's default TBD stub. Never leave a new
+      capability's Purpose as TBD.
   tasks:
     - |
       Every tasks.md MUST include a pre-merge verification section
@@ -123,3 +141,26 @@ rules:
       annotate them with CI-environment caveats (e.g. placeholder env
       vars, missing secrets) — those belong in ci.yml, not in the
       change record.
+
+      Doc-only exemption: when every file in a change's diff is one
+      that cannot affect test outcomes — markdown docs, `.claude/**`
+      skills/commands, `openspec/**`, and comment-only edits to any
+      other file — the `test:coverage` and `test:e2e` gate tasks MAY
+      be omitted instead of run, never silently: an exempt gate
+      carries no checklist item (a never-run gate is not a checkable
+      task), and the section's lead-in names the omitted gates and the
+      "doc-only change" rationale. Any executable change voids the exemption however
+      small, including one to a file whose other edits qualify. The
+      test is what the diff can affect, not which directory it sits
+      in: a reworded comment in `ci.yml` qualifies, a changed step in
+      it does not. CI on the dev push still runs the full battery, so
+      defense in depth is preserved.
+  review:
+    - |
+      Emit the review.md scaffold VERBATIM from the artifact template — the
+      review-family machine-readable header with `round: 0` and empty/`TBD`
+      `anchor` and `diff-source`, and no round sections. Do NOT invent findings,
+      rounds, verdicts, or scope. The real review is produced later by the
+      multi-agent `/spec-review` skill, which APPENDS round 1 into this file and
+      fills the header; propose-time generation only guarantees the file exists
+      so a fix session auto-loads it from `/opsx:apply`'s contextFiles.

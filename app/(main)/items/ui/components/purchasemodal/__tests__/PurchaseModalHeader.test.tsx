@@ -11,7 +11,7 @@ const makeItem = (overrides: Record<string, unknown> = {}) =>
     id: 'i1',
     name: 'Fancy Mug',
     image_url: '',
-    stores: [],
+    store: null,
     ...overrides,
   }) as never;
 
@@ -21,7 +21,7 @@ describe('PurchaseModalHeader', () => {
       <PurchaseModalHeader
         item={makeItem({
           image_url: 'https://img.example/mug.jpg',
-          stores: [{ name: 'Amazon', link: 'https://a', price: '35.50' }],
+          store: { name: 'Amazon', link: 'https://a', price: '35.50' },
         })}
       />
     );

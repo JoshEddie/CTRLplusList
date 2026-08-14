@@ -4,6 +4,7 @@ import {
   integer,
   pgTable,
   primaryKey,
+  serial,
   text,
   timestamp,
   uniqueIndex,
@@ -160,7 +161,29 @@ export const item_stores = pgTable('item_stores', {
   link: text('link').notNull(),
   price: text('price').notNull(),
   order: integer('order').notNull().default(1),
+  price_fetched_at: timestamp('price_fetched_at'),
+  canonical_url: text('canonical_url'),
+  currency: text('currency'),
 });
+
+export const item_images = pgTable(
+  'item_images',
+  {
+    id: serial('id').primaryKey(),
+    item_id: text('item_id')
+      .references(() => items.id, { onDelete: 'cascade' })
+      .notNull(),
+    url: text('url').notNull(),
+    // Marks the item's active image; the partial-unique index below is the
+    // no-transactions backstop for concurrent guest-callable mints.
+    active: boolean('active').notNull().default(false),
+  },
+  (table) => [
+    uniqueIndex('item_images_one_active_idx')
+      .on(table.item_id)
+      .where(sql`${table.active}`),
+  ]
+);
 
 export const purchases = pgTable(
   'purchases',
@@ -201,6 +224,14 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
   purchases: many(purchases),
   stores: many(item_stores),
   list_items: many(list_items),
+  images: many(item_images),
+}));
+
+export const item_imagesRelations = relations(item_images, ({ one }) => ({
+  item: one(items, {
+    fields: [item_images.item_id],
+    references: [items.id],
+  }),
 }));
 
 export const purchasesRelations = relations(purchases, ({ one }) => ({

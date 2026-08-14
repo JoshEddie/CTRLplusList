@@ -1,6 +1,5 @@
-import { Button } from '@/app/ui/components/button';
 import { ItemDisplay, PurchaseView } from '@/lib/types';
-import { MdCheck } from 'react-icons/md';
+import ClaimsList from './purchasemodal/ClaimsList';
 import Modal from './purchasemodal/Modal';
 import ModalStoreRow from './purchasemodal/ModalStoreRow';
 import PurchaseFlowContainer, {
@@ -9,7 +8,9 @@ import PurchaseFlowContainer, {
 import PurchaseModalHeader from './purchasemodal/PurchaseModalHeader';
 
 export default function PurchaseModalSlot({
-  removableClaim,
+  view,
+  claims,
+  viewerIsPurchaser,
   user_id,
   isOwner,
   showSpoilers,
@@ -21,9 +22,11 @@ export default function PurchaseModalSlot({
   onAttributedClaim,
   onGuestClaim,
   onRemoveClaim,
-  onUndoConfirm,
 }: {
-  removableClaim: PurchaseView | null;
+  view: 'manage' | 'claim';
+  /** Every sanitized claim on the item — the manage view lists them all, removal gated per row. */
+  claims: PurchaseView[];
+  viewerIsPurchaser: boolean;
   user_id?: string;
   isOwner: boolean;
   showSpoilers: boolean;
@@ -35,27 +38,18 @@ export default function PurchaseModalSlot({
   onAttributedClaim: (target: AttributedTarget) => void;
   onGuestClaim: (name: string) => void;
   onRemoveClaim: (claim: PurchaseView) => void;
-  onUndoConfirm: () => void;
 }) {
-  if (removableClaim) {
+  if (view === 'manage') {
     return (
       <Modal onClose={onClose}>
         <div className="claim-modal">
           <PurchaseModalHeader item={item} />
-          <ModalStoreRow stores={item.stores} />
-          <div className="claimed-banner" role="status">
-            <MdCheck aria-hidden />
-            {removableClaim.by === 'self'
-              ? 'You claimed this'
-              : `You claimed this for ${removableClaim.firstName}`}
-          </div>
-          <Button
-            variant="danger"
-            className="remove-claim-btn"
-            onClick={onUndoConfirm}
-          >
-            Remove my claim
-          </Button>
+          <ModalStoreRow store={item.store} />
+          <ClaimsList
+            claims={claims}
+            canRemove={(claim) => claim.by === 'self' || claim.claimedByViewer}
+            onRemoveClaim={onRemoveClaim}
+          />
         </div>
       </Modal>
     );
@@ -68,6 +62,7 @@ export default function PurchaseModalSlot({
         showSpoilers={showSpoilers}
         ownerCanClaim={ownerCanClaim}
         ownerClaims={ownerClaims}
+        viewerIsPurchaser={viewerIsPurchaser}
         item={item}
         onSelfClaim={onSelfClaim}
         onAttributedClaim={onAttributedClaim}

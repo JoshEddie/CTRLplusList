@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getClaimPickerForItem } from '@/lib/data/user.actions';
@@ -26,10 +26,7 @@ const ITEM = {
   name: 'Fancy Mug',
   description: '',
   image_url: '',
-  stores: [
-    { name: 'Target', link: 'https://t.example', price: '38.00' },
-    { name: 'Amazon', link: 'https://a.example', price: '35.50' },
-  ],
+  store: { name: 'Amazon', link: 'https://a.example', price: '35.50' },
 } as never;
 
 function renderContainer(
@@ -68,7 +65,7 @@ beforeEach(() => {
 
 describe('PurchaseFlowContainer', () => {
   describe('StoreRow', () => {
-    it('Authenticated_RendersCheapestStoreAsNewTabGhostLink', () => {
+    it('Authenticated_RendersStoreAsNewTabGhostLink', () => {
       renderContainer();
       const link = screen.getByRole('link', { name: /Amazon/ });
       expect(link).toHaveAttribute('href', 'https://a.example');
@@ -86,35 +83,9 @@ describe('PurchaseFlowContainer', () => {
       expect(screen.getByRole('link', { name: /Amazon/ })).toBeInTheDocument();
     });
 
-    it('PlusNStoresTrigger_OpensMenuWithAllStoresPriceAscending', async () => {
-      renderContainer();
-      await screen.findByRole('button', { name: 'Claim this gift' });
-      // fireEvent: userEvent's synthetic hover would open-then-toggle the
-      // hover-opened menu shut.
-      fireEvent.click(screen.getByRole('button', { name: '+1 store' }));
-      const menuItems = screen.getAllByRole('menuitem');
-      expect(menuItems).toHaveLength(2);
-      expect(menuItems[0]).toHaveTextContent('Amazon');
-      expect(menuItems[0]).toHaveTextContent('$35.50');
-      expect(menuItems[1]).toHaveTextContent('Target');
-      expect(menuItems[1]).toHaveTextContent('$38.00');
-    });
-
-    it('EscapeWhileMenuOpen_ClosesMenuOnly', async () => {
-      const user = userEvent.setup();
-      renderContainer();
-      await screen.findByRole('button', { name: 'Claim this gift' });
-      fireEvent.click(screen.getByRole('button', { name: '+1 store' }));
-      await user.keyboard('{Escape}');
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: '+1 store' })
-      ).toHaveFocus();
-    });
-
     it('NoValidStore_RendersClaimSectionWithoutStoreRow', async () => {
       renderContainer({
-        item: { ...((ITEM as object) ?? {}), stores: [] } as never,
+        item: { ...((ITEM as object) ?? {}), store: null } as never,
       });
       expect(screen.queryByRole('link')).not.toBeInTheDocument();
       expect(
@@ -470,7 +441,8 @@ describe('PurchaseFlowContainer', () => {
         ownerCanClaim: true,
         ownerClaims: [claim],
       });
-      expect(screen.getByText('Bob — added by Alice')).toBeInTheDocument();
+      expect(screen.getByText('Bob')).toBeInTheDocument();
+      expect(screen.getByText('Added by Alice')).toBeInTheDocument();
       await user.click(
         screen.getByRole('button', { name: "Remove Bob's claim" })
       );

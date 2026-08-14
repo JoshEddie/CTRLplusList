@@ -35,16 +35,15 @@ vi.mock('../ItemsBrowser', () => ({
 vi.mock('../itemform/ItemFormContainer', () => ({
   default: (props: {
     lists: unknown[];
-    user_id: string;
     onClose: () => void;
+    onSuccess: () => void;
   }) => (
-    <div
-      data-testid="item-form"
-      data-lists-count={props.lists.length}
-      data-user-id={props.user_id}
-    >
+    <div data-testid="item-form" data-lists-count={props.lists.length}>
       <button type="button" onClick={props.onClose}>
         close-form
+      </button>
+      <button type="button" onClick={props.onSuccess}>
+        submit-form
       </button>
     </div>
   ),
@@ -157,13 +156,12 @@ describe('ItemsPage', () => {
   });
 
   describe('NewItemToggle', () => {
-    it('ClickNewItem_MountsItemFormContainerWithListsAndUser', () => {
+    it('ClickNewItem_MountsItemFormContainerWithLists', () => {
       renderPage();
       expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
       const form = screen.getByTestId('item-form');
       expect(form).toHaveAttribute('data-lists-count', '2');
-      expect(form).toHaveAttribute('data-user-id', 'viewer');
     });
 
     it('FormOnClose_UnmountsItemForm', () => {
@@ -174,12 +172,18 @@ describe('ItemsPage', () => {
       expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
     });
 
-    it('MissingListsAndUserId_FormDefaultsToEmpty', () => {
+    it('FormOnSuccess_UnmountsItemForm', () => {
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
+      fireEvent.click(screen.getByRole('button', { name: 'submit-form' }));
+      expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
+    });
+
+    it('MissingLists_FormDefaultsToEmptyListCount', () => {
       renderPage({ lists: undefined, user_id: undefined });
       fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
       const form = screen.getByTestId('item-form');
       expect(form).toHaveAttribute('data-lists-count', '0');
-      expect(form).toHaveAttribute('data-user-id', '');
     });
   });
 

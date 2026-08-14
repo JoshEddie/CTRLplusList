@@ -498,7 +498,8 @@
   background-color: color-mix(in srgb, var(--light-color) 90%, transparent);
   border-top: none;
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
-  z-index: 1;
+  z-index: 2;
+  backdrop-filter: blur(5px);
 }
 
 .container--list-details .item-grid-container {
