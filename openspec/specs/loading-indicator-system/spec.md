@@ -201,11 +201,11 @@ The `/lists/[id]/choose-items` route's `page.tsx` SHALL be a synchronous server 
 
 ### Requirement: `/user/[id]` SHALL render two independent section Suspenses for profile header and lists grid
 
-The `/user/[id]` route's `page.tsx` SHALL render `<ListCollectionsNav>` as static chrome, then a `<Suspense fallback={<LoadingIndicator size="rail" />}>` around an extracted `<ProfileHeaderSection>` (responsible for `getProfileForUser` and the `<ProfileHeader>` + optional `<FollowPrompt>` render), then a static `<Header title="Lists" />`, then a `<Suspense fallback={<LoadingIndicator size="page" />}>` around an extracted `<ProfileListsSection>` (responsible for `getPublicListsByUser` and the `<PublicListsGrid>` render). The two sections SHALL stream independently — a slow `getPublicListsByUser` SHALL NOT delay the profile-header section's resolution.
+The `/user/[id]` route's `page.tsx` SHALL render `<ListCollectionsNav>` as static chrome, then a `<Suspense fallback={<LoadingIndicator size="rail" />}>` around an extracted `<ProfileHeaderSection>` (responsible for `getProfileForViewer` and the `<ProfileHeader>` + optional `<FollowPrompt>` render), then a static `<Header title="Lists" />`, then a `<Suspense fallback={<LoadingIndicator size="page" />}>` around an extracted `<ProfileListsSection>` (responsible for `getPublicListsByProfile` and the `<PublicListsGrid>` render). The two sections SHALL stream independently — a slow `getPublicListsByProfile` SHALL NOT delay the profile-header section's resolution.
 
 #### Scenario: Profile header streams before lists grid resolves
 
-- **WHEN** `/user/[id]` is loading and `getPublicListsByUser` is slower than `getProfileForUser`
+- **WHEN** `/user/[id]` is loading and `getPublicListsByProfile` is slower than `getProfileForViewer`
 - **THEN** the profile header section paints first with the resolved `<ProfileHeader>`, while the lists section still shows `<LoadingIndicator size="page" />` in the lists-grid container
 
 #### Scenario: Two section spinners, not one page spinner
@@ -215,7 +215,7 @@ The `/user/[id]` route's `page.tsx` SHALL render `<ListCollectionsNav>` as stati
 
 ### Requirement: `/settings/connections` SHALL render one Suspense per `ConnectionsSection`
 
-The `/settings/connections` route's `page.tsx` SHALL render `<Header title="Connections" />` as static chrome, then three `<ConnectionsSection>` shells (Following / Followers / Blocked), each wrapping its own `<Suspense fallback={<LoadingIndicator size="rail" />}>` around an extracted section-body component that owns its own `getFollowingByUser` / `getFollowersOfUser` / `getBlockedByUser` data fetch. The three sections SHALL stream independently — a slow Blocked query SHALL NOT delay the Following or Followers sections.
+The `/settings/connections` route's `page.tsx` SHALL render `<Header title="Connections" />` as static chrome, then three `<ConnectionsSection>` shells (Following / Followers / Blocked), each wrapping its own `<Suspense fallback={<LoadingIndicator size="rail" />}>` around an extracted section-body component that owns its own `getFollowingByUser` / `getFollowersOfProfile` / `getBlockedByProfile` data fetch. The three sections SHALL stream independently — a slow Blocked query SHALL NOT delay the Following or Followers sections.
 
 #### Scenario: Three independent section spinners
 

@@ -6,12 +6,17 @@ TBD - created by archiving change add-following-and-history. Update Purpose afte
 ## Requirements
 ### Requirement: Lists SHALL have a three-state visibility model
 
-Every list SHALL have a `visibility` value of exactly one of `'private'`, `'unlisted'`, or `'public'`, persisted in `lists.visibility`. A `private` list is visible only to its owner. An `unlisted` list is visible to anyone with the URL but does NOT appear in any feed. A `public` list is visible to anyone with the URL AND appears in the feeds of users who follow the owner.
+Every list SHALL have a `visibility` value of exactly one of `'private'`, `'unlisted'`, or `'public'`, persisted in `lists.visibility`. A `private` list is visible only to its **owning profile** — the viewer sees it when the list's owning profile equals the profile their request acts as, a comparison of profile ids rather than of account ids. An `unlisted` list is visible to anyone with the URL but does NOT appear in any feed. A `public` list is visible to anyone with the URL AND appears in the feeds of users who follow the owning profile.
 
 #### Scenario: Private list inaccessible to non-owners
 
-- **WHEN** a non-owner (authenticated or not) navigates to `/lists/[id]` for a list with `visibility = 'private'`
+- **WHEN** a viewer whose profile is not the list's owning profile (authenticated or not) navigates to `/lists/[id]` for a list with `visibility = 'private'`
 - **THEN** the system renders the private-list interstitial (existing behavior) and does NOT expose the list's contents
+
+#### Scenario: Private list visible to its owning profile
+
+- **WHEN** the account whose profile owns a `'private'` list navigates to `/lists/[id]` for it
+- **THEN** the list renders in full, because the list's owning profile equals the profile the request acts as
 
 #### Scenario: Unlisted list accessible by URL only
 
@@ -20,7 +25,7 @@ Every list SHALL have a `visibility` value of exactly one of `'private'`, `'unli
 
 #### Scenario: Public list accessible by URL and in follower feeds
 
-- **WHEN** a list has `visibility = 'public'` and the owner has at least one follower
+- **WHEN** a list has `visibility = 'public'` and its owning profile has at least one follower
 - **THEN** the list is URL-accessible to anyone AND the list is included in each follower's Following feed sources
 
 ### Requirement: `shared_at` SHALL only update on the `private → non-private` transition
@@ -49,7 +54,7 @@ Every list SHALL have a `visibility` value of exactly one of `'private'`, `'unli
 
 ### Requirement: List owners SHALL set visibility via a three-item radio menu
 
-The list visibility UI SHALL present a popover triggered by a single visibility pill containing exactly three radio-style menu items, one per enum value. The UI labels SHALL be **Hidden** (→ `'private'`), **Private** (→ `'unlisted'`), and **Shared** (→ `'public'`). Each menu row SHALL render an icon, the label, and a one-line description; the currently-selected row SHALL render a trailing `✓` indicator and SHALL have `aria-checked="true"`. Selecting a row invokes `setListVisibility(id, visibility)` with the value the row maps to. Only the list owner SHALL be authorized to change visibility.
+The list visibility UI SHALL present a popover triggered by a single visibility pill containing exactly three radio-style menu items, one per enum value. The UI labels SHALL be **Hidden** (→ `'private'`), **Private** (→ `'unlisted'`), and **Shared** (→ `'public'`). Each menu row SHALL render an icon, the label, and a one-line description; the currently-selected row SHALL render a trailing `✓` indicator and SHALL have `aria-checked="true"`. Selecting a row invokes `setListVisibility(id, visibility)` with the value the row maps to. Only the account whose profile owns the list SHALL be authorized to change visibility, established by comparing the list's owning profile against the profile the request acts as.
 
 The row descriptions SHALL be: **Hidden** — "Only you can see this list"; **Private** — "Only people with the link can view"; **Shared** — "Anyone with the link — plus your followers see it in their feed". The Shared description SHALL frame follower visibility as an addition to link access, not a restriction, so it cannot be read as followers-only.
 
@@ -92,7 +97,7 @@ The trigger pill SHALL display the currently-selected row's label verbatim (no q
 
 #### Scenario: Non-owner submission is rejected
 
-- **WHEN** a `setListVisibility` request is made by a non-owner
+- **WHEN** a `setListVisibility` request is made by an account whose profile is not the list's owning profile
 - **THEN** the action returns an unauthorized response and `lists.visibility` is unchanged
 
 ### Requirement: Migration SHALL preserve existing share state without retroactive broadcast
@@ -295,4 +300,3 @@ The `fromDb` decoder SHALL accept both legacy strings (`'private' | 'unlisted' |
 
 - **WHEN** `setListVisibility` executes the UPDATE on `lists.visibility`
 - **THEN** the written value is the verbatim value of a `VISIBILITY` constant (in Stage 1 this is a legacy DB string; in subsequent stages the same source line writes the canonical string with no code change at the call site)
-

@@ -348,7 +348,7 @@ Every finding from any of the four audits SHALL be disposed of in exactly one of
 
 - **WHEN** the assertion audit reviews a test that calls `createList(...)` and then asserts only `expect(result).toBeTruthy()`
 - **THEN** the audit records the test as failing the substance bar (asserting on a value the production code constructed, with no constraint on its shape)
-- **AND** the test SHALL be rewritten to assert specific properties (e.g., `result.id` matches the expected pattern, `result.title` equals the input, the list appears in a follow-up `getListsByUser` call) OR deleted
+- **AND** the test SHALL be rewritten to assert specific properties (e.g., `result.id` matches the expected pattern, `result.title` equals the input, the list appears in a follow-up `getListsByProfile` call) OR deleted
 - **AND** the audit task records the disposition
 
 #### Scenario: Duplication found and fixed in-place
