@@ -109,17 +109,22 @@ describe('profiles', () => {
       await db
         .insert(profile_members)
         .values({ user_id: 'u1', profile_id: 'self-u1', role: 'self' });
+      await db
+        .insert(profiles)
+        .values({ id: 'self-u2', name: 'Editor', user_id: 'u2' });
       await db.insert(lists).values({
         id: 'l1',
         name: 'Christmas',
         occasion: 'Christmas',
         user_id: 'u2',
+        profile_id: 'self-u2',
         updated_by_user_id: 'u1',
       });
       await db.insert(items).values({
         id: 'i1',
         name: 'Socks',
         user_id: 'u2',
+        profile_id: 'self-u2',
         updated_by_user_id: 'u1',
       });
 

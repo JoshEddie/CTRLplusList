@@ -1,9 +1,9 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/db';
 import { list_items } from '@/db/schema';
-import { getItemsByUser } from '@/lib/data/item';
-import { getList, getListsByUser } from '@/lib/data/list';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { getItemsByProfile } from '@/lib/data/item';
+import { getList, getListsByProfile } from '@/lib/data/list';
+import { authedIdentity } from '@/lib/data/user.session';
 import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import ChooseItemsForm from './ChooseItemsForm';
@@ -22,26 +22,23 @@ export default async function ChooseItemsBody({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
   const isNew = sp.new === '1';
-  const [user, list] = await Promise.all([
-    getUserIdByEmail(session.user.email),
-    getList(id),
-  ]);
+  const [identity, list] = await Promise.all([authedIdentity(), getList(id)]);
 
-  if (!user || !list) {
+  if (!identity || !list) {
     redirect('/lists');
   }
 
-  if (list.user_id !== user.id) {
+  if (list.profile_id !== identity.profile.id) {
     redirect(`/lists/${id}`);
   }
 
   const [allItems, currentListItems, userLists] = await Promise.all([
-    getItemsByUser(user.id, { filter: 'all' }),
+    getItemsByProfile(identity.profile.id, { filter: 'all' }),
     db
       .select({ item_id: list_items.item_id })
       .from(list_items)
       .where(eq(list_items.list_id, id)),
-    getListsByUser(user.id),
+    getListsByProfile(identity.profile.id),
   ]);
 
   const currentListItemIds = new Set(currentListItems.map((r) => r.item_id));
@@ -57,7 +54,7 @@ export default async function ChooseItemsBody({ params, searchParams }: Props) {
       items={displayItems}
       initialSelectedIds={Array.from(currentListItemIds)}
       isNew={isNew}
-      user_id={user.id}
+      profile_id={identity.profile.id}
       lists={userLists}
     />
   );

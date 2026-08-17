@@ -1,17 +1,14 @@
 import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
-import { auth } from '@/lib/auth';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { authedIdentity } from '@/lib/data/user.session';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import MyListsGrid from './ui/components/MyListsGrid';
 import NewListButton from './ui/components/NewListButton';
 
 export default async function MyListsPage() {
-  const session = await auth();
-  if (!session?.user?.email) redirect('/');
-  const viewer = await getUserIdByEmail(session.user.email);
-  if (!viewer) redirect('/');
+  const identity = await authedIdentity();
+  if (!identity) redirect('/');
 
   return (
     <div className="my-lists-page">
@@ -20,7 +17,7 @@ export default async function MyListsPage() {
       </ListCollectionsNav>
 
       <Suspense fallback={<LoadingIndicator size="page" />}>
-        <MyListsGrid userId={viewer.id} />
+        <MyListsGrid profileId={identity.profile.id} />
       </Suspense>
     </div>
   );

@@ -2,7 +2,11 @@
 
 import { db } from '@/db';
 import { item_images } from '@/db/schema';
-import { authedUserId, UNAUTHORIZED_RESPONSE } from '@/lib/data/user.session';
+import {
+  authedIdentity,
+  authedUserId,
+  UNAUTHORIZED_RESPONSE,
+} from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
 import { generatePlaceholderArt } from '@/lib/placeholderArt';
 import { type ActionResponse } from '@/lib/types';
@@ -20,8 +24,8 @@ export async function mintItemPlaceholder(
   itemId: string
 ): Promise<ActionResponse & { url?: string }> {
   try {
-    const viewerId = await authedUserId();
-    const viewable = await isItemViewable(itemId, viewerId);
+    const viewer = await authedIdentity();
+    const viewable = await isItemViewable(itemId, viewer?.profile.id ?? null);
     if (!viewable) return UNAUTHORIZED_RESPONSE;
 
     const activeImage = () =>

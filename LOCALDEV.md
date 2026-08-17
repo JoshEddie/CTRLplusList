@@ -21,7 +21,7 @@ Orthogonal to bypass.
 
 ## Active profile (`BYPASS_ACTIVE_PROFILE`)
 
-Dormant seam. Read in local mode and exposed as `bypassActiveProfile()`; consumed by nothing — active-profile resolution arrives in phase 2. Setting it changes no behavior, including session synthesis. Outside local mode it always reads undefined.
+Dormant seam. Read in local mode and exposed as `bypassActiveProfile()`; consumed by nothing yet. Setting it changes no behavior, including session synthesis. Outside local mode it always reads undefined.
 
 ## Seeded data coverage
 

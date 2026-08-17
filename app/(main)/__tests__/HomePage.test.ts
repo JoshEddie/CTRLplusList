@@ -4,7 +4,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import { seedUsers, selfProfileOf } from '@/test/helpers/seedFollowGraph';
 import BookmarkMigrationToast from '../lists/ui/components/BookmarkMigrationToast';
 import CollapsibleRail from '../lists/ui/components/CollapsibleRail';
 import BookmarksRail from '../lists/ui/components/rails/BookmarksRail';
@@ -112,20 +112,22 @@ describe('HomePage', () => {
     ]);
   });
 
-  it('EachRail_WrapsMatchingRailInSuspenseWithViewerId', async () => {
+  it('EachRail_WrapsMatchingRailInSuspenseWithItsViewerKey', async () => {
     const tree = await renderWithViewer();
-    const railComponents = [
-      MyListsRail,
-      FollowingRail,
-      BookmarksRail,
-      RecentlyVisitedRail,
+    // My Lists is profile-scoped; the account-keyed rails (follow graph,
+    // bookmarks, visit history) still take the viewer's account id.
+    const expected = [
+      { component: MyListsRail, props: { profileId: selfProfileOf('viewer') } },
+      { component: FollowingRail, props: { userId: 'viewer' } },
+      { component: BookmarksRail, props: { userId: 'viewer' } },
+      { component: RecentlyVisitedRail, props: { userId: 'viewer' } },
     ];
     rails(tree).forEach((rail, i) => {
       const suspense = rail.props.children as El;
       expect(suspense.type).toBe(Suspense);
       const inner = suspense.props.children as El;
-      expect(inner.type).toBe(railComponents[i]);
-      expect((inner.props as { userId: string }).userId).toBe('viewer');
+      expect(inner.type).toBe(expected[i].component);
+      expect(inner.props).toEqual(expected[i].props);
     });
   });
 

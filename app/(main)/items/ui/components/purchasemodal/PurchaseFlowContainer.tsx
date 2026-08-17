@@ -121,7 +121,7 @@ function AuthedClaimSection({
 }
 
 export default function PurchaseFlowContainer({
-  user_id,
+  profile_id,
   isOwner,
   showSpoilers,
   ownerCanClaim,
@@ -133,7 +133,7 @@ export default function PurchaseFlowContainer({
   onGuestClaim,
   onRemoveClaim,
 }: {
-  user_id?: string | null;
+  profile_id?: string | null;
   isOwner: boolean;
   showSpoilers: boolean;
   ownerCanClaim: boolean;
@@ -152,7 +152,7 @@ export default function PurchaseFlowContainer({
   const [fetchAttempt, setFetchAttempt] = useState(0);
 
   // Spoilers-off owners get no claim UI and consume no claim data.
-  const showClaimSection = !!user_id && (!isOwner || showSpoilers);
+  const showClaimSection = !!profile_id && (!isOwner || showSpoilers);
   const itemId = item.id;
 
   // Each (item, attempt) pair is a fresh fetch; reset to loading at render
@@ -193,7 +193,7 @@ export default function PurchaseFlowContainer({
       <PurchaseModalHeader item={item} />
       <ModalStoreRow store={item.store} />
 
-      {!user_id ? (
+      {!profile_id ? (
         <GuestClaimSection onGuestClaim={onGuestClaim} />
       ) : !showClaimSection ? (
         <p className="owner-list-label">Your list</p>

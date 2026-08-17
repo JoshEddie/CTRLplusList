@@ -9,7 +9,7 @@ import {
   rebalanceList,
   reorderPosition,
 } from '@/lib/data/listItems.positions';
-import { authedUserId } from '@/lib/data/user.session';
+import { authedIdentity } from '@/lib/data/user.session';
 import { type ActionResponse } from '@/lib/types';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { updateTag } from 'next/cache';
@@ -31,14 +31,14 @@ export async function setListItems(
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, list_id),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
 
-    const userId = await authedUserId();
-    if (!userId || userId !== list.user_id) {
+    const identity = await authedIdentity();
+    if (!identity || identity.profile.id !== list.profile_id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -128,8 +128,8 @@ export async function removeListItem(
   item_id: string
 ): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       return {
         success: false,
         message: 'Unauthorized access',
@@ -139,12 +139,12 @@ export async function removeListItem(
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, list_id),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
-    if (list.user_id !== userId) {
+    if (list.profile_id !== identity.profile.id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -188,8 +188,8 @@ export async function updatePriority(
   listId: string
 ): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       return {
         success: false,
         message: 'Unauthorized',
@@ -198,9 +198,9 @@ export async function updatePriority(
     }
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, listId),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
-    if (!list || list.user_id !== userId) {
+    if (!list || list.profile_id !== identity.profile.id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',

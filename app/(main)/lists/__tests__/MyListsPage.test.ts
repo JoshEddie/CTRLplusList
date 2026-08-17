@@ -5,7 +5,7 @@ import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import { seedUsers, selfProfileOf } from '@/test/helpers/seedFollowGraph';
 import MyListsGrid from '../ui/components/MyListsGrid';
 import NewListButton from '../ui/components/NewListButton';
 
@@ -72,7 +72,7 @@ describe('MyListsPage', () => {
     expect(redirectMock).toHaveBeenCalledWith('/');
   });
 
-  it('ViewerResolved_RendersNavWithNewListButton-WrapsGridInSuspenseWithViewerId', async () => {
+  it('ViewerResolved_RendersNavWithNewListButton-WrapsGridInSuspenseWithViewerProfileId', async () => {
     const tree = await renderWithViewer();
     const [nav, suspense] = childrenOf(tree);
 
@@ -82,6 +82,8 @@ describe('MyListsPage', () => {
     expect(suspense.type).toBe(Suspense);
     const inner = suspense.props.children as El;
     expect(inner.type).toBe(MyListsGrid);
-    expect((inner.props as { userId: string }).userId).toBe('viewer');
+    expect((inner.props as { profileId: string }).profileId).toBe(
+      selfProfileOf('viewer')
+    );
   });
 });

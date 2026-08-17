@@ -4,7 +4,7 @@ import ListCardRow from '@/app/ui/components/ListCardRow';
 import { list_visits, lists } from '@/db/schema';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import { seedUsers, selfProfileOf } from '@/test/helpers/seedFollowGraph';
 
 mockNextCache();
 
@@ -43,6 +43,7 @@ async function seedBookmark(
     subtitle: list.subtitle ?? null,
     occasion: 'birthday',
     user_id: 'owner',
+    profile_id: selfProfileOf('owner'),
   });
   await db.insert(list_visits).values({
     user_id: 'viewer',
@@ -75,7 +76,7 @@ describe('BookmarksRail', () => {
     expect(entry.subtitle).toBe('Sub');
     expect(entry.occasion).toBe('birthday');
     expect(entry.date).toBeInstanceOf(Date);
-    expect(entry.user).toEqual({ name: 'Olive' });
+    expect(entry.profile).toEqual({ name: 'Olive' });
   });
 
   it('NoBookmarks_PassesEmptyMessage', async () => {

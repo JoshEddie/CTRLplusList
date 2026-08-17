@@ -10,6 +10,7 @@ const q = db
       name: 'y',
       occasion: 'z',
       user_id: 'u',
+      profile_id: 'p',
       visibility: VISIBILITY.OWNER,
       shared: false,
       shared_at: null,

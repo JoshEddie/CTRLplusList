@@ -1,8 +1,7 @@
-import { db } from '@/db';
-import { users } from '@/db/schema';
 import { auth } from '@/lib/auth';
-import { type ActionResponse } from '@/lib/types';
-import { eq } from 'drizzle-orm';
+import { getUserIdentity } from '@/lib/data/profile';
+import { getUserIdByEmail } from '@/lib/data/user';
+import { type ActionResponse, type UserIdentity } from '@/lib/types';
 
 export const UNAUTHORIZED_RESPONSE: ActionResponse = {
   success: false,
@@ -16,9 +15,15 @@ export const UNAUTHORIZED_RESPONSE: ActionResponse = {
 export async function authedUserId(): Promise<string | null> {
   const session = await auth();
   if (!session?.user?.email) return null;
-  const u = await db.query.users.findFirst({
-    where: eq(users.email, session.user.email),
-    columns: { id: true },
-  });
+  const u = await getUserIdByEmail(session.user.email);
   return u?.id ?? null;
+}
+
+// Session → { userId, profile }, for endpoints that compare against
+// ownership columns. Both causes of an unresolvable actor (no session, no
+// users row) yield null, per server-endpoint-authorization's rejection shape.
+export async function authedIdentity(): Promise<UserIdentity | null> {
+  const userId = await authedUserId();
+  if (!userId) return null;
+  return getUserIdentity(userId);
 }

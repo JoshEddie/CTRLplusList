@@ -1,7 +1,6 @@
-import { auth } from '@/lib/auth';
-import { getItemsByUser } from '@/lib/data/item';
-import { getListsByUser } from '@/lib/data/list';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { getItemsByProfile } from '@/lib/data/item';
+import { getListsByProfile } from '@/lib/data/list';
+import { authedIdentity } from '@/lib/data/user.session';
 import { ItemDisplay } from '@/lib/types';
 import { redirect } from 'next/navigation';
 import ItemsPage from './ui/components/ItemsPage';
@@ -12,13 +11,8 @@ export default async function Home({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const session = await auth();
-
-  const user = session?.user?.email
-    ? await getUserIdByEmail(session.user.email)
-    : null;
-
-  if (!user) {
+  const identity = await authedIdentity();
+  if (!identity) {
     redirect('/');
   }
 
@@ -30,20 +24,20 @@ export default async function Home({
   const initialPageSize = await readItemsPageSize();
 
   const [activeItems, archivedItems] = await Promise.all([
-    getItemsByUser(user.id, { filter: 'active', showSpoilers }),
-    getItemsByUser(user.id, { filter: 'archived', showSpoilers }),
+    getItemsByProfile(identity.profile.id, { filter: 'active', showSpoilers }),
+    getItemsByProfile(identity.profile.id, { filter: 'archived', showSpoilers }),
   ]);
 
-  const lists = await getListsByUser(user.id);
+  const lists = await getListsByProfile(identity.profile.id);
 
-  const firstLastInitial = viewerDisplayName(user.name);
+  const firstLastInitial = viewerDisplayName(identity.profile.name);
 
   return (
     <main className="container container--items-library">
       <ItemsPage
         items={activeItems as ItemDisplay[]}
         archivedItems={archivedItems as ItemDisplay[]}
-        user_id={user?.id}
+        profile_id={identity.profile.id}
         user_name={firstLastInitial}
         lists={lists}
         initialPageSize={initialPageSize}

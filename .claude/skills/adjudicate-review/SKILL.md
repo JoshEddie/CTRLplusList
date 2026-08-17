@@ -53,9 +53,7 @@ original reviewer's reasoning.
 
 ## Step 2 — Interview the owner, one finding at a time
 
-Drive the adjudication as a `grill-me`-style interview: put **one finding, or one
-merge-group, per `AskUserQuestion`** — never batch unrelated findings into a single
-question. Each question SHALL:
+Run /mattpocock-skills:grilling over the findings
 
 - name the finding ID(s) it covers by their durable IDs (for a merge, name both,
   e.g. "`A1+C3` are the same defect; this question covers both"),

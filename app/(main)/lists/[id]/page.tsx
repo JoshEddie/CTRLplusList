@@ -1,7 +1,6 @@
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
-import { auth } from '@/lib/auth';
 import { getList } from '@/lib/data/list';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { authedIdentity } from '@/lib/data/user.session';
 import { VISIBILITY } from '@/lib/visibility';
 import { Metadata } from 'next';
 import { Suspense } from 'react';
@@ -37,11 +36,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   let isOwner = false;
   if (!isShared) {
-    const session = await auth();
-    const viewer = session?.user?.email
-      ? await getUserIdByEmail(session.user.email)
-      : null;
-    isOwner = viewer?.id === list.user_id;
+    const identity = await authedIdentity();
+    isOwner = identity?.profile.id === list.profile_id;
   }
 
   const showFullMetadata = isShared || isOwner;

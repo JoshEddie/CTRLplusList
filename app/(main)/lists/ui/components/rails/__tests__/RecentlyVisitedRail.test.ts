@@ -5,7 +5,7 @@ import HistoryCard from '@/app/(main)/lists/history/HistoryCard';
 import { list_visits, lists } from '@/db/schema';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import { seedUsers, selfProfileOf } from '@/test/helpers/seedFollowGraph';
 
 mockNextCache();
 // HistoryCard → HistoryActions → @/lib/data/visit.actions → @/lib/auth → next-auth.
@@ -45,6 +45,7 @@ async function seedVisit(listId: string, lastVisitedAt: Date): Promise<void> {
     name: `Name ${listId}`,
     occasion: 'birthday',
     user_id: 'owner',
+    profile_id: selfProfileOf('owner'),
   });
   await db.insert(list_visits).values({
     user_id: 'viewer',

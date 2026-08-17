@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { list_visits, lists } from '@/db/schema';
 import {
   UNAUTHORIZED_RESPONSE,
+  authedIdentity,
   authedUserId,
 } from '@/lib/data/user.session';
 import { type ActionResponse } from '@/lib/types';
@@ -13,18 +14,21 @@ import { updateTag } from 'next/cache';
 
 export async function bookmarkList(list_id: string): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       return UNAUTHORIZED_RESPONSE;
     }
 
+    // Owner check compares profile ids; the row written below stays keyed by
+    // the caller's account — list_visits records what a human did.
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, list_id),
-      columns: { user_id: true, visibility: true },
+      columns: { profile_id: true, visibility: true },
     });
     if (
       !list ||
-      (list.user_id !== userId && fromDb(list.visibility) === VISIBILITY.OWNER)
+      (list.profile_id !== identity.profile.id &&
+        fromDb(list.visibility) === VISIBILITY.OWNER)
     ) {
       return {
         success: false,
@@ -37,7 +41,7 @@ export async function bookmarkList(list_id: string): Promise<ActionResponse> {
     await db
       .insert(list_visits)
       .values({
-        user_id: userId,
+        user_id: identity.userId,
         list_id,
         last_visited_at: now,
         visit_count: 1,

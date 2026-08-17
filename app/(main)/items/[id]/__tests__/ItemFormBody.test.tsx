@@ -2,16 +2,21 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
 import { getItemById } from '@/lib/data/item';
-import { getListsByUser } from '@/lib/data/list';
+import { getListsByProfile } from '@/lib/data/list';
+import { getUserIdentity } from '@/lib/data/profile';
 import { getUserIdByEmail } from '@/lib/data/user';
 import ItemFormBody from '../ItemFormBody';
+import { makeProfile } from '@/test/helpers/profile';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/item', () => ({
   getItemById: vi.fn(),
 }));
 vi.mock('@/lib/data/list', () => ({
-  getListsByUser: vi.fn(),
+  getListsByProfile: vi.fn(),
+}));
+vi.mock('@/lib/data/profile', () => ({
+  getUserIdentity: vi.fn(),
 }));
 vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
@@ -55,8 +60,12 @@ beforeEach(() => {
     id: 'u1',
     name: 'Owner',
   } as never);
+  vi.mocked(getUserIdentity).mockResolvedValue({
+    userId: 'u1',
+    profile: makeProfile('p1', 'Owner', 'u1'),
+  });
   vi.mocked(getItemById).mockResolvedValue({ id: 'i1', name: 'Gift' } as never);
-  vi.mocked(getListsByUser).mockResolvedValue([
+  vi.mocked(getListsByProfile).mockResolvedValue([
     { id: 'l1' },
     { id: 'l2' },
   ] as never);
@@ -72,6 +81,12 @@ describe('ItemFormBody', () => {
     it('NoUser_RedirectsToRoot', async () => {
       vi.mocked(getUserIdByEmail).mockResolvedValue(null as never);
       await expect(ItemFormBody(props())).rejects.toThrow('REDIRECT:/');
+    });
+
+    it('NoProfile_RedirectsToRoot', async () => {
+      vi.mocked(getUserIdentity).mockResolvedValue(null);
+      await expect(ItemFormBody(props())).rejects.toThrow('REDIRECT:/');
+      expect(getItemById).not.toHaveBeenCalled();
     });
 
     it('NoItemNoReturnTo_RedirectsToItems', async () => {
@@ -98,9 +113,10 @@ describe('ItemFormBody', () => {
   });
 
   describe('Owner', () => {
-    it('LoadsItem_ForwardsItemListsUserAndSanitizedReturnTo', async () => {
+    it('LoadsItem_ForwardsItemListsProfileAndSanitizedReturnTo', async () => {
       render(await ItemFormBody(props('i1', { returnTo: '/lists/l1' })));
-      expect(getItemById).toHaveBeenCalledWith('i1', 'u1');
+      expect(getItemById).toHaveBeenCalledWith('i1', 'p1');
+      expect(getListsByProfile).toHaveBeenCalledWith('p1');
       const form = screen.getByTestId('item-form');
       expect(form).toHaveAttribute('data-item-id', 'i1');
       expect(form).toHaveAttribute('data-lists-count', '2');

@@ -3,7 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VISIBILITY } from '@/lib/visibility';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import { seedUsers, selfProfileOf } from '@/test/helpers/seedFollowGraph';
 
 import { seedItem, seedList, seedListItem } from './test-helpers';
 
@@ -35,9 +35,9 @@ beforeEach(async () => {
 });
 
 describe('getList', () => {
-  it('ExistingList_ReturnsListWithUserJoin-ItemCount-DecodedVisibility', async () => {
+  it('ExistingList_ReturnsListWithProfileJoin-ItemCount-DecodedVisibility', async () => {
     await seedUsers(db, [
-      { id: 'owner', name: 'Owen', email: 'owen@test.local' },
+      { id: 'owner', name: 'Owen', email: 'owen@test.local', image: 'o.png' },
     ]);
     await seedList(db, { id: 'l1', user_id: 'owner', visibility: 'public' });
     await seedItem(db, { id: 'i1', user_id: 'owner' });
@@ -46,7 +46,11 @@ describe('getList', () => {
     await seedListItem(db, { list_id: 'l1', item_id: 'i2', position: 2 });
 
     const list = await dal.getList('l1');
-    expect(list?.user.id).toBe('owner');
+    expect(list?.profile).toEqual({
+      id: selfProfileOf('owner'),
+      name: 'Owen',
+      user: { image: 'o.png' },
+    });
     expect(list?.items).toHaveLength(2);
     expect(list?.items.map((i) => i.item_id).sort()).toEqual(['i1', 'i2']);
     expect(list?.visibility).toBe(VISIBILITY.FOLLOWERS);
@@ -64,47 +68,8 @@ describe('getList', () => {
   });
 });
 
-describe('getLists', () => {
-  it('MultipleLists_OrderedByCreatedAtDesc-UserProjection-DecodedVisibility', async () => {
-    await seedUsers(db, [
-      { id: 'owner', name: 'Owen', email: 'owen@test.local' },
-    ]);
-    await seedList(db, {
-      id: 'older',
-      user_id: 'owner',
-      visibility: 'public',
-      created_at: new Date('2020-01-01'),
-    });
-    await seedList(db, {
-      id: 'newer',
-      user_id: 'owner',
-      visibility: 'unlisted',
-      created_at: new Date('2022-01-01'),
-    });
-
-    const rows = await dal.getLists();
-    expect(rows.map((r) => r.id)).toEqual(['newer', 'older']);
-    expect(rows[0].user).toEqual({
-      id: 'owner',
-      email: 'owen@test.local',
-      name: 'Owen',
-    });
-    expect(rows.map((r) => r.visibility)).toEqual([
-      VISIBILITY.LINK,
-      VISIBILITY.FOLLOWERS,
-    ]);
-  });
-
-  it('QueryThrows_RejectsWithFetchListsError', async () => {
-    vi.spyOn(db.query.lists, 'findMany').mockRejectedValueOnce(
-      new Error('boom')
-    );
-    await expect(dal.getLists()).rejects.toThrow('Failed to fetch lists');
-  });
-});
-
-describe('getListsByUser', () => {
-  it('OwnLists_OrderedByUpdatedAtDescNotCreatedAt-ExcludesOtherUsers', async () => {
+describe('getListsByProfile', () => {
+  it('OwnLists_OrderedByUpdatedAtDescNotCreatedAt-ExcludesOtherProfiles', async () => {
     await seedUsers(db, [{ id: 'owner' }, { id: 'other' }]);
     // created_at and updated_at deliberately disagree: ordering by created_at
     // would yield ['b', 'a']; the correct updated_at DESC yields ['a', 'b'].
@@ -122,22 +87,22 @@ describe('getListsByUser', () => {
     });
     await seedList(db, { id: 'foreign', user_id: 'other' });
 
-    const rows = await dal.getListsByUser('owner');
+    const rows = await dal.getListsByProfile(selfProfileOf('owner'));
     expect(rows.map((r) => r.id)).toEqual(['a', 'b']);
-    expect(rows[0].user.id).toBe('owner');
+    expect(rows[0].profile.id).toBe(selfProfileOf('owner'));
   });
 
   it('QueryThrows_RejectsWithFetchListsError', async () => {
     vi.spyOn(db.query.lists, 'findMany').mockRejectedValueOnce(
       new Error('boom')
     );
-    await expect(dal.getListsByUser('owner')).rejects.toThrow(
-      'Failed to fetch lists'
-    );
+    await expect(
+      dal.getListsByProfile(selfProfileOf('owner'))
+    ).rejects.toThrow('Failed to fetch lists');
   });
 });
 
-describe('getListsSharedByUser', () => {
+describe('getListsSharedByProfile', () => {
   it('LinkAndFollowersLists_ReturnedOrderedByCreatedAtDesc-ExcludesOwnerOnly', async () => {
     await seedUsers(db, [{ id: 'owner' }]);
     await seedList(db, {
@@ -159,7 +124,7 @@ describe('getListsSharedByUser', () => {
       created_at: new Date('2022-01-01'),
     });
 
-    const rows = await dal.getListsSharedByUser('owner');
+    const rows = await dal.getListsSharedByProfile(selfProfileOf('owner'));
     expect(rows.map((r) => r.id)).toEqual(['followers', 'link']);
   });
 
@@ -167,15 +132,17 @@ describe('getListsSharedByUser', () => {
     vi.spyOn(db.query.lists, 'findMany').mockRejectedValueOnce(
       new Error('boom')
     );
-    await expect(dal.getListsSharedByUser('owner')).rejects.toThrow(
-      'Failed to fetch lists'
-    );
+    await expect(
+      dal.getListsSharedByProfile(selfProfileOf('owner'))
+    ).rejects.toThrow('Failed to fetch lists');
   });
 });
 
-describe('getPublicListsByUser', () => {
-  it('FollowersLists_OnlyReturnedOrderedBySharedAtDesc-UserProjection', async () => {
-    await seedUsers(db, [{ id: 'owner', name: 'Owen', image: 'o.png' }]);
+describe('getPublicListsByProfile', () => {
+  it('FollowersLists_OnlyReturnedOrderedBySharedAtDesc-ProfileProjection', async () => {
+    await seedUsers(db, [
+      { id: 'owner', name: 'Owen', image: 'o.png', profile_name: 'Not Owen' },
+    ]);
     await seedList(db, { id: 'priv', user_id: 'owner', visibility: 'private' });
     await seedList(db, { id: 'link', user_id: 'owner', visibility: 'unlisted' });
     await seedList(db, {
@@ -191,9 +158,13 @@ describe('getPublicListsByUser', () => {
       shared_at: new Date('2022-01-01'),
     });
 
-    const rows = await dal.getPublicListsByUser('owner');
+    const rows = await dal.getPublicListsByProfile(selfProfileOf('owner'));
     expect(rows.map((r) => r.id)).toEqual(['newer', 'older']);
-    expect(rows[0].user).toEqual({ id: 'owner', name: 'Owen', image: 'o.png' });
+    expect(rows[0].profile).toEqual({
+      id: selfProfileOf('owner'),
+      name: 'Not Owen',
+      user: { image: 'o.png' },
+    });
   });
 
   it('LimitAndOffset_PaginatesResult', async () => {
@@ -217,7 +188,7 @@ describe('getPublicListsByUser', () => {
       shared_at: new Date('2021-01-01'),
     });
 
-    const page = await dal.getPublicListsByUser('owner', {
+    const page = await dal.getPublicListsByProfile(selfProfileOf('owner'), {
       limit: 1,
       offset: 1,
     });
@@ -228,8 +199,8 @@ describe('getPublicListsByUser', () => {
     vi.spyOn(db.query.lists, 'findMany').mockRejectedValueOnce(
       new Error('boom')
     );
-    await expect(dal.getPublicListsByUser('owner')).rejects.toThrow(
-      'Failed to fetch public lists'
-    );
+    await expect(
+      dal.getPublicListsByProfile(selfProfileOf('owner'))
+    ).rejects.toThrow('Failed to fetch public lists');
   });
 });

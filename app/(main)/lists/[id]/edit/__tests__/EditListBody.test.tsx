@@ -1,13 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { auth } from '@/lib/auth';
 import { getList } from '@/lib/data/list';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { authedUserId } from '@/lib/data/user.session';
 import EditListBody from '../EditListBody';
 
-vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/list', () => ({ getList: vi.fn() }));
-vi.mock('@/lib/data/user', () => ({ getUserIdByEmail: vi.fn() }));
+vi.mock('@/lib/data/user.session', () => ({ authedUserId: vi.fn() }));
 
 const redirectMock = vi.hoisted(() =>
   vi.fn((url: string) => {
@@ -32,22 +30,14 @@ function props(id = 'l1') {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(auth).mockResolvedValue({
-    user: { email: 'owner@test.local' },
-  } as never);
-  vi.mocked(getUserIdByEmail).mockResolvedValue({ id: 'u1' } as never);
+  vi.mocked(authedUserId).mockResolvedValue('u1');
   vi.mocked(getList).mockResolvedValue({ id: 'l1', user_id: 'u1' } as never);
 });
 
 describe('EditListBody', () => {
   describe('Guards', () => {
-    it('Unauthenticated_RedirectsToRoot', async () => {
-      vi.mocked(auth).mockResolvedValue({ user: {} } as never);
-      await expect(EditListBody(props())).rejects.toThrow('REDIRECT:/');
-    });
-
-    it('AuthedNoUserRow_RedirectsToRoot', async () => {
-      vi.mocked(getUserIdByEmail).mockResolvedValue(null as never);
+    it('UnresolvedViewer_RedirectsToRoot', async () => {
+      vi.mocked(authedUserId).mockResolvedValue(null);
       await expect(EditListBody(props())).rejects.toThrow('REDIRECT:/');
     });
   });

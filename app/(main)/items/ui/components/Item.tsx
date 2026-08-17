@@ -18,7 +18,7 @@ import { containerClasses, firstToken, resolveModalView } from './utils';
 export default function Item({
   item,
   className,
-  user_id,
+  profile_id,
   user_name,
   showSpoilers,
   showArchiveAction,
@@ -28,7 +28,7 @@ export default function Item({
 }: {
   item: ItemDisplay;
   className?: string;
-  user_id?: string;
+  profile_id?: string;
   user_name?: string | null;
   /** Owner's spoiler view is enabled — gates the owner claim/unclaim affordances. */
   showSpoilers?: boolean;
@@ -65,7 +65,7 @@ export default function Item({
     setLocalPurchases(propPurchases);
   }
 
-  const isOwner = user_id === item.user_id;
+  const isOwner = profile_id === item.profile_id;
   const quantityLimit = item.quantity_limit;
   const claimCount = localPurchases.length;
   const isFullyClaimed =
@@ -94,7 +94,7 @@ export default function Item({
   // claims list; the card affordance is "Manage claims" once any claim exists.
   const showOwnerManageAction = isOwner && !!showSpoilers && hasAnyClaim;
   const showBuyClaim =
-    !!user_id &&
+    !!profile_id &&
     !isOwner &&
     !isFullyClaimed &&
     !hasViewerClaim &&
@@ -223,7 +223,7 @@ export default function Item({
     recordClaim(
       { item_id: item.id || '', guest_name: null, purchased_by: target.id },
       {
-        by: target.id === user_id ? 'self' : 'other',
+        by: target.id === profile_id ? 'self' : 'other',
         firstName: firstToken(target.name || 'Someone'),
         claimedByViewer: true,
         purchasedAt: new Date(),
@@ -236,7 +236,7 @@ export default function Item({
       {
         // Signed-out guest: the cookie written by the action makes this the
         // viewer's own claim, matching the server overlay's by:'self' marking.
-        by: user_id ? 'other' : 'self',
+        by: profile_id ? 'other' : 'self',
         firstName: firstToken(name),
         claimedByViewer: true,
         purchasedAt: new Date(),
@@ -267,7 +267,7 @@ export default function Item({
           showPurchased={showPurchased}
           showSpoilerInfo={showSpoilerInfo}
           viewerClaimed={!isOwner && hasViewerClaim}
-          guestViewer={!user_id}
+          guestViewer={!profile_id}
           fullyClaimed={isFullyClaimed}
           showCounter={showCounter}
           counterText={counterText}
@@ -308,7 +308,7 @@ export default function Item({
           view={modalView}
           claims={localPurchases}
           viewerIsPurchaser={viewerIsPurchaser}
-          user_id={user_id}
+          profile_id={profile_id}
           isOwner={isOwner}
           showSpoilers={!!showSpoilers}
           ownerCanClaim={showOwnerClaimAction}

@@ -58,8 +58,9 @@ export const lists = pgTable('lists', {
   date: timestamp('date').defaultNow().notNull(),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
-  user_id: text('user_id')
-    .references(() => users.id, { onDelete: 'cascade' })
+  user_id: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  profile_id: text('profile_id')
+    .references(() => profiles.id, { onDelete: 'cascade' })
     .notNull(),
   updated_by_user_id: text('updated_by_user_id').references(() => users.id, {
     onDelete: 'set null',
@@ -79,8 +80,9 @@ export const items = pgTable('items', {
   image_url: text('image_url'),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
-  user_id: text('user_id')
-    .references(() => users.id, { onDelete: 'cascade' })
+  user_id: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  profile_id: text('profile_id')
+    .references(() => profiles.id, { onDelete: 'cascade' })
     .notNull(),
   updated_by_user_id: text('updated_by_user_id').references(() => users.id, {
     onDelete: 'set null',
@@ -102,18 +104,6 @@ export const list_items = pgTable(
   },
   (table) => [primaryKey({ columns: [table.list_id, table.item_id] })]
 );
-
-// Legacy table — dormant during soak (see openspec change add-following-and-history,
-// design Decision 4a). Replaced by list_visits. Removed in follow-up archive-legacy-share.
-export const saved_lists = pgTable('saved_lists', {
-  id: text('id').primaryKey(),
-  list_id: text('list_id')
-    .references(() => lists.id, { onDelete: 'cascade' })
-    .notNull(),
-  user_id: text('user_id')
-    .references(() => users.id, { onDelete: 'cascade' })
-    .notNull(),
-});
 
 export const list_visits = pgTable(
   'list_visits',
@@ -137,26 +127,41 @@ export const user_follows = pgTable(
     follower_id: text('follower_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
-    followee_id: text('followee_id')
-      .references(() => users.id, { onDelete: 'cascade' })
+    followee_id: text('followee_id').references(() => users.id, {
+      onDelete: 'cascade',
+    }),
+    followee_profile_id: text('followee_profile_id')
+      .references(() => profiles.id, { onDelete: 'cascade' })
       .notNull(),
     created_at: timestamp('created_at').defaultNow().notNull(),
   },
-  (table) => [primaryKey({ columns: [table.follower_id, table.followee_id] })]
+  (table) => [
+    primaryKey({ columns: [table.follower_id, table.followee_profile_id] }),
+  ]
 );
 
 export const user_blocks = pgTable(
   'user_blocks',
   {
-    blocker_id: text('blocker_id')
-      .references(() => users.id, { onDelete: 'cascade' })
+    blocker_id: text('blocker_id').references(() => users.id, {
+      onDelete: 'cascade',
+    }),
+    blocked_id: text('blocked_id').references(() => users.id, {
+      onDelete: 'cascade',
+    }),
+    blocker_profile_id: text('blocker_profile_id')
+      .references(() => profiles.id, { onDelete: 'cascade' })
       .notNull(),
-    blocked_id: text('blocked_id')
-      .references(() => users.id, { onDelete: 'cascade' })
+    blocked_profile_id: text('blocked_profile_id')
+      .references(() => profiles.id, { onDelete: 'cascade' })
       .notNull(),
     created_at: timestamp('created_at').defaultNow().notNull(),
   },
-  (table) => [primaryKey({ columns: [table.blocker_id, table.blocked_id] })]
+  (table) => [
+    primaryKey({
+      columns: [table.blocker_profile_id, table.blocked_profile_id],
+    }),
+  ]
 );
 
 export const item_stores = pgTable('item_stores', {
@@ -202,9 +207,16 @@ export const purchases = pgTable(
     user_id: text('user_id').references(() => users.id, {
       onDelete: 'cascade',
     }),
+    profile_id: text('profile_id').references(() => profiles.id, {
+      onDelete: 'cascade',
+    }),
     claimed_by: text('claimed_by').references(() => users.id, {
       onDelete: 'set null',
     }),
+    claimed_by_profile_id: text('claimed_by_profile_id').references(
+      () => profiles.id,
+      { onDelete: 'set null' }
+    ),
     guest_name: text('guest_name'),
     purchased_at: timestamp('purchased_at').defaultNow().notNull(),
   },
@@ -212,6 +224,9 @@ export const purchases = pgTable(
     uniqueIndex('purchases_item_user_unique_idx')
       .on(table.item_id, table.user_id)
       .where(sql`${table.user_id} IS NOT NULL`),
+    uniqueIndex('purchases_item_profile_unique_idx')
+      .on(table.item_id, table.profile_id)
+      .where(sql`${table.profile_id} IS NOT NULL`),
   ]
 );
 
@@ -293,6 +308,11 @@ export const itemsRelations = relations(items, ({ one, many }) => ({
     references: [users.id],
     relationName: 'itemOwner',
   }),
+  profile: one(profiles, {
+    fields: [items.profile_id],
+    references: [profiles.id],
+    relationName: 'itemOwnerProfile',
+  }),
   updatedBy: one(users, {
     fields: [items.updated_by_user_id],
     references: [users.id],
@@ -326,6 +346,16 @@ export const purchasesRelations = relations(purchases, ({ one }) => ({
     references: [users.id],
     relationName: 'claimer',
   }),
+  purchaserProfile: one(profiles, {
+    fields: [purchases.profile_id],
+    references: [profiles.id],
+    relationName: 'purchaserProfile',
+  }),
+  claimerProfile: one(profiles, {
+    fields: [purchases.claimed_by_profile_id],
+    references: [profiles.id],
+    relationName: 'claimerProfile',
+  }),
 }));
 
 // Relations between tables
@@ -335,25 +365,18 @@ export const listsRelations = relations(lists, ({ one, many }) => ({
     references: [users.id],
     relationName: 'listOwner',
   }),
+  profile: one(profiles, {
+    fields: [lists.profile_id],
+    references: [profiles.id],
+    relationName: 'listOwnerProfile',
+  }),
   updatedBy: one(users, {
     fields: [lists.updated_by_user_id],
     references: [users.id],
     relationName: 'listUpdatedBy',
   }),
   items: many(list_items),
-  saved_lists: many(saved_lists),
   visits: many(list_visits),
-}));
-
-export const saved_listsRelations = relations(saved_lists, ({ one }) => ({
-  list: one(lists, {
-    fields: [saved_lists.list_id],
-    references: [lists.id],
-  }),
-  user: one(users, {
-    fields: [saved_lists.user_id],
-    references: [users.id],
-  }),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -362,7 +385,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   memberships: many(profile_members),
   purchases: many(purchases, { relationName: 'purchaser' }),
   claimed_purchases: many(purchases, { relationName: 'claimer' }),
-  saved_lists: many(saved_lists),
   visits: many(list_visits),
   following: many(user_follows, { relationName: 'follower' }),
   followers: many(user_follows, { relationName: 'followee' }),
@@ -403,6 +425,11 @@ export const user_followsRelations = relations(user_follows, ({ one }) => ({
     references: [users.id],
     relationName: 'followee',
   }),
+  followeeProfile: one(profiles, {
+    fields: [user_follows.followee_profile_id],
+    references: [profiles.id],
+    relationName: 'followeeProfile',
+  }),
 }));
 
 export const profilesRelations = relations(profiles, ({ one, many }) => ({
@@ -412,6 +439,8 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
   }),
   members: many(profile_members),
   preferences: many(profile_preferences),
+  lists: many(lists, { relationName: 'listOwnerProfile' }),
+  items: many(items, { relationName: 'itemOwnerProfile' }),
 }));
 
 export const profile_membersRelations = relations(

@@ -11,7 +11,7 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setListVisibility } from '@/lib/data/list.actions';
 import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
-import { followUser, unfollowUser } from '@/lib/data/user.actions';
+import { followUser, unfollowUser } from '@/lib/data/profile.actions';
 import { Menu } from '@/app/ui/components/menu';
 import { ListTable } from '@/lib/types';
 import { VISIBILITY } from '@/lib/visibility';
@@ -31,7 +31,7 @@ vi.mock('@/lib/data/visit.actions', () => ({
   unbookmarkList: vi.fn(),
 }));
 
-vi.mock('@/lib/data/user.actions', () => ({
+vi.mock('@/lib/data/profile.actions', () => ({
   followUser: vi.fn(),
   unfollowUser: vi.fn(),
 }));
@@ -58,6 +58,7 @@ const baseList: ListTable = {
   created_at: new Date('2025-01-01'),
   updated_at: new Date('2025-01-01'),
   user_id: 'owner-1',
+  profile_id: 'owner-profile-1',
   shared: true,
 };
 const publicList = { ...baseList, visibility: 'public' } as ListTable;
@@ -428,7 +429,7 @@ describe('BookmarkMenuItem', () => {
 
 describe('FollowMenuItem', () => {
   const props = {
-    ownerId: 'owner-1',
+    ownerProfileId: 'owner-profile-1',
     ownerName: 'Bob',
     initialFollowing: false,
     requireDisclosure: false,
@@ -461,7 +462,7 @@ describe('FollowMenuItem', () => {
       ).toBe(true);
       expect(followUser).not.toHaveBeenCalled();
       await user.click(screen.getByRole('button', { name: 'Follow' }));
-      await waitFor(() => expect(followUser).toHaveBeenCalledWith('owner-1'));
+      await waitFor(() => expect(followUser).toHaveBeenCalledWith('owner-profile-1'));
     });
 
     it('RequireDisclosure_DialogCancelClosesWithoutFollowing', async () => {
@@ -485,7 +486,7 @@ describe('FollowMenuItem', () => {
       expect(
         screen.getByRole('menuitem', { name: 'Following' })
       ).toBeInTheDocument();
-      await waitFor(() => expect(followUser).toHaveBeenCalledWith('owner-1'));
+      await waitFor(() => expect(followUser).toHaveBeenCalledWith('owner-profile-1'));
       await waitFor(() =>
         expect(toast.success).toHaveBeenCalledWith('Following Bob')
       );
@@ -544,7 +545,7 @@ describe('FollowMenuItem', () => {
       const user = userEvent.setup();
       renderInMenu(<FollowMenuItem {...props} initialFollowing={true} />);
       await user.click(screen.getByRole('menuitem', { name: 'Following' }));
-      await waitFor(() => expect(unfollowUser).toHaveBeenCalledWith('owner-1'));
+      await waitFor(() => expect(unfollowUser).toHaveBeenCalledWith('owner-profile-1'));
       await waitFor(() =>
         expect(toast.success).toHaveBeenCalledWith('Unfollowed')
       );

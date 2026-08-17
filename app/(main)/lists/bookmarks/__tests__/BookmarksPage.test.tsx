@@ -1,14 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { auth } from '@/lib/auth';
-import { getUserIdByEmail } from '@/lib/data/user';
 import { getBookmarkedListsByUser } from '@/lib/data/visit';
+import { authedUserId } from '@/lib/data/user.session';
 import BookmarksPage from '../BookmarksPage';
 import { makeRow } from './test-helpers';
 
-vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/data/user', () => ({ getUserIdByEmail: vi.fn() }));
+vi.mock('@/lib/data/user.session', () => ({ authedUserId: vi.fn() }));
 vi.mock('@/lib/data/visit', () => ({ getBookmarkedListsByUser: vi.fn() }));
 
 const redirectMock = vi.hoisted(() =>
@@ -29,25 +27,16 @@ vi.mock('@/app/ui/components/ListCard', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(auth).mockResolvedValue({
-    user: { email: 'viewer@test.local' },
-  } as never);
-  vi.mocked(getUserIdByEmail).mockResolvedValue({ id: 'viewer' } as never);
+  vi.mocked(authedUserId).mockResolvedValue('viewer');
   vi.mocked(getBookmarkedListsByUser).mockResolvedValue([] as never);
 });
 
 describe('BookmarksPage', () => {
   describe('AuthGuard', () => {
-    it('NoSessionEmail_RedirectsToRootWithoutReadingBookmarks', async () => {
-      vi.mocked(auth).mockResolvedValue({ user: {} } as never);
+    it('UnresolvedViewer_RedirectsToRootWithoutReadingBookmarks', async () => {
+      vi.mocked(authedUserId).mockResolvedValue(null);
       await expect(BookmarksPage()).rejects.toThrow('REDIRECT:/');
       expect(redirectMock).toHaveBeenCalledWith('/');
-      expect(getBookmarkedListsByUser).not.toHaveBeenCalled();
-    });
-
-    it('EmailResolvesToNoUser_RedirectsToRoot', async () => {
-      vi.mocked(getUserIdByEmail).mockResolvedValue(null as never);
-      await expect(BookmarksPage()).rejects.toThrow('REDIRECT:/');
       expect(getBookmarkedListsByUser).not.toHaveBeenCalled();
     });
   });

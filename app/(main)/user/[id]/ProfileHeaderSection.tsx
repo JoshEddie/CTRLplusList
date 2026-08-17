@@ -1,5 +1,5 @@
-import { auth } from '@/lib/auth';
-import { getProfileForUser, getUserIdByEmail } from '@/lib/data/user';
+import { getProfileForViewer } from '@/lib/data/profile';
+import { authedIdentity } from '@/lib/data/user.session';
 import { notFound } from 'next/navigation';
 import FollowPrompt from '../../users/ui/components/FollowPrompt';
 import ProfileHeader from '../../users/ui/components/ProfileHeader';
@@ -16,20 +16,16 @@ export default async function ProfileHeaderSection({
   const { id } = await params;
   const sp = await searchParams;
 
-  const session = await auth();
-  const viewer = session?.user?.email
-    ? await getUserIdByEmail(session.user.email)
-    : null;
-  const viewerId = viewer?.id ?? null;
+  const identity = await authedIdentity();
 
-  const profile = await getProfileForUser(id, viewerId);
+  const profile = await getProfileForViewer(id, identity);
   if (!profile) notFound();
 
   // Cover story when the profile owner has blocked the viewer: act as
   // not-found so the existence of the account isn't disclosed.
   if (profile.viewerIsBlocked) notFound();
 
-  const isOtherUser = !!viewerId && viewerId !== id;
+  const isOtherUser = !!identity && identity.profile.id !== id;
   const isReachable =
     isOtherUser && !profile.viewerIsBlocked && !profile.blockedByViewer;
   const showFollowPrompt =
@@ -38,9 +34,9 @@ export default async function ProfileHeaderSection({
   return (
     <>
       <ProfileHeader
-        user={{ id: profile.id, name: profile.name, image: profile.image }}
+        profile={{ id: profile.id, name: profile.name, image: profile.image }}
         publicListCount={profile.publicListCount}
-        viewerId={viewerId}
+        viewer={identity}
         showFollowButton={isReachable}
       />
       {showFollowPrompt && <FollowPrompt name={profile.name} />}

@@ -136,6 +136,7 @@ describe('viewModel', () => {
         created_at: new Date(),
         updated_at: new Date(),
         user_id: 'u',
+        profile_id: 'p',
         shared: false,
       },
     ];

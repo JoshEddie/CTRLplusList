@@ -2,9 +2,8 @@ import ListDetails from '@/app/(main)/lists/ui/components/ListDetails';
 import ListPrivate from '@/app/(main)/lists/ui/components/ListPrivate';
 import { db } from '@/db';
 import { list_visits } from '@/db/schema';
-import { auth } from '@/lib/auth';
 import { getList } from '@/lib/data/list';
-import { getUserById, getUserIdByEmail } from '@/lib/data/user';
+import { authedIdentity } from '@/lib/data/user.session';
 import { guardListViewable } from '@/lib/listAccess';
 import { VISIBILITY } from '@/lib/visibility';
 import { sql } from 'drizzle-orm';
@@ -17,30 +16,30 @@ type Props = {
 };
 
 export default async function ListHeroSection({ params, searchParams }: Props) {
-  const session = await auth();
-  const user = session?.user?.email
-    ? await getUserIdByEmail(session.user.email)
-    : null;
+  const identity = await authedIdentity();
 
   const { id } = await params;
   const sp = await searchParams;
 
-  const list = await guardListViewable(await getList(id), user?.id ?? null);
+  const list = await guardListViewable(
+    await getList(id),
+    identity?.profile.id ?? null
+  );
 
-  const isOwner = user?.id === list.user_id;
+  const isOwner = identity?.profile.id === list.profile_id;
   const previewMode = isOwner && sp.preview === 'viewer';
   const showSpoilers = isOwner && sp.spoilers === '1';
 
   if (list.visibility === VISIBILITY.OWNER && !isOwner) {
-    return <ListPrivate loggedIn={!!user} />;
+    return <ListPrivate loggedIn={!!identity} />;
   }
 
   // Record the visit for authenticated non-owner viewers of non-private lists.
   // Inlined (not a server action) because the deferred work cannot call auth()
   // — Next 16 disallows headers()/cookies() inside after(). Viewer id is
   // captured into a local here so the closure never touches request state.
-  if (user && !isOwner && list.visibility !== VISIBILITY.OWNER) {
-    const viewerId = user.id;
+  if (identity && !isOwner && list.visibility !== VISIBILITY.OWNER) {
+    const viewerId = identity.userId;
     const listId = id;
     after(async () => {
       try {
@@ -66,17 +65,16 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
     });
   }
 
-  const listOwner = await getUserById(list.user_id);
-
   return (
     <>
-      {!user && <div className="no-user" hidden />}
+      {!identity && <div className="no-user" hidden />}
       <ListDetails
         isOwner={isOwner}
         list={list}
-        owner_name={listOwner?.name || undefined}
-        owner_image={listOwner?.image || undefined}
-        viewer_id={user?.id || undefined}
+        owner_name={list.profile?.name || undefined}
+        owner_image={list.profile?.user?.image || undefined}
+        viewer_user_id={identity?.userId || undefined}
+        viewer_profile_id={identity?.profile.id || undefined}
         showSpoilers={showSpoilers}
         previewMode={previewMode}
         itemCount={list.items?.length ?? 0}

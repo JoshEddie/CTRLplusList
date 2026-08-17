@@ -6,8 +6,8 @@ import { ListTable } from '@/lib/types';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
-export async function getItemsByUser(
-  userId: string,
+export async function getItemsByProfile(
+  profileId: string,
   opts: {
     filter?: 'active' | 'archived' | 'all';
     showSpoilers?: boolean;
@@ -20,10 +20,10 @@ export async function getItemsByUser(
     const showSpoilers = opts.showSpoilers ?? false;
     const where =
       filter === 'active'
-        ? and(eq(items.user_id, userId), isNull(items.archived_at))
+        ? and(eq(items.profile_id, profileId), isNull(items.archived_at))
         : filter === 'archived'
-          ? and(eq(items.user_id, userId), isNotNull(items.archived_at))
-          : eq(items.user_id, userId);
+          ? and(eq(items.profile_id, profileId), isNotNull(items.archived_at))
+          : eq(items.profile_id, profileId);
 
     const result = await db.query.items.findMany({
       where,
@@ -31,16 +31,12 @@ export async function getItemsByUser(
         stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
         purchases: {
           with: {
-            user: {
-              columns: {
-                name: true,
-                image: true,
-              },
+            purchaserProfile: {
+              columns: { name: true },
+              with: { user: { columns: { image: true } } },
             },
-            claimer: {
-              columns: {
-                name: true,
-              },
+            claimerProfile: {
+              columns: { name: true },
             },
           },
         },
@@ -61,7 +57,12 @@ export async function getItemsByUser(
       image_url: images[0]?.url ?? null,
       store: primaryStore(stores),
       hasPurchases: item.purchases.length > 0,
-      purchases: sanitizePurchases(item.purchases, userId, true, showSpoilers),
+      purchases: sanitizePurchases(
+        item.purchases,
+        profileId,
+        true,
+        showSpoilers
+      ),
     }));
   } catch (error) {
     console.error('Error fetching items:', error);
@@ -69,12 +70,12 @@ export async function getItemsByUser(
   }
 }
 
-export async function getItemById(id: string, userId: string) {
+export async function getItemById(id: string, profileId: string) {
   'use cache';
   cacheTag('items');
   try {
     const result = await db.query.items.findFirst({
-      where: and(eq(items.id, id), eq(items.user_id, userId)),
+      where: and(eq(items.id, id), eq(items.profile_id, profileId)),
       with: {
         stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
         images: { orderBy: (images, { asc }) => [asc(images.id)] },
@@ -107,6 +108,7 @@ export async function getItemById(id: string, userId: string) {
       image_url: result.images.find((image) => image.active)?.url ?? null,
       quantity_limit: result.quantity_limit,
       user_id: result.user_id,
+      profile_id: result.profile_id,
       created_at: result.created_at,
       updated_at: result.updated_at,
       archived_at: result.archived_at,
@@ -125,7 +127,7 @@ export async function getItemById(id: string, userId: string) {
 export async function getItemsByListId(
   listId: string,
   opts: {
-    viewerId?: string;
+    viewerProfileId?: string;
     isOwner?: boolean;
     showSpoilers?: boolean;
   } = {}
@@ -141,20 +143,16 @@ export async function getItemsByListId(
             stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
             purchases: {
               with: {
-                user: {
-                  columns: {
-                    name: true,
-                    image: true,
-                  },
+                purchaserProfile: {
+                  columns: { name: true },
+                  with: { user: { columns: { image: true } } },
                 },
-                claimer: {
-                  columns: {
-                    name: true,
-                  },
+                claimerProfile: {
+                  columns: { name: true },
                 },
               },
             },
-            // Active image only — source for `image_url` (see getItemsByUser).
+            // Active image only — source for `image_url` (see getItemsByProfile).
             images: {
               where: (images, { eq }) => eq(images.active, true),
               orderBy: (images, { asc }) => [asc(images.id)],
@@ -172,7 +170,7 @@ export async function getItemsByListId(
       store: primaryStore(stores),
       purchases: sanitizePurchases(
         item.purchases,
-        opts.viewerId,
+        opts.viewerProfileId,
         opts.isOwner ?? false,
         opts.showSpoilers ?? false
       ),

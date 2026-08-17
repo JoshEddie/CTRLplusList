@@ -2,10 +2,10 @@
 
 import {
   blockUser,
-  removeFollower,
   unblockUser,
   unfollowUser,
-} from '@/lib/data/user.actions';
+} from '@/lib/data/profile.actions';
+import { removeFollower } from '@/lib/data/user.actions';
 import { Button } from '@/app/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';

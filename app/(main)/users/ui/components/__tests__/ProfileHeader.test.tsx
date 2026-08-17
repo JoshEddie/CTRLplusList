@@ -7,6 +7,8 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ProfileHeader from '../ProfileHeader';
+import type { UserIdentity } from '@/lib/types';
+import { makeProfile } from '@/test/helpers/profile';
 
 vi.mock('next/image', async () => ({
   default: (await import('@/app/ui/components/__tests__/test-helpers'))
@@ -20,21 +22,21 @@ vi.mock('../FollowContainer', () => ({
   default: () => <div data-testid="follow-container" />,
 }));
 
-const user = { id: 'u1', name: 'Alice Bob', image: null as string | null };
+const profile = { id: 'p1', name: 'Alice Bob', image: null as string | null };
 
 function renderHeader(
   overrides: Partial<{
-    user: { id: string; name: string | null; image: string | null };
+    profile: { id: string; name: string | null; image: string | null };
     publicListCount: number;
-    viewerId: string | null;
+    viewer: UserIdentity | null;
     showFollowButton: boolean;
   }> = {}
 ) {
   return render(
     <ProfileHeader
-      user={overrides.user ?? user}
+      profile={overrides.profile ?? profile}
       publicListCount={overrides.publicListCount ?? 0}
-      viewerId={overrides.viewerId ?? null}
+      viewer={overrides.viewer ?? null}
       showFollowButton={overrides.showFollowButton ?? false}
     />
   );
@@ -42,7 +44,9 @@ function renderHeader(
 
 describe('ProfileHeader', () => {
   it('HasImage_RendersSizedImageWithHighFetchPriority', () => {
-    const { container } = renderHeader({ user: { ...user, image: 'a.png' } });
+    const { container } = renderHeader({
+      profile: { ...profile, image: 'a.png' },
+    });
     const img = container.querySelector('img') as HTMLImageElement;
     expect(img).toHaveAttribute('src', 'a.png');
     expect(img).toHaveAttribute('width', '96');
@@ -59,7 +63,7 @@ describe('ProfileHeader', () => {
 
   it('NoImageNullName_RendersQuestionMarkFallback', () => {
     const { container } = renderHeader({
-      user: { ...user, name: null },
+      profile: { ...profile, name: null },
     });
     expect(
       container.querySelector('.profile-avatar-initials')
@@ -72,7 +76,7 @@ describe('ProfileHeader', () => {
   });
 
   it('NullName_RendersUnnamed', () => {
-    renderHeader({ user: { ...user, name: null } });
+    renderHeader({ profile: { ...profile, name: null } });
     expect(screen.getByRole('heading')).toHaveTextContent('Unnamed');
   });
 
@@ -98,20 +102,23 @@ describe('ProfileHeader', () => {
   });
 
   it('OwnProfile_RendersManageConnectionsLink', () => {
-    renderHeader({ viewerId: 'u1' });
+    renderHeader({ viewer: { userId: 'u1', profile: makeProfile('p1') } });
     expect(
       screen.getByRole('link', { name: 'Manage connections' })
     ).toHaveAttribute('href', '/settings/connections');
   });
 
   it('NonOwnerShowFollowWithViewer_RendersFollowContainer', () => {
-    renderHeader({ viewerId: 'viewer', showFollowButton: true });
+    renderHeader({
+      viewer: { userId: 'viewer', profile: makeProfile('self-viewer') },
+      showFollowButton: true,
+    });
     expect(screen.getByTestId('follow-container')).toBeInTheDocument();
   });
 
   it('NoFollowConditions_RendersNothingInActions', () => {
     const { container } = renderHeader({
-      viewerId: 'viewer',
+      viewer: { userId: 'viewer', profile: makeProfile('self-viewer') },
       showFollowButton: false,
     });
     const actions = container.querySelector('.profile-actions') as HTMLElement;

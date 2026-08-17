@@ -10,7 +10,7 @@ import Items from '../Items';
 
 interface ItemStubProps {
   item: ItemDisplay;
-  user_id?: string;
+  profile_id?: string;
   user_name?: string | null;
   showSpoilers?: boolean;
   showArchiveAction?: boolean;
@@ -20,7 +20,7 @@ interface ItemStubProps {
 vi.mock('../Item', () => ({
   default: ({
     item,
-    user_id,
+    profile_id,
     user_name,
     showSpoilers,
     showArchiveAction,
@@ -29,7 +29,7 @@ vi.mock('../Item', () => ({
     <div
       data-testid="item-stub"
       data-item-id={item.id}
-      data-user-id={user_id ?? ''}
+      data-profile-id={profile_id ?? ''}
       data-user-name={user_name ?? ''}
       data-show-spoilers={String(showSpoilers)}
       data-show-archive={String(showArchiveAction)}
@@ -46,6 +46,7 @@ function makeItem(id: string): ItemDisplay {
     created_at: new Date('2024-01-01T00:00:00Z'),
     updated_at: new Date('2024-01-01T00:00:00Z'),
     user_id: 'u1',
+    profile_id: 'p1',
     quantity_limit: null,
   };
 }
@@ -89,7 +90,7 @@ describe('Items', () => {
       render(
         <Items
           items={[makeItem('a')]}
-          user_id="viewer"
+          profile_id="viewer"
           user_name="Vicky"
           showSpoilers
           showArchiveAction
@@ -97,7 +98,7 @@ describe('Items', () => {
         />
       );
       const stub = screen.getByTestId('item-stub');
-      expect(stub).toHaveAttribute('data-user-id', 'viewer');
+      expect(stub).toHaveAttribute('data-profile-id', 'viewer');
       expect(stub).toHaveAttribute('data-user-name', 'Vicky');
       expect(stub).toHaveAttribute('data-show-spoilers', 'true');
       expect(stub).toHaveAttribute('data-show-archive', 'true');

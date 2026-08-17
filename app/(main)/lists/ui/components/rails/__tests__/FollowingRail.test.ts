@@ -8,6 +8,7 @@ import {
   seedFollow,
   seedPublicList,
   seedUsers,
+  selfProfileOf,
 } from '@/test/helpers/seedFollowGraph';
 
 mockNextCache();
@@ -102,12 +103,16 @@ describe('FollowingRail', () => {
     const tree = (await FollowingRail({ userId: 'viewer' })) as unknown as El;
     const card = userCardItems(tree)[0].props.children as El;
     const props = card.props as {
-      user: unknown;
+      profile: unknown;
       newCount: number;
       latestSharedAt: unknown;
       compact: boolean;
     };
-    expect(props.user).toEqual({ id: 'f0', name: 'Followee 0', image: 'f0.png' });
+    expect(props.profile).toEqual({
+      id: selfProfileOf('f0'),
+      name: 'Followee 0',
+      image: 'f0.png',
+    });
     expect(props.newCount).toBe(0);
     expect(String(props.latestSharedAt)).toContain('2021');
     expect(props.compact).toBe(true);

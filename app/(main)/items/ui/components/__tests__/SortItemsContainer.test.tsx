@@ -4,23 +4,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { auth } from '@/lib/auth';
 import { getItemsByListId } from '@/lib/data/item';
+import { getUserIdentity } from '@/lib/data/profile';
 import { getUserIdByEmail } from '@/lib/data/user';
 import SortItemsContainer from '../SortItemsContainer';
+import { makeProfile } from '@/test/helpers/profile';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/item', () => ({
   getItemsByListId: vi.fn(),
 }));
+vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
 }));
 
 vi.mock('../SortItems', () => ({
-  default: (p: { items: unknown[]; user_id?: string; listId: string }) => (
+  default: (p: { items: unknown[]; profile_id?: string; listId: string }) => (
     <div
       data-testid="sort-items"
       data-item-count={String(p.items.length)}
-      data-user-id={p.user_id ?? ''}
+      data-profile-id={p.profile_id ?? ''}
       data-list-id={p.listId}
     />
   ),
@@ -37,6 +40,10 @@ beforeEach(() => {
     id: 'u1',
     name: 'Owner',
   } as never);
+  vi.mocked(getUserIdentity).mockResolvedValue({
+    userId: 'u1',
+    profile: makeProfile('p1', 'Owner', 'u1'),
+  });
   vi.mocked(getItemsByListId).mockResolvedValue([
     { id: 'x1' },
     { id: 'x2' },
@@ -53,27 +60,27 @@ describe('SortItemsContainer', () => {
       })
     );
     expect(getItemsByListId).toHaveBeenCalledWith('l1', {
-      viewerId: 'u1',
+      viewerProfileId: 'p1',
       isOwner: true,
       showSpoilers: true,
     });
     const sort = screen.getByTestId('sort-items');
     expect(sort).toHaveAttribute('data-item-count', '2');
-    expect(sort).toHaveAttribute('data-user-id', 'u1');
+    expect(sort).toHaveAttribute('data-profile-id', 'p1');
     expect(sort).toHaveAttribute('data-list-id', 'l1');
   });
 
-  it('Unauthenticated_ReadsWithoutViewerIdAndOwnerFalse', async () => {
+  it('Unauthenticated_ReadsWithoutViewerProfileIdAndOwnerFalse', async () => {
     vi.mocked(auth).mockResolvedValue({ user: {} } as never);
     render(await SortItemsContainer({ listId: 'l1' }));
     expect(getUserIdByEmail).not.toHaveBeenCalled();
     expect(getItemsByListId).toHaveBeenCalledWith('l1', {
-      viewerId: undefined,
+      viewerProfileId: undefined,
       isOwner: false,
       showSpoilers: false,
     });
     expect(screen.getByTestId('sort-items')).toHaveAttribute(
-      'data-user-id',
+      'data-profile-id',
       ''
     );
   });

@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { list_visits } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { getList } from '@/lib/data/list';
-import { getUserById, getUserIdByEmail } from '@/lib/data/user';
+import { getUserIdentity } from '@/lib/data/profile';
+import { getUserIdByEmail } from '@/lib/data/user';
 import { updateTag } from 'next/cache';
 import ListHeroSection from '../ListHeroSection';
+import { makeProfile } from '@/test/helpers/profile';
 
 // Capture the deferred `after()` callback instead of discarding it,
 // so the real visit-recording block can be invoked and asserted.
@@ -44,9 +46,9 @@ vi.mock('next/cache', () => ({ updateTag: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/list', () => ({ getList: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({
-  getUserById: vi.fn(),
   getUserIdByEmail: vi.fn(),
 }));
+vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
 vi.mock('@/lib/listAccess', () => ({
   guardListViewable: vi.fn(async (list: unknown) => list),
 }));
@@ -56,7 +58,8 @@ vi.mock('@/app/(main)/lists/ui/components/ListDetails', () => ({
     showSpoilers: boolean;
     previewMode: boolean;
     itemCount: number;
-    viewer_id?: string;
+    viewer_user_id?: string;
+    viewer_profile_id?: string;
     owner_name?: string;
   }) => (
     <div
@@ -65,7 +68,8 @@ vi.mock('@/app/(main)/lists/ui/components/ListDetails', () => ({
       data-show-spoilers={String(p.showSpoilers)}
       data-preview-mode={String(p.previewMode)}
       data-item-count={String(p.itemCount)}
-      data-viewer-id={p.viewer_id ?? ''}
+      data-viewer-user-id={p.viewer_user_id ?? ''}
+      data-viewer-profile-id={p.viewer_profile_id ?? ''}
       data-owner-name={p.owner_name ?? ''}
     />
   ),
@@ -85,17 +89,18 @@ beforeEach(() => {
     user: { email: 'viewer@test.local' },
   } as never);
   vi.mocked(getUserIdByEmail).mockResolvedValue({ id: 'u-viewer' } as never);
-  vi.mocked(getUserById).mockResolvedValue({
-    id: 'u-owner',
-    name: 'Owner',
-    image: null,
-  } as never);
+  vi.mocked(getUserIdentity).mockImplementation(async (userId: string) => ({
+    userId,
+    profile: makeProfile(`self-${userId}`, userId, userId),
+  }));
   // Default: an authenticated non-owner viewing a non-private (public) list.
   vi.mocked(getList).mockResolvedValue({
     id: 'l1',
     user_id: 'u-owner',
+    profile_id: 'self-u-owner',
     visibility: 'public',
     items: [{}, {}],
+    profile: { id: 'self-u-owner', name: 'Owner', user: { image: null } },
   } as never);
 });
 
@@ -105,6 +110,7 @@ describe('ListHeroSection', () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
         user_id: 'u-viewer',
+        profile_id: 'self-u-viewer',
         visibility: 'public',
         items: [{}, {}, {}],
       } as never);
@@ -116,7 +122,8 @@ describe('ListHeroSection', () => {
       expect(d).toHaveAttribute('data-show-spoilers', 'true');
       expect(d).toHaveAttribute('data-preview-mode', 'true');
       expect(d).toHaveAttribute('data-item-count', '3');
-      expect(d).toHaveAttribute('data-viewer-id', 'u-viewer');
+      expect(d).toHaveAttribute('data-viewer-user-id', 'u-viewer');
+      expect(d).toHaveAttribute('data-viewer-profile-id', 'self-u-viewer');
     });
 
     it('NonOwnerPublicList_RendersListDetailsAsNonOwner', async () => {
@@ -126,15 +133,16 @@ describe('ListHeroSection', () => {
       expect(d).toHaveAttribute('data-show-spoilers', 'false');
       expect(d).toHaveAttribute('data-preview-mode', 'false');
       expect(d).toHaveAttribute('data-item-count', '2');
-      expect(d).toHaveAttribute('data-viewer-id', 'u-viewer');
+      expect(d).toHaveAttribute('data-viewer-user-id', 'u-viewer');
+      expect(d).toHaveAttribute('data-viewer-profile-id', 'self-u-viewer');
       expect(d).toHaveAttribute('data-owner-name', 'Owner');
     });
 
-    it('MissingOwnerRowAndItems_RendersListDetailsWithEmptyOwnerName-ZeroItems', async () => {
-      vi.mocked(getUserById).mockResolvedValue(null as never);
+    it('MissingProfileJoinAndItems_RendersListDetailsWithEmptyOwnerName-ZeroItems', async () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
         user_id: 'u-owner',
+        profile_id: 'self-u-owner',
         visibility: 'public',
       } as never);
       render(await ListHeroSection(props('l1')));
@@ -147,6 +155,7 @@ describe('ListHeroSection', () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
         user_id: 'u-owner',
+        profile_id: 'self-u-owner',
         visibility: 'private',
         items: [],
       } as never);
@@ -165,6 +174,7 @@ describe('ListHeroSection', () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
         user_id: 'u-owner',
+        profile_id: 'self-u-owner',
         visibility: 'private',
         items: [],
       } as never);
@@ -222,6 +232,7 @@ describe('ListHeroSection', () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
         user_id: 'u-viewer',
+        profile_id: 'self-u-viewer',
         visibility: 'public',
         items: [],
       } as never);
@@ -241,6 +252,7 @@ describe('ListHeroSection', () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
         user_id: 'u-owner',
+        profile_id: 'self-u-owner',
         visibility: 'private',
         items: [],
       } as never);

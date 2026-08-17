@@ -16,7 +16,7 @@ interface ItemsBrowserProps {
   items: ItemDisplay[];
   mode: BrowserMode;
   initialPageSize?: number;
-  user_id?: string;
+  profile_id?: string;
   user_name?: string | null;
   showArchiveAction?: boolean;
   archivedView?: boolean;
@@ -54,7 +54,7 @@ export default function ItemsBrowser({
   items,
   mode,
   initialPageSize,
-  user_id,
+  profile_id,
   user_name,
   showArchiveAction,
   archivedView,
@@ -192,7 +192,7 @@ export default function ItemsBrowser({
         <>
           <Items
             items={visible}
-            user_id={user_id}
+            profile_id={profile_id}
             user_name={user_name}
             view={view}
             showSpoilers={showSpoilers}

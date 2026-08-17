@@ -7,7 +7,7 @@ import {
   lists,
 } from '@/db/schema';
 import { touchLists } from '@/lib/data/list.touch';
-import { authedUserId } from '@/lib/data/user.session';
+import { authedIdentity } from '@/lib/data/user.session';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
@@ -44,15 +44,15 @@ export async function updateItemStores(
   itemId: string
 ): Promise<void> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       throw new Error('Unauthorized');
     }
     const item = await db.query.items.findFirst({
       where: eq(items.id, itemId),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
-    if (!item || item.user_id !== userId) {
+    if (!item || item.profile_id !== identity.profile.id) {
       throw new Error('Unauthorized');
     }
 
@@ -172,25 +172,25 @@ export async function updateItemLists(
   itemId: string
 ): Promise<void> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       throw new Error('Unauthorized');
     }
     const item = await db.query.items.findFirst({
       where: eq(items.id, itemId),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
-    if (!item || item.user_id !== userId) {
+    if (!item || item.profile_id !== identity.profile.id) {
       throw new Error('Unauthorized');
     }
     if (listIds.length > 0) {
       const targetLists = await db
-        .select({ id: lists.id, user_id: lists.user_id })
+        .select({ id: lists.id, profile_id: lists.profile_id })
         .from(lists)
         .where(inArray(lists.id, listIds));
       if (
         targetLists.length !== listIds.length ||
-        targetLists.some((l) => l.user_id !== userId)
+        targetLists.some((l) => l.profile_id !== identity.profile.id)
       ) {
         throw new Error('Unauthorized');
       }

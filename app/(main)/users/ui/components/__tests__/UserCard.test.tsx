@@ -20,14 +20,14 @@ vi.mock('next/image', async () => ({
 const baseUser = { id: 'u1', name: 'Alice', image: null as string | null };
 
 describe('UserCard', () => {
-  it('Default_LinksToUserIdRoute', () => {
-    render(<UserCard user={baseUser} />);
+  it('Default_LinksToProfileRoute', () => {
+    render(<UserCard profile={baseUser} />);
     expect(screen.getByRole('link')).toHaveAttribute('href', '/user/u1');
   });
 
   it('Compact_TogglesClassAndAvatarSize', () => {
     const { container } = render(
-      <UserCard user={{ ...baseUser, image: 'a.png' }} compact />
+      <UserCard profile={{ ...baseUser, image: 'a.png' }} compact />
     );
     expect(screen.getByRole('link')).toHaveClass(
       'user-card',
@@ -38,40 +38,40 @@ describe('UserCard', () => {
 
   it('NonCompact_AvatarSize64', () => {
     const { container } = render(
-      <UserCard user={{ ...baseUser, image: 'a.png' }} />
+      <UserCard profile={{ ...baseUser, image: 'a.png' }} />
     );
     expect(container.querySelector('img')).toHaveAttribute('width', '64');
   });
 
   it('HasImage_RendersImg', () => {
     const { container } = render(
-      <UserCard user={{ ...baseUser, image: 'a.png' }} />
+      <UserCard profile={{ ...baseUser, image: 'a.png' }} />
     );
     expect(container.querySelector('img')).toHaveAttribute('src', 'a.png');
   });
 
   it('NoImage_RendersInitials', () => {
-    const { container } = render(<UserCard user={baseUser} />);
+    const { container } = render(<UserCard profile={baseUser} />);
     expect(
       container.querySelector('.user-card-avatar-initials')
     ).toHaveTextContent('A');
   });
 
   it('NewCountPositive_RendersBadgeWithAriaLabel', () => {
-    render(<UserCard user={baseUser} newCount={3} />);
+    render(<UserCard profile={baseUser} newCount={3} />);
     const badge = screen.getByLabelText('3 new');
     expect(badge).toHaveClass('user-card-badge');
     expect(badge).toHaveTextContent('3');
   });
 
   it('NewCountZero_NoBadge', () => {
-    const { container } = render(<UserCard user={baseUser} newCount={0} />);
+    const { container } = render(<UserCard profile={baseUser} newCount={0} />);
     expect(container.querySelector('.user-card-badge')).toBeNull();
   });
 
   it('NonCompactSubLine_NewWhenSharedAndNewCountPositive', () => {
     const { container } = render(
-      <UserCard user={baseUser} newCount={2} latestSharedAt={new Date()} />
+      <UserCard profile={baseUser} newCount={2} latestSharedAt={new Date()} />
     );
     expect(container.querySelector('.user-card-sub')).toHaveTextContent(
       '2 new'
@@ -80,7 +80,7 @@ describe('UserCard', () => {
 
   it('NonCompactSubLine_ActiveWhenSharedAndNewCountZero', () => {
     const { container } = render(
-      <UserCard user={baseUser} newCount={0} latestSharedAt={new Date()} />
+      <UserCard profile={baseUser} newCount={0} latestSharedAt={new Date()} />
     );
     expect(container.querySelector('.user-card-sub')).toHaveTextContent(
       'Active'
@@ -89,7 +89,7 @@ describe('UserCard', () => {
 
   it('NonCompactSubLine_NoSharedListsWhenNoLatestShared', () => {
     const { container } = render(
-      <UserCard user={baseUser} latestSharedAt={null} />
+      <UserCard profile={baseUser} latestSharedAt={null} />
     );
     expect(
       container.querySelector('.user-card-sub-muted')
@@ -98,7 +98,7 @@ describe('UserCard', () => {
 
   it('NullName_RendersUnnamed', () => {
     const { container } = render(
-      <UserCard user={{ ...baseUser, name: null }} />
+      <UserCard profile={{ ...baseUser, name: null }} />
     );
     expect(container.querySelector('.user-card-name')).toHaveTextContent(
       'Unnamed'

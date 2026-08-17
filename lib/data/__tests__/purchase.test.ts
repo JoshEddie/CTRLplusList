@@ -5,7 +5,9 @@ import { mockNextCache } from '@/test/helpers/next-cache';
 import {
   seedBlock,
   seedFollow,
+  seedManagedProfile,
   seedUsers,
+  selfProfileOf,
 } from '@/test/helpers/seedFollowGraph';
 
 import {
@@ -41,7 +43,7 @@ beforeEach(async () => {
 });
 
 describe('getItemsByPurchased', () => {
-  it('NoUserId_ReturnsEmptyArray', async () => {
+  it('NoProfileId_ReturnsEmptyArray', async () => {
     expect(await dal.getItemsByPurchased()).toEqual([]);
   });
 
@@ -52,24 +54,28 @@ describe('getItemsByPurchased', () => {
     await seedPurchase(db, {
       id: 'pe',
       item_id: 'early',
-      user_id: 'buyer',
+      profile_id: selfProfileOf('buyer'),
       purchased_at: new Date('2021-01-01'),
     });
     await seedPurchase(db, {
       id: 'pl',
       item_id: 'late',
-      user_id: 'buyer',
+      profile_id: selfProfileOf('buyer'),
       purchased_at: new Date('2022-01-01'),
     });
 
-    const rows = await dal.getItemsByPurchased('buyer');
+    const rows = await dal.getItemsByPurchased(selfProfileOf('buyer'));
     expect(rows.map((r) => r.id)).toEqual(['late', 'early']);
   });
 
   it('PurchasedItemWithStores_MapsScalarPrimaryStore', async () => {
     await seedUsers(db, [{ id: 'buyer' }, { id: 'owner' }]);
     await seedItem(db, { id: 'bought', user_id: 'owner' });
-    await seedPurchase(db, { id: 'p', item_id: 'bought', user_id: 'buyer' });
+    await seedPurchase(db, {
+      id: 'p',
+      item_id: 'bought',
+      profile_id: selfProfileOf('buyer'),
+    });
     await seedItemStore(db, {
       id: 's2',
       item_id: 'bought',
@@ -85,7 +91,7 @@ describe('getItemsByPurchased', () => {
       order: 1,
     });
 
-    const rows = await dal.getItemsByPurchased('buyer');
+    const rows = await dal.getItemsByPurchased(selfProfileOf('buyer'));
     expect(rows[0].store?.name).toBe('cheap');
   });
 
@@ -96,14 +102,18 @@ describe('getItemsByPurchased', () => {
       { id: 'other', name: 'Otto' },
     ]);
     await seedItem(db, { id: 'shared', user_id: 'owner', quantity_limit: 2 });
-    await seedPurchase(db, { id: 'mine', item_id: 'shared', user_id: 'buyer' });
+    await seedPurchase(db, {
+      id: 'mine',
+      item_id: 'shared',
+      profile_id: selfProfileOf('buyer'),
+    });
     await seedPurchase(db, {
       id: 'theirs',
       item_id: 'shared',
-      user_id: 'other',
+      profile_id: selfProfileOf('other'),
     });
 
-    const rows = await dal.getItemsByPurchased('buyer');
+    const rows = await dal.getItemsByPurchased(selfProfileOf('buyer'));
     const byId = Object.fromEntries(rows[0].purchases.map((p) => [p.id, p]));
     expect(byId.mine).toEqual({
       id: 'mine',
@@ -127,7 +137,9 @@ describe('getItemsByPurchased', () => {
     vi.spyOn(db.query.purchases, 'findMany').mockRejectedValueOnce(
       new Error('boom')
     );
-    await expect(dal.getItemsByPurchased('buyer')).rejects.toThrow('boom');
+    await expect(
+      dal.getItemsByPurchased(selfProfileOf('buyer'))
+    ).rejects.toThrow('boom');
   });
 });
 
@@ -136,26 +148,45 @@ describe('isEligiblePurchaser', () => {
     await seedUsers(db, [{ id: 'own' }, { id: 'claimer' }, { id: 'b' }]);
   });
 
+  const [pOwn, pClaimer, pB] = [
+    selfProfileOf('own'),
+    selfProfileOf('claimer'),
+    selfProfileOf('b'),
+  ];
+
   it('OwnerMutualNoBlocks_ReturnsTrue', async () => {
     await seedFollow(db, 'own', 'b');
     await seedFollow(db, 'b', 'own');
-    expect(await dal.isEligiblePurchaser('own', 'claimer', 'b')).toBe(true);
+    expect(await dal.isEligiblePurchaser(pOwn, pClaimer, pB)).toBe(true);
   });
 
   it('OneWayFollow_ReturnsFalse', async () => {
     await seedFollow(db, 'own', 'b');
-    expect(await dal.isEligiblePurchaser('own', 'claimer', 'b')).toBe(false);
+    expect(await dal.isEligiblePurchaser(pOwn, pClaimer, pB)).toBe(false);
   });
 
   it('BlockBetweenClaimerAndTarget_ReturnsFalse', async () => {
     await seedFollow(db, 'own', 'b');
     await seedFollow(db, 'b', 'own');
     await seedBlock(db, 'b', 'claimer');
-    expect(await dal.isEligiblePurchaser('own', 'claimer', 'b')).toBe(false);
+    expect(await dal.isEligiblePurchaser(pOwn, pClaimer, pB)).toBe(false);
   });
 
   it('TargetIsOwner_ReturnsFalse', async () => {
-    expect(await dal.isEligiblePurchaser('own', 'claimer', 'own')).toBe(false);
+    expect(await dal.isEligiblePurchaser(pOwn, pClaimer, pOwn)).toBe(false);
+  });
+
+  it('ManagedOwnerProfile_ReturnsFalse', async () => {
+    // A managed profile has no account, so neither follow leg can resolve.
+    await seedManagedProfile(db, { id: 'kiddo' });
+    await seedFollow(db, 'b', 'own');
+    expect(await dal.isEligiblePurchaser('kiddo', pClaimer, pB)).toBe(false);
+  });
+
+  it('ManagedTargetProfile_ReturnsFalse', async () => {
+    await seedManagedProfile(db, { id: 'kiddo' });
+    await seedFollow(db, 'own', 'b');
+    expect(await dal.isEligiblePurchaser(pOwn, pClaimer, 'kiddo')).toBe(false);
   });
 });
 
@@ -164,11 +195,11 @@ describe('sanitizePurchases', () => {
   const attributedRow = {
     purchased_at: CLAIMED_AT,
     id: 'p1',
-    user_id: 'bea',
-    claimed_by: 'carl',
+    profile_id: 'bea',
+    claimed_by_profile_id: 'carl',
     guest_name: null,
-    user: { name: 'Bea Buyer' },
-    claimer: { name: 'Carl Claimer' },
+    purchaserProfile: { name: 'Bea Buyer' },
+    claimerProfile: { name: 'Carl Claimer' },
   };
 
   describe('AttributedRows', () => {
@@ -235,11 +266,11 @@ describe('sanitizePurchases', () => {
           {
             id: 'p2',
             purchased_at: CLAIMED_AT,
-            user_id: null,
-            claimed_by: 'carl',
+            profile_id: null,
+            claimed_by_profile_id: 'carl',
             guest_name: 'Mom',
-            user: null,
-            claimer: { name: 'Carl Claimer' },
+            purchaserProfile: null,
+            claimerProfile: { name: 'Carl Claimer' },
           },
         ],
         'own',
@@ -263,11 +294,11 @@ describe('sanitizePurchases', () => {
           {
             id: 'p3',
             purchased_at: CLAIMED_AT,
-            user_id: 'own',
-            claimed_by: 'own',
+            profile_id: 'own',
+            claimed_by_profile_id: 'own',
             guest_name: null,
-            user: { name: 'Olive Owner' },
-            claimer: { name: 'Olive Owner' },
+            purchaserProfile: { name: 'Olive Owner' },
+            claimerProfile: { name: 'Olive Owner' },
           },
         ],
         'own',
@@ -292,11 +323,11 @@ describe('sanitizePurchases', () => {
           {
             id: 'p4',
             purchased_at: CLAIMED_AT,
-            user_id: null,
-            claimed_by: null,
+            profile_id: null,
+            claimed_by_profile_id: null,
             guest_name: 'Grandma',
-            user: null,
-            claimer: null,
+            purchaserProfile: null,
+            claimerProfile: null,
           },
         ],
         'viewer',
@@ -318,11 +349,11 @@ describe('sanitizePurchases', () => {
           {
             id: 'p5',
             purchased_at: CLAIMED_AT,
-            user_id: 'ghost',
-            claimed_by: 'ghost',
+            profile_id: 'ghost',
+            claimed_by_profile_id: 'ghost',
             guest_name: null,
-            user: { name: null },
-            claimer: { name: null },
+            purchaserProfile: { name: null },
+            claimerProfile: { name: null },
           },
         ],
         'viewer',

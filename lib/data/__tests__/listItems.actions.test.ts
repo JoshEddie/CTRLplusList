@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { list_items, lists } from '@/db/schema';
+import { items, list_items, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
@@ -320,6 +320,18 @@ describe('updatePriority', () => {
     });
   });
 
+  it('Reorder_LeavesUpdatedByUserIdUnstamped', async () => {
+    // Reordering moves a row's position, not its content, so it names no
+    // editor on the moved item or on the list holding it.
+    await seedListWith({ A: 65536, B: 131072, C: 196608 });
+    const res = await actions.updatePriority('C', 'B', 'L');
+    expect(res.success).toBe(true);
+    const [item] = await db.select().from(items).where(eq(items.id, 'C'));
+    const [list] = await db.select().from(lists).where(eq(lists.id, 'L'));
+    expect(item.updated_by_user_id).toBeNull();
+    expect(list.updated_by_user_id).toBeNull();
+  });
+
   it('CollisionBelowMinGap_RebalancesAllToBaseSpacing-PreservesOrder', async () => {
     // A and B share the top position; moving D up to C produces a midpoint
     // that leaves the two highest rows tied, tripping checkListBalance.
@@ -404,20 +416,24 @@ describe('updatePriority', () => {
 
   // checkListBalance's limit(2) scan is its own round-trip, so a concurrent
   // removal can shrink the list below 2 rows after the move was validated.
-  // Its bare db.select() is the only zero-arg select in the updatePriority
-  // flow (the position lookups all pass a field selection), which is what
-  // lets the stub target it alone.
+  // The stub targets it by its (zero-arg select, list_items) pair — the
+  // caller's identity resolution issues a zero-arg select of its own.
   it('ListShrinksBelowTwoRowsBeforeBalanceCheck_SkipsRebalance-StillSucceeds', async () => {
     await seedListWith({ A: 65536, B: 131072, C: 196608 });
-    const realSelect = db.select.bind(db) as (...a: never[]) => unknown;
+    const realSelect = db.select.bind(db) as (...a: never[]) => never;
     vi.spyOn(db, 'select').mockImplementation(((...args: never[]) =>
       args.length === 0
         ? ({
-            from: () => ({
-              where: () => ({
-                orderBy: () => ({ limit: () => Promise.resolve([]) }),
-              }),
-            }),
+            from: (table: unknown) =>
+              table === list_items
+                ? {
+                    where: () => ({
+                      orderBy: () => ({ limit: () => Promise.resolve([]) }),
+                    }),
+                  }
+                : (realSelect() as { from: (t: unknown) => unknown }).from(
+                    table
+                  ),
           } as never)
         : realSelect(...args)) as never);
 
@@ -431,15 +447,20 @@ describe('updatePriority', () => {
   it('BalanceCheckSelectThrows_InjectedErrorPropagatesToActionFailure', async () => {
     await seedListWith({ A: 65536, B: 131072, C: 196608 });
     const boom = new Error('boom');
-    const realSelect = db.select.bind(db) as (...a: never[]) => unknown;
+    const realSelect = db.select.bind(db) as (...a: never[]) => never;
     vi.spyOn(db, 'select').mockImplementation(((...args: never[]) =>
       args.length === 0
         ? ({
-            from: () => ({
-              where: () => ({
-                orderBy: () => ({ limit: () => Promise.reject(boom) }),
-              }),
-            }),
+            from: (table: unknown) =>
+              table === list_items
+                ? {
+                    where: () => ({
+                      orderBy: () => ({ limit: () => Promise.reject(boom) }),
+                    }),
+                  }
+                : (realSelect() as { from: (t: unknown) => unknown }).from(
+                    table
+                  ),
           } as never)
         : realSelect(...args)) as never);
     const consoleError = vi

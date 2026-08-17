@@ -1,9 +1,9 @@
 import ListCardRow from '@/app/ui/components/ListCardRow';
-import { getListsByUser } from '@/lib/data/list';
+import { getListsByProfile } from '@/lib/data/list';
 import { capRail } from './utils';
 
-export default async function MyListsRail({ userId }: { userId: string }) {
-  const all = await getListsByUser(userId);
+export default async function MyListsRail({ profileId }: { profileId: string }) {
+  const all = await getListsByProfile(profileId);
   const { shown: lists, moreCount } = capRail(all);
   return (
     <ListCardRow

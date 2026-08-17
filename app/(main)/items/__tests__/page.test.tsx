@@ -2,20 +2,25 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { auth } from '@/lib/auth';
-import { getItemsByUser } from '@/lib/data/item';
-import { getListsByUser } from '@/lib/data/list';
+import { getItemsByProfile } from '@/lib/data/item';
+import { getListsByProfile } from '@/lib/data/list';
+import { getUserIdentity } from '@/lib/data/profile';
 import { getUserIdByEmail } from '@/lib/data/user';
 import Home from '../page';
+import { makeProfile } from '@/test/helpers/profile';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
 }));
+vi.mock('@/lib/data/profile', () => ({
+  getUserIdentity: vi.fn(),
+}));
 vi.mock('@/lib/data/item', () => ({
-  getItemsByUser: vi.fn(),
+  getItemsByProfile: vi.fn(),
 }));
 vi.mock('@/lib/data/list', () => ({
-  getListsByUser: vi.fn(),
+  getListsByProfile: vi.fn(),
 }));
 
 const redirectMock = vi.hoisted(() =>
@@ -41,7 +46,7 @@ vi.mock('../ui/components/ItemsPage', () => ({
   default: (props: {
     items: unknown[];
     archivedItems?: unknown[];
-    user_id?: string;
+    profile_id?: string;
     user_name?: string | null;
     lists?: unknown[];
     initialPageSize?: number;
@@ -51,7 +56,7 @@ vi.mock('../ui/components/ItemsPage', () => ({
       data-active-count={props.items.length}
       data-archived-count={props.archivedItems?.length ?? 0}
       data-initial-page-size={String(props.initialPageSize)}
-      data-user-id={props.user_id ?? ''}
+      data-profile-id={props.profile_id ?? ''}
       data-user-name={props.user_name ?? ''}
       data-lists-count={props.lists?.length ?? 0}
     />
@@ -77,11 +82,15 @@ beforeEach(() => {
     id: 'viewer',
     name: 'Test Viewer',
   } as never);
-  vi.mocked(getItemsByUser).mockImplementation(
+  vi.mocked(getUserIdentity).mockResolvedValue({
+    userId: 'viewer',
+    profile: makeProfile('viewer-profile', 'Test Viewer', 'viewer'),
+  });
+  vi.mocked(getItemsByProfile).mockImplementation(
     async (_id: string, opts?: { filter?: string }) =>
       (opts?.filter === 'archived' ? ARCHIVED : ACTIVE) as never
   );
-  vi.mocked(getListsByUser).mockResolvedValue([
+  vi.mocked(getListsByProfile).mockResolvedValue([
     { id: 'l1' },
     { id: 'l2' },
     { id: 'l3' },
@@ -103,22 +112,37 @@ describe('Page', () => {
       expect(redirectMock).toHaveBeenCalledWith('/');
     });
 
+    it('UserHasNoProfile_RedirectsToRoot', async () => {
+      vi.mocked(getUserIdentity).mockResolvedValue(null);
+      await expect(callPage()).rejects.toThrow('REDIRECT:/');
+      expect(redirectMock).toHaveBeenCalledWith('/');
+      expect(getItemsByProfile).not.toHaveBeenCalled();
+    });
+
     it('ViewerResolved_RendersMainItemsLibraryWrappingItemsPage', async () => {
       render(await callPage());
       const main = screen.getByRole('main');
       expect(main).toHaveClass('container', 'container--items-library');
       expect(main).toContainElement(screen.getByTestId('items-page'));
     });
+
+    it('ViewerResolved_ForwardsActingProfileId', async () => {
+      render(await callPage());
+      expect(screen.getByTestId('items-page')).toHaveAttribute(
+        'data-profile-id',
+        'viewer-profile'
+      );
+    });
   });
 
   describe('SpoilerParam', () => {
     it('PurchasesReveal_ReadsWithShowSpoilersTrue', async () => {
       await callPage({ purchases: 'reveal' });
-      expect(getItemsByUser).toHaveBeenCalledWith('viewer', {
+      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
         filter: 'active',
         showSpoilers: true,
       });
-      expect(getItemsByUser).toHaveBeenCalledWith('viewer', {
+      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
         filter: 'archived',
         showSpoilers: true,
       });
@@ -126,7 +150,7 @@ describe('Page', () => {
 
     it('PurchasesOnly_ReadsWithShowSpoilersTrue', async () => {
       await callPage({ purchases: 'only' });
-      expect(getItemsByUser).toHaveBeenCalledWith('viewer', {
+      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
         filter: 'active',
         showSpoilers: true,
       });
@@ -134,7 +158,7 @@ describe('Page', () => {
 
     it('PurchasesHide_ReadsWithShowSpoilersFalse', async () => {
       await callPage({ purchases: 'hide' });
-      expect(getItemsByUser).toHaveBeenCalledWith('viewer', {
+      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
         filter: 'active',
         showSpoilers: false,
       });
@@ -142,7 +166,7 @@ describe('Page', () => {
 
     it('PurchasesAbsent_ReadsWithShowSpoilersFalse', async () => {
       await callPage();
-      expect(getItemsByUser).toHaveBeenCalledWith('viewer', {
+      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
         filter: 'archived',
         showSpoilers: false,
       });
@@ -180,12 +204,12 @@ describe('Page', () => {
   describe('DualLoad', () => {
     it('Render_ReadsAndForwardsActiveAndArchivedSets', async () => {
       render(await callPage());
-      expect(getItemsByUser).toHaveBeenCalledWith(
-        'viewer',
+      expect(getItemsByProfile).toHaveBeenCalledWith(
+        'viewer-profile',
         expect.objectContaining({ filter: 'active' })
       );
-      expect(getItemsByUser).toHaveBeenCalledWith(
-        'viewer',
+      expect(getItemsByProfile).toHaveBeenCalledWith(
+        'viewer-profile',
         expect.objectContaining({ filter: 'archived' })
       );
       const stub = screen.getByTestId('items-page');
@@ -204,10 +228,10 @@ describe('Page', () => {
     });
 
     it('OneTokenName_UsesFirstToken', async () => {
-      vi.mocked(getUserIdByEmail).mockResolvedValue({
-        id: 'viewer',
-        name: 'Madonna',
-      } as never);
+      vi.mocked(getUserIdentity).mockResolvedValue({
+        userId: 'viewer',
+        profile: makeProfile('viewer-profile', 'Madonna', 'viewer'),
+      });
       render(await callPage());
       expect(screen.getByTestId('items-page')).toHaveAttribute(
         'data-user-name',
@@ -216,10 +240,10 @@ describe('Page', () => {
     });
 
     it('NoName_DerivesEmpty', async () => {
-      vi.mocked(getUserIdByEmail).mockResolvedValue({
-        id: 'viewer',
-        name: null,
-      } as never);
+      vi.mocked(getUserIdentity).mockResolvedValue({
+        userId: 'viewer',
+        profile: makeProfile('viewer-profile', '', 'viewer'),
+      });
       render(await callPage());
       expect(screen.getByTestId('items-page')).toHaveAttribute(
         'data-user-name',
@@ -233,7 +257,7 @@ describe('Page', () => {
         'data-lists-count',
         '3'
       );
-      expect(getListsByUser).toHaveBeenCalledWith('viewer');
+      expect(getListsByProfile).toHaveBeenCalledWith('viewer-profile');
     });
   });
 });

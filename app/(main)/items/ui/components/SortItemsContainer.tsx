@@ -1,6 +1,5 @@
-import { auth } from '@/lib/auth';
 import { getItemsByListId } from '@/lib/data/item';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { authedIdentity } from '@/lib/data/user.session';
 import { ItemDisplay } from '@/lib/types';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { Suspense } from 'react';
@@ -17,14 +16,10 @@ export default async function SortItemsContainer({
   isOwner,
   showSpoilers,
 }: SortItemsContainerProps) {
-  const session = await auth();
-
-  const user = session?.user?.email
-    ? await getUserIdByEmail(session.user.email)
-    : null;
+  const identity = await authedIdentity();
 
   const items: ItemDisplay[] = await getItemsByListId(listId, {
-    viewerId: user?.id,
+    viewerProfileId: identity?.profile.id,
     isOwner: isOwner ?? false,
     showSpoilers: showSpoilers ?? false,
   });
@@ -33,7 +28,7 @@ export default async function SortItemsContainer({
     <Suspense fallback={<LoadingIndicator size="page" />}>
       <SortItems
         items={items}
-        user_id={user?.id}
+        profile_id={identity?.profile.id}
         listId={listId}
         showSpoilers={showSpoilers}
       />

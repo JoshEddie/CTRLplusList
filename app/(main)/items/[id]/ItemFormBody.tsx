@@ -1,7 +1,6 @@
-import { auth } from '@/lib/auth';
 import { getItemById } from '@/lib/data/item';
-import { getListsByUser } from '@/lib/data/list';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { getListsByProfile } from '@/lib/data/list';
+import { authedIdentity } from '@/lib/data/user.session';
 import { redirect } from 'next/navigation';
 import ItemFormContainer from '../ui/components/itemform/ItemFormContainer';
 import { sanitizeReturnTo } from '../ui/components/returnTo';
@@ -12,28 +11,22 @@ type Props = {
 };
 
 export default async function ItemFormBody({ params, searchParams }: Props) {
-  const session = await auth();
   const { id } = await params;
   const sp = await searchParams;
   const returnTo = sanitizeReturnTo(sp.returnTo);
 
-  if (!session?.user?.email) {
+  const identity = await authedIdentity();
+  if (!identity) {
     redirect('/');
   }
 
-  const user = await getUserIdByEmail(session.user.email);
-
-  if (!user) {
-    redirect('/');
-  }
-
-  const item = await getItemById(id, user.id);
+  const item = await getItemById(id, identity.profile.id);
 
   if (!item) {
     redirect(returnTo ?? '/items');
   }
 
-  const lists = await getListsByUser(user.id);
+  const lists = await getListsByProfile(identity.profile.id);
 
   return <ItemFormContainer item={item} lists={lists} returnTo={returnTo} />;
 }

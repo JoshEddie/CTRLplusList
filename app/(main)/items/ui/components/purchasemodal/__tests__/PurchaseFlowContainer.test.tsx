@@ -33,7 +33,7 @@ function renderContainer(
   overrides: Partial<React.ComponentProps<typeof PurchaseFlowContainer>> = {}
 ) {
   const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
-    user_id: 'viewer',
+    profile_id: 'viewer',
     isOwner: false,
     showSpoilers: false,
     ownerCanClaim: false,
@@ -74,7 +74,7 @@ describe('PurchaseFlowContainer', () => {
     });
 
     it('Guest_StoreRowRendersWithoutSignIn', () => {
-      renderContainer({ user_id: undefined });
+      renderContainer({ profile_id: undefined });
       expect(screen.getByRole('link', { name: /Amazon/ })).toBeInTheDocument();
     });
 
@@ -95,8 +95,8 @@ describe('PurchaseFlowContainer', () => {
   });
 
   describe('Guest', () => {
-    it('NoUserId_RendersGuestFieldAndFooterSignIn-NoPickerFetch', () => {
-      renderContainer({ user_id: undefined });
+    it('NoProfileId_RendersGuestFieldAndFooterSignIn-NoPickerFetch', () => {
+      renderContainer({ profile_id: undefined });
       expect(screen.getByLabelText('Your name')).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: 'Claim as Guest' })
@@ -110,7 +110,7 @@ describe('PurchaseFlowContainer', () => {
 
     it('EmptyGuestName_ClaimAsGuestDisabled-NoCallback', async () => {
       const user = userEvent.setup();
-      const { onGuestClaim } = renderContainer({ user_id: undefined });
+      const { onGuestClaim } = renderContainer({ profile_id: undefined });
       const guestBtn = screen.getByRole('button', { name: 'Claim as Guest' });
       expect(guestBtn).toBeDisabled();
       await user.click(guestBtn);
@@ -119,7 +119,7 @@ describe('PurchaseFlowContainer', () => {
 
     it('PaddedGuestName_CallsOnGuestClaimTrimmed', async () => {
       const user = userEvent.setup();
-      const { onGuestClaim } = renderContainer({ user_id: undefined });
+      const { onGuestClaim } = renderContainer({ profile_id: undefined });
       await user.type(screen.getByLabelText('Your name'), '  Bob  ');
       await user.click(screen.getByRole('button', { name: 'Claim as Guest' }));
       expect(onGuestClaim).toHaveBeenCalledWith('Bob');
@@ -312,7 +312,7 @@ describe('PurchaseFlowContainer', () => {
         });
       const user = userEvent.setup();
       const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
-        user_id: 'viewer',
+        profile_id: 'viewer',
         isOwner: false,
         showSpoilers: false,
         ownerCanClaim: false,
@@ -353,7 +353,7 @@ describe('PurchaseFlowContainer', () => {
         .mockResolvedValueOnce(PICKER);
       const user = userEvent.setup();
       const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
-        user_id: 'viewer',
+        profile_id: 'viewer',
         isOwner: false,
         showSpoilers: false,
         ownerCanClaim: false,

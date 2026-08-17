@@ -11,7 +11,7 @@ import {
 import { touchLists } from '@/lib/data/list.touch';
 import { ItemSchema } from '@/lib/data/item.schema';
 import { validateStore } from '@/lib/data/item.store';
-import { authedUserId, UNAUTHORIZED_RESPONSE } from '@/lib/data/user.session';
+import { authedIdentity, UNAUTHORIZED_RESPONSE } from '@/lib/data/user.session';
 import { type ActionResponse, ItemDetails } from '@/lib/types';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -19,8 +19,8 @@ import { updateTag } from 'next/cache';
 
 export async function createItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       return UNAUTHORIZED_RESPONSE;
     }
 
@@ -48,7 +48,8 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       description: validatedData.description || '',
       created_at: new Date(),
       updated_at: new Date(),
-      user_id: userId,
+      profile_id: identity.profile.id,
+      updated_by_user_id: identity.userId,
       quantity_limit: validatedData.quantity_limit,
     });
 
@@ -79,16 +80,16 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
 
 export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       return UNAUTHORIZED_RESPONSE;
     }
 
     const existing = await db.query.items.findFirst({
       where: eq(items.id, data.id),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
-    if (!existing || existing.user_id !== userId) {
+    if (!existing || existing.profile_id !== identity.profile.id) {
       return {
         success: false,
         message: 'Unauthorized - item does not belong to you',
@@ -123,6 +124,7 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
       updateData.quantity_limit = validatedData.quantity_limit;
 
     if (Object.keys(updateData).length > 0) {
+      updateData.updated_by_user_id = identity.userId;
       await db.update(items).set(updateData).where(eq(items.id, data.id));
     }
 
@@ -162,16 +164,16 @@ export async function archiveItem(
   archived: boolean
 ): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       return UNAUTHORIZED_RESPONSE;
     }
 
     const item = await db.query.items.findFirst({
       where: eq(items.id, item_id),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
-    if (!item || item.user_id !== userId) {
+    if (!item || item.profile_id !== identity.profile.id) {
       return {
         success: false,
         message: 'Unauthorized - item does not belong to you',
@@ -202,18 +204,18 @@ export async function archiveItem(
 
 export async function deleteItem(id: string) {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       throw new Error('Unauthorized');
     }
 
     // Verify item ownership
     const item = await db.query.items.findFirst({
       where: eq(items.id, id),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
 
-    if (!item || item.user_id !== userId) {
+    if (!item || item.profile_id !== identity.profile.id) {
       throw new Error('Unauthorized - Item does not belong to you');
     }
 

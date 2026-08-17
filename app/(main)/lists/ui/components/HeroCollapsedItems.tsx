@@ -2,7 +2,7 @@
 
 import { setListVisibility } from '@/lib/data/list.actions';
 import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
-import { followUser, unfollowUser } from '@/lib/data/user.actions';
+import { followUser, unfollowUser } from '@/lib/data/profile.actions';
 import { MenuItem, MenuItemRadio } from '@/app/ui/components/menu';
 import { ListTable } from '@/lib/types';
 import { VISIBILITY, fromDb, type ListVisibility } from '@/lib/visibility';
@@ -168,12 +168,12 @@ export function BookmarkMenuItem({
 
 // ── Follow ───────────────────────────────────────────────────────────────
 export function FollowMenuItem({
-  ownerId,
+  ownerProfileId,
   ownerName,
   initialFollowing,
   requireDisclosure,
 }: {
-  ownerId: string;
+  ownerProfileId: string;
   ownerName: string | null;
   initialFollowing: boolean;
   requireDisclosure: boolean;
@@ -186,7 +186,7 @@ export function FollowMenuItem({
   const performFollow = () => {
     setFollowing(true);
     startTransition(async () => {
-      const result = await followUser(ownerId);
+      const result = await followUser(ownerProfileId);
       if (!result.success) {
         setFollowing(false);
         toast.error(result.message);
@@ -200,7 +200,7 @@ export function FollowMenuItem({
   const performUnfollow = () => {
     setFollowing(false);
     startTransition(async () => {
-      const result = await unfollowUser(ownerId);
+      const result = await unfollowUser(ownerProfileId);
       if (!result.success) {
         setFollowing(true);
         toast.error(result.message);

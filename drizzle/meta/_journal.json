@@ -78,6 +78,13 @@
       "when": 1786712302637,
       "tag": "0010_late_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786761556861,
+      "tag": "0011_illegal_wind_dancer",
+      "breakpoints": true
     }
   ]
 }

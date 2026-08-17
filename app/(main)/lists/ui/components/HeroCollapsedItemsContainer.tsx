@@ -1,4 +1,5 @@
-import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
+import { hasBlocked } from '@/lib/data/profile';
+import { isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
 import { getBookmarkStatus } from '@/lib/data/visit';
 import { ListTable } from '@/lib/types';
 import { type ListVisibility } from '@/lib/visibility';
@@ -35,14 +36,16 @@ export async function HeroCollapsedOwnerItems({
 // Follow row is suppressed.
 export async function HeroCollapsedViewerItems({
   list,
-  ownerId,
+  ownerProfileId,
   ownerName,
-  viewerId,
+  viewerUserId,
+  viewerProfileId,
 }: {
   list: ListTable;
-  ownerId: string;
+  ownerProfileId: string;
   ownerName: string | null;
-  viewerId: string;
+  viewerUserId: string;
+  viewerProfileId: string;
 }) {
   const [
     bookmarked,
@@ -51,11 +54,17 @@ export async function HeroCollapsedViewerItems({
     blockedByViewer,
     hasAnyFollows,
   ] = await Promise.all([
-    getBookmarkStatus(list.id, viewerId),
-    isFollowing({ userId: viewerId, followeeId: ownerId }),
-    hasBlocked({ userId: ownerId, blockedId: viewerId }),
-    hasBlocked({ userId: viewerId, blockedId: ownerId }),
-    viewerHasAnyFollows(viewerId),
+    getBookmarkStatus(list.id, viewerUserId),
+    isFollowing({ userId: viewerUserId, followeeProfileId: ownerProfileId }),
+    hasBlocked({
+      blockerProfileId: ownerProfileId,
+      blockedProfileId: viewerProfileId,
+    }),
+    hasBlocked({
+      blockerProfileId: viewerProfileId,
+      blockedProfileId: ownerProfileId,
+    }),
+    viewerHasAnyFollows(viewerUserId),
   ]);
 
   const showFollow = !blockedByOwner && !blockedByViewer;
@@ -66,7 +75,7 @@ export async function HeroCollapsedViewerItems({
       <BookmarkMenuItem listId={list.id} initialBookmarked={bookmarked} />
       {showFollow && (
         <FollowMenuItem
-          ownerId={ownerId}
+          ownerProfileId={ownerProfileId}
           ownerName={ownerName}
           initialFollowing={following}
           requireDisclosure={!hasAnyFollows}

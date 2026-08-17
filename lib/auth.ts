@@ -6,6 +6,7 @@ import NextAuth, { type NextAuthConfig } from 'next-auth';
 import type { AdapterUser } from 'next-auth/adapters';
 import Google from 'next-auth/providers/google';
 import { db } from '../db';
+import { selfProfileOf } from './profileIds';
 
 type Callbacks = NonNullable<NextAuthConfig['callbacks']>;
 
@@ -52,7 +53,7 @@ export async function createSelfProfile(
   database: PgDatabase<PgQueryResultHKT, typeof schema>,
   user: Pick<AdapterUser, 'id' | 'name'>
 ) {
-  const profileId = `self-${user.id}`;
+  const profileId = selfProfileOf(user.id);
   await database
     .insert(profiles)
     .values({ id: profileId, name: user.name ?? 'UNTITLED', user_id: user.id })

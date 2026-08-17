@@ -3,7 +3,11 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import ListCard from '@/app/ui/components/ListCard';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedPublicList, seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedPublicList,
+  seedUsers,
+  selfProfileOf,
+} from '@/test/helpers/seedFollowGraph';
 
 mockNextCache();
 
@@ -38,7 +42,9 @@ describe('MyListsGrid', () => {
     await seedPublicList(db, { id: 'l0', user_id: 'viewer' });
     await seedPublicList(db, { id: 'l1', user_id: 'viewer' });
 
-    const tree = (await MyListsGrid({ userId: 'viewer' })) as unknown as El;
+    const tree = (await MyListsGrid({
+      profileId: selfProfileOf('viewer'),
+    })) as unknown as El;
     expect(tree.type).toBe('ul');
     expect(tree.props.className).toBe('list-card-grid');
 
@@ -52,7 +58,9 @@ describe('MyListsGrid', () => {
   });
 
   it('NoLists_RendersEmptyMessageParagraph', async () => {
-    const tree = (await MyListsGrid({ userId: 'viewer' })) as unknown as El;
+    const tree = (await MyListsGrid({
+      profileId: selfProfileOf('viewer'),
+    })) as unknown as El;
     expect(tree.type).toBe('p');
     expect(tree.props.className).toBe('my-lists-empty');
     expect(tree.props.children).toBe('No lists yet. Create your first one.');

@@ -18,6 +18,7 @@ function makeItem(overrides: Partial<ItemDisplay> = {}): ItemDisplay {
     created_at: new Date('2024-01-01T00:00:00Z'),
     updated_at: new Date('2024-01-01T00:00:00Z'),
     user_id: 'u1',
+    profile_id: 'p1',
     quantity_limit: null,
     ...overrides,
   };

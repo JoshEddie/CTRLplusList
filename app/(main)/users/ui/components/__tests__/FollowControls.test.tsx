@@ -7,11 +7,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { followUser, unfollowUser } from '@/lib/data/user.actions';
+import { followUser, unfollowUser } from '@/lib/data/profile.actions';
 import toast from 'react-hot-toast';
 import FollowControls from '../FollowControls';
 
-vi.mock('@/lib/data/user.actions', () => ({
+vi.mock('@/lib/data/profile.actions', () => ({
   followUser: vi.fn(),
   unfollowUser: vi.fn(),
 }));
@@ -23,7 +23,7 @@ vi.mock('react-hot-toast', () => ({
   default: { success: vi.fn(), error: vi.fn() },
 }));
 
-const USER_ID = 'u-target';
+const PROFILE_ID = 'p-target';
 
 const dialogProto = HTMLDialogElement.prototype as unknown as Record<
   string,
@@ -58,7 +58,7 @@ function renderControls(
 ) {
   return render(
     <FollowControls
-      userId={USER_ID}
+      profileId={PROFILE_ID}
       userName={overrides.userName ?? 'Bob'}
       initialFollowing={overrides.initialFollowing ?? false}
       requireDisclosure={overrides.requireDisclosure ?? false}
@@ -79,7 +79,7 @@ describe('FollowControls', () => {
     renderControls();
     await user.click(mainFollow());
     expect(mainFollowing()).toBeInTheDocument();
-    await waitFor(() => expect(followUser).toHaveBeenCalledWith(USER_ID));
+    await waitFor(() => expect(followUser).toHaveBeenCalledWith(PROFILE_ID));
     await waitFor(() =>
       expect(toast.success).toHaveBeenCalledWith('Following Bob')
     );
@@ -108,7 +108,7 @@ describe('FollowControls', () => {
     renderControls({ initialFollowing: true });
     await user.click(mainFollowing());
     expect(mainFollow()).toBeInTheDocument();
-    await waitFor(() => expect(unfollowUser).toHaveBeenCalledWith(USER_ID));
+    await waitFor(() => expect(unfollowUser).toHaveBeenCalledWith(PROFILE_ID));
     expect(toast.success).toHaveBeenCalledWith('Unfollowed');
   });
 
@@ -165,7 +165,7 @@ describe('FollowControls', () => {
     expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
       false
     );
-    await waitFor(() => expect(followUser).toHaveBeenCalledWith(USER_ID));
+    await waitFor(() => expect(followUser).toHaveBeenCalledWith(PROFILE_ID));
   });
 
   it('DialogCancel_ClosesWithoutFollowing', async () => {
@@ -187,7 +187,7 @@ describe('FollowControls', () => {
     });
     const { container } = render(
       <FollowControls
-        userId={USER_ID}
+        profileId={PROFILE_ID}
         userName={null}
         initialFollowing={false}
         requireDisclosure={false}
@@ -217,6 +217,6 @@ describe('FollowControls', () => {
     expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
       false
     );
-    await waitFor(() => expect(unfollowUser).toHaveBeenCalledWith(USER_ID));
+    await waitFor(() => expect(unfollowUser).toHaveBeenCalledWith(PROFILE_ID));
   });
 });

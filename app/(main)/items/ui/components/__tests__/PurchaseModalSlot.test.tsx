@@ -51,7 +51,7 @@ function renderSlot(
     view: 'claim',
     claims: [],
     viewerIsPurchaser: false,
-    user_id: undefined,
+    profile_id: undefined,
     isOwner: false,
     showSpoilers: false,
     ownerCanClaim: false,
@@ -220,7 +220,7 @@ describe('PurchaseModalSlot', () => {
   describe('ClaimView', () => {
     it('ViewerIsPurchaser_HidesSelfClaimCta-KeepsDisclosureCollapsed', async () => {
       renderSlot({
-        user_id: 'viewer',
+        profile_id: 'viewer',
         claims: [selfClaim],
         viewerIsPurchaser: true,
       });
@@ -234,7 +234,7 @@ describe('PurchaseModalSlot', () => {
 
     it('ViewerClaimerOnly_KeepsSelfClaimCta', async () => {
       renderSlot({
-        user_id: 'viewer',
+        profile_id: 'viewer',
         claims: [attributedClaim],
         viewerIsPurchaser: false,
       });
@@ -253,7 +253,7 @@ describe('PurchaseModalSlot', () => {
   });
 
   it('NoClaimAuthenticated_RendersClaimFlowWithItemHeader', async () => {
-    renderSlot({ user_id: 'viewer' });
+    renderSlot({ profile_id: 'viewer' });
     expect(
       screen.getByRole('heading', { name: 'Fancy Mug' })
     ).toBeInTheDocument();

@@ -13,7 +13,7 @@ import ItemsBrowser from './ItemsBrowser';
 interface ItemsPageProps {
   items: ItemDisplay[];
   archivedItems?: ItemDisplay[];
-  user_id?: string;
+  profile_id?: string;
   user_name?: string | null;
   lists?: ListTable[];
   initialPageSize?: number;
@@ -24,7 +24,7 @@ type Tab = 'active' | 'archived';
 export default function ItemsPage({
   items,
   archivedItems = [],
-  user_id,
+  profile_id,
   user_name,
   lists,
   initialPageSize,
@@ -99,7 +99,7 @@ export default function ItemsPage({
           items={source}
           mode="items"
           initialPageSize={initialPageSize}
-          user_id={user_id}
+          profile_id={profile_id}
           user_name={user_name}
           showArchiveAction
           archivedView={tab === 'archived'}

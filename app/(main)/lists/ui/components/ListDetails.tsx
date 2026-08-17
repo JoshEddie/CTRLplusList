@@ -49,7 +49,8 @@ export default async function ListDetails({
   list,
   owner_name,
   owner_image,
-  viewer_id,
+  viewer_user_id,
+  viewer_profile_id,
   showSpoilers,
   previewMode,
   itemCount,
@@ -58,7 +59,8 @@ export default async function ListDetails({
   list: ListWithVisibility;
   owner_name: string | undefined;
   owner_image: string | undefined;
-  viewer_id: string | undefined;
+  viewer_user_id: string | undefined;
+  viewer_profile_id: string | undefined;
   showSpoilers?: boolean;
   previewMode?: boolean;
   itemCount: number;
@@ -73,24 +75,26 @@ export default async function ListDetails({
   const updatedDisplay = timeAgo(list.updated_at);
   const itemsDisplay = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
   const showOwnerControls = isOwner && !previewMode;
-  const showViewerControls = !isOwner && viewer_id && !previewMode;
+  const showViewerControls =
+    !isOwner && viewer_user_id && viewer_profile_id && !previewMode;
 
   // Compose the prepended kebab items shown when the hero is collapsed.
   // Owner-preview gets the owner items (Share/Choose/Edit/Visibility are
   // still owner affordances in preview mode — visibility just shows current
   // state). Pure viewers get the viewer items.
   let collapsedPrepended: React.ReactNode = null;
-  if (isOwner && !previewMode) {
+  if (showOwnerControls) {
     collapsedPrepended = (
       <HeroCollapsedOwnerItems list={list} visibility={visibility} />
     );
-  } else if (!isOwner && viewer_id && !previewMode) {
+  } else if (showViewerControls) {
     collapsedPrepended = (
       <HeroCollapsedViewerItems
         list={list}
-        ownerId={list.user_id}
+        ownerProfileId={list.profile_id}
         ownerName={owner_name ?? null}
-        viewerId={viewer_id}
+        viewerUserId={viewer_user_id}
+        viewerProfileId={viewer_profile_id}
       />
     );
   }
@@ -186,15 +190,16 @@ export default async function ListDetails({
                   <Avatar src={owner_image} name={owner_name} size={44} />
                   <div className="list-hero-byline-text">
                     <Link
-                      href={`/user/${list.user_id}`}
+                      href={`/user/${list.profile_id}`}
                       className="list-hero-byline-link"
                     >
                       {owner_name}
                     </Link>
                     <FollowContainer
-                      ownerId={list.user_id}
+                      ownerProfileId={list.profile_id}
                       ownerName={owner_name ?? null}
-                      viewerId={viewer_id}
+                      viewerUserId={viewer_user_id}
+                      viewerProfileId={viewer_profile_id}
                       variant="on-dark"
                     />
                   </div>
@@ -202,8 +207,11 @@ export default async function ListDetails({
                 <div className="list-hero-divider" />
                 <div className="list-hero-action-row">
                   <ShareButton list={list} />
-                  {viewer_id && (
-                    <BookmarkContainer list_id={list.id} user_id={viewer_id} />
+                  {viewer_user_id && (
+                    <BookmarkContainer
+                      list_id={list.id}
+                      user_id={viewer_user_id}
+                    />
                   )}
                 </div>
               </>

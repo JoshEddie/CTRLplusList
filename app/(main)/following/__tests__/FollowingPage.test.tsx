@@ -1,14 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
-import { getFollowingFeedUsers, getUserIdByEmail } from '@/lib/data/user';
+import { getFollowingFeedProfiles, getUserIdByEmail } from '@/lib/data/user';
 import { updateTag } from 'next/cache';
 import FollowingPage from '../FollowingPage';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
-  getFollowingFeedUsers: vi.fn(),
+  getFollowingFeedProfiles: vi.fn(),
 }));
 vi.mock('next/cache', () => ({ updateTag: vi.fn() }));
 
@@ -40,8 +40,8 @@ vi.mock('@/app/ui/components/ListCollectionsNav', () => ({
   default: () => <nav data-testid="list-collections-nav" />,
 }));
 vi.mock('@/app/(main)/users/ui/components/UserCardGrid', () => ({
-  default: ({ users }: { users: unknown[] }) => (
-    <div data-testid="user-card-grid" data-count={users.length} />
+  default: ({ profiles }: { profiles: unknown[] }) => (
+    <div data-testid="user-card-grid" data-count={profiles.length} />
   ),
 }));
 
@@ -89,7 +89,7 @@ describe('FollowingPage', () => {
       user: { email: 'x@test.local' },
     } as never);
     vi.mocked(getUserIdByEmail).mockResolvedValue({ id: 'viewer' } as never);
-    vi.mocked(getFollowingFeedUsers).mockResolvedValue(FEED as never);
+    vi.mocked(getFollowingFeedProfiles).mockResolvedValue(FEED as never);
 
     render(await FollowingPage());
     expect(screen.getByTestId('list-collections-nav')).toBeInTheDocument();
@@ -97,7 +97,7 @@ describe('FollowingPage', () => {
       'data-count',
       '1'
     );
-    expect(getFollowingFeedUsers).toHaveBeenCalledWith('viewer');
+    expect(getFollowingFeedProfiles).toHaveBeenCalledWith('viewer');
   });
 
   it('AfterCallback_WritesLastSeenBeforeUpdateTag', async () => {
@@ -105,7 +105,7 @@ describe('FollowingPage', () => {
       user: { email: 'x@test.local' },
     } as never);
     vi.mocked(getUserIdByEmail).mockResolvedValue({ id: 'viewer' } as never);
-    vi.mocked(getFollowingFeedUsers).mockResolvedValue(FEED as never);
+    vi.mocked(getFollowingFeedProfiles).mockResolvedValue(FEED as never);
 
     render(await FollowingPage());
     expect(afterHolder.cb).toBeTypeOf('function');
@@ -128,7 +128,7 @@ describe('FollowingPage', () => {
       user: { email: 'x@test.local' },
     } as never);
     vi.mocked(getUserIdByEmail).mockResolvedValue({ id: 'viewer' } as never);
-    vi.mocked(getFollowingFeedUsers).mockResolvedValue(FEED as never);
+    vi.mocked(getFollowingFeedProfiles).mockResolvedValue(FEED as never);
     dbMock.where.mockRejectedValue(new Error('boom'));
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 

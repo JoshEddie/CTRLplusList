@@ -1,18 +1,11 @@
-import { auth } from '@/lib/auth';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { authedUserId } from '@/lib/data/user.session';
 import { redirect } from 'next/navigation';
 import ListForm from '../ui/components/ListForm';
 
 const NewList = async () => {
-  const session = await auth();
+  const viewerId = await authedUserId();
 
-  if (!session?.user?.email) {
-    redirect('/');
-  }
-
-  const user = await getUserIdByEmail(session.user.email);
-
-  if (!user) {
+  if (!viewerId) {
     redirect('/');
   }
 

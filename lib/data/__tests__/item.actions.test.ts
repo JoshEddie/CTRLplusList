@@ -20,6 +20,7 @@ import {
   seedItemStore,
   seedList,
   seedListItem,
+  selfProfileOf,
   type TestDb,
 } from './test-helpers';
 
@@ -212,7 +213,9 @@ describe('createItem', () => {
         name: 'New Gift',
         description: '',
         quantity_limit: 3,
-        user_id: OWNER.id,
+        profile_id: selfProfileOf(OWNER.id),
+        updated_by_user_id: OWNER.id,
+        user_id: null,
       });
 
       const placed = (await listItemRows('L')).find(
@@ -243,7 +246,9 @@ describe('createItem', () => {
       expect(rows[0]).toMatchObject({
         name: 'Bare Item',
         description: '',
-        user_id: OWNER.id,
+        profile_id: selfProfileOf(OWNER.id),
+        updated_by_user_id: OWNER.id,
+        user_id: null,
       });
       expect(await listItemRows('L')).toHaveLength(0);
       expect(await storeRows(rows[0].id)).toHaveLength(1);
@@ -460,7 +465,11 @@ describe('updateItem', () => {
       expect(res.success).toBe(true);
 
       const row = (await itemRows()).find((i) => i.id === 'I');
-      expect(row).toMatchObject({ name: 'Updated', quantity_limit: 5 });
+      expect(row).toMatchObject({
+        name: 'Updated',
+        quantity_limit: 5,
+        updated_by_user_id: OWNER.id,
+      });
 
       expect(await listItemRows('L1')).toHaveLength(0);
       expect(await listItemRows('L2')).toEqual([
@@ -633,6 +642,15 @@ describe('archiveItem', () => {
     const row = (await itemRows()).find((i) => i.id === 'I');
     expect(row?.archived_at).toBeInstanceOf(Date);
     expect(updateTag).toHaveBeenCalledWith('items');
+  });
+
+  it('Archive_LeavesUpdatedByUserIdUnstamped', async () => {
+    // Archiving is a shelf move, not a content edit, so it records no editor.
+    await seedItem(db, { id: 'I', user_id: OWNER.id });
+    const res = await actions.archiveItem('I', true);
+    expect(res.success).toBe(true);
+    const row = (await itemRows()).find((i) => i.id === 'I');
+    expect(row?.updated_by_user_id).toBeNull();
   });
 
   it('Unarchive_ClearsArchivedAt', async () => {

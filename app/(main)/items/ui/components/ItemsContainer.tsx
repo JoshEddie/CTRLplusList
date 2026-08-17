@@ -1,11 +1,10 @@
-import { auth } from '@/lib/auth';
 import {
   GUEST_CLAIMS_COOKIE,
   overlayGuestClaims,
   parseGuestClaims,
 } from '@/lib/data/purchase.cookie';
-import { getItemsByListId, getItemsByUser } from '@/lib/data/item';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { getItemsByListId, getItemsByProfile } from '@/lib/data/item';
+import { authedIdentity } from '@/lib/data/user.session';
 import { ItemDisplay } from '@/lib/types';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { cookies } from 'next/headers';
@@ -18,44 +17,40 @@ import { readItemsPageSize, viewerDisplayName } from '../../utils';
 interface ItemsContainerProps {
   listId?: string;
   isListOwner?: boolean;
-  viewerId?: string;
+  viewerProfileId?: string;
   showSpoilers?: boolean;
 }
 
 export default async function ItemsContainer({
   listId,
   isListOwner,
-  viewerId,
+  viewerProfileId,
   showSpoilers,
 }: ItemsContainerProps) {
-  const session = await auth();
-
   let items: ItemDisplay[];
 
-  const user = session?.user?.email
-    ? await getUserIdByEmail(session.user.email)
-    : null;
+  const identity = await authedIdentity();
 
   if (listId) {
     items = await getItemsByListId(listId, {
-      viewerId: viewerId ?? user?.id,
+      viewerProfileId: viewerProfileId ?? identity?.profile.id,
       isOwner: isListOwner ?? false,
       showSpoilers: showSpoilers ?? false,
     });
-    if (!session?.user?.email) {
+    if (!identity) {
       // Post-cache, request-scope only: the cookie must never reach the
       // 'use cache' read above, so guests keep sharing one cached variant.
       const store = await cookies();
       const claims = parseGuestClaims(store.get(GUEST_CLAIMS_COOKIE)?.value);
       items = overlayGuestClaims(items, new Set(claims?.purchases));
     }
-  } else if (user) {
-    items = await getItemsByUser(user.id);
+  } else if (identity) {
+    items = await getItemsByProfile(identity.profile.id);
   } else {
     redirect('/');
   }
 
-  const firstLastInitial = viewerDisplayName(user?.name);
+  const firstLastInitial = viewerDisplayName(identity?.profile.name);
 
   if (listId) {
     const initialPageSize = await readItemsPageSize();
@@ -65,7 +60,7 @@ export default async function ItemsContainer({
           items={items}
           mode="list"
           initialPageSize={initialPageSize}
-          user_id={user?.id}
+          profile_id={identity?.profile.id}
           user_name={firstLastInitial}
         />
       </Suspense>
@@ -74,7 +69,11 @@ export default async function ItemsContainer({
 
   return (
     <Suspense fallback={<LoadingIndicator size="page" />}>
-      <Items items={items} user_id={user?.id} user_name={firstLastInitial} />
+      <Items
+        items={items}
+        profile_id={identity?.profile.id}
+        user_name={firstLastInitial}
+      />
     </Suspense>
   );
 }

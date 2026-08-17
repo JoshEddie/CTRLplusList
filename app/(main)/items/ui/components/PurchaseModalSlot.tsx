@@ -11,7 +11,7 @@ export default function PurchaseModalSlot({
   view,
   claims,
   viewerIsPurchaser,
-  user_id,
+  profile_id,
   isOwner,
   showSpoilers,
   ownerCanClaim,
@@ -27,7 +27,7 @@ export default function PurchaseModalSlot({
   /** Every sanitized claim on the item — the manage view lists them all, removal gated per row. */
   claims: PurchaseView[];
   viewerIsPurchaser: boolean;
-  user_id?: string;
+  profile_id?: string;
   isOwner: boolean;
   showSpoilers: boolean;
   ownerCanClaim: boolean;
@@ -57,7 +57,7 @@ export default function PurchaseModalSlot({
   return (
     <Modal onClose={onClose}>
       <PurchaseFlowContainer
-        user_id={user_id}
+        profile_id={profile_id}
         isOwner={isOwner}
         showSpoilers={showSpoilers}
         ownerCanClaim={ownerCanClaim}

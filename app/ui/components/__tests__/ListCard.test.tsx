@@ -52,7 +52,9 @@ describe('ListCard', () => {
 
   describe('Subtitle', () => {
     it('SubtitlePresent_RendersSubtitleDiv-NoPlaceholder', () => {
-      render(<ListCard list={makeList({ subtitle: 'For the whole family' })} />);
+      render(
+        <ListCard list={makeList({ subtitle: 'For the whole family' })} />
+      );
       expect(document.querySelector('.list-card-subtitle')).toHaveTextContent(
         'For the whole family'
       );
@@ -90,24 +92,28 @@ describe('ListCard', () => {
 
   describe('OwnerByline', () => {
     it('ShowOwnerTrueWithName_RendersByline', () => {
-      render(<ListCard list={makeList({ user: { name: 'Alice' } })} showOwner />);
+      render(
+        <ListCard list={makeList({ profile: { name: 'Alice' } })} showOwner />
+      );
       expect(document.querySelector('.list-card-byline')).toHaveTextContent(
         'Alice'
       );
     });
 
     it('ShowOwnerFalse_NoByline-EvenWithName', () => {
-      render(<ListCard list={makeList({ user: { name: 'Alice' } })} />);
+      render(<ListCard list={makeList({ profile: { name: 'Alice' } })} />);
       expect(document.querySelector('.list-card-byline')).toBeNull();
     });
 
-    it('ShowOwnerTrueButNullUser_NoByline', () => {
-      render(<ListCard list={makeList({ user: null })} showOwner />);
+    it('ShowOwnerTrueButNullProfile_NoByline', () => {
+      render(<ListCard list={makeList({ profile: null })} showOwner />);
       expect(document.querySelector('.list-card-byline')).toBeNull();
     });
 
     it('ShowOwnerTrueButNullName_NoByline', () => {
-      render(<ListCard list={makeList({ user: { name: null } })} showOwner />);
+      render(
+        <ListCard list={makeList({ profile: { name: null } })} showOwner />
+      );
       expect(document.querySelector('.list-card-byline')).toBeNull();
     });
   });

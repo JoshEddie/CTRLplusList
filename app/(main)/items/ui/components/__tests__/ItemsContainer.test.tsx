@@ -4,16 +4,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { auth } from '@/lib/auth';
-import { getItemsByListId, getItemsByUser } from '@/lib/data/item';
+import { getItemsByListId, getItemsByProfile } from '@/lib/data/item';
+import { getUserIdentity } from '@/lib/data/profile';
 import { getUserIdByEmail } from '@/lib/data/user';
 import ItemsContainer from '../ItemsContainer';
+import { makeProfile } from '@/test/helpers/profile';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
+vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
 }));
 vi.mock('@/lib/data/item', () => ({
-  getItemsByUser: vi.fn(),
+  getItemsByProfile: vi.fn(),
   getItemsByListId: vi.fn(),
 }));
 
@@ -78,7 +81,11 @@ beforeEach(() => {
     id: 'viewer',
     name: 'Test Viewer',
   } as never);
-  vi.mocked(getItemsByUser).mockResolvedValue(VIEWER_ITEMS as never);
+  vi.mocked(getUserIdentity).mockResolvedValue({
+    userId: 'viewer',
+    profile: makeProfile('self-viewer', 'Test Viewer', 'viewer'),
+  });
+  vi.mocked(getItemsByProfile).mockResolvedValue(VIEWER_ITEMS as never);
   vi.mocked(getItemsByListId).mockResolvedValue(LIST_ITEMS as never);
 });
 
@@ -96,7 +103,7 @@ describe('ItemsContainer', () => {
       const tree = (await ItemsContainer({})) as unknown as El;
       expect(tree.type).toBe(Suspense);
       render(tree as never);
-      expect(getItemsByUser).toHaveBeenCalledWith('viewer');
+      expect(getItemsByProfile).toHaveBeenCalledWith('self-viewer');
       expect(getItemsByListId).not.toHaveBeenCalled();
       expect(screen.getByTestId('items')).toHaveAttribute(
         'data-item-count',
@@ -112,12 +119,12 @@ describe('ItemsContainer', () => {
         await ItemsContainer({
           listId: 'list1',
           isListOwner: true,
-          viewerId: 'v2',
+          viewerProfileId: 'v2',
           showSpoilers: true,
         })
       );
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
-        viewerId: 'v2',
+        viewerProfileId: 'v2',
         isOwner: true,
         showSpoilers: true,
       });
@@ -127,24 +134,24 @@ describe('ItemsContainer', () => {
       expect(browser).toHaveAttribute('data-initial-page-size', '48');
     });
 
-    it('ListIdNoFlags_DefaultsViewerToUserOwnerFalseSpoilerFalse', async () => {
+    it('ListIdNoFlags_DefaultsViewerToProfileOwnerFalseSpoilerFalse', async () => {
       render(await ItemsContainer({ listId: 'list1' }));
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
-        viewerId: 'viewer',
+        viewerProfileId: 'self-viewer',
         isOwner: false,
         showSpoilers: false,
       });
-      expect(getItemsByUser).not.toHaveBeenCalled();
+      expect(getItemsByProfile).not.toHaveBeenCalled();
     });
   });
 
   describe('ListBranchUnauthenticated', () => {
-    it('ListIdNoViewer_DoesNotRedirectReadsWithNoViewerId', async () => {
+    it('ListIdNoViewer_DoesNotRedirectReadsWithNoViewerProfileId', async () => {
       vi.mocked(auth).mockResolvedValue({ user: {} } as never);
       render(await ItemsContainer({ listId: 'list1' }));
       expect(redirectMock).not.toHaveBeenCalled();
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
-        viewerId: undefined,
+        viewerProfileId: undefined,
         isOwner: false,
         showSpoilers: false,
       });

@@ -82,7 +82,7 @@ function renderForm(
     items: ITEMS,
     initialSelectedIds: ['a1'],
     isNew: false,
-    user_id: 'u1',
+    profile_id: 'p1',
     lists: [],
     ...overrides,
   };
@@ -167,7 +167,7 @@ describe('ChooseItemsForm', () => {
           list_name="My List"
           items={ITEMS}
           initialSelectedIds={['a1']}
-          user_id="u1"
+          profile_id="p1"
           lists={[]}
         />
       );
@@ -206,7 +206,7 @@ describe('ChooseItemsForm', () => {
           list_name="My List"
           items={ITEMS}
           initialSelectedIds={['a1']}
-          user_id="u1"
+          profile_id="p1"
           lists={[]}
         />
       );

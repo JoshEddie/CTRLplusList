@@ -4,7 +4,7 @@ import { db } from '@/db';
 import { lists } from '@/db/schema';
 import {
   UNAUTHORIZED_RESPONSE,
-  authedUserId,
+  authedIdentity,
 } from '@/lib/data/user.session';
 import { type ActionResponse } from '@/lib/types';
 import {
@@ -43,8 +43,8 @@ export type ListData = z.infer<typeof ListSchema>;
 
 export async function createList(data: ListData): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       return UNAUTHORIZED_RESPONSE;
     }
 
@@ -65,7 +65,8 @@ export async function createList(data: ListData): Promise<ActionResponse> {
       subtitle: validatedData.subtitle ?? null,
       occasion: sql`${validatedData.occasion}`,
       date: validatedData.date,
-      user_id: userId,
+      profile_id: identity.profile.id,
+      updated_by_user_id: identity.userId,
     });
 
     updateTag('lists');
@@ -90,15 +91,15 @@ export async function updateList(
   data: Partial<ListData>
 ): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       return UNAUTHORIZED_RESPONSE;
     }
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, id),
       columns: {
-        user_id: true,
+        profile_id: true,
         name: true,
         subtitle: true,
         occasion: true,
@@ -108,7 +109,7 @@ export async function updateList(
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
-    if (list.user_id !== userId) {
+    if (list.profile_id !== identity.profile.id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -158,6 +159,7 @@ export async function updateList(
       };
     }
     updateData.updated_at = new Date();
+    updateData.updated_by_user_id = identity.userId;
 
     const result = await db
       .update(lists)
@@ -192,19 +194,19 @@ export async function updateList(
 
 export async function deleteList(id: string): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       return UNAUTHORIZED_RESPONSE;
     }
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, id),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
-    if (list.user_id !== userId) {
+    if (list.profile_id !== identity.profile.id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -234,8 +236,8 @@ export async function setListVisibility(
   visibility: ListVisibility
 ): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       return UNAUTHORIZED_RESPONSE;
     }
 
@@ -250,12 +252,12 @@ export async function setListVisibility(
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, id),
-      columns: { user_id: true, visibility: true },
+      columns: { profile_id: true, visibility: true },
     });
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
-    if (list.user_id !== userId) {
+    if (list.profile_id !== identity.profile.id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',

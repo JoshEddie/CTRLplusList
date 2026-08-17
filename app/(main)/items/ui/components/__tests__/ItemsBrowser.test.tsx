@@ -58,6 +58,7 @@ function makeItem(id: string, overrides: Partial<ItemDisplay> = {}): ItemDisplay
     created_at: new Date('2024-01-01T00:00:00Z'),
     updated_at: new Date('2024-01-01T00:00:00Z'),
     user_id: 'u1',
+    profile_id: 'p1',
     quantity_limit: null,
     ...overrides,
   };
@@ -71,7 +72,7 @@ function renderBrowser(items: ItemDisplay[], overrides: Partial<BrowserProps> = 
       items={items}
       mode={overrides.mode ?? 'list'}
       initialPageSize={overrides.initialPageSize}
-      user_id={overrides.user_id}
+      profile_id={overrides.profile_id}
     />
   );
 }

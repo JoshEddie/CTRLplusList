@@ -15,26 +15,26 @@ vi.mock('next/link', async () => ({
 describe('ConnectionRow', () => {
   it('NamePresent_RendersNameLinkedToUserProfile', () => {
     render(
-      <ConnectionRow userId="u1" name="Alice" actions={<span />} />
+      <ConnectionRow profileId="p1" name="Alice" actions={<span />} />
     );
     expect(screen.getByRole('link', { name: 'Alice' })).toHaveAttribute(
       'href',
-      '/user/u1'
+      '/user/p1'
     );
   });
 
   it('NameNull_RendersUnnamedFallbackLinkedToUserProfile', () => {
-    render(<ConnectionRow userId="u2" name={null} actions={<span />} />);
+    render(<ConnectionRow profileId="p2" name={null} actions={<span />} />);
     expect(screen.getByRole('link', { name: 'Unnamed' })).toHaveAttribute(
       'href',
-      '/user/u2'
+      '/user/p2'
     );
   });
 
   it('SincePresent_RendersFormattedShortDateSubline', () => {
     render(
       <ConnectionRow
-        userId="u1"
+        profileId="p1"
         name="Alice"
         since={new Date(2026, 4, 19)}
         actions={<span />}
@@ -45,7 +45,7 @@ describe('ConnectionRow', () => {
 
   it('SinceAbsent_RendersNoSinceSubline', () => {
     const { container } = render(
-      <ConnectionRow userId="u1" name="Alice" actions={<span />} />
+      <ConnectionRow profileId="p1" name="Alice" actions={<span />} />
     );
     expect(container.querySelector('.connections-row-since')).toBeNull();
   });
@@ -53,7 +53,7 @@ describe('ConnectionRow', () => {
   it('Actions_RendersProvidedChildren', () => {
     render(
       <ConnectionRow
-        userId="u1"
+        profileId="p1"
         name="Alice"
         actions={<button>Unfollow</button>}
       />

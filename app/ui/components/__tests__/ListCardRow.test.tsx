@@ -48,8 +48,8 @@ describe('ListCardRow', () => {
 
     it('ShowOwner_ThreadsToEachCard', () => {
       const lists = [
-        makeList({ id: 'a', user: { name: 'Alice' } }),
-        makeList({ id: 'b', user: { name: 'Bob' } }),
+        makeList({ id: 'a', profile: { name: 'Alice' } }),
+        makeList({ id: 'b', profile: { name: 'Bob' } }),
       ];
       render(<ListCardRow lists={lists} emptyMessage="empty" showOwner />);
       const bylines = Array.from(

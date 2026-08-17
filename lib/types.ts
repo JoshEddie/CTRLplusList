@@ -6,6 +6,16 @@ export type ActionResponse = {
   id?: string;
 };
 
+export type ProfileTable = {
+  id: string;
+  name: string;
+  user_id: string | null;
+  created_at: Date;
+  updated_at: Date;
+};
+
+export type UserIdentity = { userId: string; profile: ProfileTable };
+
 export type ListTable = {
   id: string;
   name: string;
@@ -14,7 +24,8 @@ export type ListTable = {
   date: Date;
   created_at: Date;
   updated_at: Date;
-  user_id: string;
+  user_id: string | null;
+  profile_id: string;
   shared: boolean;
 };
 
@@ -33,7 +44,8 @@ export type ItemTable = {
   image_url?: string | null;
   created_at: Date;
   updated_at: Date;
-  user_id: string;
+  user_id: string | null;
+  profile_id: string;
   quantity_limit: number | null;
   archived_at?: Date | null;
 };
@@ -100,11 +112,11 @@ export type ItemStoreTable = {
 export type PurchaseTable = {
   id: string;
   item_id: string;
-  user_id: string | null;
-  claimed_by: string | null;
+  profile_id: string | null;
+  claimed_by_profile_id: string | null;
   guest_name: string | null;
   purchased_at: Date;
-  user: { name: string | null } | null;
+  purchaserProfile: { name: string | null } | null;
 };
 
 export type OptionType = {

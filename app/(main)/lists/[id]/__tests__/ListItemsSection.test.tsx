@@ -2,14 +2,19 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
 import { getList } from '@/lib/data/list';
-import { getUserIdByEmail, hasBlocked } from '@/lib/data/user';
+import { getUserIdentity, hasBlocked } from '@/lib/data/profile';
+import { getUserIdByEmail } from '@/lib/data/user';
 import ListItemsSection from '../ListItemsSection';
+import { makeProfile } from '@/test/helpers/profile';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/list', () => ({ getList: vi.fn() }));
+vi.mock('@/lib/data/profile', () => ({
+  getUserIdentity: vi.fn(),
+  hasBlocked: vi.fn(),
+}));
 vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
-  hasBlocked: vi.fn(),
   isFollowing: vi.fn(),
 }));
 // guardListViewable (lib/listAccess) statically imports `@/db`, which calls
@@ -42,14 +47,14 @@ vi.mock('@/app/(main)/items/ui/components/ItemsContainer', () => ({
   default: (p: {
     listId: string;
     isListOwner?: boolean;
-    viewerId?: string;
+    viewerProfileId?: string;
     showSpoilers?: boolean;
   }) => (
     <div
       data-testid="items-container"
       data-list-id={p.listId}
       data-is-list-owner={String(p.isListOwner)}
-      data-viewer-id={p.viewerId ?? ''}
+      data-viewer-profile-id={p.viewerProfileId ?? ''}
       data-show-spoilers={String(p.showSpoilers)}
     />
   ),
@@ -71,10 +76,14 @@ beforeEach(() => {
     id: 'u1',
     name: 'Owner',
   } as never);
+  vi.mocked(getUserIdentity).mockImplementation(async (userId: string) => ({
+    userId,
+    profile: makeProfile(`p-${userId}`, userId, userId),
+  }));
   vi.mocked(hasBlocked).mockResolvedValue(false as never);
   vi.mocked(getList).mockResolvedValue({
     id: 'l1',
-    user_id: 'u1',
+    profile_id: 'p-u1',
     visibility: 'public',
   } as never);
 });
@@ -83,7 +92,7 @@ describe('ListItemsSection', () => {
   it('Owner_MountsSortItemsContainerWithSpoilers', async () => {
     vi.mocked(getList).mockResolvedValue({
       id: 'l1',
-      user_id: 'u1',
+      profile_id: 'p-u1',
       visibility: 'private',
     } as never);
     render(await ListItemsSection(props('l1', { spoilers: '1' })));
@@ -93,14 +102,14 @@ describe('ListItemsSection', () => {
     expect(c).toHaveAttribute('data-show-spoilers', 'true');
   });
 
-  it('Viewer_MountsItemsContainerWithViewerId', async () => {
+  it('Viewer_MountsItemsContainerWithViewerProfileId', async () => {
     vi.mocked(getUserIdByEmail).mockResolvedValue({
       id: 'u2',
       name: 'Viewer',
     } as never);
     render(await ListItemsSection(props('l1')));
     const c = screen.getByTestId('items-container');
-    expect(c).toHaveAttribute('data-viewer-id', 'u2');
+    expect(c).toHaveAttribute('data-viewer-profile-id', 'p-u2');
     expect(c).toHaveAttribute('data-is-list-owner', 'false');
   });
 
@@ -108,7 +117,7 @@ describe('ListItemsSection', () => {
     render(await ListItemsSection(props('l1', { preview: 'viewer' })));
     const c = screen.getByTestId('items-container');
     expect(c).toHaveAttribute('data-is-list-owner', 'true');
-    expect(c).toHaveAttribute('data-viewer-id', 'u1');
+    expect(c).toHaveAttribute('data-viewer-profile-id', 'p-u1');
   });
 
   it('OwnerOnlyListNonOwner_RendersNothing', async () => {
@@ -118,7 +127,7 @@ describe('ListItemsSection', () => {
     } as never);
     vi.mocked(getList).mockResolvedValue({
       id: 'l1',
-      user_id: 'u1',
+      profile_id: 'p-u1',
       visibility: 'private',
     } as never);
     const { container } = render(await ListItemsSection(props('l1')));

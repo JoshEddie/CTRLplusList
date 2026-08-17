@@ -3,25 +3,25 @@ import Link from 'next/link';
 import { initialsOf } from '../utils';
 
 export default function UserCard({
-  user,
+  profile,
   newCount = 0,
   latestSharedAt = null,
   compact = false,
 }: {
-  user: { id: string; name: string | null; image: string | null };
+  profile: { id: string; name: string | null; image: string | null };
   newCount?: number;
   latestSharedAt?: Date | null;
   compact?: boolean;
 }) {
-  const hasImage = !!user.image && user.image.length > 0;
+  const hasImage = !!profile.image && profile.image.length > 0;
   const className = compact ? 'user-card user-card--compact' : 'user-card';
   const avatarSize = compact ? 44 : 64;
   return (
-    <Link href={`/user/${user.id}`} className={className}>
+    <Link href={`/user/${profile.id}`} className={className}>
       <div className="user-card-avatar">
         {hasImage ? (
           <Image
-            src={user.image!}
+            src={profile.image!}
             alt=""
             width={avatarSize}
             height={avatarSize}
@@ -29,7 +29,7 @@ export default function UserCard({
           />
         ) : (
           <span className="user-card-avatar-initials">
-            {initialsOf(user.name) || '?'}
+            {initialsOf(profile.name) || '?'}
           </span>
         )}
         {newCount > 0 && (
@@ -39,7 +39,7 @@ export default function UserCard({
         )}
       </div>
       <div className="user-card-meta">
-        <div className="user-card-name">{user.name ?? 'Unnamed'}</div>
+        <div className="user-card-name">{profile.name ?? 'Unnamed'}</div>
         {!compact &&
           (latestSharedAt ? (
             <div className="user-card-sub">

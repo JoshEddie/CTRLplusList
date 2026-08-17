@@ -79,7 +79,8 @@ const baseProps: Props = {
   list: makeList(),
   owner_name: 'Olivia Owner',
   owner_image: undefined,
-  viewer_id: 'owner-1',
+  viewer_user_id: 'owner-1',
+  viewer_profile_id: 'owner-profile-1',
   itemCount: 3,
 };
 
@@ -201,8 +202,9 @@ describe('ListDetails', () => {
   describe('Viewer', () => {
     const viewerProps: Partial<Props> = {
       isOwner: false,
-      viewer_id: 'viewer-9',
-      list: makeList({ shared: true, user_id: 'owner-1' }),
+      viewer_user_id: 'viewer-9',
+      viewer_profile_id: 'viewer-profile-9',
+      list: makeList({ shared: true, profile_id: 'owner-profile-1' }),
     };
 
     it('Viewer_ControlsCardHasBylineThenDividerThenActionRow', async () => {
@@ -222,7 +224,7 @@ describe('ListDetails', () => {
       const nameLink = within(byline).getByRole('link', {
         name: 'Olivia Owner',
       });
-      expect(nameLink).toHaveAttribute('href', '/user/owner-1');
+      expect(nameLink).toHaveAttribute('href', '/user/owner-profile-1');
       expectInOrder(byline, [
         '[data-testid="avatar-stub"]',
         '.list-hero-byline-link',
@@ -266,7 +268,7 @@ describe('ListDetails', () => {
       const link = container.querySelector(
         '.list-hero-byline-link'
       ) as HTMLElement;
-      expect(link).toHaveAttribute('href', '/user/owner-1');
+      expect(link).toHaveAttribute('href', '/user/owner-profile-1');
       expect(link).toHaveTextContent('');
     });
   });

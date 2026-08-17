@@ -5,7 +5,7 @@ import Item from './Item';
 
 interface ItemsProps {
   items: ItemDisplay[];
-  user_id?: string;
+  profile_id?: string;
   user_name?: string | null;
   view?: 'grid' | 'list';
   showSpoilers?: boolean;
@@ -15,7 +15,7 @@ interface ItemsProps {
 
 export default function Items({
   items,
-  user_id,
+  profile_id,
   user_name,
   view = 'grid',
   showSpoilers,
@@ -30,7 +30,7 @@ export default function Items({
             <Item
               key={item.id}
               item={item}
-              user_id={user_id}
+              profile_id={profile_id}
               user_name={user_name}
               showSpoilers={showSpoilers}
               showArchiveAction={showArchiveAction}

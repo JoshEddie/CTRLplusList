@@ -28,7 +28,7 @@ export default function ChooseItemsForm({
   items,
   initialSelectedIds,
   isNew = false,
-  user_id,
+  profile_id,
   lists,
 }: {
   list_id: string;
@@ -36,7 +36,7 @@ export default function ChooseItemsForm({
   items: ItemRow[];
   initialSelectedIds: string[];
   isNew?: boolean;
-  user_id: string;
+  profile_id: string;
   lists: ListTable[];
 }) {
   const router = useRouter();
@@ -236,7 +236,7 @@ export default function ChooseItemsForm({
                         checked={isSelected}
                         onChange={() => toggle(item.id)}
                       />
-                      <Item item={item} user_id={user_id} preview />
+                      <Item item={item} profile_id={profile_id} preview />
                     </label>
                   </li>
                 );

@@ -3,19 +3,19 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   blockUser,
-  removeFollower,
   unblockUser,
   unfollowUser,
-} from '@/lib/data/user.actions';
+} from '@/lib/data/profile.actions';
+import { removeFollower } from '@/lib/data/user.actions';
 import toast from 'react-hot-toast';
 import ConnectionsAction from '../ConnectionsActions';
 
-vi.mock('@/lib/data/user.actions', () => ({
+vi.mock('@/lib/data/profile.actions', () => ({
   unfollowUser: vi.fn(),
-  removeFollower: vi.fn(),
   blockUser: vi.fn(),
   unblockUser: vi.fn(),
 }));
+vi.mock('@/lib/data/user.actions', () => ({ removeFollower: vi.fn() }));
 
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));

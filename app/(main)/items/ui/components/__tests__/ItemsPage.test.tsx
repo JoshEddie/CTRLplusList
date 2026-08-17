@@ -60,7 +60,7 @@ function renderPage(
     <ItemsPage
       items={ACTIVE}
       archivedItems={ARCHIVED}
-      user_id="viewer"
+      profile_id="viewer-profile"
       user_name="Test V"
       lists={LISTS}
       initialPageSize={24}
@@ -180,7 +180,7 @@ describe('ItemsPage', () => {
     });
 
     it('MissingLists_FormDefaultsToEmptyListCount', () => {
-      renderPage({ lists: undefined, user_id: undefined });
+      renderPage({ lists: undefined, profile_id: undefined });
       fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
       const form = screen.getByTestId('item-form');
       expect(form).toHaveAttribute('data-lists-count', '0');

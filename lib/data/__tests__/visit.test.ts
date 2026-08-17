@@ -92,7 +92,7 @@ describe('getBookmarkedListsByUser', () => {
     });
 
     const rows = await dal.getBookmarkedListsByUser(VIEWER.id);
-    expect(rows[0].list.user.name).toBe('Olivia Owner');
+    expect(rows[0].list.profile.name).toBe('Olivia Owner');
   });
 
   it('NullLastVisitedButFavorited_StillReturned', async () => {
@@ -231,7 +231,7 @@ describe('getVisitHistoryByUser', () => {
     });
 
     const rows = await dal.getVisitHistoryByUser(VIEWER.id);
-    expect(rows[0].list.user.name).toBe('Olivia Owner');
+    expect(rows[0].list.profile.name).toBe('Olivia Owner');
   });
 });
 

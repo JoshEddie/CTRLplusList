@@ -37,6 +37,7 @@ import {
   user_follows,
   users,
 } from '../db/schema';
+import { selfProfileOf } from '../lib/profileIds';
 import { VISIBILITY, type ListVisibility } from '../lib/visibility';
 
 if (process.env.NODE_ENV === 'production') {
@@ -86,9 +87,6 @@ const seedUsers: SeedUser[] = [
   })),
 ];
 
-// Same deterministic scheme the phase-1 migration backfill uses, so seeded and
-// backfilled self-profiles are the same rows.
-const selfProfileId = (userId: string) => `self-${userId}`;
 const KIDDO_PROFILE_ID = 'dev-profile-kiddo';
 
 type SeedList = {
@@ -515,7 +513,8 @@ const seedVisits: SeedVisit[] = FRIEND_LIST_TEMPLATES.filter(
 }));
 
 // Follow graph — viewer follows ~6 friends; 4 follow back; 2 follow viewer
-// one-way (so followers count exceeds following count visually).
+// one-way (so followers count exceeds following count visually). The
+// followee's profile column is derived below at insert time.
 const seedFollows: { follower_id: string; followee_id: string }[] = [
   // Viewer → friend (following count = 6)
   { follower_id: VIEWER_ID, followee_id: friendId('alice') },
@@ -586,6 +585,7 @@ function appendLinklessExtras(
     name: string;
     description: string;
     user_id: string;
+    profile_id: string;
     image_url: string;
     archived_at: Date | null;
     quantity_limit: number | null;
@@ -601,6 +601,7 @@ function appendLinklessExtras(
       name: extra.name,
       description: extra.description,
       user_id: list.user_id,
+      profile_id: selfProfileOf(list.user_id),
       image_url: '',
       archived_at: null,
       quantity_limit: 1,
@@ -684,7 +685,7 @@ async function main() {
     .insert(profiles)
     .values([
       ...seedUsers.map((u) => ({
-        id: selfProfileId(u.id),
+        id: selfProfileOf(u.id),
         name: u.name,
         user_id: u.id,
       })),
@@ -696,7 +697,7 @@ async function main() {
     .values([
       ...seedUsers.map((u) => ({
         user_id: u.id,
-        profile_id: selfProfileId(u.id),
+        profile_id: selfProfileOf(u.id),
         role: 'self',
       })),
       { user_id: VIEWER_ID, profile_id: KIDDO_PROFILE_ID, role: 'owner' },
@@ -726,6 +727,7 @@ async function main() {
           subtitle: l.subtitle ?? null,
           occasion: l.occasion,
           user_id: l.user_id,
+          profile_id: selfProfileOf(l.user_id),
           visibility: l.visibility,
           shared,
           shared_at: shared ? sharedAt : null,
@@ -765,6 +767,7 @@ async function main() {
     name: string;
     description: string;
     user_id: string;
+    profile_id: string;
     image_url: string;
     archived_at: Date | null;
     quantity_limit: number | null;
@@ -791,6 +794,7 @@ async function main() {
         name,
         description: descriptionFor(itemId),
         user_id: list.user_id,
+        profile_id: selfProfileOf(list.user_id),
         image_url: imageless
           ? ''
           : `https://picsum.photos/seed/${itemId}/400/400`,
@@ -986,7 +990,9 @@ async function main() {
     id: string;
     item_id: string;
     user_id: string | null;
+    profile_id: string | null;
     claimed_by: string | null;
+    claimed_by_profile_id: string | null;
     guest_name: string | null;
     purchased_at: Date;
   }[] = [];
@@ -1003,7 +1009,9 @@ async function main() {
       id: 'dev-purchase-attributed',
       item_id: 'dev-list-viewer-birthday-item-1',
       user_id: friendId('bob'),
+      profile_id: selfProfileOf(friendId('bob')),
       claimed_by: friendId('alice'),
+      claimed_by_profile_id: selfProfileOf(friendId('alice')),
       guest_name: null,
       purchased_at: ATTRIBUTION_EPOCH,
     },
@@ -1013,7 +1021,9 @@ async function main() {
       id: 'dev-purchase-attributed-to-viewer',
       item_id: 'dev-list-alice-wedding-item-1',
       user_id: VIEWER_ID,
+      profile_id: selfProfileOf(VIEWER_ID),
       claimed_by: friendId('bob'),
+      claimed_by_profile_id: selfProfileOf(friendId('bob')),
       guest_name: null,
       purchased_at: ATTRIBUTION_EPOCH,
     },
@@ -1023,7 +1033,9 @@ async function main() {
       id: 'dev-purchase-owner-self',
       item_id: 'dev-list-viewer-birthday-item-2',
       user_id: VIEWER_ID,
+      profile_id: selfProfileOf(VIEWER_ID),
       claimed_by: VIEWER_ID,
+      claimed_by_profile_id: selfProfileOf(VIEWER_ID),
       guest_name: null,
       purchased_at: ATTRIBUTION_EPOCH,
     },
@@ -1034,7 +1046,9 @@ async function main() {
       id: 'dev-purchase-legacy-guest',
       item_id: 'dev-list-viewer-birthday-item-3',
       user_id: null,
+      profile_id: null,
       claimed_by: null,
+      claimed_by_profile_id: null,
       guest_name: 'Grandma',
       purchased_at: ATTRIBUTION_EPOCH,
     },
@@ -1078,9 +1092,11 @@ async function main() {
           id: `${itemId}-purchase-${n}`,
           item_id: itemId,
           user_id: asGuest ? null : buyerId,
+          profile_id: asGuest ? null : selfProfileOf(buyerId),
           // Self-claim shape: the buyer asserted their own claim. Guest rows
           // keep the signed-out shape (all-NULL identities).
           claimed_by: asGuest ? null : buyerId,
+          claimed_by_profile_id: asGuest ? null : selfProfileOf(buyerId),
           guest_name: asGuest ? GUEST_NAMES[h % GUEST_NAMES.length] : null,
           purchased_at: new Date(PURCHASE_EPOCH - ((h + n) % 60) * 86400000),
         });
@@ -1104,7 +1120,9 @@ async function main() {
         target: purchases.id,
         set: {
           user_id: sql`excluded.user_id`,
+          profile_id: sql`excluded.profile_id`,
           claimed_by: sql`excluded.claimed_by`,
+          claimed_by_profile_id: sql`excluded.claimed_by_profile_id`,
           guest_name: sql`excluded.guest_name`,
           purchased_at: sql`excluded.purchased_at`,
         },
@@ -1112,7 +1130,15 @@ async function main() {
   }
   console.log(`  purchases: ${purchaseRows.length} upserted`);
 
-  await db.insert(user_follows).values(seedFollows).onConflictDoNothing();
+  await db
+    .insert(user_follows)
+    .values(
+      seedFollows.map((f) => ({
+        ...f,
+        followee_profile_id: selfProfileOf(f.followee_id),
+      }))
+    )
+    .onConflictDoNothing();
   console.log(`  user_follows: ${seedFollows.length} upserted`);
 
   await db

@@ -1,7 +1,16 @@
-import { lists, user_blocks, user_follows, users } from '../../db/schema';
+import {
+  lists,
+  profiles,
+  user_blocks,
+  user_follows,
+  users,
+} from '../../db/schema';
 import type { bootPglite } from './db';
+import { selfProfileOf } from './profile';
 
 type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
+
+export { selfProfileOf };
 
 type SeedUser = {
   id: string;
@@ -9,6 +18,7 @@ type SeedUser = {
   email?: string | null;
   image?: string | null;
   last_seen_following_at?: Date | null;
+  profile_name?: string;
 };
 
 export async function seedUsers(db: TestDb, ids: SeedUser[]): Promise<void> {
@@ -21,6 +31,24 @@ export async function seedUsers(db: TestDb, ids: SeedUser[]): Promise<void> {
       last_seen_following_at: u.last_seen_following_at ?? null,
     }))
   );
+  await db.insert(profiles).values(
+    ids.map((u) => ({
+      id: selfProfileOf(u.id),
+      name: u.profile_name ?? u.name ?? u.id,
+      user_id: u.id,
+    }))
+  );
+}
+
+export async function seedManagedProfile(
+  db: TestDb,
+  profile: { id: string; name?: string }
+): Promise<void> {
+  await db.insert(profiles).values({
+    id: profile.id,
+    name: profile.name ?? profile.id,
+    user_id: null,
+  });
 }
 
 export async function seedFollow(
@@ -31,7 +59,7 @@ export async function seedFollow(
 ): Promise<void> {
   await db.insert(user_follows).values({
     follower_id,
-    followee_id,
+    followee_profile_id: selfProfileOf(followee_id),
     ...(created_at ? { created_at } : {}),
   });
 }
@@ -43,15 +71,16 @@ export async function seedBlock(
   created_at?: Date
 ): Promise<void> {
   await db.insert(user_blocks).values({
-    blocker_id,
-    blocked_id,
+    blocker_profile_id: selfProfileOf(blocker_id),
+    blocked_profile_id: selfProfileOf(blocked_id),
     ...(created_at ? { created_at } : {}),
   });
 }
 
 type SeedList = {
   id: string;
-  user_id: string;
+  user_id?: string;
+  profile_id?: string;
   visibility?: string;
   shared_at?: Date | null;
 };
@@ -64,7 +93,7 @@ export async function seedPublicList(
     id: list.id,
     name: list.id,
     occasion: 'birthday',
-    user_id: list.user_id,
+    profile_id: list.profile_id ?? selfProfileOf(list.user_id ?? list.id),
     visibility: list.visibility ?? 'public',
     shared_at: list.shared_at ?? new Date(),
   });

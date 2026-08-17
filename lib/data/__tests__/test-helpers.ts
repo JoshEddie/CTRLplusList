@@ -5,9 +5,11 @@ import {
   list_items,
   list_visits,
   lists,
+  profiles,
   purchases,
 } from '@/db/schema';
 import type { bootPglite } from '@/test/helpers/db';
+import { selfProfileOf } from '@/test/helpers/profile';
 
 // Shared seed helpers for the lib/data test lanes.
 // The vi.mock harness (the `@/db` getter-holder, the `@/lib/auth` mock,
@@ -17,11 +19,27 @@ import type { bootPglite } from '@/test/helpers/db';
 
 export type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
 
+export { selfProfileOf };
+
+// Owned rows FK the owning profile, so seedList/seedItem upsert it first —
+// tests only seed a users row when the account side matters.
+async function ensureProfile(
+  db: TestDb,
+  profileId: string,
+  userId: string | null
+): Promise<void> {
+  await db
+    .insert(profiles)
+    .values({ id: profileId, name: profileId, user_id: userId })
+    .onConflictDoNothing();
+}
+
 export async function seedList(
   db: TestDb,
   list: {
     id: string;
-    user_id: string;
+    user_id?: string;
+    profile_id?: string;
     name?: string;
     subtitle?: string | null;
     occasion?: string;
@@ -33,13 +51,15 @@ export async function seedList(
     updated_at?: Date;
   }
 ): Promise<void> {
+  const profileId = list.profile_id ?? selfProfileOf(list.user_id ?? list.id);
+  await ensureProfile(db, profileId, list.user_id ?? null);
   await db.insert(lists).values({
     id: list.id,
     name: list.name ?? list.id,
     subtitle: list.subtitle ?? null,
     occasion: list.occasion ?? 'birthday',
     date: list.date ?? new Date('2030-01-01'),
-    user_id: list.user_id,
+    profile_id: profileId,
     visibility: list.visibility ?? 'private',
     shared: list.shared ?? false,
     shared_at: list.shared_at ?? null,
@@ -52,7 +72,8 @@ export async function seedItem(
   db: TestDb,
   item: {
     id: string;
-    user_id: string;
+    user_id?: string;
+    profile_id?: string;
     name?: string;
     description?: string;
     image_url?: string | null;
@@ -61,12 +82,14 @@ export async function seedItem(
     created_at?: Date;
   }
 ): Promise<void> {
+  const profileId = item.profile_id ?? selfProfileOf(item.user_id ?? item.id);
+  await ensureProfile(db, profileId, item.user_id ?? null);
   await db.insert(items).values({
     id: item.id,
     name: item.name ?? item.id,
     description: item.description ?? '',
     image_url: item.image_url ?? null,
-    user_id: item.user_id,
+    profile_id: profileId,
     // Matches the schema default — explicit so the seeded state is readable.
     quantity_limit:
       item.quantity_limit === undefined ? 1 : item.quantity_limit,
@@ -87,8 +110,8 @@ export async function seedPurchase(
   purchase: {
     id: string;
     item_id: string;
-    user_id?: string | null;
-    claimed_by?: string | null;
+    profile_id?: string | null;
+    claimed_by_profile_id?: string | null;
     guest_name?: string | null;
     purchased_at?: Date;
   }
@@ -96,8 +119,8 @@ export async function seedPurchase(
   await db.insert(purchases).values({
     id: purchase.id,
     item_id: purchase.item_id,
-    user_id: purchase.user_id ?? null,
-    claimed_by: purchase.claimed_by ?? null,
+    profile_id: purchase.profile_id ?? null,
+    claimed_by_profile_id: purchase.claimed_by_profile_id ?? null,
     guest_name: purchase.guest_name ?? null,
     purchased_at: purchase.purchased_at ?? new Date(),
   });

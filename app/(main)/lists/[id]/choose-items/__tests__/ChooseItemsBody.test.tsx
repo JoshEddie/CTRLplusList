@@ -1,17 +1,20 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
-import { getItemsByUser } from '@/lib/data/item';
-import { getList, getListsByUser } from '@/lib/data/list';
+import { getItemsByProfile } from '@/lib/data/item';
+import { getList, getListsByProfile } from '@/lib/data/list';
+import { getUserIdentity } from '@/lib/data/profile';
 import { getUserIdByEmail } from '@/lib/data/user';
 import ChooseItemsBody from '../ChooseItemsBody';
+import { makeProfile } from '@/test/helpers/profile';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/data/item', () => ({ getItemsByUser: vi.fn() }));
+vi.mock('@/lib/data/item', () => ({ getItemsByProfile: vi.fn() }));
 vi.mock('@/lib/data/list', () => ({
   getList: vi.fn(),
-  getListsByUser: vi.fn(),
+  getListsByProfile: vi.fn(),
 }));
+vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({ getUserIdByEmail: vi.fn() }));
 
 const redirectMock = vi.hoisted(() =>
@@ -37,7 +40,7 @@ vi.mock('../ChooseItemsForm', () => ({
     items: { id: string }[];
     initialSelectedIds: string[];
     isNew: boolean;
-    user_id: string;
+    profile_id: string;
     lists: unknown[];
   }) => (
     <div
@@ -47,7 +50,7 @@ vi.mock('../ChooseItemsForm', () => ({
       data-item-ids={p.items.map((i) => i.id).join(',')}
       data-selected={p.initialSelectedIds.join(',')}
       data-is-new={String(p.isNew)}
-      data-user-id={p.user_id}
+      data-profile-id={p.profile_id}
       data-lists-count={String(p.lists.length)}
     />
   ),
@@ -70,17 +73,21 @@ beforeEach(() => {
     id: 'u1',
     name: 'Owner',
   } as never);
+  vi.mocked(getUserIdentity).mockResolvedValue({
+    userId: 'u1',
+    profile: makeProfile('p1', 'Owner', 'u1'),
+  });
   vi.mocked(getList).mockResolvedValue({
     id: 'l1',
     name: 'My List',
-    user_id: 'u1',
+    profile_id: 'p1',
   } as never);
-  vi.mocked(getItemsByUser).mockResolvedValue([
+  vi.mocked(getItemsByProfile).mockResolvedValue([
     { id: 'a1', name: 'Active', archived_at: null },
     { id: 'a2', name: 'ArchivedOff', archived_at: new Date() },
     { id: 'a3', name: 'ArchivedOn', archived_at: new Date() },
   ] as never);
-  vi.mocked(getListsByUser).mockResolvedValue([
+  vi.mocked(getListsByProfile).mockResolvedValue([
     { id: 'l1' },
     { id: 'l2' },
   ] as never);
@@ -99,6 +106,12 @@ describe('ChooseItemsBody', () => {
       await expect(ChooseItemsBody(props())).rejects.toThrow('REDIRECT:/lists');
     });
 
+    it('NoProfile_RedirectsToLists', async () => {
+      vi.mocked(getUserIdentity).mockResolvedValue(null);
+      await expect(ChooseItemsBody(props())).rejects.toThrow('REDIRECT:/lists');
+      expect(getItemsByProfile).not.toHaveBeenCalled();
+    });
+
     it('NoList_RedirectsToLists', async () => {
       vi.mocked(getList).mockResolvedValue(null as never);
       await expect(ChooseItemsBody(props())).rejects.toThrow('REDIRECT:/lists');
@@ -108,7 +121,7 @@ describe('ChooseItemsBody', () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
         name: 'My List',
-        user_id: 'someone-else',
+        profile_id: 'someone-else',
       } as never);
       await expect(ChooseItemsBody(props('l1'))).rejects.toThrow(
         'REDIRECT:/lists/l1'
@@ -120,14 +133,14 @@ describe('ChooseItemsBody', () => {
     it('LoadsActiveAndArchivedOnList_ForwardsMembershipAndProps', async () => {
       membership.rows = [{ item_id: 'a3' }];
       render(await ChooseItemsBody(props('l1')));
-      expect(getItemsByUser).toHaveBeenCalledWith('u1', { filter: 'all' });
+      expect(getItemsByProfile).toHaveBeenCalledWith('p1', { filter: 'all' });
       const form = screen.getByTestId('choose-form');
       // a2 (archived, not on list) filtered out; a1 (active) + a3 (archived but on list) kept.
       expect(form).toHaveAttribute('data-item-ids', 'a1,a3');
       expect(form).toHaveAttribute('data-selected', 'a3');
       expect(form).toHaveAttribute('data-list-id', 'l1');
       expect(form).toHaveAttribute('data-list-name', 'My List');
-      expect(form).toHaveAttribute('data-user-id', 'u1');
+      expect(form).toHaveAttribute('data-profile-id', 'p1');
       expect(form).toHaveAttribute('data-lists-count', '2');
       expect(form).toHaveAttribute('data-is-new', 'false');
     });

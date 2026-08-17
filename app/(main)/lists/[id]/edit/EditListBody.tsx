@@ -1,6 +1,5 @@
-import { auth } from '@/lib/auth';
 import { getList } from '@/lib/data/list';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { authedUserId } from '@/lib/data/user.session';
 import { redirect } from 'next/navigation';
 import ListForm from '../../ui/components/ListForm';
 
@@ -9,16 +8,10 @@ type Props = {
 };
 
 export default async function EditListBody({ params }: Props) {
-  const session = await auth();
+  const viewerId = await authedUserId();
   const { id } = await params;
 
-  if (!session?.user?.email) {
-    redirect('/');
-  }
-
-  const user = await getUserIdByEmail(session.user.email);
-
-  if (!user) {
+  if (!viewerId) {
     redirect('/');
   }
 

@@ -17,7 +17,7 @@ import {
   pruneGuestClaim,
   serializeGuestClaims,
 } from '@/lib/data/purchase.cookie';
-import { authedUserId } from '@/lib/data/user.session';
+import { authedIdentity } from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
 import { type ActionResponse } from '@/lib/types';
@@ -30,22 +30,23 @@ import { cookies } from 'next/headers';
 const PG_UNIQUE_VIOLATION = '23505';
 
 // Resolve who a createPurchase claim is authorized AS vs stored AS, producing
-// one of the four row shapes (claimed_by = who asserted, user_id = the
-// purchaser):
-//   self-claim:               claimed_by = caller, user_id = caller
-//   attributed claim:         claimed_by = caller, user_id = purchased_by target
-//   authenticated guest name: claimed_by = caller, user_id = NULL, guest_name set
-//   signed-out guest:         claimed_by = NULL,   user_id = NULL, guest_name set
-// claimed_by is always session-resolved; the purchased_by target is a payload
-// field but only an attribution target — eligibility is re-verified against
-// the live follow/block graph before insert.
+// one of the four row shapes (claimed_by_profile_id = who asserted,
+// profile_id = the purchaser):
+//   self-claim:               asserter = caller's self-profile, purchaser = caller's self-profile
+//   attributed claim:         asserter = caller's self-profile, purchaser = purchased_by target
+//   authenticated guest name: asserter = caller's self-profile, purchaser = NULL, guest_name set
+//   signed-out guest:         asserter = NULL,                  purchaser = NULL, guest_name set
+// The asserter is always the session-resolved caller's self-profile — a claim
+// is a human act; the purchased_by target is a payload field but only an
+// attribution target (a profile id) — eligibility is re-verified against the
+// live follow/block graph before insert.
 async function resolveClaimIdentity(
   rawGuestName: string | null,
   purchasedBy: string | null
 ): Promise<
   | {
-      callerUserId: string | null;
-      purchaserUserId: string | null;
+      callerProfileId: string | null;
+      purchaserProfileId: string | null;
       guestName: string | null;
     }
   | { error: ActionResponse }
@@ -53,8 +54,8 @@ async function resolveClaimIdentity(
   const session = await auth();
   const trimmed = rawGuestName?.trim() ?? '';
   if (session?.user?.email) {
-    const callerId = await authedUserId();
-    if (!callerId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       return {
         error: { success: false, message: 'User not found', error: 'Unauthorized' },
       };
@@ -70,16 +71,20 @@ async function resolveClaimIdentity(
     }
     if (purchasedBy) {
       return {
-        callerUserId: callerId,
-        purchaserUserId: purchasedBy,
+        callerProfileId: identity.profile.id,
+        purchaserProfileId: purchasedBy,
         guestName: null,
       };
     }
     return trimmed
-      ? { callerUserId: callerId, purchaserUserId: null, guestName: trimmed }
+      ? {
+          callerProfileId: identity.profile.id,
+          purchaserProfileId: null,
+          guestName: trimmed,
+        }
       : {
-          callerUserId: callerId,
-          purchaserUserId: callerId,
+          callerProfileId: identity.profile.id,
+          purchaserProfileId: identity.profile.id,
           guestName: null,
         };
   }
@@ -92,7 +97,7 @@ async function resolveClaimIdentity(
       },
     };
   }
-  return { callerUserId: null, purchaserUserId: null, guestName: trimmed };
+  return { callerProfileId: null, purchaserProfileId: null, guestName: trimmed };
 }
 
 export async function createPurchase(data: {
@@ -108,16 +113,16 @@ export async function createPurchase(data: {
     if ('error' in identity) {
       return identity.error;
     }
-    // callerUserId authorizes the request (the viewability/block gate below)
-    // and is stored as claimed_by; purchaserUserId + guestName identify the
-    // purchaser we STORE for the claim.
-    const { callerUserId, purchaserUserId, guestName } = identity;
+    // callerProfileId authorizes the request (the viewability/block gate
+    // below) and is stored as the asserter; purchaserProfileId + guestName
+    // identify the purchaser we STORE for the claim.
+    const { callerProfileId, purchaserProfileId, guestName } = identity;
 
     // Gate by viewability: items on lists the caller can't see are unclaimable.
     // Indistinguishable from a missing item on purpose. Gated on the
     // authenticated caller (not the stored attribution) so a blocked caller
     // cannot slip a claim through the on-behalf path.
-    const viewable = await isItemViewable(data.item_id, callerUserId);
+    const viewable = await isItemViewable(data.item_id, callerProfileId);
     if (!viewable) {
       return {
         success: false,
@@ -128,7 +133,7 @@ export async function createPurchase(data: {
 
     const item = await db.query.items.findFirst({
       where: eq(items.id, data.item_id),
-      columns: { quantity_limit: true, user_id: true },
+      columns: { quantity_limit: true, profile_id: true },
     });
     if (!item) {
       return {
@@ -139,7 +144,7 @@ export async function createPurchase(data: {
     }
 
     const isAttributed =
-      !!purchaserUserId && purchaserUserId !== callerUserId;
+      !!purchaserProfileId && purchaserProfileId !== callerProfileId;
     if (isAttributed) {
       // Re-verify the attribution target against the live graph: must be an
       // owner-mutual, no block edge with the claimer, and not the owner. The
@@ -148,11 +153,11 @@ export async function createPurchase(data: {
       // residual and harmless: removal rights are row-based, and the at-claim
       // gate is best-effort by design.
       const eligible = await isEligiblePurchaser(
-        item.user_id,
-        // callerUserId is non-null here: purchased_by without a session is
+        item.profile_id,
+        // callerProfileId is non-null here: purchased_by without a session is
         // rejected in resolveClaimIdentity.
-        callerUserId as string,
-        purchaserUserId
+        callerProfileId as string,
+        purchaserProfileId
       );
       if (!eligible) {
         return {
@@ -166,7 +171,7 @@ export async function createPurchase(data: {
     const existing = await db
       .select({
         id: purchases.id,
-        user_id: purchases.user_id,
+        profile_id: purchases.profile_id,
         guest_name: purchases.guest_name,
       })
       .from(purchases)
@@ -174,7 +179,7 @@ export async function createPurchase(data: {
 
     const conflict = claimConflictResponse(
       existing,
-      purchaserUserId,
+      purchaserProfileId,
       guestName,
       item.quantity_limit,
       isAttributed
@@ -188,15 +193,15 @@ export async function createPurchase(data: {
         .values({
           id: nanoid(),
           item_id: data.item_id,
-          user_id: purchaserUserId,
-          claimed_by: callerUserId,
+          profile_id: purchaserProfileId,
+          claimed_by_profile_id: callerProfileId,
           guest_name: guestName,
           purchased_at: new Date(),
         })
         .returning({ id: purchases.id });
       insertedId = inserted.id;
     } catch (insertError) {
-      // Partial unique index trip (purchases_item_user_unique_idx): a
+      // Partial unique index trip (purchases_item_profile_unique_idx): a
       // duplicate purchaser slipped past the in-app check because two
       // requests raced against distinct DB sessions. The capacity-race for
       // guest claims / different users on a limited item is not closed at the
@@ -209,7 +214,7 @@ export async function createPurchase(data: {
       throw insertError;
     }
 
-    if (!callerUserId) {
+    if (!callerProfileId) {
       const store = await cookies();
       const claims = appendGuestClaim(
         parseGuestClaims(store.get(GUEST_CLAIMS_COOKIE)?.value),
@@ -256,15 +261,15 @@ export async function removePurchase(
       };
     }
 
-    const actorUserId = await authedUserId();
+    const actorIdentity = await authedIdentity();
 
     const row = await db.query.purchases.findFirst({
       where: eq(purchases.id, data.purchase_id),
       columns: {
         id: true,
         item_id: true,
-        user_id: true,
-        claimed_by: true,
+        profile_id: true,
+        claimed_by_profile_id: true,
       },
     });
     if (!row) {
@@ -277,11 +282,11 @@ export async function removePurchase(
 
     const targetItem = await db.query.items.findFirst({
       where: eq(items.id, row.item_id),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
 
     let guestClaims = null;
-    if (!actorUserId) {
+    if (!actorIdentity) {
       const store = await cookies();
       guestClaims = parseGuestClaims(store.get(GUEST_CLAIMS_COOKIE)?.value);
     }
@@ -289,8 +294,8 @@ export async function removePurchase(
     if (
       !canRemovePurchase(
         row,
-        targetItem?.user_id ?? null,
-        actorUserId,
+        targetItem?.profile_id ?? null,
+        actorIdentity?.profile.id ?? null,
         new Set(guestClaims?.purchases)
       )
     ) {

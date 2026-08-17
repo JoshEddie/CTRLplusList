@@ -32,7 +32,7 @@ import Item from './Item';
 interface ItemsProps {
   items: ItemDisplay[];
   listId: string;
-  user_id?: string;
+  profile_id?: string;
   showSpoilers?: boolean;
 }
 
@@ -52,7 +52,7 @@ function EmptyListCTA({ listId }: { listId: string }) {
 export default function SortItems({
   items,
   listId,
-  user_id,
+  profile_id,
   showSpoilers,
 }: ItemsProps) {
   const router = useRouter();
@@ -163,7 +163,7 @@ export default function SortItems({
                 id={item.id}
                 item={item}
                 listId={listId}
-                user_id={user_id}
+                profile_id={profile_id}
                 showSpoilers={showSpoilers}
                 isAnyDragging={isDragging}
               />
@@ -177,7 +177,7 @@ export default function SortItems({
           <Item
             item={itemsState[activeIndex]}
             className="item-drag-overlay"
-            user_id={user_id}
+            profile_id={profile_id}
           />
         ) : null}
       </DragOverlay>
@@ -190,7 +190,7 @@ export function SortableItem({
   item,
   className,
   listId,
-  user_id,
+  profile_id,
   showSpoilers,
   isAnyDragging = false,
 }: {
@@ -198,7 +198,7 @@ export function SortableItem({
   item: ItemDisplay;
   className?: string;
   listId?: string;
-  user_id?: string;
+  profile_id?: string;
   showSpoilers?: boolean;
   isAnyDragging?: boolean;
 }) {
@@ -244,7 +244,7 @@ export function SortableItem({
       <Item
         item={item}
         listId={listId}
-        user_id={user_id}
+        profile_id={profile_id}
         showSpoilers={showSpoilers}
       />
     </div>

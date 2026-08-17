@@ -1,4 +1,4 @@
-import { getPublicListsByUser } from '@/lib/data/list';
+import { getPublicListsByProfile } from '@/lib/data/list';
 import PublicListsGrid from '../../users/ui/components/PublicListsGrid';
 
 type Props = {
@@ -7,6 +7,6 @@ type Props = {
 
 export default async function ProfileListsSection({ params }: Props) {
   const { id } = await params;
-  const lists = await getPublicListsByUser(id, { limit: 50 });
+  const lists = await getPublicListsByProfile(id, { limit: 50 });
   return <PublicListsGrid lists={lists} />;
 }

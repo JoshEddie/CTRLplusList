@@ -1,8 +1,8 @@
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
-import { auth } from '@/lib/auth';
-import { getFollowingFeedUsers, getUserIdByEmail } from '@/lib/data/user';
+import { getFollowingFeedProfiles } from '@/lib/data/user';
+import { authedUserId } from '@/lib/data/user.session';
 import { eq } from 'drizzle-orm';
 import { updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -17,18 +17,15 @@ const EMPTY_MESSAGE = (
 );
 
 export default async function FollowingPage() {
-  const session = await auth();
-  if (!session?.user?.email) redirect('/');
-  const viewer = await getUserIdByEmail(session.user.email);
-  if (!viewer) redirect('/');
+  const viewerId = await authedUserId();
+  if (!viewerId) redirect('/');
 
-  const feedUsers = await getFollowingFeedUsers(viewer.id);
+  const feedProfiles = await getFollowingFeedProfiles(viewerId);
 
   // Mark seen after the response is sent. Inlined (not a server action)
   // because the deferred work cannot call auth() — Next 16 disallows
-  // headers()/cookies() inside after(). Viewer id is captured into a local
-  // here so the closure never touches request state.
-  const viewerId = viewer.id;
+  // headers()/cookies() inside after(). The viewer id resolved above is the
+  // only request state the closure reads.
   after(async () => {
     try {
       await db
@@ -44,7 +41,7 @@ export default async function FollowingPage() {
   return (
     <div className="following-page">
       <ListCollectionsNav />
-      <UserCardGrid users={feedUsers} emptyMessage={EMPTY_MESSAGE} />
+      <UserCardGrid profiles={feedProfiles} emptyMessage={EMPTY_MESSAGE} />
     </div>
   );
 }

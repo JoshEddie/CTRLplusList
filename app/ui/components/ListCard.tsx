@@ -7,7 +7,7 @@ export type ListCardData = {
   subtitle?: string | null;
   occasion: string;
   date: Date;
-  user?: { name: string | null } | null;
+  profile?: { name: string | null } | null;
 };
 
 export default function ListCard({
@@ -19,7 +19,7 @@ export default function ListCard({
   showOwner?: boolean;
   bookmarked?: boolean;
 }) {
-  const ownerName = showOwner ? list.user?.name : null;
+  const ownerName = showOwner ? list.profile?.name : null;
   return (
     <Link className="list-card" href={`/lists/${list.id}`}>
       <div className="list-card-head">

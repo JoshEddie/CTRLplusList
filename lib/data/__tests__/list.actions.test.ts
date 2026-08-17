@@ -7,7 +7,7 @@ import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 
-import { seedList, type TestDb } from './test-helpers';
+import { seedList, selfProfileOf, type TestDb } from './test-helpers';
 
 mockNextCache();
 
@@ -137,7 +137,9 @@ describe('createList', () => {
       id: res.id,
       name: 'Birthday Bash',
       subtitle: null,
-      user_id: OWNER.id,
+      profile_id: selfProfileOf(OWNER.id),
+      updated_by_user_id: OWNER.id,
+      user_id: null,
     });
     expect(updateTag).toHaveBeenCalledWith('lists');
   });
@@ -185,7 +187,11 @@ describe('updateList', () => {
     expect(res.id).toBe('L');
 
     const row = (await listRows()).find((l) => l.id === 'L');
-    expect(row).toMatchObject({ name: 'New Name', subtitle: 'keep me' });
+    expect(row).toMatchObject({
+      name: 'New Name',
+      subtitle: 'keep me',
+      updated_by_user_id: OWNER.id,
+    });
     expect(updateTag).toHaveBeenCalledWith('lists');
   });
 
@@ -675,6 +681,22 @@ describe('setListVisibility', () => {
     expect((await findL())?.updated_at.toISOString()).toBe(
       STALE.toISOString()
     );
+  });
+
+  it('PrivateToPublic_LeavesUpdatedByUserIdUnstamped', async () => {
+    // Visibility is not a content edit, so it records no editor.
+    await seedList(db, {
+      id: 'L',
+      user_id: OWNER.id,
+      visibility: 'private',
+      shared: false,
+      shared_at: null,
+    });
+
+    const res = await actions.setListVisibility('L', 'public');
+
+    expect(res.success).toBe(true);
+    expect((await findL())?.updated_by_user_id).toBeNull();
   });
 
   describe('SuccessShapeAndRevalidation', () => {

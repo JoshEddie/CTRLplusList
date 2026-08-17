@@ -9,6 +9,7 @@ import ListPage from '../page';
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/list', () => ({ getList: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({ getUserIdByEmail: vi.fn() }));
+vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
 
 vi.mock('../ListHeroSection', () => ({
   default: (props: { params: unknown; searchParams: unknown }) => (

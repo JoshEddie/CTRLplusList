@@ -1,8 +1,8 @@
 import ListCard from '@/app/ui/components/ListCard';
-import { getListsByUser } from '@/lib/data/list';
+import { getListsByProfile } from '@/lib/data/list';
 
-export default async function MyListsGrid({ userId }: { userId: string }) {
-  const lists = await getListsByUser(userId);
+export default async function MyListsGrid({ profileId }: { profileId: string }) {
+  const lists = await getListsByProfile(profileId);
 
   if (lists.length === 0) {
     return (
