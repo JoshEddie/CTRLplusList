@@ -65,19 +65,27 @@ artifacts:
       An ADR is a decision that outlives this change and binds later work.
 
       A decision earns an entry when BOTH hold:
-      - It outlives this change - a choice binding only this change stays in
-        design.md
+      - It LASTS - an ADR binds until it is removed or superseded. A choice
+        binding only this change stays in design.md; a rule that exists only to
+        carry a temporary state - a migration, a transition, a deprecation
+        window - ends when that state ends and is not an ADR however many
+        changes it binds on the way
       - The channel already firing at its trigger carries the rule WITHOUT its
         reasoning. A lint error states a threshold and never the argument behind
-        it, so the decision behind it earns an entry; a rule that already travels
-        with its reasoning (an instruction like this one) does not - a second
-        home is a drift risk, not a service
+        it, so the decision behind it earns an entry. A PROSE channel - an
+        artifact instruction, a skill - carries its reasoning implicitly by
+        nature, whether or not a sentence spells the argument out, so a rule
+        living there earns no entry on the grounds that its why is only implied.
+        Drift risk and DRY outrank stating the why: one home for a rule beats a
+        complete argument split across two
 
       CLAUDE.md vs ADR is decided by READ FREQUENCY, not content type. CLAUDE.md
       is auto-fed every session, so its scarce resource is rows: a rule needed in
       EVERY session belongs there, a decision needed only sometimes belongs in an
       ADR. One topic legitimately appears in both - the rule in CLAUDE.md, the
-      argument behind it in an ADR.
+      argument behind it in an ADR. That split is the narrow exception CLAUDE.md's
+      row scarcity earns, because the why genuinely cannot fit there; it is not
+      available wherever the why is merely thin.
 
       This file scaffolds EMPTY. Three headings and no entries is the record that
       the change made no architectural decision, not an incomplete artifact. Do
@@ -280,6 +288,14 @@ artifacts:
 
       Not a summary: every row is sourced. A step the corpus cannot back is
       surfaced as a finding, never written around on the flow's own authority.
+      The failure types a finding is classified under are named once, in
+      `/embark-qualify`'s SKILL.md; this instruction states only that an
+      unsourceable step is surfaced.
+
+      While any finding stands, the run writes no flows and no
+      `acceptance.md`. That is a property of the artifact rather than of the
+      gate, so it holds on every generation route and not only under
+      `/embark-qualify` — a half-chained file reads as a completed walk.
 
       design.md never sources behavior — a step chains on a spec scenario or
       not at all. Where a spec backs the step but names no observable, design.md
@@ -290,18 +306,30 @@ artifacts:
 
       Format: one Given→When→Then arc per flow, stages in strict order
       of appearance — a stage recurring after a later one (When after
-      Then, Given after When) starts a new flow. One atom per row: a
-      single concrete action (literal UI verbs and handles — "clicks
-      `Claim as Guest`") or a single observable assertion; `And`
-      continues the current stage. Givens open on the binary
-      distinguishing state, no `And` restating what's implied. Thens
-      state implied negatives explicitly; no parenthetical commentary,
-      no unobservable claims. Convert vague prose to a concrete
-      observable ("reads as theirs" → "the banner reads `You`"); none
-      findable = surface it. A requirement with no human-observable
-      surface is listed as "no manual path — fully automated", never
-      forced into a flow. Canonical spec scenarios stay WHEN/THEN; GWT
-      is exclusive to acceptance.md.
+      Then, Given after When) starts a new flow. One atom per row: one
+      concrete action by the chain's ROOT ACTOR carrying that actor's
+      literal handle — "clicks `Claim as Guest`", "runs `npm run
+      db:migrate`", "POSTs to the action" — or a single observable
+      assertion; `And` continues the current stage.
+
+      The root actor must produce a TESTABLE outcome — an exit code,
+      stdout, rows in a table. An agent following a skill's instructions
+      does not: `WHEN this skill runs, THEN this happens` is a list of
+      instructions, and no test attaches to it.
+
+      A Then asserts what the execution emitted — rendered page, HTTP
+      response, database state, command stdout or exit code, a generated
+      file. The state of hand-written source MAY be a Given and SHALL
+      NEVER be a When or a Then. The discriminator is subject matter, not
+      verb, so rewording `WHEN the source is inspected` into `WHEN a
+      maintainer runs rg` does not launder it.
+
+      Givens open on the binary distinguishing state, no `And` restating
+      what's implied. Thens state implied negatives explicitly; no
+      parenthetical commentary, no unobservable claims. Convert vague
+      prose to a concrete observable ("reads as theirs" → "the banner
+      reads `You`"); none findable = surface it. Canonical spec scenarios
+      stay WHEN/THEN; GWT is exclusive to acceptance.md.
 
       Lifecycle: this planning-time draft is later refined at apply time with
       literal handles (real button text, real routes) — refine, not rewrite;
