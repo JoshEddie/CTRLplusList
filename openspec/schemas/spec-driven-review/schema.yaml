@@ -6,10 +6,13 @@ description: spec-driven + a propose-time review.md scaffold artifact (repo fork
 # reachable. Changes select it via `schema: spec-driven-review` in config.yaml
 # (default for new changes) and each change's `.openspec.yaml`.
 # The proposal/specs/design/tasks artifacts + apply block below are a verbatim
-# copy of the package schema; the trailing `review` and `acceptance` artifacts
-# are the local additions (see the review-artifact and acceptance-artifact
-# capabilities). Reconcile against the package `spec-driven` schema on
-# `openspec update` — see CLAUDE.md, trunk-workflow.
+# copy of the package schema; `adr`, `acceptance` and `review` are the local
+# additions (see the acceptance-artifact and review-artifact capabilities; the
+# adr artifact's decisions are recorded in the archived adr-artifact change).
+# They are NOT all appended at the end — `adr` is declared between `proposal`
+# and `specs` for the reason stated at its declaration. Reconcile against the
+# package `spec-driven` schema on `openspec update` — see CLAUDE.md,
+# trunk-workflow.
 artifacts:
   - id: proposal
     generates: proposal.md
@@ -43,6 +46,98 @@ artifacts:
 
       This is the foundation - specs, design, and tasks all build on this.
     requires: []
+
+  # LOCAL ADDITION. Declared HERE, between `proposal` and `specs`: the position
+  # is load-bearing. `/embark-design` loops `/opsx:continue` until `design.md`
+  # exists and continue walks declaration order, so an artifact declared after
+  # `design` is never generated at design time — silently, since `status` reads
+  # `ready` forever and nothing errors. Before `specs` also keeps upstream's
+  # `proposal < specs < design < tasks` order intact. Do not move it to the end.
+  - id: adr
+    generates: adr.md
+    description: Architectural decisions this change makes, as a library delta
+    template: adr.md
+    instruction: |
+      Record the architectural decisions this change makes, as a delta against
+      the ADR library at `openspec/adr/`. Entries are promoted by hand into
+      `openspec/adr/` at landing.
+
+      An ADR is a decision that outlives this change and binds later work.
+
+      A decision earns an entry when BOTH hold:
+      - It outlives this change - a choice binding only this change stays in
+        design.md
+      - The channel already firing at its trigger carries the rule WITHOUT its
+        reasoning. A lint error states a threshold and never the argument behind
+        it, so the decision behind it earns an entry; a rule that already travels
+        with its reasoning (an instruction like this one) does not - a second
+        home is a drift risk, not a service
+
+      CLAUDE.md vs ADR is decided by READ FREQUENCY, not content type. CLAUDE.md
+      is auto-fed every session, so its scarce resource is rows: a rule needed in
+      EVERY session belongs there, a decision needed only sometimes belongs in an
+      ADR. One topic legitimately appears in both - the rule in CLAUDE.md, the
+      argument behind it in an ADR.
+
+      This file scaffolds EMPTY. Three headings and no entries is the record that
+      the change made no architectural decision, not an incomplete artifact. Do
+      not invent one to fill it.
+
+      Delta operations (use ## headers):
+      - **ADDED ADRs**: new decisions, body inline
+      - **MODIFIED ADRs**: changed decisions - MUST include the ENTIRE updated
+        entry, **Touching** included; partial content loses detail at promotion
+      - **REMOVED ADRs**: decisions that no longer bind - MUST give the resulting
+        stub (which form, and the replacement's ID where there is one) plus
+        **Reason**, which stays in the delta and does not go into the stub
+
+      Format requirements:
+      - Each entry: `### ADR-NNNN: <title>` followed by **Touching**, **Context**
+        (<= 3 sentences), **Decision** (<= 5), **Consequences** (<= 3)
+      - Over cap means two decisions - split the entry, never trim a load-bearing
+        fact
+      - A rejected alternative is a name plus one clause; its argument stays in
+        design.md
+      - Take the next unused NNNN from `openspec/adr/INDEX.md`
+
+      **Touching** IS the index row's left cell - the index is derived from it and
+      nothing is authored at index level. Take EVERY term the entry binds, not
+      only the central one: a wasted read costs seconds, a missed one ships work
+      against a decision its reader never saw. If no term fits, do NOT force the
+      nearest - a near-miss term is a silent miss, and the reader whose work this
+      binds never matches it. Propose the new term in this delta for review to
+      promote to the bank alongside the entry.
+
+      Proposing a bank term:
+      - Only where the entry binds work no existing term names. Rewording or
+        splitting a term that already covers the work changes the vocabulary every
+        other entry is keyed on, and is not part of writing an entry
+      - Name a SURFACE by default, an ACTION only where the action is the trigger
+        and no artifact is being edited (`Running Tests`) - a surface term covers
+        authoring and editing alike, so `Skills & Agents` beats `Writing a Skill`
+      - A term must DISCRIMINATE: one nearly every task matches is not a key. A
+        parameterized family (`Editing <capability> spec`), instance bound in the
+        entry's own cell, narrows a trigger that would otherwise fire on
+        everything
+      - Growth runs through review, never the author alone - a bank admitting a
+        term per entry degrades into free prose with extra steps
+
+      ADRs are living documents, edited IN PLACE - not immutable-with-supersede.
+      Superseded text sitting in an agent's context is token waste and a rot risk:
+      an agent reading 100k of context can lose that the first 25k was retracted.
+      git holds the history.
+
+      A removed decision is GUTTED, not deleted. Its file stays at
+      `openspec/adr/NNNN-kebab-title.md` and keeps its title; the whole body is
+      replaced by one line - `**Superseded** - see ADR-NNNN: <title>`, or
+      `**Removed** - this rule no longer applies; do not follow older references
+      to it.` What rots is a superseded BODY in an agent's context, and the body
+      is exactly what goes. The stub answers what a deleted file cannot: an ADR
+      number cited in a commit, a comment, a skill, or another ADR resolves to a
+      redirect instead of nothing. A stub carries no **Touching** line, so it
+      drops out of the index while its file remains, and numbers are never reused.
+    requires:
+      - proposal
 
   - id: specs
     generates: "specs/**/*.md"
@@ -171,7 +266,7 @@ artifacts:
 
       Good design docs concisely explain the "why" behind technical decisions.
     requires:
-      - proposal
+      - adr
 
   - id: acceptance
     generates: acceptance.md
