@@ -74,3 +74,30 @@ All five gates run locally against the author's real `.env.local` before review 
 - [x] 8.3 `npm run build` passes — production build completes.
 - [x] 8.4 `npm run test:coverage` passes — zero failing tests.
 - [x] 8.5 `npm run test:e2e` passes — zero failing tests.
+
+## 9. Gates — round 1
+
+> Findings by durable ID (severity, `path:line`, citation, reconcile side) are in
+> `review.md` Round 1. Resolve each open `Fix now` there before checking it off.
+
+- [x] 9.1 A1+B2+C3 Four `'use cache'` reads gained `profile_members` via `withSelfAvatar` without `cacheTag('profile_members')` — _dropped at adjudication; see review.md Round 1 Adjudications_
+- [x] 9.2 A4 Resolution helpers live in `lib/data/profile.identity.ts`, not `lib/data/profile.ts` as task 4.1 / design D6 specify — _dropped at adjudication; see review.md Round 1 Adjudications_
+- [ ] 9.3 A5 Opaque-profile-id SHALL carves out no exception for the `self-${userId}` fixture/seed scheme D7 preserves — resolved
+- [ ] 9.4 A6 Task 2.8 claims `0012` drops eight columns; it drops seven — resolved
+- [ ] 9.5 A7 Sections 5 and 7 lost their sub-numbering; nine tasks carry no unique identifier — resolved
+- [ ] 9.6 B8 `LOCALDEV.md` describes the seed against dropped `user_id` / `claimed_by` columns — resolved
+- [ ] 9.7 B9 `isEligiblePurchaser` header comment still cites `profiles.user_id`; its sibling in `profile.ts` was updated — resolved
+- [x] 9.8 B10 New ADR INDEX row keyed on `DATABASE.md`, not the `DB Queries` / `DAL` terms the decision actually binds — _dropped at adjudication; see review.md Round 1 Adjudications_
+- [ ] 9.9 B11+T12 Cast/untyped fixtures still pin dropped `user_id` fields that `tsc --noEmit` cannot catch — resolved
+- [ ] 9.10 C13 `constraintOf` and `sqlstateOf` are structurally identical drift-prone copies — resolved
+- [x] 9.11 T14 Self-membership avatar accessor untested — every consumer fixture is the empty case — _dropped at adjudication; see review.md Round 1 Adjudications_
+- [ ] 9.12 T15 `SecondManagedProfile_Inserts` asserts on a value it built; its constraint and column are dropped — resolved
+- [ ] 9.13 T16 `user.test.ts` comment cites `profiles.user_id` as the test's rationale — resolved
+- [ ] 9.14 T17 `purchase.actions.test.ts` and `signed-in-claim.auth.spec.ts` comments cite dropped `claimed_by` — resolved
+- [x] 9.15 T18 `BlockFirstOrdering_...` name outlives its body — opaque `'select'` labels pin a count, not the lookup — _dropped at adjudication; see review.md Round 1 Adjudications_
+- [ ] 9.16 A19 `claim-attribution` SHALL places the pool read in `lib/data/user.ts`; `getEligiblePurchasers` lives in `lib/data/profile.ts` — resolved
+- [ ] 9.17 `npm run lint` — zero errors, zero non-size warnings
+- [ ] 9.18 `npx tsc --noEmit` — zero errors
+- [ ] 9.19 `npm run build` — completes successfully
+- [ ] 9.20 `npm run test:coverage` — run result
+- [ ] 9.21 `npm run test:e2e` — run result

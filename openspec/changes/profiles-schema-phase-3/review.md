@@ -1,11 +1,71 @@
 ---
 review: spec-review
 target: profiles-schema-phase-3
-anchor: TBD
-diff-source: TBD
-round: 0
+anchor: fe4eedcb18377deaef598bb8e7c9caad23ac5f67
+diff-source: git diff --staged
+round: 1
 ---
 
-<!-- Propose-time scaffold. No rounds yet: `round: 0` means unreviewed.
-     /spec-review appends `## Round 1`, sets `round: 1`, and fills the real
-     `anchor`/`diff-source`. Do not add findings, rounds, or a verdict here. -->
+## Round 1 — spec-review (2026-08-19)
+
+Implementation is solid and the column-drop sweep is thorough — the defects are reconciliation gaps (tasks/design claim work the diff shapes differently), doc/comment drift against dropped columns, and one genuinely untested behavior change (the self-membership avatar accessor). All 51 tasks are `[x]` and `openspec validate --strict` passes, but 14 open `Fix now` findings remain.
+
+**Scope:** `git diff --staged` (anchor `fe4eedc`) · profiles-schema-phase-3 (active)
+
+### Alignment
+| # | Severity | Location | Finding | Disposition | Citation |
+|---|----------|----------|---------|-------------|----------|
+| A1+B2+C3 | Major | lib/data/list.ts:21 | Four `'use cache'` reads gained a `profile_members` read via `withSelfAvatar` but no `cacheTag('profile_members')`: `getList`, `getItemsByProfile` (item.ts:10), `getItemsByListId` (item.ts:127), `getItemsByPurchased` (purchase.ts:183). Only `getEligiblePurchasers` (profile.ts:154) took the tag. Task 4.5 is `[x]`; convention arena counts up to nine such reads. Latent, not live — `revalidateTag` is called nowhere in `lib/`/`app/`. | Fix now — either tag the reads, or amend task 4.5 / design D9 to state the relational avatar reads are deliberately untagged and why | tasks.md:37 ("and to any other `'use cache'` read that gained the join"), design.md:106 (D9); `openspec/config.yaml` `rules.proposal` |
+| A4 | Minor | lib/data/profile.identity.ts:13 | Task 4.1 and design D6 place the profile→account resolution helper in `lib/data/profile.ts`; the diff creates a new module holding two helpers (`selfMemberships`, `withSelfAvatar`), neither named by any task. The module comment gives a real reason (import cycle with `user.ts`), but the artifacts and implementation disagree on home and helper count. | Fix now — move into `profile.ts`, or amend task 4.1/D6 to name the module, the second helper, and the import-cycle constraint | tasks.md:33; design.md:94 (D6) |
+| A5 | Minor | specs/profiles-data-model/spec.md:44 | The MODIFIED requirement says unconditionally that a profile id "SHALL NOT derive from the id of any account", but D7 deliberately preserves `selfProfileOf = (userId) => \`self-${userId}\`` (test/helpers/profile.ts:7) and the dev seed mints ids from it. The SHALL carves out no exception; only its scenario hints at the narrower scope. | Fix now — narrow the SHALL to backfill- and account-creation-minted profiles and name the fixture scheme as D7's exception | spec.md:44 vs design.md:98 (D7), scripts/seed-dev-users.ts:679 |
+| A6 | Minor | drizzle/0012_icy_dreadnoughts.sql:19 | Task 2.8 claims the migration "drops the eight columns"; it drops seven. The eighth (`profiles.user_id`) is correctly absent — task 2.1 removed it from `0010` so it is never created — but the task text claims work the file does not contain. | Fix now — reword 2.8 to "the seven remaining columns", cross-referencing 2.1 | tasks.md:18 vs drizzle/0012_icy_dreadnoughts.sql:15-16 |
+| A7 | Minor | tasks.md:42 | Sections 5 and 7 lost their sub-numbering: tasks.md:42-45 are all "5." (then 5.5), tasks.md:60-64 all "7." (then 7.6, 7.7). Nine tasks carry no unique identifier, so no gate line or follow-up round can cite them; `validate --strict` passes regardless. | Fix now — renumber 5.1–5.4 and 7.1–7.5 | tasks.md:42-46, 60-66; finding-format.md § Gate sections |
+
+### Boundary
+| # | Severity | Location | Finding | Disposition | Citation |
+|---|----------|----------|---------|-------------|----------|
+| B8 | Minor | LOCALDEV.md:48 | LOCALDEV.md describes the seed against dropped columns: line 48 identifies the managed fixture as "`dev-profile-kiddo` (`user_id` null)" after `profiles.user_id` is gone; line 52 describes fan-out rows as self-claims "(`claimed_by = user_id`)" after both columns are dropped and the seed writes only `profile_id`/`claimed_by_profile_id`. Impact lists only `DATABASE.md`; tasks §7 has no LOCALDEV item. | Fix now | LOCALDEV.md:48,52 ↔ drizzle/0012:29-38, scripts/seed-dev-users.ts:673-700,994-1078; CLAUDE.md routes seeded-UI-state to LOCALDEV.md |
+| B9 | Minor | lib/data/purchase.ts:64 | Header comment on `isEligiblePurchaser` still says "Both follow legs resolve each side's account through profiles.user_id". The identical prose on the sibling read in `profile.ts` was rewritten by task 4.6 to say "through the profile's `self` membership"; this copy was missed, so two explanations of one rule disagree. | Fix now | purchase.ts:64 ↔ lib/data/profile.ts:138-140 ↔ db/schema.ts:207-213; tasks.md:38 updates only the `profile.ts` copy |
+| B10 | Minor | openspec/adr/INDEX.md:11 | The new ADR row is keyed `Touching… \| DATABASE.md`, but the decision governs writing multi-write DB ops in application code (`db.$with()` over an INSERT body, narrowed 23505 catch) — not editing a doc. The term bank already has `DB Queries` and `DAL`, so an agent about to write the bound code matches no row and applies "No matching row means no decision binds." | Fix now | INDEX.md:11 ↔ INDEX.md:3-5 + term bank; adr/2026-08-18-atomic-writes-in-one-cte.md Decision |
+| B11+T12 | Minor | app/(main)/items/ui/components/__tests__/Item.test.tsx:206 | Fixtures still pin the dropped `lists.user_id`/`items.user_id` and survive only because they are cast or untyped: `getList` mocks at ListHeroSection.test.tsx:99,112,144,157,176,254 and EditListBody.test.tsx:34 are `as never`; visibility.test.ts:19 is unannotated; Item.test.tsx:206 returns `Record<string, unknown>`. The proposal leans on `tsc --noEmit` as the verification that no dropped-column reference survives — that guarantee does not reach literals behind a cast. | Fix now | ↔ lib/data/item.ts:111, lib/types.ts:45; proposal.md Impact — Verification |
+
+### Convention
+| # | Severity | Location | Finding | Disposition | Citation |
+|---|----------|----------|---------|-------------|----------|
+| C13 | Minor | lib/sqlstate.ts:3 | `constraintOf` (added) and `sqlstateOf` (existing, same hunk) are structurally identical 9-line functions differing only in the property key (`constraint` vs `code`) — same null-guard / direct-read / `cause`-unwrap / string-narrow branching. A change to the unwrap shape applied to one silently misses the other; the stale copy compiles and returns `undefined`, degrading `createSelfProfile`'s narrowed catch into a rethrow. One `stringFieldOf(err, key)` collapses both. | Fix now | sqlstate.ts:3-11 vs 13-21 — CLAUDE.md § Duplication (DRY): extract when "unit has structure … copy could drift silently"; trivial-inline exception fails 3 of 4 conditions |
+
+### Testing
+| # | Severity | Location | Finding | Disposition | Citation |
+|---|----------|----------|---------|-------------|----------|
+| T14 | Major | lib/data/purchase.ts:48 | The purchaser-avatar accessor changed from `purchaserProfile.user.image` to `purchaserProfile.members[0]?.user.image` (same at ListHeroSection.tsx:75), but every consumer fixture was updated to the empty case (`members: []` at purchase.test.ts:201,300,355; ListHeroSection.test.tsx:103) and every avatar assertion is `image: null` / `owner_image: undefined`. No test exercises a populated `self` membership consumer-side, so the accessor is indistinguishable from one that always yields null. `seedUsers` already accepts `image`. | Fix now — seed one purchaser/owner with `image` and assert the resolved avatar | TESTING.md § Test quality bar; behavior changed with no test updated |
+| T15 | Minor | db/__tests__/profiles.test.ts:99 | `SecondManagedProfile_Inserts` proved `profiles_one_self_per_user_idx` tolerated NULL `profiles.user_id`; both index and column are dropped. The body now inserts two unconstrained rows and asserts one exists — an assertion on a value the test built, with no constraint left to trip. It also sits under `describe('OneSelfMembershipEachWay')`, whose subject it no longer touches. | Fix now — re-aim at the managed-profile scenario outside that describe, or delete | TESTING.md "Vague assertions on values your test built"; profiles-data-model scenario "Managed profile exists without any account" |
+| T16 | Minor | lib/data/__tests__/user.test.ts:174 | Comment states "The query resolves the followee profile's account through profiles.user_id" as the test's rationale; `getFollowingFeedProfiles` (user.ts:131) now left-joins `selfMemberships`. Documents the superseded mechanism. | Fix now | staleness sweep vs profiles-data-model delta "The profiles table SHALL hold no reference to the accounts table" |
+| T17 | Minor | lib/data/__tests__/purchase.actions.test.ts:281 | Comment says a stale session must not "write a purchases row with claimed_by = NULL"; the column is now `claimed_by_profile_id`. Same stale name at e2e/signed-in-claim.auth.spec.ts:129 (untouched by the diff). | Fix now — rename both | staleness sweep vs claim-attribution delta |
+| T18 | Minor | lib/data/__tests__/profile.actions.test.ts:211 | `BlockFirstOrdering_BlockInsertPrecedesMembershipLookup` names a distinction its body can no longer make. It formerly spied `db.query.profiles.findFirst` and pushed `'profiles-lookup'`; the rewrite spies `db.select` and pushes `'select'` for all three reads, so `toEqual(['select','select','block-insert','select'])` pins a positional count only — the two `authedIdentity` reads and the membership lookup are indistinguishable. | Fix now — label the recorded select by projection or source table | following delta scenario "The block row is the mutation's first database statement"; TESTING.md § Test naming (semantic-name/body drift) |
+
+### What looks good
+- The `profiles.user_id` drop is genuinely complete on the typed surface — `0010` rewritten so the column is never created, `0012` dropping the remaining seven columns + FKs, schema/types swept, and the migration header records why the eighth is absent.
+- `withSelfAvatar`/`selfMemberships` are a real single-source extraction: the relation swap is a one-token change at each of the ~14 join sites, and the module comment records the non-obvious import-cycle constraint that forced its own file.
+- Atomic self-profile creation lands as one CTE with a narrowed 23505 catch, and the decision is recorded as an ADR rather than a code comment.
+- `openspec validate --strict` passes; delta specs (claim-attribution, following, list-item-management, profiles-data-model) carry scenarios for the new membership-based resolution.
+- Both formatting items the arenas found were correctly deferred to lint rather than raised as findings.
+
+**Verdict:** findings remain — 14 open `Fix now` findings, headed by A1+B2+C3 and T14; CI unverified (non-PR invocation), must be green before archive. All 51 tasks are `[x]` and `openspec validate --strict` passes.
+
+### Adjudications (2026-08-19)
+
+| # | Old → New | Rationale |
+|---|-----------|-----------|
+| A1+B2+C3 | Fix now → Drop | The four untagged reads are the `withSelfAvatar` relational join, which the imminent profile-avatar work replaces — the code will not exist by the time any caching audit ran. `getEligiblePurchasers` keeps its tag: `specs/claim-attribution/spec.md:106` requires it normatively. Task 4.5 and D9 left unamended deliberately — the overstatement is legible only against a tree that still carries `withSelfAvatar`. |
+| A4 | Fix now → Drop | `data-layer-organization` names internal modules as a permitted per-domain shape (precedent `user.session.ts`), so `lib/data/profile.identity.ts` is compliant; the import cycle its comment cites is real (`profile.ts:4` → `user.ts:3` → `selfMemberships`). D6 already deferred the location to [#304](https://github.com/JoshEddie/CTRLplusList/issues/304). |
+| A5 | Fix now → Fix now (rescoped) | Not a carve-out clause. This change bolted a new id-opacity SHALL and a new no-account-reference rule onto a pre-existing independence requirement whose main-spec form had neither. Split id-minting into its own ADDED requirement carrying the *Profile id carries no account id* scenario, scoped there to backfill- and account-creation-minted ids with D7's fixture scheme named; the MODIFIED block keeps independence only. |
+| A6 | Fix now → Fix now (expanded) | `drizzle/0012_icy_dreadnoughts.sql:3` miscounts too ("the eight account-valued columns") while `:15` explains the eighth's absence — the file contradicts itself. Reword both sites, not `tasks.md` alone. |
+| B8 | Fix now → Fix now (expanded) | Also add `LOCALDEV.md` to the change's Impact and a §7 task. The doc was never in scope on paper, which is why it drifted; correcting the lines without closing that omission leaves the cause. |
+| B10 | Fix now → Drop | CLAUDE.md's read-first table routes "DB queries, DAL, schema, migrations" to `DATABASE.md`, where task 7 copied the Decision — the decision reaches the agent writing the bound code without the ADR index, so "no matching row means no decision binds" does not fire. Whether the index should be keyed on bound work rather than on edited files is a broader index-design question, ruled out of scope. |
+| T14 | Fix now → Drop | The DAL join is already proven against a real seed at `lib/data/__tests__/list.test.ts:52,166`. The untested surface is only the two consumer accessors reading `users.image` — the exact path the profile-avatar work sunsets, so the tests would cover a mechanism being replaced within a few tickets. |
+| T15 | Fix now → Fix now (rescoped) | Delete, not re-aim. `seedManagedProfile` already drives the managed-profile scenario behaviorally at `lib/data/__tests__/profile.test.ts:64` and `profile.actions.test.ts:242`, so re-aiming would duplicate live coverage. |
+| T17 | Fix now → Fix now (expanded) | Two further stale `claimed_by` references sit in production source, beyond the two test comments named: `app/(main)/items/ui/components/Item.tsx:77` and `lib/types.ts:54`. Rename all four. |
+| T18 | Fix now → Drop | Moving the membership lookup ahead of the block insert flips the recorded order and fails `toEqual`, so the ordering the test's name claims *is* enforced. The residual positional coupling to `authedIdentity`'s read count is brittleness, not the stated defect. |
+| A19 (new) | — → Fix now | Surfaced re-grounding A1. `specs/claim-attribution/spec.md:106` states "The pool read SHALL live in `lib/data/user.ts`"; `getEligiblePurchasers` lives in `lib/data/profile.ts:147`, where `data-layer-organization`'s leading-identity-parameter rule puts it. This change rewrote that sentence — added `profile_members`, changed `claimed_by` → `claimed_by_profile_id` — and carried the stale location forward, so the false SHALL is in-charter. |
+
+**Verdict:** findings remain — 11 open `Fix now` (round 1 carried 15 findings, not the 14 its verdict line states; five dropped here, one added). Blockers: A5's requirement split and A19's false location SHALL.
