@@ -8,21 +8,25 @@ Defines the relational home for profiles — first-class list-owning identities 
 
 ### Requirement: Profiles are first-class rows independent of accounts
 
-The database SHALL hold profiles in their own table, keyed by their own id, with `name` (required), `created_at`, `updated_at`, and a nullable `user_id` reference to the accounts table. A non-null `user_id` marks the profile as that account's self-profile; a null `user_id` marks a managed profile. Deleting a user account SHALL NOT delete or cascade into any profile: the profile row survives with `user_id` set to null.
+The database SHALL hold profiles in their own table, keyed by their own id, with `name` (required), `created_at`, and `updated_at`.
+
+The profiles table SHALL hold no reference to the accounts table. A profile's link to an account lives entirely in the membership table, whose `self` role marks the profile as that account's own identity; a profile no account holds a `self` membership on is a managed profile. Deleting a user account SHALL NOT delete or cascade into any profile: the profile row survives, and only its membership rows go.
 
 #### Scenario: Managed profile exists without any account
 
-- **WHEN** a profile row is created with `user_id` null
+- **WHEN** a profile row is created with no membership rows
 - **THEN** the row is valid and persists with no corresponding account
 
 #### Scenario: Account deletion detaches, never deletes, the self-profile
 
 - **WHEN** a user account is deleted
-- **THEN** the account's self-profile row remains, with `user_id` now null
+- **THEN** the account's self-profile row remains, and its `self` membership row is gone
 
 ### Requirement: Each account has exactly one self-profile
 
-The database SHALL enforce at most one self-profile per account (a partial unique constraint over non-null `user_id`), and the phase-1 migration SHALL backfill one self-profile per existing account, named from the account's name — or `UNTITLED` when the account carries no name — idempotently, so re-running the backfill creates no duplicates. The constraint SHALL NOT bound how many managed profiles an account can own or manage.
+The database SHALL enforce that an account holds at most one `self` membership, and that a profile is the subject of at most one `self` membership — partial unique constraints over the membership table restricted to the `self` role, one in each direction. The phase-1 migration SHALL backfill one self-profile per existing account, named from the account's name — or `UNTITLED` when the account carries no name — idempotently, so re-running the backfill creates no duplicates. The constraints SHALL NOT bound how many managed profiles an account can own or manage.
+
+Both directions are load-bearing. The account-side constraint is the "one self-profile per account" invariant; the profile-side constraint is what makes a self-profile resolve back to exactly one human, which `claim-attribution` relies on when it recovers the person behind a claim asserter.
 
 `UNTITLED` is a placeholder sentinel, not a display name: no code reads it this phase, and a later change plans to replace it with a generated name.
 
@@ -38,17 +42,26 @@ The database SHALL enforce at most one self-profile per account (a partial uniqu
 
 #### Scenario: Second self-profile rejected
 
-- **WHEN** an insert attempts a second profile row carrying the same non-null `user_id`
+- **WHEN** an insert attempts a second `self` membership row for an account that already holds one
+- **THEN** the database rejects it
+
+#### Scenario: Second account claiming one self-profile rejected
+
+- **WHEN** an insert attempts a `self` membership row naming a profile that is already some account's self-profile
 - **THEN** the database rejects it
 
 ### Requirement: Every new account gets a self-profile at creation
 
-Account creation SHALL create the account's self-profile and its `self` membership row, by the same invariant and the same deterministic identity the phase-1 backfill uses, idempotently — so an account created after the migration is indistinguishable from one the backfill covered. The backfill SHALL NOT be the sole source of self-profiles: it is a point-in-time pass over accounts that already exist, and an account created after it would otherwise hold no profile at all.
+Account creation SHALL create the account's self-profile and its `self` membership row, by the same invariant the phase-1 backfill uses, idempotently — so an account created after the migration is indistinguishable from one the backfill covered. The profile id SHALL be minted opaquely, and creation idempotency SHALL rest on the self-role uniqueness constraint rather than on an id a caller can re-derive.
+
+Creation SHALL be atomic across both rows. Because the profile row must exist before the membership row that references it, and no interactive transaction is available, a creation that loses the uniqueness race SHALL leave no profile row behind — an unreferenced profile is unreachable and permanent, and nothing would later collect it.
+
+The backfill SHALL NOT be the sole source of self-profiles: it is a point-in-time pass over accounts that already exist, and an account created after it would otherwise hold no profile at all.
 
 #### Scenario: New account gets a self-profile
 
 - **WHEN** a new account is created
-- **THEN** a profile row exists carrying that account's id in `user_id` and the account's name in `name`
+- **THEN** a profile row exists carrying the account's name in `name`
 - **AND** a membership row with role `self` links the account to that profile
 
 #### Scenario: Nameless new account gets the placeholder sentinel
@@ -60,6 +73,11 @@ Account creation SHALL create the account's self-profile and its `self` membersh
 
 - **WHEN** account creation runs for an account that already holds a self-profile
 - **THEN** no duplicate profile or membership row is created and no error surfaces
+
+#### Scenario: A losing creation attempt leaves no orphan profile
+
+- **WHEN** two account-creation attempts for the same account race, and one loses the self-role uniqueness constraint
+- **THEN** the losing attempt leaves no profile row behind, and exactly one profile with one `self` membership exists
 
 ### Requirement: Profile membership carries role and ride-along
 
@@ -126,7 +144,7 @@ The phase-1 migration SHALL be forward-only and additive: it SHALL NOT drop, ren
 
 ### Requirement: Local-mode seed covers both profile kinds
 
-The dev seed SHALL produce, idempotently: a self-profile with `self` membership for every seeded user (via the same invariant the backfill guarantees), one managed profile with the primary test viewer as `owner` and one other seeded user as `manager`, and no preference rows. `db:reset:dev` SHALL wipe every profile reachable from a seeded user — those carrying a seeded user's `user_id`, and those a seeded user holds any membership on — before reseeding, with membership and preference rows following by cascade. The wipe SHALL precede the seeded-user delete, which detaches both handles. The local-mode session layer SHALL read a `BYPASS_ACTIVE_PROFILE` environment variable as a dormant seam — accepted and exposed, consumed by nothing until active-profile resolution exists.
+The dev seed SHALL produce, idempotently: a self-profile with `self` membership for every seeded user (via the same invariant the backfill guarantees), one managed profile with the primary test viewer as `owner` and one other seeded user as `manager`, and no preference rows. `db:reset:dev` SHALL wipe every profile a seeded user holds any membership on — membership is the sole handle, because a profile carries no account reference — before reseeding, with membership and preference rows following by cascade. The wipe SHALL precede the seeded-user delete, which cascades those memberships away and would otherwise strand every profile behind them. The local-mode session layer SHALL read a `BYPASS_ACTIVE_PROFILE` environment variable as a dormant seam — accepted and exposed, consumed by nothing until active-profile resolution exists.
 
 #### Scenario: Seeded managed profile with both roles
 
@@ -135,126 +153,15 @@ The dev seed SHALL produce, idempotently: a self-profile with `self` membership 
 
 #### Scenario: Reset wipes profile state
 
-- **WHEN** `db:reset:dev` runs against a database holding seeded self-profiles, the seeded managed profile, and a profile created by hand under a seeded user
+- **WHEN** `db:reset:dev` runs against a database holding seeded self-profiles, the seeded managed profile, and a profile created by hand carrying a seeded user's membership
 - **THEN** all three are gone, along with their membership and preference rows
 - **AND** the seed's own profile fixtures are recreated deterministically
-
-### Requirement: Content and social rows SHALL carry a profile reference beside their account reference
-
-Seven columns SHALL be added, each naming a profile beside the account column it will eventually replace:
-
-| table | existing account column (kept) | new profile column |
-| --- | --- | --- |
-| `lists` | `user_id` | `profile_id` |
-| `items` | `user_id` | `profile_id` |
-| `user_follows` | `followee_id` | `followee_profile_id` |
-| `user_blocks` | `blocker_id` | `blocker_profile_id` |
-| `user_blocks` | `blocked_id` | `blocked_profile_id` |
-| `purchases` | `user_id` | `profile_id` |
-| `purchases` | `claimed_by` | `claimed_by_profile_id` |
-
-Each new column SHALL mirror its predecessor's nullability and delete behavior exactly: cascade on the six content and edge columns, `SET NULL` on `purchases.claimed_by_profile_id`, and nullable on both `purchases` columns so the guest claim path is expressible. Each SHALL be added nullable, backfilled through the owning account's self-profile, then set `NOT NULL` wherever its predecessor is `NOT NULL`.
-
-The migration SHALL be forward-only and idempotent: re-running it SHALL leave the same result and SHALL NOT fail. It SHALL NOT use an interactive transaction; any assertion spanning statements SHALL live inside a single `DO $$` block. `user_follows.follower_id` SHALL NOT gain a profile counterpart — profiles are followed and never follow.
-
-The account columns SHALL keep their names and their data through this phase; a later change drops them.
-
-#### Scenario: Backfill routes every row through its account's self-profile
-
-- **WHEN** the migration completes against a database holding pre-existing lists, items, follow edges, block edges, and purchases
-- **THEN** every row's new profile column names the self-profile of the account its existing account column names
-- **AND** a row whose account column is NULL has a NULL profile column
-
-#### Scenario: Backfill is idempotent
-
-- **WHEN** the migration runs a second time against a database it has already migrated
-- **THEN** it completes without error and no column value changes
-
-#### Scenario: Follower side stays account-valued
-
-- **WHEN** the `user_follows` table is inspected after the migration
-- **THEN** `follower_id` still references the accounts table and no profile-valued follower column exists
-
-#### Scenario: Deleting a profile cascades exactly as deleting its account did
-
-- **WHEN** a profile referenced by lists, items, follow edges, block edges, and purchases is deleted
-- **THEN** the lists, items, follow edges, block edges, and purchaser rows referencing it are deleted, and any purchase row naming it as asserter survives with `claimed_by_profile_id` set to NULL
-
-### Requirement: The vacated account columns SHALL lose NOT NULL, and two composite primary keys SHALL be recreated over profile columns
-
-`lists.user_id` and `items.user_id` SHALL be given `DROP NOT NULL`, because nothing writes them after this change and a managed profile carries no account id to put there. `purchases.user_id` and `purchases.claimed_by` are already nullable and SHALL be left as they are.
-
-`user_follows` and `user_blocks` are the exception to the rule that this phase only relaxes constraints on the vacated columns: their account columns sit inside composite primary keys, and a primary key implies `NOT NULL`, so the constraint cannot be relaxed while the key stands. Both primary keys SHALL therefore be dropped and recreated over the profile columns — `user_follows` keyed `(follower_id, followee_profile_id)` and `user_blocks` keyed `(blocker_profile_id, blocked_profile_id)` — and the vacated columns SHALL then be given an explicit `DROP NOT NULL`, because Postgres does not remove the implicit one when a primary key goes. This is breaking at the schema level and invisible at the application level.
-
-The recreated keys SHALL carry forward the de-duplication guarantee the dropped keys held: they are the database-layer backstop against duplicate follow and block rows under a driver with no interactive transactions.
-
-#### Scenario: Vacated content columns become nullable
-
-- **WHEN** a row is inserted into `lists` or `items` with `user_id` NULL and `profile_id` set
-- **THEN** the database accepts it
-
-#### Scenario: Recreated key rejects a duplicate follow edge
-
-- **WHEN** a second `INSERT INTO user_follows` with the same `(follower_id, followee_profile_id)` pair is attempted without an `ON CONFLICT` clause
-- **THEN** the database raises a unique-violation error (SQLSTATE 23505) from the recreated composite primary key
-
-#### Scenario: Recreated key rejects a duplicate block edge
-
-- **WHEN** a second `INSERT INTO user_blocks` with the same `(blocker_profile_id, blocked_profile_id)` pair is attempted without an `ON CONFLICT` clause
-- **THEN** the database raises a unique-violation error (SQLSTATE 23505) from the recreated composite primary key
-
-#### Scenario: Vacated edge columns become nullable once their key is gone
-
-- **WHEN** the migration completes
-- **THEN** `user_follows.followee_id`, `user_blocks.blocker_id`, and `user_blocks.blocked_id` accept NULL
-
-### Requirement: The profile-valued purchaser uniqueness index SHALL be created alongside the account-valued one, never swapped for it
-
-A partial unique index over `purchases (item_id, profile_id) WHERE profile_id IS NOT NULL` SHALL be created while the existing partial unique over `(item_id, user_id)` remains in place. Both SHALL coexist for this phase; a later change drops the account-valued one together with its column.
-
-The index SHALL NOT be created by dropping the existing one first. Under a driver with no interactive transactions, a drop-then-create sequence leaves a window in which no partial unique protects the concurrent-claim path, and a claim recorded in that window would double-record a purchaser permanently. Adding rather than swapping removes the window; two coexisting indexes for one phase is the entire cost.
-
-#### Scenario: Both indexes exist after the migration
-
-- **WHEN** the `purchases` table's indexes are inspected after the migration
-- **THEN** a partial unique over `(item_id, user_id)` and a partial unique over `(item_id, profile_id)` are both present
-
-#### Scenario: Duplicate profile-valued purchaser is rejected
-
-- **WHEN** two requests race to record the same profile as purchaser of the same item
-- **THEN** exactly one `purchases` row with that `(item_id, profile_id)` pair exists
-
-#### Scenario: No window without a purchaser uniqueness guarantee
-
-- **WHEN** the migration's statements are inspected in order
-- **THEN** no point in the sequence leaves `purchases` with neither partial unique index in place
-
-### Requirement: Ownership SHALL be a strict profile-id comparison, and `profile_members` SHALL gain no readers
-
-Every check of the form "does this row belong to the acting party" SHALL compare the row's profile column against the profile id the request acts as. It SHALL NOT compare a profile column against an account id — such a comparison is silently always false, because the two id spaces never overlap.
-
-Because an account owns exactly one profile in this phase, the comparison SHALL be strict equality and SHALL NOT be a membership search. The `profile_members` table SHALL gain no reader in this phase: no containment helper, no cache tag, and no invalidation obligation. Machinery for an account acting as a profile it does not own has no reachable caller here and belongs to the change that makes that case real.
-
-#### Scenario: Owner is recognized through the profile comparison
-
-- **WHEN** the account that owns a list renders that list
-- **THEN** the list's `profile_id` equals the profile id the request acts as, and every owner-only affordance and authorization resolves as it did before this change
-
-#### Scenario: Non-owner is not recognized
-
-- **WHEN** an account that does not own a list renders that list
-- **THEN** the list's `profile_id` differs from the profile id the request acts as, and no owner-only affordance or authorization resolves
-
-#### Scenario: No membership read is introduced
-
-- **WHEN** the application source is inspected after this change
-- **THEN** no read of `profile_members` exists, and no cache tag or invalidation call names it
 
 ### Requirement: The claim asserter and a self-claim's purchaser SHALL always be the acting account's self-profile
 
 `purchases.claimed_by_profile_id` records who asserted a claim. A claim is a human act, so it SHALL always store the acting account's own self-profile and SHALL NOT store any other profile, even once a surface exists for an account to act as another profile. For the same reason, a self-claim's purchaser (`purchases.profile_id`) SHALL be the acting account's self-profile.
 
-This rule keeps the mapping from a profile in these two columns back to a human injective, since an account has exactly one self-profile and the database enforces it. The human behind an asserter is therefore recoverable through the profile's `user_id`, and no separate account-valued actor column is owed. A NULL there means the account was deleted.
+This rule keeps the mapping from a profile in these two columns back to a human injective, since an account has exactly one self-profile and the database enforces it in both directions. The human behind an asserter is therefore recoverable through that profile's `self` membership, and no separate account-valued actor column is owed. No such membership means the account was deleted.
 
 An attributed claim's purchaser is not bound by this rule: it names the profile attributed as the buyer, which is a target rather than an actor.
 
@@ -270,5 +177,53 @@ An attributed claim's purchaser is not bound by this rule: it names the profile 
 
 #### Scenario: Asserter resolves back to a human
 
-- **WHEN** a claim's asserter profile is resolved through `profiles.user_id`
-- **THEN** it yields exactly one account, or NULL when that account has been deleted
+- **WHEN** a claim's asserter profile is resolved through its `self` membership
+- **THEN** it yields exactly one account, or nothing when that account has been deleted
+
+### Requirement: Deleting a profile SHALL cascade its content and edges
+
+Deleting a profile SHALL delete the lists, items, follow edges, block edges, and purchase rows that name it as owner or purchaser, and SHALL leave any purchase row naming it as asserter in place with the asserter reference cleared. Content and social rows hang off profiles, so a profile's deletion takes its content with it; a claim someone else holds is not that profile's content, and survives with its provenance lost rather than the row.
+
+#### Scenario: Deleting a profile cascades exactly as deleting its account did
+
+- **WHEN** a profile referenced by lists, items, follow edges, block edges, and purchases is deleted
+- **THEN** the lists, items, follow edges, block edges, and purchaser rows referencing it are deleted, and any purchase row naming it as asserter survives with `claimed_by_profile_id` set to NULL
+
+### Requirement: Follow and block edges SHALL be unique per pair
+
+The database SHALL reject a duplicate follow edge for a given (follower account, followee profile) pair and a duplicate block edge for a given (blocker profile, blocked profile) pair. Under a driver with no interactive transactions, this database-layer guarantee is the only backstop against two concurrent requests both inserting the same edge.
+
+#### Scenario: Duplicate follow edge is rejected
+
+- **WHEN** a second `INSERT INTO user_follows` with the same `(follower_id, followee_profile_id)` pair is attempted without an `ON CONFLICT` clause
+- **THEN** the database raises a unique-violation error (SQLSTATE 23505)
+
+#### Scenario: Duplicate block edge is rejected
+
+- **WHEN** a second `INSERT INTO user_blocks` with the same `(blocker_profile_id, blocked_profile_id)` pair is attempted without an `ON CONFLICT` clause
+- **THEN** the database raises a unique-violation error (SQLSTATE 23505)
+
+### Requirement: Ownership comparisons SHALL be profile-valued on both sides
+
+Every check of the form "does this row belong to the acting party" SHALL compare the row's profile column against the profile id the request acts as. It SHALL NOT compare a profile column against an account id — such a comparison is silently always false, because the two id spaces never overlap and both are strings, so a cross-kind mistake type-checks and evaluates false for every row rather than failing loudly.
+
+#### Scenario: Owner is recognized through the profile comparison
+
+- **WHEN** the account that owns a list renders that list
+- **THEN** the list's `profile_id` equals the profile id the request acts as, and every owner-only affordance and authorization resolves
+
+#### Scenario: Non-owner is not recognized
+
+- **WHEN** an account that does not own a list renders that list
+- **THEN** the list's `profile_id` differs from the profile id the request acts as, and no owner-only affordance or authorization resolves
+
+### Requirement: Minted profile ids SHALL carry no account id
+
+A profile id minted by the migration backfill or by account creation SHALL be opaque and SHALL NOT derive from the id of any account: profiles are not one-to-one with accounts, so a key derived from an account id asserts a relationship the model denies and outlives the account it names.
+
+The rule binds the two minting paths that run against a real database, not every string that can occupy the column. The dev seed and test fixtures mint ids from a deterministic `self-<account id>` helper, whose shape is irrelevant to the behavior under test and whose output no production path produces.
+
+#### Scenario: Profile id carries no account id
+
+- **WHEN** any profile is created, whether by the migration backfill or by account creation
+- **THEN** its id is opaque and contains no account's id

@@ -3,7 +3,7 @@ review: spec-review
 target: profiles-schema-phase-3
 anchor: fe4eedcb18377deaef598bb8e7c9caad23ac5f67
 diff-source: git diff --staged
-round: 2
+round: 3
 ---
 
 ## Round 1 — spec-review (2026-08-19)
@@ -141,3 +141,62 @@ This review ran in a Claude session, where the staged/unstaged split does not ex
 | T12 | Fix now → Drop | Fear-mongering on the evidence available. `sqlstateOf` already unwraps `err.cause.code` in production at `lib/data/purchase.actions.ts:211`, live against neon-http and pre-dating this change — so the `err.cause` shape is proven, not assumed. `constraintOf` reads a different field off that same error object, which Postgres populates in the same response. The residual risk is not "does the error shape hold" but "does the driver copy one more field it demonstrably copies siblings of". The review raised the unverified assumption without crediting that adjacent proof. Noted for the record: the finding is about production code (`lib/sqlstate.ts`, `lib/auth.ts`), not test files — a test was only the proposed remedy. |
 
 **Verdict:** findings remain — 8 open `Fix now`: A1, A2+B3, A4, B5, T7, T8, T9, T10. Blockers are A1 (delta spec contradicts the design decision governing it) and B5. Round 2 carried 11 findings, not the 12 its verdict line states — the merged A2+B3 was counted as two. CI unverified (non-PR invocation), must be green before archive.
+
+## Round 3 — incremental-spec-review (2026-08-19)
+
+All eight of round 2's open `Fix now` findings resolve, each with real work behind it rather than a checkbox — the D10 amendment, the design record for the A5 split, the seed's own `selfProfileOf`, and four test renames plus a genuine cascade assertion. Alignment and convention are clean. What remains are two whole-footprint findings neither prior round reached: D9's tagging rule is applied at one of five sites that gained the join, and the `role = 'self'` filter both new resolution helpers hang on is exercised by no test.
+
+**Scope:** A/C `git diff 0883e92 a4180da` (the fix delta) · B/T `git diff fe4eedc a4180da` (whole footprint, anchor `fe4eedc`) · profiles-schema-phase-3 (active)
+
+This review ran in a Claude session, where the staged/unstaged split does not exist. Commit `0883e92` (the round-2 adjudication) stands in for the staged reviewed baseline; commit `a4180da` is the fix delta. `.claude/`-only session-infrastructure changes were excluded from the B/T footprint.
+
+### Prior findings
+| # | Prior finding | Status | Notes |
+|---|---------------|--------|-------|
+| A1 | Delta `claim-attribution` pool-read SHALL contradicts D10's `spec-hygiene` carve-out | Resolved | D10 rewritten per the adjudication's ruling: the stale `lib/data/user.ts` home is now explicitly corrected in-change, with the reasoning the adjudication gave (the sentence is rewritten twice anyway, so reproducing it unchanged would ship a knowingly false SHALL). `specs/claim-attribution/spec.md:106` and `design.md` now agree. |
+| A2+B3 | `design.md` migration step 3 miscounts the drop as eight columns | Resolved | Step 3 now reads "the seven remaining superseded columns" and carries the `profiles.user_id` note, matching `tasks.md:18` and `drizzle/0012:3`. All three copies of the claim now agree. |
+| A4 | The A5 requirement split and its fixture carve-out are recorded in no design decision or task | Resolved | Design-side only, as the adjudication scoped it: D10's accounting goes three → four re-added requirements and gains the split paragraph naming the carve-out and its D7 grounding; task 7.9 added and checked. Verified against the delta — `profiles-data-model` carries four ADDED and four REMOVED requirements. The carve-out paragraph is unchanged, correct under the C6 Drop. |
+| B5 | `scripts/seed-dev-users.ts` is the only operational module importing from `test/` | Resolved | The import is gone; the seed declares its own `selfProfileOf` beside `friendId`. D7 gains the two-homes rationale (each seeder owns the id scheme it writes) and task 3.6 is reworded to match. Verified by grep, not diff eyeballing: no module under `app/`, `lib/`, `db/`, `hooks/` or `scripts/` imports from `test/`. |
+| T7 | `AuthedNewTarget_InsertsFollowRow-NullLegacyFolloweeId` names an assertion its body dropped | Resolved | Renamed `AuthedNewTarget_InsertsFollowRow`. |
+| T8 | `Authed_InsertsBlockRow-…-NullLegacyIds` names an assertion its body dropped | Resolved | Renamed `Authed_InsertsBlockRow-DeletesBothFollowDirections`. |
+| T9 | The cascade scenario's `items` leg is exercised by no assertion | Resolved | The fixture seeds `i2` under `p2` (the deleted profile) alongside `i1` under `p1`, and `OwnedContentAndEdges_Cascade` now asserts the surviving set is exactly `[{ id: 'i1' }]`. Removing `onDelete: 'cascade'` from `items.profile_id` now fails the suite. |
+| T10 | `RecreatedPrimaryKeys` describe names a REMOVED requirement | Resolved | Renamed `EdgeUniquenessPerPair`, matching the surviving ADDED requirement its two tests prove. |
+
+### Alignment
+No findings.
+
+### Boundary
+| # | Severity | Location | Finding | Disposition | Citation |
+|---|----------|----------|---------|-------------|----------|
+| B1 | Minor | lib/data/profile.ts:154 | D9 says the `profile_members` tag goes on `getEligiblePurchasers` "and any other `'use cache'` read that gains the join". Five cached reads gain it — `getEligiblePurchasers` plus `getList`, `getPublicListsByProfile`, `getItemsByProfile`, `getItemsByListId` and `getItemsByPurchased`, all of which pull `profile_members` through `withSelfAvatar` — and only the first is tagged. The rule is applied at one of six sites. Inert today by D9's own argument (no `updateTag` writer exists yet), which is exactly what makes it a silent-drift defect: it comes true the moment the writer D9 anticipates appears, and nothing fails in the meantime. | Fix now — reconcile EITHER: add `cacheTag('profile_members')` to the five untagged reads, OR narrow D9's parenthetical to state why the avatar join does not carry the obligation the pool read does | lib/data/profile.ts:148-154 ↔ lib/data/list.ts:22-31,110 · lib/data/item.ts:17-37,135-148 · lib/data/purchase.ts:184-200 · lib/data/profile.identity.ts:24-32; design.md:108 (D9) |
+| B2 | Minor | DATABASE.md:26 | This change rewrites two already-generated migrations in place (`0010`, `0011`), deliberately leaves `drizzle/meta/_journal.json` alone, and adds a DROP migration. The consequence — drizzle applies by timestamp and never compares hashes, so a database that ran the old file silently skips the rewrite and must be rebuilt, not reseeded — is recorded in `0010`'s own header and in design D1/D5, but not in `DATABASE.md`, the doc CLAUDE.md routes all migration work to. That doc still presents the workflow as forward-only with no DROPs and the journal as the source of truth for what applied. The change gained two other `DATABASE.md` rules in this same footprint, so the doc was in scope; a next session reading it will not learn that an in-place rewrite is undetectable. | Fix now — record the rewrite-in-place hazard (and its rebuild-not-reseed remedy) in `DATABASE.md`'s migration section | DATABASE.md:22-26,45 ↔ drizzle/0010_late_chamber.sql:18-23 · design.md D1/D5; CLAUDE.md § "Read this before touching that" (DATABASE.md owns migration workflow) |
+
+### Convention
+No findings.
+
+### Testing
+| # | Severity | Location | Finding | Disposition | Citation |
+|---|----------|----------|---------|-------------|----------|
+| T3 | Major | lib/data/profile.identity.ts:20 | The `role = 'self'` filter that both new resolution helpers hang on — the `selfMemberships` subquery and the `withSelfAvatar` relational fragment — is exercised by no test. `seedManagedProfile` writes a `profiles` row and zero membership rows, and no suite inserts an `owner`/`manager` membership on a profile a DAL read then resolves; `profiles.test.ts:90,118` are constraint tests, not resolution ones. Deleting `.where(eq(profile_members.role, 'self'))` from either helper leaves the whole suite green, while in production it resolves a managed profile to its owner's account — making it an eligible attributed purchaser and giving it that account's avatar. `ManagedProfileInOwnersFollows_ExcludedForLackOfAnAccount` passes on the profile having no memberships at all, not on the role discrimination. | Fix now — give `seedManagedProfile` optional `owner`/`manager` membership rows, and add a test that a managed profile carrying an owner membership stays out of the pool (and one that the avatar path reads the `self` member, not another role) | lib/data/profile.identity.ts:20,29 ↔ test/helpers/seedFollowGraph.ts:53-60 · db/__tests__/profiles.test.ts:90,118; specs/profiles-data-model/spec.md "a profile no account holds a `self` membership on is a managed profile" and specs/claim-attribution/spec.md "Both follow legs resolve each side's account through the profile's `self` membership"; TESTING.md § Test quality bar |
+| T4 | Minor | lib/data/profile.ts:154 | `cacheTag('profile_members')` (task 4.5) is pinned by no named test, though the delta's pool-read SHALL enumerates the tag set explicitly and the repo already asserts cache calls this way (`profile.actions.test.ts:274` asserts `updateTag.mock.calls`). `test/helpers/next-cache.ts` mocks `cacheTag` as a `vi.fn()` nothing reads, so dropping the tag leaves a stale pool after a membership change with a green suite. Paired with B1: the tag rule is both under-applied and unpinned. | Fix now — assert `getEligiblePurchasers` calls `cacheTag` with all three tags | lib/data/profile.ts:148-154 ↔ test/helpers/next-cache.ts; specs/claim-attribution/spec.md:106 "tagged `user_follows`, `user_blocks`, and `profile_members`" (scenario traceability) |
+
+### What looks good
+- Every one of round 2's eight open `Fix now` findings resolves with real work, verified against the post-fix tree and by grep rather than diff eyeballing. None of the three adjudicated `Drop`s (C6, T11, T12) was quietly fixed anyway — the carve-out paragraph, the bare negative and the driver comment all stand as adjudicated.
+- The A1 and A4 fixes took the adjudication's reasoning rather than just its instruction: D10 now carries *why* the stale clause is corrected here (the sentence is rewritten twice regardless), and the split paragraph grounds the carve-out in D7 instead of asserting it.
+- The T9 fix is the substantive kind — a second item under the deleted profile plus an exact-set assertion, so the `items` cascade leg now actually fails when broken, rather than a renamed test over the same blind spot.
+- B5's resolution followed the adjudication's precedent argument rather than the review's own proposals, and recorded the reasoning in D7 where the next reader meets it.
+- The testing arena's staleness sweep across the whole footprint is clean: no dropped handle (`claimed_by`, `followee_id`, `blocker_id`/`blocked_id`, `profiles.user_id`, `lib/profileIds`) survives in a test or fixture, and the diff adds no `/* v8 ignore */`.
+- `openspec validate --strict` passes; all 72 tasks and round 2's gate section are `[x]` with reported gate results (lint, tsc, build clean; 2832 unit tests, 57 e2e, zero failures).
+
+**Verdict:** findings remain — 4 open `Fix now`: B1, B2, T3, T4. The blocker is T3 (the role filter both new resolution helpers depend on is untested, and deleting it keeps the suite green). B1 and T4 are the two halves of one under-served rule — D9's tag obligation is applied at one site of six and pinned by nothing. CI unverified (non-PR invocation), must be green before archive.
+
+### Adjudications (2026-08-19)
+
+| # | Old → New | Rationale |
+|---|-----------|-----------|
+| B1 | Fix now → Drop | Re-litigation of round 1's `A1+B2+C3`, dropped at that round's adjudication: same four `withSelfAvatar` reads, same two reconcile options, and D9 / task 4.5 left unamended *deliberately* there. B1's one claimed extra site, `getPublicListsByProfile`, is uncached (`lib/data/list.ts:95-96`), so it adds no ground — five cached reads carry the join, not six. The four untagged reads did not gain a dependency either: before this change they read the same account image through `profiles.user_id`, equally untagged. |
+| B2 | Fix now → Drop | The in-place rewrite already departed from `DATABASE.md`'s standing forward-only, no-DROPs rule. Recording a second rule that sanctions the departure is worse than leaving the one-off: the doc keeps the rule the repo wants followed, and the exception stays flagged where a rebuilder meets it (`drizzle/0010_late_chamber.sql:18-23`, `0012_icy_dreadnoughts.sql:15-16`). A fresh migration file would have been the better original move; redoing it now would be worse than either. |
+| T3 | Fix now → Drop | `self` is the only membership kind this change models — no `owner`/`manager` row is written anywhere in its footprint. Pinning the role filter requires inventing membership data the change does not have, which is out of charter. The roles, and the test that discriminates against them, arrive with [#193](https://github.com/JoshEddie/CTRLplusList/issues/193)/[#194](https://github.com/JoshEddie/CTRLplusList/issues/194). |
+| T4 | Fix now → Drop | Wrong test tier: caching is pinned by e2e, not unit (`e2e/README.md:5` — the suite exercises the real `'use cache'`/`revalidateTag` layer; `e2e/follow.auth.spec.ts:5` already pins the `user_follows` and `user_blocks` cache-tag loops behaviorally). The third tag has no loop to pin — `updateTag('profile_members')` has no writer, by D9's own argument — so a unit assertion on `cacheTag.mock.calls` would restate the source with no behavior behind it. |
+
+**Verdict:** clear to land — all four of round 3's open `Fix now` findings drop at adjudication; no open `Fix now` findings remain. CI unverified (non-PR invocation), must be green before archive.

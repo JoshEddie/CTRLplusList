@@ -306,12 +306,12 @@ When a follow-graph mutation needs to maintain a cross-statement invariant (e.g.
 #### Scenario: blockUser succeeds without invoking the driver's transaction API
 
 - **WHEN** an authenticated user invokes `blockUser(targetProfileId)`
-- **THEN** the implementation issues sequential single-statement calls (`db.insert(user_blocks)…onConflictDoNothing()`, `db.delete(user_follows)` forward, the `profiles` lookup resolving the blocked profile's account, `db.delete(user_follows)` reverse) and SHALL NOT call `db.transaction(...)` or `tx.*` on any code path
+- **THEN** the implementation issues sequential single-statement calls (`db.insert(user_blocks)…onConflictDoNothing()`, `db.delete(user_follows)` forward, the membership lookup resolving the blocked profile's account through its `self` membership, `db.delete(user_follows)` reverse) and SHALL NOT call `db.transaction(...)` or `tx.*` on any code path
 
 #### Scenario: The block row is the mutation's first database statement
 
 - **WHEN** `blockUser` runs to completion
-- **THEN** the `user_blocks` insert is the first database statement of the mutation, ahead of both follow-edge deletes and ahead of the `profiles` lookup whose result only the reverse delete reads; the actor resolution the action opens with (`authedIdentity()`, itself two reads) is not part of the mutation and necessarily precedes it
+- **THEN** the `user_blocks` insert is the first database statement of the mutation, ahead of both follow-edge deletes and ahead of the membership lookup whose result only the reverse delete reads; the actor resolution the action opens with (`authedIdentity()`, itself two reads) is not part of the mutation and necessarily precedes it
 
 #### Scenario: Partial failure leaves the safer residual state
 
