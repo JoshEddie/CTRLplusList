@@ -53,7 +53,6 @@ vi.mock('react-hot-toast', () => ({
   },
 }));
 
-const OWNER_ID = 'owner-1';
 const VIEWER_ID = 'viewer-1';
 const OWNER_PROFILE = 'owner-profile-1';
 const VIEWER_PROFILE = 'viewer-profile-1';
@@ -66,7 +65,6 @@ const list: ListTable = {
   date: new Date('2025-01-01'),
   created_at: new Date('2025-01-01'),
   updated_at: new Date('2025-01-01'),
-  user_id: OWNER_ID,
   profile_id: OWNER_PROFILE,
   shared: true,
 };

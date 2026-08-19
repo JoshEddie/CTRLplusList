@@ -139,7 +139,6 @@ describe('createList', () => {
       subtitle: null,
       profile_id: selfProfileOf(OWNER.id),
       updated_by_user_id: OWNER.id,
-      user_id: null,
     });
     expect(updateTag).toHaveBeenCalledWith('lists');
   });

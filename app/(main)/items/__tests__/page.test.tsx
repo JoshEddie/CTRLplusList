@@ -84,7 +84,7 @@ beforeEach(() => {
   } as never);
   vi.mocked(getUserIdentity).mockResolvedValue({
     userId: 'viewer',
-    profile: makeProfile('viewer-profile', 'Test Viewer', 'viewer'),
+    profile: makeProfile('viewer-profile', 'Test Viewer'),
   });
   vi.mocked(getItemsByProfile).mockImplementation(
     async (_id: string, opts?: { filter?: string }) =>
@@ -230,7 +230,7 @@ describe('Page', () => {
     it('OneTokenName_UsesFirstToken', async () => {
       vi.mocked(getUserIdentity).mockResolvedValue({
         userId: 'viewer',
-        profile: makeProfile('viewer-profile', 'Madonna', 'viewer'),
+        profile: makeProfile('viewer-profile', 'Madonna'),
       });
       render(await callPage());
       expect(screen.getByTestId('items-page')).toHaveAttribute(
@@ -242,7 +242,7 @@ describe('Page', () => {
     it('NoName_DerivesEmpty', async () => {
       vi.mocked(getUserIdentity).mockResolvedValue({
         userId: 'viewer',
-        profile: makeProfile('viewer-profile', '', 'viewer'),
+        profile: makeProfile('viewer-profile', ''),
       });
       render(await callPage());
       expect(screen.getByTestId('items-page')).toHaveAttribute(

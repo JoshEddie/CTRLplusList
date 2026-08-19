@@ -1,12 +1,20 @@
-import { accounts, profile_members, profiles, users } from '@/db/schema';
+import {
+  accounts,
+  profile_members,
+  profiles,
+  SELF_MEMBERSHIP_PER_USER_IDX,
+  users,
+} from '@/db/schema';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
+import { sql } from 'drizzle-orm';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import type * as schema from '@/db/schema';
+import { nanoid } from 'nanoid';
 import NextAuth, { type NextAuthConfig } from 'next-auth';
 import type { AdapterUser } from 'next-auth/adapters';
 import Google from 'next-auth/providers/google';
 import { db } from '../db';
-import { selfProfileOf } from './profileIds';
+import { constraintOf, sqlstateOf } from './sqlstate';
 
 type Callbacks = NonNullable<NextAuthConfig['callbacks']>;
 
@@ -53,15 +61,46 @@ export async function createSelfProfile(
   database: PgDatabase<PgQueryResultHKT, typeof schema>,
   user: Pick<AdapterUser, 'id' | 'name'>
 ) {
-  const profileId = selfProfileOf(user.id);
-  await database
-    .insert(profiles)
-    .values({ id: profileId, name: user.name ?? 'UNTITLED', user_id: user.id })
-    .onConflictDoNothing();
-  await database
-    .insert(profile_members)
-    .values({ user_id: user.id, profile_id: profileId, role: 'self' })
-    .onConflictDoNothing();
+  const created = database.$with('created').as(
+    database
+      .insert(profiles)
+      .values({ id: nanoid(), name: user.name ?? 'UNTITLED' })
+      .returning({ id: profiles.id })
+  );
+
+  try {
+    // Both rows in one statement — the only atomicity neon-http offers. A
+    // membership row is what makes a profile reachable at all, so a second
+    // statement that lost the uniqueness race would strand the profile as a
+    // permanent orphan. Here the 23505 rolls the profile insert back with it,
+    // and catching it IS the idempotency: the account already has a
+    // self-profile. Any other constraint is someone else's problem.
+    await database
+      .with(created)
+      .insert(profile_members)
+      .select(
+        // Every column, in table order: drizzle rejects an insert-select whose
+        // projection is not the table's own, so the two defaults are restated
+        // here rather than left to the column definitions.
+        database
+          .select({
+            user_id: sql<string>`${user.id}`.as('user_id'),
+            profile_id: created.id,
+            role: sql<string>`'self'`.as('role'),
+            ride_along: sql<boolean>`false`.as('ride_along'),
+            created_at: sql<Date>`now()`.as('created_at'),
+          })
+          .from(created)
+      );
+  } catch (err) {
+    if (
+      sqlstateOf(err) === '23505' &&
+      constraintOf(err) === SELF_MEMBERSHIP_PER_USER_IDX
+    ) {
+      return;
+    }
+    throw err;
+  }
 }
 
 const nextAuth = NextAuth({

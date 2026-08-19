@@ -1,7 +1,7 @@
 ---
 name: landfall
 argument-hint: "[change-name]"
-description: Land the active OpenSpec change on dev - gate checks, then an owner-chosen verification path. Fast path (no dev verification needed) stages both signed commits for one push with no CI wait; verified path pushes the work commit, waits for green CI and the owner's live click-test, then seals. Runs finalize-spec-purposes before the seal commit, hands off paste-ready commit messages, labels the issue IN PORT (never closes it). State-driven, self-healing, never runs git commit. Use when a change is implemented, reviewed clear, and ready to land, or to resume a landing in progress.
+description: Land the active OpenSpec change on dev - gate checks, then an owner-chosen verification path. Fast path (no dev verification needed) stages both signed commits for one push with no CI wait; verified path pushes the work commit, waits for green CI and the owner's live click-test, then seals. Verifies the change's ADR deltas reached their destinations and runs finalize-spec-purposes before the seal commit, hands off paste-ready commit messages, labels the issue IN PORT (never closes it). State-driven, self-healing, never runs git commit. Use when a change is implemented, reviewed clear, and ready to land, or to resume a landing in progress.
 disable-model-invocation: true
 metadata:
   author: list_eddiefamily
@@ -47,10 +47,23 @@ Ask the owner (AskUserQuestion): **does this change need dev verification (CI + 
 - **No → fast path.** Expected customers: locally-verified changes and doc-only changes that can't affect the battery. Accepted cost: a red CI after the combined push fixes forward against an already-sealed contract.
 - **Yes → verified path.** The contract seals only after the change has been seen working live.
 
+## ADR gate — inside the archive swoop, before the seal
+
+Promotion is not landfall's. Entries reach `openspec/adr/` by a task in the change's own `tasks.md`, so they are carried on every route through apply and not only on this one. Landfall checks the work landed.
+
+Read `openspec/adr/`, `INDEX.md`, and every document named in a **Touching** cell from disk on every invocation. Any check below failing → stop and name it; do not hand off the seal.
+
+- Every entry declared in `adr.md` exists in `openspec/adr/` and carries an index row. A redirect carries no **Touching** line and therefore no row — it is checked for the file, not the row.
+- Where an entry's **Touching** cell is a repository path, that document carries the entry's **Decision** and cites the entry.
+
+An `adr.md` of three empty headings declares that the change settled nothing, and clears the gate.
+
+This is a checklist an agent works, not machine validation. `openspec validate --strict` does not see `adr.md` — the base validator hardcodes `specs/` — so nothing here fails a build, and a real validator is still owed.
+
 ## Fast path — two signed commits, one push
 
 1. Stage the change's work (per the owner's staging conventions — never blanket `git add` without confirming scope). Hand off with the paste-ready message `issue-<N>: <summary>`; stop for signing.
-2. After the signature: archive the change (`/opsx:archive` semantics; `review.md` travels with it), run `/finalize-spec-purposes` so its repairs ride inside the seal commit, stage the archive move (and any sync/repair output). **Bookkeeping, in the same swoop as the archive:** flip the issue's label to `IN PORT` (removing `UNDER SAIL`) and post one summary comment on the landed issue — a short user-visible-changes summary when the change touched UI, a "no user-visible changes" one-liner otherwise (no scout lookup — the comment is harvested later by the map's e2e scout) — independent of staged/committed/pushed state. Never close the issue. Hand off with the paste-ready message `issue-<N>: archive <change>`; stop for signing.
+2. After the signature: archive the change (`/opsx:archive` semantics; `review.md` travels with it), verify the change's ADR deltas (above), run `/finalize-spec-purposes` so its repairs ride inside the seal commit, stage the archive move (and any sync/repair output). **Bookkeeping, in the same swoop as the archive:** flip the issue's label to `IN PORT` (removing `UNDER SAIL`) and post one summary comment on the landed issue — a short user-visible-changes summary when the change touched UI, a "no user-visible changes" one-liner otherwise (no scout lookup — the comment is harvested later by the map's e2e scout) — independent of staged/committed/pushed state. Never close the issue. Hand off with the paste-ready message `issue-<N>: archive <change>`; stop for signing.
 3. After both signatures: **one push** (`git push origin dev`) — no CI wait. Report the CI run to watch (`gh run list --branch dev --limit 1`).
 
 ## Verified path — push, verify, then seal
@@ -59,7 +72,7 @@ Ask the owner (AskUserQuestion): **does this change need dev verification (CI + 
 2. After the signature: push to `dev`, report the CI run to watch. The owner click-tests the live dev deployment while CI runs. Stop here if the session ends — re-invocation resumes at the wait.
 3. **CI green** — check the run for the pushed sha. Red → fix forward (below). Pending → report and stop.
 4. **Live check** — ask the owner (AskUserQuestion) to confirm the change checks out on the live dev deployment. Not confirmed → stop (or fix forward if it failed).
-5. Archive the change, run `/finalize-spec-purposes`, stage the seal commit. **Bookkeeping, in the same swoop as the archive:** flip to `IN PORT` (removing `UNDER SAIL`) and post one summary comment on the landed issue — UI summary or "no user-visible changes" one-liner, no scout lookup — independent of staged/committed/pushed state. Never close the issue. Hand off with `issue-<N>: archive <change>`, stop for signing.
+5. Archive the change, verify the ADR deltas (above), run `/finalize-spec-purposes`, stage the seal commit. **Bookkeeping, in the same swoop as the archive:** flip to `IN PORT` (removing `UNDER SAIL`) and post one summary comment on the landed issue — UI summary or "no user-visible changes" one-liner, no scout lookup — independent of staged/committed/pushed state. Never close the issue. Hand off with `issue-<N>: archive <change>`, stop for signing.
 
 ## MUSTER branch — one commit, no seal, always CI-verified
 

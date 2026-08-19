@@ -195,7 +195,6 @@ export function toItemDisplay(vm: ItemViewModel): ItemDisplay {
     image_url: vm.placeholder ?? vm.photos[vm.photoIndex] ?? null,
     created_at: PREVIEW_TIMESTAMP,
     updated_at: PREVIEW_TIMESTAMP,
-    user_id: null,
     profile_id: 'preview',
     quantity_limit: vm.qty,
     store: vm.store,

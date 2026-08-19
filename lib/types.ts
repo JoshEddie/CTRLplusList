@@ -9,7 +9,6 @@ export type ActionResponse = {
 export type ProfileTable = {
   id: string;
   name: string;
-  user_id: string | null;
   created_at: Date;
   updated_at: Date;
 };
@@ -24,7 +23,6 @@ export type ListTable = {
   date: Date;
   created_at: Date;
   updated_at: Date;
-  user_id: string | null;
   profile_id: string;
   shared: boolean;
 };
@@ -44,7 +42,6 @@ export type ItemTable = {
   image_url?: string | null;
   created_at: Date;
   updated_at: Date;
-  user_id: string | null;
   profile_id: string;
   quantity_limit: number | null;
   archived_at?: Date | null;
@@ -54,7 +51,7 @@ export type PurchaseView = {
   id: string;
   by: 'self' | 'other';
   firstName: string;
-  /** The viewer asserted this claim (`claimed_by`) — grants the unclaim affordance even when the purchaser is someone else. */
+  /** The viewer asserted this claim (`claimed_by_profile_id`) — grants the unclaim affordance even when the purchaser is someone else. */
   claimedByViewer: boolean;
   /** Owner spoiler view only: the claimer's first name when the claimer differs from the purchaser. */
   claimerFirstName?: string;

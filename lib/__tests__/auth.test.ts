@@ -1,4 +1,6 @@
 import { getTableName } from 'drizzle-orm';
+
+import { SELF_MEMBERSHIP_PER_USER_IDX } from '@/db/schema';
 import type { NextAuthConfig } from 'next-auth';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -9,11 +11,39 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // `nextAuthConfig` captures the config lib/auth.ts hands to NextAuth, so the
 // event wiring can be driven without the real callback machinery; `insertedRows`
 // stands in for the database the createUser event writes through.
-const { realAuth, nextAuthConfig, insertedRows } = vi.hoisted(() => ({
-  realAuth: vi.fn(),
-  nextAuthConfig: { current: undefined as NextAuthConfig | undefined },
-  insertedRows: [] as { table: unknown; values: unknown }[],
-}));
+const { realAuth, nextAuthConfig, insertedRows, recordingDb } = vi.hoisted(
+  () => ({
+    realAuth: vi.fn(),
+    nextAuthConfig: { current: undefined as NextAuthConfig | undefined },
+    insertedRows: [] as { table: unknown; values: unknown }[],
+    // Stands in for the database the createUser event writes through. The
+    // write is one data-modifying CTE, so the profile row arrives through the
+    // `$with` body and the membership row through the insert-select's
+    // projection.
+    recordingDb: (rows: { table: unknown; values: unknown }[]) => ({
+      $with: () => ({
+        as: (body: unknown) => ({ id: 'created.id', body }),
+      }),
+      insert: (table: unknown) => ({
+        values: (values: unknown) => ({
+          returning: () => {
+            rows.push({ table, values });
+            return {};
+          },
+        }),
+      }),
+      select: (fields: unknown) => ({ from: () => ({ fields }) }),
+      with: () => ({
+        insert: (table: unknown) => ({
+          select: (query: { fields: unknown }) => {
+            rows.push({ table, values: query.fields });
+            return Promise.resolve();
+          },
+        }),
+      }),
+    }),
+  })
+);
 
 vi.mock('next-auth', () => ({
   default: (config: NextAuthConfig) => {
@@ -28,18 +58,7 @@ vi.mock('next-auth', () => ({
 }));
 vi.mock('next-auth/providers/google', () => ({ default: {} }));
 vi.mock('@auth/drizzle-adapter', () => ({ DrizzleAdapter: () => ({}) }));
-vi.mock('@/db', () => ({
-  db: {
-    insert: (table: unknown) => ({
-      values: (values: unknown) => ({
-        onConflictDoNothing: () => {
-          insertedRows.push({ table, values });
-          return Promise.resolve();
-        },
-      }),
-    }),
-  },
-}));
+vi.mock('@/db', () => ({ db: recordingDb(insertedRows) }));
 
 afterEach(() => {
   insertedRows.length = 0;
@@ -156,7 +175,7 @@ describe('bypassActiveProfile', () => {
 });
 
 describe('createUserEvent', () => {
-  it('NewAccount_WritesSelfProfileAndSelfMembershipThroughTheAppDb', async () => {
+  it('NewAccount_WritesOpaqueSelfProfileAndSelfMembershipThroughTheAppDb', async () => {
     await loadAuth();
 
     await nextAuthConfig.current?.events?.createUser?.({
@@ -164,20 +183,57 @@ describe('createUserEvent', () => {
     });
 
     expect(
-      insertedRows.map(({ table, values }) => ({
-        table: getTableName(table as PgTable),
-        values,
-      }))
-    ).toEqual([
-      {
-        table: 'profiles',
-        values: { id: 'self-u1', name: 'Ada Lovelace', user_id: 'u1' },
-      },
-      {
-        table: 'profile_members',
-        values: { user_id: 'u1', profile_id: 'self-u1', role: 'self' },
-      },
-    ]);
+      insertedRows.map(({ table }) => getTableName(table as PgTable))
+    ).toEqual(['profiles', 'profile_members']);
+    const profile = insertedRows[0].values as { id: string; name: string };
+    expect(profile.name).toBe('Ada Lovelace');
+    expect(profile.id).not.toContain('u1');
+    expect(profile.id).toMatch(/^[A-Za-z0-9_-]{21}$/);
+    expect(profile).not.toHaveProperty('user_id');
+  });
+});
+
+describe('createSelfProfile', () => {
+  // The membership insert has no ON CONFLICT: losing the self-role race raises
+  // 23505 and rolls the profile insert back with it, and swallowing exactly
+  // that violation is what makes creation idempotent.
+  function throwingDb(cause: { code: string; constraint: string }) {
+    return {
+      $with: () => ({ as: () => ({ id: 'created.id' }) }),
+      insert: () => ({ values: () => ({ returning: () => ({}) }) }),
+      select: () => ({ from: () => ({}) }),
+      with: () => ({
+        insert: () => ({
+          select: () =>
+            Promise.reject(Object.assign(new Error('Failed query'), { cause })),
+        }),
+      }),
+    };
+  }
+
+  it('SelfMembershipUniqueViolation_ResolvesWithoutError', async () => {
+    const { createSelfProfile } = await loadAuth();
+
+    await expect(
+      createSelfProfile(
+        throwingDb({
+          code: '23505',
+          constraint: SELF_MEMBERSHIP_PER_USER_IDX,
+        }) as never,
+        { id: 'u1', name: 'Ada' }
+      )
+    ).resolves.toBeUndefined();
+  });
+
+  it('UnrelatedUniqueViolation_Rethrows', async () => {
+    const { createSelfProfile } = await loadAuth();
+
+    await expect(
+      createSelfProfile(
+        throwingDb({ code: '23505', constraint: 'some_other_idx' }) as never,
+        { id: 'u1', name: 'Ada' }
+      )
+    ).rejects.toThrow('Failed query');
   });
 });
 

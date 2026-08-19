@@ -1,5 +1,6 @@
 import {
   lists,
+  profile_members,
   profiles,
   user_blocks,
   user_follows,
@@ -35,7 +36,16 @@ export async function seedUsers(db: TestDb, ids: SeedUser[]): Promise<void> {
     ids.map((u) => ({
       id: selfProfileOf(u.id),
       name: u.profile_name ?? u.name ?? u.id,
+    }))
+  );
+  // The `self` membership is the only thing that resolves a profile back to an
+  // account, so every read that joins through it needs one seeded here rather
+  // than per test.
+  await db.insert(profile_members).values(
+    ids.map((u) => ({
       user_id: u.id,
+      profile_id: selfProfileOf(u.id),
+      role: 'self',
     }))
   );
 }
@@ -47,7 +57,6 @@ export async function seedManagedProfile(
   await db.insert(profiles).values({
     id: profile.id,
     name: profile.name ?? profile.id,
-    user_id: null,
   });
 }
 

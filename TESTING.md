@@ -21,6 +21,17 @@ Any test you add MUST assert observable behavior — what the production code re
 
 This rule applies to every test in the repo. ESLint enforces the mechanical parts where configured (`vitest/expect-expect`, tautology shortlist); the rest is a manual review bar. The normative statement and the per-sub-proposal assertion audit it pairs with live in the `testing-foundation` capability spec at [openspec/specs/testing-foundation/spec.md](openspec/specs/testing-foundation/spec.md).
 
+## Every delta-spec scenario is pinned by a named test
+
+When a change's delta specs add or modify a SHALL statement or a `#### Scenario:`, a named test in this repo pins it. The scope is the change's own delta — the standing corpus is not swept.
+
+The unit differs by layer, because a failing test should name the scenario that broke:
+
+- **Unit and integration** — one scenario per test. A test covering several scenarios makes the failure ambiguous about which contract broke.
+- **E2E** — one test spans an acceptance flow, and a flow is a chain of scenarios, so covering several is the correct shape there.
+
+It is a norm, not a count. A scenario may honestly earn several tests, and a scenario sharing a flow test with its neighbours is not the failure this bar catches — a scenario with zero tests is. `/spec-review`'s testing arena enforces the same bar from the reviewer's side.
+
 ## Shared setup belongs in a fixture, not duplicated or merged away
 
 When sibling tests need the *same* Arrange (identical seed, mocks, render), hoist it into the enclosing `describe`'s `beforeEach`. Do NOT copy the setup inline into each test, and do NOT collapse distinct triggers into one multi-assert test just to write the setup once. Both shortcuts are wrong, in opposite directions:

@@ -83,7 +83,7 @@ beforeEach(() => {
   } as never);
   vi.mocked(getUserIdentity).mockResolvedValue({
     userId: 'viewer',
-    profile: makeProfile('self-viewer', 'Test Viewer', 'viewer'),
+    profile: makeProfile('self-viewer', 'Test Viewer'),
   });
   vi.mocked(getItemsByProfile).mockResolvedValue(VIEWER_ITEMS as never);
   vi.mocked(getItemsByListId).mockResolvedValue(LIST_ITEMS as never);

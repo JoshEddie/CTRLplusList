@@ -58,7 +58,6 @@ export const lists = pgTable('lists', {
   date: timestamp('date').defaultNow().notNull(),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
-  user_id: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
   profile_id: text('profile_id')
     .references(() => profiles.id, { onDelete: 'cascade' })
     .notNull(),
@@ -80,7 +79,6 @@ export const items = pgTable('items', {
   image_url: text('image_url'),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
-  user_id: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
   profile_id: text('profile_id')
     .references(() => profiles.id, { onDelete: 'cascade' })
     .notNull(),
@@ -127,9 +125,6 @@ export const user_follows = pgTable(
     follower_id: text('follower_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
-    followee_id: text('followee_id').references(() => users.id, {
-      onDelete: 'cascade',
-    }),
     followee_profile_id: text('followee_profile_id')
       .references(() => profiles.id, { onDelete: 'cascade' })
       .notNull(),
@@ -143,12 +138,6 @@ export const user_follows = pgTable(
 export const user_blocks = pgTable(
   'user_blocks',
   {
-    blocker_id: text('blocker_id').references(() => users.id, {
-      onDelete: 'cascade',
-    }),
-    blocked_id: text('blocked_id').references(() => users.id, {
-      onDelete: 'cascade',
-    }),
     blocker_profile_id: text('blocker_profile_id')
       .references(() => profiles.id, { onDelete: 'cascade' })
       .notNull(),
@@ -204,14 +193,8 @@ export const purchases = pgTable(
     item_id: text('item_id')
       .references(() => items.id, { onDelete: 'cascade' })
       .notNull(),
-    user_id: text('user_id').references(() => users.id, {
-      onDelete: 'cascade',
-    }),
     profile_id: text('profile_id').references(() => profiles.id, {
       onDelete: 'cascade',
-    }),
-    claimed_by: text('claimed_by').references(() => users.id, {
-      onDelete: 'set null',
     }),
     claimed_by_profile_id: text('claimed_by_profile_id').references(
       () => profiles.id,
@@ -221,36 +204,27 @@ export const purchases = pgTable(
     purchased_at: timestamp('purchased_at').defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex('purchases_item_user_unique_idx')
-      .on(table.item_id, table.user_id)
-      .where(sql`${table.user_id} IS NOT NULL`),
     uniqueIndex('purchases_item_profile_unique_idx')
       .on(table.item_id, table.profile_id)
       .where(sql`${table.profile_id} IS NOT NULL`),
   ]
 );
 
-export const profiles = pgTable(
-  'profiles',
-  {
-    id: text('id')
-      .primaryKey()
-      .$defaultFn(() => nanoid()),
-    name: text('name').notNull(),
-    // NULL marks a managed (account-less) profile; profiles never cascade from
-    // users, so an account delete detaches the self-profile instead of removing it.
-    user_id: text('user_id').references(() => users.id, {
-      onDelete: 'set null',
-    }),
-    created_at: timestamp('created_at').defaultNow().notNull(),
-    updated_at: timestamp('updated_at').defaultNow().notNull(),
-  },
-  (table) => [
-    uniqueIndex('profiles_one_self_per_user_idx')
-      .on(table.user_id)
-      .where(sql`${table.user_id} IS NOT NULL`),
-  ]
-);
+export const profiles = pgTable('profiles', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  name: text('name').notNull(),
+  created_at: timestamp('created_at').defaultNow().notNull(),
+  updated_at: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Named so `createSelfProfile` can narrow its 23505 catch to the violation it
+// treats as success; a bare code would swallow unrelated ones.
+export const SELF_MEMBERSHIP_PER_USER_IDX =
+  'profile_members_one_self_per_user_idx';
+export const SELF_MEMBERSHIP_PER_PROFILE_IDX =
+  'profile_members_one_self_per_profile_idx';
 
 export const profile_members = pgTable(
   'profile_members',
@@ -271,6 +245,15 @@ export const profile_members = pgTable(
       'profile_members_role_valid',
       sql`${table.role} IN ('self', 'owner', 'manager')`
     ),
+    // Both directions are load-bearing: the account side is "one self-profile
+    // per account", the profile side is what makes a claim asserter resolve
+    // back to exactly one human.
+    uniqueIndex(SELF_MEMBERSHIP_PER_USER_IDX)
+      .on(table.user_id)
+      .where(sql`${table.role} = 'self'`),
+    uniqueIndex(SELF_MEMBERSHIP_PER_PROFILE_IDX)
+      .on(table.profile_id)
+      .where(sql`${table.role} = 'self'`),
   ]
 );
 
@@ -303,11 +286,6 @@ export const item_storesRelations = relations(item_stores, ({ one }) => ({
 }));
 
 export const itemsRelations = relations(items, ({ one, many }) => ({
-  user: one(users, {
-    fields: [items.user_id],
-    references: [users.id],
-    relationName: 'itemOwner',
-  }),
   profile: one(profiles, {
     fields: [items.profile_id],
     references: [profiles.id],
@@ -336,16 +314,6 @@ export const purchasesRelations = relations(purchases, ({ one }) => ({
     fields: [purchases.item_id],
     references: [items.id],
   }),
-  user: one(users, {
-    fields: [purchases.user_id],
-    references: [users.id],
-    relationName: 'purchaser',
-  }),
-  claimer: one(users, {
-    fields: [purchases.claimed_by],
-    references: [users.id],
-    relationName: 'claimer',
-  }),
   purchaserProfile: one(profiles, {
     fields: [purchases.profile_id],
     references: [profiles.id],
@@ -360,11 +328,6 @@ export const purchasesRelations = relations(purchases, ({ one }) => ({
 
 // Relations between tables
 export const listsRelations = relations(lists, ({ one, many }) => ({
-  user: one(users, {
-    fields: [lists.user_id],
-    references: [users.id],
-    relationName: 'listOwner',
-  }),
   profile: one(profiles, {
     fields: [lists.profile_id],
     references: [profiles.id],
@@ -380,16 +343,9 @@ export const listsRelations = relations(lists, ({ one, many }) => ({
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
-  lists: many(lists, { relationName: 'listOwner' }),
-  items: many(items, { relationName: 'itemOwner' }),
   memberships: many(profile_members),
-  purchases: many(purchases, { relationName: 'purchaser' }),
-  claimed_purchases: many(purchases, { relationName: 'claimer' }),
   visits: many(list_visits),
   following: many(user_follows, { relationName: 'follower' }),
-  followers: many(user_follows, { relationName: 'followee' }),
-  blocking: many(user_blocks, { relationName: 'blocker' }),
-  blockedBy: many(user_blocks, { relationName: 'blocked' }),
 }));
 
 export const list_itemsRelations = relations(list_items, ({ one }) => ({
@@ -420,11 +376,6 @@ export const user_followsRelations = relations(user_follows, ({ one }) => ({
     references: [users.id],
     relationName: 'follower',
   }),
-  followee: one(users, {
-    fields: [user_follows.followee_id],
-    references: [users.id],
-    relationName: 'followee',
-  }),
   followeeProfile: one(profiles, {
     fields: [user_follows.followee_profile_id],
     references: [profiles.id],
@@ -432,11 +383,7 @@ export const user_followsRelations = relations(user_follows, ({ one }) => ({
   }),
 }));
 
-export const profilesRelations = relations(profiles, ({ one, many }) => ({
-  user: one(users, {
-    fields: [profiles.user_id],
-    references: [users.id],
-  }),
+export const profilesRelations = relations(profiles, ({ many }) => ({
   members: many(profile_members),
   preferences: many(profile_preferences),
   lists: many(lists, { relationName: 'listOwnerProfile' }),
@@ -474,16 +421,3 @@ export const profile_preferencesRelations = relations(
     }),
   })
 );
-
-export const user_blocksRelations = relations(user_blocks, ({ one }) => ({
-  blocker: one(users, {
-    fields: [user_blocks.blocker_id],
-    references: [users.id],
-    relationName: 'blocker',
-  }),
-  blocked: one(users, {
-    fields: [user_blocks.blocked_id],
-    references: [users.id],
-    relationName: 'blocked',
-  }),
-}));

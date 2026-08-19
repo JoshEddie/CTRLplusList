@@ -31,7 +31,7 @@ function props(id = 'l1') {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(authedUserId).mockResolvedValue('u1');
-  vi.mocked(getList).mockResolvedValue({ id: 'l1', user_id: 'u1' } as never);
+  vi.mocked(getList).mockResolvedValue({ id: 'l1', profile_id: 'self-u1' } as never);
 });
 
 describe('EditListBody', () => {

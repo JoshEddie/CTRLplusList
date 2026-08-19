@@ -8,7 +8,7 @@ let db: Awaited<ReturnType<typeof bootPglite>>['db'];
 
 async function seedOwner() {
   await db.insert(users).values({ id: 'u1', name: 'Owner' });
-  await db.insert(profiles).values({ id: 'pr1', name: 'Owner', user_id: 'u1' });
+  await db.insert(profiles).values({ id: 'pr1', name: 'Owner' });
 }
 
 async function readSubtitle(id: string) {
@@ -37,7 +37,6 @@ describe('subtitle', () => {
           id: 'l1',
           name: 'Christmas',
           occasion: 'Christmas',
-          user_id: 'u1',
           profile_id: 'pr1',
         });
 
@@ -51,7 +50,6 @@ describe('subtitle', () => {
         id: 'l1',
         name: 'Christmas',
         occasion: 'Christmas',
-        user_id: 'u1',
         profile_id: 'pr1',
         subtitle: 'Brandy Family',
       });
@@ -64,7 +62,6 @@ describe('subtitle', () => {
         id: 'l1',
         name: 'Christmas',
         occasion: 'Christmas',
-        user_id: 'u1',
         profile_id: 'pr1',
         subtitle: 'Brandy Family',
       });
@@ -84,7 +81,6 @@ describe('subtitle', () => {
         id: 'l1',
         name: 'Christmas',
         occasion: 'Christmas',
-        user_id: 'u1',
         profile_id: 'pr1',
         subtitle: 'Brandy Family',
       });

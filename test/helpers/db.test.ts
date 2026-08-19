@@ -41,19 +41,18 @@ describe('bootPglite', () => {
     await db
       .insert(profiles)
       .values([
-        { id: 'pr1', name: 'Owner', user_id: 'u1' },
-        { id: 'pr2', name: 'Buyer', user_id: 'u2' },
+        { id: 'pr1', name: 'Owner' },
+        { id: 'pr2', name: 'Buyer' },
       ]);
     await db.insert(lists).values({
       id: 'l1',
       name: 'L',
       occasion: 'Birthday',
-      user_id: 'u1',
       profile_id: 'pr1',
     });
     await db
       .insert(items)
-      .values({ id: 'i1', name: 'Thing', user_id: 'u1', profile_id: 'pr1' });
+      .values({ id: 'i1', name: 'Thing', profile_id: 'pr1' });
     await db
       .insert(list_items)
       .values({ list_id: 'l1', item_id: 'i1', position: 0 });
@@ -76,17 +75,16 @@ describe('bootPglite', () => {
 describe('resetDb', () => {
   it('SeededAcrossTables_EveryTableEmptyAfterReset', async () => {
     await db.insert(users).values({ id: 'u1', name: 'Owner' });
-    await db.insert(profiles).values({ id: 'pr1', name: 'Owner', user_id: 'u1' });
+    await db.insert(profiles).values({ id: 'pr1', name: 'Owner' });
     await db.insert(lists).values({
       id: 'l1',
       name: 'L',
       occasion: 'Birthday',
-      user_id: 'u1',
       profile_id: 'pr1',
     });
     await db
       .insert(items)
-      .values({ id: 'i1', name: 'Thing', user_id: 'u1', profile_id: 'pr1' });
+      .values({ id: 'i1', name: 'Thing', profile_id: 'pr1' });
 
     await resetDb(db);
 

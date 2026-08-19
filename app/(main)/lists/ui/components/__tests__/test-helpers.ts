@@ -17,7 +17,6 @@ export function makeList(overrides: Partial<TestList> = {}): TestList {
     date: new Date('2030-01-01T00:00:00Z'),
     created_at: new Date('2030-01-01T00:00:00Z'),
     updated_at: new Date('2030-01-01T00:00:00Z'),
-    user_id: 'owner-1',
     profile_id: 'owner-profile-1',
     shared: false,
     ...overrides,

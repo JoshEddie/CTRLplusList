@@ -6,10 +6,15 @@ description: spec-driven + a propose-time review.md scaffold artifact (repo fork
 # reachable. Changes select it via `schema: spec-driven-review` in config.yaml
 # (default for new changes) and each change's `.openspec.yaml`.
 # The proposal/specs/design/tasks artifacts + apply block below are a verbatim
-# copy of the package schema; the trailing `review` and `acceptance` artifacts
-# are the local additions (see the review-artifact and acceptance-artifact
-# capabilities). Reconcile against the package `spec-driven` schema on
-# `openspec update` — see CLAUDE.md, trunk-workflow.
+# copy of the package schema; `adr`, `acceptance` and `review` are the local
+# additions (see the acceptance-artifact and review-artifact capabilities; the
+# adr artifact's decisions are recorded in the archived adr-artifact and
+# adr-artifact-rework changes). `adr` records each decision as an entry for the
+# library at `openspec/adr/`.
+# They are NOT all appended at the end — `adr` is declared between `proposal`
+# and `specs` for the reason stated at its declaration. Reconcile against the
+# package `spec-driven` schema on `openspec update` — see CLAUDE.md,
+# trunk-workflow.
 artifacts:
   - id: proposal
     generates: proposal.md
@@ -43,6 +48,88 @@ artifacts:
 
       This is the foundation - specs, design, and tasks all build on this.
     requires: []
+
+  # LOCAL ADDITION. Declared HERE, between `proposal` and `specs`: the position
+  # is load-bearing. `/embark-design` loops `/opsx:continue` until `design.md`
+  # exists and continue walks declaration order, so an artifact declared after
+  # `design` is never generated at design time — silently, since `status` reads
+  # `ready` forever and nothing errors. Before `specs` also keeps upstream's
+  # `proposal < specs < design < tasks` order intact. Do not move it to the end.
+  # `generates` names one file: every decision is an entry, so there is no second
+  # artifact shape to hold. A document that carries a decision is edited by a task
+  # the `tasks` artifact cuts, not by a delta file beside this one.
+  - id: adr
+    generates: adr.md
+    description: Architectural decisions this change makes, as entries for the ADR library
+    template: adr.md
+    instruction: |
+      Record each decision and what led to it. Entries reach `openspec/adr/` at
+      landing, by a task the `tasks` artifact cuts for them.
+
+      ### 1. What a decision holds
+
+      **Touching** is the index row's left cell: a term from the bank in
+      `openspec/adr/INDEX.md`, or the destination's repository path where a
+      document carries the decision. Take every term the decision binds: a wasted
+      read costs seconds, a missed one ships work against a decision its reader
+      never saw. Where no term fits, propose one in this delta:
+
+      - Propose only where the decision binds work no existing term names.
+        Rewording or splitting a term that already covers the work is its own
+        change
+      - Name a surface by default, an action only where no artifact is edited
+        (`Running Tests`) - a surface term covers authoring and editing alike, so
+        `Skills & Agents` beats `Writing a Skill`
+      - A term must discriminate: one nearly every task matches is not a key. A
+        parameterized family (`Editing <capability> spec`), instance bound in the
+        entry's own cell, narrows one that would otherwise match everything
+      - Growth runs through review
+
+      **Context** is what led to the decision - the constraint that was hit, what
+      was tried, what was ruled out. The repo will hold the outcome; nothing else
+      holds this.
+
+      **Decision** is what is true from now on, and what lands in the destination
+      as a line, a rule, or code. State it positively - *the DB layer uses
+      `neon-http`*, not *don't use the WebSocket pool*. It stands alone: a reader
+      who acts on it without **Context** acts correctly.
+
+      **Consequences** are the costs taken on knowingly. A later reader hitting
+      one of them is where the entry expected them to be, and argues with the
+      decision rather than working around it.
+
+      ### 2. Where it goes
+
+      Every decision is an entry, filed as
+      `openspec/adr/YYYY-MM-DD-kebab-title.md`, dated the day it is written and
+      fixed from then on.
+
+      Where a document already covers the subject, **Touching** is that document's
+      repository path, and the `tasks` artifact cuts a task putting the
+      **Decision** into it, citing the entry.
+
+      ### 3. Supersession
+
+      Supersession changes an entry's position - what a reader following it does. The
+      test: **would a reader following this entry now act differently?**
+
+      - No - `MODIFIED`, edited in place, carrying the entire updated entry and
+        reproducing its name character for character. Rewriting an entry's **Context**
+        wholesale is still `MODIFIED`.
+      - Yes - `ADDED` under a new name for the new position, `REMOVED` for the entry
+        it replaces, one delta. A five-word change to a threshold is `ADDED`.
+
+      **REMOVED** gives the resulting redirect plus **Reason**, which stays in the
+      delta. Its stub names an entry `ADDED` in the same delta. Returning to an
+      earlier position is one `ADDED` and two `REMOVED` - the reversal is its own
+      decision, so the entry it replaces and the entry it restores both stub to it.
+
+      A removed entry keeps its file, and its whole body becomes one line:
+      `**Superseded** - see <YYYY-MM-DD-kebab-title>`, or `**Removed** - this rule no
+      longer applies; do not follow older references to it.` A redirect carries no
+      **Touching** line and therefore no index row.
+    requires:
+      - proposal
 
   - id: specs
     generates: "specs/**/*.md"
@@ -171,7 +258,7 @@ artifacts:
 
       Good design docs concisely explain the "why" behind technical decisions.
     requires:
-      - proposal
+      - adr
 
   - id: acceptance
     generates: acceptance.md
@@ -185,28 +272,48 @@ artifacts:
 
       Not a summary: every row is sourced. A step the corpus cannot back is
       surfaced as a finding, never written around on the flow's own authority.
+      The failure types a finding is classified under are named once, in
+      `/embark-qualify`'s SKILL.md; this instruction states only that an
+      unsourceable step is surfaced.
 
-      design.md never sources behavior — a step chains on a spec scenario or
-      not at all. Where a spec backs the step but names no observable, design.md
-      may supply the concrete surface the row asserts (the handle, not the
-      behavior); that is not a finding. Where design.md is the only thing
-      asserting the behavior itself, or asserts behavior a spec denies, the
-      step is not sourced: surface it.
+      While any finding stands, the run writes no flows and no
+      `acceptance.md`. That is a property of the artifact rather than of the
+      gate, so it holds on every generation route and not only under
+      `/embark-qualify` — a half-chained file reads as a completed walk.
+
+      Neither design.md nor adr.md ever sources behavior — a step chains on a
+      spec scenario or not at all. Where a spec backs the step but names no
+      observable, either may supply the concrete surface the row asserts (the
+      handle, not the behavior); that is not a finding. Where one of them is
+      the only thing asserting the behavior itself, or asserts behavior a spec
+      denies, the step is not sourced: surface it.
 
       Format: one Given→When→Then arc per flow, stages in strict order
       of appearance — a stage recurring after a later one (When after
-      Then, Given after When) starts a new flow. One atom per row: a
-      single concrete action (literal UI verbs and handles — "clicks
-      `Claim as Guest`") or a single observable assertion; `And`
-      continues the current stage. Givens open on the binary
-      distinguishing state, no `And` restating what's implied. Thens
-      state implied negatives explicitly; no parenthetical commentary,
-      no unobservable claims. Convert vague prose to a concrete
-      observable ("reads as theirs" → "the banner reads `You`"); none
-      findable = surface it. A requirement with no human-observable
-      surface is listed as "no manual path — fully automated", never
-      forced into a flow. Canonical spec scenarios stay WHEN/THEN; GWT
-      is exclusive to acceptance.md.
+      Then, Given after When) starts a new flow. One atom per row: one
+      concrete action by the chain's ROOT ACTOR carrying that actor's
+      literal handle — "clicks `Claim as Guest`", "runs `npm run
+      db:migrate`", "POSTs to the action" — or a single observable
+      assertion; `And` continues the current stage.
+
+      The root actor must produce a TESTABLE outcome — an exit code,
+      stdout, rows in a table. An agent following a skill's instructions
+      does not: `WHEN this skill runs, THEN this happens` is a list of
+      instructions, and no test attaches to it.
+
+      A Then asserts what the execution emitted — rendered page, HTTP
+      response, database state, command stdout or exit code, a generated
+      file. The state of hand-written source MAY be a Given and SHALL
+      NEVER be a When or a Then. The discriminator is subject matter, not
+      verb, so rewording `WHEN the source is inspected` into `WHEN a
+      maintainer runs rg` does not launder it.
+
+      Givens open on the binary distinguishing state, no `And` restating
+      what's implied. Thens state implied negatives explicitly; no
+      parenthetical commentary, no unobservable claims. Convert vague
+      prose to a concrete observable ("reads as theirs" → "the banner
+      reads `You`"); none findable = surface it. Canonical spec scenarios
+      stay WHEN/THEN; GWT is exclusive to acceptance.md.
 
       Lifecycle: this planning-time draft is later refined at apply time with
       literal handles (real button text, real routes) — refine, not rewrite;
@@ -253,9 +360,22 @@ artifacts:
 
       Reference specs for what needs to be built, design for how to build it.
       Each task should be verifiable - you know when it's done.
+
+      **Every entry in `adr.md` gets a promotion task**, naming the file it
+      writes: "Promote `2026-08-18-use-neon-http` into `openspec/adr/`". An entry
+      whose **Touching** cell is a repository path gets a second task putting its
+      **Decision** into that document with a citation back to it. An `adr.md`
+      with no entries gets neither.
+
+      Promotion rides the task list because the base tooling promotes `specs/`
+      alone and offers no extension point for anything else. Every route
+      through apply works this list, so a task is carried on all of them; a
+      landing skill is one route among several, and a decision it never sees
+      is lost.
     requires:
       - specs
       - design
+      - adr
 
   - id: review
     generates: review.md

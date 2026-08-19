@@ -44,7 +44,6 @@ async function seedVisit(listId: string, lastVisitedAt: Date): Promise<void> {
     id: listId,
     name: `Name ${listId}`,
     occasion: 'birthday',
-    user_id: 'owner',
     profile_id: selfProfileOf('owner'),
   });
   await db.insert(list_visits).values({

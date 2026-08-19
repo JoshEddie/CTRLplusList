@@ -152,8 +152,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: OWNER_PROFILE,
           claimed_by_profile_id: OWNER_PROFILE,
-          user_id: null,
-          claimed_by: null,
           guest_name: null,
         }),
       ]);
@@ -179,8 +177,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: null,
           claimed_by_profile_id: OWNER_PROFILE,
-          user_id: null,
-          claimed_by: null,
           guest_name: 'Aunt May',
         }),
       ]);
@@ -206,8 +202,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: null,
           claimed_by_profile_id: null,
-          user_id: null,
-          claimed_by: null,
           guest_name: 'Gifty',
         }),
       ]);
@@ -284,7 +278,7 @@ describe('createPurchase', () => {
 
     it('AuthedUnknownEmail_ReturnsUnauthorized-NoRow', async () => {
       // A stale session must not fall through to the guest path and write a
-      // purchases row with claimed_by = NULL (server-endpoint-authorization,
+      // purchases row with claimed_by_profile_id = NULL (server-endpoint-authorization,
       // "A stale session does not become a guest").
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       asGhost();
@@ -486,8 +480,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: TARGET_PROFILE,
           claimed_by_profile_id: OTHER_PROFILE,
-          user_id: null,
-          claimed_by: null,
           guest_name: null,
         }),
       ]);
@@ -565,8 +557,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: OTHER_PROFILE,
           claimed_by_profile_id: OTHER_PROFILE,
-          user_id: null,
-          claimed_by: null,
         }),
       ]);
     });
@@ -631,8 +621,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: OWNER_PROFILE,
           claimed_by_profile_id: OWNER_PROFILE,
-          user_id: null,
-          claimed_by: null,
         }),
       ]);
     });
@@ -650,8 +638,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: TARGET_PROFILE,
           claimed_by_profile_id: OWNER_PROFILE,
-          user_id: null,
-          claimed_by: null,
         }),
       ]);
     });

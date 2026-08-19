@@ -1,7 +1,8 @@
 'use server';
 
 import { db } from '@/db';
-import { profiles, user_blocks, user_follows } from '@/db/schema';
+import { user_blocks, user_follows } from '@/db/schema';
+import { selfMemberships } from '@/lib/data/profile.identity';
 import {
   UNAUTHORIZED_RESPONSE,
   authedIdentity,
@@ -108,7 +109,7 @@ export async function blockUser(
     // support interactive transactions, so cross-statement atomicity comes
     // from idempotent ordering + DB constraints. Insert the block row first
     // so a racing followUser is gated by the block-check before the follow
-    // rows are removed. Every statement of the mutation, the profiles lookup
+    // rows are removed. Every statement of the mutation, the membership lookup
     // included, stays behind it so none of them widens that race by a
     // round-trip; only actor resolution, which the session seam requires up
     // front, runs ahead of it.
@@ -130,10 +131,10 @@ export async function blockUser(
       );
     // The reverse edge is keyed by the blocked profile's account: a managed
     // profile has none and owns no follow edges.
-    const blockedAccount = await db.query.profiles.findFirst({
-      where: eq(profiles.id, blocked_profile_id),
-      columns: { user_id: true },
-    });
+    const [blockedAccount] = await db
+      .select({ user_id: selfMemberships.user_id })
+      .from(selfMemberships)
+      .where(eq(selfMemberships.profile_id, blocked_profile_id));
     if (blockedAccount?.user_id) {
       await db
         .delete(user_follows)

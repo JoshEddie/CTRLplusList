@@ -74,7 +74,7 @@ export default function Item({
     claimCount >= quantityLimit;
 
   // Claims this viewer can remove: their own (purchaser) or ones they
-  // asserted for someone else (claimed_by).
+  // asserted for someone else (claimed_by_profile_id).
   const viewerClaims = useMemo(
     () => localPurchases.filter((p) => p.by === 'self' || p.claimedByViewer),
     [localPurchases]

@@ -135,7 +135,6 @@ describe('removeFollower', () => {
       expect.objectContaining({
         follower_id: VIEWER.id,
         followee_profile_id: selfProfileOf(TARGET.id),
-        followee_id: null,
       }),
     ]);
   });
@@ -159,7 +158,6 @@ describe('removeFollower', () => {
       expect.objectContaining({
         follower_id: TARGET.id,
         followee_profile_id: selfProfileOf(THIRD.id),
-        followee_id: null,
       }),
     ]);
   });

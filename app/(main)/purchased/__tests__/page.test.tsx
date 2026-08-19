@@ -38,7 +38,7 @@ beforeEach(() => {
   vi.mocked(getUserIdByEmail).mockResolvedValue({ id: 'viewer' } as never);
   vi.mocked(getUserIdentity).mockResolvedValue({
     userId: 'viewer',
-    profile: makeProfile('viewer-profile', 'Viewer', 'viewer'),
+    profile: makeProfile('viewer-profile', 'Viewer'),
   });
   vi.mocked(getItemsByPurchased).mockResolvedValue([] as never);
 });

@@ -2,6 +2,7 @@ import { db } from '@/db';
 import { purchases, user_blocks, user_follows } from '@/db/schema';
 import { accountsOfProfiles } from '@/lib/data/profile';
 import { primaryStore } from '@/lib/storeValidity';
+import { withSelfAvatar } from '@/lib/data/profile.identity';
 import { ActionResponse, PurchaseView } from '@/lib/types';
 import { and, eq, or } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
@@ -13,7 +14,7 @@ type RawPurchase = {
   guest_name: string | null;
   purchased_at: Date;
   purchaserProfile:
-    | { name: string | null; user?: { image: string | null } | null }
+    | { name: string | null; members: { user: { image: string | null } }[] }
     | null;
   claimerProfile: { name: string | null } | null;
 };
@@ -44,7 +45,7 @@ export function sanitizePurchases(
       claimedByViewer:
         !!viewerProfileId && p.claimed_by_profile_id === viewerProfileId,
       purchasedAt: p.purchased_at,
-      image: p.purchaserProfile?.user?.image ?? null,
+      image: p.purchaserProfile?.members[0]?.user.image ?? null,
     };
     if (
       isOwner &&
@@ -60,10 +61,10 @@ export function sanitizePurchases(
 // Not cached: authorizes a write (createPurchase attribution), so it must see
 // the live follow/block graph, not a tagged snapshot.
 //
-// Both follow legs resolve each side's account through profiles.user_id — a
-// follow edge runs from a human to a profile, and a profile is never a
-// follower. A profile with no account satisfies neither leg, so a managed
-// owner or target falls out ineligible with no special case.
+// Both follow legs resolve each side's account through the profile's `self`
+// membership — a follow edge runs from a human to a profile, and a profile is
+// never a follower. A profile with no account satisfies neither leg, so a
+// managed owner or target falls out ineligible with no special case.
 export async function isEligiblePurchaser(
   ownerProfileId: string,
   claimerProfileId: string,
@@ -196,7 +197,7 @@ export async function getItemsByPurchased(profileId?: string) {
               with: {
                 purchaserProfile: {
                   columns: { name: true },
-                  with: { user: { columns: { image: true } } },
+                  with: withSelfAvatar,
                 },
                 claimerProfile: {
                   columns: { name: true },

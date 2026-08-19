@@ -198,7 +198,7 @@ describe('sanitizePurchases', () => {
     profile_id: 'bea',
     claimed_by_profile_id: 'carl',
     guest_name: null,
-    purchaserProfile: { name: 'Bea Buyer' },
+    purchaserProfile: { name: 'Bea Buyer', members: [] },
     claimerProfile: { name: 'Carl Claimer' },
   };
 
@@ -297,7 +297,7 @@ describe('sanitizePurchases', () => {
             profile_id: 'own',
             claimed_by_profile_id: 'own',
             guest_name: null,
-            purchaserProfile: { name: 'Olive Owner' },
+            purchaserProfile: { name: 'Olive Owner', members: [] },
             claimerProfile: { name: 'Olive Owner' },
           },
         ],
@@ -352,7 +352,7 @@ describe('sanitizePurchases', () => {
             profile_id: 'ghost',
             claimed_by_profile_id: 'ghost',
             guest_name: null,
-            purchaserProfile: { name: null },
+            purchaserProfile: { name: null, members: [] },
             claimerProfile: { name: null },
           },
         ],
