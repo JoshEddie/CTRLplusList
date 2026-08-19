@@ -51,7 +51,7 @@ export type PurchaseView = {
   id: string;
   by: 'self' | 'other';
   firstName: string;
-  /** The viewer asserted this claim (`claimed_by`) — grants the unclaim affordance even when the purchaser is someone else. */
+  /** The viewer asserted this claim (`claimed_by_profile_id`) — grants the unclaim affordance even when the purchaser is someone else. */
   claimedByViewer: boolean;
   /** Owner spoiler view only: the claimer's first name when the claimer differs from the purchaser. */
   claimerFirstName?: string;

@@ -1,6 +1,7 @@
 -- Migration: profiles-schema-phase-3 (openspec change)
 --
--- Forward-only drops: the eight account-valued columns phase 2 superseded,
+-- Forward-only drops: the seven remaining account-valued columns phase 2
+-- superseded (the eighth, profiles.user_id, is explained below),
 -- their foreign keys, and the account-valued purchaser partial unique. Every
 -- reader and writer moved to the profile-valued columns in phase 2, so these
 -- carry backfilled data nothing reads. See:

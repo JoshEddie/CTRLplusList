@@ -61,10 +61,10 @@ export function sanitizePurchases(
 // Not cached: authorizes a write (createPurchase attribution), so it must see
 // the live follow/block graph, not a tagged snapshot.
 //
-// Both follow legs resolve each side's account through profiles.user_id — a
-// follow edge runs from a human to a profile, and a profile is never a
-// follower. A profile with no account satisfies neither leg, so a managed
-// owner or target falls out ineligible with no special case.
+// Both follow legs resolve each side's account through the profile's `self`
+// membership — a follow edge runs from a human to a profile, and a profile is
+// never a follower. A profile with no account satisfies neither leg, so a
+// managed owner or target falls out ineligible with no special case.
 export async function isEligiblePurchaser(
   ownerProfileId: string,
   claimerProfileId: string,

@@ -37,11 +37,22 @@ Every check of the form "does this row belong to the acting party" SHALL compare
 - **WHEN** an account that does not own a list renders that list
 - **THEN** the list's `profile_id` differs from the profile id the request acts as, and no owner-only affordance or authorization resolves
 
+### Requirement: Minted profile ids SHALL carry no account id
+
+A profile id minted by the migration backfill or by account creation SHALL be opaque and SHALL NOT derive from the id of any account: profiles are not one-to-one with accounts, so a key derived from an account id asserts a relationship the model denies and outlives the account it names.
+
+The rule binds the two minting paths that run against a real database, not every string that can occupy the column. The dev seed and test fixtures mint ids from a deterministic `self-<account id>` helper, whose shape is irrelevant to the behavior under test and whose output no production path produces.
+
+#### Scenario: Profile id carries no account id
+
+- **WHEN** any profile is created, whether by the migration backfill or by account creation
+- **THEN** its id is opaque and contains no account's id
+
 ## MODIFIED Requirements
 
 ### Requirement: Profiles are first-class rows independent of accounts
 
-The database SHALL hold profiles in their own table, keyed by their own id, with `name` (required), `created_at`, and `updated_at`. A profile's id SHALL be opaque and SHALL NOT derive from the id of any account: profiles are not one-to-one with accounts, so a key derived from an account id asserts a relationship the model denies and outlives the account it names.
+The database SHALL hold profiles in their own table, keyed by their own id, with `name` (required), `created_at`, and `updated_at`.
 
 The profiles table SHALL hold no reference to the accounts table. A profile's link to an account lives entirely in the membership table, whose `self` role marks the profile as that account's own identity; a profile no account holds a `self` membership on is a managed profile. Deleting a user account SHALL NOT delete or cascade into any profile: the profile row survives, and only its membership rows go.
 
@@ -54,11 +65,6 @@ The profiles table SHALL hold no reference to the accounts table. A profile's li
 
 - **WHEN** a user account is deleted
 - **THEN** the account's self-profile row remains, and its `self` membership row is gone
-
-#### Scenario: Profile id carries no account id
-
-- **WHEN** any profile is created, whether by the migration backfill or by account creation
-- **THEN** its id is opaque and contains no account's id
 
 ### Requirement: Each account has exactly one self-profile
 

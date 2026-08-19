@@ -96,7 +96,6 @@ beforeEach(() => {
   // Default: an authenticated non-owner viewing a non-private (public) list.
   vi.mocked(getList).mockResolvedValue({
     id: 'l1',
-    user_id: 'u-owner',
     profile_id: 'self-u-owner',
     visibility: 'public',
     items: [{}, {}],
@@ -109,7 +108,6 @@ describe('ListHeroSection', () => {
     it('OwnerSpoilersPreview_RendersListDetailsWithDerivedProps', async () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
-        user_id: 'u-viewer',
         profile_id: 'self-u-viewer',
         visibility: 'public',
         items: [{}, {}, {}],
@@ -141,7 +139,6 @@ describe('ListHeroSection', () => {
     it('MissingProfileJoinAndItems_RendersListDetailsWithEmptyOwnerName-ZeroItems', async () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
-        user_id: 'u-owner',
         profile_id: 'self-u-owner',
         visibility: 'public',
       } as never);
@@ -154,7 +151,6 @@ describe('ListHeroSection', () => {
     it('NonOwnerHiddenList_RendersListPrivateLoggedIn', async () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
-        user_id: 'u-owner',
         profile_id: 'self-u-owner',
         visibility: 'private',
         items: [],
@@ -173,7 +169,6 @@ describe('ListHeroSection', () => {
       vi.mocked(auth).mockResolvedValue({ user: {} } as never);
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
-        user_id: 'u-owner',
         profile_id: 'self-u-owner',
         visibility: 'private',
         items: [],
@@ -231,7 +226,6 @@ describe('ListHeroSection', () => {
     it('Owner_DoesNotRecord', async () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
-        user_id: 'u-viewer',
         profile_id: 'self-u-viewer',
         visibility: 'public',
         items: [],
@@ -251,7 +245,6 @@ describe('ListHeroSection', () => {
     it('NonOwnerHiddenList_DoesNotRecord', async () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
-        user_id: 'u-owner',
         profile_id: 'self-u-owner',
         visibility: 'private',
         items: [],
