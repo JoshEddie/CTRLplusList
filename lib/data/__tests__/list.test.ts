@@ -49,7 +49,7 @@ describe('getList', () => {
     expect(list?.profile).toEqual({
       id: selfProfileOf('owner'),
       name: 'Owen',
-      user: { image: 'o.png' },
+      members: [{ user: { image: 'o.png' } }],
     });
     expect(list?.items).toHaveLength(2);
     expect(list?.items.map((i) => i.item_id).sort()).toEqual(['i1', 'i2']);
@@ -163,7 +163,7 @@ describe('getPublicListsByProfile', () => {
     expect(rows[0].profile).toEqual({
       id: selfProfileOf('owner'),
       name: 'Not Owen',
-      user: { image: 'o.png' },
+      members: [{ user: { image: 'o.png' } }],
     });
   });
 

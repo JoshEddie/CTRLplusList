@@ -1,5 +1,6 @@
 import { db } from '@/db';
 import { lists, profiles, user_blocks, user_follows, users } from '@/db/schema';
+import { selfMemberships } from '@/lib/data/profile.identity';
 import { isFollowing } from '@/lib/data/user';
 import type { UserIdentity } from '@/lib/types';
 import { VISIBILITY, visibilityDbValues } from '@/lib/visibility';
@@ -15,9 +16,19 @@ export const getUserIdentity: (
   userId: string
 ) => Promise<UserIdentity | null> = cache(async (userId: string) => {
   try {
-    const profile = await db.query.profiles.findFirst({
-      where: eq(profiles.user_id, userId),
-    });
+    const [profile] = await db
+      .select({
+        id: profiles.id,
+        name: profiles.name,
+        created_at: profiles.created_at,
+        updated_at: profiles.updated_at,
+      })
+      .from(profiles)
+      .innerJoin(
+        selfMemberships,
+        eq(selfMemberships.profile_id, profiles.id)
+      )
+      .where(eq(selfMemberships.user_id, userId));
     if (!profile) return null;
     return { userId, profile };
   } catch (error) {
@@ -45,7 +56,8 @@ export async function getFollowersOfProfile(profileId: string) {
       })
       .from(user_follows)
       .innerJoin(users, eq(users.id, user_follows.follower_id))
-      .innerJoin(profiles, eq(profiles.user_id, users.id))
+      .innerJoin(selfMemberships, eq(selfMemberships.user_id, users.id))
+      .innerJoin(profiles, eq(profiles.id, selfMemberships.profile_id))
       .where(eq(user_follows.followee_profile_id, profileId))
       .orderBy(desc(user_follows.created_at));
     return result;
@@ -71,7 +83,8 @@ export async function getBlockedByProfile(profileId: string) {
       })
       .from(user_blocks)
       .innerJoin(profiles, eq(profiles.id, user_blocks.blocked_profile_id))
-      .leftJoin(users, eq(users.id, profiles.user_id))
+      .leftJoin(selfMemberships, eq(selfMemberships.profile_id, profiles.id))
+      .leftJoin(users, eq(users.id, selfMemberships.user_id))
       .where(eq(user_blocks.blocker_profile_id, profileId))
       .orderBy(desc(user_blocks.created_at));
     return result;
@@ -111,8 +124,9 @@ export async function accountsOfProfiles(
   profileIds: string[]
 ): Promise<Map<string, string | null>> {
   const rows = await db
-    .select({ id: profiles.id, user_id: profiles.user_id })
+    .select({ id: profiles.id, user_id: selfMemberships.user_id })
     .from(profiles)
+    .leftJoin(selfMemberships, eq(selfMemberships.profile_id, profiles.id))
     .where(inArray(profiles.id, profileIds));
   return new Map(rows.map((r) => [r.id, r.user_id]));
 }
@@ -121,8 +135,9 @@ export async function accountsOfProfiles(
  * Eligible attributed-purchaser pool for an item on the owning profile's list,
  * as seen by the claimer's profile: the owner's mutual follows (the owner's
  * account follows them AND their account follows the owner's profile — each
- * leg's account resolved through profiles.user_id, so a managed profile with
- * no account yields the empty pool), minus anyone with a block edge to/from
+ * leg's account resolved through the profile's `self` membership, so a managed
+ * profile with no account yields the empty pool), minus anyone with a block
+ * edge to/from
  * the claimer, minus the owner, minus the claimer themselves (their claim is
  * the modal's primary self-claim CTA, not a picker row). Sorted with the
  * claimer's own mutuals first, then by name. Eligibility gates at claim time
@@ -136,6 +151,7 @@ export async function getEligiblePurchasers(
   'use cache';
   cacheTag('user_follows');
   cacheTag('user_blocks');
+  cacheTag('profile_members');
   try {
     const accounts = await accountsOfProfiles([
       ownerProfileId,
@@ -212,12 +228,13 @@ export async function getEligiblePurchasers(
     const rows = await db
       .select({
         id: profiles.id,
-        user_id: profiles.user_id,
+        user_id: selfMemberships.user_id,
         name: profiles.name,
         image: users.image,
       })
       .from(profiles)
-      .leftJoin(users, eq(users.id, profiles.user_id))
+      .leftJoin(selfMemberships, eq(selfMemberships.profile_id, profiles.id))
+      .leftJoin(users, eq(users.id, selfMemberships.user_id))
       .where(inArray(profiles.id, candidateIds));
 
     // The return-follow leg: the candidate's own account follows the owner's
@@ -259,7 +276,8 @@ export async function getProfileForViewer(
     const profile = await db
       .select({ id: profiles.id, name: profiles.name, image: users.image })
       .from(profiles)
-      .leftJoin(users, eq(users.id, profiles.user_id))
+      .leftJoin(selfMemberships, eq(selfMemberships.profile_id, profiles.id))
+      .leftJoin(users, eq(users.id, selfMemberships.user_id))
       .where(eq(profiles.id, profileId));
     if (!profile[0]) return null;
 

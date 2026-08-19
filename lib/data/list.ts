@@ -6,6 +6,7 @@ import {
   visibilityDbValues,
   type ListVisibility,
 } from '@/lib/visibility';
+import { withSelfAvatar } from '@/lib/data/profile.identity';
 import { and, eq, inArray } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
@@ -27,7 +28,7 @@ export async function getList(id: string) {
       with: {
         profile: {
           columns: { id: true, name: true },
-          with: { user: { columns: { image: true } } },
+          with: withSelfAvatar,
         },
         // Load only item_id from list_items so the hero can compute item
         // count via `result.items.length` without a separate DAL call.
@@ -106,7 +107,7 @@ export async function getPublicListsByProfile(
       with: {
         profile: {
           columns: { id: true, name: true },
-          with: { user: { columns: { image: true } } },
+          with: withSelfAvatar,
         },
       },
       orderBy: (lists, { desc }) => [desc(lists.shared_at)],

@@ -50,7 +50,7 @@ beforeEach(() => {
   vi.mocked(getUserIdByEmail).mockResolvedValue(makeViewer() as never);
   vi.mocked(getUserIdentity).mockResolvedValue({
     userId: 'viewer',
-    profile: makeProfile('self-viewer', 'Viewer', 'viewer'),
+    profile: makeProfile('self-viewer', 'Viewer'),
   });
   vi.mocked(getBlockedByProfile).mockResolvedValue(BLOCKED as never);
 });

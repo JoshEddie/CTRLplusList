@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The `claim-attribution` capability governs who may be recorded as an item's purchaser and who may undo that record. It defines the `claimed_by` (asserter) plus `user_id` (purchaser) row model, the eligible attributed-purchaser pool (the list owner's mutual follows, block-filtered, server-re-verified) with a free-text guest fallback, the unclaim-rights matrix (claimer, purchaser, or list-owner master unclaim), spoiler-gated owner claiming, and the viewer-relative claim display. It exists because a purchaser who is a real user needs a linked account, self-marking, and durable unclaim rights that the former free-text-only "someone else purchased it" flow could not provide.
+The `claim-attribution` capability governs who may be recorded as an item's purchaser and who may undo that record. It defines the `claimed_by_profile_id` (asserter) plus `profile_id` (purchaser) row model, the eligible attributed-purchaser pool (the list owner's mutual follows, block-filtered, server-re-verified) with a free-text guest fallback, the unclaim-rights matrix (claimer, purchaser, or list-owner master unclaim), spoiler-gated owner claiming, and the viewer-relative claim display. It exists because a purchaser who is a real user needs a linked account, self-marking, and durable unclaim rights that the former free-text-only "someone else purchased it" flow could not provide.
 ## Requirements
 ### Requirement: Purchase rows SHALL record the claimer separately from the purchaser
 

@@ -2,7 +2,15 @@ import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { bootPglite, resetDb } from '../../test/helpers/db';
-import { items, lists, profile_members, profiles, users } from '../schema';
+import {
+  items,
+  lists,
+  profile_members,
+  profiles,
+  SELF_MEMBERSHIP_PER_PROFILE_IDX,
+  SELF_MEMBERSHIP_PER_USER_IDX,
+  users,
+} from '../schema';
 
 // lib/auth.ts pulls in NextAuth, the Drizzle adapter and the Neon-backed db
 // module at import time; only the exported account-creation handler is under
@@ -46,23 +54,52 @@ beforeEach(async () => {
 });
 
 describe('profiles', () => {
-  describe('OneSelfProfilePerUser', () => {
+  describe('OneSelfMembershipEachWay', () => {
     beforeEach(async () => {
-      await db.insert(profiles).values({ id: 'p1', name: 'Owner', user_id: 'u1' });
+      await db
+        .insert(profiles)
+        .values([{ id: 'p1', name: 'Owner' }, { id: 'p2', name: 'Second' }]);
+      await db
+        .insert(profile_members)
+        .values({ user_id: 'u1', profile_id: 'p1', role: 'self' });
     });
 
-    it('SecondProfileForSameUser_RejectsOnUniqueIndex', async () => {
+    it('SecondSelfMembershipForSameUser_RejectsOnUniqueIndex', async () => {
       const constraint = await violatedConstraint(
-        db.insert(profiles).values({ id: 'p2', name: 'Owner again', user_id: 'u1' })
+        db
+          .insert(profile_members)
+          .values({ user_id: 'u1', profile_id: 'p2', role: 'self' })
       );
 
-      expect(constraint).toBe('profiles_one_self_per_user_idx');
+      expect(constraint).toBe(SELF_MEMBERSHIP_PER_USER_IDX);
+    });
+
+    it('SecondAccountClaimingSameProfileAsSelf_RejectsOnUniqueIndex', async () => {
+      const constraint = await violatedConstraint(
+        db
+          .insert(profile_members)
+          .values({ user_id: 'u2', profile_id: 'p1', role: 'self' })
+      );
+
+      expect(constraint).toBe(SELF_MEMBERSHIP_PER_PROFILE_IDX);
+    });
+
+    it('NonSelfRolesOnTheSameProfile_Insert', async () => {
+      await db
+        .insert(profile_members)
+        .values({ user_id: 'u2', profile_id: 'p1', role: 'manager' });
+
+      const rows = await db
+        .select({ role: profile_members.role })
+        .from(profile_members)
+        .where(eq(profile_members.user_id, 'u2'));
+      expect(rows).toEqual([{ role: 'manager' }]);
     });
 
     it('SecondManagedProfile_Inserts', async () => {
       await db.insert(profiles).values([
-        { id: 'p2', name: 'Kiddo', user_id: null },
-        { id: 'p3', name: 'Other kiddo', user_id: null },
+        { id: 'p3', name: 'Kiddo' },
+        { id: 'p4', name: 'Other kiddo' },
       ]);
 
       const rows = await db
@@ -75,7 +112,7 @@ describe('profiles', () => {
 
   describe('MembershipRoleCheck', () => {
     beforeEach(async () => {
-      await db.insert(profiles).values({ id: 'p1', name: 'Kiddo', user_id: null });
+      await db.insert(profiles).values({ id: 'p1', name: 'Kiddo' });
     });
 
     it('RoleOutsideAllowedSet_RejectsOnCheckConstraint', async () => {
@@ -103,27 +140,24 @@ describe('profiles', () => {
 
   describe('UserDeleted', () => {
     beforeEach(async () => {
-      await db
-        .insert(profiles)
-        .values({ id: 'self-u1', name: 'Owner', user_id: 'u1' });
-      await db
-        .insert(profile_members)
-        .values({ user_id: 'u1', profile_id: 'self-u1', role: 'self' });
-      await db
-        .insert(profiles)
-        .values({ id: 'self-u2', name: 'Editor', user_id: 'u2' });
+      await db.insert(profiles).values([
+        { id: 'self-u1', name: 'Owner' },
+        { id: 'self-u2', name: 'Editor' },
+      ]);
+      await db.insert(profile_members).values([
+        { user_id: 'u1', profile_id: 'self-u1', role: 'self' },
+        { user_id: 'u2', profile_id: 'self-u2', role: 'self' },
+      ]);
       await db.insert(lists).values({
         id: 'l1',
         name: 'Christmas',
         occasion: 'Christmas',
-        user_id: 'u2',
         profile_id: 'self-u2',
         updated_by_user_id: 'u1',
       });
       await db.insert(items).values({
         id: 'i1',
         name: 'Socks',
-        user_id: 'u2',
         profile_id: 'self-u2',
         updated_by_user_id: 'u1',
       });
@@ -131,17 +165,19 @@ describe('profiles', () => {
       await db.delete(users).where(eq(users.id, 'u1'));
     });
 
-    it('ProfileSurvives_UserIdSetToNull', async () => {
+    it('ProfileSurvives_Detached', async () => {
       const rows = await db
-        .select({ name: profiles.name, user_id: profiles.user_id })
+        .select({ name: profiles.name })
         .from(profiles)
         .where(eq(profiles.id, 'self-u1'));
-      expect(rows).toEqual([{ name: 'Owner', user_id: null }]);
+      expect(rows).toEqual([{ name: 'Owner' }]);
     });
 
-    it('Membership_Removed', async () => {
-      const rows = await db.select().from(profile_members);
-      expect(rows).toEqual([]);
+    it('SelfMembership_RemovedLeavingTheOtherAccountsIntact', async () => {
+      const rows = await db
+        .select({ user_id: profile_members.user_id })
+        .from(profile_members);
+      expect(rows).toEqual([{ user_id: 'u2' }]);
     });
 
     it('AuditColumns_SetToNullOnItemsAndLists', async () => {
@@ -160,11 +196,11 @@ describe('profiles', () => {
   });
 
   describe('createSelfProfile', () => {
-    it('NewAccount_WritesSelfProfileAndSelfMembership', async () => {
+    it('NewAccount_WritesOpaqueSelfProfileAndSelfMembership', async () => {
       await createSelfProfile(db, { id: 'u1', name: 'Owner' });
 
       const profileRows = await db
-        .select({ id: profiles.id, name: profiles.name, user_id: profiles.user_id })
+        .select({ id: profiles.id, name: profiles.name })
         .from(profiles);
       const memberRows = await db
         .select({
@@ -174,21 +210,19 @@ describe('profiles', () => {
         })
         .from(profile_members);
 
-      expect(profileRows).toEqual([
-        { id: 'self-u1', name: 'Owner', user_id: 'u1' },
-      ]);
+      expect(profileRows).toHaveLength(1);
+      expect(profileRows[0].name).toBe('Owner');
+      expect(profileRows[0].id).not.toContain('u1');
+      expect(profileRows[0].id).toMatch(/^[A-Za-z0-9_-]{21}$/);
       expect(memberRows).toEqual([
-        { user_id: 'u1', profile_id: 'self-u1', role: 'self' },
+        { user_id: 'u1', profile_id: profileRows[0].id, role: 'self' },
       ]);
     });
 
     it('NamelessAccount_WritesUNTITLEDSentinel', async () => {
       await createSelfProfile(db, { id: 'u1', name: null });
 
-      const rows = await db
-        .select({ name: profiles.name })
-        .from(profiles)
-        .where(eq(profiles.id, 'self-u1'));
+      const rows = await db.select({ name: profiles.name }).from(profiles);
       expect(rows).toEqual([{ name: 'UNTITLED' }]);
     });
 
@@ -202,6 +236,23 @@ describe('profiles', () => {
         .from(profiles);
       const memberRows = await db.select().from(profile_members);
       expect(profileRows).toEqual([{ name: 'Owner' }]);
+      expect(memberRows).toHaveLength(1);
+    });
+
+    it('LosingTheSelfMembershipRace_LeavesNoOrphanProfile', async () => {
+      // The winner's rows, already committed when the loser's statement runs.
+      await db.insert(profiles).values({ id: 'winner', name: 'Owner' });
+      await db
+        .insert(profile_members)
+        .values({ user_id: 'u1', profile_id: 'winner', role: 'self' });
+
+      await expect(
+        createSelfProfile(db, { id: 'u1', name: 'Owner' })
+      ).resolves.toBeUndefined();
+
+      const profileRows = await db.select({ id: profiles.id }).from(profiles);
+      const memberRows = await db.select().from(profile_members);
+      expect(profileRows).toEqual([{ id: 'winner' }]);
       expect(memberRows).toHaveLength(1);
     });
   });

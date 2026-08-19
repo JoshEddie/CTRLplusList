@@ -30,7 +30,10 @@ DO $$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM "user" u
-    WHERE NOT EXISTS (SELECT 1 FROM "profiles" p WHERE p."user_id" = u."id")
+    WHERE NOT EXISTS (
+      SELECT 1 FROM "profile_members" m
+      WHERE m."user_id" = u."id" AND m."role" = 'self'
+    )
   ) THEN
     RAISE EXCEPTION 'Pre-flight failed: account without a self-profile';
   END IF;
@@ -83,29 +86,37 @@ DO $$ BEGIN
 	END IF;
 END $$;--> statement-breakpoint
 
--- 2. Backfill each column through the owning account's self-profile.
+-- 2. Backfill each column through the owning account's self-profile, reached
+-- through its `self` membership row — profiles carry no account reference.
 -- Idempotent: each UPDATE only touches rows still NULL.
-UPDATE "lists" l SET "profile_id" = p."id"
-FROM "profiles" p WHERE p."user_id" = l."user_id" AND l."profile_id" IS NULL;
+UPDATE "lists" l SET "profile_id" = m."profile_id"
+FROM "profile_members" m
+WHERE m."role" = 'self' AND m."user_id" = l."user_id" AND l."profile_id" IS NULL;
 --> statement-breakpoint
-UPDATE "items" i SET "profile_id" = p."id"
-FROM "profiles" p WHERE p."user_id" = i."user_id" AND i."profile_id" IS NULL;
+UPDATE "items" i SET "profile_id" = m."profile_id"
+FROM "profile_members" m
+WHERE m."role" = 'self' AND m."user_id" = i."user_id" AND i."profile_id" IS NULL;
 --> statement-breakpoint
-UPDATE "user_follows" f SET "followee_profile_id" = p."id"
-FROM "profiles" p WHERE p."user_id" = f."followee_id" AND f."followee_profile_id" IS NULL;
+UPDATE "user_follows" f SET "followee_profile_id" = m."profile_id"
+FROM "profile_members" m
+WHERE m."role" = 'self' AND m."user_id" = f."followee_id" AND f."followee_profile_id" IS NULL;
 --> statement-breakpoint
-UPDATE "user_blocks" b SET "blocker_profile_id" = p."id"
-FROM "profiles" p WHERE p."user_id" = b."blocker_id" AND b."blocker_profile_id" IS NULL;
+UPDATE "user_blocks" b SET "blocker_profile_id" = m."profile_id"
+FROM "profile_members" m
+WHERE m."role" = 'self' AND m."user_id" = b."blocker_id" AND b."blocker_profile_id" IS NULL;
 --> statement-breakpoint
-UPDATE "user_blocks" b SET "blocked_profile_id" = p."id"
-FROM "profiles" p WHERE p."user_id" = b."blocked_id" AND b."blocked_profile_id" IS NULL;
+UPDATE "user_blocks" b SET "blocked_profile_id" = m."profile_id"
+FROM "profile_members" m
+WHERE m."role" = 'self' AND m."user_id" = b."blocked_id" AND b."blocked_profile_id" IS NULL;
 --> statement-breakpoint
 -- Guest purchases (user_id NULL) correctly stay NULL in both profile columns.
-UPDATE "purchases" pu SET "profile_id" = p."id"
-FROM "profiles" p WHERE p."user_id" = pu."user_id" AND pu."profile_id" IS NULL;
+UPDATE "purchases" pu SET "profile_id" = m."profile_id"
+FROM "profile_members" m
+WHERE m."role" = 'self' AND m."user_id" = pu."user_id" AND pu."profile_id" IS NULL;
 --> statement-breakpoint
-UPDATE "purchases" pu SET "claimed_by_profile_id" = p."id"
-FROM "profiles" p WHERE p."user_id" = pu."claimed_by" AND pu."claimed_by_profile_id" IS NULL;
+UPDATE "purchases" pu SET "claimed_by_profile_id" = m."profile_id"
+FROM "profile_members" m
+WHERE m."role" = 'self' AND m."user_id" = pu."claimed_by" AND pu."claimed_by_profile_id" IS NULL;
 --> statement-breakpoint
 
 -- 3. SET NOT NULL where the predecessor holds it, each gated on its own

@@ -22,7 +22,7 @@
  * --------------------------------------------------------------------------
  */
 import 'dotenv/config';
-import { inArray, or, sql } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 import { db } from '../db';
 import {
   item_images,
@@ -37,7 +37,7 @@ import {
   user_follows,
   users,
 } from '../db/schema';
-import { selfProfileOf } from '../lib/profileIds';
+import { selfProfileOf } from '../test/helpers/profile';
 import { VISIBILITY, type ListVisibility } from '../lib/visibility';
 
 if (process.env.NODE_ENV === 'production') {
@@ -212,11 +212,8 @@ function itemsForList(listId: string): string[] {
 //                        viewer's archived items run hotter (~70%) since
 //                        archived often means purchased.
 function purchaseCountFor(
-  item: {
-    user_id: string;
-    archived_at: Date | null;
-    quantity_limit: number | null;
-  },
+  item: { archived_at: Date | null; quantity_limit: number | null },
+  ownerId: string,
   listIdx: number,
   itemIdx: number,
   baseRatio: number
@@ -224,7 +221,7 @@ function purchaseCountFor(
   if (item.quantity_limit === 3) return listIdx % 2 === 0 ? 1 : 3;
   if (item.quantity_limit === null) return listIdx % 2 === 0 ? 1 : 4;
   const effectiveRatio =
-    item.user_id === VIEWER_ID && item.archived_at ? 0.7 : baseRatio;
+    ownerId === VIEWER_ID && item.archived_at ? 0.7 : baseRatio;
   const stride = Math.max(1, Math.round(1 / effectiveRatio));
   return itemIdx % stride === 0 ? 1 : 0;
 }
@@ -584,7 +581,6 @@ function appendLinklessExtras(
     id: string;
     name: string;
     description: string;
-    user_id: string;
     profile_id: string;
     image_url: string;
     archived_at: Date | null;
@@ -600,7 +596,6 @@ function appendLinklessExtras(
       id: itemId,
       name: extra.name,
       description: extra.description,
-      user_id: list.user_id,
       profile_id: selfProfileOf(list.user_id),
       image_url: '',
       archived_at: null,
@@ -631,20 +626,17 @@ async function main() {
   if (process.argv.includes('--reset')) {
     const seededIds = seedUsers.map((u) => u.id);
     // Profiles first: they deliberately do NOT cascade from users, and the user
-    // delete below SET-NULLs profiles.user_id and cascades memberships away —
-    // after it, both handles onto a seeded profile are gone and it is stranded.
+    // delete below cascades memberships away — membership is the only handle
+    // onto a seeded profile, so after it every one of them is stranded.
     const deletedProfiles = await db
       .delete(profiles)
       .where(
-        or(
-          inArray(profiles.user_id, seededIds),
-          inArray(
-            profiles.id,
-            db
-              .select({ id: profile_members.profile_id })
-              .from(profile_members)
-              .where(inArray(profile_members.user_id, seededIds))
-          )
+        inArray(
+          profiles.id,
+          db
+            .select({ id: profile_members.profile_id })
+            .from(profile_members)
+            .where(inArray(profile_members.user_id, seededIds))
         )
       )
       .returning({ id: profiles.id });
@@ -687,9 +679,8 @@ async function main() {
       ...seedUsers.map((u) => ({
         id: selfProfileOf(u.id),
         name: u.name,
-        user_id: u.id,
       })),
-      { id: KIDDO_PROFILE_ID, name: 'Kiddo', user_id: null },
+      { id: KIDDO_PROFILE_ID, name: 'Kiddo' },
     ])
     .onConflictDoNothing();
   await db
@@ -726,7 +717,6 @@ async function main() {
           name: l.name,
           subtitle: l.subtitle ?? null,
           occasion: l.occasion,
-          user_id: l.user_id,
           profile_id: selfProfileOf(l.user_id),
           visibility: l.visibility,
           shared,
@@ -766,7 +756,6 @@ async function main() {
     id: string;
     name: string;
     description: string;
-    user_id: string;
     profile_id: string;
     image_url: string;
     archived_at: Date | null;
@@ -793,7 +782,6 @@ async function main() {
         id: itemId,
         name,
         description: descriptionFor(itemId),
-        user_id: list.user_id,
         profile_id: selfProfileOf(list.user_id),
         image_url: imageless
           ? ''
@@ -989,9 +977,7 @@ async function main() {
   const purchaseRows: {
     id: string;
     item_id: string;
-    user_id: string | null;
     profile_id: string | null;
-    claimed_by: string | null;
     claimed_by_profile_id: string | null;
     guest_name: string | null;
     purchased_at: Date;
@@ -1008,9 +994,7 @@ async function main() {
       // the owner-spoiler e2e spec master-unclaims this exact row.
       id: 'dev-purchase-attributed',
       item_id: 'dev-list-viewer-birthday-item-1',
-      user_id: friendId('bob'),
       profile_id: selfProfileOf(friendId('bob')),
-      claimed_by: friendId('alice'),
       claimed_by_profile_id: selfProfileOf(friendId('alice')),
       guest_name: null,
       purchased_at: ATTRIBUTION_EPOCH,
@@ -1020,9 +1004,7 @@ async function main() {
       // viewer. The viewer sees it as their own claim ('self') and can unclaim.
       id: 'dev-purchase-attributed-to-viewer',
       item_id: 'dev-list-alice-wedding-item-1',
-      user_id: VIEWER_ID,
       profile_id: selfProfileOf(VIEWER_ID),
-      claimed_by: friendId('bob'),
       claimed_by_profile_id: selfProfileOf(friendId('bob')),
       guest_name: null,
       purchased_at: ATTRIBUTION_EPOCH,
@@ -1032,9 +1014,7 @@ async function main() {
       // owner — the spoiler-view "I bought this myself" state.
       id: 'dev-purchase-owner-self',
       item_id: 'dev-list-viewer-birthday-item-2',
-      user_id: VIEWER_ID,
       profile_id: selfProfileOf(VIEWER_ID),
-      claimed_by: VIEWER_ID,
       claimed_by_profile_id: selfProfileOf(VIEWER_ID),
       guest_name: null,
       purchased_at: ATTRIBUTION_EPOCH,
@@ -1045,9 +1025,7 @@ async function main() {
       // unclaim.
       id: 'dev-purchase-legacy-guest',
       item_id: 'dev-list-viewer-birthday-item-3',
-      user_id: null,
       profile_id: null,
-      claimed_by: null,
       claimed_by_profile_id: null,
       guest_name: 'Grandma',
       purchased_at: ATTRIBUTION_EPOCH,
@@ -1074,15 +1052,15 @@ async function main() {
       const item = itemRows.find((r) => r.id === itemId);
       if (!item) return;
 
-      const purchaseCount = purchaseCountFor(item, listIdx, idx, purchaseRatio);
+      const purchaseCount = purchaseCountFor(item, list.user_id, listIdx, idx, purchaseRatio);
       if (purchaseCount === 0) return;
 
       // Eligible buyer pool (owner excluded). Rotate by (h + n) so each
       // multi-buyer item picks distinct buyers across its purchase rows.
       const pool =
-        item.user_id === VIEWER_ID
+        list.user_id === VIEWER_ID
           ? friendIds
-          : [VIEWER_ID, ...friendIds].filter((id) => id !== item.user_id);
+          : [VIEWER_ID, ...friendIds].filter((id) => id !== list.user_id);
 
       for (let n = 1; n <= purchaseCount; n++) {
         const h = hash(`${itemId}-${n}`);
@@ -1091,11 +1069,9 @@ async function main() {
         purchaseRows.push({
           id: `${itemId}-purchase-${n}`,
           item_id: itemId,
-          user_id: asGuest ? null : buyerId,
           profile_id: asGuest ? null : selfProfileOf(buyerId),
           // Self-claim shape: the buyer asserted their own claim. Guest rows
           // keep the signed-out shape (all-NULL identities).
-          claimed_by: asGuest ? null : buyerId,
           claimed_by_profile_id: asGuest ? null : selfProfileOf(buyerId),
           guest_name: asGuest ? GUEST_NAMES[h % GUEST_NAMES.length] : null,
           purchased_at: new Date(PURCHASE_EPOCH - ((h + n) % 60) * 86400000),
@@ -1119,9 +1095,7 @@ async function main() {
       .onConflictDoUpdate({
         target: purchases.id,
         set: {
-          user_id: sql`excluded.user_id`,
           profile_id: sql`excluded.profile_id`,
-          claimed_by: sql`excluded.claimed_by`,
           claimed_by_profile_id: sql`excluded.claimed_by_profile_id`,
           guest_name: sql`excluded.guest_name`,
           purchased_at: sql`excluded.purchased_at`,
@@ -1134,7 +1108,7 @@ async function main() {
     .insert(user_follows)
     .values(
       seedFollows.map((f) => ({
-        ...f,
+        follower_id: f.follower_id,
         followee_profile_id: selfProfileOf(f.followee_id),
       }))
     )

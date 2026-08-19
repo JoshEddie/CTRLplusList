@@ -91,7 +91,7 @@ beforeEach(() => {
   vi.mocked(getUserIdByEmail).mockResolvedValue({ id: 'u-viewer' } as never);
   vi.mocked(getUserIdentity).mockImplementation(async (userId: string) => ({
     userId,
-    profile: makeProfile(`self-${userId}`, userId, userId),
+    profile: makeProfile(`self-${userId}`, userId),
   }));
   // Default: an authenticated non-owner viewing a non-private (public) list.
   vi.mocked(getList).mockResolvedValue({
@@ -100,7 +100,7 @@ beforeEach(() => {
     profile_id: 'self-u-owner',
     visibility: 'public',
     items: [{}, {}],
-    profile: { id: 'self-u-owner', name: 'Owner', user: { image: null } },
+    profile: { id: 'self-u-owner', name: 'Owner', members: [] },
   } as never);
 });
 

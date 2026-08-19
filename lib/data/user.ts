@@ -1,5 +1,6 @@
 import { db } from '@/db';
 import { lists, profiles, user_follows, users } from '@/db/schema';
+import { selfMemberships } from '@/lib/data/profile.identity';
 import { UserTable } from '@/lib/types';
 import { VISIBILITY, visibilityDbValues } from '@/lib/visibility';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
@@ -48,7 +49,8 @@ export async function getFollowingByUser(userId: string) {
       })
       .from(user_follows)
       .innerJoin(profiles, eq(profiles.id, user_follows.followee_profile_id))
-      .leftJoin(users, eq(users.id, profiles.user_id))
+      .leftJoin(selfMemberships, eq(selfMemberships.profile_id, profiles.id))
+      .leftJoin(users, eq(users.id, selfMemberships.user_id))
       .where(eq(user_follows.follower_id, userId))
       .orderBy(desc(user_follows.created_at));
     return result;
@@ -126,7 +128,8 @@ export async function getFollowingFeedProfiles(viewerId: string) {
       })
       .from(user_follows)
       .innerJoin(profiles, eq(profiles.id, user_follows.followee_profile_id))
-      .leftJoin(users, eq(users.id, profiles.user_id))
+      .leftJoin(selfMemberships, eq(selfMemberships.profile_id, profiles.id))
+      .leftJoin(users, eq(users.id, selfMemberships.user_id))
       .leftJoin(
         lists,
         and(

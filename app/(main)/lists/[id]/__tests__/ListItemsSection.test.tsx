@@ -78,7 +78,7 @@ beforeEach(() => {
   } as never);
   vi.mocked(getUserIdentity).mockImplementation(async (userId: string) => ({
     userId,
-    profile: makeProfile(`p-${userId}`, userId, userId),
+    profile: makeProfile(`p-${userId}`, userId),
   }));
   vi.mocked(hasBlocked).mockResolvedValue(false as never);
   vi.mocked(getList).mockResolvedValue({

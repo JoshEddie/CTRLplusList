@@ -100,7 +100,6 @@ beforeAll(async () => {
     [VIEWER, ALICE, DAVE, JACK, CAROL].map((id) => ({
       id: P(id),
       name: id,
-      user_id: id,
     }))
   );
 
@@ -114,7 +113,6 @@ beforeAll(async () => {
       id: LIST_DAVE_OWNER,
       name: "Dave's private",
       occasion: 'Just Because',
-      user_id: DAVE,
       profile_id: P(DAVE),
       visibility: 'private',
     },
@@ -122,7 +120,6 @@ beforeAll(async () => {
       id: LIST_JACK_LINK,
       name: "Jack's unlisted",
       occasion: 'Just Because',
-      user_id: JACK,
       profile_id: P(JACK),
       visibility: 'unlisted',
     },
@@ -130,7 +127,6 @@ beforeAll(async () => {
       id: LIST_ALICE_FOLLOWERS,
       name: "Alice's followers",
       occasion: 'Wedding',
-      user_id: ALICE,
       profile_id: P(ALICE),
       visibility: 'public',
     },
@@ -138,7 +134,6 @@ beforeAll(async () => {
       id: LIST_CAROL_FOLLOWERS,
       name: "Carol's followers",
       occasion: 'Graduation',
-      user_id: CAROL,
       profile_id: P(CAROL),
       visibility: 'public',
     },
@@ -146,7 +141,6 @@ beforeAll(async () => {
       id: LIST_VIEWER_OWNER,
       name: "Viewer's private",
       occasion: 'Just Because',
-      user_id: VIEWER,
       profile_id: P(VIEWER),
       visibility: 'private',
     },

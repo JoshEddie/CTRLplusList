@@ -42,7 +42,6 @@ async function seedBookmark(
     name: `Name ${listId}`,
     subtitle: list.subtitle ?? null,
     occasion: 'birthday',
-    user_id: 'owner',
     profile_id: selfProfileOf('owner'),
   });
   await db.insert(list_visits).values({

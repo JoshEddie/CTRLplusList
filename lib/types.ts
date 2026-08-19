@@ -9,7 +9,6 @@ export type ActionResponse = {
 export type ProfileTable = {
   id: string;
   name: string;
-  user_id: string | null;
   created_at: Date;
   updated_at: Date;
 };
@@ -24,7 +23,6 @@ export type ListTable = {
   date: Date;
   created_at: Date;
   updated_at: Date;
-  user_id: string | null;
   profile_id: string;
   shared: boolean;
 };
@@ -44,7 +42,6 @@ export type ItemTable = {
   image_url?: string | null;
   created_at: Date;
   updated_at: Date;
-  user_id: string | null;
   profile_id: string;
   quantity_limit: number | null;
   archived_at?: Date | null;

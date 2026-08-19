@@ -152,8 +152,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: OWNER_PROFILE,
           claimed_by_profile_id: OWNER_PROFILE,
-          user_id: null,
-          claimed_by: null,
           guest_name: null,
         }),
       ]);
@@ -179,8 +177,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: null,
           claimed_by_profile_id: OWNER_PROFILE,
-          user_id: null,
-          claimed_by: null,
           guest_name: 'Aunt May',
         }),
       ]);
@@ -206,8 +202,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: null,
           claimed_by_profile_id: null,
-          user_id: null,
-          claimed_by: null,
           guest_name: 'Gifty',
         }),
       ]);
@@ -486,8 +480,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: TARGET_PROFILE,
           claimed_by_profile_id: OTHER_PROFILE,
-          user_id: null,
-          claimed_by: null,
           guest_name: null,
         }),
       ]);
@@ -565,8 +557,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: OTHER_PROFILE,
           claimed_by_profile_id: OTHER_PROFILE,
-          user_id: null,
-          claimed_by: null,
         }),
       ]);
     });
@@ -631,8 +621,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: OWNER_PROFILE,
           claimed_by_profile_id: OWNER_PROFILE,
-          user_id: null,
-          claimed_by: null,
         }),
       ]);
     });
@@ -650,8 +638,6 @@ describe('createPurchase', () => {
         expect.objectContaining({
           profile_id: TARGET_PROFILE,
           claimed_by_profile_id: OWNER_PROFILE,
-          user_id: null,
-          claimed_by: null,
         }),
       ]);
     });

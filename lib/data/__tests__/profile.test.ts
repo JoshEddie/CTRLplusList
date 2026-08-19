@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { profiles, users } from '@/db/schema';
+import { profile_members, profiles, user_follows, users } from '@/db/schema';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import {
@@ -52,11 +52,7 @@ describe('getUserIdentity', () => {
   it('AccountWithSelfProfile_ReturnsUserIdAndSelfProfileRow', async () => {
     expect(await dal.getUserIdentity(VIEWER.id)).toMatchObject({
       userId: VIEWER.id,
-      profile: {
-        id: selfProfileOf(VIEWER.id),
-        name: 'Viewer',
-        user_id: VIEWER.id,
-      },
+      profile: { id: selfProfileOf(VIEWER.id), name: 'Viewer' },
     });
   });
 
@@ -74,7 +70,7 @@ describe('getUserIdentity', () => {
 
   it('QueryThrows_ReturnsNull-LogsError', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(db.query.profiles, 'findFirst').mockImplementation(() => {
+    vi.spyOn(db, 'select').mockImplementation(() => {
       throw new Error('boom');
     });
 
@@ -89,7 +85,7 @@ describe('getUserIdentity', () => {
 describe('getProfileForViewer', () => {
   const viewerIdentity = {
     userId: 'viewer',
-    profile: makeProfile(selfProfileOf('viewer'), 'Viewer', 'viewer'),
+    profile: makeProfile(selfProfileOf('viewer'), 'Viewer'),
   };
 
   it('UnknownProfile_ReturnsNull', async () => {
@@ -119,7 +115,7 @@ describe('getProfileForViewer', () => {
 
     const profile = await dal.getProfileForViewer(selfProfileOf('target'), {
       userId: 'target',
-      profile: makeProfile(selfProfileOf('target'), 'Tara', 'target'),
+      profile: makeProfile(selfProfileOf('target'), 'Tara'),
     });
     expect(profile).toMatchObject({
       viewerIsFollowing: false,
@@ -379,8 +375,19 @@ describe('getEligiblePurchasers', () => {
     await seedUsers(db, [{ id: 'claimer' }]);
     await db
       .insert(profiles)
-      .values({ id: 'kiddo', name: 'Kiddo', user_id: null });
+      .values({ id: 'kiddo', name: 'Kiddo' });
     expect(await dal.getEligiblePurchasers('kiddo', pClaimer)).toEqual([]);
+  });
+
+  it('ManagedProfileInOwnersFollows_ExcludedForLackOfAnAccount', async () => {
+    // The return leg runs from an account, and a managed profile holds no
+    // `self` membership to resolve one from, so it can never be marked.
+    await seedManagedProfile(db, { id: 'kiddo' });
+    await db
+      .insert(user_follows)
+      .values({ follower_id: 'own', followee_profile_id: 'kiddo' });
+    const pool = await dal.getEligiblePurchasers(pOwn, pClaimer);
+    expect(pool.map((u) => u.id)).not.toContain('kiddo');
   });
 
   describe('FailureAndSortEdges', () => {
@@ -402,8 +409,16 @@ describe('getEligiblePurchasers', () => {
         .insert(users)
         .values([{ id: 'nameless-a' }, { id: 'named', name: 'Named' }]);
       await db.insert(profiles).values([
-        { id: selfProfileOf('nameless-a'), name: '', user_id: 'nameless-a' },
-        { id: selfProfileOf('named'), name: 'Named', user_id: 'named' },
+        { id: selfProfileOf('nameless-a'), name: '' },
+        { id: selfProfileOf('named'), name: 'Named' },
+      ]);
+      await db.insert(profile_members).values([
+        {
+          user_id: 'nameless-a',
+          profile_id: selfProfileOf('nameless-a'),
+          role: 'self',
+        },
+        { user_id: 'named', profile_id: selfProfileOf('named'), role: 'self' },
       ]);
       for (const id of ['nameless-a', 'named']) {
         await seedFollow(db, 'own', id);

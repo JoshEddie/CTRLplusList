@@ -83,7 +83,6 @@ describe('followUser', () => {
       expect.objectContaining({
         follower_id: VIEWER.id,
         followee_profile_id: TARGET_PROFILE,
-        followee_id: null,
       }),
     ]);
   });
@@ -196,8 +195,6 @@ describe('blockUser', () => {
       expect.objectContaining({
         blocker_profile_id: VIEWER_PROFILE,
         blocked_profile_id: TARGET_PROFILE,
-        blocker_id: null,
-        blocked_id: null,
       }),
     ]);
     expect(await followRows()).toHaveLength(0);
@@ -211,28 +208,23 @@ describe('blockUser', () => {
     expect(await followRows()).toHaveLength(0);
   });
 
-  it('BlockFirstOrdering_BlockInsertPrecedesProfilesLookup', async () => {
+  it('BlockFirstOrdering_BlockInsertPrecedesMembershipLookup', async () => {
     const order: string[] = [];
     const insert = db.insert.bind(db);
-    const findFirst = db.query.profiles.findFirst.bind(db.query.profiles);
+    const select = db.select.bind(db);
     vi.spyOn(db, 'insert').mockImplementation(((table: never) => {
       order.push('block-insert');
       return insert(table);
     }) as never);
-    vi.spyOn(db.query.profiles, 'findFirst').mockImplementation(((
-      config: never
-    ) => {
-      order.push('profiles-lookup');
-      return findFirst(config);
+    vi.spyOn(db, 'select').mockImplementation(((fields: never) => {
+      order.push('select');
+      return select(fields);
     }) as never);
     await actions.blockUser(TARGET_PROFILE);
-    // The leading lookup is authedIdentity resolving the viewer, which runs
-    // before the action body; the blocked profile's own lookup comes after.
-    expect(order).toEqual([
-      'profiles-lookup',
-      'block-insert',
-      'profiles-lookup',
-    ]);
+    // The two leading selects are authedIdentity resolving the viewer, which
+    // runs before the action body; the blocked profile's membership lookup
+    // comes after the block row.
+    expect(order).toEqual(['select', 'select', 'block-insert', 'select']);
   });
 
   it('Reblock_CleansLeftoverFollowRowIdempotently', async () => {

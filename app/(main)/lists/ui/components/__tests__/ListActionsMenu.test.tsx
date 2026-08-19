@@ -24,7 +24,6 @@ const list: ListTable = {
   date: new Date('2025-01-01'),
   created_at: new Date('2025-01-01'),
   updated_at: new Date('2025-01-01'),
-  user_id: 'owner-1',
   profile_id: 'owner-profile-1',
   shared: true,
 };

@@ -21,16 +21,13 @@ export type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
 
 export { selfProfileOf };
 
-// Owned rows FK the owning profile, so seedList/seedItem upsert it first —
-// tests only seed a users row when the account side matters.
-async function ensureProfile(
-  db: TestDb,
-  profileId: string,
-  userId: string | null
-): Promise<void> {
+// Owned rows FK the owning profile, so seedList/seedItem upsert it first. The
+// profile carries no account reference; a test that needs the account side
+// seeds it through seedUsers, which writes the `self` membership.
+async function ensureProfile(db: TestDb, profileId: string): Promise<void> {
   await db
     .insert(profiles)
-    .values({ id: profileId, name: profileId, user_id: userId })
+    .values({ id: profileId, name: profileId })
     .onConflictDoNothing();
 }
 
@@ -52,7 +49,7 @@ export async function seedList(
   }
 ): Promise<void> {
   const profileId = list.profile_id ?? selfProfileOf(list.user_id ?? list.id);
-  await ensureProfile(db, profileId, list.user_id ?? null);
+  await ensureProfile(db, profileId);
   await db.insert(lists).values({
     id: list.id,
     name: list.name ?? list.id,
@@ -83,7 +80,7 @@ export async function seedItem(
   }
 ): Promise<void> {
   const profileId = item.profile_id ?? selfProfileOf(item.user_id ?? item.id);
-  await ensureProfile(db, profileId, item.user_id ?? null);
+  await ensureProfile(db, profileId);
   await db.insert(items).values({
     id: item.id,
     name: item.name ?? item.id,

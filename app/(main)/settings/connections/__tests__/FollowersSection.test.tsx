@@ -47,7 +47,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(authedIdentity).mockResolvedValue({
     userId: 'viewer',
-    profile: makeProfile('self-viewer', 'Viewer', 'viewer'),
+    profile: makeProfile('self-viewer', 'Viewer'),
   });
   vi.mocked(getFollowersOfProfile).mockResolvedValue(FOLLOWERS as never);
 });

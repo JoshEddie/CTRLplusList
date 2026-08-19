@@ -9,6 +9,8 @@ The DB layer uses `drizzle-orm/neon-http` over Neon's HTTP API. **Interactive tr
 Concrete implications:
 
 - Race conditions that need cross-statement atomicity must be backstopped at the DB layer (unique indexes, partial unique indexes, `ON CONFLICT` clauses), or accepted as residual.
+- **Two or more writes that need atomicity go in one data-modifying CTE** — one statement is one implicit transaction, so a constraint violation anywhere in it rolls back every branch, the inner INSERT included, and FK triggers fire at end of statement so a child row may reference a parent created alongside it. Drizzle expresses it as `db.$with()` over an INSERT body; `createSelfProfile` in [lib/auth.ts](lib/auth.ts) is the worked example. The uniqueness backstop then raises rather than returns, so a caller wanting idempotency catches the SQLSTATE narrowed to the index it means. See [2026-08-18-atomic-writes-in-one-cte](openspec/adr/2026-08-18-atomic-writes-in-one-cte.md).
+- **Never replace a uniqueness constraint by drop-then-create.** With no interactive transaction to hold the pair, the window between them is unprotected, and a duplicate that lands in it is recorded permanently — the new index cannot be created over data that already violates it. Add the replacement beside the old one, then drop the old one in a later statement.
 - Do not propose switching to `drizzle-orm/neon-serverless` / WebSocket Pool without explicit owner approval — it's been considered and declined.
 - If you find code claiming to use a transaction here, it's broken; convert it to single-statement + DB-constraint enforcement instead.
 
@@ -27,6 +29,8 @@ The migration workflow uses Drizzle Kit against the schema declared in [db/schem
 5. Re-run `npm run db:seed:dev` if the schema change broke the seed (the seed refuses to run on prod via the same `NODE_ENV` guardrail as the bypass).
 
 **Driver caveat:** the migration runtime uses the same Neon HTTP driver as the app — see the "Driver: no transactions" section above. **A single migration file cannot wrap multiple statements in `BEGIN ... COMMIT` and expect atomicity across them.** Each `--> statement-breakpoint`-separated chunk runs as its own HTTP round-trip. If you need cross-statement atomicity (e.g. "create constraint only if no violating rows exist"), encode it in a single `DO $$ ... $$` block, or split the migration into two PRs with a soak between them.
+
+**Order every schema change additive first, backfill, then tighten.** Add the new column or index nullable and unconstrained, backfill it idempotently (each statement touching only rows still unset, so a re-run is a no-op), and only then `SET NOT NULL` or add the constraint — each tightening gated on its own backfill having left nothing behind. A tighten that runs before its backfill fails against production data volumes that local testing never reproduces.
 
 **Preserved legacy artifacts:** migration `0001_black_legion.sql` deliberately preserves the pre-1.0 `saved_lists` table and `lists.shared` column for a soak period, backfilling pre-1.0 saves into `list_visits` as bookmarks. `saved_lists` was dropped once the soak ended, by `0011_illegal_wind_dancer.sql`; `lists.shared` remains. Returning users see a one-time `BookmarkMigrationToast` on `/` explaining the social-model change (share-lists → follow-users).
 

@@ -2,6 +2,7 @@ import { db } from '@/db';
 import { items, list_items } from '@/db/schema';
 import { sanitizePurchases } from '@/lib/data/purchase';
 import { primaryStore } from '@/lib/storeValidity';
+import { withSelfAvatar } from '@/lib/data/profile.identity';
 import { ListTable } from '@/lib/types';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
@@ -33,7 +34,7 @@ export async function getItemsByProfile(
           with: {
             purchaserProfile: {
               columns: { name: true },
-              with: { user: { columns: { image: true } } },
+              with: withSelfAvatar,
             },
             claimerProfile: {
               columns: { name: true },
@@ -107,7 +108,6 @@ export async function getItemById(id: string, profileId: string) {
       // double-active resolves deterministically), not items.image_url.
       image_url: result.images.find((image) => image.active)?.url ?? null,
       quantity_limit: result.quantity_limit,
-      user_id: result.user_id,
       profile_id: result.profile_id,
       created_at: result.created_at,
       updated_at: result.updated_at,
@@ -145,7 +145,7 @@ export async function getItemsByListId(
               with: {
                 purchaserProfile: {
                   columns: { name: true },
-                  with: { user: { columns: { image: true } } },
+                  with: withSelfAvatar,
                 },
                 claimerProfile: {
                   columns: { name: true },

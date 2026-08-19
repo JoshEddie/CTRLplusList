@@ -215,7 +215,6 @@ describe('createItem', () => {
         quantity_limit: 3,
         profile_id: selfProfileOf(OWNER.id),
         updated_by_user_id: OWNER.id,
-        user_id: null,
       });
 
       const placed = (await listItemRows('L')).find(
@@ -248,7 +247,6 @@ describe('createItem', () => {
         description: '',
         profile_id: selfProfileOf(OWNER.id),
         updated_by_user_id: OWNER.id,
-        user_id: null,
       });
       expect(await listItemRows('L')).toHaveLength(0);
       expect(await storeRows(rows[0].id)).toHaveLength(1);
