@@ -75,7 +75,7 @@ beforeEach(async () => {
 });
 
 describe('followUser', () => {
-  it('AuthedNewTarget_InsertsFollowRow-NullLegacyFolloweeId', async () => {
+  it('AuthedNewTarget_InsertsFollowRow', async () => {
     const res = await actions.followUser(TARGET_PROFILE);
     expect(res.success).toBe(true);
     const rows = await followRows();
@@ -186,7 +186,7 @@ describe('unfollowUser', () => {
 });
 
 describe('blockUser', () => {
-  it('Authed_InsertsBlockRow-DeletesBothFollowDirections-NullLegacyIds', async () => {
+  it('Authed_InsertsBlockRow-DeletesBothFollowDirections', async () => {
     await seedFollow(db, VIEWER.id, TARGET.id);
     await seedFollow(db, TARGET.id, VIEWER.id);
     const res = await actions.blockUser(TARGET_PROFILE);

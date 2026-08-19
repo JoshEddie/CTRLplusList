@@ -203,7 +203,6 @@ function makeItem(overrides: Record<string, unknown> = {}) {
     name: 'Gift',
     description: '',
     image_url: '',
-    user_id: null,
     profile_id: OWNER,
     quantity_limit: 1,
     store: null,

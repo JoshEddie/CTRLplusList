@@ -171,9 +171,10 @@ describe('getFollowingFeedProfiles', () => {
   });
 
   it('NewCount_CountsListsSharedAfterGreatestLastSeenOrFollow', async () => {
-    // The query resolves the followee profile's account through
-    // profiles.user_id, so last_seen_following_at in the GREATEST filter is
-    // the followee's value (preserved from the pre-profile query shape).
+    // The query resolves the followee profile's account through that
+    // profile's `self` membership, so last_seen_following_at in the GREATEST
+    // filter is the followee's value (preserved from the pre-profile query
+    // shape).
     await seedUsers(db, [
       { id: 'follower' },
       { id: 'followee', last_seen_following_at: new Date('2021-03-01') },

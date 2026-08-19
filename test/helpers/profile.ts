@@ -1,9 +1,10 @@
 import type { ProfileTable } from '@/lib/types';
 
-// A deterministic profile id for fixtures and the dev seed, so a test can name
-// a seeded user's profile without a lookup. Production mints an opaque nanoid
-// and reaches the account through `profile_members`; nothing here is that
-// scheme, and no migration reproduces it.
+// A deterministic profile id for fixtures, so a test can name a seeded user's
+// profile without a lookup. It is the contract between `seedUsers` and the
+// files reading what it inserts. Production mints an opaque nanoid and reaches
+// the account through `profile_members`; nothing here is that scheme, and no
+// migration reproduces it.
 export const selfProfileOf = (userId: string) => `self-${userId}`;
 
 // A `profiles` row for suites that mock a read rather than seed one. Ids and

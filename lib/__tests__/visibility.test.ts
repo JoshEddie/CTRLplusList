@@ -16,7 +16,6 @@ function listRow(overrides: Partial<ListTable & { visibility?: string }> = {}) {
     date: new Date(0),
     created_at: new Date(0),
     updated_at: new Date(0),
-    user_id: 'u1',
     profile_id: 'p1',
     shared: false,
     ...overrides,

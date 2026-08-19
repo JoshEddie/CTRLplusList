@@ -95,19 +95,6 @@ describe('profiles', () => {
         .where(eq(profile_members.user_id, 'u2'));
       expect(rows).toEqual([{ role: 'manager' }]);
     });
-
-    it('SecondManagedProfile_Inserts', async () => {
-      await db.insert(profiles).values([
-        { id: 'p3', name: 'Kiddo' },
-        { id: 'p4', name: 'Other kiddo' },
-      ]);
-
-      const rows = await db
-        .select({ id: profiles.id })
-        .from(profiles)
-        .where(eq(profiles.name, 'Kiddo'));
-      expect(rows).toHaveLength(1);
-    });
   });
 
   describe('MembershipRoleCheck', () => {

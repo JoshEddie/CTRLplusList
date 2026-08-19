@@ -45,11 +45,11 @@ Hand-authored non-link states: `dev-list-viewer-birthday-item-5` PRICED (single 
 
 ### Profile coverage
 
-One self-profile per seeded user, id `self-<userId>` (`dev-test-viewer` ⇒ `self-dev-test-viewer`), name = the user's, carrying a `self` membership. One managed fixture: `dev-profile-kiddo` (`user_id` null, name "Kiddo") with `dev-test-viewer` as `owner` and `dev-friend-alice` as `manager` — the account-less profile shape, and the id `BYPASS_ACTIVE_PROFILE` takes. No preference rows: `preferences` and `profile_preferences` seed empty, and the feature introducing a preference owns its catalog row. Profile + membership inserts use `.onConflictDoNothing()`, so a reseed does not pick up edits to a seeded profile's name or role — `db:reset:dev` does.
+One self-profile per seeded user, id `self-<userId>` (`dev-test-viewer` ⇒ `self-dev-test-viewer`), name = the user's, carrying a `self` membership. One managed fixture: `dev-profile-kiddo` (name "Kiddo", no `self` membership) with `dev-test-viewer` as `owner` and `dev-friend-alice` as `manager` — the account-less profile shape, and the id `BYPASS_ACTIVE_PROFILE` takes. No preference rows: `preferences` and `profile_preferences` seed empty, and the feature introducing a preference owns its catalog row. Profile + membership inserts use `.onConflictDoNothing()`, so a reseed does not pick up edits to a seeded profile's name or role — `db:reset:dev` does.
 
 ### Claim-attribution coverage
 
-Authenticated fan-out purchase rows = self-claims (`claimed_by = user_id`); guest rows all-NULL identities. Four hand-authored rows (`dev-purchase-*`, on `dev-list-viewer-birthday-item-1..3` + `dev-list-alice-wedding-item-1`, items excluded from fan-out) cover attributed-claim shape (Alice marked Bob), viewer-as-attributed-purchaser, owner self-claim, legacy signed-out-guest row — every unclaim-matrix branch + owner spoiler "added by" label reachable from seed. Alice seeded mutual with every other friend → her lists' attributed-purchaser picker pool large enough to scroll, targets besides viewer.
+Authenticated fan-out purchase rows = self-claims (`claimed_by_profile_id` = the buyer's own `profile_id`); guest rows all-NULL identities. Four hand-authored rows (`dev-purchase-*`, on `dev-list-viewer-birthday-item-1..3` + `dev-list-alice-wedding-item-1`, items excluded from fan-out) cover attributed-claim shape (Alice marked Bob), viewer-as-attributed-purchaser, owner self-claim, legacy signed-out-guest row — every unclaim-matrix branch + owner spoiler "added by" label reachable from seed. Alice seeded mutual with every other friend → her lists' attributed-purchaser picker pool large enough to scroll, targets besides viewer.
 
 ## Implementation files
 
