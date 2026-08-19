@@ -26,7 +26,7 @@
 - [x] 3.3 Add a constraint-name accessor to `lib/sqlstate.ts` unwrapping `err.cause.constraint`, in the same shape `sqlstateOf` already uses.
 - [x] 3.4 Catch `23505` in `createSelfProfile` narrowed to the self-role membership index by name, and return successfully — that catch is the idempotency `profiles-data-model` requires. An unmatched constraint rethrows.
 - [x] 3.5 Delete `lib/profileIds.ts` and move `selfProfileOf` to `test/helpers/profile.ts`, keeping its output byte-identical so the ~20 importing test files and the two `/user/self-…` URLs in `e2e/follow.auth.spec.ts` need no edit. Rewrite the header comment, which currently claims to be the production scheme and to be reproduced by the phase-2 backfill.
-- [x] 3.6 Repoint `scripts/seed-dev-users.ts`'s `selfProfileOf` import to the fixture home.
+- [x] 3.6 Give `scripts/seed-dev-users.ts` its own `selfProfileOf` declaration alongside the `friendId` factory it already owns, rather than importing the fixture home — an operational module must not depend on `test/`.
 
 ## 4. Profile → account resolution
 
@@ -65,6 +65,7 @@
 - [x] 7.6 Update `LOCALDEV.md`'s profile and claim-attribution coverage sections, which describe the seed against dropped columns: the managed fixture as `user_id` null, and the fan-out self-claims as `claimed_by = user_id`.
 - [x] 7.7 Refine `acceptance.md`'s flows with the literal handles the implementation landed (real button text, real routes, real command names). Refine, not rewrite: flow identity and journey scope stay as drafted.
 - [x] 7.8 Run `openspec validate profiles-schema-phase-3 --strict` and resolve anything it reports.
+- [x] 7.9 Record in D10 that the opaque-profile-id rule splits out of the profile-identity requirement into an ADDED requirement of its own, and that it carves out the dev seed and test fixtures whose deterministic ids D7 preserves — the delta's fourth re-added requirement, which D10's accounting omitted.
 
 ## 8. Pre-merge
 
@@ -108,19 +109,19 @@ All five gates run locally against the author's real `.env.local` before review 
 > Findings by durable ID (severity, `path:line`, citation, reconcile side) are in
 > `review.md` Round 2. Resolve each open `Fix now` there before checking it off.
 
-- [ ] 10.1 A1 Delta `claim-attribution` pool-read SHALL now names `lib/data/profile.ts`, contradicting D10's explicit carve-out — resolved
-- [ ] 10.2 A2+B3 `design.md:140` migration step 3 still miscounts the drop as eight columns — resolved
-- [ ] 10.3 A4 The A5 requirement split and its fixture carve-out are recorded in no design decision or task — resolved
-- [ ] 10.4 B5 `scripts/seed-dev-users.ts` is the only operational module importing from `test/` — resolved
+- [x] 10.1 A1 Delta `claim-attribution` pool-read SHALL now names `lib/data/profile.ts`, contradicting D10's explicit carve-out — resolved
+- [x] 10.2 A2+B3 `design.md:140` migration step 3 still miscounts the drop as eight columns — resolved
+- [x] 10.3 A4 The A5 requirement split and its fixture carve-out are recorded in no design decision or task — resolved
+- [x] 10.4 B5 `scripts/seed-dev-users.ts` is the only operational module importing from `test/` — resolved
 - [x] 10.5 C6 Carve-out criterion "run against a real database" is factually false of the dev seed — _dropped at adjudication; see review.md Round 2 Adjudications_
-- [ ] 10.6 T7 `AuthedNewTarget_InsertsFollowRow-NullLegacyFolloweeId` names an assertion its body dropped — resolved
-- [ ] 10.7 T8 `Authed_InsertsBlockRow-...-NullLegacyIds` names an assertion its body dropped — resolved
-- [ ] 10.8 T9 Cascade scenario's `items` leg is exercised by no assertion — resolved
-- [ ] 10.9 T10 `RecreatedPrimaryKeys` describe names a REMOVED requirement — resolved
+- [x] 10.6 T7 `AuthedNewTarget_InsertsFollowRow-NullLegacyFolloweeId` names an assertion its body dropped — resolved
+- [x] 10.7 T8 `Authed_InsertsBlockRow-...-NullLegacyIds` names an assertion its body dropped — resolved
+- [x] 10.8 T9 Cascade scenario's `items` leg is exercised by no assertion — resolved
+- [x] 10.9 T10 `RecreatedPrimaryKeys` describe names a REMOVED requirement — resolved
 - [x] 10.10 T11 `ManagedProfileInOwnersFollows_...` bare negative cannot distinguish exclusion from an empty pool — _dropped at adjudication; see review.md Round 2 Adjudications_
 - [x] 10.11 T12 neon-http constraint-name assumption behind `createSelfProfile`'s idempotency is untested on that driver — _dropped at adjudication; see review.md Round 2 Adjudications_
-- [ ] 10.12 `npm run lint` — zero errors, zero non-size warnings
-- [ ] 10.13 `npx tsc --noEmit` — zero errors
-- [ ] 10.14 `npm run build` — completes successfully
-- [ ] 10.15 `npm run test:coverage` — run result
-- [ ] 10.16 `npm run test:e2e` — run result
+- [x] 10.12 `npm run lint` — zero errors, zero non-size warnings
+- [x] 10.13 `npx tsc --noEmit` — zero errors
+- [x] 10.14 `npm run build` — completes successfully
+- [x] 10.15 `npm run test:coverage` — 2832 passed, 248 files, zero failures
+- [x] 10.16 `npm run test:e2e` — 57 passed, zero failures

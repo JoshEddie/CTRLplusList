@@ -67,7 +67,7 @@ describe('profileReferences', () => {
     });
   });
 
-  describe('RecreatedPrimaryKeys', () => {
+  describe('EdgeUniquenessPerPair', () => {
     it('DuplicateFollowEdge_RejectsWith23505', async () => {
       await db
         .insert(user_follows)
@@ -128,7 +128,10 @@ describe('profileReferences', () => {
       await db
         .insert(lists)
         .values({ id: 'l1', name: 'L', occasion: 'O', profile_id: 'p2' });
-      await db.insert(items).values({ id: 'i1', name: 'I', profile_id: 'p1' });
+      await db.insert(items).values([
+        { id: 'i1', name: 'I', profile_id: 'p1' },
+        { id: 'i2', name: 'I2', profile_id: 'p2' },
+      ]);
       await db
         .insert(user_follows)
         .values({ follower_id: 'u1', followee_profile_id: 'p2' });
@@ -153,6 +156,9 @@ describe('profileReferences', () => {
 
     it('OwnedContentAndEdges_Cascade', async () => {
       expect(await db.select().from(lists)).toEqual([]);
+      expect(await db.select({ id: items.id }).from(items)).toEqual([
+        { id: 'i1' },
+      ]);
       expect(await db.select().from(user_follows)).toEqual([]);
       expect(await db.select().from(user_blocks)).toEqual([]);
       const purchaserRows = await db

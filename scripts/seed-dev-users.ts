@@ -37,7 +37,6 @@ import {
   user_follows,
   users,
 } from '../db/schema';
-import { selfProfileOf } from '../test/helpers/profile';
 import { VISIBILITY, type ListVisibility } from '../lib/visibility';
 
 if (process.env.NODE_ENV === 'production') {
@@ -72,6 +71,7 @@ const FRIENDS: { slug: string; first: string; bg: string }[] = [
   { slug: 'kim', first: 'Kim', bg: '#9333ea' },
 ];
 const friendId = (slug: string) => `dev-friend-${slug}`;
+const selfProfileOf = (userId: string) => `self-${userId}`;
 const seedUsers: SeedUser[] = [
   {
     id: VIEWER_ID,
