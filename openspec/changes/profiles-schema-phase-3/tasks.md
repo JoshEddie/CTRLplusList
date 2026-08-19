@@ -112,13 +112,13 @@ All five gates run locally against the author's real `.env.local` before review 
 - [ ] 10.2 A2+B3 `design.md:140` migration step 3 still miscounts the drop as eight columns — resolved
 - [ ] 10.3 A4 The A5 requirement split and its fixture carve-out are recorded in no design decision or task — resolved
 - [ ] 10.4 B5 `scripts/seed-dev-users.ts` is the only operational module importing from `test/` — resolved
-- [ ] 10.5 C6 Carve-out criterion "run against a real database" is factually false of the dev seed — resolved
+- [x] 10.5 C6 Carve-out criterion "run against a real database" is factually false of the dev seed — _dropped at adjudication; see review.md Round 2 Adjudications_
 - [ ] 10.6 T7 `AuthedNewTarget_InsertsFollowRow-NullLegacyFolloweeId` names an assertion its body dropped — resolved
 - [ ] 10.7 T8 `Authed_InsertsBlockRow-...-NullLegacyIds` names an assertion its body dropped — resolved
 - [ ] 10.8 T9 Cascade scenario's `items` leg is exercised by no assertion — resolved
 - [ ] 10.9 T10 `RecreatedPrimaryKeys` describe names a REMOVED requirement — resolved
-- [ ] 10.10 T11 `ManagedProfileInOwnersFollows_...` bare negative cannot distinguish exclusion from an empty pool — resolved
-- [ ] 10.11 T12 neon-http constraint-name assumption behind `createSelfProfile`'s idempotency is untested on that driver — resolved
+- [x] 10.10 T11 `ManagedProfileInOwnersFollows_...` bare negative cannot distinguish exclusion from an empty pool — _dropped at adjudication; see review.md Round 2 Adjudications_
+- [x] 10.11 T12 neon-http constraint-name assumption behind `createSelfProfile`'s idempotency is untested on that driver — _dropped at adjudication; see review.md Round 2 Adjudications_
 - [ ] 10.12 `npm run lint` — zero errors, zero non-size warnings
 - [ ] 10.13 `npx tsc --noEmit` — zero errors
 - [ ] 10.14 `npm run build` — completes successfully
