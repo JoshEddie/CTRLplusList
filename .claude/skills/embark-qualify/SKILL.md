@@ -1,7 +1,7 @@
 ---
 name: embark-qualify
 argument-hint: '[change-name]'
-description: Qualify the change - a change qualifies when every user route it touches runs end to end on what its specs and design say. Generates acceptance.md in a chat that did not author the documents it chains, and gates on what that generation surfaces: a gap, an unreachable scenario or a contradiction disqualifies the change until /opsx:update clears it. Third member of the departure arc, after /embark-design and before /embark-write-tasks. Must run in a fresh chat.
+description: Qualify the change - a change qualifies when every user route it touches runs end to end on what its specs, ADR entries and design say. Generates acceptance.md in a chat that did not author the documents it chains, and gates on what that generation surfaces: a gap, an unreachable scenario or a contradiction disqualifies the change until /opsx:update clears it. Third member of the departure arc, after /embark-design and before /embark-write-tasks. Must run in a fresh chat.
 disable-model-invocation: true
 metadata:
   author: list_eddiefamily
@@ -20,6 +20,8 @@ metadata:
 
 Verify the change holds `design.md` and no `acceptance.md`; without `design.md`, stop and name [/embark-design](../embark-design/SKILL.md).
 
+Read `proposal.md`, `adr.md` and `design.md` before the sweep. All three are checked for contradiction, and `adr.md` is the one that binds past this change: a spec shipping against an entry ships repo-wide policy against itself.
+
 Classifying a surfaced step, repairing it and gating on it is this skill's, not the artifact's. The failure types are stated once, here; the schema `acceptance` instruction carries only the rule that an unsourceable step is surfaced, and does not restate them.
 
 ## The sweep
@@ -36,7 +38,7 @@ Missing, excess, wrong. They repair in different places, so they are distinguish
 
 - **Gap** — a step no spec backs: the flow needs it, the specs lack it, stated in the `proposal.md`, `design.md`, or by nothing.
 - **Unreachable/Untestable** — a scenario written that should not have been: the specs carry it and no rooted chain reaches it. The inverse of a gap.
-- **Contradiction** — the specs assert something the **proposal or the design** denies, or deny something either asserts. A coherence failure, not a spec gap: the specs are not presumed to be the wrong one.
+- **Contradiction** — the specs assert something the **proposal, the design, or `adr.md`** denies, or deny something any of them asserts. A coherence failure, not a spec gap: the specs are not presumed to be the wrong one.
 
 ### Unreachable's two exits
 
@@ -49,13 +51,15 @@ The exits do not cascade: a scenario leaving the spec does not imply the design 
 
 A requirement left with no scenarios exits by name through `## REMOVED Requirements`, which takes names only.
 
-## The three design.md cases
+## The three non-spec-document cases
 
-`design.md` may name an **observable**. It never sources a **behavior**.
+`design.md` and `adr.md` may name an **observable**. Neither ever sources a **behavior**.
 
-1. **Design names the observable** — a spec backs the step but names no surface, and design.md does. The row asserts design's observable. No finding: design supplied the handle, not the behavior.
-2. **Design asserts the behavior, and nothing else does** — a **gap**. The step does not chain on design's authority; the scenario goes into the specs.
-3. **Design contradicts a spec** — a **contradiction**. The change is disqualified.
+1. **The document names the observable** — a spec backs the step but names no surface, and the document does. The row asserts that observable. No finding: the document supplied the handle, not the behavior.
+2. **The document asserts the behavior, and nothing else does** — a **gap**. The step does not chain on the document's authority; the scenario goes into the specs.
+3. **The document contradicts a spec** — a **contradiction**. The change is disqualified.
+
+An `adr.md` entry never chains a step. The sweep does not walk it: an entry is settled repo policy, most of it the non-behavioral material the **Not behavior** exit above rehomes out of specs, and a chain reaching into it would invert that rule.
 
 ## The verdict
 

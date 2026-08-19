@@ -8,7 +8,9 @@ description: spec-driven + a propose-time review.md scaffold artifact (repo fork
 # The proposal/specs/design/tasks artifacts + apply block below are a verbatim
 # copy of the package schema; `adr`, `acceptance` and `review` are the local
 # additions (see the acceptance-artifact and review-artifact capabilities; the
-# adr artifact's decisions are recorded in the archived adr-artifact change).
+# adr artifact's decisions are recorded in the archived adr-artifact and
+# adr-artifact-rework changes). `adr` records each decision as an entry for the
+# library at `openspec/adr/`.
 # They are NOT all appended at the end — `adr` is declared between `proposal`
 # and `specs` for the reason stated at its declaration. Reconcile against the
 # package `spec-driven` schema on `openspec update` — see CLAUDE.md,
@@ -53,97 +55,79 @@ artifacts:
   # `design` is never generated at design time — silently, since `status` reads
   # `ready` forever and nothing errors. Before `specs` also keeps upstream's
   # `proposal < specs < design < tasks` order intact. Do not move it to the end.
+  # `generates` names one file: every decision is an entry, so there is no second
+  # artifact shape to hold. A document that carries a decision is edited by a task
+  # the `tasks` artifact cuts, not by a delta file beside this one.
   - id: adr
     generates: adr.md
-    description: Architectural decisions this change makes, as a library delta
+    description: Architectural decisions this change makes, as entries for the ADR library
     template: adr.md
     instruction: |
-      Record the architectural decisions this change makes, as a delta against
-      the ADR library at `openspec/adr/`. Entries are promoted by hand into
-      `openspec/adr/` at landing.
+      Record each decision and what led to it. Entries reach `openspec/adr/` at
+      landing, by a task the `tasks` artifact cuts for them.
 
-      An ADR is a decision that outlives this change and binds later work.
+      ### 1. What a decision holds
 
-      A decision earns an entry when BOTH hold:
-      - It LASTS - an ADR binds until it is removed or superseded. A choice
-        binding only this change stays in design.md; a rule that exists only to
-        carry a temporary state - a migration, a transition, a deprecation
-        window - ends when that state ends and is not an ADR however many
-        changes it binds on the way
-      - The channel already firing at its trigger carries the rule WITHOUT its
-        reasoning. A lint error states a threshold and never the argument behind
-        it, so the decision behind it earns an entry. A PROSE channel - an
-        artifact instruction, a skill - carries its reasoning implicitly by
-        nature, whether or not a sentence spells the argument out, so a rule
-        living there earns no entry on the grounds that its why is only implied.
-        Drift risk and DRY outrank stating the why: one home for a rule beats a
-        complete argument split across two
+      **Touching** is the index row's left cell: a term from the bank in
+      `openspec/adr/INDEX.md`, or the destination's repository path where a
+      document carries the decision. Take every term the decision binds: a wasted
+      read costs seconds, a missed one ships work against a decision its reader
+      never saw. Where no term fits, propose one in this delta:
 
-      CLAUDE.md vs ADR is decided by READ FREQUENCY, not content type. CLAUDE.md
-      is auto-fed every session, so its scarce resource is rows: a rule needed in
-      EVERY session belongs there, a decision needed only sometimes belongs in an
-      ADR. One topic legitimately appears in both - the rule in CLAUDE.md, the
-      argument behind it in an ADR. That split is the narrow exception CLAUDE.md's
-      row scarcity earns, because the why genuinely cannot fit there; it is not
-      available wherever the why is merely thin.
-
-      This file scaffolds EMPTY. Three headings and no entries is the record that
-      the change made no architectural decision, not an incomplete artifact. Do
-      not invent one to fill it.
-
-      Delta operations (use ## headers):
-      - **ADDED ADRs**: new decisions, body inline
-      - **MODIFIED ADRs**: changed decisions - MUST include the ENTIRE updated
-        entry, **Touching** included; partial content loses detail at promotion
-      - **REMOVED ADRs**: decisions that no longer bind - MUST give the resulting
-        stub (which form, and the replacement's ID where there is one) plus
-        **Reason**, which stays in the delta and does not go into the stub
-
-      Format requirements:
-      - Each entry: `### ADR-NNNN: <title>` followed by **Touching**, **Context**
-        (<= 3 sentences), **Decision** (<= 5), **Consequences** (<= 3)
-      - Over cap means two decisions - split the entry, never trim a load-bearing
-        fact
-      - A rejected alternative is a name plus one clause; its argument stays in
-        design.md
-      - Take the next unused NNNN from `openspec/adr/INDEX.md`
-
-      **Touching** IS the index row's left cell - the index is derived from it and
-      nothing is authored at index level. Take EVERY term the entry binds, not
-      only the central one: a wasted read costs seconds, a missed one ships work
-      against a decision its reader never saw. If no term fits, do NOT force the
-      nearest - a near-miss term is a silent miss, and the reader whose work this
-      binds never matches it. Propose the new term in this delta for review to
-      promote to the bank alongside the entry.
-
-      Proposing a bank term:
-      - Only where the entry binds work no existing term names. Rewording or
-        splitting a term that already covers the work changes the vocabulary every
-        other entry is keyed on, and is not part of writing an entry
-      - Name a SURFACE by default, an ACTION only where the action is the trigger
-        and no artifact is being edited (`Running Tests`) - a surface term covers
-        authoring and editing alike, so `Skills & Agents` beats `Writing a Skill`
-      - A term must DISCRIMINATE: one nearly every task matches is not a key. A
+      - Propose only where the decision binds work no existing term names.
+        Rewording or splitting a term that already covers the work is its own
+        change
+      - Name a surface by default, an action only where no artifact is edited
+        (`Running Tests`) - a surface term covers authoring and editing alike, so
+        `Skills & Agents` beats `Writing a Skill`
+      - A term must discriminate: one nearly every task matches is not a key. A
         parameterized family (`Editing <capability> spec`), instance bound in the
-        entry's own cell, narrows a trigger that would otherwise fire on
-        everything
-      - Growth runs through review, never the author alone - a bank admitting a
-        term per entry degrades into free prose with extra steps
+        entry's own cell, narrows one that would otherwise match everything
+      - Growth runs through review
 
-      ADRs are living documents, edited IN PLACE - not immutable-with-supersede.
-      Superseded text sitting in an agent's context is token waste and a rot risk:
-      an agent reading 100k of context can lose that the first 25k was retracted.
-      git holds the history.
+      **Context** is what led to the decision - the constraint that was hit, what
+      was tried, what was ruled out. The repo will hold the outcome; nothing else
+      holds this.
 
-      A removed decision is GUTTED, not deleted. Its file stays at
-      `openspec/adr/NNNN-kebab-title.md` and keeps its title; the whole body is
-      replaced by one line - `**Superseded** - see ADR-NNNN: <title>`, or
-      `**Removed** - this rule no longer applies; do not follow older references
-      to it.` What rots is a superseded BODY in an agent's context, and the body
-      is exactly what goes. The stub answers what a deleted file cannot: an ADR
-      number cited in a commit, a comment, a skill, or another ADR resolves to a
-      redirect instead of nothing. A stub carries no **Touching** line, so it
-      drops out of the index while its file remains, and numbers are never reused.
+      **Decision** is what is true from now on, and what lands in the destination
+      as a line, a rule, or code. State it positively - *the DB layer uses
+      `neon-http`*, not *don't use the WebSocket pool*. It stands alone: a reader
+      who acts on it without **Context** acts correctly.
+
+      **Consequences** are the costs taken on knowingly. A later reader hitting
+      one of them is where the entry expected them to be, and argues with the
+      decision rather than working around it.
+
+      ### 2. Where it goes
+
+      Every decision is an entry, filed as
+      `openspec/adr/YYYY-MM-DD-kebab-title.md`, dated the day it is written and
+      fixed from then on.
+
+      Where a document already covers the subject, **Touching** is that document's
+      repository path, and the `tasks` artifact cuts a task putting the
+      **Decision** into it, citing the entry.
+
+      ### 3. Supersession
+
+      Supersession changes an entry's position - what a reader following it does. The
+      test: **would a reader following this entry now act differently?**
+
+      - No - `MODIFIED`, edited in place, carrying the entire updated entry and
+        reproducing its name character for character. Rewriting an entry's **Context**
+        wholesale is still `MODIFIED`.
+      - Yes - `ADDED` under a new name for the new position, `REMOVED` for the entry
+        it replaces, one delta. A five-word change to a threshold is `ADDED`.
+
+      **REMOVED** gives the resulting redirect plus **Reason**, which stays in the
+      delta. Its stub names an entry `ADDED` in the same delta. Returning to an
+      earlier position is one `ADDED` and two `REMOVED` - the reversal is its own
+      decision, so the entry it replaces and the entry it restores both stub to it.
+
+      A removed entry keeps its file, and its whole body becomes one line:
+      `**Superseded** - see <YYYY-MM-DD-kebab-title>`, or `**Removed** - this rule no
+      longer applies; do not follow older references to it.` A redirect carries no
+      **Touching** line and therefore no index row.
     requires:
       - proposal
 
@@ -297,12 +281,12 @@ artifacts:
       gate, so it holds on every generation route and not only under
       `/embark-qualify` — a half-chained file reads as a completed walk.
 
-      design.md never sources behavior — a step chains on a spec scenario or
-      not at all. Where a spec backs the step but names no observable, design.md
-      may supply the concrete surface the row asserts (the handle, not the
-      behavior); that is not a finding. Where design.md is the only thing
-      asserting the behavior itself, or asserts behavior a spec denies, the
-      step is not sourced: surface it.
+      Neither design.md nor adr.md ever sources behavior — a step chains on a
+      spec scenario or not at all. Where a spec backs the step but names no
+      observable, either may supply the concrete surface the row asserts (the
+      handle, not the behavior); that is not a finding. Where one of them is
+      the only thing asserting the behavior itself, or asserts behavior a spec
+      denies, the step is not sourced: surface it.
 
       Format: one Given→When→Then arc per flow, stages in strict order
       of appearance — a stage recurring after a later one (When after
@@ -376,9 +360,22 @@ artifacts:
 
       Reference specs for what needs to be built, design for how to build it.
       Each task should be verifiable - you know when it's done.
+
+      **Every entry in `adr.md` gets a promotion task**, naming the file it
+      writes: "Promote `2026-08-18-use-neon-http` into `openspec/adr/`". An entry
+      whose **Touching** cell is a repository path gets a second task putting its
+      **Decision** into that document with a citation back to it. An `adr.md`
+      with no entries gets neither.
+
+      Promotion rides the task list because the base tooling promotes `specs/`
+      alone and offers no extension point for anything else. Every route
+      through apply works this list, so a task is carried on all of them; a
+      landing skill is one route among several, and a decision it never sees
+      is lost.
     requires:
       - specs
       - design
+      - adr
 
   - id: review
     generates: review.md
