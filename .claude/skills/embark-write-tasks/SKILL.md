@@ -30,4 +30,4 @@ This skill never runs `git commit`, stages files for one, or pushes. It flips no
 
 ## Stop
 
-End the turn here, once both artifacts exist. Next: [/embark-apply](../embark-apply/SKILL.md) — occupy the tree and implement.
+End the turn here, once both artifacts exist. Next: [/artifact-review](../artifact-review/SKILL.md) — read the artifacts against each other before anything is built from them.
