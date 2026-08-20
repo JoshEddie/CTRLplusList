@@ -319,6 +319,31 @@ artifacts:
       literal handles (real button text, real routes) — refine, not rewrite;
       flow identity and journey scope stay as drafted.
 
+      A flow states the principle, never an imagined shape. Where a spec
+      fixes a behavior but the surface carrying it has not been designed
+      yet, the row asserts the behavior and stops — inventing the
+      arrangement (a grid of six previews, a three-step wizard) drafts a
+      design against a mockup nobody has opened. The
+      concrete-observable conversion above applies to prose the specs
+      already back, not to surfaces that do not exist.
+
+      Where a row needs a handle nobody has yet, mark the gap inline
+      rather than inventing one: `*TODO: specify what the user clicks
+      on*`, italic, imperative, sitting in the row's own grammatical
+      slot. `When a user clicks on *TODO: specify what the user clicks
+      on*`. A marker says "shape unknown", which is honest; a guessed
+      handle says "shape known", which is not, and nothing downstream
+      can tell the two apart once written. Apply-time refinement
+      resolves every marker, and the `tasks` artifact cuts a task for
+      each one.
+
+      A marker is a placeholder for a missing HANDLE, never for missing
+      thought. Reach for one only where the shape genuinely does not
+      exist yet — not where it was specified and looking it up was the
+      work. A flow whose structure rests on markers is not a drafted
+      flow: the Given/When/Then arc, the root actor, and every assertion
+      SHALL be concrete, with markers filling handles inside them.
+
       No test-plan content: no scenario→test-layer mapping, no coverage
       claims. Flows are walk scripts for the owner's pre-landfall walk and
       /port-inspection's map-wide e2e scout, nothing more.
@@ -372,6 +397,14 @@ artifacts:
       through apply works this list, so a task is carried on all of them; a
       landing skill is one route among several, and a decision it never sees
       is lost.
+
+      **Every `*TODO:*` marker in `acceptance.md` gets a resolution task**,
+      naming the flow it sits in and the handle it wants: "Resolve the
+      `*TODO:*` in `Flow: A viewer gives birth to a managed profile` — the
+      real control text for the create affordance". A marker is a deferred
+      decision, and a deferred decision with nothing tracking it is a
+      decision nobody makes. An `acceptance.md` with no markers gets no such
+      task.
     requires:
       - specs
       - design

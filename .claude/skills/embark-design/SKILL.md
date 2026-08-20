@@ -63,7 +63,11 @@ In the same turn as the interview, while it is still in the conversation, run `/
 
 The loop generates `adr.md` first, then `specs/`, then `design.md`. Each artifact's own instruction rules what belongs in it. Apply it yourself; do not put a placement to the owner.
 
-**A grandfathered scenario.** The corpus holds scenarios that were never spec material. One stays exactly as written while it stays true, however plainly it fails today's bar. When this change makes it false, rule it: should it have been a spec?
+**A grandfathered scenario.** A canonical spec binds while it is **true**. Form is judged forward-facing: everything written from here meets today's bar, and a true requirement is never a defect for failing it. The corpus is therefore evidence of what is true, not of what is good, and no sweep hunts down badly-formed-but-true material.
+
+The constraint makes this correct rather than merely cautious: archive **refuses** a `MODIFIED` block that omits a scenario the current spec holds (*"current spec contains scenario(s) not present in the modified block"*). A scenario cannot be dropped in place. Shedding one costs a `REMOVED` plus an `ADDED` under a **new name**, churning the requirement's identity for every reader of it — a real price, paid only when falsity forces it.
+
+So: the corpus holds scenarios that were never spec material. One stays exactly as written while it stays true, however plainly it fails today's bar. When this change makes it false, rule it: should it have been a spec?
 
 - **Yes** — a MODIFIED requirement, the scenario rewritten in place.
 - **No**

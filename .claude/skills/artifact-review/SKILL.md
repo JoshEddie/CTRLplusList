@@ -75,6 +75,8 @@ The yardstick is the artifacts against **each other**, never against the GitHub 
 
 This check owns the disagreements with no behavior behind them — a statement in `proposal.md` that `design.md` denies, a capability listed in the proposal with no delta spec file, a **Touching** term absent from the `openspec/adr/INDEX.md` term bank. Behavior stated in a document and carried by no spec belongs to check 5, whose repair is specific.
 
+**An open question is not a disagreement.** An artifact that marks something unresolved — `proposal.md` naming a value that "needs picking" — is not contradicted when a later artifact picks it; naming the open question was that artifact's job. The live case is the reverse: an earlier artifact **asserting** a fact flatly that a later one reverses, which leaves a reader of the earlier document misinformed. The discriminator is whether the earlier side claimed to have decided.
+
 **Framing is neutral**: name the repair on both sides and let the owner adjudicate. Never presume the spec is the correct side.
 
 **Weight of evidence leans it.** State the tally in the finding — "proposal, design and spec agree; acceptance dissents" — and name the outlier as the **presumptive** repair site, with the other repair still named and open. A two-way tie stays fully neutral. Presumption is not a verdict.
@@ -126,9 +128,17 @@ The bar is the `acceptance` instruction read at entry — GWT arc, one atom per 
 
 Accuracy: every row traces to the scenario it claims. This audits `acceptance.md` **as written** — it does not re-chain the flows from scratch. That sweep is [/embark-qualify](../embark-qualify/SKILL.md)'s and already ran.
 
-### 8. Every touched requirement appears in at least one flow
+**A well-formed `*TODO:*` marker is never a finding.** It records that a shape does not exist yet, which is true of a planning-time draft; a guessed handle in its place would be false. Three things about one are findings:
 
-Runs requirement → flow, the coverage direction: walk the delta's requirements and find each one in a flow. Not flow → gap.
+- **Unpaired** — a marker with no resolution task in `tasks.md` (also check 9; report once, here) is **Major**: a deferred decision nobody holds is a decision nobody makes, and apply has no reason to look for it.
+- **Lazy** — a marker standing where the shape *was* specified and looking it up was the work. The marker is for a shape that does not exist, not for one nobody fetched.
+- **Structural** — a flow whose arc, root actor, or assertions rest on markers is not a drafted flow. Apply cannot resolve a placeholder inside a row that was never concrete. Markers fill handles **inside** a concrete flow.
+
+### 8. Every requirement this change newly asserts appears in at least one flow
+
+Runs requirement → flow, the coverage direction: walk what the change newly asserts and find each of it in a flow. Not flow → gap.
+
+**Coverage is owed by new material only.** Every `ADDED` requirement owes a flow. A `## MODIFIED` block carries the **entire** requirement, so most of its scenarios arrived unchanged from canonical — diff the block against `openspec/specs/<capability-path>/spec.md` and require flows only for what the diff adds or changes. A scenario carried forward unchanged owes nothing: it is already true and already landed, and it stays available as a link a chain passes through. Sweeping it produces a coverage finding against material this change did not write.
 
 A requirement in no flow is the finding. Then ask why: where nothing a flow could reach exists behind it, the uncovered requirement has surfaced a gap, and that is the finding to report rather than the coverage miss.
 
@@ -138,6 +148,7 @@ Source list, in order:
 
 - Every requirement across the delta specs — `ADDED`, `MODIFIED`, `REMOVED`, `RENAMED`.
 - One promotion task per `adr.md` entry, naming the file it writes; plus a second task where that entry's **Touching** cell is a repository path, putting its **Decision** into that document with a citation back. Both are mandatory in the `tasks` instruction.
+- One resolution task per `*TODO:*` marker in `acceptance.md`, naming the flow it sits in and the handle it wants. Mandatory in the `tasks` instruction. An unpaired marker lands as a check-7 finding too; report it once, there.
 - `design.md`'s Migration Plan steps.
 - Any doc edit check 6 surfaced.
 

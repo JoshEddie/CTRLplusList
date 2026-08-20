@@ -14,7 +14,7 @@ A self-contained project code-review skill. It audits a PR/diff across four aren
 
 ### A — Alignment (delta-scoped)
 
-- the change's promise: the related OpenSpec change's `tasks.md`, `design.md`, `specs/**/spec.md`
+- the change's promise: the related OpenSpec change's `tasks.md`, `design.md`, `specs/**/spec.md`, `acceptance.md`
 - `openspec validate`
 
 ### B — Boundary (whole-scoped)

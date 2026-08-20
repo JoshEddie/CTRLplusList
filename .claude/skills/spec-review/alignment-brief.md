@@ -7,8 +7,8 @@ orchestrator). Emit findings in the shape and disposition vocabulary defined in
 `.claude/skills/spec-review/reference/finding-format.md`, with `phase: alignment`.
 
 **Scope: the diff your prompt's diff command produces.** Arena A audits the
-change's promise — `tasks.md`, `design.md`, `specs/**/spec.md`, and
-`openspec validate` — against that delta.
+change's promise — `tasks.md`, `design.md`, `specs/**/spec.md`,
+`acceptance.md`, and `openspec validate` — against that delta.
 
 You do **not** re-derive the archive state — the orchestrator computed it; the
 states and reconciliation-latitude rules live in
@@ -17,9 +17,9 @@ states and reconciliation-latitude rules live in
 
 ## Where to read the change from
 
-- **`active`** → read `tasks.md`, `design.md`, `specs/**/spec.md` from
-  `openspec/changes/<name>/`. An auto-detected change SHALL be read from the
-  active directory only — never substitute an `archive/` copy.
+- **`active`** → read `tasks.md`, `design.md`, `specs/**/spec.md` and
+  `acceptance.md` from `openspec/changes/<name>/`. An auto-detected change SHALL
+  be read from the active directory only — never substitute an `archive/` copy.
 - **`Type 1 premature` / `Type 2 merged`** → read from the date-prefixed
   `openspec/changes/archive/*-<name>/`.
 
@@ -46,7 +46,7 @@ false-complete "add tests" tasks — stays here in arena A. Test quality,
 substance, and suite staleness against the changed behavior are arena T's; do
 not audit test files or sweep the suite.
 
-## The three alignment checks
+## The four alignment checks
 
 ### Task-completion truth
 For every task marked `[x]` in `tasks.md`, confirm matching real work exists in
@@ -69,6 +69,21 @@ specific SHALL, framed per the state above.
 Confirm no behavior was added that no task and no spec requirement documents.
 Undocumented → **scope-creep finding**: resolve by removing the behavior or
 documenting it in a task/spec.
+
+### Unresolved acceptance markers
+`acceptance.md` may carry inline `*TODO:*` markers — handles the planning draft
+could not name because the shape did not exist yet (defined in the schema's
+`acceptance` instruction). Apply is where the shape exists, so by review time
+every marker should have been replaced with the literal handle that landed.
+
+Any `*TODO:*` still present → **mismatch finding**: the change promised a
+walkable flow and shipped a hole. Cite the flow and the marker's row. This is a
+finding, never a reason to abort the review — the other arenas still run, and
+the fix is one row.
+
+An unresolved marker is what a reader hits as *"I cannot walk this, the shape it
+says it needs is not here"*. Archived flows are `/port-inspection`'s e2e walk
+scripts, so a marker that lands degrades a downstream consumer with no way back.
 
 ## Worked mismatch findings
 

@@ -30,6 +30,8 @@ Chain the change's delta scenarios into flows and surface every step you cannot 
 
 The unit is the scenario, not the requirement. A requirement holding four scenarios owes four rootings, and covering one does not discharge the other three. Scope is the change's own delta scenarios — canonical scenarios the chains pass through are traversed, not swept.
 
+A `MODIFIED` block carries the **entire** requirement, so most of its scenarios arrived unchanged from canonical. Diff the block against `openspec/specs/<capability-path>/spec.md` and sweep only what the diff adds or changes. A scenario carried forward unchanged owes no rooting: it is already true and already landed, and it stays available as a link a chain passes through, exactly like any other canonical scenario. Sweeping it instead produces an unreachable-scenario finding against material this change did not write.
+
 Walk every delta scenario before reporting. Do not stop at the first blocker.
 
 ## Three failure types
@@ -77,6 +79,8 @@ While a finding stands, the change does not advance on this skill's authority.
 Run `/opsx:continue`. It writes `acceptance.md`. 
 
 You may discover new disqualifications during the write. Write what you can then issue a new verdict.
+
+Where a row needs a handle nobody has designed yet, it carries an inline `*TODO:*` marker rather than an invented one; the schema `acceptance` instruction defines the form. A marker is **not** a finding and does not gate the verdict — it records that a shape does not exist, which is a true statement about a planning-time draft, where a guessed handle is a false one. It is a placeholder for a missing handle only: a step you cannot source is still a gap, and no marker converts one into a drafted row.
 
 ## Never commits
 

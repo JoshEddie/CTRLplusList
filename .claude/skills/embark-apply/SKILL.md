@@ -42,6 +42,7 @@ Not blockers: planning artifacts for another change, or a fully-implemented chan
 ## Charted lane
 
 3. **Delegate to `/opsx:apply`** for the task loop. Implementation, task check-offs, and pauses are its contract.
+4. **Resolve every `*TODO:*` marker in `acceptance.md`.** A marker is a handle the planning draft could not name because the shape did not exist yet; this lane is where it does. Replace each with the literal handle the implementation landed — real control text, real route, real field label — as part of the refinement `acceptance.md` already owes. Refine, not rewrite: flow identity and journey scope stay as drafted. A marker reaching the archive unresolved leaves `/port-inspection`'s e2e scout walking a placeholder.
 
 ## MUSTER lane
 

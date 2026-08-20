@@ -20,7 +20,9 @@ No argument: the single change whose `acceptance.md` exists and whose `tasks.md`
 
 Run `/opsx:continue` until `review.md` exists.
 
-Read `adr`, `specs` and `design` from the change directory. Hold no interview: there is nothing for the owner to decide at this boundary, and the contract to break down is the one on disk.
+Read `adr`, `specs`, `design` and `acceptance` from the change directory. Hold no interview: there is nothing for the owner to decide at this boundary, and the contract to break down is the one on disk.
+
+`acceptance.md` is read for its `*TODO:*` markers. Each one is a handle the draft could not name, and each owes a resolution task naming the flow it sits in and what the marker wants — the `tasks` instruction states the form. A marker with no task is a deferred decision nobody is holding, and apply has no reason to look for it.
 
 The boundary above this member is load-bearing. After [/embark-qualify](../embark-qualify/SKILL.md) reports failures and `/opsx:update` repairs the specs, that chat still holds the pre-repair documents and the argument that changed them. Tasks written there can encode the argument rather than the settled contract. This member needs no conversation, so the boundary costs nothing.
 

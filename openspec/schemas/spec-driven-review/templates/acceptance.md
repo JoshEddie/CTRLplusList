@@ -9,6 +9,12 @@
      Drafted at propose time by chaining the change's scenarios onto
      pre-existing canonical-spec links; refined at apply time with literal
      handles (real button text, real routes) — refine, not rewrite.
+     State the principle, never an imagined shape. Where a row needs a
+     handle nobody has yet, mark the gap inline instead of inventing one:
+     `*TODO: specify what the user clicks on*`. Apply resolves every
+     marker, and tasks.md carries one task per marker. A marker fills a
+     missing handle, never missing thought — the arc, the root actor and
+     every assertion stay concrete.
      While any finding stands, no flows are written and this file does not
      exist.
      Contract: the acceptance artifact instruction in schema.yaml. -->
@@ -22,6 +28,9 @@
 - **When** <one concrete action by the chain's root actor, literal handle —
   `clicks Claim as Guest`, `runs npm run db:migrate`, `POSTs to the action`>
 - **And** <next single action — as many rows as the journey spans>
+- **And** <a row whose handle does not exist yet — mark the gap, never guess one:
+  `clicks *TODO: specify the control that opens the overlay*`. The action stays
+  concrete; only the handle is deferred, and tasks.md carries a task to resolve it>
 - **Then** <one assertion on what the execution emitted>
 - **And** <further single assertions — including explicit negatives>
 
