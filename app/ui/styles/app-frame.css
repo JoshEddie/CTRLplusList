@@ -3,6 +3,9 @@
 :root {
   --app-nav-height: calc(60px + env(safe-area-inset-top));
   --app-surface-bleed-top: 7px;
+  /* Shared with full-bleed children, which have to round their own top
+     corners to the surface's — the surface does not clip them. */
+  --app-surface-radius: 14px;
   --app-sticky-top: calc(var(--app-nav-height) + var(--app-surface-bleed-top));
 }
 
@@ -10,6 +13,7 @@
   :root {
     --app-nav-height: calc(54px + env(safe-area-inset-top));
     --app-surface-bleed-top: 5px;
+    --app-surface-radius: 12px;
   }
 }
 
@@ -252,15 +256,9 @@
 .app-surface {
   flex: 1;
   background-color: var(--light-color);
-  border-radius: 14px 14px 0 0;
+  border-radius: var(--app-surface-radius) var(--app-surface-radius) 0 0;
   max-width: 1700px;
   width: 100%;
   margin: 0 auto;
   box-shadow: var(--surface-shadow);
-}
-
-@media (max-width: 800px) {
-  .app-surface {
-    border-radius: 12px 12px 0 0;
-  }
 }

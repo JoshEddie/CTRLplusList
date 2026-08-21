@@ -1,6 +1,9 @@
 import {
+  ACCENT_PREFERENCE_ID,
   lists,
+  preferences,
   profile_members,
+  profile_preferences,
   profiles,
   user_blocks,
   user_follows,
@@ -105,5 +108,31 @@ export async function seedPublicList(
     profile_id: list.profile_id ?? selfProfileOf(list.user_id ?? list.id),
     visibility: list.visibility ?? 'public',
     shared_at: list.shared_at ?? new Date(),
+  });
+}
+
+// `resetDb` truncates every schema table, including the catalog migration 0013
+// seeds — so a suite that writes an accent must put the row back per test or
+// every accent write fails its foreign key.
+export async function seedAccentCatalog(db: TestDb): Promise<void> {
+  await db
+    .insert(preferences)
+    .values({
+      id: ACCENT_PREFERENCE_ID,
+      name: 'Accent color',
+      type: 'text',
+    })
+    .onConflictDoNothing();
+}
+
+export async function seedAccentValue(
+  db: TestDb,
+  profile_id: string,
+  accent: string
+): Promise<void> {
+  await db.insert(profile_preferences).values({
+    profile_id,
+    preference_id: ACCENT_PREFERENCE_ID,
+    value: accent,
   });
 }

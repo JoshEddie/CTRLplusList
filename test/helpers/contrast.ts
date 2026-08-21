@@ -94,3 +94,81 @@ export function contrastRatio(fg: string | Rgba, bg: string | Rgba): number {
   const darker = Math.min(l1, l2);
   return (lighter + 0.05) / (darker + 0.05);
 }
+
+/** A colour as the DOM serializes it in a style attribute, for containment
+ *  assertions that must not depend on the authored notation. */
+export function cssRgb(color: string): string {
+  const { r, g, b } = parseColor(color);
+  return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+}
+
+const LINEAR_RGB_TO_LMS = [
+  [0.4122214708, 0.5363325363, 0.0514459929],
+  [0.2119034982, 0.6806995451, 0.1073969566],
+  [0.0883024619, 0.2817188376, 0.6299787005],
+];
+const LMS_TO_OKLAB = [
+  [0.2104542553, 0.793617785, -0.0040720468],
+  [1.9779984951, -2.428592205, 0.4505937099],
+  [0.0259040371, 0.7827717662, -0.808675766],
+];
+
+/** A colour in OKLab, the space every perceptual measure below is taken in. */
+function oklab(color: string | Rgba): { l: number; a: number; b: number } {
+  const { r, g, b } = toRgba(color);
+  const toLinear = (v: number) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const rgb = [toLinear(r), toLinear(g), toLinear(b)];
+  const lms = LINEAR_RGB_TO_LMS.map((row) =>
+    Math.cbrt(row.reduce((sum, m, i) => sum + m * rgb[i], 0))
+  );
+  const [l, la, lb] = LMS_TO_OKLAB.map((row) =>
+    row.reduce((sum, m, i) => sum + m * lms[i], 0)
+  );
+  return { l, a: la, b: lb };
+}
+
+/** Degrees of OKLCH hue between two colours, the short way round. */
+export function hueTravel(a: string, b: string): number {
+  const hueOf = (color: string) => {
+    const { a: la, b: lb } = oklab(color);
+    return ((Math.atan2(lb, la) * 180) / Math.PI + 360) % 360;
+  };
+  const diff = Math.abs(hueOf(a) - hueOf(b));
+  return Math.min(diff, 360 - diff);
+}
+
+/**
+ * Straight-line OKLab distance — how far apart two colours look, counting
+ * lightness, hue and chroma together. Where `hueTravel` reads a pair that
+ * separates only in lightness as standing still, this does not.
+ */
+export function perceptualDistance(a: string, b: string): number {
+  const x = oklab(a);
+  const y = oklab(b);
+  return Math.hypot(x.l - y.l, x.a - y.a, x.b - y.b);
+}
+
+/**
+ * How much of its endpoints' chroma a gradient keeps at its midpoint, where
+ * a value near 1 means the band stays saturated all the way across and a low
+ * one means it greys out in the middle — the signature of a gradient between
+ * exact complements.
+ */
+export function midpointChromaRatio(a: string, b: string): number {
+  const ca = parseColor(a);
+  const cb = parseColor(b);
+  const mid = {
+    r: (ca.r + cb.r) / 2,
+    g: (ca.g + cb.g) / 2,
+    b: (ca.b + cb.b) / 2,
+    a: 1,
+  };
+  const chroma = (color: Rgba) => {
+    const { a: la, b: lb } = oklab(color);
+    return Math.hypot(la, lb);
+  };
+  return chroma(mid) / ((chroma(ca) + chroma(cb)) / 2);
+}

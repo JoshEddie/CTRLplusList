@@ -1,0 +1,288 @@
+/* Profiles page + profile space. Colours and radii map onto the existing
+   token set; the only per-profile value is the accent, which is data and
+   arrives as `--accent-*` custom properties set on each surface's root. */
+
+.profiles-lede {
+  font-size: 14px;
+  color: var(--muted-text-color);
+  max-width: 100%;
+  margin: 0 0 20px;
+}
+
+.profiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+/* `overflow: visible` is load-bearing — the avatar hangs below the band, and
+   the menu opens past the card's own bounds. */
+.profile-card {
+  position: relative;
+  background-color: var(--background-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  overflow: visible;
+}
+
+@media (hover: hover) {
+  .profile-card:hover {
+    border-color: var(--card-border-hover-color);
+    box-shadow: var(--card-shadow-hover);
+  }
+}
+
+/* The active card paints the accent band across its whole face and holds the
+   body off its edges, so the accent reads as a frame around it. */
+.profile-card.is-active {
+  background-image: var(--accent-bg);
+  box-shadow: 0 10px 28px var(--accent-shadow);
+}
+
+.profile-card.is-active > .profile-card-body {
+  margin: 0 8px 8px;
+  padding: 38px 12px 14px;
+  background-color: rgb(255 255 255 / 0.9);
+  border-radius: 8px;
+}
+
+.profile-card-band {
+  position: relative;
+  height: 64px;
+  border-radius: 12px 12px 0 0;
+  background-image: var(--accent-bg);
+}
+
+.profile-card-menu {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.profile-card-avatar,
+.profile-space-initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  /* The ink is derived from the accent's own hue, so it cannot be a static
+     token — it arrives with the band it sits on. */
+  background: var(--accent-disc);
+  color: var(--accent-ink);
+  font-weight: 600;
+  line-height: 1;
+  overflow: hidden;
+}
+
+.profile-card-avatar {
+  position: absolute;
+  left: 20px;
+  bottom: -32px;
+  width: 72px;
+  height: 72px;
+  font-size: 26px;
+  box-shadow: 0 0 0 4px var(--background-color);
+}
+
+.profile-card-active {
+  position: absolute;
+  background: var(--accent-dark);
+  left: 74px;
+  bottom: -30px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--light-color);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 0 0 3px var(--background-color);
+}
+
+.profile-card-body {
+  padding: 38px 12px 14px;
+}
+
+.profile-card-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.profile-card-name {
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 24px;
+  color: var(--heading-text-color);
+}
+
+.profile-card-role {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-text-color);
+}
+
+.profile-card-role.is-you {
+  color: var(--primary-color);
+}
+
+/* The line is reserved whether or not the profile has a tagline, so a row of
+   cards keeps its counts on one baseline. */
+.profile-card-tagline {
+  font-size: 13px;
+  color: var(--muted-text-color);
+  margin: 2px 0 10px;
+  min-height: 17px;
+}
+
+.profile-card-counts {
+  font-size: 11px;
+  color: var(--meta-text-color);
+}
+
+/* Accent picker — large circles so the colour reads, with the selection ring
+   held off the swatch by a background-coloured gap so it never sits against
+   the hue it is marking. */
+
+.profile-accent-picker {
+  border: none;
+  margin: 0;
+  padding: 0;
+  min-inline-size: 0;
+}
+
+.profile-accent-picker > legend {
+  padding: 0;
+}
+
+.profile-accent-selected {
+  margin-left: 8px;
+  font-weight: 400;
+  text-transform: capitalize;
+  color: var(--muted-text-color);
+}
+
+.profile-accent-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.profile-accent-option {
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.profile-accent-picker:disabled .profile-accent-option {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.profile-accent-swatch {
+  display: block;
+  background-image: var(--accent-bg);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  transition: box-shadow 0.15s;
+}
+
+.profile-accent-input:checked ~ .profile-accent-swatch {
+  box-shadow:
+    0 0 0 3px var(--background-color),
+    0 0 0 5px var(--accent-ink);
+}
+
+/* No separate focus outline. Arrow keys in a radio group move selection as
+    they move focus, so the two states always coincide here and a second ring
+    could only ever stack on the first. Focus thickens the one ring instead. */
+.profile-accent-input:focus-visible ~ .profile-accent-swatch {
+  box-shadow:
+    0 0 0 3px var(--background-color),
+    0 0 0 7px var(--accent-ink);
+}
+
+/* Live preview — the card's own head, so the accent is seen applied. */
+
+.profile-accent-preview {
+  position: relative;
+  background-color: var(--background-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 12px;
+  margin: 4px 0 4px;
+  max-width: 280px;
+}
+
+/* Full bleed: the band sits on the white surface's own top edge, not inside
+   the container's well, so it cancels the well's padding rather than
+   restating it. The card's band at the space's scale — the disc is set into
+   its lower edge the same way, held at the well's left margin the bleed just
+   cancelled. */
+.profile-space-band {
+  position: relative;
+  height: 64px;
+  background-image: var(--accent-bg);
+  margin: calc(var(--container-padding-top) * -1)
+    calc(var(--container-padding-x) * -1) 0;
+  border-radius: var(--app-surface-radius) var(--app-surface-radius) 0 0;
+}
+
+/* Clears the disc's overhang, so the name starts below it rather than beside
+   it — the card's stack, at the space's scale. */
+.profile-space-identity {
+  margin: 54px 0 24px;
+}
+
+.profile-space-initials {
+  position: absolute;
+  left: var(--container-padding-x);
+  bottom: -42px;
+  width: 84px;
+  height: 84px;
+  font-size: 30px;
+  box-shadow: 0 0 0 4px var(--background-color);
+}
+
+.profile-space-name {
+  font-family: var(--font-crimson-pro);
+  font-weight: 200;
+  font-size: 40px;
+  color: var(--primary-color);
+  line-height: 1.05;
+  margin: 0;
+}
+
+.profile-space-tagline {
+  font-size: 13px;
+  color: var(--muted-text-color);
+  margin: 4px 0 0;
+}
+
+.profile-settings-form {
+  max-width: 480px;
+}
+
+.profile-settings-heading {
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 22px;
+  color: var(--heading-text-color);
+  margin: 0 0 12px;
+}
+
+.profile-settings-actions {
+  margin-top: 20px;
+}
+
+.new-profile-explainer {
+  font-size: 13px;
+  color: var(--muted-text-color);
+  margin: 0 0 16px;
+}

@@ -25,12 +25,14 @@ import 'dotenv/config';
 import { inArray, sql } from 'drizzle-orm';
 import { db } from '../db';
 import {
+  ACCENT_PREFERENCE_ID,
   item_images,
   item_stores,
   items,
   list_items,
   list_visits,
   lists,
+  preferences,
   profile_members,
   profiles,
   purchases,
@@ -670,9 +672,22 @@ async function main() {
     });
   console.log(`  users: ${seedUsers.length} upserted`);
 
+  // The preferences catalog. Migration 0013 inserts this row, but the local and
+  // e2e databases are provisioned by `drizzle-kit push` straight from
+  // db/schema.ts, which creates tables and replays no migration data — so
+  // without this the accent write fails its foreign key everywhere but Neon.
+  await db
+    .insert(preferences)
+    .values({
+      id: ACCENT_PREFERENCE_ID,
+      name: 'Accent color',
+      type: 'text',
+    })
+    .onConflictDoNothing();
+
   // Profiles: one self-profile per seeded user (the invariant the migration
-  // backfill guarantees in Neon) plus one managed fixture. No preference rows —
-  // features that introduce a preference own its catalog row.
+  // backfill guarantees in Neon) plus one managed fixture. No per-profile
+  // preference values — every seeded profile renders the accent fallback.
   await db
     .insert(profiles)
     .values([
@@ -700,7 +715,7 @@ async function main() {
     ])
     .onConflictDoNothing();
   console.log(
-    `  profiles: ${seedUsers.length} self + 1 managed upserted, profile_members: ${seedUsers.length + 2} upserted`
+    `  preferences: 1 catalog row inserted-if-absent\n  profiles: ${seedUsers.length} self + 1 managed inserted-if-absent, profile_members: ${seedUsers.length + 2} inserted-if-absent (existing rows keep their current values)`
   );
 
   const now = Date.now();

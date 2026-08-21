@@ -215,6 +215,7 @@ export const profiles = pgTable('profiles', {
     .primaryKey()
     .$defaultFn(() => nanoid()),
   name: text('name').notNull(),
+  tagline: text('tagline'),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -256,6 +257,10 @@ export const profile_members = pgTable(
       .where(sql`${table.role} = 'self'`),
   ]
 );
+
+// The catalog row 0013 inserts. Named so writers and reads agree on the key
+// rather than each spelling the literal.
+export const ACCENT_PREFERENCE_ID = 'accent';
 
 export const preferences = pgTable('preferences', {
   id: text('id').primaryKey(),

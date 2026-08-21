@@ -22,6 +22,7 @@ export async function getList(id: string) {
   'use cache';
   cacheTag('lists');
   cacheTag('items');
+  cacheTag('profiles');
   try {
     const result = await db.query.lists.findFirst({
       where: eq(lists.id, id),
@@ -49,6 +50,7 @@ export async function getList(id: string) {
 export async function getListsByProfile(profileId: string) {
   'use cache';
   cacheTag('lists');
+  cacheTag('profiles');
   try {
     const result = await db.query.lists.findMany({
       where: eq(lists.profile_id, profileId),
@@ -69,6 +71,7 @@ export async function getListsByProfile(profileId: string) {
 export async function getListsSharedByProfile(profileId: string) {
   'use cache';
   cacheTag('lists');
+  cacheTag('profiles');
   try {
     const result = await db.query.lists.findMany({
       where: and(

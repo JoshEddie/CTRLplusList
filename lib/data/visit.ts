@@ -15,9 +15,10 @@ function withNestedListVisibility<
   return { ...row, list: withVisibility(row.list) };
 }
 
-// Not cached: joins the owning profile for `list.profile.name`. No mutation
-// fires `updateTag('profiles')` — the row is written out-of-band by NextAuth's
-// createUser event — so caching here can pin a stale name.
+// Not cached: joins the owning profile for `list.profile.name`. The profile
+// actions do fire `updateTag('profiles')`, but NextAuth's createUser event
+// still writes a self-profile out of band with no invalidation hook, so a tag
+// here would not cover every writer and caching can pin a stale name.
 export async function getBookmarkedListsByUser(userId: string) {
   try {
     const result = await db.query.list_visits.findMany({
@@ -65,7 +66,8 @@ export async function getBookmarkStatus(
 }
 
 // Not cached: joins the owning profile (see getBookmarkedListsByUser above for
-// why an uninvalidated `profiles` join keeps this read fresh-per-request).
+// why an incompletely-invalidated `profiles` join keeps this read
+// fresh-per-request).
 export async function getVisitHistoryByUser(
   userId: string,
   opts: { limit?: number; offset?: number } = {}

@@ -138,16 +138,20 @@ body::before {
 }
 
 /* Content well inside the .app-surface. The white surface is the backdrop now,
-   so .container is just inner padding and flow positioning. */
+   so .container is just inner padding and flow positioning. The padding is
+   held in variables because full-bleed children (a hero band that has to sit
+   on the surface's own edge) cancel it with a negative margin, and the two
+   have to move together. */
 .container {
-  padding: 32px 44px 0;
+  --container-padding-x: 44px;
+  --container-padding-top: 32px;
+  padding: var(--container-padding-top) var(--container-padding-x) 0;
   padding-bottom: 36px;
 }
 
 @media (max-width: 800px) {
   .container {
-    padding: 32px 20px 0;
-    padding-bottom: 36px;
+    --container-padding-x: 20px;
   }
 }
 

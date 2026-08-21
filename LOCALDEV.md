@@ -45,7 +45,7 @@ Hand-authored non-link states: `dev-list-viewer-birthday-item-5` PRICED (single 
 
 ### Profile coverage
 
-One self-profile per seeded user, id `self-<userId>` (`dev-test-viewer` ⇒ `self-dev-test-viewer`), name = the user's, carrying a `self` membership. One managed fixture: `dev-profile-kiddo` (name "Kiddo", no `self` membership) with `dev-test-viewer` as `owner` and `dev-friend-alice` as `manager` — the account-less profile shape, and the id `BYPASS_ACTIVE_PROFILE` takes. No preference rows: `preferences` and `profile_preferences` seed empty, and the feature introducing a preference owns its catalog row. Profile + membership inserts use `.onConflictDoNothing()`, so a reseed does not pick up edits to a seeded profile's name or role — `db:reset:dev` does.
+One self-profile per seeded user, id `self-<userId>` (`dev-test-viewer` ⇒ `self-dev-test-viewer`), name = the user's, carrying a `self` membership. One managed fixture: `dev-profile-kiddo` (name "Kiddo", no `self` membership) with `dev-test-viewer` as `owner` and `dev-friend-alice` as `manager` — the account-less profile shape, and the id `BYPASS_ACTIVE_PROFILE` takes. No per-profile preference values: `profile_preferences` seeds empty, so every seeded profile renders the accent fallback. `preferences` seeds the shipped catalog — today the single `accent` row — because `drizzle-kit push` builds these databases from the schema and replays no migration data, so a catalog row migration 0013 inserts on Neon reaches local and e2e only through the seed. The feature introducing a preference owns its catalog row. Profile + membership inserts use `.onConflictDoNothing()`, so a reseed does not pick up edits to a seeded profile's name or role — `db:reset:dev` does.
 
 ### Claim-attribution coverage
 

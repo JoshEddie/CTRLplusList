@@ -1,10 +1,20 @@
 import { db } from '@/db';
-import { lists, profiles, user_blocks, user_follows, users } from '@/db/schema';
+import {
+  ACCENT_PREFERENCE_ID,
+  items,
+  lists,
+  profile_members,
+  profile_preferences,
+  profiles,
+  user_blocks,
+  user_follows,
+  users,
+} from '@/db/schema';
 import { selfMemberships } from '@/lib/data/profile.identity';
 import { isFollowing } from '@/lib/data/user';
-import type { UserIdentity } from '@/lib/types';
+import type { ProfileCardView, UserIdentity } from '@/lib/types';
 import { VISIBILITY, visibilityDbValues } from '@/lib/visibility';
-import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 import { cache } from 'react';
 
@@ -152,6 +162,7 @@ export async function getEligiblePurchasers(
   cacheTag('user_follows');
   cacheTag('user_blocks');
   cacheTag('profile_members');
+  cacheTag('profiles');
   try {
     const accounts = await accountsOfProfiles([
       ownerProfileId,
@@ -320,4 +331,71 @@ export async function getProfileForViewer(
     console.error('Error fetching profile:', error);
     throw new Error('Failed to fetch profile');
   }
+}
+
+// Membership containment is the whole query: `profiles` carries no account
+// reference, so a membership row is the only handle onto a profile. Counts are
+// correlated subqueries rather than joins — joining both `lists` and `items`
+// would multiply the rows and make each count the other's row count.
+export async function getProfileCardsForUser(
+  userId: string
+): Promise<ProfileCardView[]> {
+  'use cache';
+  cacheTag('profiles');
+  cacheTag('profile_members');
+  cacheTag('lists');
+  cacheTag('items');
+  cacheTag('profile_preferences');
+  try {
+    const rows = await db
+      .select({
+        id: profiles.id,
+        name: profiles.name,
+        tagline: profiles.tagline,
+        role: profile_members.role,
+        listCount: sql<number>`(SELECT COUNT(*) FROM ${lists} WHERE ${lists.profile_id} = ${profiles.id})`,
+        itemCount: sql<number>`(SELECT COUNT(*) FROM ${items} WHERE ${items.profile_id} = ${profiles.id} AND ${items.archived_at} IS NULL)`,
+        accent: profile_preferences.value,
+      })
+      .from(profile_members)
+      .innerJoin(profiles, eq(profiles.id, profile_members.profile_id))
+      .leftJoin(
+        profile_preferences,
+        and(
+          eq(profile_preferences.profile_id, profiles.id),
+          eq(profile_preferences.preference_id, ACCENT_PREFERENCE_ID)
+        )
+      )
+      .where(eq(profile_members.user_id, userId))
+      // Owner-only editing makes owned-vs-managed a capability boundary, so
+      // the runs sort separately rather than one A-Z pass across both.
+      .orderBy(
+        sql`CASE ${profile_members.role} WHEN 'self' THEN 0 WHEN 'owner' THEN 1 ELSE 2 END`,
+        asc(profiles.name)
+      );
+
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      tagline: row.tagline,
+      role: row.role as ProfileCardView['role'],
+      listCount: Number(row.listCount),
+      itemCount: Number(row.itemCount),
+      accent: row.accent,
+    }));
+  } catch (error) {
+    console.error('Error fetching profile cards:', error);
+    throw new Error('Failed to fetch profile cards');
+  }
+}
+
+// The viewer's role on one profile, or null where they hold no membership —
+// the profile space's gate. A non-member and an unknown id are the same answer
+// by construction, so the space discloses no profile's existence.
+export async function getProfileMembership(
+  userId: string,
+  profileId: string
+): Promise<ProfileCardView | null> {
+  const cards = await getProfileCardsForUser(userId);
+  return cards.find((card) => card.id === profileId) ?? null;
 }

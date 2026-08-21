@@ -16,6 +16,7 @@ export async function getItemsByProfile(
 ) {
   'use cache';
   cacheTag('items');
+  cacheTag('profiles');
   try {
     const filter = opts.filter ?? 'active';
     const showSpoilers = opts.showSpoilers ?? false;
@@ -134,6 +135,7 @@ export async function getItemsByListId(
 ) {
   'use cache';
   cacheTag('items');
+  cacheTag('profiles');
   try {
     const result = await db.query.list_items.findMany({
       where: eq(list_items.list_id, listId),

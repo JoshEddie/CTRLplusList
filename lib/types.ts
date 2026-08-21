@@ -47,6 +47,16 @@ export type ItemTable = {
   archived_at?: Date | null;
 };
 
+export type ProfileCardView = {
+  id: string;
+  name: string;
+  tagline: string | null;
+  role: 'self' | 'owner' | 'manager';
+  listCount: number;
+  itemCount: number;
+  accent: string | null;
+};
+
 export type PurchaseView = {
   id: string;
   by: 'self' | 'other';

@@ -1,0 +1,134 @@
+import { expect, test } from '@playwright/test';
+
+import { ACCENT_PRESETS } from '../lib/accent';
+import { cssRgb } from '../test/helpers/contrast';
+
+// Flow: the Profiles arc as the seeded viewer — reach the page from the avatar
+// popover, read the cards it lists, open a profile's space from a card, and
+// give birth to a managed profile. Pins the `profiles` / `profile_members`
+// cache-tag loop through the real `'use server'` boundary (createProfile,
+// updateProfileSettings).
+//
+// Seed baseline: `dev-test-viewer` holds `self` on `self-dev-test-viewer`
+// ("Test Viewer") and `owner` on `dev-profile-kiddo` ("Kiddo"); `dev-friend-
+// alice` holds `manager` on Kiddo, so the viewer never sees a Manager card.
+//
+// RESIDUE (contained, documented for future spec authors): the creation test
+// inserts a managed profile plus its owner membership and accent row, and the
+// edit test renames Kiddo's tagline. Both persist for the remainder of the run
+// until the next `db:reset:dev`. No other spec asserts profile counts or
+// Kiddo's tagline, so the residue is invisible outside this file.
+//
+// The created profile's name is unique per attempt because only
+// `scripts/test-e2e.sh` reseeds, once per run: a retry after a failed creation
+// would otherwise find two cards matching one name and die on a strict-mode
+// violation instead of reproducing the failure it was retrying.
+const sidekickName = () => `E2E Sidekick ${Date.now()}-${process.pid}`;
+
+test('Profiles_ViewerOpensFromAvatarPopover_ListsSelfThenOwnedCards', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'User menu' }).click();
+  await page.getByRole('menuitem', { name: 'Profiles' }).click();
+
+  await expect(page).toHaveURL(/\/profiles$/);
+
+  // Self first, then owned by name — the capability ordering the page fixes.
+  const names = page.locator('.profile-card-name');
+  await expect(names.first()).toHaveText('Test Viewer');
+  await expect(page.locator('.profile-card-role').first()).toHaveText('You');
+  await expect(names.filter({ hasText: 'Kiddo' })).toBeVisible();
+
+  // The viewer's own card is always present, so no empty state is reachable.
+  await expect(page.getByText('No Profiles Found')).toHaveCount(0);
+});
+
+test('Profiles_ViewerOpensCardMenu_NavigatesToTheProfileSpace', async ({
+  page,
+}) => {
+  await page.goto('/profiles');
+  const card = page
+    .locator('.profile-card')
+    .filter({ hasText: 'Kiddo' })
+    .first();
+  await expect(card).toBeVisible();
+
+  // The card's ⋯ menu is what carries the management intent.
+  await card.getByRole('button', { name: 'Kiddo actions' }).click();
+  await card.getByRole('menuitem', { name: 'Edit Kiddo' }).click();
+  await expect(page).toHaveURL(/\/profiles\/dev-profile-kiddo$/);
+});
+
+test('ProfileSpace_OwnerSavesTagline_PersistsAcrossAFreshRead', async ({
+  page,
+}) => {
+  await page.goto('/profiles/dev-profile-kiddo');
+  await page.getByLabel('Tagline').fill('Loves dinosaurs');
+  await page.getByRole('button', { name: 'Save Changes' }).click();
+  await expect(page.getByText('Profile updated')).toBeVisible();
+
+  // A fresh server read proves the write round-tripped past the cache tag.
+  await page.goto('/profiles');
+  await expect(
+    page.locator('.profile-card').filter({ hasText: 'Kiddo' })
+  ).toContainText('Loves dinosaurs');
+});
+
+test('Profiles_ViewerCreatesManagedProfile_NavigatesToItsSpaceAndItListsAfterwards', async ({
+  page,
+}) => {
+  const name = sidekickName();
+  await page.goto('/profiles');
+  await page.getByRole('button', { name: 'New Profile' }).click();
+
+  await page.getByLabel('Name').fill(name);
+  await page.getByLabel('Tagline').fill('Born in a test');
+  await page.getByRole('button', { name: 'Create Profile' }).click();
+
+  // Success navigates into the new profile's space and raises no toast.
+  await expect(page).toHaveURL(/\/profiles\/[^/]+$/);
+  await expect(page.getByRole('heading', { name })).toBeVisible();
+
+  await page.goto('/profiles');
+  const created = page.locator('.profile-card').filter({ hasText: name });
+  await expect(created).toBeVisible();
+  await expect(created.locator('.profile-card-role')).toHaveText('Owner');
+  await expect(created).toContainText('Born in a test');
+});
+
+// The accent reaches the paint as `--accent-*` custom properties on each
+// surface's root, so what a jsdom test can see is the variable, not the colour.
+// Only a real stylesheet resolves `var(--accent-bg)` onto the band — this is
+// the one place that binding is proven.
+test('ProfileSpace_OwnerPicksASwatch_RepaintsTheBandFromTheAccentVariable', async ({
+  page,
+}) => {
+  await page.goto('/profiles/dev-profile-kiddo');
+  const band = page.locator('.profile-space-band');
+
+  // Kiddo carries no accent row, so the space opens on a rolled suggestion —
+  // which preset it lands on is unseeded, so only the paint is asserted here.
+  await expect(band).toHaveCSS('background-image', /gradient/);
+
+  const [name, preset] = Object.entries(ACCENT_PRESETS)[0];
+  // The radio is `sr-only`; its label is the hit target a user actually gets.
+  await page
+    .locator('.profile-accent-option')
+    .filter({ hasText: new RegExp(`^${name}$`) })
+    .click();
+
+  await expect(band).toHaveCSS(
+    'background-image',
+    new RegExp(
+      `${cssRgb(preset.light)}.*${cssRgb(preset.dark)}`.replace(/[()]/g, '\\$&')
+    )
+  );
+});
+
+test('ProfileSpace_ViewerRequestsUnknownProfileId_RedirectsToProfiles', async ({
+  page,
+}) => {
+  await page.goto('/profiles/no-such-profile-id');
+  await expect(page).toHaveURL(/\/profiles$/);
+});

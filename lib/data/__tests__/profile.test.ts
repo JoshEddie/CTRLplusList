@@ -4,6 +4,8 @@ import { profile_members, profiles, user_follows, users } from '@/db/schema';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import {
+  seedAccentCatalog,
+  seedAccentValue,
   seedBlock,
   seedFollow,
   seedManagedProfile,
@@ -11,7 +13,8 @@ import {
   selfProfileOf,
 } from '@/test/helpers/seedFollowGraph';
 import { makeProfile } from '@/test/helpers/profile';
-import { seedList } from './test-helpers';
+import { seedItem, seedList } from './test-helpers';
+import { eq, sql } from 'drizzle-orm';
 
 mockNextCache();
 
@@ -431,5 +434,174 @@ describe('getEligiblePurchasers', () => {
         selfProfileOf('named'),
       ]);
     });
+  });
+});
+
+describe('getProfileCardsForUser', () => {
+  const OWNED_A = 'owned-ada';
+  const OWNED_Z = 'owned-zoe';
+  const MANAGED_B = 'managed-bea';
+  const MANAGED_C = 'managed-cal';
+
+  beforeEach(async () => {
+    await seedUsers(db, [
+      { id: VIEWER.id, name: 'Viewer', email: VIEWER.email },
+      { id: 'stranger', name: 'Stranger' },
+    ]);
+    await seedAccentCatalog(db);
+    for (const [id, name, role] of [
+      [OWNED_Z, 'Zoe', 'owner'],
+      [OWNED_A, 'Ada', 'owner'],
+      [MANAGED_C, 'Cal', 'manager'],
+      [MANAGED_B, 'Bea', 'manager'],
+    ] as const) {
+      await seedManagedProfile(db, { id, name });
+      await db.insert(profile_members).values({
+        user_id: VIEWER.id,
+        profile_id: id,
+        role,
+      });
+    }
+  });
+
+  it('SelfOwnedAndManaged_OrdersSelfThenOwnedAscThenManagedAsc', async () => {
+    const cards = await dal.getProfileCardsForUser(VIEWER.id);
+    expect(cards.map((c) => c.name)).toEqual([
+      'Viewer',
+      'Ada',
+      'Zoe',
+      'Bea',
+      'Cal',
+    ]);
+    expect(cards.map((c) => c.role)).toEqual([
+      'self',
+      'owner',
+      'owner',
+      'manager',
+      'manager',
+    ]);
+  });
+
+  it('ProfileWithNoMembershipForViewer_IsAbsent', async () => {
+    await seedManagedProfile(db, { id: 'unrelated', name: 'Unrelated' });
+    await db.insert(profile_members).values({
+      user_id: 'stranger',
+      profile_id: 'unrelated',
+      role: 'owner',
+    });
+    const cards = await dal.getProfileCardsForUser(VIEWER.id);
+    expect(cards.map((c) => c.id)).not.toContain('unrelated');
+  });
+
+  it('ListsAtEveryVisibilityAndArchivedItems_CountsAllListsAndActiveItemsOnly', async () => {
+    for (const [id, visibility] of [
+      ['l-private', 'private'],
+      ['l-unlisted', 'unlisted'],
+      ['l-public', 'public'],
+    ] as const) {
+      await seedList(db, { id, profile_id: OWNED_A, visibility });
+    }
+    await seedItem(db, { id: 'i-1', profile_id: OWNED_A });
+    await seedItem(db, { id: 'i-2', profile_id: OWNED_A });
+    await seedItem(db, { id: 'i-3', profile_id: OWNED_A });
+    await seedItem(db, {
+      id: 'i-archived-1',
+      profile_id: OWNED_A,
+      archived_at: new Date(),
+    });
+    await seedItem(db, {
+      id: 'i-archived-2',
+      profile_id: OWNED_A,
+      archived_at: new Date(),
+    });
+
+    const ada = (await dal.getProfileCardsForUser(VIEWER.id)).find(
+      (c) => c.id === OWNED_A
+    );
+    expect(ada).toMatchObject({ listCount: 3, itemCount: 3 });
+  });
+
+  it('ProfileWithStoredAccent_ReturnsThatHue', async () => {
+    await seedAccentValue(db, OWNED_A, 'blue');
+    const ada = (await dal.getProfileCardsForUser(VIEWER.id)).find(
+      (c) => c.id === OWNED_A
+    );
+    expect(ada?.accent).toBe('blue');
+  });
+
+  it('ProfileWithNoPreferenceRow_ReturnsNullAccentHue', async () => {
+    const zoe = (await dal.getProfileCardsForUser(VIEWER.id)).find(
+      (c) => c.id === OWNED_Z
+    );
+    expect(zoe?.accent).toBeNull();
+  });
+
+  it('ProfileWithTagline_ReturnsIt-AbsentTaglineReturnsNull', async () => {
+    await db
+      .update(profiles)
+      .set({ tagline: 'Loves dinosaurs' })
+      .where(eq(profiles.id, OWNED_A));
+    const cards = await dal.getProfileCardsForUser(VIEWER.id);
+    expect(cards.find((c) => c.id === OWNED_A)?.tagline).toBe(
+      'Loves dinosaurs'
+    );
+    expect(cards.find((c) => c.id === OWNED_Z)?.tagline).toBeNull();
+  });
+});
+
+describe('getProfileMembership', () => {
+  const MANAGED = 'managed-one';
+
+  beforeEach(async () => {
+    await seedUsers(db, [
+      { id: VIEWER.id, name: 'Viewer', email: VIEWER.email },
+    ]);
+    await seedAccentCatalog(db);
+    await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
+  });
+
+  it('ViewerHoldsOwnerMembership_ReturnsCardWithOwnerRole', async () => {
+    await db.insert(profile_members).values({
+      user_id: VIEWER.id,
+      profile_id: MANAGED,
+      role: 'owner',
+    });
+    expect(await dal.getProfileMembership(VIEWER.id, MANAGED)).toMatchObject({
+      id: MANAGED,
+      name: 'Kiddo',
+      role: 'owner',
+    });
+  });
+
+  it('ViewerHoldsNoMembership_ReturnsNull', async () => {
+    expect(await dal.getProfileMembership(VIEWER.id, MANAGED)).toBeNull();
+  });
+
+  it('ProfileIdNoProfileCarries_ReturnsNullSameAsNonMember', async () => {
+    expect(await dal.getProfileMembership(VIEWER.id, 'no-such-id')).toBeNull();
+  });
+});
+
+describe('ProfileCardsReadErrors', () => {
+  it('QueryRejectedByDatabase_ThrowsFailedToFetchProfileCards', async () => {
+    await seedUsers(db, [
+      { id: VIEWER.id, name: 'Viewer', email: VIEWER.email },
+    ]);
+    // Renaming the joined column is the cheapest way to make the read's own
+    // SQL fail without stubbing the module under test.
+    await db.execute(
+      sql.raw(`ALTER TABLE "profiles" RENAME COLUMN "tagline" TO "tagline_tmp"`)
+    );
+    try {
+      await expect(dal.getProfileCardsForUser(VIEWER.id)).rejects.toThrow(
+        'Failed to fetch profile cards'
+      );
+    } finally {
+      await db.execute(
+        sql.raw(
+          `ALTER TABLE "profiles" RENAME COLUMN "tagline_tmp" TO "tagline"`
+        )
+      );
+    }
   });
 });

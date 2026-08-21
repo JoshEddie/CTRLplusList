@@ -3,6 +3,7 @@ import '../ui/styles/app-frame.css';
 import './items/ui/styles/item.css';
 import './lists/ui/styles/following-and-history.css';
 import './lists/ui/styles/list.css';
+import './profiles/ui/styles/profiles.css';
 import './users/ui/styles/avatar.css';
 
 export default function MainLayout({

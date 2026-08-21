@@ -4,7 +4,7 @@ import { signOutUser } from '@/lib/data/user.actions';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
 import { Session } from 'next-auth';
 import { useRef, useState } from 'react';
-import { LuLogOut, LuUsers } from 'react-icons/lu';
+import { LuIdCard, LuLogOut, LuUsers } from 'react-icons/lu';
 import UserImage from './UserImage';
 
 export default function UserAvatarPopover({
@@ -45,6 +45,15 @@ export default function UserAvatarPopover({
           )}
         </div>
         <div className="avatar-popover-divider" role="presentation" />
+        {/* Identity first, then the social graph, then the terminal action —
+            an ordering rule later entries can join without re-deciding. */}
+        <MenuLinkItem
+          href="/profiles"
+          icon={<LuIdCard size={18} />}
+          onClick={close}
+        >
+          Profiles
+        </MenuLinkItem>
         <MenuLinkItem
           href="/settings/connections"
           icon={<LuUsers size={18} />}

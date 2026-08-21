@@ -5,7 +5,10 @@ import { bootPglite, resetDb } from '../../test/helpers/db';
 import {
   items,
   lists,
+  ACCENT_PREFERENCE_ID,
+  preferences,
   profile_members,
+  profile_preferences,
   profiles,
   SELF_MEMBERSHIP_PER_PROFILE_IDX,
   SELF_MEMBERSHIP_PER_USER_IDX,
@@ -183,7 +186,7 @@ describe('profiles', () => {
   });
 
   describe('createSelfProfile', () => {
-    it('NewAccount_WritesOpaqueSelfProfileAndSelfMembership', async () => {
+    it('NewAccount_WritesNanoidSelfProfileAndSelfMembership', async () => {
       await createSelfProfile(db, { id: 'u1', name: 'Owner' });
 
       const profileRows = await db
@@ -199,7 +202,6 @@ describe('profiles', () => {
 
       expect(profileRows).toHaveLength(1);
       expect(profileRows[0].name).toBe('Owner');
-      expect(profileRows[0].id).not.toContain('u1');
       expect(profileRows[0].id).toMatch(/^[A-Za-z0-9_-]{21}$/);
       expect(memberRows).toEqual([
         { user_id: 'u1', profile_id: profileRows[0].id, role: 'self' },
@@ -241,6 +243,34 @@ describe('profiles', () => {
       const memberRows = await db.select().from(profile_members);
       expect(profileRows).toEqual([{ id: 'winner' }]);
       expect(memberRows).toHaveLength(1);
+    });
+  });
+  // The first change to write `profile_preferences` rows is what makes these
+  // cascades observable: the DDL predates it, but nothing exercised it while
+  // the table shipped empty.
+  describe('PreferenceValueCascades', () => {
+    beforeEach(async () => {
+      await db.insert(profiles).values({ id: 'p1', name: 'Kiddo' });
+      await db
+        .insert(preferences)
+        .values({ id: ACCENT_PREFERENCE_ID, name: 'Accent color', type: 'text' });
+      await db.insert(profile_preferences).values({
+        profile_id: 'p1',
+        preference_id: ACCENT_PREFERENCE_ID,
+        value: 'rose',
+      });
+    });
+
+    it('ProfileDeleted_DiscardsItsPreferenceValues', async () => {
+      await db.delete(profiles).where(eq(profiles.id, 'p1'));
+      expect(await db.select().from(profile_preferences)).toHaveLength(0);
+    });
+
+    it('CatalogEntryDeleted_DiscardsEveryValueReferencingIt', async () => {
+      await db
+        .delete(preferences)
+        .where(eq(preferences.id, ACCENT_PREFERENCE_ID));
+      expect(await db.select().from(profile_preferences)).toHaveLength(0);
     });
   });
 });

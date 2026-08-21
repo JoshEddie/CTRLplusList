@@ -36,7 +36,7 @@ describe('UserAvatarPopover', () => {
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('ClickTrigger_OpensMenuWithHeader-Connections-SignOut', async () => {
+  it('ClickTrigger_OpensMenuWithHeader-Profiles-Connections-SignOut', async () => {
     render(<UserAvatarPopover user={fullUser} />);
     await userEvent.click(trigger());
 
@@ -45,11 +45,36 @@ describe('UserAvatarPopover', () => {
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
     expect(screen.getByText('ada@example.com')).toBeInTheDocument();
 
+    const profiles = screen.getByRole('menuitem', { name: /profiles/i });
+    expect(profiles).toHaveAttribute('href', '/profiles');
     const connections = screen.getByRole('menuitem', { name: /connections/i });
     expect(connections).toHaveAttribute('href', '/settings/connections');
     expect(
       screen.getByRole('menuitem', { name: /sign out/i })
     ).toBeInTheDocument();
+  });
+
+  it('ClickTrigger_OrdersProfilesBeforeConnectionsBeforeSignOut', async () => {
+    render(<UserAvatarPopover user={fullUser} />);
+    await userEvent.click(trigger());
+
+    expect(
+      screen.getAllByRole('menuitem').map((item) => item.textContent)
+    ).toEqual(['Profiles', 'Connections', 'Sign out']);
+  });
+
+  it('ClickTrigger_GivesProfilesAndConnectionsDistinctIcons', async () => {
+    render(<UserAvatarPopover user={fullUser} />);
+    await userEvent.click(trigger());
+
+    /* eslint-disable testing-library/no-node-access -- an icon is a decorative <svg> carrying no role or accessible name, so comparing the two rows' rendered paths is the only way to assert they differ at icon size. */
+    const iconPathOf = (name: RegExp) =>
+      screen.getByRole('menuitem', { name }).querySelector('svg')?.innerHTML ??
+      '';
+    /* eslint-enable testing-library/no-node-access */
+
+    expect(iconPathOf(/profiles/i)).not.toBe('');
+    expect(iconPathOf(/profiles/i)).not.toBe(iconPathOf(/connections/i));
   });
 
   it('SparseUser_ShowsSignedInFallbackWithoutEmail', async () => {

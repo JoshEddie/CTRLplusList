@@ -175,7 +175,7 @@ describe('bypassActiveProfile', () => {
 });
 
 describe('createUserEvent', () => {
-  it('NewAccount_WritesOpaqueSelfProfileAndSelfMembershipThroughTheAppDb', async () => {
+  it('NewAccount_WritesNanoidProfileAndSelfMembershipThroughTheAppDb', async () => {
     await loadAuth();
 
     await nextAuthConfig.current?.events?.createUser?.({
@@ -187,7 +187,6 @@ describe('createUserEvent', () => {
     ).toEqual(['profiles', 'profile_members']);
     const profile = insertedRows[0].values as { id: string; name: string };
     expect(profile.name).toBe('Ada Lovelace');
-    expect(profile.id).not.toContain('u1');
     expect(profile.id).toMatch(/^[A-Za-z0-9_-]{21}$/);
     expect(profile).not.toHaveProperty('user_id');
   });

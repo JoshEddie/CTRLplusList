@@ -9,6 +9,8 @@ names, and act on it before writing. No matching row means no decision binds.
 | Touching… | Read |
 | --- | --- |
 | `DATABASE.md` | [2026-08-18-atomic-writes-in-one-cte](2026-08-18-atomic-writes-in-one-cte.md) |
+| `DB Schema` | [2026-08-19-profile-attributes-column-or-preference](2026-08-19-profile-attributes-column-or-preference.md) |
+| `DAL` | [2026-08-19-profile-attributes-column-or-preference](2026-08-19-profile-attributes-column-or-preference.md) |
 
 ## Term bank
 
