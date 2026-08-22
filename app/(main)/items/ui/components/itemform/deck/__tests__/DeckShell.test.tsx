@@ -54,7 +54,7 @@ describe('DeckShell', () => {
   it('WideVariant_AddsWideClassToShellBox', () => {
     const { container } = setup({ variant: 'wide' });
     expect(container.querySelector('.deck-screen')!.className).toContain(
-      'deck-screen-wide'
+      'modal-shell-wide'
     );
   });
 

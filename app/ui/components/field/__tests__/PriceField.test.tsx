@@ -217,4 +217,51 @@ describe('PriceField', () => {
       expect(leadingIcon).toHaveAttribute('aria-hidden', 'true');
     });
   });
+
+  describe('ClearAffordance', () => {
+    it('OnClearWithAmount_RendersClearButtonThatFiresOnClear', () => {
+      const onClear = vi.fn();
+      render(
+        <PriceField amount={12.5} onChange={noop} onClear={onClear} aria-label="Price" />
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Clear price' }));
+      expect(onClear).toHaveBeenCalledTimes(1);
+    });
+
+    it('OnClearWithNullAmount_HidesClearButton', () => {
+      render(
+        <PriceField amount={null} onChange={noop} onClear={noop} aria-label="Price" />
+      );
+      expect(
+        screen.queryByRole('button', { name: 'Clear price' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('OnClearWithZeroAmount_ShowsClearButton', () => {
+      // Typed 0 is a real price ($0.00) — clearing it to no-price must stay
+      // reachable.
+      render(
+        <PriceField amount={0} onChange={noop} onClear={noop} aria-label="Price" />
+      );
+      expect(
+        screen.getByRole('button', { name: 'Clear price' })
+      ).toBeInTheDocument();
+    });
+
+    it('OnClearOmitted_NoClearButton', () => {
+      render(<PriceField amount={12.5} onChange={noop} aria-label="Price" />);
+      expect(
+        screen.queryByRole('button', { name: 'Clear price' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('Disabled_HidesClearButton', () => {
+      render(
+        <PriceField amount={12.5} onChange={noop} onClear={noop} disabled aria-label="Price" />
+      );
+      expect(
+        screen.queryByRole('button', { name: 'Clear price' })
+      ).not.toBeInTheDocument();
+    });
+  });
 });

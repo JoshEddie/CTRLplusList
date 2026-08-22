@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DESCRIPTION_MAX,
-  TITLE_MAX,
-  TITLE_SNAPPY,
+  NAME_MAX,
+  NAME_SNAPPY,
   amountToPrice,
   isDirtyDraft,
   manualAdvanceReady,
@@ -15,7 +15,7 @@ import {
   rowTiers,
   storeTier,
   suggestTrim,
-  titleTier,
+  nameTier,
   type RowField,
 } from '../utils';
 import type { ItemViewModel } from '../viewModel';
@@ -23,56 +23,56 @@ import type { ItemViewModel } from '../viewModel';
 describe('deckUtils', () => {
   describe('constants', () => {
     it('Bounds_AreHundredFiftyHundred', () => {
-      expect(TITLE_MAX).toBe(100);
-      expect(TITLE_SNAPPY).toBe(50);
+      expect(NAME_MAX).toBe(100);
+      expect(NAME_SNAPPY).toBe(50);
       expect(DESCRIPTION_MAX).toBe(100);
     });
   });
 
-  describe('titleTier', () => {
+  describe('nameTier', () => {
     it('Empty_ReturnsErrorNeedsName', () => {
-      expect(titleTier('')).toEqual({
+      expect(nameTier('')).toEqual({
         tier: 'error',
         note: 'An item needs a name.',
       });
     });
 
     it('Whitespace_ReturnsErrorNeedsName', () => {
-      expect(titleTier('   ').tier).toBe('error');
+      expect(nameTier('   ').tier).toBe('error');
     });
 
     it('Undefined_ReturnsError', () => {
-      expect(titleTier(undefined).tier).toBe('error');
+      expect(nameTier(undefined).tier).toBe('error');
     });
 
     it('UnderThreeChars_ReturnsErrorMatchingSchemaFloor', () => {
       // ItemSchema enforces name.min(3); the gate must block a 1-2 char name
       // inline rather than letting it hit a server-side rejection on Create.
-      const result = titleTier('ab');
+      const result = nameTier('ab');
       expect(result.tier).toBe('error');
       expect(result.note).toContain('3');
     });
 
     it('AtThreeChars_ReturnsGood', () => {
-      expect(titleTier('abc').tier).toBe('good');
+      expect(nameTier('abc').tier).toBe('good');
     });
 
     it('AtSnappy_ReturnsGood', () => {
-      expect(titleTier('a'.repeat(TITLE_SNAPPY)).tier).toBe('good');
+      expect(nameTier('a'.repeat(NAME_SNAPPY)).tier).toBe('good');
     });
 
     it('OverSnappyUnderMax_ReturnsWarn', () => {
-      const result = titleTier('a'.repeat(TITLE_SNAPPY + 1));
+      const result = nameTier('a'.repeat(NAME_SNAPPY + 1));
       expect(result.tier).toBe('warn');
       expect(result.note).toContain('description');
     });
 
     it('AtMax_ReturnsWarn', () => {
-      expect(titleTier('a'.repeat(TITLE_MAX)).tier).toBe('warn');
+      expect(nameTier('a'.repeat(NAME_MAX)).tier).toBe('warn');
     });
 
     it('OverMax_ReturnsErrorTrim', () => {
-      const result = titleTier('a'.repeat(TITLE_MAX + 1));
+      const result = nameTier('a'.repeat(NAME_MAX + 1));
       expect(result.tier).toBe('error');
       expect(result.note).toContain('limit');
     });
@@ -225,7 +225,7 @@ describe('deckUtils', () => {
           store: { name: '', link: '', price: '' },
         })
       );
-      expect(tiers.title.tier).toBe('error');
+      expect(tiers.name.tier).toBe('error');
       expect(tiers.price.tier).toBe('good');
       expect(tiers.photo.tier).toBe('warn');
       expect(tiers.store.tier).toBe('good');
@@ -309,7 +309,7 @@ describe('deckUtils', () => {
     const error = { tier: 'error', note: 'n' } as const;
     const tiers = (over = {}) => ({
       photo: good,
-      title: good,
+      name: good,
       note: good,
       price: good,
       store: good,
@@ -326,7 +326,7 @@ describe('deckUtils', () => {
       expect(
         manualAdvanceReady(
           tiers({ price: error }),
-          visited('photo', 'title', 'note', 'price', 'store')
+          visited('photo', 'name', 'note', 'price', 'store')
         )
       ).toBe(false);
     });
@@ -348,7 +348,7 @@ describe('deckUtils', () => {
       expect(
         manualAdvanceReady(
           tiers({ photo: warn, store: warn }),
-          visited('photo', 'title', 'note', 'price')
+          visited('photo', 'name', 'note', 'price')
         )
       ).toBe(false);
     });
@@ -478,7 +478,7 @@ describe('deckUtils', () => {
         "Nike Air Max 270 Men's Shoes - Black/White, Size 10 Wide Width Comfort"
       );
       expect(trimmed).toBe("Nike Air Max 270 Men's Shoes");
-      expect(trimmed.length).toBeLessThanOrEqual(TITLE_SNAPPY);
+      expect(trimmed.length).toBeLessThanOrEqual(NAME_SNAPPY);
     });
 
     it('CommaClause_CutsAtFirstFittingComma', () => {
@@ -494,7 +494,7 @@ describe('deckUtils', () => {
       );
       // The hyphen in "T-Shirt" must not produce "T"; falls back to a word break.
       expect(trimmed).not.toBe('T');
-      expect(trimmed.length).toBeLessThanOrEqual(TITLE_SNAPPY);
+      expect(trimmed.length).toBeLessThanOrEqual(NAME_SNAPPY);
       expect(trimmed.startsWith('T-Shirt')).toBe(true);
     });
 
@@ -504,20 +504,20 @@ describe('deckUtils', () => {
       const trimmed = suggestTrim(
         ', Premium Stainless Steel Insulated Water Bottle Travel Mug'
       );
-      expect(trimmed.length).toBeLessThanOrEqual(TITLE_SNAPPY);
+      expect(trimmed.length).toBeLessThanOrEqual(NAME_SNAPPY);
       expect(trimmed.length).toBeGreaterThan(0);
     });
 
     it('SingleLongWordNoSpaces_HardCutsAtSnappy', () => {
       const trimmed = suggestTrim('x'.repeat(80));
-      expect(trimmed).toBe('x'.repeat(TITLE_SNAPPY));
+      expect(trimmed).toBe('x'.repeat(NAME_SNAPPY));
     });
 
     it('NoBoundary_CutsAtWordBreak', () => {
       const trimmed = suggestTrim(
         'Supercalifragilistic expialidocious wonderful magnificent splendid title'
       );
-      expect(trimmed.length).toBeLessThanOrEqual(TITLE_SNAPPY);
+      expect(trimmed.length).toBeLessThanOrEqual(NAME_SNAPPY);
       expect(trimmed.endsWith(' ')).toBe(false);
       // Cut on a word boundary, so no partial trailing word.
       expect(trimmed.split(' ').pop()).not.toBe('magnificen');

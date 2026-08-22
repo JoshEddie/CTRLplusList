@@ -41,7 +41,7 @@ export default function ConfirmDialog({
 
   return (
     <div className="confirm-dialog-overlay">
-      <div className="confirm-dialog-content">
+      <div className="dialog-panel confirm-dialog-content">
         <h3 className="confirm-dialog-title">{title}</h3>
         <p className="confirm-dialog-message">{message}</p>
         <div className="confirm-dialog-buttons">

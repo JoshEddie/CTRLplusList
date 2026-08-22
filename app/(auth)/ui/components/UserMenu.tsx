@@ -1,13 +1,12 @@
 'use client';
 
 import SignInButton from '@/app/(auth)/ui/components/SignInButton';
-import { buttonClasses } from '@/app/ui/components/button';
+import { CloseButton, buttonClasses } from '@/app/ui/components/button';
 import { Session } from 'next-auth';
 
 import '@/app/(auth)/ui/styles/auth.css';
 import Image from 'next/image';
 import { useState } from 'react';
-import { LuX } from 'react-icons/lu';
 import AuthContainer from './AuthContainer';
 import UserAvatarPopover from './UserAvatarPopover';
 
@@ -49,9 +48,7 @@ function SignedOutMenu() {
           priority={true}
         />
         <SignInButton />
-        <div onClick={() => setShowMenu(false)} className="close-button">
-          <LuX />
-        </div>
+        <CloseButton onClick={() => setShowMenu(false)} />
       </AuthContainer>
     </>
   );

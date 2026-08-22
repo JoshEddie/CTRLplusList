@@ -22,11 +22,14 @@ export function FormShell({
 }) {
   const dismiss = useDismiss(onClose, closeHref);
 
-  const cls = variant === 'wide' ? 'form-shell form-shell-wide' : 'form-shell';
+  const cls =
+    variant === 'wide'
+      ? 'modal-shell modal-shell-wide form-shell'
+      : 'modal-shell form-shell';
 
   return (
     <div
-      className="form-shell-overlay"
+      className="modal-overlay-scrim form-shell-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) dismiss();
       }}

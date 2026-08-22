@@ -6,7 +6,7 @@ import type { DeckStep, DeckStepState } from './neededSteps';
 
 const STEP_LABELS: Record<DeckStep, string> = {
   photo: 'Photo',
-  title: 'Name',
+  name: 'Name',
   price: 'Price',
   store: 'Store',
   note: 'Note',

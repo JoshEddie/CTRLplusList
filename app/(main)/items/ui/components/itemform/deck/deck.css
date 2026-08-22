@@ -6,15 +6,6 @@
 
 :root {
   --ink-soft: #5d6470;
-  --good: #1c7146;
-  --good-bg: #e6f4ec;
-  --good-line: #bfe3cd;
-  --warn: #845309;
-  --warn-bg: #fbf1d9;
-  --warn-line: #ecd49a;
-  --error: #b91c1c;
-  --error-bg: #fbe5e2;
-  --error-line: #f0bdb6;
 }
 
 .deck-preview,
@@ -71,7 +62,7 @@
 }
 
 .deck-row-icon.check {
-  color: var(--good);
+  color: var(--success-text);
 }
 
 .deck-row-icon.warning {
@@ -79,7 +70,7 @@
 }
 
 .deck-row-icon.error {
-  color: var(--error);
+  color: var(--danger-text);
 }
 
 .deck-row-title {
@@ -222,9 +213,9 @@
 }
 
 .deck-tier-good {
-  background: var(--good-bg);
-  border-color: var(--good-line);
-  color: var(--good);
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-text);
 }
 
 .deck-tier-warn {
@@ -234,21 +225,14 @@
 }
 
 .deck-tier-error {
-  background: var(--error-bg);
-  border-color: var(--error-line);
-  color: var(--error);
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
 }
 
-.deck-title {
+.deck-name {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.deck-title-meta {
-  display: flex;
-  align-items: center;
-  justify-content: end;
   gap: 12px;
 }
 
@@ -285,36 +269,16 @@
   color: var(--neutral-text-color);
 }
 
-.deck-counter {
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted-text-color);
-}
-
-.deck-counter-warn {
-  color: var(--warn);
-}
-
-.deck-counter-error {
-  color: var(--error);
-}
-
 .deck-note {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.deck-note .deck-counter,
 .deck-price {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.deck-note > .deck-counter {
-  align-self: flex-end;
 }
 
 /* ---- Preview body (card + actions) --------------------------------------- */
@@ -503,7 +467,7 @@
 }
 
 .deck-triage-status-good {
-  color: var(--good);
+  color: var(--success-text);
 }
 
 .deck-triage-status-warn {
@@ -511,7 +475,7 @@
 }
 
 .deck-triage-status-error {
-  color: var(--error);
+  color: var(--danger-text);
 }
 
 /* ---- Stores sheet -------------------------------------------------------- */
@@ -551,7 +515,7 @@
 }
 
 .deck-store-rm:hover {
-  background: var(--error-bg);
+  background: var(--danger-bg);
 }
 
 /* ---- Lists & quantity sheet ---------------------------------------------- */

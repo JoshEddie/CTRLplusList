@@ -59,6 +59,20 @@ When `ItemPhoto` renders with no image URL, it SHALL fire the mint action from a
 - **WHEN** `ItemPhoto` mounts with a non-empty image URL
 - **THEN** no mint action is invoked
 
+### Requirement: A dead saved image URL SHALL fall back to render-only placeholder art
+
+When `ItemPhoto` renders a saved image URL and the image fails to load (`onError` — rotted CDN link, hotlink block), it SHALL request fallback art from a transient server action and swap it into the container render-only. The action SHALL gate on the caller's authorization to view the item (`isItemViewable`, the same gate the mint uses), return `generatePlaceholderArt(itemId)`, and perform zero database writes — client `onError` cannot distinguish permanent link rot from a transient glitch, so the saved URL is never overwritten and the next page load retries it. The deterministic itemId seed keeps the fallback art identical to minted art and stable across repeated failures. The fallback SHALL be requested at most once per mount, and only for the saved-URL path (minted art is a data URI and cannot fail to load).
+
+#### Scenario: Dead link swaps to art without a write
+
+- **WHEN** a saved item-image URL fires `onError`
+- **THEN** the fallback action is called once, its deterministic art renders in the existing image container, and no `item_images` row is inserted, updated, or deleted
+
+#### Scenario: Next load retries the saved URL
+
+- **WHEN** the item is rendered again after a fallback swap
+- **THEN** the saved URL is attempted again — the fallback never persists
+
 ### Requirement: The deck SHALL obtain transient placeholder previews from a server action
 
 An authenticated-only server action SHALL generate `n` placeholder previews from distinct random seeds and return their URIs without persisting anything — the deck photo card's placeholder thumbs and the reroll control consume it (reroll = a fresh call for one). Only a **selected** preview is ever persisted — a user pick, or the default pre-selection of the first placeholder on a zero-real-photo strip (per `item-decision-deck`) — and that happens through the normal item save path, not this action.

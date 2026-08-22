@@ -16,8 +16,8 @@ import { VISIBILITY_ROWS } from './visibility-rows';
 
 // ── Share ────────────────────────────────────────────────────────────────
 // Mirrors ShareButton's logic but renders as a <MenuItem>. The URL is built
-// from list.id rather than window.location, so the `?hero=closed` param is
-// never present in the shared URL — the requirement is structurally
+// from list.id rather than window.location, so no presentation-state params
+// ever reach the shared URL — the canonical-URL requirement is structurally
 // satisfied without a normalization step here.
 export function ShareMenuItem({ list }: { list: ListTable }) {
   const router = useRouter();

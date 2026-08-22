@@ -72,7 +72,7 @@ describe('FormShell', () => {
         </FormShell>
       );
       const inner = container.querySelector('.form-shell-overlay > div')!;
-      expect(inner.className).toBe('form-shell');
+      expect(inner.className).toBe('modal-shell form-shell');
     });
 
     it('VariantWide_RendersFormShellAndFormShellWideClasses', () => {
@@ -82,7 +82,7 @@ describe('FormShell', () => {
         </FormShell>
       );
       const inner = container.querySelector('.form-shell-overlay > div')!;
-      expect(inner.className).toBe('form-shell form-shell-wide');
+      expect(inner.className).toBe('modal-shell modal-shell-wide form-shell');
     });
 
     it('Title_RenderedInsideFormShellTitleSpan', () => {

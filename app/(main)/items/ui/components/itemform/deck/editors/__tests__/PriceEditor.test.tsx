@@ -23,6 +23,21 @@ describe('PriceEditor', () => {
     expect(screen.getByLabelText('Price')).toHaveValue('');
   });
 
+  it('PricedItem_ClearButtonEmptiesToNoPrice', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<PriceEditor price="24.50" onChange={onChange} />);
+    await user.click(screen.getByRole('button', { name: 'Clear price' }));
+    expect(onChange).toHaveBeenCalledWith('');
+  });
+
+  it('EmptyPrice_NoClearButton', () => {
+    render(<PriceEditor price="" onChange={vi.fn()} />);
+    expect(
+      screen.queryByRole('button', { name: 'Clear price' })
+    ).not.toBeInTheDocument();
+  });
+
   it('WithProductUrl_RendersOpenPageLinkNewTab', () => {
     render(
       <PriceEditor

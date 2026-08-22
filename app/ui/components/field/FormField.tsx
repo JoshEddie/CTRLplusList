@@ -52,12 +52,14 @@ function FieldRow({
   iconPosition,
   hasIcon,
   child,
+  trailing,
 }: {
   fieldClass: string;
   icon: ReactNode;
   iconPosition: FieldIconPosition;
   hasIcon: boolean;
   child: ReactNode;
+  trailing?: ReactNode;
 }) {
   const leadingIcon = hasIcon && iconPosition !== 'right';
   const trailingIcon = hasIcon && iconPosition === 'right';
@@ -66,6 +68,7 @@ function FieldRow({
       {leadingIcon && <span className="field_icon">{icon}</span>}
       {child}
       {trailingIcon && <span className="field_icon">{icon}</span>}
+      {trailing}
     </div>
   );
 }
@@ -82,10 +85,13 @@ export function FormField({
   label,
   description,
   error,
+  invalid,
   required,
   icon,
   iconPosition = 'left',
   className,
+  counter,
+  trailing,
   children,
   size,
 }: FormFieldProps) {
@@ -105,16 +111,18 @@ export function FormField({
     enrichedChild = cloneElement(child as ReactElement<InjectedChildProps>, {
       id: inputId,
       'aria-describedby': describedBy,
-      'aria-invalid': error ? true : undefined,
+      'aria-invalid': invalid || error ? true : undefined,
       'aria-required': required ? true : undefined,
     });
   }
 
   const hasIcon = icon !== undefined;
+  const hasTrailing = trailing !== undefined && trailing !== null;
   const fieldClass = joinClasses(
     'form_field',
     iconClassFor(hasIcon, iconPosition),
-    error && 'invalid',
+    hasTrailing && 'has_trailing',
+    (invalid || error) && 'invalid',
     size === 'sm' && 'form_field-sm'
   );
 
@@ -141,7 +149,20 @@ export function FormField({
         iconPosition={iconPosition}
         hasIcon={hasIcon}
         child={enrichedChild}
+        trailing={trailing}
       />
+      {counter && (
+        <span
+          className={joinClasses(
+            'form_field_counter',
+            (counter.length > counter.max || invalid || error) &&
+              'form_field_counter-over'
+          )}
+          aria-hidden="true"
+        >
+          {counter.length}/{counter.max}
+        </span>
+      )}
       {error && <FieldError id={errorId}>{error}</FieldError>}
     </div>
   );

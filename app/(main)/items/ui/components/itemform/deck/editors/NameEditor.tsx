@@ -4,10 +4,10 @@ import { TextareaField } from '@/app/ui/components/field';
 import { useState } from 'react';
 import { TierNote } from '../TierNote';
 import { TrimChip } from '../TrimChip';
-import { TITLE_MAX, suggestTrim, titleTier } from '../utils';
+import { NAME_MAX, suggestTrim, nameTier } from '../utils';
 import { NoteEditor } from './NoteEditor';
 
-interface TitleEditorProps {
+interface NameEditorProps {
   name: string;
   description: string;
   onNameChange: (value: string) => void;
@@ -16,15 +16,15 @@ interface TitleEditorProps {
   disabled?: boolean;
 }
 
-export function TitleEditor({
+export function NameEditor({
   name,
   description,
   onNameChange,
   onDescriptionChange,
   linkless,
   disabled,
-}: TitleEditorProps) {
-  const tier = titleTier(name);
+}: NameEditorProps) {
+  const tier = nameTier(name);
   const suggestion = suggestTrim(name);
   const canTrim =
     tier.tier !== 'good' && suggestion.length > 0 && suggestion !== name.trim();
@@ -33,10 +33,10 @@ export function TitleEditor({
   // flagged): trimming the name back to "good" must NOT yank away the note
   // field — surfacing it is the whole point, so the user can move the
   // size/color/variant detail there before continuing.
-  const [noteSurfaced] = useState(() => titleTier(name).tier !== 'good');
+  const [noteSurfaced] = useState(() => nameTier(name).tier !== 'good');
 
   return (
-    <div className="deck-title">
+    <div className="deck-name">
       <TextareaField
         label="Item name"
         value={name}
@@ -45,16 +45,9 @@ export function TitleEditor({
         rows={2}
         placeholder="What is it?"
         autoComplete="off"
+        counterMax={NAME_MAX}
+        invalid={tier.tier === 'error'}
       />
-
-      <div className="deck-title-meta">
-        <span
-          className={`deck-counter deck-counter-${tier.tier}`}
-          aria-hidden="true"
-        >
-          {name.length}/{TITLE_MAX}
-        </span>
-      </div>
 
       {tier.tier === 'warn' && <TierNote tier="warn">{tier.note}</TierNote>}
       {tier.tier === 'error' && <TierNote tier="error">{tier.note}</TierNote>}

@@ -203,6 +203,24 @@ The system SHALL ensure every button whose visible content is an icon (no render
 - **WHEN** assistive tech reads the icon-only bookmark button
 - **THEN** the button is announced with a state-aware descriptive name (e.g. "Bookmark list" vs "Remove bookmark") AND the pressed state is announced via `aria-pressed` per the toggle-state requirement
 
+### Requirement: CloseButton is the single close affordance for floating surfaces
+
+The system SHALL provide a `<CloseButton>` component in the button family (`app/ui/components/button/CloseButton.tsx`, exported from the family index) as the one close affordance for floating surfaces — modals, deck screens, and overlay menus. It SHALL render a real `<button type="button">` with a default accessible name of "Close" (overridable via a `label` prop) and an x icon marked `aria-hidden`.
+
+Its visual contract is a single style: a 36px disc, white fill (`--light-color`), primary-dark (`--primary-color-dark`) outline and x, inset inside the surface's top-right corner (top/right 16px — the surface provides `position: relative`), with the 36px visual expanded to the 44px WCAG 2.5.5 hit floor via an inset pseudo-element. Content SHALL account for the disc — the affordance sits inside the surface, never overhanging its corner.
+
+No page-scoped close-button implementation SHALL exist: surfaces compose `<CloseButton>`, and a surface whose layout breaks under the inset default MAY apply a layout-only pivot class (positioning/margin only — never restyling the disc).
+
+#### Scenario: Close affordance is a named button
+
+- **WHEN** a floating surface renders its close affordance
+- **THEN** it is a `<CloseButton>` — a real `<button>` with accessible name "Close" (or a surface-specific label), not a classed `<div>`
+
+#### Scenario: One style across surfaces
+
+- **WHEN** the purchase modal, a deck screen, and the signed-out menu render their close affordances
+- **THEN** all three render the same disc — white fill, primary-dark outline and x, 36px inset in the surface's top-right corner — with per-surface differences limited to layout-only pivots
+
 ### Requirement: Vendor sign-in button is excluded from the unified system
 
 The system SHALL leave the `.gsi-material-button` (Google Sign-In) styling unchanged, as it is a vendor brand requirement.

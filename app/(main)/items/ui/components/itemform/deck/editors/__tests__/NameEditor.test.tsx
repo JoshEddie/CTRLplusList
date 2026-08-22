@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { TitleEditor } from '../TitleEditor';
+import { NameEditor } from '../NameEditor';
 
 const LONG =
   'Premium Stainless Steel Water Bottle - Insulated Leakproof 32oz Travel Mug';
@@ -11,7 +11,7 @@ function setup(name: string, description = '') {
   const onNameChange = vi.fn();
   const onDescriptionChange = vi.fn();
   render(
-    <TitleEditor
+    <NameEditor
       name={name}
       description={description}
       onNameChange={onNameChange}
@@ -25,7 +25,7 @@ function StatefulHarness({ initial }: { initial: string }) {
   const [name, setName] = useState(initial);
   const [description, setDescription] = useState('');
   return (
-    <TitleEditor
+    <NameEditor
       name={name}
       description={description}
       onNameChange={setName}
@@ -34,7 +34,7 @@ function StatefulHarness({ initial }: { initial: string }) {
   );
 }
 
-describe('TitleEditor', () => {
+describe('NameEditor', () => {
   describe('GoodTitle', () => {
     it('Render_NoTrimChip-NoInlineNote', () => {
       setup('Cast Iron Skillet');
