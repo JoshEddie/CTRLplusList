@@ -7,6 +7,7 @@
   padding: 1.5rem;
   width: min(24rem, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
 }
 .follow-disclosure-dialog::backdrop {
   background-color: var(--transparent-overlay);
@@ -716,6 +717,7 @@
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--app-sticky-top));
+  height: calc(100dvh - var(--app-sticky-top));
   overflow: hidden;
 }
 
