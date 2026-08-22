@@ -36,6 +36,7 @@
 }
 
 .modal {
+  position: relative;
   background-color: var(--light-color);
   padding: 24px;
   border-radius: 14px;

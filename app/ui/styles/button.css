@@ -370,3 +370,47 @@
   background-color: #303030;
   opacity: 8%;
 }
+
+/* ── Close affordance ─────────────────────────────────────────────────────
+   One disc for every floating surface (modals, deck screens, overlay
+   menus): geometry inherited from the deck-screen baseline — inset 16px
+   inside the surface's top-right corner, 36px visual expanded to the 44px
+   WCAG hit floor via ::before. The surface provides position: relative;
+   layout pivots are per-surface classes, the disc itself is never
+   restyled. */
+.close-button {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--light-color);
+  border: 1.5px solid var(--primary-color-dark);
+  color: var(--primary-color-dark);
+  font-size: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+  z-index: 4;
+}
+
+/* Expand the 36px visual to the 44px WCAG hit floor. */
+.close-button::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+
+.close-button:hover {
+  background: var(--primary-color-dark);
+  color: var(--light-color);
+}
+
+.close-button:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: 2px;
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { LuX } from 'react-icons/lu';
+import { CloseButton } from '@/app/ui/components/button';
 import { useDismiss } from '@/app/ui/components/use-dismiss';
 import './deck-screen.css';
 
@@ -33,14 +33,7 @@ export function DeckShell({
       }}
     >
       <div className={cls}>
-        <button
-          type="button"
-          className="deck-screen-close"
-          onClick={dismiss}
-          aria-label="Close"
-        >
-          <LuX />
-        </button>
+        <CloseButton onClick={dismiss} className="deck-screen-close-pivot" />
         <span className="deck-screen-module-title">{moduleTitle}</span>
         {children}
       </div>

@@ -169,42 +169,6 @@
 
 /* ---- Floating close: mirrors the item-card kebab (item.css) --------------- */
 
-.deck-screen-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(0, 0, 0, 0.07);
-  color: var(--muted-text-color);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
-  cursor: pointer;
-  z-index: 4;
-}
-
-/* Expand the 36px visual to the 44px WCAG hit floor. */
-.deck-screen-close::before {
-  content: '';
-  position: absolute;
-  inset: -4px;
-}
-
-.deck-screen-close:hover {
-  color: var(--primary-color);
-  background: var(--light-color);
-}
-
-.deck-screen-close:focus-visible {
-  outline: 2px solid var(--primary-color);
-  outline-offset: 2px;
-}
-
 /* ---- Step tracker (footer) ------------------------------------------------ */
 
 .deck-steps {
@@ -354,8 +318,9 @@
   }
 
   /* Absolute would scroll away once the root is the scroller; sticky keeps
-     the close pinned. Negative bottom margin removes its layout footprint. */
-  .deck-screen-close {
+     the close pinned. Negative bottom margin removes its layout footprint.
+     Layout-only pivot on the shared close-button primitive. */
+  .close-button.deck-screen-close-pivot {
     position: sticky;
     flex: none;
     align-self: flex-end;
