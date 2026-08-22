@@ -1,19 +1,8 @@
 import { db } from '@/db';
 import { list_visits } from '@/db/schema';
 import { withVisibility } from '@/lib/data/list';
-import { type ListVisibility } from '@/lib/visibility';
 import { and, eq, isNotNull } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
-
-function withNestedListVisibility<
-  T extends { list: { visibility: string } & Record<string, unknown> },
->(
-  row: T
-): Omit<T, 'list'> & {
-  list: Omit<T['list'], 'visibility'> & { visibility: ListVisibility };
-} {
-  return { ...row, list: withVisibility(row.list) };
-}
 
 // Not cached: joins the owning profile for `list.profile.name`. The profile
 // actions do fire `updateTag('profiles')`, but NextAuth's createUser event
@@ -37,7 +26,7 @@ export async function getBookmarkedListsByUser(userId: string) {
       },
       orderBy: (list_visits, { desc }) => [desc(list_visits.favorited_at)],
     });
-    return result.map(withNestedListVisibility);
+    return result.map((row) => ({ ...row, list: withVisibility(row.list) }));
   } catch (error) {
     console.error('Error fetching bookmarked lists:', error);
     throw new Error('Failed to fetch bookmarked lists');
@@ -70,7 +59,7 @@ export async function getBookmarkStatus(
 // fresh-per-request).
 export async function getVisitHistoryByUser(
   userId: string,
-  opts: { limit?: number; offset?: number } = {}
+  opts: { limit?: number } = {}
 ) {
   try {
     const result = await db.query.list_visits.findMany({
@@ -89,9 +78,8 @@ export async function getVisitHistoryByUser(
       },
       orderBy: (list_visits, { desc }) => [desc(list_visits.last_visited_at)],
       limit: opts.limit,
-      offset: opts.offset,
     });
-    return result.map(withNestedListVisibility);
+    return result.map((row) => ({ ...row, list: withVisibility(row.list) }));
   } catch (error) {
     console.error('Error fetching visit history:', error);
     throw new Error('Failed to fetch visit history');

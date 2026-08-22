@@ -46,29 +46,6 @@
   }
 }
 
-.empty-item {
-  padding: 40px 20px;
-  border: 1px solid var(--card-border-color);
-  background-color: var(--light-color);
-  border-radius: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 20px;
-}
-
-.empty-item h3 {
-  font-size: 40px;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
-}
-
-.empty-item p {
-  font-size: 18px;
-}
-
 /* ── ITEM CARD ──
    No overflow:hidden on the container — the owner kebab menu needs to
    render past the card boundary without being clipped. Corner clipping
@@ -209,23 +186,6 @@
 
 .purchased-banner--mine {
   background-color: var(--success-bg);
-}
-
-.purchased-banner-undo {
-  margin-left: auto;
-  background: transparent;
-  border: none;
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0 4px;
-}
-
-@media (hover: hover) {
-  .purchased-banner-undo:hover {
-    opacity: 0.7;
-  }
 }
 
 /* Owner actions kebab. Base treatment is the grid-view top-right overlay
@@ -811,22 +771,6 @@
   color: var(--primary-color);
 }
 
-/* Quantity limit control */
-.quantity-limit-control {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.quantity-limit-control > .form_field_group {
-  width: auto;
-  margin-bottom: 0;
-  flex: 0 0 auto;
-  max-width: 160px;
-  min-width: 100px;
-}
-
 /* The grid/list view toggle is the SegmentedControl primitive
    (tone=light); container styling lives in segmented-control.css. */
 
@@ -861,8 +805,6 @@
   border-radius: 0;
   background-color: transparent;
 }
-
-
 
 .item-list .item-container:hover,
 .sortable-item .item-container:hover {

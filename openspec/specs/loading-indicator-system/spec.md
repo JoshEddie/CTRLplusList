@@ -229,12 +229,18 @@ The `/settings/connections` route's `page.tsx` SHALL render `<Header title="Conn
 
 ### Requirement: `/lists/[id]` SHALL render a list-hero Suspense and an items-container Suspense as two independent sections
 
-The `/lists/[id]` route's `page.tsx` SHALL render two top-level `<Suspense>` boundaries: one wrapping an extracted `<ListHeroSection>` (responsible for `getList`, `getUserById`, `guardListViewable`, and the `<ListDetails>` render) with a `<LoadingIndicator size="rail" />` fallback, and one wrapping the existing `<ItemsContainer>` or `<SortItemsContainer>` selection logic with a `<LoadingIndicator size="page" />` fallback. The `<ListPrivate>` early-return path (when visibility is OWNER and viewer is not the owner) continues to occur inside the hero section's resolved render — no Suspense is needed for the private-list path because it short-circuits before the items section renders.
+The `/lists/[id]` route's `page.tsx` SHALL render two top-level `<Suspense>` boundaries: one wrapping an extracted `<ListHeroSection>` (responsible for `getList`, `guardListViewable`, and the `<ListDetails>` render) with a `<LoadingIndicator size="rail" />` fallback, and one wrapping the existing `<ItemsContainer>` or `<SortItemsContainer>` selection logic with a `<LoadingIndicator size="page" />` fallback. The hero section SHALL NOT issue a separate owner-account read: the owning profile's display fields arrive on the list row the hero already fetches, so a second lookup would be one more `neon-http` round-trip inside the boundary whose whole purpose is to paint first. The `<ListPrivate>` early-return path (when visibility is OWNER and viewer is not the owner) continues to occur inside the hero section's resolved render — no Suspense is needed for the private-list path because it short-circuits before the items section renders.
 
 #### Scenario: Hero streams before items grid
 
 - **WHEN** `/lists/[id]` is loading and the items query is slower than the list-metadata query
 - **THEN** the `<ListDetails>` hero paints first while the items container still shows `<LoadingIndicator size="page" />`
+
+#### Scenario: Hero resolves from the list read alone
+
+- **WHEN** `<ListHeroSection>` renders for a list owned by another profile
+- **THEN** the owner's display name reaches `<ListDetails>` from the joined list row
+- **AND** no separate account-by-id read is issued inside the hero boundary
 
 #### Scenario: Private-list path renders without items Suspense
 

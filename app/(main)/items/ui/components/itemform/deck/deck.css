@@ -33,7 +33,6 @@
 .deck-triage-row:focus-visible,
 .deck-list-opt:focus-visible,
 .deck-stepper-btn:focus-visible,
-.deck-store-rm:focus-visible,
 .deck-trim-chip:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
@@ -514,46 +513,6 @@
   color: var(--error);
 }
 
-/* ---- Stores sheet -------------------------------------------------------- */
-
-.deck-store-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--card-border-color);
-  border-radius: 10px;
-}
-
-.deck-store-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.deck-store-num {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted-text-color);
-}
-
-.deck-store-rm {
-  width: var(--WCAG-input-size);
-  height: var(--WCAG-input-size);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--danger-color);
-  cursor: pointer;
-}
-
-.deck-store-rm:hover {
-  background: var(--error-bg);
-}
-
 /* ---- Lists & quantity sheet ---------------------------------------------- */
 
 .deck-lists-group {
@@ -639,4 +598,3 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-

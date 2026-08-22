@@ -546,26 +546,6 @@
   min-width: 0;
 }
 
-.choose-items-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  color: var(--muted-text-color);
-  font:
-    500 12px var(--font-roboto-condensed),
-    sans-serif;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: none;
-  width: fit-content;
-}
-
-.choose-items-back:hover {
-  color: var(--primary-color);
-}
-
 .choose-items-pg-title {
   font-family: var(--font-crimson-pro), Georgia, serif;
   font-weight: 300;
@@ -712,44 +692,6 @@
    coupling, see design.md D5. */
 .choose-items-select.is-removing .itemName {
   text-decoration: line-through;
-  color: var(--muted-text-color);
-}
-
-/* IN-LIST + archived badges, absolutely positioned over the row's
-   top-right corner so they don't disturb the shared row's grid. See
-   design.md D5 Option A (OQ1: revisit placement at preview time). */
-.choose-items-badges {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  display: inline-flex;
-  gap: 6px;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.choose-items-in-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 8px;
-  background: rgba(115, 36, 206, 0.12);
-  border-radius: 99px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--primary-color);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.choose-items-archived-badge {
-  display: inline-block;
-  padding: 1px 8px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-radius: 999px;
-  background: var(--third-background-color);
   color: var(--muted-text-color);
 }
 

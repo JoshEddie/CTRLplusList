@@ -469,8 +469,8 @@ describe('updatePriority', () => {
 
     const res = await actions.updatePriority('C', 'B', 'L');
     expect(res.error).toBe('Failed to update item priority');
-    // The outer catch logs the same error instance — checkListBalance rethrew
-    // it rather than swallowing it.
+    // The outer catch logs the same error instance — checkListBalance let it
+    // propagate rather than swallowing it.
     expect(consoleError).toHaveBeenCalledWith('Database Error:', boom);
   });
 
@@ -494,8 +494,8 @@ describe('updatePriority', () => {
 
     const res = await actions.updatePriority('D', 'C', 'L');
     expect(res.error).toBe('Failed to update item priority');
-    // The outer catch logs the same error instance — rebalanceList rethrew it
-    // rather than swallowing it.
+    // The outer catch logs the same error instance — rebalanceList let it
+    // propagate rather than swallowing it.
     expect(consoleError).toHaveBeenCalledWith('Database Error:', boom);
   });
 

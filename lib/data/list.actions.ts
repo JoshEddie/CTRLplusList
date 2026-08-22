@@ -2,10 +2,7 @@
 
 import { db } from '@/db';
 import { lists } from '@/db/schema';
-import {
-  UNAUTHORIZED_RESPONSE,
-  authedIdentity,
-} from '@/lib/data/user.session';
+import { UNAUTHORIZED_RESPONSE, authedIdentity } from '@/lib/data/user.session';
 import { type ActionResponse } from '@/lib/types';
 import {
   VISIBILITY,
@@ -13,7 +10,7 @@ import {
   fromDb,
   type ListVisibility,
 } from '@/lib/visibility';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { updateTag } from 'next/cache';
 import { z } from 'zod';
@@ -61,9 +58,9 @@ export async function createList(data: ListData): Promise<ActionResponse> {
     const validatedData = validationResult.data;
     await db.insert(lists).values({
       id,
-      name: sql`${validatedData.name}`,
+      name: validatedData.name,
       subtitle: validatedData.subtitle ?? null,
-      occasion: sql`${validatedData.occasion}`,
+      occasion: validatedData.occasion ?? '',
       date: validatedData.date,
       profile_id: identity.profile.id,
       updated_by_user_id: identity.userId,

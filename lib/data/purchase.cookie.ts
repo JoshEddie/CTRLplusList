@@ -48,10 +48,6 @@ export function parseGuestClaims(
   return { id, name, purchases: purchases as string[] };
 }
 
-export function serializeGuestClaims(claims: GuestClaims): string {
-  return JSON.stringify(claims);
-}
-
 export function appendGuestClaim(
   existing: GuestClaims | null,
   purchaseId: string,
@@ -65,8 +61,10 @@ export function appendGuestClaim(
   return {
     id: base.id,
     name: guestName,
-    purchases: [purchaseId, ...base.purchases.filter((p) => p !== purchaseId)]
-      .slice(0, GUEST_CLAIMS_MAX_IDS),
+    purchases: [
+      purchaseId,
+      ...base.purchases.filter((p) => p !== purchaseId),
+    ].slice(0, GUEST_CLAIMS_MAX_IDS),
   };
 }
 
@@ -80,9 +78,10 @@ export function pruneGuestClaim(
   };
 }
 
-export function overlayGuestClaims<
-  T extends { purchases?: PurchaseView[] },
->(items: T[], cookiePurchaseIds: ReadonlySet<string>): T[] {
+export function overlayGuestClaims<T extends { purchases?: PurchaseView[] }>(
+  items: T[],
+  cookiePurchaseIds: ReadonlySet<string>
+): T[] {
   if (cookiePurchaseIds.size === 0) return items;
   return items.map((item) => {
     if (!item.purchases?.some((p) => cookiePurchaseIds.has(p.id))) return item;

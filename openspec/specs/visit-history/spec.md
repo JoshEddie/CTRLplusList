@@ -160,7 +160,7 @@ The rejection error code SHALL be deliberately non-specific (e.g. `'List not vie
 
 ### Requirement: The visit-history read SHALL exclude rows whose last_visited_at is NULL
 
-`getVisitHistoryByUser` SHALL return only `list_visits` rows for the user where `last_visited_at IS NOT NULL`, ordered by `last_visited_at DESC`, honoring any provided `limit` and `offset`. This exclusion is the mechanism by which a removed-but-bookmarked row (whose `last_visited_at` was nulled by `removeVisit` or `clearVisitHistory`) leaves the history view while remaining in the bookmarks view. Symmetrically, `getBookmarkedListsByUser` SHALL return only rows where `favorited_at IS NOT NULL`, ordered by `favorited_at DESC`, independent of `last_visited_at`. A reimplementation of either read that drops its null-filter would cause removed rows to reappear in history or unbookmarked rows to appear in bookmarks, and SHALL be treated as a regression.
+`getVisitHistoryByUser` SHALL return only `list_visits` rows for the user where `last_visited_at IS NOT NULL`, ordered by `last_visited_at DESC`, honoring any provided `limit`. The read SHALL NOT accept an `offset`: no surface paginates visit history — every caller asks for a capped most-recent window — and a parameter no caller passes is a contract the tests must invent a caller for. Restoring pagination is a change to this requirement, not an implementation detail. This exclusion is the mechanism by which a removed-but-bookmarked row (whose `last_visited_at` was nulled by `removeVisit` or `clearVisitHistory`) leaves the history view while remaining in the bookmarks view. Symmetrically, `getBookmarkedListsByUser` SHALL return only rows where `favorited_at IS NOT NULL`, ordered by `favorited_at DESC`, independent of `last_visited_at`. A reimplementation of either read that drops its null-filter would cause removed rows to reappear in history or unbookmarked rows to appear in bookmarks, and SHALL be treated as a regression.
 
 #### Scenario: Removed-but-bookmarked row is absent from history but present in bookmarks
 
@@ -172,6 +172,12 @@ The rejection error code SHALL be deliberately non-specific (e.g. `'List not vie
 
 - **WHEN** a user has multiple `list_visits` rows with non-null `last_visited_at`
 - **THEN** `getVisitHistoryByUser` returns them ordered most-recently-visited first
+
+#### Scenario: Limit caps the window to the newest visits
+
+- **WHEN** a user has four visited lists and `getVisitHistoryByUser(userId, { limit: 2 })` is called
+- **THEN** exactly the two most-recently-visited rows are returned, in descending `last_visited_at` order
+- **AND** there is no argument by which the caller can skip past them to an older page
 
 #### Scenario: Unbookmarked row is absent from bookmarks but present in history
 
