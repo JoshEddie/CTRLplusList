@@ -28,5 +28,8 @@ export interface FormFieldProps extends FieldWrapperProps {
   /** Field-owned character counter (`length/max`), rendered under the field
    *  and error-colored past `max` or while the field is invalid. */
   counter?: { length: number; max: number };
+  /** Trailing in-chrome slot after the input (e.g. PriceField's clear
+   *  affordance), mirroring SearchField's trailing pattern. */
+  trailing?: ReactNode;
   children: ReactNode;
 }

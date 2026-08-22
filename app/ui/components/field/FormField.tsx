@@ -52,12 +52,14 @@ function FieldRow({
   iconPosition,
   hasIcon,
   child,
+  trailing,
 }: {
   fieldClass: string;
   icon: ReactNode;
   iconPosition: FieldIconPosition;
   hasIcon: boolean;
   child: ReactNode;
+  trailing?: ReactNode;
 }) {
   const leadingIcon = hasIcon && iconPosition !== 'right';
   const trailingIcon = hasIcon && iconPosition === 'right';
@@ -66,6 +68,7 @@ function FieldRow({
       {leadingIcon && <span className="field_icon">{icon}</span>}
       {child}
       {trailingIcon && <span className="field_icon">{icon}</span>}
+      {trailing}
     </div>
   );
 }
@@ -88,6 +91,7 @@ export function FormField({
   iconPosition = 'left',
   className,
   counter,
+  trailing,
   children,
   size,
 }: FormFieldProps) {
@@ -113,9 +117,11 @@ export function FormField({
   }
 
   const hasIcon = icon !== undefined;
+  const hasTrailing = trailing !== undefined && trailing !== null;
   const fieldClass = joinClasses(
     'form_field',
     iconClassFor(hasIcon, iconPosition),
+    hasTrailing && 'has_trailing',
     (invalid || error) && 'invalid',
     size === 'sm' && 'form_field-sm'
   );
@@ -143,6 +149,7 @@ export function FormField({
         iconPosition={iconPosition}
         hasIcon={hasIcon}
         child={enrichedChild}
+        trailing={trailing}
       />
       {counter && (
         <span

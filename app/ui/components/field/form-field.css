@@ -96,6 +96,41 @@
   column-gap: 8px;
 }
 
+.form_field.icon_left.has_trailing {
+  grid-template-columns: auto 1fr auto;
+}
+
+.form_field.has_trailing:not(.icon_left):not(.icon_right) {
+  grid-template-columns: 1fr auto;
+  column-gap: 8px;
+}
+
+/* PriceField's opt-in clear affordance — mirrors .search_field_clear. */
+.price_field_clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  background: none;
+  color: var(--muted-text-color);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.price_field_clear:hover {
+  color: var(--neutral-text-color);
+  background: var(--secondary-light-color);
+}
+
+.price_field_clear:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
 .form_field:hover:not(.invalid) {
   border-color: var(--field-border-color-hover);
 }

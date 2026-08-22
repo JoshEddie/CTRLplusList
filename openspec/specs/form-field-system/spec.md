@@ -535,6 +535,27 @@ The `<PriceField>` component at `app/ui/components/field/PriceField.tsx` SHALL p
 - **WHEN** `<PriceField>` is rendered (with no `icon`-style prop available)
 - **THEN** the rendered icon is the `FaDollarSign` glyph with `aria-hidden="true"`, in the leading slot of the wrapping `.form_field` div
 
+### Requirement: PriceField SHALL offer an opt-in clear affordance reaching the no-price state
+
+`<PriceField>` SHALL accept an `onClear?: () => void` prop. When provided, and the field holds a value (`amount !== null`, including `0` — typed `$0.00` is a real price) and is not disabled, the field SHALL render a trailing in-chrome clear button (accessible name "Clear price", mirroring `<SearchField>`'s trailing-clear pattern) whose activation resets the local negative state and invokes `onClear` — the caller's path to the empty/no-price state that incremental backspace deliberately cannot reach (backspacing bottoms out at `$0.00` by the cents model). When `onClear` is omitted, or `amount === null`, or the field is disabled, no clear affordance SHALL render — callers that own panel-level clearing (the price filter popover) are unaffected.
+
+The trailing slot SHALL be provided by `<FormField>` as a generic `trailing?: ReactNode` rendered inside the field chrome after the input, with the grid gaining a trailing column only when the slot is occupied.
+
+#### Scenario: Clearing a priced item reaches no-price
+
+- **WHEN** a `<PriceField>` with `onClear` holds `amount={24.5}` and the user activates "Clear price"
+- **THEN** `onClear` fires (the deck editor maps it to the empty price string — the BARE state) and, re-rendered with `amount={null}`, the field displays an empty string with no clear button
+
+#### Scenario: Typed zero remains a clearable real price
+
+- **WHEN** a `<PriceField>` with `onClear` holds `amount={0}`
+- **THEN** the display reads "0.00" and the clear button renders — `$0.00` stays a valid price distinct from no-price
+
+#### Scenario: Callers without onClear are unchanged
+
+- **WHEN** `<PriceField>` renders without `onClear` (e.g. the price filter popover's Min/Max fields)
+- **THEN** no clear affordance renders and the field behaves exactly as before
+
 ### Requirement: SearchField trailing-slot SHALL be a three-branch runtime decision
 
 The `<SearchField>` component at `app/ui/components/field/SearchField.tsx` SHALL select its trailing slot content via three mutually exclusive runtime branches, in priority order: (1) when `trailing` is a non-null, non-undefined ReactNode, the trailing slot SHALL render `trailing` and no clear button SHALL be rendered (even if `onClear` is also provided at runtime — although the discriminated-union prop type prevents callers from passing both, the runtime contract makes trailing wins); (2) when `trailing` is absent AND `onClear` is provided AND `value` is non-empty (`value !== undefined && value !== ''`), the trailing slot SHALL render an auto `<button type="button" class="search_field_clear" aria-label="Clear search">` whose `onClick` invokes `onClear`; (3) otherwise, no trailing element SHALL render AND the outer `.form_field.search_field` div SHALL receive an additional `no_trailing` class token. The outer div SHALL always carry the classes `form_field search_field` (in that order); the optional `className` prop SHALL be appended last.
