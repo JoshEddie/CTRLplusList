@@ -102,6 +102,13 @@ describe('TextareaField', () => {
       );
     });
 
+    it('CounterMaxWithUndefinedValue_CountsZero', () => {
+      const { container } = render(<TextareaField label="Name" counterMax={80} />);
+      expect(container.querySelector('.form_field_counter')).toHaveTextContent(
+        '0/80'
+      );
+    });
+
     it('CounterOmitted_NoCounterRendered', () => {
       const { container } = render(
         <TextareaField label="Name" value="abc" onChange={() => {}} />
