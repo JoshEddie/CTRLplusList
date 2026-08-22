@@ -338,8 +338,7 @@
   flex-direction: column;
 }
 
-.container--items-library .items-toolbar,
-.container--list-details .items-toolbar {
+.container--items-library .items-toolbar {
   flex-shrink: 0;
 }
 

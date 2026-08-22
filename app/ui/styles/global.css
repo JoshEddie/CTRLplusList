@@ -367,9 +367,3 @@ body::before {
   color: var(--subtitle-text-color);
 }
 
-.container--list-details {
-  padding: 0 0 16px;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-}

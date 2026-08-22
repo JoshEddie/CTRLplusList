@@ -86,16 +86,21 @@ The filters trigger's visible "Filters" text label SHALL be hidden visually at t
 
 ### Requirement: Pagination floats over content at all viewports
 
-The `.items-pagination` control SHALL be positioned absolutely at the bottom of its items-browser container at all viewport widths, overlapping the bottom of the scrollable items grid rather than sitting in flow below it. The pagination control's background SHALL be rendered at 90% alpha so the items beneath it are faintly visible. The `.item-grid-container` SHALL have bottom padding sufficient to scroll the last item row clear of the floating pagination at all viewport widths. The overlay SHALL be anchored to `.container--items-library` and `.container--list-details` (not `.items-browser`) so it spans the container's full width — bypassing any inner horizontal padding on intermediate wrappers — and sits flush against the container's actual bottom edge.
+The `.items-pagination` control SHALL be pinned at the bottom of the viewport while the items grid scrolls, at all viewport widths, rather than sitting only in static flow below the grid. The pagination control's background SHALL be rendered at 90% alpha so the items beneath it are faintly visible, and the last item row SHALL be able to scroll fully into view above the pagination.
+
+The pinning mechanism follows each container's scroll model:
+
+- **`.container--items-library`** (fixed-height inner scroller): the control SHALL be positioned absolutely at the bottom of the container — anchored to the container (not `.items-browser`) so it spans the container's full width, bypassing any inner horizontal padding on intermediate wrappers — and `.item-grid-container` SHALL carry bottom padding sufficient to scroll the last item row clear of the overlay.
+- **`.container--list-details`** (document flow): the control SHALL be `position: sticky; bottom: 0` — in flow at the end of the items browser, pinning to the viewport bottom while the grid scrolls past it. No clearance padding is needed: the control occupies its own flow position at the end of the list.
 
 #### Scenario: Pagination floats over last items at all viewports
 
 - **WHEN** the items list is long enough to require scrolling to the bottom, at any viewport width
-- **THEN** the pagination control is visible at the bottom of the items-browser with items faintly visible through its 90%-alpha background, and the last item row in the list scrolls fully into view above the pagination (not permanently obscured by it)
+- **THEN** the pagination control is visible at the bottom of the viewport with items faintly visible through its 90%-alpha background, and the last item row in the list scrolls fully into view above the pagination (not permanently obscured by it)
 
-#### Scenario: Pagination spans container full width
+#### Scenario: Library pagination spans container full width
 
-- **WHEN** the pagination overlay renders
+- **WHEN** the pagination overlay renders in `.container--items-library`
 - **THEN** its left edge aligns with the container's left padding-box edge and its right edge aligns with the container's right padding-box edge — regardless of any horizontal margin or padding on intermediate wrapper elements
 
 #### Scenario: Pagination affordances remain reachable
