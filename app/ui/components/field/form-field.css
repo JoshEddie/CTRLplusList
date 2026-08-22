@@ -49,6 +49,18 @@
   color: var(--muted-text-color);
 }
 
+.form_field_counter {
+  align-self: flex-end;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted-text-color);
+}
+
+.form_field_counter-over {
+  color: var(--field-error-color);
+}
+
 .form_field {
   display: grid;
   grid-template-columns: 1fr;

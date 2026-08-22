@@ -45,16 +45,9 @@ export function NameEditor({
         rows={2}
         placeholder="What is it?"
         autoComplete="off"
+        counterMax={NAME_MAX}
+        invalid={tier.tier === 'error'}
       />
-
-      <div className="deck-name-meta">
-        <span
-          className={`deck-counter deck-counter-${tier.tier}`}
-          aria-hidden="true"
-        >
-          {name.length}/{NAME_MAX}
-        </span>
-      </div>
 
       {tier.tier === 'warn' && <TierNote tier="warn">{tier.note}</TierNote>}
       {tier.tier === 'error' && <TierNote tier="error">{tier.note}</TierNote>}

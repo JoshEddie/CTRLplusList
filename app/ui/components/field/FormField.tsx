@@ -82,10 +82,12 @@ export function FormField({
   label,
   description,
   error,
+  invalid,
   required,
   icon,
   iconPosition = 'left',
   className,
+  counter,
   children,
   size,
 }: FormFieldProps) {
@@ -105,7 +107,7 @@ export function FormField({
     enrichedChild = cloneElement(child as ReactElement<InjectedChildProps>, {
       id: inputId,
       'aria-describedby': describedBy,
-      'aria-invalid': error ? true : undefined,
+      'aria-invalid': invalid || error ? true : undefined,
       'aria-required': required ? true : undefined,
     });
   }
@@ -114,7 +116,7 @@ export function FormField({
   const fieldClass = joinClasses(
     'form_field',
     iconClassFor(hasIcon, iconPosition),
-    error && 'invalid',
+    (invalid || error) && 'invalid',
     size === 'sm' && 'form_field-sm'
   );
 
@@ -142,6 +144,18 @@ export function FormField({
         hasIcon={hasIcon}
         child={enrichedChild}
       />
+      {counter && (
+        <span
+          className={joinClasses(
+            'form_field_counter',
+            (counter.length > counter.max || invalid || error) &&
+              'form_field_counter-over'
+          )}
+          aria-hidden="true"
+        >
+          {counter.length}/{counter.max}
+        </span>
+      )}
       {error && <FieldError id={errorId}>{error}</FieldError>}
     </div>
   );

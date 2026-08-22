@@ -236,13 +236,6 @@
   gap: 12px;
 }
 
-.deck-name-meta {
-  display: flex;
-  align-items: center;
-  justify-content: end;
-  gap: 12px;
-}
-
 .deck-trim-chip {
   display: flex;
   align-items: center;
@@ -276,36 +269,16 @@
   color: var(--neutral-text-color);
 }
 
-.deck-counter {
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted-text-color);
-}
-
-.deck-counter-warn {
-  color: var(--warn);
-}
-
-.deck-counter-error {
-  color: var(--danger-text);
-}
-
 .deck-note {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.deck-note .deck-counter,
 .deck-price {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.deck-note > .deck-counter {
-  align-self: flex-end;
 }
 
 /* ---- Preview body (card + actions) --------------------------------------- */

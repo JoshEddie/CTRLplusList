@@ -46,6 +46,70 @@ describe('TextareaField', () => {
     });
   });
 
+  describe('InvalidAxis', () => {
+    it('InvalidTrue_SetsAriaInvalidWithoutMessage', () => {
+      const { container } = render(<TextareaField label="Name" invalid />);
+      expect(screen.getByLabelText('Name')).toHaveAttribute(
+        'aria-invalid',
+        'true'
+      );
+      expect(container.querySelector('.form_field')).toHaveClass('invalid');
+      expect(container.querySelector('.field_error')).toBeNull();
+    });
+
+    it('InvalidOmittedNoError_NotMarkedInvalid', () => {
+      render(<TextareaField label="Name" />);
+      expect(screen.getByLabelText('Name')).not.toHaveAttribute('aria-invalid');
+    });
+  });
+
+  describe('CounterAxis', () => {
+    it('CounterMax_RendersLengthOverMax', () => {
+      const { container } = render(
+        <TextareaField label="Name" value="abcde" onChange={() => {}} counterMax={100} />
+      );
+      const counter = container.querySelector('.form_field_counter');
+      expect(counter).toHaveTextContent('5/100');
+      expect(counter).not.toHaveClass('form_field_counter-over');
+    });
+
+    it('ValueOverMax_CounterGetsOverTone', () => {
+      const { container } = render(
+        <TextareaField
+          label="Name"
+          value={'x'.repeat(7)}
+          onChange={() => {}}
+          counterMax={5}
+        />
+      );
+      const counter = container.querySelector('.form_field_counter');
+      expect(counter).toHaveTextContent('7/5');
+      expect(counter).toHaveClass('form_field_counter-over');
+    });
+
+    it('InvalidField_CounterGetsOverToneUnderMax', () => {
+      const { container } = render(
+        <TextareaField
+          label="Name"
+          value="ab"
+          onChange={() => {}}
+          counterMax={100}
+          invalid
+        />
+      );
+      expect(container.querySelector('.form_field_counter')).toHaveClass(
+        'form_field_counter-over'
+      );
+    });
+
+    it('CounterOmitted_NoCounterRendered', () => {
+      const { container } = render(
+        <TextareaField label="Name" value="abc" onChange={() => {}} />
+      );
+      expect(container.querySelector('.form_field_counter')).toBeNull();
+    });
+  });
+
   describe('RefForwarding', () => {
     it('Ref_ResolvesToTextareaElement', () => {
       const ref = createRef<HTMLTextAreaElement>();
