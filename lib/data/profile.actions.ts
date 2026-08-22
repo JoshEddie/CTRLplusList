@@ -20,9 +20,9 @@ import {
   authedUserId,
 } from '@/lib/data/user.session';
 import { type ActionResponse } from '@/lib/types';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { updateTag } from 'next/cache';
 
 export async function followUser(
   followee_profile_id: string
@@ -67,7 +67,10 @@ export async function followUser(
       .values({ follower_id: viewer.userId, followee_profile_id })
       .onConflictDoNothing();
 
-    updateTag('user_follows');
+    updateTags(
+      cacheTags.followsOfUser(viewer.userId),
+      cacheTags.followersOfProfile(followee_profile_id)
+    );
     return { success: true, message: 'Following' };
   } catch (error) {
     console.error('Error following user:', error);
@@ -93,7 +96,10 @@ export async function unfollowUser(
         )
       );
 
-    updateTag('user_follows');
+    updateTags(
+      cacheTags.followsOfUser(viewerId),
+      cacheTags.followersOfProfile(followee_profile_id)
+    );
     return { success: true, message: 'Unfollowed' };
   } catch (error) {
     console.error('Error unfollowing user:', error);
@@ -158,8 +164,16 @@ export async function blockUser(
         );
     }
 
-    updateTag('user_follows');
-    updateTag('user_blocks');
+    updateTags(
+      cacheTags.blocksOfProfile(viewer.profile.id),
+      cacheTags.blocksOfProfile(blocked_profile_id),
+      cacheTags.followsOfUser(viewer.userId),
+      cacheTags.followersOfProfile(blocked_profile_id),
+      cacheTags.followersOfProfile(viewer.profile.id)
+    );
+    if (blockedAccount?.user_id) {
+      updateTags(cacheTags.followsOfUser(blockedAccount.user_id));
+    }
     return { success: true, message: 'User blocked' };
   } catch (error) {
     console.error('Error blocking user:', error);
@@ -185,7 +199,10 @@ export async function unblockUser(
         )
       );
 
-    updateTag('user_blocks');
+    updateTags(
+      cacheTags.blocksOfProfile(viewer.profile.id),
+      cacheTags.blocksOfProfile(blocked_profile_id)
+    );
     return { success: true, message: 'User unblocked' };
   } catch (error) {
     console.error('Error unblocking user:', error);
@@ -218,7 +235,7 @@ async function writeAccent(profileId: string, accent: string) {
       });
     // Fired here rather than by each caller so the tag tracks the write that
     // lands the row: a failure below invalidates nothing.
-    updateTag('profile_preferences');
+    updateTags(cacheTags.preferencesOfProfile(profileId));
     return true;
   } catch (error) {
     console.error('Error writing profile accent:', error);
@@ -278,8 +295,7 @@ export async function createProfile(
     // Report ignored on purpose: the profile exists and renders the fallback.
     await writeAccent(id, accent);
 
-    updateTag('profiles');
-    updateTag('profile_members');
+    updateTags(cacheTags.profilesOfUser(userId));
 
     return { success: true, message: 'Profile created', id };
   } catch (error) {
@@ -335,7 +351,7 @@ export async function updateProfileSettings(
 
     const accentWritten = await writeAccent(profileId, accent);
 
-    updateTag('profiles');
+    updateTags(cacheTags.profile(profileId));
 
     if (!accentWritten) {
       return {

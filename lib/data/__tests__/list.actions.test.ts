@@ -124,7 +124,7 @@ describe('createList', () => {
     });
   });
 
-  it('EmptySubtitle_InsertsRow-NullSubtitle-ReturnsId-CallsUpdateTagLists', async () => {
+  it('EmptySubtitle_InsertsRow-NullSubtitle-ReturnsId-BumpsOwnerListsTag', async () => {
     const res = await actions.createList(
       makeList({ name: 'Birthday Bash', subtitle: '' })
     );
@@ -140,7 +140,9 @@ describe('createList', () => {
       profile_id: selfProfileOf(OWNER.id),
       updated_by_user_id: OWNER.id,
     });
-    expect(updateTag).toHaveBeenCalledWith('lists');
+    expect(updateTag.mock.calls).toEqual([
+      [`lists:profile:${selfProfileOf(OWNER.id)}`],
+    ]);
   });
 
   it('NonEmptySubtitle_PersistsSubtitle', async () => {
@@ -174,7 +176,7 @@ describe('updateList', () => {
     expect(res.error).toBe('Unauthorized');
   });
 
-  it('PartialUpdate_WritesProvidedFields-ReturnsId-CallsUpdateTagLists', async () => {
+  it('PartialUpdate_WritesProvidedFields-ReturnsId-BumpsListAndOwnerTags', async () => {
     await seedList(db, {
       id: 'L',
       user_id: OWNER.id,
@@ -191,7 +193,10 @@ describe('updateList', () => {
       subtitle: 'keep me',
       updated_by_user_id: OWNER.id,
     });
-    expect(updateTag).toHaveBeenCalledWith('lists');
+    expect(updateTag.mock.calls).toEqual([
+      ['lists:id:L'],
+      [`lists:profile:${selfProfileOf(OWNER.id)}`],
+    ]);
   });
 
   it('AllFields_WritesSubtitleOccasionDate', async () => {
@@ -325,12 +330,15 @@ describe('updateList', () => {
 });
 
 describe('deleteList', () => {
-  it('Owner_RemovesRow-CallsUpdateTagLists', async () => {
+  it('Owner_RemovesRow-BumpsListAndOwnerTags', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     const res = await actions.deleteList('L');
     expect(res.success).toBe(true);
     expect(await listRows()).toHaveLength(0);
-    expect(updateTag).toHaveBeenCalledWith('lists');
+    expect(updateTag.mock.calls).toEqual([
+      ['lists:id:L'],
+      [`lists:profile:${selfProfileOf(OWNER.id)}`],
+    ]);
   });
 
   it('NonExistent_ReturnsNotFound', async () => {
@@ -713,7 +721,7 @@ describe('setListVisibility', () => {
       expect(res).toEqual({ success: true, message: 'Visibility updated' });
     });
 
-    it('ValidTransition_CallsUpdateTagListsOnce', async () => {
+    it('ValidTransition_BumpsListAndOwnerTagsOnce', async () => {
       await seedList(db, {
         id: 'L',
         user_id: OWNER.id,
@@ -724,7 +732,10 @@ describe('setListVisibility', () => {
 
       await actions.setListVisibility('L', 'public');
 
-      expect(updateTag.mock.calls).toEqual([['lists']]);
+      expect(updateTag.mock.calls).toEqual([
+        ['lists:id:L'],
+        [`lists:profile:${selfProfileOf(OWNER.id)}`],
+      ]);
     });
 
     it('UpdateThrows_ReturnsFailed-NoUpdateTag', async () => {
