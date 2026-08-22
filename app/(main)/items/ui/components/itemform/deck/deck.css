@@ -239,13 +239,13 @@
   color: var(--error);
 }
 
-.deck-title {
+.deck-name {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.deck-title-meta {
+.deck-name-meta {
   display: flex;
   align-items: center;
   justify-content: end;

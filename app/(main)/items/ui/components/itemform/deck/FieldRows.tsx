@@ -68,8 +68,8 @@ export function FieldRows({ item, onFocus }: FieldRowsProps) {
       <FieldRow
         label="Item name"
         value={item.name || 'None'}
-        status={tiers.title}
-        onClick={() => onFocus('title')}
+        status={tiers.name}
+        onClick={() => onFocus('name')}
       />
       <FieldRow
         label="Note"

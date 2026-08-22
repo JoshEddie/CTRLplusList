@@ -267,7 +267,7 @@ describe('Deck', () => {
   describe('WarnTitle', () => {
     const warn = vm({ name: 'x'.repeat(60) });
 
-    it('TitleCard_ShowsInlineNoteAndNoStandaloneNoteCard', async () => {
+    it('NameCard_ShowsInlineNoteAndNoStandaloneNoteCard', async () => {
       const user = userEvent.setup();
       const onComplete = vi.fn();
       render(<Harness initial={warn} onComplete={onComplete} />);
@@ -282,7 +282,7 @@ describe('Deck', () => {
   });
 
   describe('ErrorTitle', () => {
-    it('TitleCard_DisablesContinue', async () => {
+    it('NameCard_DisablesContinue', async () => {
       const user = userEvent.setup();
       render(<Harness initial={vm({ name: 'x'.repeat(120) })} />);
       await user.click(screen.getByRole('button', { name: "Let's go" })); // photo
