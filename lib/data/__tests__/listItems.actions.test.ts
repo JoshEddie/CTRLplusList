@@ -104,6 +104,34 @@ describe('setListItems', () => {
     expect(res.error).toBe('Invalid input');
   });
 
+  it('ForeignItemInSelection_ReturnsForbidden-NoWrite', async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id });
+    await seedItem(db, { id: 'MINE', user_id: OWNER.id });
+    await seedItem(db, { id: 'THEIRS', user_id: OTHER.id });
+    const res = await actions.setListItems('L', ['MINE', 'THEIRS']);
+    expect(res.error).toBe('Forbidden');
+    expect(await listItemRows('L')).toHaveLength(0);
+    expect(updateTag).not.toHaveBeenCalled();
+  });
+
+  it('NonexistentItemInSelection_ReturnsForbidden-NoWrite', async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id });
+    await seedItem(db, { id: 'MINE', user_id: OWNER.id });
+    const res = await actions.setListItems('L', ['MINE', 'ghost']);
+    expect(res.error).toBe('Forbidden');
+    expect(await listItemRows('L')).toHaveLength(0);
+  });
+
+  it('ForeignItemInSelection_LeavesRemovalsUnapplied', async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id });
+    await seedItem(db, { id: 'A', user_id: OWNER.id });
+    await seedItem(db, { id: 'THEIRS', user_id: OTHER.id });
+    await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
+    const res = await actions.setListItems('L', ['THEIRS']);
+    expect(res.error).toBe('Forbidden');
+    expect((await listItemRows('L')).map((r) => r.item_id)).toEqual(['A']);
+  });
+
   it('NoChanges_ReturnsNoChanges', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     await seedItem(db, { id: 'I', user_id: OWNER.id });
@@ -202,14 +230,14 @@ describe('setListItems', () => {
     });
   });
 
-  it('SelectThrows_ReturnsFailedToSaveItems', async () => {
+  it('DeleteThrows_ReturnsFailedToSaveItems', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     await seedItem(db, { id: 'A', user_id: OWNER.id });
+    await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
     vi.spyOn(db, 'delete').mockImplementation(() => {
       throw new Error('boom');
     });
-    await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
-    const res = await actions.setListItems('L', ['A', 'nonexistent']);
+    const res = await actions.setListItems('L', []);
     expect(res.error).toBe('Failed to save items');
   });
 });
