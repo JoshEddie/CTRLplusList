@@ -6,15 +6,14 @@ import {
   overlayGuestClaims,
   parseGuestClaims,
   pruneGuestClaim,
-  serializeGuestClaims,
 } from '@/lib/data/purchase.cookie';
 import { PurchaseView } from '@/lib/types';
 
 const valid = { id: 'uuid-1', name: 'Aunt May', purchases: ['p1', 'p2'] };
 
 describe('parseGuestClaims', () => {
-  it('ValidCookie_RoundTripsThroughSerialize', () => {
-    expect(parseGuestClaims(serializeGuestClaims(valid))).toEqual(valid);
+  it('ValidCookie_ReturnsParsedClaims', () => {
+    expect(parseGuestClaims(JSON.stringify(valid))).toEqual(valid);
   });
 
   it('AbsentValue_ReturnsNull', () => {
@@ -70,7 +69,10 @@ describe('appendGuestClaim', () => {
   it('AtCap_PrunesOldestId', () => {
     const full = {
       ...valid,
-      purchases: Array.from({ length: GUEST_CLAIMS_MAX_IDS }, (_, i) => `p${i}`),
+      purchases: Array.from(
+        { length: GUEST_CLAIMS_MAX_IDS },
+        (_, i) => `p${i}`
+      ),
     };
     const claims = appendGuestClaim(full, 'new', 'Gifty');
     expect(claims.purchases).toHaveLength(GUEST_CLAIMS_MAX_IDS);

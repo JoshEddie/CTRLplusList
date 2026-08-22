@@ -36,31 +36,6 @@ beforeEach(async () => {
   await resetDb(db);
 });
 
-describe('getUserById', () => {
-  it('ExistingId_ReturnsUserRow', async () => {
-    await seedUsers(db, [
-      { id: 'u1', name: 'Alice', email: 'alice@test.local' },
-    ]);
-
-    const row = await dal.getUserById('u1');
-    expect(row?.id).toBe('u1');
-    expect(row?.email).toBe('alice@test.local');
-    expect(row?.name).toBe('Alice');
-  });
-
-  it('UnknownId_ReturnsNull', async () => {
-    await seedUsers(db, [{ id: 'u1' }]);
-    expect(await dal.getUserById('nobody')).toBeNull();
-  });
-
-  it('QueryThrows_ReturnsNullWithoutThrowing', async () => {
-    vi.spyOn(db, 'select').mockImplementationOnce(() => {
-      throw new Error('boom');
-    });
-    await expect(dal.getUserById('u1')).resolves.toBeNull();
-  });
-});
-
 describe('getUserIdByEmail', () => {
   it('MatchingEmail_ReturnsSeededUserRow', async () => {
     await seedUsers(db, [
@@ -115,7 +90,9 @@ describe('getFollowingByUser', () => {
     await seedFollow(db, 'follower', 'followeeB');
 
     const rows = await dal.getFollowingByUser('follower');
-    const byId = Object.fromEntries(rows.map((r) => [r.followee.id, r.followee]));
+    const byId = Object.fromEntries(
+      rows.map((r) => [r.followee.id, r.followee])
+    );
     expect(byId[selfProfileOf('followeeA')]).toEqual({
       id: selfProfileOf('followeeA'),
       name: 'Alice',

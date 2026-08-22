@@ -175,17 +175,9 @@ body::before {
   color: var(--primary-text-color);
 }
 
-.header.saved-lists {
-  margin-top: 16px;
-}
-
 .header .pageTitle {
   text-align: left;
   color: var(--primary-color);
-}
-
-.header .listDetails {
-  text-align: left;
 }
 
 .header-buttons {
@@ -256,34 +248,10 @@ body::before {
 }
 
 /* Navigation Styles */
-.nav-container {
-  width: 100%;
-  max-width: 600px;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
-  order: 2;
-  grid-column: span 2;
-}
-
-.nav-menu {
-  font-size: 1.25rem;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
-  color: #ffffff;
-  border-bottom: 1px solid #ffffff;
-  width: 80%;
-  margin: 0 auto;
-}
-
 .nav-items {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-
-.logout-icon {
-  margin-right: 10px;
 }
 
 /* Shared panel chrome for the two dialog implementations (confirm dialog +
@@ -366,11 +334,6 @@ body::before {
   .menu {
     grid-template-columns: 199px 1fr 45px;
   }
-
-  .nav-container {
-    order: 0;
-    grid-column: span 1;
-  }
 }
 
 @media (min-width: 800px) {
@@ -380,10 +343,6 @@ body::before {
   }
 
   .header .pageTitle {
-    text-align: left;
-  }
-
-  .header .listDetails {
     text-align: left;
   }
 }

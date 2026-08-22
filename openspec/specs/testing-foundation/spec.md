@@ -42,6 +42,8 @@ When every file in a change's diff is one that cannot affect test outcomes — m
 
 Test files SHALL be colocated with the source they test, but SHALL live inside a `__tests__/` directory adjacent to the source module — NOT alongside it. The colocation principle (tests stay next to the code they exercise) is preserved; the `__tests__/` folder keeps source-directory listings focused on production files and groups multiple tests for the same module without polluting the parent directory. The file-naming pattern remains `<source>.test.<ext>` (e.g., `Button.tsx` → `__tests__/Button.test.tsx`).
 
+A test whose subject must run without a DOM SHALL take the `.test.ts` extension and MAY carry a `.server` infix (`<source>.server.test.ts`) to say why: the extension is what routes the file to the node project, and the infix is the label a reader needs to know the jsdom-free environment is deliberate rather than incidental. Both files live in the same `__tests__/` directory as the DOM-bearing tests for that module.
+
 End-to-end tests SHALL live under a top-level `e2e/` directory. Cross-module shared fixtures SHALL live under `test/fixtures/`. Cross-module shared helpers and custom matchers SHALL live under `test/helpers/`. Test-only helpers used by tests within a single `__tests__/` directory SHALL live inside that same `__tests__/` directory (e.g., `app/ui/components/button/__tests__/test-helpers.ts`); they SHALL NOT be hoisted to `test/helpers/` unless a second `__tests__/` directory begins importing them. Per-test-file fixtures or helpers that are not reused SHALL stay inline; only repeated patterns extract.
 
 Test-only files inside `__tests__/` directories (including local `test-helpers.*` modules) SHALL NOT appear in coverage reports — `vitest.config.ts`'s `coverage.exclude` SHALL contain a `**/__tests__/**` glob that covers them.
@@ -54,9 +56,9 @@ Test-only files inside `__tests__/` directories (including local `test-helpers.*
 
 #### Scenario: Hook test colocation under __tests__/
 
-- **WHEN** a contributor adds tests for `hooks/use-media-query.ts`
-- **THEN** the tests live at `hooks/__tests__/use-media-query.test.tsx`
-- **AND** server-side variants live at `hooks/__tests__/use-media-query.server.test.ts`
+- **WHEN** a contributor adds tests for `app/ui/hooks/useKeyboardOffset.ts`
+- **THEN** the tests live at `app/ui/hooks/__tests__/useKeyboardOffset.test.tsx`
+- **AND** a variant that must render without a DOM lives beside it as `app/ui/hooks/__tests__/useKeyboardOffset.server.test.ts`
 
 #### Scenario: Local test helper colocation
 
@@ -122,7 +124,9 @@ Coverage SHALL be measured and enforced per file, not as a layer or repo-wide ag
 
 The `functions: 100%` floor is non-negotiable: an uninvoked exported function is a real test gap, not slop. Dead code SHALL be deleted, not protected by a lower floor.
 
-Files excluded from coverage enforcement (informational only): `*.d.ts`; generated drizzle artifacts under `drizzle/`; `app/sw.ts`; test files themselves and their `__tests__/` siblings (matched by `**/__tests__/**`); barrel `index.ts` re-exports of zero runtime behavior (matched by `app/**/index.ts` — scoped to `app/`, NOT a global `**/index.ts`, which would silently exclude `db/index.ts` and other top-level index modules that carry runtime; every `index.ts` under `app/` is by convention a pure re-export, and the review bar is that it stays one); type-only `**/types.ts`; layout files without branching logic; constant-data modules holding only literal data with no executable behavior (`app/ui/components/field/field-icons.tsx`); the NextAuth framework barrel `app/api/auth/[...nextauth]/route.ts` (matched by `app/api/auth/*/route.ts` — a pure re-export of NextAuth's handlers whose behavior is covered via `lib/auth.ts` tests). The app scope of the index-barrel exclude is invariant: a global `**/index.ts` exclude SHALL NOT be introduced.
+Files excluded from coverage enforcement (informational only): `*.d.ts`; generated drizzle artifacts under `drizzle/`; `app/sw.ts`; test files themselves and their `__tests__/` siblings (matched by `**/__tests__/**`); barrel `index.ts` re-exports of zero runtime behavior (matched by `app/**/index.ts` — scoped to `app/`, NOT a global `**/index.ts`, which would silently exclude `db/index.ts` and other top-level index modules that carry runtime; every `index.ts` under `app/` is by convention a pure re-export, and the review bar is that it stays one); type-only `**/types.ts`; layout files without branching logic; the NextAuth framework barrel `app/api/auth/[...nextauth]/route.ts` (matched by `app/api/auth/*/route.ts` — a pure re-export of NextAuth's handlers whose behavior is covered via `lib/auth.ts` tests). The app scope of the index-barrel exclude is invariant: a global `**/index.ts` exclude SHALL NOT be introduced.
+
+Holding only constant data SHALL NOT qualify a module for exclusion. Where a constant carries a requirement another capability names — a registry's key set, a literal's shape, an attribute a spec pins — that requirement is asserted by a test like any other, and the assertion SHALL reach the requirement rather than restating the literal. The exclusion list holds only modules with no reachable behavior to assert.
 
 While the parent `test-coverage` change is in flight, the per-file threshold list in `vitest.config.ts` MAY enumerate only files with landed tests (so files in untested carve-outs do not fail the gate they have no opportunity to pass). When the parent `test-coverage` change archives, the per-file enumeration SHALL be removed and the floor SHALL apply universally across `coverage.include` — at that point, every file in `coverage.include` (subject to `coverage.exclude`) is gated against the universal floor.
 
@@ -134,6 +138,13 @@ Each test sub-proposal SHALL enforce the coverage floor on every file in its dec
 - **THEN** the file's `functions` coverage metric is below 100%
 - **AND** the pre-merge `test` gate fails
 - **AND** the disposition is to write the missing test OR delete the unreachable function — NOT to lower the floor
+
+#### Scenario: A constant registry is tested, not excluded
+
+- **WHEN** a module holds only a literal registry whose keys and rendered attributes another capability requires
+- **THEN** the module stays in `coverage.include`
+- **AND** a test asserts the required key set and the required attribute on each entry
+- **AND** an exclusion entry for it is rejected at review
 
 #### Scenario: Small helper cannot hide behind fat file
 
@@ -309,7 +320,7 @@ Production source files SHALL be held to the repo-wide size bands, enforced in `
 - **Yellow — 300–400 lines is a warning.** `sonarjs/max-lines` configured at `['warn', { maximum: 300 }]`. Yellow is advisory: pull easy wins where a clean extraction exists; a cohesive file MAY remain yellow indefinitely.
 - **Green — under 300 lines.** The goal; no diagnostics.
 
-Scope: the rules SHALL apply to production source (`app/**`, `lib/**`, `hooks/**`, `db/**`) and SHALL NOT apply to test files (`**/*.test.*`, `**/__tests__/**`, `test/**`, `e2e/**`), `scripts/**`, or data-literal modules already carved out of coverage (e.g. `app/ui/components/field/field-icons.tsx`). Test-file size remains governed by this capability's structural conventions (one lane per source module), not a line count.
+Scope: the rules SHALL apply to production source (`app/**`, `lib/**`, `hooks/**`, `db/**`) and SHALL NOT apply to test files (`**/*.test.*`, `**/__tests__/**`, `test/**`, `e2e/**`) or `scripts/**`. The scope globs SHALL mirror `eslint.config.mjs` exactly, including any glob that currently matches nothing — a glob and its config are one fact stated twice, and correcting the spec alone is how the two drift. Test-file size remains governed by this capability's structural conventions (one lane per source module), not a line count.
 
 Gate interaction: the pre-merge "zero warnings" lint bar SHALL be read as zero warnings **outside the yellow band** — yellow size advisories are the single deliberate warning class and do not block merge. Per-file or per-line `eslint-disable` for either size rule SHALL NOT be added.
 
@@ -322,6 +333,12 @@ Gate interaction: the pre-merge "zero warnings" lint bar SHALL be read as zero w
 
 - **WHEN** a production source file sits between 300 and 400 lines
 - **THEN** lint emits a `sonarjs/max-lines` warning, visible in lint output, and merge is not blocked
+
+#### Scenario: Scope globs track the lint config
+
+- **WHEN** a directory named in the scope list is deleted from the repo
+- **THEN** the glob stays in both `eslint.config.mjs` and this requirement, matching nothing and costing nothing
+- **AND** removing it from one without the other is rejected at review
 
 #### Scenario: Test files are exempt
 

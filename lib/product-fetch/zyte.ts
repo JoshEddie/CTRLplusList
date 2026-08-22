@@ -3,10 +3,6 @@ import { normalizeImageUrls, normalizePrice } from '@/lib/product-fetch/utils';
 
 const ZYTE_ENDPOINT = 'https://api.zyte.com/v1/extract';
 
-export function isZyteConfigured(): boolean {
-  return Boolean(process.env.ZYTE_API_KEY);
-}
-
 type ZyteProduct = {
   name?: string;
   description?: string;

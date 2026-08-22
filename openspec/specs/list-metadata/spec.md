@@ -157,3 +157,26 @@ The submitted payload SHALL carry the normalized fields `{ name, subtitle, occas
 
 - **WHEN** the date field holds an unparseable value at submit time
 - **THEN** the form surfaces a date field error and does NOT invoke `createList` or `updateList`
+
+### Requirement: A list created without an occasion SHALL persist an empty string, never NULL
+
+`lists.occasion` is `NOT NULL` in the schema while the create payload's `occasion` is optional and nullable, so the create path SHALL coalesce an absent or null occasion to the empty string before insert. A list created with no occasion SHALL be persisted and SHALL read back with `occasion === ''`. The create action SHALL NOT pass the unmodified optional value through to the insert, which would bind NULL into a `NOT NULL` column and fail the write at the database rather than at validation — a failure mode that surfaces to the user as a generic create error on a form they filled in correctly.
+
+The empty string is the absent-occasion representation for this column, deliberately unlike `subtitle`, where blank normalizes to NULL and NULL is the meaningful "no subtitle" value. The two differ because the columns differ: `subtitle` is nullable and its NULL is load-bearing for the partial-update distinction, while `occasion` is `NOT NULL` and has no NULL to mean anything with.
+
+#### Scenario: Create with no occasion persists an empty string
+
+- **WHEN** `createList` is invoked with a valid payload whose `occasion` is `undefined` or `null`
+- **THEN** the insert succeeds
+- **AND** the persisted row's `occasion` is `''`
+
+#### Scenario: Create with an occasion persists it verbatim
+
+- **WHEN** `createList` is invoked with `occasion: 'Birthday'`
+- **THEN** the persisted row's `occasion` is `'Birthday'`
+
+#### Scenario: An absent occasion is not a validation failure
+
+- **WHEN** a list is created from the form with the occasion field left empty
+- **THEN** the action returns `{ success: true }` and the form navigates into the item-picking funnel
+- **AND** no database `NOT NULL` violation is raised

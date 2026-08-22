@@ -26,11 +26,6 @@
   gap: 0.75rem;
   justify-content: flex-end;
 }
-.list-bookmark-indicator {
-  color: var(--primary-color);
-  margin-right: 6px;
-}
-
 /* User card grid + card (re-skin: list-card surface tokens) */
 .user-card-grid {
   display: grid;
@@ -432,12 +427,6 @@
 .rail.collapsed .rail-body {
   display: none;
 }
-.rail-empty {
-  padding: 12px 0;
-  color: var(--date-text-color);
-  font-family: var(--font-roboto-condensed);
-}
-
 @media (max-width: 800px) {
   .rail {
     padding: 12px 0;

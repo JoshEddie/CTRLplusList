@@ -184,23 +184,6 @@
   background-color: var(--success-bg);
 }
 
-.purchased-banner-undo {
-  margin-left: auto;
-  background: transparent;
-  border: none;
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-  padding: 0 4px;
-}
-
-@media (hover: hover) {
-  .purchased-banner-undo:hover {
-    opacity: 0.7;
-  }
-}
-
 /* Owner actions kebab. Base treatment is the grid-view top-right overlay
    (always visible — the hidden-until-hover affordance is what made owner
    actions undiscoverable); row views reset it into their grid track. */
@@ -780,22 +763,6 @@
   color: var(--primary-color);
 }
 
-/* Quantity limit control */
-.quantity-limit-control {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.quantity-limit-control > .form_field_group {
-  width: auto;
-  margin-bottom: 0;
-  flex: 0 0 auto;
-  max-width: 160px;
-  min-width: 100px;
-}
-
 /* The grid/list view toggle is the SegmentedControl primitive
    (tone=light); container styling lives in segmented-control.css. */
 
@@ -830,8 +797,6 @@
   border-radius: 0;
   background-color: transparent;
 }
-
-
 
 .item-list .item-container:hover,
 .sortable-item .item-container:hover {

@@ -3,51 +3,41 @@ import { list_items } from '@/db/schema';
 import { and, asc, desc, eq, gt, lt } from 'drizzle-orm';
 
 export async function checkListBalance(listId: string): Promise<boolean> {
-  try {
-    const result = await db
-      .select()
-      .from(list_items)
-      .where(eq(list_items.list_id, listId))
-      .orderBy(desc(list_items.position))
-      .limit(2);
+  const result = await db
+    .select()
+    .from(list_items)
+    .where(eq(list_items.list_id, listId))
+    .orderBy(desc(list_items.position))
+    .limit(2);
 
-    if (result.length < 2) return false;
+  if (result.length < 2) return false;
 
-    const [first, second] = result;
-    const minGap = 0.001;
-    return first.position - second.position < minGap;
-  } catch (error) {
-    console.error('Error checking list balance:', error);
-    throw error;
-  }
+  const [first, second] = result;
+  const minGap = 0.001;
+  return first.position - second.position < minGap;
 }
 
 export async function rebalanceList(listId: string): Promise<void> {
-  try {
-    const items = await db
-      .select()
-      .from(list_items)
-      .where(eq(list_items.list_id, listId))
-      .orderBy(asc(list_items.position));
+  const items = await db
+    .select()
+    .from(list_items)
+    .where(eq(list_items.list_id, listId))
+    .orderBy(asc(list_items.position));
 
-    const updates = items.map((item: { item_id: string }, index: number) => {
-      const newPosition = (index + 1) * 65536;
-      return db
-        .update(list_items)
-        .set({ position: newPosition })
-        .where(
-          and(
-            eq(list_items.list_id, listId),
-            eq(list_items.item_id, item.item_id)
-          )
-        );
-    });
+  const updates = items.map((item: { item_id: string }, index: number) => {
+    const newPosition = (index + 1) * 65536;
+    return db
+      .update(list_items)
+      .set({ position: newPosition })
+      .where(
+        and(
+          eq(list_items.list_id, listId),
+          eq(list_items.item_id, item.item_id)
+        )
+      );
+  });
 
-    await Promise.all(updates);
-  } catch (error) {
-    console.error('Error rebalancing list:', error);
-    throw error;
-  }
+  await Promise.all(updates);
 }
 
 // Integer fractional-index position for a moved item: the midpoint between the

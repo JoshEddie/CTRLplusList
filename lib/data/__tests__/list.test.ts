@@ -96,9 +96,9 @@ describe('getListsByProfile', () => {
     vi.spyOn(db.query.lists, 'findMany').mockRejectedValueOnce(
       new Error('boom')
     );
-    await expect(
-      dal.getListsByProfile(selfProfileOf('owner'))
-    ).rejects.toThrow('Failed to fetch lists');
+    await expect(dal.getListsByProfile(selfProfileOf('owner'))).rejects.toThrow(
+      'Failed to fetch lists'
+    );
   });
 });
 
@@ -144,7 +144,11 @@ describe('getPublicListsByProfile', () => {
       { id: 'owner', name: 'Owen', image: 'o.png', profile_name: 'Not Owen' },
     ]);
     await seedList(db, { id: 'priv', user_id: 'owner', visibility: 'private' });
-    await seedList(db, { id: 'link', user_id: 'owner', visibility: 'unlisted' });
+    await seedList(db, {
+      id: 'link',
+      user_id: 'owner',
+      visibility: 'unlisted',
+    });
     await seedList(db, {
       id: 'older',
       user_id: 'owner',
@@ -167,7 +171,7 @@ describe('getPublicListsByProfile', () => {
     });
   });
 
-  it('LimitAndOffset_PaginatesResult', async () => {
+  it('Limit_CapsResultToNewestShared', async () => {
     await seedUsers(db, [{ id: 'owner' }]);
     await seedList(db, {
       id: 'a',
@@ -189,10 +193,9 @@ describe('getPublicListsByProfile', () => {
     });
 
     const page = await dal.getPublicListsByProfile(selfProfileOf('owner'), {
-      limit: 1,
-      offset: 1,
+      limit: 2,
     });
-    expect(page.map((r) => r.id)).toEqual(['b']);
+    expect(page.map((r) => r.id)).toEqual(['a', 'b']);
   });
 
   it('QueryThrows_RejectsWithFetchPublicListsError', async () => {

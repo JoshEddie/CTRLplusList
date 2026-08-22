@@ -208,23 +208,20 @@ export async function updatePriority(
       };
     }
 
-    const itemPositionResult = await db
-      .select({ position: list_items.position })
+    const positionRows = await db
+      .select({ item_id: list_items.item_id, position: list_items.position })
       .from(list_items)
       .where(
-        and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
-      )
-      .limit(1);
+        and(
+          eq(list_items.list_id, listId),
+          inArray(list_items.item_id, [item_id, target_id])
+        )
+      );
 
-    const targetPositionResult = await db
-      .select({ position: list_items.position })
-      .from(list_items)
-      .where(
-        and(eq(list_items.list_id, listId), eq(list_items.item_id, target_id))
-      )
-      .limit(1);
+    const itemRow = positionRows.find((row) => row.item_id === item_id);
+    const targetRow = positionRows.find((row) => row.item_id === target_id);
 
-    if (!itemPositionResult[0] || !targetPositionResult[0]) {
+    if (!itemRow || !targetRow) {
       return {
         success: false,
         message: 'Item or target not found on this list',
@@ -232,8 +229,8 @@ export async function updatePriority(
       };
     }
 
-    const itemPosition = itemPositionResult[0].position;
-    const targetPosition = targetPositionResult[0].position;
+    const itemPosition = itemRow.position;
+    const targetPosition = targetRow.position;
 
     if (itemPosition === targetPosition) {
       return {
