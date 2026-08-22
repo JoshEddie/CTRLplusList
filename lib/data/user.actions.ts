@@ -10,8 +10,8 @@ import {
 } from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
 import { type ActionResponse } from '@/lib/types';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq } from 'drizzle-orm';
-import { updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 export type ClaimPicker = {
@@ -75,7 +75,10 @@ export async function removeFollower(
         )
       );
 
-    updateTag('user_follows');
+    updateTags(
+      cacheTags.followsOfUser(follower_id),
+      cacheTags.followersOfProfile(viewer.profile.id)
+    );
     return { success: true, message: 'Follower removed' };
   } catch (error) {
     console.error('Error removing follower:', error);

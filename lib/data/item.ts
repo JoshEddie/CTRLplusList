@@ -4,6 +4,7 @@ import { sanitizePurchases } from '@/lib/data/purchase';
 import { primaryStore } from '@/lib/storeValidity';
 import { withSelfAvatar } from '@/lib/data/profile.identity';
 import { ListTable } from '@/lib/types';
+import { cacheTags, itemRowTags } from '@/lib/cacheTags';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
@@ -15,8 +16,11 @@ export async function getItemsByProfile(
   } = {}
 ) {
   'use cache';
-  cacheTag('items');
-  cacheTag('profiles');
+  cacheTag(
+    cacheTags.items,
+    cacheTags.profiles,
+    cacheTags.itemsOfProfile(profileId)
+  );
   try {
     const filter = opts.filter ?? 'active';
     const showSpoilers = opts.showSpoilers ?? false;
@@ -54,6 +58,8 @@ export async function getItemsByProfile(
       orderBy: (items, { desc }) => [desc(items.created_at)],
     });
 
+    cacheTag(...itemRowTags(result));
+
     return result.map(({ images, stores, ...item }) => ({
       ...item,
       image_url: images[0]?.url ?? null,
@@ -74,7 +80,12 @@ export async function getItemsByProfile(
 
 export async function getItemById(id: string, profileId: string) {
   'use cache';
-  cacheTag('items');
+  cacheTag(
+    cacheTags.items,
+    cacheTags.lists,
+    cacheTags.item(id),
+    cacheTags.itemsOfProfile(profileId)
+  );
   try {
     const result = await db.query.items.findFirst({
       where: and(eq(items.id, id), eq(items.profile_id, profileId)),
@@ -99,6 +110,14 @@ export async function getItemById(id: string, profileId: string) {
         ...li.list,
         position: li.position,
       })
+    );
+    // itemsOfList alongside list: the returned rows carry membership
+    // positions, which reorder writes bump via the membership tag only.
+    cacheTag(
+      ...lists.flatMap((list) => [
+        cacheTags.list(list.id),
+        cacheTags.itemsOfList(list.id),
+      ])
     );
 
     const newResult = {
@@ -134,8 +153,7 @@ export async function getItemsByListId(
   } = {}
 ) {
   'use cache';
-  cacheTag('items');
-  cacheTag('profiles');
+  cacheTag(cacheTags.items, cacheTags.profiles, cacheTags.itemsOfList(listId));
   try {
     const result = await db.query.list_items.findMany({
       where: eq(list_items.list_id, listId),
@@ -165,6 +183,8 @@ export async function getItemsByListId(
       },
       orderBy: (list_items, { asc }) => [asc(list_items.position)],
     });
+
+    cacheTag(...itemRowTags(result.map((row) => row.item)));
 
     return result.map(({ item: { images, stores, ...item } }) => ({
       ...item,

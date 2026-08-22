@@ -205,7 +205,9 @@ describe('ListHeroSection', () => {
       expect(conflictArg?.set.last_visited_at).toBeInstanceOf(Date);
       expect(conflictArg?.set.visit_count).toBeDefined();
 
-      expect(updateTag).toHaveBeenCalledWith('list_visits');
+      // updateTag throws inside after() (render scope) and visit-recency
+      // reads are uncached, so the callback must not fire any tag (#305).
+      expect(updateTag).not.toHaveBeenCalled();
     });
 
     it('UpsertThrows_LogsError-NoUpdateTag', async () => {

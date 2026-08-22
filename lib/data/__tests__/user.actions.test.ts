@@ -168,9 +168,12 @@ describe('removeFollower', () => {
     expect(res.error).toBe('Unauthorized');
   });
 
-  it('Success_CallsUpdateTag', async () => {
+  it('Success_BumpsFollowerAndFolloweeFollowTags', async () => {
     await actions.removeFollower(TARGET.id);
-    expect(updateTag.mock.calls).toEqual([['user_follows']]);
+    expect(updateTag.mock.calls).toEqual([
+      [`user_follows:follower:${TARGET.id}`],
+      [`user_follows:followee:${selfProfileOf(VIEWER.id)}`],
+    ]);
   });
 
   it('DeleteThrows_ReturnsFailed-NoUpdateTag', async () => {

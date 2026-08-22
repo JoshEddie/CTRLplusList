@@ -82,7 +82,7 @@ describe('mintItemPlaceholder', () => {
     await seedListItem(db, { list_id: 'PL', item_id: 'IMG', position: 1 });
   };
 
-  it('GuestOnPublicListItem_MintsActivePlaceholderRow-BumpsItemsTag', async () => {
+  it('GuestOnPublicListItem_MintsActivePlaceholderRow-BumpsItemTag', async () => {
     await seedViewableImagelessItem();
     noSession();
 
@@ -94,7 +94,7 @@ describe('mintItemPlaceholder', () => {
     expect(rows[0].active).toBe(true);
     expect(rows[0].url).toBe(res.url);
     expect(rows[0].url.startsWith('data:image/svg+xml;base64,')).toBe(true);
-    expect(updateTag).toHaveBeenCalledWith('items');
+    expect(updateTag).toHaveBeenCalledWith('items:id:IMG');
   });
 
   it('SameItemMintedTwice_SecondCallReturnsExistingRowWithoutInsertOrTagBump', async () => {

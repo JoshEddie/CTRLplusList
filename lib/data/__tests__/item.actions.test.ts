@@ -187,7 +187,7 @@ describe('createItem', () => {
   });
 
   describe('Success', () => {
-    it('WithListsAndStore_InsertsItem-PlacesListItem-CallsUpdateTagItems', async () => {
+    it('WithListsAndStore_InsertsItem-PlacesListItem-BumpsOwnerItemsTag', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });
       await seedItem(db, { id: 'existing', user_id: OWNER.id });
       await seedListItem(db, {
@@ -231,7 +231,9 @@ describe('createItem', () => {
           order: 1,
         }),
       ]);
-      expect(updateTag).toHaveBeenCalledWith('items');
+      expect(updateTag).toHaveBeenCalledWith(
+        `items:profile:${selfProfileOf(OWNER.id)}`
+      );
     });
 
     it('NoLists_InsertsItemWithStore-DefaultsDescriptionEmpty', async () => {
@@ -250,7 +252,9 @@ describe('createItem', () => {
       });
       expect(await listItemRows('L')).toHaveLength(0);
       expect(await storeRows(rows[0].id)).toHaveLength(1);
-      expect(updateTag).toHaveBeenCalledWith('items');
+      expect(updateTag).toHaveBeenCalledWith(
+        `items:profile:${selfProfileOf(OWNER.id)}`
+      );
     });
 
     it('StoreProvenanceFields_PersistThroughCreate', async () => {
@@ -424,7 +428,7 @@ describe('updateItem', () => {
   });
 
   describe('Success', () => {
-    it('PartialUpdate_WritesProvidedFields-DiffsListsAndStores-CallsUpdateTagItems', async () => {
+    it('PartialUpdate_WritesProvidedFields-DiffsListsAndStores-BumpsOwnerItemsTag', async () => {
       await seedItem(db, {
         id: 'I',
         user_id: OWNER.id,
@@ -485,7 +489,9 @@ describe('updateItem', () => {
           price: '12.99',
         }),
       ]);
-      expect(updateTag).toHaveBeenCalledWith('items');
+      expect(updateTag).toHaveBeenCalledWith(
+        `items:profile:${selfProfileOf(OWNER.id)}`
+      );
     });
 
     it('IncompleteStorePayload_ReturnsStoreFieldError-NoWrite', async () => {
@@ -633,13 +639,13 @@ describe('updateItem', () => {
 });
 
 describe('archiveItem', () => {
-  it('Archive_SetsArchivedAtDate-CallsUpdateTagItems', async () => {
+  it('Archive_SetsArchivedAtDate-BumpsItemTag', async () => {
     await seedItem(db, { id: 'I', user_id: OWNER.id });
     const res = await actions.archiveItem('I', true);
     expect(res.success).toBe(true);
     const row = (await itemRows()).find((i) => i.id === 'I');
     expect(row?.archived_at).toBeInstanceOf(Date);
-    expect(updateTag).toHaveBeenCalledWith('items');
+    expect(updateTag).toHaveBeenCalledWith('items:id:I');
   });
 
   it('Archive_LeavesUpdatedByUserIdUnstamped', async () => {
@@ -695,12 +701,12 @@ describe('archiveItem', () => {
 });
 
 describe('deleteItem', () => {
-  it('Owner_RemovesRow-CallsUpdateTagItems', async () => {
+  it('Owner_RemovesRow-BumpsItemTag', async () => {
     await seedItem(db, { id: 'I', user_id: OWNER.id });
     const res = await actions.deleteItem('I');
     expect(res.success).toBe(true);
     expect(await itemRows()).toHaveLength(0);
-    expect(updateTag).toHaveBeenCalledWith('items');
+    expect(updateTag).toHaveBeenCalledWith('items:id:I');
   });
 
   it('NonOwner_ReturnsFailed-RowPersists', async () => {
@@ -875,7 +881,7 @@ describe('UpdateRecency', () => {
     await seedListItem(db, { list_id: 'M2', item_id: 'I', position: 65536 });
   });
 
-  it('DeleteItem_BumpsMemberLists-LeavesNonMemberUntouched-CallsUpdateTagLists', async () => {
+  it('DeleteItem_BumpsMemberLists-LeavesNonMemberUntouched-BumpsMemberListTags', async () => {
     const before = Date.now();
     const res = await actions.deleteItem('I');
     const after = Date.now();
@@ -887,7 +893,9 @@ describe('UpdateRecency', () => {
     expect(byId.M2.getTime()).toBeGreaterThanOrEqual(before);
     expect(byId.M2.getTime()).toBeLessThanOrEqual(after);
     expect(byId.OFF.toISOString()).toBe(STALE.toISOString());
-    expect(updateTag).toHaveBeenCalledWith('lists');
+    expect(updateTag).toHaveBeenCalledWith('lists:id:M1');
+    expect(updateTag).toHaveBeenCalledWith('lists:id:M2');
+    expect(updateTag).not.toHaveBeenCalledWith('lists:id:OFF');
   });
 
   it('UpdateItemFieldsOnly_LeavesAllUpdatedAtUnchanged', async () => {

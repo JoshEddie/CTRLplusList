@@ -3,6 +3,7 @@ import { lists, profiles, user_follows, users } from '@/db/schema';
 import { selfMemberships } from '@/lib/data/profile.identity';
 import { UserTable } from '@/lib/types';
 import { VISIBILITY, visibilityDbValues } from '@/lib/visibility';
+import { cacheTags } from '@/lib/cacheTags';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 import { cache } from 'react';
@@ -68,7 +69,7 @@ export async function isFollowing({
   followeeProfileId: string;
 }): Promise<boolean> {
   'use cache';
-  cacheTag('user_follows');
+  cacheTag(cacheTags.userFollows, cacheTags.followsOfUser(userId));
   try {
     const result = await db.query.user_follows.findFirst({
       where: and(
@@ -85,7 +86,7 @@ export async function isFollowing({
 
 export async function viewerHasAnyFollows(viewerId: string): Promise<boolean> {
   'use cache';
-  cacheTag('user_follows');
+  cacheTag(cacheTags.userFollows, cacheTags.followsOfUser(viewerId));
   try {
     const result = await db.query.user_follows.findFirst({
       where: eq(user_follows.follower_id, viewerId),

@@ -14,6 +14,7 @@ import { selfMemberships } from '@/lib/data/profile.identity';
 import { isFollowing } from '@/lib/data/user';
 import type { ProfileCardView, UserIdentity } from '@/lib/types';
 import { VISIBILITY, visibilityDbValues } from '@/lib/visibility';
+import { cacheTags } from '@/lib/cacheTags';
 import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 import { cache } from 'react';
@@ -112,7 +113,7 @@ export async function hasBlocked({
   blockedProfileId: string;
 }): Promise<boolean> {
   'use cache';
-  cacheTag('user_blocks');
+  cacheTag(cacheTags.userBlocks, cacheTags.blocksOfProfile(blockerProfileId));
   try {
     const result = await db.query.user_blocks.findFirst({
       where: and(
@@ -159,10 +160,18 @@ export async function getEligiblePurchasers(
   claimerProfileId: string
 ) {
   'use cache';
-  cacheTag('user_follows');
-  cacheTag('user_blocks');
-  cacheTag('profile_members');
-  cacheTag('profiles');
+  // Membership rows read here (candidates' self memberships) have no narrow
+  // tag: self-profile creation happens out-of-band at signup with no
+  // invalidation hook, so only the bulk profile_members tag covers them.
+  cacheTag(
+    cacheTags.userFollows,
+    cacheTags.userBlocks,
+    cacheTags.profileMembers,
+    cacheTags.profiles,
+    cacheTags.followersOfProfile(ownerProfileId),
+    cacheTags.followersOfProfile(claimerProfileId),
+    cacheTags.blocksOfProfile(claimerProfileId)
+  );
   try {
     const accounts = await accountsOfProfiles([
       ownerProfileId,
@@ -170,6 +179,10 @@ export async function getEligiblePurchasers(
     ]);
     const ownerUserId = accounts.get(ownerProfileId);
     const claimerUserId = accounts.get(claimerProfileId);
+    const accountIds = [ownerUserId, claimerUserId].filter(
+      (id): id is string => !!id
+    );
+    cacheTag(...accountIds.map((id) => cacheTags.followsOfUser(id)));
     if (!ownerUserId) return [];
 
     const followRows = await db
@@ -180,10 +193,7 @@ export async function getEligiblePurchasers(
       .from(user_follows)
       .where(
         or(
-          inArray(
-            user_follows.follower_id,
-            [ownerUserId, claimerUserId].filter((id): id is string => !!id)
-          ),
+          inArray(user_follows.follower_id, accountIds),
           inArray(user_follows.followee_profile_id, [
             ownerProfileId,
             claimerProfileId,
@@ -247,6 +257,7 @@ export async function getEligiblePurchasers(
       .leftJoin(selfMemberships, eq(selfMemberships.profile_id, profiles.id))
       .leftJoin(users, eq(users.id, selfMemberships.user_id))
       .where(inArray(profiles.id, candidateIds));
+    cacheTag(...rows.map((row) => cacheTags.profile(row.id)));
 
     // The return-follow leg: the candidate's own account follows the owner's
     // profile. A candidate with no account fails the leg.
@@ -341,11 +352,14 @@ export async function getProfileCardsForUser(
   userId: string
 ): Promise<ProfileCardView[]> {
   'use cache';
-  cacheTag('profiles');
-  cacheTag('profile_members');
-  cacheTag('lists');
-  cacheTag('items');
-  cacheTag('profile_preferences');
+  cacheTag(
+    cacheTags.profiles,
+    cacheTags.profileMembers,
+    cacheTags.lists,
+    cacheTags.items,
+    cacheTags.profilePreferences,
+    cacheTags.profilesOfUser(userId)
+  );
   try {
     const rows = await db
       .select({
@@ -373,6 +387,15 @@ export async function getProfileCardsForUser(
         sql`CASE ${profile_members.role} WHEN 'self' THEN 0 WHEN 'owner' THEN 1 ELSE 2 END`,
         asc(profiles.name)
       );
+
+    cacheTag(
+      ...rows.flatMap((row) => [
+        cacheTags.profile(row.id),
+        cacheTags.listsOfProfile(row.id),
+        cacheTags.itemsOfProfile(row.id),
+        cacheTags.preferencesOfProfile(row.id),
+      ])
+    );
 
     return rows.map((row) => ({
       id: row.id,

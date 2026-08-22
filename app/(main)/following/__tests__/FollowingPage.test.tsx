@@ -100,7 +100,7 @@ describe('FollowingPage', () => {
     expect(getFollowingFeedProfiles).toHaveBeenCalledWith('viewer');
   });
 
-  it('AfterCallback_WritesLastSeenBeforeUpdateTag', async () => {
+  it('AfterCallback_WritesLastSeenWithoutFiringTags', async () => {
     vi.mocked(auth).mockResolvedValue({
       user: { email: 'x@test.local' },
     } as never);
@@ -117,10 +117,9 @@ describe('FollowingPage', () => {
       'last_seen_following_at'
     );
     expect(dbMock.where).toHaveBeenCalledTimes(1);
-    expect(updateTag).toHaveBeenCalledWith('user_follows');
-    expect(dbMock.where.mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(updateTag).mock.invocationCallOrder[0]
-    );
+    // updateTag throws inside after() (render scope) and the feed read is
+    // uncached, so the callback must not fire any tag (#305).
+    expect(updateTag).not.toHaveBeenCalled();
   });
 
   it('AfterCallback_SwallowsError', async () => {

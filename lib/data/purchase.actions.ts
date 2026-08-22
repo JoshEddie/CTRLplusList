@@ -21,9 +21,9 @@ import { authedIdentity } from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
 import { type ActionResponse } from '@/lib/types';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { updateTag } from 'next/cache';
 import { cookies } from 'next/headers';
 
 // Postgres unique-violation error code.
@@ -230,7 +230,12 @@ export async function createPurchase(data: {
       );
     }
 
-    updateTag('items');
+    updateTags(
+      cacheTags.itemsOfProfile(item.profile_id),
+      ...(purchaserProfileId
+        ? [cacheTags.purchasesOfProfile(purchaserProfileId)]
+        : [])
+    );
 
     return {
       success: true,
@@ -315,7 +320,12 @@ export async function removePurchase(
         GUEST_CLAIMS_COOKIE_ATTRIBUTES
       );
     }
-    updateTag('items');
+    updateTags(
+      ...(targetItem ? [cacheTags.itemsOfProfile(targetItem.profile_id)] : []),
+      ...(row.profile_id
+        ? [cacheTags.purchasesOfProfile(row.profile_id)]
+        : [])
+    );
     return {
       success: true,
       message: 'Item marked as not purchased successfully',
