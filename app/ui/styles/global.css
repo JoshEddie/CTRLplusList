@@ -13,6 +13,9 @@
   --secondary-dark-color: #111111;
   --third-dark-color: #222222;
   --danger-color: #ef4444;
+  --danger-bg: #fbe5e2;
+  --danger-border: #f0bdb6;
+  --danger-text: #b91c1c;
 
   --neutral-text-color: #1f2937;
   --muted-text-color: #6b7280;
@@ -56,7 +59,10 @@
   --buy-link-hover-text: #3520a8;
   --success-bg: #ecfdf3;
   --success-border: #6ee7b7;
-  --success-text: #059669;
+  --success-text: #1c7146;
+  --warn: #845309;
+  --warn-bg: #fbf1d9;
+  --warn-line: #ecd49a;
   --tab-active-color: var(--primary-color);
 
   --WCAG-input-size: 44px;

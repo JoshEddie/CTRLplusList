@@ -188,16 +188,12 @@
 
 /* Purchased banner footer */
 .purchased-banner {
-  /* Locally-darkened text — global --success-text fails WCAG 1.4.3 AA
-     contrast on --success-bg (3.42:1, below the 4.5:1 floor). */
-  --banner-text: #047857;
-
   display: flex;
   align-items: center;
   gap: 6px;
   background-color: var(--success-bg);
   border-top: 1.5px solid var(--success-border);
-  color: var(--banner-text);
+  color: var(--success-text);
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 600;
