@@ -6,7 +6,9 @@
    positional. */
 .item-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr), not bare 1fr: 1fr's auto minimum lets the content-heavier
+     button hold a wider track, so the pair compresses unevenly when squeezed. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 6px;
   width: 100%;
 }

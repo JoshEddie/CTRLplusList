@@ -78,4 +78,20 @@ describe('ModalButtons', () => {
     expect(tooltips).toContain('Please enter a name to continue');
     expect(tooltips).toContain('Secondary unavailable');
   });
+
+  it('EnabledWithTooltipText_TooltipNotRendered', () => {
+    const { container } = render(
+      <ModalButtons
+        primary_button_text="Claim as Guest"
+        primary_button_onclick={vi.fn()}
+        primary_button_disabled={false}
+        primary_button_disabled_with_tooltip="Please enter a name to continue"
+        secondary_button_text="Back"
+        secondary_button_onclick={vi.fn()}
+        secondary_button_disabled={false}
+        secondary_button_disabled_with_tooltip="Secondary unavailable"
+      />
+    );
+    expect(container.querySelector('.tooltip')).not.toBeInTheDocument();
+  });
 });
