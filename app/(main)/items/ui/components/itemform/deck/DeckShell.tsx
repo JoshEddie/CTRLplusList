@@ -23,11 +23,13 @@ export function DeckShell({
   const dismiss = useDismiss(onClose, closeHref);
 
   const cls =
-    variant === 'wide' ? 'deck-screen deck-screen-wide' : 'deck-screen';
+    variant === 'wide'
+      ? 'modal-shell modal-shell-wide deck-screen'
+      : 'modal-shell deck-screen';
 
   return (
     <div
-      className="deck-screen-overlay"
+      className="modal-overlay-scrim deck-screen-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) dismiss();
       }}

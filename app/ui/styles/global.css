@@ -132,7 +132,11 @@ body::before {
   margin: 0;
 }
 
-.sr-only {
+/* Grouped: the choose-items checkbox label span is visually hidden but kept
+   for assistive tech (its accessible name is the item name) — same clip
+   block, one home. */
+.sr-only,
+.choose-items-select .checkbox_field > span {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -176,9 +180,6 @@ body::before {
 }
 
 .header .pageTitle {
-  font-size: 40px;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
   text-align: left;
   color: var(--primary-color);
 }
@@ -285,6 +286,51 @@ body::before {
   margin-right: 10px;
 }
 
+/* Shared panel chrome for the two dialog implementations (confirm dialog +
+   follow disclosure); each keeps only its own sizing. */
+.dialog-panel {
+  background-color: var(--background-color);
+  color: var(--primary-text-color);
+  border: 1px solid var(--primary-color);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+
+/* Shared overlay scrim + shell box for the form-shell and deck-screen
+   modals — purchasemodal's .modal-overlay is a different scrim (z-index/
+   animation) and stays separate. Skins (radius, shadow, height caps) live
+   with each surface. */
+.modal-overlay-scrim {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  z-index: 60;
+  overflow-y: auto;
+  background: rgba(42, 32, 96, 0.45);
+  backdrop-filter: blur(3px);
+}
+
+.modal-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  background: var(--light-color);
+  color: var(--neutral-text-color);
+}
+
+.modal-shell-wide {
+  max-width: 640px;
+}
+
 .empty-container {
   padding: 40px 20px;
   border: 1px solid var(--primary-color);
@@ -299,13 +345,20 @@ body::before {
   color: var(--primary-text-color);
 }
 
-.empty-container h3 {
+/* Display-heading pair shared by the big message surfaces (empty states,
+   error boundary, private-list cover, page titles). */
+.empty-container h3,
+.error-boundary h3,
+.header .pageTitle,
+.list-private h1 {
   font-size: 40px;
   font-family: var(--font-crimson-pro);
   font-weight: 100;
 }
 
-.empty-container p {
+.empty-container p,
+.error-boundary p,
+.list-private p {
   font-size: 18px;
 }
 
@@ -346,14 +399,10 @@ body::before {
 }
 
 .error-boundary h3 {
-  font-size: 40px;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
   color: var(--heading-text-color);
 }
 
 .error-boundary p {
-  font-size: 18px;
   color: var(--muted-text-color);
 }
 

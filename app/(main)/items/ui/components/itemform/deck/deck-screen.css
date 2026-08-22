@@ -2,39 +2,14 @@
    pinned-header / scrolling-well / pinned-footer structure every deck screen
    shares (.deck-screen-*). */
 
-.deck-screen-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
-  z-index: 60;
-  overflow-y: auto;
-  background: rgba(42, 32, 96, 0.45);
-  backdrop-filter: blur(3px);
-}
-
+/* Scrim + shell base come from the shared .modal-overlay-scrim /
+   .modal-shell classes (global.css); this skin keeps only the deck
+   screen's gap, radius, shadow, and height cap. */
 .deck-screen {
-  position: relative;
-  display: flex;
   gap: 16px;
-  flex-direction: column;
-  overflow: hidden;
-  width: 100%;
-  max-width: 480px;
   max-height: 100%;
-  background: var(--light-color);
   border-radius: 20px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
-  color: var(--neutral-text-color);
-}
-
-.deck-screen-wide {
-  max-width: 640px;
 }
 
 /* ---- Pinned header ------------------------------------------------------- */
