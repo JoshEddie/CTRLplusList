@@ -58,7 +58,11 @@ export const metadata: Metadata = {
     'apple-mobile-web-app-capable': 'yes',
     'apple-mobile-web-app-title': 'Ctrl+List',
     'format-detection': 'telephone=no',
-    'apple-mobile-web-app-status-bar-style': 'black-translucent',
+    // 'black-translucent' composites the page under the status bar, where iOS
+    // samples the top edge for a tint and lays a legibility scrim over it that
+    // only clears on the first navigation. 'black' has iOS draw the bar itself:
+    // deterministic on cold start, and unlit on OLED so it merges with the notch.
+    'apple-mobile-web-app-status-bar-style': 'black',
   },
 };
 

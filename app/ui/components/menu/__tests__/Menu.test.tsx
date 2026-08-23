@@ -253,6 +253,44 @@ describe('Menu', () => {
       expect(onClose).not.toHaveBeenCalled();
     });
 
+    it('ScrollHidesAnchor_OnCloseCalledWithoutRefocusingIt', () => {
+      const onClose = vi.fn();
+      const { harnessRef } = renderMenu({
+        open: true,
+        onClose,
+        withAnchor: true,
+        children: <MenuItem>A</MenuItem>,
+      });
+      const anchor = harnessRef.current?.anchorRef
+        .current as HTMLButtonElement;
+      const focusSpy = vi.spyOn(anchor, 'focus');
+      anchor.checkVisibility = () => false;
+
+      act(() => {
+        document.body.dispatchEvent(new Event('scroll'));
+      });
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(focusSpy).not.toHaveBeenCalled();
+    });
+
+    it('ScrollWithAnchorStillVisible_OnCloseNotCalled', () => {
+      const onClose = vi.fn();
+      const { harnessRef } = renderMenu({
+        open: true,
+        onClose,
+        withAnchor: true,
+        children: <MenuItem>A</MenuItem>,
+      });
+      const anchor = harnessRef.current?.anchorRef
+        .current as HTMLButtonElement;
+      anchor.checkVisibility = () => true;
+
+      act(() => {
+        document.body.dispatchEvent(new Event('scroll'));
+      });
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
     it('Closed_ListenersNotAttached', () => {
       const onClose = vi.fn();
       renderMenu({

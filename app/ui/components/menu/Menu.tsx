@@ -68,11 +68,28 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') dismiss();
     };
+    // An anchor hidden out from under an open menu (a collapsing sticky
+    // header, a closing accordion) fires no event of its own, so the menu
+    // would keep its open state and reappear when the anchor returns.
+    // Closing without focusing back — the anchor is gone, so there is
+    // nothing to return focus to. Capture phase because scroll does not
+    // bubble from nested scroll containers.
+    const onScroll = () => {
+      const anchor = anchorRef?.current;
+      if (anchor && !anchor.checkVisibility({ visibilityProperty: true })) {
+        onClose();
+      }
+    };
     document.addEventListener('mousedown', onPointer);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onScroll, {
+      capture: true,
+      passive: true,
+    });
     return () => {
       document.removeEventListener('mousedown', onPointer);
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onScroll, { capture: true });
     };
   }, [open, onClose, anchorRef]);
 

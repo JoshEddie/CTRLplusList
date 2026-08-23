@@ -17,7 +17,7 @@ import {
   HeroCollapsedViewerItems,
 } from './HeroCollapsedItemsContainer';
 import ListActionsMenu from './ListActionsMenu';
-import ListHeroStickyStrip from './ListHeroStickyStrip';
+import ListHeroChrome from './ListHeroChrome';
 import ShareButton from './ShareButton';
 import VisibilityPicker from './VisibilityPicker';
 
@@ -124,105 +124,45 @@ export default async function ListDetails({
   }
 
   return (
-    <>
-      <div className="list-hero-shell">
-        <div className="list-hero">
-          {previewMode && (
-            <div className="preview-banner" role="status">
-              <MdVisibility />
-              <span>You&apos;re previewing this list as a viewer.</span>
-              <LinkButton href={exitPreviewHref} variant="on-dark" size="sm">
-                Exit preview
-              </LinkButton>
-            </div>
-          )}
+    <ListHeroChrome title={list.name} kebab={collapsedKebab}>
+      <div className="list-hero">
+        {previewMode && (
+          <div className="preview-banner" role="status">
+            <MdVisibility />
+            <span>You&apos;re previewing this list as a viewer.</span>
+            <LinkButton href={exitPreviewHref} variant="on-dark" size="sm">
+              Exit preview
+            </LinkButton>
+          </div>
+        )}
 
-          <div className="list-hero-grid">
-            <div className="list-hero-card list-hero-card-identity">
-              <div className="list-hero-identity-top">
-                {ownerControls}
-                <h1 className="list-hero-title">{list.name}</h1>
-                {list.subtitle ? (
-                  <div className="list-hero-eyebrow-subtitle-wrapper">
-                    {list.occasion ? (
-                      <span className="list-hero-eyebrow">{list.occasion}</span>
-                    ) : null}{' '}
-                    <p className="list-hero-subtitle">{list.subtitle}</p>
-                  </div>
-                ) : null}
-              </div>
-              <div className="list-hero-identity-foot">
-                {itemsDisplay}
-                {updatedDisplay && <> · updated {updatedDisplay}</>}
-              </div>
+        <div className="list-hero-grid">
+          <div className="list-hero-card list-hero-card-identity">
+            <div className="list-hero-identity-top">
+              {ownerControls}
+              <h1 className="list-hero-title">{list.name}</h1>
+              {list.subtitle ? (
+                <div className="list-hero-eyebrow-subtitle-wrapper">
+                  {list.occasion ? (
+                    <span className="list-hero-eyebrow">{list.occasion}</span>
+                  ) : null}{' '}
+                  <p className="list-hero-subtitle">{list.subtitle}</p>
+                </div>
+              ) : null}
             </div>
+            <div className="list-hero-identity-foot">
+              {itemsDisplay}
+              {updatedDisplay && <> · updated {updatedDisplay}</>}
+            </div>
+          </div>
 
-            <div className="list-hero-card list-hero-card-controls">
-              {/* Owner non-preview: Share primary, divider, secondary actions.
+          <div className="list-hero-card list-hero-card-controls">
+            {/* Owner non-preview: Share primary, divider, secondary actions.
                 Visibility status pill lives in the identity zone, not here. */}
-              {showOwnerControls && (
-                <>
-                  {/* <ShareButton list={list} />
-                <div className="list-hero-divider" /> */}
-                  <div className="list-hero-action-row">
-                    <EditListAction list={list} />
-                    <ListActionsMenu
-                      list={list}
-                      showSpoilers={!!showSpoilers}
-                      previewMode={!!previewMode}
-                      spoilerHref={spoilerHref}
-                      previewHref={previewHref}
-                      exitPreviewHref={exitPreviewHref}
-                    />
-                  </div>
-                  <LinkButton
-                    href={`/lists/${list.id}/choose-items`}
-                    variant="on-dark"
-                  >
-                    <MdChecklist />
-                    <span className="label">Choose items</span>
-                  </LinkButton>
-                </>
-              )}
-
-              {/* Viewer non-preview: byline group + divider + Share/Bookmark pair */}
-              {showViewerControls && (
-                <>
-                  <div className="list-hero-byline-group">
-                    <Avatar src={owner_image} name={owner_name} size={44} />
-                    <div className="list-hero-byline-text">
-                      <Link
-                        href={`/user/${list.profile_id}`}
-                        className="list-hero-byline-link"
-                      >
-                        {owner_name}
-                      </Link>
-                      <FollowContainer
-                        ownerProfileId={list.profile_id}
-                        ownerName={owner_name ?? null}
-                        viewerUserId={viewer_user_id}
-                        viewerProfileId={viewer_profile_id}
-                        variant="on-dark"
-                      />
-                    </div>
-                  </div>
-                  <div className="list-hero-divider" />
-                  <div className="list-hero-action-row">
-                    <ShareButton list={list} />
-                    {viewer_user_id && (
-                      <BookmarkContainer
-                        list_id={list.id}
-                        user_id={viewer_user_id}
-                      />
-                    )}
-                  </div>
-                </>
-              )}
-
-              {/* Owner preview: spoiler/preview controls only (everything else
-                gated on !previewMode). The kebab still hosts Exit-preview. */}
-              {isOwner && previewMode && (
+            {showOwnerControls && (
+              <>
                 <div className="list-hero-action-row">
+                  <EditListAction list={list} />
                   <ListActionsMenu
                     list={list}
                     showSpoilers={!!showSpoilers}
@@ -232,12 +172,67 @@ export default async function ListDetails({
                     exitPreviewHref={exitPreviewHref}
                   />
                 </div>
-              )}
-            </div>
+                <LinkButton
+                  href={`/lists/${list.id}/choose-items`}
+                  variant="on-dark"
+                >
+                  <MdChecklist />
+                  <span className="label">Choose items</span>
+                </LinkButton>
+              </>
+            )}
+
+            {/* Viewer non-preview: byline group + divider + Share/Bookmark pair */}
+            {showViewerControls && (
+              <>
+                <div className="list-hero-byline-group">
+                  <Avatar src={owner_image} name={owner_name} size={44} />
+                  <div className="list-hero-byline-text">
+                    <Link
+                      href={`/user/${list.profile_id}`}
+                      className="list-hero-byline-link"
+                    >
+                      {owner_name}
+                    </Link>
+                    <FollowContainer
+                      ownerProfileId={list.profile_id}
+                      ownerName={owner_name ?? null}
+                      viewerUserId={viewer_user_id}
+                      viewerProfileId={viewer_profile_id}
+                      variant="on-dark"
+                    />
+                  </div>
+                </div>
+                <div className="list-hero-divider" />
+                <div className="list-hero-action-row">
+                  <ShareButton list={list} />
+                  {viewer_user_id && (
+                    <BookmarkContainer
+                      list_id={list.id}
+                      user_id={viewer_user_id}
+                    />
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Owner preview: spoiler/preview controls only (everything else
+                gated on !previewMode). The kebab still hosts Exit-preview. */}
+            {isOwner && previewMode && (
+              <div className="list-hero-action-row">
+                <ListActionsMenu
+                  list={list}
+                  showSpoilers={!!showSpoilers}
+                  previewMode={!!previewMode}
+                  spoilerHref={spoilerHref}
+                  previewHref={previewHref}
+                  exitPreviewHref={exitPreviewHref}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
-      <ListHeroStickyStrip title={list.name} kebab={collapsedKebab} />
-    </>
+    </ListHeroChrome>
   );
 }

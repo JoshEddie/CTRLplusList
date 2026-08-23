@@ -15,7 +15,6 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  flex-shrink: 0;
   color: var(--light-color);
 }
 
@@ -23,18 +22,17 @@
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  background-image: var(--hero-gradient);
-  /* Top-only rounding — the items toolbar sits flush directly below the
-     hero, so bottom corners stay square to merge cleanly with it.
-     `overflow` deliberately left as `visible` so the kebab dropdown menu
-     can extend past the hero's bottom edge into the items area. */
-  border-radius: 14px 14px 0 0;
+  padding: 22px;
+  gap: 22px;
 }
 
 @media (max-width: 800px) {
   .list-hero-grid {
     flex-direction: column;
-    border-radius: 12px 12px 0 0;
+    /* Tighter padding on mobile — without this the hero eats >50% of the
+       viewport, which is too much for a header on a content-first page. */
+    padding: 16px;
+    gap: 8px;
   }
 }
 
@@ -43,18 +41,7 @@
    identity card and controls card are siblings; the controls card carries
    the divider on its leading edge (left on desktop, top on mobile). */
 .list-hero-card {
-  padding: 22px 24px;
-  padding-bottom: 6px;
   min-width: 0;
-}
-
-@media (max-width: 800px) {
-  .list-hero-card {
-    /* Tighter padding on mobile — without this the hero eats >50% of the
-       viewport, which is too much for a header on a content-first page. */
-    padding: 12px 14px;
-    padding-bottom: 6px;
-  }
 }
 
 .list-hero-card-identity {
@@ -85,6 +72,7 @@
     max-width: none;
     gap: 8px;
     border-top: 1px solid rgba(255, 255, 255, 0.22);
+    padding-top: 8px;
   }
 }
 
@@ -309,55 +297,129 @@
   display: inline-block;
 }
 
-/* ── HERO COLLAPSE ─────────────────────────────────────────────────────
-   The shell wraps either the full expanded hero or a one-line strip.
-   The chevron handle sits in a fixed-height row below the hero panel
-   so it never overlaps the gradient and never participates in the
-   gradient's rounded-corner clipping. */
-.list-hero-shell {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Sticky strip: document-flow replacement for the stored-state collapse.
-   The full hero scrolls away naturally; the strip pins below the app nav
-   and is revealed (opacity + inert flip) only while pinned. `.is-stuck`
-   comes from ListHeroStickyStrip's IntersectionObserver — cosmetic only,
-   layout never depends on it. Pinned at --app-nav-height rather than
-   --app-sticky-top: the 7px surface bleed scrolls away with the page, so
-   pinning below it would leave a see-through band under the nav. */
+/* ── Single always-present hero surface ─────────────────────────────────
+   One sticky element whose CONTENT swaps between the full details and a
+   collapsed title+kebab row. Height is pure content sizing — the full
+   layer's grid row interpolates 1fr <-> 0fr so the shape change is an
+   animated reflow, never a flash. .is-chrome/.is-collapsed/.is-animating
+   come from ListHeroChrome's scroll handler — without JS the page keeps
+   the plain in-flow hero.
+   Pinned at --app-nav-height rather than --app-sticky-top: the 7px surface
+   bleed scrolls away with the page, so pinning below it would leave a
+   see-through band under the nav. */
 .list-hero-strip-sentinel {
   height: 1px;
   margin-bottom: -1px;
 }
 
-.list-hero-collapsed-strip {
+.list-hero-chrome {
+  position: relative;
+  background-image: var(--hero-gradient);
+  border-radius: 14px 14px 0 0;
+  z-index: 5;
+}
+
+@media (max-width: 800px) {
+  .list-hero-chrome {
+    border-radius: 12px 12px 0 0;
+  }
+}
+
+/* While chrome is armed the element paints nothing itself: positioned
+   pseudos always paint above their own element's background, so the only
+   way to layer square-band-below-rounded-surface is two negative-z pseudos
+   under the content. ::before (z -2) is the square notch-band backing —
+   page frame with fixed attachment, pixel-matching body::before — so the
+   rounded corners' notches always show dark frame, never content scrolling
+   behind the pinned surface. ::after (z -1) is the rounded gradient
+   surface. The base (no-JS) state keeps the plain element gradient. */
+.list-hero-chrome.is-chrome {
   position: sticky;
   top: var(--app-nav-height);
-  z-index: 4;
+  background-image: none;
+}
+
+.list-hero-chrome.is-chrome::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 14px;
+  z-index: -2;
+  background-color: var(--secondary-color-dark)
+}
+
+.list-hero-chrome.is-chrome::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: var(--hero-gradient);
+  border-radius: inherit;
+}
+
+/* Animated shape change, no measurements: the shape is a grid whose single
+   row interpolates 1fr -> 0fr; the collapsed layer is absolute, so it sits
+   outside that row. The clip wrapper's overflow is hidden only while
+   collapsed or mid-transition (.is-animating, dropped on transitionend) so
+   the expanded hero's kebab dropdown can still overflow the surface at
+   rest. visibility rides the clip rather than the grid — on the grid it
+   would hide the collapsed layer too — and flips at the end when hiding,
+   at the start when showing, removing the hidden layer from focus order
+   and the accessibility tree. */
+.list-hero-shape {
+  position: relative;
+  min-height: var(--list-hero-strip-height);
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--hero-collapse-duration) ease;
+}
+
+.list-hero-layer-clip {
+  min-height: 0;
+  transition: visibility var(--hero-collapse-duration);
+}
+
+.list-hero-chrome:is(.is-collapsed, .is-animating) .list-hero-layer-clip {
+  overflow: hidden;
+}
+
+.list-hero-chrome.is-collapsed .list-hero-shape {
+  grid-template-rows: 0fr;
+}
+
+.list-hero-chrome.is-collapsed .list-hero-layer-clip {
+  visibility: hidden;
+}
+
+.list-hero-layer-collapsed {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--list-hero-strip-height);
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 4px 14px;
-  height: var(--list-hero-strip-height);
-  background-image: var(--hero-gradient);
-  border-radius: 0 0 14px 14px;
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity 0.15s ease,
-    visibility 0.15s;
+    opacity var(--hero-collapse-duration) ease,
+    visibility var(--hero-collapse-duration);
 }
 
-.list-hero-collapsed-strip.is-stuck {
+.list-hero-chrome.is-collapsed .list-hero-layer-collapsed {
   opacity: 1;
   visibility: visible;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-@media (max-width: 800px) {
-  .list-hero-collapsed-strip {
-    border-radius: 0 0 12px 12px;
+@media (prefers-reduced-motion: reduce) {
+  .list-hero-shape,
+  .list-hero-layer-clip,
+  .list-hero-layer-collapsed {
+    transition: none;
   }
 }
 
@@ -383,46 +445,26 @@
   margin-left: auto;
 }
 
-/* Shell is the new gradient surface owner — the gradient is hoisted
-   from `.list-hero-grid` up to here so it spans BOTH the hero panel
-   AND the handle strip at the bottom. This keeps the surface visually
-   continuous (single linear gradient covering everything) without
-   color-matching tricks on a separate tab element.
-
-   The shell also handles the top-rounded / bottom-square border-radius
-   that previously lived on `.list-hero-grid`. The grid itself becomes
-   transparent. */
-.list-hero-shell {
-  position: relative;
-  background-image: var(--hero-gradient);
-  border-radius: 14px 14px 0 0;
-}
-
-@media (max-width: 800px) {
-  .list-hero-shell {
-    border-radius: 12px 12px 0 0;
-  }
-}
-
-/* Strip the gradient + radius from the inner grid since the shell
-   now owns them. Cards inside continue to be transparent zones. */
-.list-hero-shell .list-hero-grid {
-  background-image: none;
-  border-radius: 0;
-}
-
 /* ── List-detail page: normal document flow — the document scrolls.
    The hero is plain content that scrolls away; the sticky strip and
    the sort toolbar pin below the app nav. */
 .container--list-details {
   --list-hero-strip-height: 52px;
+  --hero-collapse-duration: 0.3s;
   padding: 0;
+  /* Scroll anchoring compensates for the hero's expand by bumping
+     scrollTop, which pushes the sentinel back out of view and instantly
+     re-collapses it — an expand/collapse feedback loop at the boundary.
+     Excluding the page from anchor selection keeps scrollTop stable, so
+     the swap settles in one step. */
+  overflow-anchor: none;
 }
 
+/* The toolbar lives INSIDE the hero chrome (portaled into its slot), so
+   it pins with the chrome and follows the shape change in natural flow —
+   no offset coupling. Without a slot (pre-hydration, no-JS) it renders
+   inline in the items section, which sits at the same position at rest. */
 .container--list-details .items-toolbar {
-  position: sticky;
-  top: calc(var(--app-nav-height) + var(--list-hero-strip-height));
-  z-index: 3;
   margin: 0;
   padding: 12px 28px;
   background-color: var(--light-color);

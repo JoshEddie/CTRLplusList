@@ -95,35 +95,25 @@
 
 html,
 body {
-  width: 100vw;
-  overflow-x: hidden;
   color: var(--primary-text-color);
 }
 
 html {
-  background-color: var(--primary-color-dark);
+  /* Clips horizontal overflow for the whole page: html's overflow propagates
+     to the viewport, leaving html itself `visible`. Setting it on `body`
+     instead would make body a scroll container (a non-visible axis forces the
+     other to `auto`), and the sticky app nav would pin to body's full-content
+     scrollport rather than the viewport — i.e. never pin. */
+  overflow-x: hidden;
+  /* Painted on the canvas, so it also fills the overscroll gutter iOS
+     rubber-bands into — matching the manifest theme_color. */
+  background-color: var(--secondary-color-dark);
 }
 
 body {
   font-family: var(--font-roboto-condensed);
   -webkit-font-smoothing: antialiased;
   /* background-color: var(--background-color); */
-  height: 100vh;
-  height: 100dvh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: var(--page-frame-gradient);
-  background-attachment: fixed;
-  pointer-events: none;
 }
 
 * {

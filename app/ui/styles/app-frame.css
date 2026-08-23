@@ -40,7 +40,7 @@
   display: flex;
   height: calc(60px + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) 20px 0;
-  background-image: var(--page-frame-gradient);
+  background-color: var(--secondary-color-dark);
   flex-shrink: 0;
 }
 
