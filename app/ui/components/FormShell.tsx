@@ -1,7 +1,6 @@
 'use client';
 
-import { LuX } from 'react-icons/lu';
-import { Button } from '@/app/ui/components/button';
+import { Button, CloseButton } from '@/app/ui/components/button';
 import { useDismiss } from '@/app/ui/components/use-dismiss';
 import '@/app/ui/styles/form-shell.css';
 
@@ -37,14 +36,7 @@ export function FormShell({
       <div className={cls}>
         <div className="form-shell-hd">
           <span className="form-shell-title">{title}</span>
-          <button
-            type="button"
-            className="form-shell-close"
-            onClick={dismiss}
-            aria-label="Close"
-          >
-            <LuX />
-          </button>
+          <CloseButton onClick={dismiss} className="close-button--in-flow" />
         </div>
         {children}
       </div>

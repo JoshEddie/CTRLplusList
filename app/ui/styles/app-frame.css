@@ -22,11 +22,12 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  min-height: var(--app-viewport-fill);
 }
 
 /* Surface chain allows fixed-height children (e.g. container--items-library)
-   to compute height: calc(100vh - var(--app-sticky-top)) reliably. */
+   to compute height: calc(var(--app-viewport-fill) - var(--app-sticky-top))
+   reliably. */
 .app-surface-bleed,
 .app-surface {
   min-height: 0;

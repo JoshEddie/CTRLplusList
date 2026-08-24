@@ -67,6 +67,28 @@
 
   --WCAG-input-size: 44px;
   --WCAG-input-size-sm: 36px;
+  /* The visible band: the slice of the layout viewport the soft keyboard is not
+     covering. AppViewport overwrites both with exact pixels off visualViewport;
+     these are the pre-JS fallbacks, where the band is the whole viewport.
+     `--app-viewport-top` is for `position: fixed` surfaces only — they translate
+     cleanly. A sticky element renders at max(flowY - scrollY, top), so shifting
+     its `top` moves it relative to the content behind it and the shift appears
+     and disappears as the element pins and unpins. Sticky offsets stay in
+     layout coordinates and simply go out of view while the band is displaced. */
+  --app-viewport-top: 0px;
+  --app-viewport-height: 100vh;
+  /* Layout-viewport distance down to the band's bottom edge. A surface starting
+     at layout-y 0 has to reach this, not merely the band's height, or it stops
+     short by the offset and shows the canvas underneath. */
+  --app-viewport-fill: calc(
+    var(--app-viewport-top) + var(--app-viewport-height)
+  );
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-viewport-height: 100dvh;
+  }
 }
 
 /* @media (prefers-color-scheme: dark) {
@@ -96,6 +118,13 @@
 html,
 body {
   color: var(--primary-text-color);
+}
+
+/* While a fixed overlay sheet owns the screen, the document behind it must
+   not scroll. On <html> rather than <body> so the scroll position survives
+   (the position:fixed body trick loses it). */
+html.has-open-sheet {
+  overflow: hidden;
 }
 
 html {
@@ -260,10 +289,10 @@ body {
    with each surface. */
 .modal-overlay-scrim {
   position: fixed;
-  top: 0;
+  top: var(--app-viewport-top);
   left: 0;
   right: 0;
-  bottom: 0;
+  height: var(--app-viewport-height);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -364,4 +393,3 @@ body {
   font-size: 14px;
   color: var(--subtitle-text-color);
 }
-

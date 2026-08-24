@@ -1,7 +1,7 @@
 /* eslint-disable testing-library/no-node-access, testing-library/no-container --
  * `form-shell-system` SHALLs lock exact DOM shape (.form-shell-overlay,
  * .form-shell inner div with exact-string class, header .form-shell-hd
- * containing .form-shell-title span and .form-shell-close button, footer
+ * containing .form-shell-title span and .close-button button, footer
  * .form-shell-ft with .form-shell-ft-right wrapper). These containers carry
  * no role or accessible name, so role-based queries cannot reach them;
  * `container.querySelector` is the only way to assert the spec'd structure.
@@ -61,7 +61,7 @@ describe('FormShell', () => {
       expect(header!.querySelector('.form-shell-title')!.textContent).toBe(
         'New list'
       );
-      expect(header!.querySelector('.form-shell-close')).not.toBeNull();
+      expect(header!.querySelector('.close-button')).not.toBeNull();
       expect(inner!.querySelector('[data-testid="child"]')).not.toBeNull();
     });
 

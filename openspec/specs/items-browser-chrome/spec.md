@@ -222,19 +222,19 @@ The items browser SHALL persist the selected page size to a cookie named `items_
 - **WHEN** the server renders the items library with an `items_page_size` cookie of `96`
 - **THEN** the browser's initial page size is `96`; with an absent or invalid cookie the initial page size is `24`
 
-### Requirement: Pagination SHALL render a windowed page range with disabled bounds
+### Requirement: Pagination SHALL render first, current and last pages with disabled bounds
 
-The pagination control SHALL render its page buttons via a windowing rule: when `totalPages ≤ 7` it SHALL render a button for every page `1..totalPages` with no gaps; when `totalPages > 7` it SHALL render the first page, an ellipsis gap when the window start is greater than `2`, the window `page-1 … page+1` (clamped within `[2, totalPages-1]`), a trailing ellipsis gap when the window end is less than `totalPages-1`, and the last page. The current page button SHALL be marked `aria-current="page"` and styled as the primary variant while other page buttons are the ghost variant. The Previous control SHALL be disabled on page 1 and the Next control SHALL be disabled on the last page. Navigating to page 1 SHALL remove the `page` param; navigating to any other page SHALL set it.
+The pagination control SHALL render a page button for each of the first page, the current page and the last page, de-duplicated and in ascending order — so a mid-range page renders three buttons, the first or last page renders two, and a single-page result renders one. No ellipsis gap is rendered. The current page button SHALL be marked `aria-current="page"` and styled as the primary variant while other page buttons are the ghost variant. The Previous control SHALL be disabled on page 1 and the Next control SHALL be disabled on the last page. Navigating to page 1 SHALL remove the `page` param; navigating to any other page SHALL set it.
 
-#### Scenario: Seven or fewer pages render without gaps
-
-- **WHEN** `totalPages` is 5
-- **THEN** the control renders page buttons `1 2 3 4 5` with no ellipsis gap
-
-#### Scenario: More than seven pages render a windowed range with gaps
+#### Scenario: Mid-range page renders first, current and last
 
 - **WHEN** `totalPages` is 20 and the current page is 10
-- **THEN** the control renders `1`, an ellipsis gap, `9 10 11`, an ellipsis gap, and `20`
+- **THEN** the control renders page buttons `1 10 20` with no ellipsis gap
+
+#### Scenario: Edge page renders first and last only
+
+- **WHEN** `totalPages` is 20 and the current page is 1 or 20
+- **THEN** the control renders page buttons `1 20` plus the previous/next arrows
 
 #### Scenario: Bounds are disabled at the edges
 

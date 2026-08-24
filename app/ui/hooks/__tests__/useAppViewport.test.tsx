@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useKeyboardOffset } from '../useKeyboardOffset';
+import { useAppViewport } from '../useAppViewport';
 
 interface VVMock {
   height: number;
@@ -20,7 +20,7 @@ const originalVV = Object.getOwnPropertyDescriptor(window, 'visualViewport');
 const originalInner = Object.getOwnPropertyDescriptor(window, 'innerHeight');
 
 function installVv() {
-  vvListeners = { resize: [], scroll: [] };
+  vvListeners = { resize: [] };
   vv = {
     height: 800,
     offsetTop: 0,
@@ -46,13 +46,20 @@ function setInnerHeight(h: number) {
   });
 }
 
+function focusInput() {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  input.focus();
+  return input;
+}
+
 function flushRaf() {
   const cbs = rafCallbacks.splice(0);
   cbs.forEach((cb) => cb(performance.now()));
 }
 
-function Harness({ enabled }: { enabled: boolean }) {
-  useKeyboardOffset(enabled);
+function Harness() {
+  useAppViewport();
   return null;
 }
 
@@ -94,26 +101,18 @@ afterEach(() => {
     Reflect.deleteProperty(window, 'innerHeight');
   }
   document.documentElement.style.removeProperty('--keyboard-offset');
+  document.body.innerHTML = '';
 });
 
-describe('useKeyboardOffset', () => {
+describe('useAppViewport', () => {
   describe('ShortCircuits', () => {
-    it('EnabledFalse_NoListenersAttached-NoCssVariable', () => {
-      render(<Harness enabled={false} />);
-      expect(vv.addEventListener).not.toHaveBeenCalled();
-      expect(rafSpy).not.toHaveBeenCalled();
-      expect(
-        document.documentElement.style.getPropertyValue('--keyboard-offset')
-      ).toBe('');
-    });
-
-    it('EnabledTrueButNoVisualViewport_NoListenersAttached-NoCssVariable', () => {
+    it('NoVisualViewport_NoListenersAttached-NoCssVariable', () => {
       Object.defineProperty(window, 'visualViewport', {
         value: undefined,
         configurable: true,
         writable: true,
       });
-      render(<Harness enabled={true} />);
+      render(<Harness />);
       expect(rafSpy).not.toHaveBeenCalled();
       expect(
         document.documentElement.style.getPropertyValue('--keyboard-offset')
@@ -121,21 +120,18 @@ describe('useKeyboardOffset', () => {
     });
   });
 
-  describe('EnableFlow', () => {
-    it('EnabledTrueWithViewport_RegistersResizeAndScrollListeners', () => {
-      render(<Harness enabled={true} />);
+  describe('MeasureFlow', () => {
+    it('WithViewport_RegistersResizeListenerOnly', () => {
+      render(<Harness />);
       expect(vv.addEventListener).toHaveBeenCalledWith(
         'resize',
         expect.any(Function)
       );
-      expect(vv.addEventListener).toHaveBeenCalledWith(
-        'scroll',
-        expect.any(Function)
-      );
+      expect(vv.addEventListener).toHaveBeenCalledTimes(1);
     });
 
-    it('EnabledTrueWithViewport_SchedulesInitialRaf', () => {
-      render(<Harness enabled={true} />);
+    it('WithViewport_SchedulesInitialRaf', () => {
+      render(<Harness />);
       expect(rafSpy).toHaveBeenCalledTimes(1);
     });
 
@@ -143,7 +139,7 @@ describe('useKeyboardOffset', () => {
       vv.height = 600;
       vv.offsetTop = 0;
       setInnerHeight(1000);
-      render(<Harness enabled={true} />);
+      render(<Harness />);
       flushRaf();
       expect(
         document.documentElement.style.getPropertyValue('--keyboard-offset')
@@ -151,26 +147,40 @@ describe('useKeyboardOffset', () => {
     });
 
     it('RafTick_DoesNotSetOnBody', () => {
-      render(<Harness enabled={true} />);
+      render(<Harness />);
       flushRaf();
-      expect(document.body.style.getPropertyValue('--keyboard-offset')).toBe('');
+      expect(document.body.style.getPropertyValue('--keyboard-offset')).toBe(
+        ''
+      );
     });
 
     it('OffsetClampedToZero_WhenComputationWouldBeNegative', () => {
-      vv.height = 600;
-      vv.offsetTop = 600;
+      vv.height = 1200;
       setInnerHeight(1000);
-      render(<Harness enabled={true} />);
+      render(<Harness />);
       flushRaf();
       expect(
         document.documentElement.style.getPropertyValue('--keyboard-offset')
       ).toBe('0px');
     });
+
+    it('VisualViewportScrolledWithinLayoutViewport_OffsetUnchanged', () => {
+      vv.height = 600;
+      setInnerHeight(1000);
+      render(<Harness />);
+      flushRaf();
+      vv.offsetTop = 150;
+      vvListeners.resize[0]();
+      flushRaf();
+      expect(
+        document.documentElement.style.getPropertyValue('--keyboard-offset')
+      ).toBe('400px');
+    });
   });
 
   describe('RafCoalescing', () => {
     it('ResizeFiredDuringPendingRaf_NoSecondRafScheduled', () => {
-      render(<Harness enabled={true} />);
+      render(<Harness />);
       // Initial schedule from mount = 1 raf call.
       expect(rafSpy).toHaveBeenCalledTimes(1);
       // Fire resize before the pending RAF ticks: no second RAF.
@@ -179,57 +189,35 @@ describe('useKeyboardOffset', () => {
     });
 
     it('RafTickThenResize_SchedulesNewRaf', () => {
-      render(<Harness enabled={true} />);
+      render(<Harness />);
       flushRaf();
       expect(rafSpy).toHaveBeenCalledTimes(1);
       vvListeners.resize[0]();
       expect(rafSpy).toHaveBeenCalledTimes(2);
     });
 
-    it('ScrollEvent_TriggersRafSchedule', () => {
-      render(<Harness enabled={true} />);
+    it('UnchangedOffset_DoesNotRewriteCssVariable', () => {
+      render(<Harness />);
       flushRaf();
-      const before = rafSpy.mock.calls.length;
-      vvListeners.scroll[0]();
-      expect(rafSpy.mock.calls.length).toBe(before + 1);
+      document.documentElement.style.removeProperty('--keyboard-offset');
+      vvListeners.resize[0]();
+      flushRaf();
+      expect(
+        document.documentElement.style.getPropertyValue('--keyboard-offset')
+      ).toBe('');
     });
   });
 
   describe('CleanupFlow', () => {
-    it('EnableToggleToFalse_CancelsPendingRaf', () => {
-      const { rerender } = render(<Harness enabled={true} />);
-      // Pending RAF (id 1). Re-render disabled → effect cleanup runs.
-      rerender(<Harness enabled={false} />);
+    it('UnmountWithRafPending_CancelsPendingRaf', () => {
+      const { unmount } = render(<Harness />);
+      // Pending RAF (id 1) from mount, never flushed.
+      unmount();
       expect(cancelSpy).toHaveBeenCalledWith(1);
     });
 
-    it('EnableToggleToFalse_RemovesViewportListeners', () => {
-      const { rerender } = render(<Harness enabled={true} />);
-      rerender(<Harness enabled={false} />);
-      expect(vv.removeEventListener).toHaveBeenCalledWith(
-        'resize',
-        expect.any(Function)
-      );
-      expect(vv.removeEventListener).toHaveBeenCalledWith(
-        'scroll',
-        expect.any(Function)
-      );
-    });
-
-    it('EnableToggleToFalse_RemovesCssVariable', () => {
-      const { rerender } = render(<Harness enabled={true} />);
-      flushRaf();
-      expect(
-        document.documentElement.style.getPropertyValue('--keyboard-offset')
-      ).not.toBe('');
-      rerender(<Harness enabled={false} />);
-      expect(
-        document.documentElement.style.getPropertyValue('--keyboard-offset')
-      ).toBe('');
-    });
-
-    it('WhileEnabled_UnmountCleansUpRafListenersCssVariable', () => {
-      const { unmount } = render(<Harness enabled={true} />);
+    it('Unmount_CleansUpListenersAndCssVariable', () => {
+      const { unmount } = render(<Harness />);
       flushRaf();
       unmount();
       expect(cancelSpy).not.toHaveBeenCalled();
@@ -237,23 +225,61 @@ describe('useKeyboardOffset', () => {
         'resize',
         expect.any(Function)
       );
-      expect(vv.removeEventListener).toHaveBeenCalledWith(
-        'scroll',
-        expect.any(Function)
-      );
       expect(
         document.documentElement.style.getPropertyValue('--keyboard-offset')
       ).toBe('');
     });
+  });
 
-    it('WhenNotEnabled_UnmountDoesNothing', () => {
-      const { unmount } = render(<Harness enabled={false} />);
-      unmount();
-      expect(cancelSpy).not.toHaveBeenCalled();
-      expect(vv.removeEventListener).not.toHaveBeenCalled();
-      expect(
-        document.documentElement.style.getPropertyValue('--keyboard-offset')
-      ).toBe('');
+  describe('RevealFocusedField', () => {
+    it('KeyboardGrows_ScrollsFocusedFieldIntoView', () => {
+      const input = focusInput();
+      const scrollIntoView = vi.fn();
+      input.scrollIntoView = scrollIntoView;
+      render(<Harness />);
+      flushRaf();
+      vv.height = 384;
+      setInnerHeight(714);
+      vvListeners.resize[0]();
+      flushRaf();
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' });
+    });
+
+    it('KeyboardShrinks_DoesNotScrollFocusedField', () => {
+      vv.height = 384;
+      setInnerHeight(714);
+      render(<Harness />);
+      flushRaf();
+      const input = focusInput();
+      const scrollIntoView = vi.fn();
+      input.scrollIntoView = scrollIntoView;
+      vv.height = 714;
+      vvListeners.resize[0]();
+      flushRaf();
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it('MountedWithKeyboardAlreadyOpen_DoesNotScrollFocusedField', () => {
+      const input = focusInput();
+      const scrollIntoView = vi.fn();
+      input.scrollIntoView = scrollIntoView;
+      vv.height = 384;
+      setInnerHeight(714);
+      render(<Harness />);
+      flushRaf();
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it('KeyboardGrowsWithNoFieldFocused_DoesNotScrollBodyIntoView', () => {
+      const scrollIntoView = vi.fn();
+      document.body.scrollIntoView = scrollIntoView;
+      render(<Harness />);
+      flushRaf();
+      vv.height = 384;
+      setInnerHeight(714);
+      vvListeners.resize[0]();
+      flushRaf();
+      expect(scrollIntoView).not.toHaveBeenCalled();
     });
   });
 });

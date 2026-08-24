@@ -275,8 +275,7 @@
 .container--items-library {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--app-sticky-top));
-  height: calc(100dvh - var(--app-sticky-top));
+  height: calc(var(--app-viewport-fill) - var(--app-sticky-top));
   overflow: hidden;
   padding: 24px 44px 0;
   position: relative;
@@ -349,6 +348,7 @@
   display: grid;
   gap: 8px;
   align-items: center;
+  justify-content: center;
   /* Large >900px: single row */
   grid-template-columns: 1fr repeat(5, min-content);
   grid-template-areas: 'search sort purchases stores price view';
@@ -389,7 +389,15 @@
 }
 
 .items-toolbar-filters-group > .items-toolbar-filters-sheet-header,
-.items-toolbar-filters-group > .items-toolbar-filters-sheet-done {
+.items-toolbar-filters-group > .items-toolbar-filters-sheet-actions {
+  display: none;
+}
+
+/* Stores and Price carry two affordances: the popover trigger that floats a
+   panel here, and the sheet's drill row that swaps the sheet to that facet.
+   Exactly one is display:none per breakpoint, so only one is ever in the
+   accessibility tree or the tab order. */
+.popover-trigger.items-toolbar-filters-drill {
   display: none;
 }
 
@@ -478,27 +486,31 @@
     display: none;
   }
 
-  /* Filters group transforms into a bottom sheet on mobile.
-     `--keyboard-offset` is set by useKeyboardOffset() while the sheet is
-     open; it carries the height of the soft keyboard so the sheet rides
-     above it (fixed positioning ignores the visual viewport on iOS). */
+  /* Filters group transforms into a bottom sheet on mobile. Fixed positioning
+     resolves against the layout viewport, which the soft keyboard does not
+     shrink, so both the centring and the height cap go through
+     `--app-viewport-height` to stay inside what is actually visible. */
   .items-toolbar-filters-group {
     display: none;
     position: fixed;
     left: 0;
     right: 0;
-    bottom: var(--keyboard-offset, 0px);
+    top: calc(var(--app-viewport-top) + var(--app-viewport-height) / 2);
+    transform: translateY(-50%);
     z-index: 60;
     flex-direction: column;
     gap: 12px;
     background-color: var(--light-color);
-    border-top-left-radius: 14px;
-    border-top-right-radius: 14px;
-    padding: 14px 16px max(16px, env(safe-area-inset-bottom));
+    border-radius: 20px;
+    padding: 22px;
+    margin: 16px;
     box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.2);
     max-height: 80vh;
-    max-height: calc(100dvh - var(--keyboard-offset, 0px) - 24px);
+    max-height: calc(var(--app-viewport-height) - 24px);
     overflow-y: auto;
+    overscroll-behavior: contain;
+    justify-self: center;
+    width: calc(100% - 32px);
   }
 
   .items-toolbar-filters-group.is-open {
@@ -508,9 +520,10 @@
   .items-toolbar-filters-group > .items-toolbar-filters-sheet-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding-bottom: 4px;
+    justify-content: center;
     border-bottom: 1px solid var(--card-border-color);
+    min-height: 44px;
+    padding-bottom: 8px;
   }
 
   .items-toolbar-filters-sheet-title {
@@ -518,17 +531,78 @@
     font-size: 15px;
     font-weight: 600;
     color: var(--heading-text-color);
+    justify-self: center;
+    /* width: 100%; */
+    /* min-height: 44px; */
+    /* text-align: center;
+    display: flex;
+    align-items: center;
+    justify-items: center; */
   }
 
-  .items-toolbar-filters-sheet-close {
-    background: none;
-    border: none;
-    padding: 4px;
-    color: var(--muted-text-color);
-    cursor: pointer;
+  /* .filterBack {
+    position: absolute;
+    left: 12px;
+  } */
+
+  /* Arrow + facet name are one affordance, sized to the 44px WCAG floor. */
+  .items-toolbar-filters-sheet-back {
     display: inline-flex;
     align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-right: auto;
+    padding: 4px 8px 4px 0;
+    background: none;
+    border: none;
+    border-radius: 10px;
+    color: var(--primary-color-dark);
     font-size: 20px;
+    cursor: pointer;
+  }
+
+  .items-toolbar-filters-sheet-back > svg {
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
+
+  .items-toolbar-filters-sheet-back:hover {
+    background-color: var(--divider-color);
+  }
+
+  .items-toolbar-filters-sheet-back:focus-visible {
+    outline: 2px solid var(--btn-focus-ring-color);
+    outline-offset: 2px;
+  }
+
+  /* Drilled into a facet: the sheet shows that panel alone, so the root
+     rows step aside rather than scrolling along underneath it. */
+  .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--sort,
+  .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--purchases,
+  .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--stores,
+  .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--price {
+    display: none;
+  }
+
+  /* The sheet's own affordance for each facet, in place of the popover. */
+  .items-toolbar-filters-group .store-filter-popover {
+    display: none;
+  }
+
+  .popover-trigger.items-toolbar-filters-drill {
+    display: flex;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .items-toolbar-filters-drill .popover-trigger-label {
+    margin-right: auto;
+  }
+
+  /* Points into the facet, not down at a panel that opens in place. */
+  .items-toolbar-filters-drill .popover-trigger-chevron {
+    transform: rotate(-90deg);
   }
 
   /* Inside the sheet, each filter cell stacks full-width. Reset the
@@ -541,49 +615,39 @@
     width: 100%;
   }
 
-  /* Render the nested popovers inline inside the bottom sheet, instead
-     of as absolutely-positioned overlays anchored to their triggers.
-     The float-above pattern collides with the sheet's own overflow:auto
-     containing block: a tall panel's top edge gets clipped above the
-     sheet, and the bottom gets hidden by the keyboard. Inline rendering
-     lets each panel push the sheet's remaining content down, the sheet
-     handles its own vertical scroll, and the keyboard-offset adjusts
-     only the sheet's bottom edge. */
-  .items-toolbar-filters-group .store-filter-panel,
-  .items-toolbar-filters-group .price-filter-panel {
+  /* The drilled facet's panel is the sheet's content, not a layer over it:
+     it takes the space the root rows vacated and lets its own list scroll
+     inside the sheet's bounded height. Two classes deep to outrank the
+     floating `.store-filter-panel` base, which is declared further down. */
+  .items-toolbar-filters-group > .items-toolbar-filters-active-panel {
     position: static;
     width: 100%;
     max-width: none;
     max-height: none;
-    margin-top: 6px;
-  }
-
-  /* Inside the sheet the store list still needs a cap so it scrolls
-     internally rather than ballooning the sheet beyond the available
-     viewport. The cap shrinks with the keyboard, with a 120px floor
-     so the list never collapses to zero. */
-  .items-toolbar-filters-group .store-filter-list {
-    max-height: max(120px, calc(45dvh - var(--keyboard-offset, 0px)));
-  }
-
-  .items-toolbar-filters-group > .items-toolbar-filters-sheet-done {
-    display: inline-flex;
-    align-self: stretch;
-    justify-content: center;
-    background-color: var(--primary-color);
-    color: var(--light-color);
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0;
     border: none;
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-family: var(--font-roboto-condensed);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
+    border-radius: 0;
+    box-shadow: none;
+    background: none;
+  }
+
+  .items-toolbar-filters-group
+    > .items-toolbar-filters-active-panel:focus-visible {
+    outline: none;
+  }
+
+  /* Invariant at both levels: Clear all resets every facet, Done closes the
+     sheet. Layout-only pivots on the shared Button primitive. */
+  .items-toolbar-filters-group > .items-toolbar-filters-sheet-actions {
+    display: flex;
+    gap: 8px;
     margin-top: 4px;
   }
 
-  .items-toolbar-filters-group > .items-toolbar-filters-sheet-done:hover {
-    background-color: var(--primary-color-dark);
+  .items-toolbar-filters-sheet-actions .items-toolbar-filters-sheet-done {
+    flex: 1;
   }
 
   .items-toolbar-filters-scrim {
@@ -683,7 +747,6 @@
 .page-size-select {
   display: inline-flex;
   align-items: center;
-  margin-left: 12px;
 }
 .page-size-select .form_field {
   width: auto;
@@ -725,11 +788,6 @@
   padding: 12px 0;
   border-top: 1px solid var(--card-border-color);
   flex-wrap: wrap;
-}
-
-.items-page-gap {
-  padding: 0 4px;
-  color: var(--muted-text-color);
 }
 
 /* ── TABS (Active / Archived) ── */

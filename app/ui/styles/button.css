@@ -414,3 +414,14 @@
   outline: 2px solid var(--btn-focus-ring-color);
   outline-offset: 2px;
 }
+
+/* Layout pivot for surfaces whose close sits in a header row beside a
+   title rather than floating over the surface's corner: the row places
+   it. `relative` (not `static`) keeps the ::before hit-target anchored
+   to the disc. */
+.close-button--in-flow {
+  position: relative;
+  top: auto;
+  right: auto;
+  flex: none;
+}

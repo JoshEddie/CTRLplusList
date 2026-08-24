@@ -19,6 +19,16 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// The soft keyboard reveals a field by displacing the visual viewport, which
+// shifts every client rect by that amount with no user scroll.
+function displaceViewport(offsetTop: number) {
+  Object.defineProperty(window, 'visualViewport', {
+    value: { offsetTop },
+    configurable: true,
+    writable: true,
+  });
+}
+
 function renderChrome() {
   return render(
     <ListHeroChrome
@@ -145,5 +155,35 @@ describe('ListHeroChrome', () => {
     expect(el).not.toHaveClass('is-chrome');
     scrollSentinelTo(-350);
     expect(el).not.toHaveClass('is-collapsed');
+  });
+
+  it('KeyboardOpen_IgnoresTheViewportOffsetShiftAndKeepsCurrentState', () => {
+    renderChrome();
+    displaceViewport(146);
+    scrollSentinelTo(-146);
+    expect(chrome()).not.toHaveClass('is-collapsed');
+  });
+
+  it('KeyboardOpenWhileCollapsed_DoesNotExpandOnTheOffsetShift', () => {
+    renderChrome();
+    scrollSentinelTo(-60);
+    expect(chrome()).toHaveClass('is-collapsed');
+    displaceViewport(146);
+    scrollSentinelTo(600);
+    expect(chrome()).toHaveClass('is-collapsed');
+  });
+
+  it('KeyboardCloses_BankedTravelExcludesTheOffsetShift', () => {
+    renderChrome();
+    scrollSentinelTo(-600);
+    expect(chrome()).toHaveClass('is-collapsed');
+    displaceViewport(146);
+    // 340px of phantom upward shift from the visual-viewport offset, then a
+    // genuine 200px upward scroll. Banked together they clear EXPAND_TRAVEL;
+    // only the genuine run should count, so the hero stays collapsed.
+    scrollSentinelTo(-260);
+    displaceViewport(0);
+    scrollSentinelTo(-60);
+    expect(chrome()).toHaveClass('is-collapsed');
   });
 });

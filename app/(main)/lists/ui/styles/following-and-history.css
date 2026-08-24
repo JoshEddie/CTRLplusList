@@ -685,8 +685,7 @@
 .container--list-collections {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--app-sticky-top));
-  height: calc(100dvh - var(--app-sticky-top));
+  height: calc(var(--app-viewport-fill) - var(--app-sticky-top));
   overflow: hidden;
 }
 

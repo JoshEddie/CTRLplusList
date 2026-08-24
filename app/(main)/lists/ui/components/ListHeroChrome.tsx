@@ -67,12 +67,26 @@ export default function ListHeroChrome({
     // Banked upward travel for the current run. Any downward movement zeroes
     // it, so a flick back mid-gesture doesn't count toward the next expand.
     let upTravel = 0;
+    // Displacing the visual viewport — how a soft keyboard reveals a focused
+    // field — shifts every client rect by that amount without the user having
+    // scrolled. Swapping the hero on that phantom delta reflows the document
+    // while the browser is still positioning the field. Read the offset here
+    // rather than from a CSS token so there is no race with whoever publishes
+    // it; lastTop still tracks, so the next real scroll reads a true delta.
+    const viewportTop = () => window.visualViewport?.offsetTop ?? 0;
+    let lastViewportTop = viewportTop();
     const onScroll = () => {
       const top = sentinel.getBoundingClientRect().top;
       const delta = top - lastTop;
       // Scroll in an unrelated container (modal, dropdown) — ignore.
       if (delta === 0) return;
       lastTop = top;
+      const offset = viewportTop();
+      if (offset !== lastViewportTop) {
+        lastViewportTop = offset;
+        upTravel = 0;
+        return;
+      }
       upTravel = delta > 0 ? upTravel + delta : 0;
       if (top >= stickyTop || upTravel > EXPAND_TRAVEL) {
         setCollapsed(false);

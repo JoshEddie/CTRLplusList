@@ -240,7 +240,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-height: 44px;
+  min-height: 40px;
   cursor: pointer;
   user-select: none;
   font-size: var(--field-font-size);

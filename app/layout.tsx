@@ -1,3 +1,4 @@
+import AppViewport from '@/app/ui/components/AppViewport';
 import '@/app/ui/styles/button.css';
 import { ServiceWorkerRegistration } from '@/app/ui/components/ServiceWorkerRegistration';
 import { Analytics } from '@vercel/analytics/next';
@@ -81,6 +82,7 @@ export default function RootLayout({
       <body
         className={`${roboto.variable} ${robotoCondensed.variable} ${crimsonPro.variable}`}
       >
+        <AppViewport />
         <Toaster
           position="top-right"
           containerStyle={{
