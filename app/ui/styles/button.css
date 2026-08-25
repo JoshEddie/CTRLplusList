@@ -39,7 +39,9 @@
   font-family: var(--font-roboto-condensed);
   font-weight: var(--btn-font-weight);
   word-break: normal;
-  overflow-wrap: anywhere;
+  /* break-word, not anywhere: word width stays in min-content sizing, so a
+     squeezed grid/flex slot wraps between words instead of splitting one. */
+  overflow-wrap: break-word;
   text-align: center;
   line-height: 1.2;
   min-height: var(--btn-min-height);
