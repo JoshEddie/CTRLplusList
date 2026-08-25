@@ -149,6 +149,34 @@ The system SHALL provide a `<FormField>` component at `app/ui/components/field/F
 - **WHEN** `app/ui/components/field/index.ts` is read
 - **THEN** `FormField` is not in the export list (only the field-type wrappers, `FieldError`, `FIELD_ICONS`, and types are exported)
 
+### Requirement: Invalid state is decoupled from the error message
+
+Every field-type wrapper that renders through `<FormField>` SHALL accept an `invalid?: boolean` prop, separate from `error?: string`. When `invalid` is true the field SHALL carry `aria-invalid="true"` and the `.invalid` chrome exactly as an `error` does, but SHALL NOT render a `<FieldError>` — for surfaces whose human-readable message lives outside the field (e.g. the deck's `TierNote`). `error` continues to imply the invalid state; passing both renders the message once and the invalid chrome once.
+
+#### Scenario: invalid without error marks the field but shows no message
+
+- **WHEN** `<TextareaField label="Item name" invalid />` is rendered
+- **THEN** the textarea has `aria-invalid="true"` and the `.form_field` wrapper carries `.invalid`, and no `<FieldError>` renders
+
+#### Scenario: neither invalid nor error leaves the field unmarked
+
+- **WHEN** `<TextareaField label="Item name" />` is rendered
+- **THEN** the textarea has no `aria-invalid` attribute and the wrapper has no `.invalid` class
+
+### Requirement: TextField and TextareaField provide a field-owned character counter
+
+`<TextField>` and `<TextareaField>` SHALL accept a `counterMax?: number` prop. When set, the field SHALL render a counter reading `{value.length}/{counterMax}` inside the field group (below the input, trailing-aligned), wired to the controlled `value`. The counter SHALL be presentation-only (`aria-hidden="true"`) — invalid state and the error message carry the semantics for assistive technology. The counter SHALL take the error tone when the value length exceeds `counterMax` or while the field is invalid (via `invalid` or `error`), and the muted tone otherwise. `counterMax` SHALL NOT clamp input — callers pair it with native `maxLength` when clamping is wanted. When `counterMax` is not set, no counter SHALL render.
+
+#### Scenario: counter renders and tracks the value
+
+- **WHEN** `<TextareaField label="Item name" value="abcde" counterMax={100} />` is rendered
+- **THEN** a counter reading "5/100" renders in the muted tone with `aria-hidden="true"`
+
+#### Scenario: over-limit value colors the counter
+
+- **WHEN** the controlled value's length exceeds `counterMax`
+- **THEN** the counter takes the error tone while the value itself remains editable (no clamping)
+
 ### Requirement: Field icon prop with iconPosition (left default, right opt-in)
 
 The system SHALL accept an `icon: ReactNode` and `iconPosition: 'left' | 'right'` prop on `<FormField>` and on every field-type wrapper that forwards it. The default position MUST be `'left'`. When an icon is provided, the `<div class="form_field">` wrapper MUST switch grid templates accordingly (`auto 1fr` for left, `1fr auto` for right, `1fr` for no icon). The icon MUST be rendered inside the wrapper as a sibling to the input, not via a page-scoped decorator wrapping the field.
@@ -506,6 +534,27 @@ The `<PriceField>` component at `app/ui/components/field/PriceField.tsx` SHALL p
 
 - **WHEN** `<PriceField>` is rendered (with no `icon`-style prop available)
 - **THEN** the rendered icon is the `FaDollarSign` glyph with `aria-hidden="true"`, in the leading slot of the wrapping `.form_field` div
+
+### Requirement: PriceField SHALL offer an opt-in clear affordance reaching the no-price state
+
+`<PriceField>` SHALL accept an `onClear?: () => void` prop. When provided, and the field holds a value (`amount !== null`, including `0` — typed `$0.00` is a real price) and is not disabled, the field SHALL render a trailing in-chrome clear button (accessible name "Clear price", mirroring `<SearchField>`'s trailing-clear pattern) whose activation resets the local negative state and invokes `onClear` — the caller's path to the empty/no-price state that incremental backspace deliberately cannot reach (backspacing bottoms out at `$0.00` by the cents model). When `onClear` is omitted, or `amount === null`, or the field is disabled, no clear affordance SHALL render — callers that own panel-level clearing (the price filter popover) are unaffected.
+
+The trailing slot SHALL be provided by `<FormField>` as a generic `trailing?: ReactNode` rendered inside the field chrome after the input, with the grid gaining a trailing column only when the slot is occupied.
+
+#### Scenario: Clearing a priced item reaches no-price
+
+- **WHEN** a `<PriceField>` with `onClear` holds `amount={24.5}` and the user activates "Clear price"
+- **THEN** `onClear` fires (the deck editor maps it to the empty price string — the BARE state) and, re-rendered with `amount={null}`, the field displays an empty string with no clear button
+
+#### Scenario: Typed zero remains a clearable real price
+
+- **WHEN** a `<PriceField>` with `onClear` holds `amount={0}`
+- **THEN** the display reads "0.00" and the clear button renders — `$0.00` stays a valid price distinct from no-price
+
+#### Scenario: Callers without onClear are unchanged
+
+- **WHEN** `<PriceField>` renders without `onClear` (e.g. the price filter popover's Min/Max fields)
+- **THEN** no clear affordance renders and the field behaves exactly as before
 
 ### Requirement: SearchField trailing-slot SHALL be a three-branch runtime decision
 

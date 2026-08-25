@@ -1,25 +1,25 @@
 import type { ReactNode } from 'react';
-import { TitleEditor } from '../editors/TitleEditor';
+import { NameEditor } from '../editors/NameEditor';
 import { stepBlocked } from '../neededSteps';
 import type { ItemActions } from '../useItemActions';
-import { isLinkless, titleTier } from '../utils';
+import { isLinkless, nameTier } from '../utils';
 import type { ItemViewModel } from '../viewModel';
 import { DeckCard } from './DeckCard';
 
-interface TitleCardProps {
+interface NameCardProps {
   item: ItemViewModel;
   actions: ItemActions;
   onContinue: () => void;
   tracker?: ReactNode;
 }
 
-export function TitleCard({
+export function NameCard({
   item,
   actions,
   onContinue,
   tracker,
-}: TitleCardProps) {
-  const tier = titleTier(item.name);
+}: NameCardProps) {
+  const tier = nameTier(item.name);
   return (
     <DeckCard
       tracker={tracker}
@@ -31,9 +31,9 @@ export function TitleCard({
       }
       onContinue={onContinue}
       continueLabel={tier.tier === 'warn' ? 'Keep it anyway' : 'Continue'}
-      continueDisabled={stepBlocked('title', item)}
+      continueDisabled={stepBlocked('name', item)}
     >
-      <TitleEditor
+      <NameEditor
         name={item.name}
         description={item.description}
         onNameChange={actions.setName}

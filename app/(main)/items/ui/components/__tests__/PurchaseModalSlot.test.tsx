@@ -1,7 +1,3 @@
-/* eslint-disable testing-library/no-node-access --
- * Modal's close affordance is a class-only `<div className="close-button">`
- * with no role, portaled to document.body.
- */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -265,11 +261,7 @@ describe('PurchaseModalSlot', () => {
   it('CloseAffordance_FiresOnClose', async () => {
     const user = userEvent.setup();
     const { props } = renderSlot({ view: 'manage', claims: [selfClaim] });
-    // Modal portals to document.body, so the close affordance is outside the
-    // render container.
-    await user.click(
-      document.body.querySelector('.close-button') as HTMLElement
-    );
+    await user.click(screen.getByRole('button', { name: 'Close' }));
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 });

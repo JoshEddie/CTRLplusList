@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { LuX } from 'react-icons/lu';
+import { CloseButton } from '@/app/ui/components/button';
 import { useDismiss } from '@/app/ui/components/use-dismiss';
 import './deck-screen.css';
 
@@ -23,24 +23,19 @@ export function DeckShell({
   const dismiss = useDismiss(onClose, closeHref);
 
   const cls =
-    variant === 'wide' ? 'deck-screen deck-screen-wide' : 'deck-screen';
+    variant === 'wide'
+      ? 'modal-shell modal-shell-wide deck-screen'
+      : 'modal-shell deck-screen';
 
   return (
     <div
-      className="deck-screen-overlay"
+      className="modal-overlay-scrim deck-screen-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) dismiss();
       }}
     >
       <div className={cls}>
-        <button
-          type="button"
-          className="deck-screen-close"
-          onClick={dismiss}
-          aria-label="Close"
-        >
-          <LuX />
-        </button>
+        <CloseButton onClick={dismiss} className="deck-screen-close-pivot" />
         <span className="deck-screen-module-title">{moduleTitle}</span>
         {children}
       </div>

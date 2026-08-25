@@ -7,7 +7,7 @@ import { NoteCard } from './cards/NoteCard';
 import { PhotoCard } from './cards/PhotoCard';
 import { PriceCard } from './cards/PriceCard';
 import { StoreCard } from './cards/StoreCard';
-import { TitleCard } from './cards/TitleCard';
+import { NameCard } from './cards/NameCard';
 import {
   isStepComplete,
   isStepValid,
@@ -102,7 +102,7 @@ export function Deck({
   return (
     <>
       {step === 'photo' && <PhotoCard {...shared} />}
-      {step === 'title' && <TitleCard {...shared} />}
+      {step === 'name' && <NameCard {...shared} />}
       {step === 'price' && <PriceCard {...shared} productUrl={productUrl} />}
       {step === 'store' && <StoreCard {...shared} />}
       {step === 'note' && <NoteCard {...shared} />}

@@ -12,12 +12,12 @@ import Link from 'next/link';
 import { MdChecklist, MdVisibility } from 'react-icons/md';
 import BookmarkContainer from './BookmarkContainer';
 import EditListAction from './EditListAction';
-import HeroCollapseShell from './HeroCollapseShell';
 import {
   HeroCollapsedOwnerItems,
   HeroCollapsedViewerItems,
 } from './HeroCollapsedItemsContainer';
 import ListActionsMenu from './ListActionsMenu';
+import ListHeroSurface from './ListHeroSurface';
 import ShareButton from './ShareButton';
 import VisibilityPicker from './VisibilityPicker';
 
@@ -78,10 +78,11 @@ export default async function ListDetails({
   const showViewerControls =
     !isOwner && viewer_user_id && viewer_profile_id && !previewMode;
 
-  // Compose the prepended kebab items shown when the hero is collapsed.
-  // Owner-preview gets the owner items (Share/Choose/Edit/Visibility are
-  // still owner affordances in preview mode — visibility just shows current
-  // state). Pure viewers get the viewer items.
+  // Compose the prepended kebab items shown on the sticky strip while the
+  // full hero is scrolled away. Owner-preview gets the owner items
+  // (Share/Choose/Edit/Visibility are still owner affordances in preview
+  // mode — visibility just shows current state). Pure viewers get the
+  // viewer items.
   let collapsedPrepended: React.ReactNode = null;
   if (showOwnerControls) {
     collapsedPrepended = (
@@ -123,7 +124,7 @@ export default async function ListDetails({
   }
 
   return (
-    <HeroCollapseShell title={list.name} collapsedKebab={collapsedKebab}>
+    <ListHeroSurface title={list.name} kebab={collapsedKebab}>
       <div className="list-hero">
         {previewMode && (
           <div className="preview-banner" role="status">
@@ -160,8 +161,6 @@ export default async function ListDetails({
                 Visibility status pill lives in the identity zone, not here. */}
             {showOwnerControls && (
               <>
-                {/* <ShareButton list={list} />
-                <div className="list-hero-divider" /> */}
                 <div className="list-hero-action-row">
                   <EditListAction list={list} />
                   <ListActionsMenu
@@ -234,6 +233,6 @@ export default async function ListDetails({
           </div>
         </div>
       </div>
-    </HeroCollapseShell>
+    </ListHeroSurface>
   );
 }

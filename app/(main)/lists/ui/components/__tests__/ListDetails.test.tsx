@@ -41,19 +41,19 @@ vi.mock('../HeroCollapsedItemsContainer', () => ({
   HeroCollapsedOwnerItems: () => <div data-testid="collapsed-owner-items" />,
   HeroCollapsedViewerItems: () => <div data-testid="collapsed-viewer-items" />,
 }));
-vi.mock('../HeroCollapseShell', () => ({
+vi.mock('../ListHeroSurface', () => ({
   default: ({
     title,
-    collapsedKebab,
+    kebab,
     children,
   }: {
     title: string;
-    collapsedKebab: React.ReactNode;
+    kebab: React.ReactNode;
     children: React.ReactNode;
   }) => (
-    <div data-testid="collapse-shell" data-title={title}>
+    <div data-testid="sticky-strip" data-title={title}>
+      <div data-testid="collapsed-kebab">{kebab}</div>
       {children}
-      <div data-testid="collapsed-kebab">{collapsedKebab}</div>
     </div>
   ),
 }));

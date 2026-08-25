@@ -6,7 +6,7 @@ import { NoteEditor } from './editors/NoteEditor';
 import { PhotoEditor } from './editors/PhotoEditor';
 import { PriceEditor } from './editors/PriceEditor';
 import { StoreEditor } from './editors/StoreEditor';
-import { TitleEditor } from './editors/TitleEditor';
+import { NameEditor } from './editors/NameEditor';
 import { ROW_LABELS, type RowField } from './focus';
 import type { ItemActions } from './useItemActions';
 import { isLinkless } from './utils';
@@ -62,9 +62,9 @@ export function FocusEditor({
 
   if (field === 'photo') {
     body = <PhotoFocusBody item={item} actions={actions} />;
-  } else if (field === 'title') {
+  } else if (field === 'name') {
     body = (
-      <TitleEditor
+      <NameEditor
         name={item.name}
         description={item.description}
         onNameChange={actions.setName}

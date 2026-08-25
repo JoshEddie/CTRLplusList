@@ -2,8 +2,13 @@
 
 import { Button } from '@/app/ui/components/button';
 import { ItemDisplay, SortKey } from '@/lib/types';
+import {
+  HERO_SLOT_READY_EVENT,
+  HERO_TOOLBAR_SLOT_ID,
+} from '@/app/(main)/lists/ui/components/ListHeroSurface';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Items from './Items';
 import ItemsToolbar from './itemsToolbar';
 import Pagination from './Pagination';
@@ -62,6 +67,19 @@ export default function ItemsBrowser({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // On the list page the toolbar portals into the hero chrome's slot so it
+  // rides the hero's shape changes in natural flow; anywhere without a slot
+  // (the items library) it renders inline. The slot's section hydrates
+  // independently, so re-check when the chrome announces itself.
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    const find = () =>
+      setToolbarSlot(document.getElementById(HERO_TOOLBAR_SLOT_ID));
+    find();
+    window.addEventListener(HERO_SLOT_READY_EVENT, find);
+    return () => window.removeEventListener(HERO_SLOT_READY_EVENT, find);
+  }, []);
 
   const defaultSort: SortKey = mode === 'list' ? 'list_order' : 'created_desc';
   const validSorts = mode === 'list' ? VALID_SORT_LIST : VALID_SORT_ITEMS;
@@ -172,15 +190,19 @@ export default function ItemsBrowser({
     router.replace(queryString ? `${pathname}?${queryString}` : pathname);
   };
 
+  const toolbar = (
+    <ItemsToolbar
+      mode={mode}
+      storeOptions={storeOptions}
+      showStoreSort={hasAnyStore}
+      showPriceSort={hasAnyPrice}
+      showPriceFilter={hasAnyPrice}
+    />
+  );
+
   return (
     <div className="items-browser">
-      <ItemsToolbar
-        mode={mode}
-        storeOptions={storeOptions}
-        showStoreSort={hasAnyStore}
-        showPriceSort={hasAnyPrice}
-        showPriceFilter={hasAnyPrice}
-      />
+      {toolbarSlot ? createPortal(toolbar, toolbarSlot) : toolbar}
       {filteredSorted.length === 0 ? (
         <div className="items-empty-filtered">
           <p>No items match your filters.</p>

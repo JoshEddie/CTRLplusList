@@ -2,9 +2,9 @@
 
 ## Purpose
 
-The `items-price-filter` capability SHALL govern the behavior of the price-range filter popover in the items toolbar — specifically when Min/Max edits commit to the URL (`price_min` / `price_max`), how an inverted pair (`max < min`) is communicated to the user, and how the popover panel's Clear/Done footer behaves. It SHALL apply wherever `PriceFilterPopover` mounts (today: inside `ItemsToolbar` on every page that renders `ItemsBrowser`).
+The `items-price-filter` capability SHALL govern the behavior of the price-range filter popover in the items toolbar — specifically when Min/Max edits commit to the URL (`price_min` / `price_max`), how an inverted pair (`max < min`) is communicated to the user, and how the popover panel's Clear/Done footer behaves. It SHALL apply wherever the price panel mounts — floated by `PriceFilterPopover` in the desktop toolbar, and rendered in place by the mobile filters sheet (today both live inside `ItemsToolbar` on every page that renders `ItemsBrowser`).
 
-This capability SHALL NOT govern: the layout of the items toolbar row (owned by `items-browser-chrome`), the trigger button surface (owned by `popover-trigger-system`), the `PriceField` input chrome / `FieldError` error-display contract (owned by `form-field-system`), or the behavior of other filter popovers such as `StoreFilterPopover`. A behavior listed in those primitive/sibling capabilities remains binding under their spec; this capability composes them.
+This capability SHALL NOT govern: the mobile filters sheet's navigation, header, and action bar (owned by `items-filters-sheet`), the layout of the items toolbar row (owned by `items-browser-chrome`), the trigger button surface (owned by `popover-trigger-system`), the `PriceField` input chrome / `FieldError` error-display contract (owned by `form-field-system`), or the behavior of other filter popovers such as `StoreFilterPopover`. A behavior listed in those primitive/sibling capabilities remains binding under their spec; this capability composes them.
 
 ## Requirements
 
@@ -119,9 +119,14 @@ The `PriceFilterPopover` SHALL handle the case where its `min` / `max` props cha
 
 ### Requirement: Footer matches the Store filter popover (Clear + primary Done)
 
-The `PriceFilterPopover` footer SHALL render exactly two buttons in the same shape as `StoreFilterPopover` ([StoreFilterPopover.tsx:83-95](app/(main)/items/ui/components/StoreFilterPopover.tsx)): a ghost Clear button on the left and a primary Done button on the right. The Clear button SHALL clear both Min and Max in local state and SHALL call the `onClear` prop. The Done button SHALL close the popover and nothing more; it MUST NOT carry its own commit logic, since commits already flow through the debounce path and the close-time flush.
+The footer belongs to the popover surface: it SHALL be rendered when the caller supplies close and clear handlers, and SHALL be absent when it does not — the mobile filters sheet supplies neither, because its Clear all and Done serve every facet (owned by `items-filters-sheet`). Where rendered, it SHALL render exactly two buttons in the same shape as the store panel ([StoreFilterPanel.tsx](app/(main)/items/ui/components/StoreFilterPanel.tsx)): a ghost Clear button on the left and a primary Done button on the right. The Clear button SHALL clear both Min and Max in local state and SHALL call the `onClear` prop. The Done button SHALL close the popover and nothing more; it MUST NOT carry its own commit logic, since commits already flow through the debounce path and the close-time flush.
 
 The Clear button SHALL be disabled when there is nothing to clear — both the prop `min`/`max` are empty AND the local in-progress Min/Max are empty.
+
+#### Scenario: The panel renders no footer inside the filters sheet
+
+- **WHEN** the price panel is rendered by the mobile filters sheet
+- **THEN** it renders no Clear or Done button of its own; leaving the panel still commits a pending edit
 
 #### Scenario: Footer renders Clear and Done in the expected shape
 
@@ -140,12 +145,17 @@ The Clear button SHALL be disabled when there is nothing to clear — both the p
 
 ### Requirement: Opening the popover moves keyboard focus into the Min input
 
-When the `PriceFilterPopover` panel opens, the Min `PriceField` SHALL receive focus (it carries `autoFocus`); the Max input SHALL NOT be focused on open. This makes the panel immediately usable from the keyboard — a user who opens the popover can begin typing the lower bound without a manual tab or click. The trigger button surface and the dismiss behavior remain governed by `popover-trigger-system`; this requirement governs only which panel input is focused on open.
+When the `PriceFilterPopover` panel opens, the Min `PriceField` SHALL receive focus; the Max input SHALL NOT be focused on open. This makes the panel immediately usable from the keyboard — a user who opens the popover can begin typing the lower bound without a manual tab or click. Autofocus SHALL be opt-in per surface rather than a property of the panel: the mobile filters sheet SHALL NOT autofocus an input, since a soft keyboard opening on entry shrinks the sheet (focus movement there is owned by `items-filters-sheet`). The trigger button surface and the dismiss behavior remain governed by `popover-trigger-system`; this requirement governs only which panel input is focused on open.
 
 #### Scenario: Min input is focused when the panel opens
 
 - **WHEN** the user opens the price filter popover
 - **THEN** the rendered Min input is the active element (`document.activeElement`); the Max input is not focused
+
+#### Scenario: The filters sheet does not focus an input on entry
+
+- **WHEN** the user drills into Price in the mobile filters sheet
+- **THEN** neither the Min nor the Max input is focused
 
 ### Requirement: A bound that resolves to $0.00 is treated as an absent bound, not a zero filter
 

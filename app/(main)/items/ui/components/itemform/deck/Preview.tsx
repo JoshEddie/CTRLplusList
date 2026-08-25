@@ -16,7 +16,7 @@ import {
   pricePairTier,
   storeTier,
   suggestTrim,
-  titleTier,
+  nameTier,
 } from './utils';
 import type { ItemViewModel } from './viewModel';
 
@@ -50,15 +50,15 @@ export function Preview({
   onAddNote,
   deleteSlot,
 }: PreviewProps) {
-  const tier = titleTier(item.name);
-  const titleBlocked = tier.tier === 'error';
+  const tier = nameTier(item.name);
+  const nameBlocked = tier.tier === 'error';
   const noteBlocked = item.description.length > DESCRIPTION_MAX;
   const storeBlocked = storeTier(item.store).tier === 'error';
   const priceBlocked = pricePairTier(item.store).tier === 'error';
-  const blocked = titleBlocked || noteBlocked || storeBlocked || priceBlocked;
+  const blocked = nameBlocked || noteBlocked || storeBlocked || priceBlocked;
   const suggestion = suggestTrim(item.name);
 
-  const blockNote = titleBlocked
+  const blockNote = nameBlocked
     ? tier.note
     : noteBlocked
       ? `Your description is over the ${DESCRIPTION_MAX}-character limit — trim it to save.`
@@ -129,7 +129,7 @@ export function Preview({
         {blocked && (
           <div className="deck-preview-block">
             <TierNote tier="error">{blockNote}</TierNote>
-            {titleBlocked && suggestion && suggestion !== item.name.trim() && (
+            {nameBlocked && suggestion && suggestion !== item.name.trim() && (
               <TrimChip
                 suggestion={suggestion}
                 onApply={() => actions.setName(suggestion)}

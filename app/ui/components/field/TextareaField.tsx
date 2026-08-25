@@ -4,6 +4,9 @@ import type { FieldWrapperProps } from './types';
 
 type TextareaFieldProps = FieldWrapperProps & {
   className?: string;
+  /** Enable the field-owned character counter (`length/max`). Does not clamp
+   *  input — pair with native `maxLength` when clamping is wanted. */
+  counterMax?: number;
 } & Omit<
     ComponentPropsWithRef<'textarea'>,
     | 'className'
@@ -22,11 +25,13 @@ export const TextareaField = forwardRef<
     label,
     description,
     error,
+    invalid,
     required,
     disabled,
     icon,
     iconPosition,
     className,
+    counterMax,
     ...textareaProps
   },
   ref
@@ -36,11 +41,20 @@ export const TextareaField = forwardRef<
       label={label}
       description={description}
       error={error}
+      invalid={invalid}
       required={required}
       disabled={disabled}
       icon={icon}
       iconPosition={iconPosition}
       className={className}
+      counter={
+        counterMax === undefined
+          ? undefined
+          : {
+              length: String(textareaProps.value ?? '').length,
+              max: counterMax,
+            }
+      }
     >
       <textarea
         ref={ref}

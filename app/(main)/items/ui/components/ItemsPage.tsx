@@ -3,6 +3,7 @@
 import { Button } from '@/app/ui/components/button';
 import Empty from '@/app/ui/components/Empty';
 import Header from '@/app/ui/components/Header';
+import { HERO_TOOLBAR_SLOT_ID } from '@/app/(main)/lists/ui/components/ListHeroSurface';
 import { ItemDisplay, ListTable } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
@@ -49,40 +50,45 @@ export default function ItemsPage({
 
   return (
     <>
-      <Header title="Items">
-        <Button
-          variant="primary"
-          aria-label="New Item"
-          onClick={() => setShowNewItem(true)}
-        >
-          <FaPlus size={14} />
-          <span className="mobile-hide">New Item</span>
-        </Button>
-      </Header>
+      {/* Sticky block pinning header + tabs + toolbar below the app nav.
+          The toolbar rides along via ItemsBrowser's existing slot portal. */}
+      <div className="pinned-page-chrome">
+        <Header title="Items">
+          <Button
+            variant="primary"
+            aria-label="New Item"
+            onClick={() => setShowNewItem(true)}
+          >
+            <FaPlus size={14} />
+            <span className="mobile-hide">New Item</span>
+          </Button>
+        </Header>
 
-      <div
-        className="items-tabs"
-        role="tablist"
-        aria-label="Filter items by archive state"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'active'}
-          className={`items-tab ${tab === 'active' ? 'active' : ''}`}
-          onClick={() => setTab('active')}
+        <div
+          className="items-tabs"
+          role="tablist"
+          aria-label="Filter items by archive state"
         >
-          Active ({items.length})
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'archived'}
-          className={`items-tab ${tab === 'archived' ? 'active' : ''}`}
-          onClick={() => setTab('archived')}
-        >
-          Archived ({archivedItems.length})
-        </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'active'}
+            className={`items-tab ${tab === 'active' ? 'active' : ''}`}
+            onClick={() => setTab('active')}
+          >
+            Active ({items.length})
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'archived'}
+            className={`items-tab ${tab === 'archived' ? 'active' : ''}`}
+            onClick={() => setTab('archived')}
+          >
+            Archived ({archivedItems.length})
+          </button>
+        </div>
+        <div id={HERO_TOOLBAR_SLOT_ID} />
       </div>
 
       {source.length === 0 ? (

@@ -68,37 +68,37 @@ Undersized candidates SHALL be pruned from display following the existing item-i
 - **WHEN** the user saves the item with a real photo selected
 - **THEN** none of the placeholder preview URIs are persisted
 
-### Requirement: Title validation SHALL use tiers at 50 (warn) and 100 (error)
+### Requirement: Name validation SHALL use tiers at 50 (warn) and 100 (error)
 
-A pure `titleTier(name)` helper SHALL classify the name: empty → `error` ("An item needs a name"); length < 3 → `error` (too short — `item.schema.ts` requires at least 3 characters); length > 100 → `error` (over the limit, cannot be saved); length > 50 → `warn` (longer than 50 characters — suggest trimming; extra detail belongs in a description); otherwise → `good`. The tier floor and ceiling SHALL match the `name` 3–100 bounds enforced in `item.schema.ts` so a too-short or too-long name is blocked inline at the deck/Preview gate rather than only at server-side validation. The title card and Focus editor SHALL show the tier note and a live character counter colored by tier. When the tier is not `good`, a one-tap "suggested trim" affordance SHALL offer a shortened name. The card's continue affordance SHALL be disabled while the tier is `error`, and labeled "Keep it anyway" while `warn`. The same helper SHALL gate the Create/Save action so the 100-character limit cannot be saved.
+A pure `nameTier(name)` helper SHALL classify the name: empty → `error` ("An item needs a name"); length < 3 → `error` (too short — `item.schema.ts` requires at least 3 characters); length > 100 → `error` (over the limit, cannot be saved); length > 50 → `warn` (longer than 50 characters — suggest trimming; extra detail belongs in a description); otherwise → `good`. The tier floor and ceiling SHALL match the `name` 3–100 bounds enforced in `item.schema.ts` so a too-short or too-long name is blocked inline at the deck/Preview gate rather than only at server-side validation. The name card and Focus editor SHALL show the tier note and a live character counter colored by tier. When the tier is not `good`, a one-tap "suggested trim" affordance SHALL offer a shortened name. The card's continue affordance SHALL be disabled while the tier is `error`, and labeled "Keep it anyway" while `warn`. The same helper SHALL gate the Create/Save action so the 100-character limit cannot be saved.
 
 #### Scenario: Over-100 title blocks continue and save
 
 - **WHEN** the name is 120 characters
-- **THEN** `titleTier` SHALL return `error`, the title card's continue SHALL be disabled, and Create/Save SHALL be disabled with a trim prompt
+- **THEN** `nameTier` SHALL return `error`, the name card's continue SHALL be disabled, and Create/Save SHALL be disabled with a trim prompt
 
 #### Scenario: Under-3 title blocks continue and save
 
 - **WHEN** the name is 2 characters
-- **THEN** `titleTier` SHALL return `error` and Create/Save SHALL be disabled inline, matching the `item.schema.ts` `name.min(3)` floor rather than deferring to a server-side rejection
+- **THEN** `nameTier` SHALL return `error` and Create/Save SHALL be disabled inline, matching the `item.schema.ts` `name.min(3)` floor rather than deferring to a server-side rejection
 
 #### Scenario: 51–100 character title warns but allows continue
 
 - **WHEN** the name is 70 characters
-- **THEN** `titleTier` SHALL return `warn`, the note SHALL suggest trimming and point to the description, and continue SHALL be enabled labeled "Keep it anyway"
+- **THEN** `nameTier` SHALL return `warn`, the note SHALL suggest trimming and point to the description, and continue SHALL be enabled labeled "Keep it anyway"
 
 #### Scenario: Suggested trim applies a shorter name
 
-- **WHEN** the title tier is not `good` and the user activates the suggested-trim affordance
+- **WHEN** the name tier is not `good` and the user activates the suggested-trim affordance
 - **THEN** the name SHALL be replaced with the shortened suggestion
 
 ### Requirement: A long title SHALL surface the note editor inline and SHALL NOT ask for it again
 
-When the title tier is not `good`, the title card SHALL render the description/note editor inline beneath the name field, with copy steering size/color/variant detail into the description rather than the title. When the note is surfaced inline this way, the deck SHALL NOT also present a standalone note card — the same field is requested once. The description SHALL still be shown on Preview regardless.
+When the name tier is not `good`, the name card SHALL render the description/note editor inline beneath the name field, with copy steering size/color/variant detail into the description rather than the title. When the note is surfaced inline this way, the deck SHALL NOT also present a standalone note card — the same field is requested once. The description SHALL still be shown on Preview regardless.
 
 #### Scenario: Long title reveals inline note and drops the note card
 
-- **WHEN** the title card is shown with a name over 50 characters
+- **WHEN** the name card is shown with a name over 50 characters
 - **THEN** the description/note editor SHALL be visible on the same card, no standalone `note` card SHALL follow in the deck, and the description SHALL still render on Preview
 
 ### Requirement: Name and description SHALL be capped together and the description SHALL always render in full
@@ -117,13 +117,13 @@ The name SHALL be capped at 100 characters and the description at 100 characters
 
 ### Requirement: The name field SHALL be labeled "Item name" everywhere and SHALL NOT trigger personal-name autofill
 
-The field that holds the item's `name` SHALL carry the user-facing label **"Item name"** on every surface that names it — the deck `intro` confirmed-summary line, the title card, the Triage row, and the Focus editor heading — matching the label the editor's own field already uses. No surface SHALL present this field as the bare word "Name" or as "Title", so the same field is never given a different name on a different screen. The validation copy in `item.schema.ts` SHALL likewise refer to "Item name" (replacing the legacy "Title must be…" strings), matching the `name` field it guards.
+The field that holds the item's `name` SHALL carry the user-facing label **"Item name"** on every surface that names it — the deck `intro` confirmed-summary line, the name card, the Triage row, and the Focus editor heading — matching the label the editor's own field already uses. No surface SHALL present this field as the bare word "Name" or as "Title", so the same field is never given a different name on a different screen. The validation copy in `item.schema.ts` SHALL likewise refer to "Item name" (replacing the legacy "Title must be…" strings), matching the `name` field it guards.
 
-The name input SHALL be rendered so the browser does not offer the signed-in person's given/family name as an autofill candidate: it SHALL set `autoComplete="off"` and SHALL NOT expose a DOM `name`/`id` of `"name"`. This requirement governs the **visible copy and DOM input attributes only**; the persisted column, the schema field, and the view-model property remain `name`, and the internal step/tier/editor identifiers (the `title` step, `titleTier`, `TitleEditor`) are an implementation detail outside its scope.
+The name input SHALL be rendered so the browser does not offer the signed-in person's given/family name as an autofill candidate: it SHALL set `autoComplete="off"` and SHALL NOT expose a DOM `name`/`id` of `"name"`. This requirement governs the **visible copy and DOM input attributes only**; the persisted column, the schema field, and the view-model property remain `name`, and the internal step/tier/editor identifiers (the `name` step, `nameTier`, `NameEditor`) are an implementation detail outside its scope.
 
 #### Scenario: The name field reads "Item name" on every surface
 
-- **WHEN** one item flows through the intro summary, the title card, the Triage row, and the Focus editor
+- **WHEN** one item flows through the intro summary, the name card, the Triage row, and the Focus editor
 - **THEN** each surface SHALL label the field "Item name" — never "Name" or "Title"
 
 #### Scenario: The name input does not offer personal-name autofill
@@ -162,11 +162,11 @@ A price SHALL be required whenever the store carries a link: the `price` card SH
 
 ### Requirement: The note card SHALL collect an optional short description when the title is clean
 
-The standalone `note` card SHALL appear only when the title tier is `good` (otherwise the note is surfaced inline on the title card per the inline-note requirement). It SHALL present the description editor with copy explaining that descriptions are not pulled and should be short and specific. The note SHALL be optional — the card's forward ("Continue") affordance SHALL advance to Preview with an empty description, requiring no text — and the editor SHALL show the description counter. A dedicated "Skip" control SHALL NOT be added: the note is the deck's last step, so "Continue" already advances to Preview without requiring input, and a separate Skip would duplicate it and cut against the deck's no-global-skip principle.
+The standalone `note` card SHALL appear only when the name tier is `good` (otherwise the note is surfaced inline on the name card per the inline-note requirement). It SHALL present the description editor with copy explaining that descriptions are not pulled and should be short and specific. The note SHALL be optional — the card's forward ("Continue") affordance SHALL advance to Preview with an empty description, requiring no text — and the editor SHALL show the description counter. A dedicated "Skip" control SHALL NOT be added: the note is the deck's last step, so "Continue" already advances to Preview without requiring input, and a separate Skip would duplicate it and cut against the deck's no-global-skip principle.
 
 #### Scenario: Note card appears for a clean title and can be advanced with no text
 
-- **WHEN** the title tier is `good` and the note card is shown with an empty description
+- **WHEN** the name tier is `good` and the note card is shown with an empty description
 - **THEN** the card's "Continue" affordance SHALL advance to Preview without requiring text
 
 ### Requirement: Manual entry SHALL open a dedicated Fill-manually shell
@@ -234,7 +234,7 @@ The Review shell SHALL NOT auto-advance; it leaves only by its own "Back to prev
 
 ### Requirement: Photo and store tiers SHALL come from pure tier helpers
 
-Pure `photoTier(photos)` and `storeTier(store)` helpers SHALL classify those two fields alongside the existing `titleTier` and `priceTier`, each returning a tier plus a note stating the field's issue. `storeTier` SHALL cover the store name + link pair only (price is owned by the price tier rules) with symmetric coupling: both fields empty → `good` with an empty note (linkless is a supported state, not a gap — owner decision on #256); a non-empty name with an empty link → `error` with a note that a store name needs a link; a link that is non-empty and fails `isValidProductUrl`, or a link present without a name → `error` with the existing naming/link notes. There is no `warn` tier for the store. No surface SHALL derive a photo or store tier inline. The tier helpers remain the single source for these rules so they cannot drift between the deck, the shells, the Focus editors, and Preview.
+Pure `photoTier(photos)` and `storeTier(store)` helpers SHALL classify those two fields alongside the existing `nameTier` and `priceTier`, each returning a tier plus a note stating the field's issue. `storeTier` SHALL cover the store name + link pair only (price is owned by the price tier rules) with symmetric coupling: both fields empty → `good` with an empty note (linkless is a supported state, not a gap — owner decision on #256); a non-empty name with an empty link → `error` with a note that a store name needs a link; a link that is non-empty and fails `isValidProductUrl`, or a link present without a name → `error` with the existing naming/link notes. There is no `warn` tier for the store. No surface SHALL derive a photo or store tier inline. The tier helpers remain the single source for these rules so they cannot drift between the deck, the shells, the Focus editors, and Preview.
 
 #### Scenario: A photo-less item is warned, not errored
 
@@ -268,7 +268,7 @@ Pure `photoTier(photos)` and `storeTier(store)` helpers SHALL classify those two
 
 ### Requirement: Preview SHALL be the universal create/edit surface
 
-The Preview SHALL render the item exactly as it appears on a list by reusing the production list card component itself (the real `ItemCard`, in the owner perspective, with its action area in `ItemActions` view-only mode per `item-actions`), not a separate lookalike — so there is zero divergence between the preview and the created item (layout, photo framing, price line, store affordance all identical). Gaps SHALL surface exactly as the live card surfaces them (a missing price is simply absent on the card); the "fill this in" nudges live off the card, on the action rows and Triage. The Preview SHALL be the entry surface for the fetch (after the deck) and edit paths, and the surface the Fill-manually shell advances into; manual entry SHALL NOT open the Preview directly. It SHALL expose: a "Need to change something?" entry to Triage; a "Store" entry opening the grouped Store editor **for non-linkless items only** (hidden for linkless items per the linkless-lock requirement) and a "Lists & quantity" entry opening its sheet; an "Add a note" entry when the description is empty; and a primary Create/Save action. The Create/Save action SHALL be disabled while the title tier is `error`, with an inline trim affordance and explanatory line, and while any store or price row is in the `error` tier per the tri-state rules — a linkless item with empty store fields (and an empty or good price) has no `error` tier and SHALL save. The Preview SHALL remain the sole save surface for every path. The previous `ItemForm` SHALL be retired in favor of this surface.
+The Preview SHALL render the item exactly as it appears on a list by reusing the production list card component itself (the real `ItemCard`, in the owner perspective, with its action area in `ItemActions` view-only mode per `item-actions`), not a separate lookalike — so there is zero divergence between the preview and the created item (layout, photo framing, price line, store affordance all identical). Gaps SHALL surface exactly as the live card surfaces them (a missing price is simply absent on the card); the "fill this in" nudges live off the card, on the action rows and Triage. The Preview SHALL be the entry surface for the fetch (after the deck) and edit paths, and the surface the Fill-manually shell advances into; manual entry SHALL NOT open the Preview directly. It SHALL expose: a "Need to change something?" entry to Triage; a "Store" entry opening the grouped Store editor **for non-linkless items only** (hidden for linkless items per the linkless-lock requirement) and a "Lists & quantity" entry opening its sheet; an "Add a note" entry when the description is empty; and a primary Create/Save action. The Create/Save action SHALL be disabled while the name tier is `error`, with an inline trim affordance and explanatory line, and while any store or price row is in the `error` tier per the tri-state rules — a linkless item with empty store fields (and an empty or good price) has no `error` tier and SHALL save. The Preview SHALL remain the sole save surface for every path. The previous `ItemForm` SHALL be retired in favor of this surface.
 
 #### Scenario: Manual entry reaches Preview through the Fill-manually shell
 
@@ -424,8 +424,8 @@ After a successful fetch — or a linkless-door entry — the modal SHALL render
 
 Step membership (which steps apply):
 - `photo` SHALL apply when the candidate count is `0` (empty/error) or greater than `1` (a choice); when exactly one image was returned it is auto-selected and the photo step SHALL be marked done rather than omitted.
-- `title` and `price` SHALL always apply; `store` SHALL apply unless the item is linkless (store name and link both empty, per the linkless-lock requirement) at entry — the fetch path always carries a link, the linkless door never does. A `good`-tier title, price, or applicable store SHALL be marked **done** (not hidden) — except a linkless item's empty price, which is a valid save state (BARE) but SHALL NOT be pre-marked done, so the door path still lands on the price card; step *validity* (the tracker's colour) SHALL still read the empty linkless price as valid. The step order SHALL be photo → title → price → store → note.
-- `note` SHALL apply as a standalone step only when the title tier **is** `good`; when the title tier is not `good` the note editor is surfaced inline on the title step and the standalone note step SHALL NOT also appear.
+- `name` and `price` SHALL always apply; `store` SHALL apply unless the item is linkless (store name and link both empty, per the linkless-lock requirement) at entry — the fetch path always carries a link, the linkless door never does. A `good`-tier title, price, or applicable store SHALL be marked **done** (not hidden) — except a linkless item's empty price, which is a valid save state (BARE) but SHALL NOT be pre-marked done, so the door path still lands on the price card; step *validity* (the tracker's colour) SHALL still read the empty linkless price as valid. The step order SHALL be photo → name → price → store → note.
+- `note` SHALL apply as a standalone step only when the name tier **is** `good`; when the name tier is not `good` the note editor is surfaced inline on the name step and the standalone note step SHALL NOT also appear.
 
 A single `stepBlocked(step, item)` helper SHALL determine whether a step is incomplete/gated — for `store`, blocked while `storeTier` is `error` — and SHALL be the sole source consumed by both the step's continue affordance and the tracker's forward-navigation gate. The deck SHALL NOT offer any affordance that jumps straight to Preview bypassing incomplete steps — forward movement advances one step at a time (or via the tracker to an already-reached step), and no "Skip — straight to preview" affordance SHALL exist. Ordering SHALL place completed steps ahead of the first incomplete step.
 
@@ -442,7 +442,7 @@ A single `stepBlocked(step, item)` helper SHALL determine whether a step is inco
 #### Scenario: Deck opens at the first incomplete step
 
 - **WHEN** a fetch returns a `good` price, store, and single photo but a flagged (long) title
-- **THEN** the price, store, and photo steps SHALL be marked done and the deck SHALL open on the title step, with the completed steps ordered ahead of it and reachable by backward navigation
+- **THEN** the price, store, and photo steps SHALL be marked done and the deck SHALL open on the name step, with the completed steps ordered ahead of it and reachable by backward navigation
 
 #### Scenario: No affordance skips forward to Preview
 
@@ -451,13 +451,13 @@ A single `stepBlocked(step, item)` helper SHALL determine whether a step is inco
 
 #### Scenario: Flagged title surfaces the inline note and drops the standalone note step
 
-- **WHEN** the title tier is not `good`
-- **THEN** the note editor SHALL be inline on the title step and no standalone `note` step SHALL appear in the tracker
+- **WHEN** the name tier is not `good`
+- **THEN** the note editor SHALL be inline on the name step and no standalone `note` step SHALL appear in the tracker
 
 #### Scenario: A linkless entry has no store step
 
 - **WHEN** the deck is entered via the linkless door
-- **THEN** the store step SHALL NOT be in the step set — not rendered as done, absent — and the tracker SHALL show photo → title → price (→ note)
+- **THEN** the store step SHALL NOT be in the step set — not rendered as done, absent — and the tracker SHALL show photo → name → price (→ note)
 
 ### Requirement: Deck screens SHALL render in a deck-owned shell with pinned-header, scrolling-well, and pinned-footer regions
 
@@ -590,7 +590,7 @@ The deck view model SHALL hold one scalar `store` (never an array): `seedFromIte
 
 ### Requirement: The linkless door SHALL enter the standard deck with no intro and no store step
 
-Activating the URL entry state's linkless-door affordance (per `product-link-prefill`) SHALL enter the standard deck card flow — the same tracker, cards, gates, and completion routing as the fetch path, never a parallel flow — seeded from `blankItem()` with no URL. The door entry SHALL skip the intro card (it summarizes a fetch; nothing was fetched), SHALL pre-mark nothing done (every applicable step is tracked from zero), and SHALL include no store step or store fields anywhere in its flow. The photo card SHALL start with zero candidates, filled by the existing transient placeholder-thumb top-up with the first thumb pre-selected (per the zero-image photo-card rule) — the door SHALL NOT seed any image candidates. Price entry SHALL remain optional on this path per the tri-state rules (`item-store-links`): a valid price exits PRICED, an empty price exits BARE, and the existing tier gates govern with no door-specific special-casing. The price card SHALL NOT render a source-page link affordance when no product URL exists. Deck card copy SHALL NOT use fetch-framed language for linkless items — the photo, title, and price cards (and the title card's inline note helper) SHALL branch to linkless-appropriate copy, since nothing was scraped or fetched. The fetch-failure manual path is unaffected: it remains failure-only, link-seeded, and FULL-only.
+Activating the URL entry state's linkless-door affordance (per `product-link-prefill`) SHALL enter the standard deck card flow — the same tracker, cards, gates, and completion routing as the fetch path, never a parallel flow — seeded from `blankItem()` with no URL. The door entry SHALL skip the intro card (it summarizes a fetch; nothing was fetched), SHALL pre-mark nothing done (every applicable step is tracked from zero), and SHALL include no store step or store fields anywhere in its flow. The photo card SHALL start with zero candidates, filled by the existing transient placeholder-thumb top-up with the first thumb pre-selected (per the zero-image photo-card rule) — the door SHALL NOT seed any image candidates. Price entry SHALL remain optional on this path per the tri-state rules (`item-store-links`): a valid price exits PRICED, an empty price exits BARE, and the existing tier gates govern with no door-specific special-casing. The price card SHALL NOT render a source-page link affordance when no product URL exists. Deck card copy SHALL NOT use fetch-framed language for linkless items — the photo, title, and price cards (and the name card's inline note helper) SHALL branch to linkless-appropriate copy, since nothing was scraped or fetched. The fetch-failure manual path is unaffected: it remains failure-only, link-seeded, and FULL-only.
 
 #### Scenario: Door deck tracks every step from zero with no store step
 

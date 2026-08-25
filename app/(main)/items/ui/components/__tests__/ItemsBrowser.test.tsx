@@ -7,6 +7,10 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ItemDisplay, ItemStoreTable } from '@/lib/types';
 import ItemsBrowser from '../ItemsBrowser';
+import {
+  HERO_SLOT_READY_EVENT,
+  HERO_TOOLBAR_SLOT_ID,
+} from '@/app/(main)/lists/ui/components/ListHeroSurface';
 
 const nav = vi.hoisted(() => ({
   replace: vi.fn(),
@@ -38,7 +42,10 @@ vi.mock('../Item', () => ({
 vi.mock('../PriceFilterPopover', () => ({ default: () => <div /> }));
 vi.mock('../StoreFilterPopover', () => ({
   default: ({ storeOptions }: { storeOptions: string[] }) => (
-    <div data-testid="store-filter-stub" data-options={storeOptions.join(',')} />
+    <div
+      data-testid="store-filter-stub"
+      data-options={storeOptions.join(',')}
+    />
   ),
 }));
 
@@ -50,7 +57,10 @@ function store(
   return { name, price, link };
 }
 
-function makeItem(id: string, overrides: Partial<ItemDisplay> = {}): ItemDisplay {
+function makeItem(
+  id: string,
+  overrides: Partial<ItemDisplay> = {}
+): ItemDisplay {
   return {
     id,
     name: `Item ${id}`,
@@ -65,7 +75,10 @@ function makeItem(id: string, overrides: Partial<ItemDisplay> = {}): ItemDisplay
 
 type BrowserProps = React.ComponentProps<typeof ItemsBrowser>;
 
-function renderBrowser(items: ItemDisplay[], overrides: Partial<BrowserProps> = {}) {
+function renderBrowser(
+  items: ItemDisplay[],
+  overrides: Partial<BrowserProps> = {}
+) {
   return render(
     <ItemsBrowser
       items={items}
@@ -131,9 +144,7 @@ describe('ItemsBrowser', () => {
       // The DAL selected Amazon; the legacy second row (Etsy) never reaches
       // the UI, so filtering on it matches nothing and offers no option.
       nav.search = 'store=Etsy';
-      renderBrowser([
-        makeItem('legacy', { store: store('Amazon', '20') }),
-      ]);
+      renderBrowser([makeItem('legacy', { store: store('Amazon', '20') })]);
       expect(visibleIds()).toEqual([]);
       const stubs = screen.getAllByTestId('store-filter-stub');
       expect(stubs[0]).toHaveAttribute('data-options', 'Amazon');
@@ -257,10 +268,9 @@ describe('ItemsBrowser', () => {
     });
 
     it('ListOrder_PreservesInputOrder', () => {
-      renderBrowser(
-        [makeItem('a'), makeItem('b'), makeItem('c')],
-        { mode: 'list' }
-      );
+      renderBrowser([makeItem('a'), makeItem('b'), makeItem('c')], {
+        mode: 'list',
+      });
       expect(visibleIds()).toEqual(['a', 'b', 'c']);
     });
 
@@ -488,6 +498,36 @@ describe('ItemsBrowser', () => {
       nav.search = 'store=Amazon';
       rerender(<ItemsBrowser items={items} mode="list" />);
       expect(visibleIds()).toEqual(['amazon']);
+    });
+  });
+
+  describe('ToolbarSlot', () => {
+    function addSlot() {
+      const el = document.createElement('div');
+      el.id = HERO_TOOLBAR_SLOT_ID;
+      document.body.appendChild(el);
+      return el;
+    }
+
+    afterEach(() => {
+      document.getElementById(HERO_TOOLBAR_SLOT_ID)?.remove();
+    });
+
+    it('SlotPresent_ToolbarRendersInsideItRatherThanInline', () => {
+      const target = addSlot();
+      const { container } = renderBrowser([makeItem('a')], { mode: 'list' });
+      expect(target.querySelector('.items-toolbar')).not.toBeNull();
+      expect(container.querySelector('.items-toolbar')).toBeNull();
+    });
+
+    it('SlotAppearsAfterMount_ToolbarMovesInOnTheReadyEvent', () => {
+      const { container } = renderBrowser([makeItem('a')], { mode: 'list' });
+      expect(container.querySelector('.items-toolbar')).not.toBeNull();
+
+      const target = addSlot();
+      fireEvent(window, new Event(HERO_SLOT_READY_EVENT));
+      expect(target.querySelector('.items-toolbar')).not.toBeNull();
+      expect(container.querySelector('.items-toolbar')).toBeNull();
     });
   });
 });

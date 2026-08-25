@@ -2,7 +2,7 @@
 
 import { useIsClient } from '@/app/ui/hooks/useIsClient';
 import { createPortal } from 'react-dom';
-import { LuX } from 'react-icons/lu';
+import { CloseButton } from '@/app/ui/components/button';
 import './modal.css';
 
 export default function Modal({
@@ -24,9 +24,9 @@ export default function Modal({
   return createPortal(
     <div className={`modal-overlay ${className || ''}`}>
       <div className="modal-container">
-        <div className="modal">{children}</div>
-        <div className="close-button" onClick={onClose}>
-          <LuX />
+        <div className="modal">
+          <CloseButton onClick={onClose} />
+          {children}
         </div>
       </div>
     </div>,

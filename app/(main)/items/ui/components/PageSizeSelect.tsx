@@ -20,7 +20,7 @@ export default function PageSizeSelect({
         aria-label="Items per page"
         options={PAGE_SIZE_OPTIONS.map((n) => ({
           value: String(n),
-          label: `${n} / page`,
+          label: `${n}`,
         }))}
         fieldSize="sm"
       />
