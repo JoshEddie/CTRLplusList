@@ -162,10 +162,9 @@ export async function getEligiblePurchasers(
   'use cache';
   // Membership rows read here (candidates' self memberships) have no narrow
   // tag: self-profile creation happens out-of-band at signup with no
-  // invalidation hook, so no write refreshes them — only a manual purge of the
-  // bulk profile_members tag would. Harmless: a candidate enters or leaves this
-  // pool only through a follow or block write, and every one of those fires a
-  // tag below.
+  // invalidation hook, so only the bulk profile_members tag covers them.
+  // Harmless: a candidate enters or leaves this pool only through a follow or
+  // block write, and those fire tags this read carries.
   cacheTag(
     cacheTags.userFollows,
     cacheTags.userBlocks,

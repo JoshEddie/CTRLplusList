@@ -112,7 +112,7 @@ describe('setListItems', () => {
     expect(res.message).toBe('No changes');
   });
 
-  it('MixedAddRemove_WritesDiff-PlacesInsertsAtMaxPlus65536-ReportsCounts', async () => {
+  it('MixedAddRemove_WritesDiff-PlacesInsertsAtMaxPlus65536-ReportsCounts-BumpsChangedItemTags', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     await seedItem(db, { id: 'A', user_id: OWNER.id });
     await seedItem(db, { id: 'B', user_id: OWNER.id });
@@ -129,8 +129,6 @@ describe('setListItems', () => {
     expect(byItem).toEqual({ A: 65536, C: 131072 });
     expect(updateTag).toHaveBeenCalledWith('lists:id:L');
     expect(updateTag).toHaveBeenCalledWith('list_items:list:L');
-    // The added item's own cached read (getItemById) names no tag for a list
-    // it was not yet on, so the membership write has to fire it by item.
     expect(updateTag).toHaveBeenCalledWith('items:id:C');
     expect(updateTag).toHaveBeenCalledWith('items:id:B');
   });
@@ -227,7 +225,7 @@ describe('removeListItem', () => {
     await seedListItem(db, { list_id: 'L', item_id: 'B', position: 131072 });
   });
 
-  it('Owner_DeletesOnlyTargetRow-BumpsListAndMembershipTags', async () => {
+  it('Owner_DeletesOnlyTargetRow-BumpsListMembershipAndItemTags', async () => {
     const res = await actions.removeListItem('L', 'A');
     expect(res.success).toBe(true);
     expect(res.message).toBe('Removed from list');
