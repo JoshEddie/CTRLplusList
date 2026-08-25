@@ -107,7 +107,7 @@ export async function getListsSharedByProfile(profileId: string) {
 // user rows out-of-band on sign-in; no invalidation hook).
 export async function getPublicListsByProfile(
   profileId: string,
-  opts: { limit?: number; offset?: number } = {}
+  opts: { limit?: number } = {}
 ) {
   try {
     const result = await db.query.lists.findMany({
@@ -123,7 +123,6 @@ export async function getPublicListsByProfile(
       },
       orderBy: (lists, { desc }) => [desc(lists.shared_at)],
       limit: opts.limit,
-      offset: opts.offset,
     });
     return result.map(withVisibility);
   } catch (error) {

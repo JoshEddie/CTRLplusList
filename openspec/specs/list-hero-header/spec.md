@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The `list-hero-header` capability defines the composition of the list-detail hero panel — the single continuous gradient banner at the top of a list page. It specifies which elements render, in what DOM order, and for which viewer class (owner, authenticated viewer, owner-in-preview): the identity zone (visibility/share cluster, title, occasion eyebrow, subtitle, item-count/updated footer) and the controls zone (owner action row + "Choose items", or viewer byline + Share/Bookmark, or the preview action row). It also owns the WCAG 2.1 AA contrast contract for all hero text against the gradient. The internal behavior of the affordances it places (the visibility picker, avatar/Follow, bookmark, collapse shell, kebab menu) is delegated to their owning capabilities; this capability governs only their placement and the hero's own owner/viewer/preview branching.
+The `list-hero-header` capability defines the composition of the list-detail hero panel — the single continuous gradient banner at the top of a list page. It specifies which elements render, in what DOM order, and for which viewer class (owner, authenticated viewer, owner-in-preview): the identity zone (visibility/share cluster, title, occasion eyebrow, subtitle, item-count/updated footer) and the controls zone (owner action row + "Choose items", or viewer byline + Share/Bookmark, or the preview action row). It also owns the WCAG 2.1 AA contrast contract for all hero text against the gradient. The internal behavior of the affordances it places (the visibility picker, avatar/Follow, bookmark, sticky strip, kebab menu) is delegated to their owning capabilities; this capability governs only their placement and the hero's own owner/viewer/preview branching.
 
 ## Requirements
 

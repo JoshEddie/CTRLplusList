@@ -15,17 +15,9 @@ export function timeAgo(date: Date | string | null | undefined): string {
     [31536000, 'year'],
   ];
   // diffSec is ≥ 60 here (the just-now return handled anything smaller), so
-  // the right unit is simply the last one whose successor is still too big.
-  let value = diffSec;
-  let unit: Intl.RelativeTimeFormatUnit = 'second';
-  for (let i = 0; i < units.length; i++) {
-    const [seconds, u] = units[i];
-    const next = units[i + 1];
-    if (!next || diffSec < next[0]) {
-      value = Math.round(diffSec / seconds);
-      unit = u;
-      break;
-    }
-  }
-  return rtf.format(-value, unit);
+  // findLast always matches at least the minute threshold.
+  const [seconds, unit] = units.findLast(
+    ([threshold]) => diffSec >= threshold
+  )!;
+  return rtf.format(-Math.round(diffSec / seconds), unit);
 }

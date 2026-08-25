@@ -86,16 +86,21 @@ The filters trigger's visible "Filters" text label SHALL be hidden visually at t
 
 ### Requirement: Pagination floats over content at all viewports
 
-The `.items-pagination` control SHALL be positioned absolutely at the bottom of its items-browser container at all viewport widths, overlapping the bottom of the scrollable items grid rather than sitting in flow below it. The pagination control's background SHALL be rendered at 90% alpha so the items beneath it are faintly visible. The `.item-grid-container` SHALL have bottom padding sufficient to scroll the last item row clear of the floating pagination at all viewport widths. The overlay SHALL be anchored to `.container--items-library` and `.container--list-details` (not `.items-browser`) so it spans the container's full width — bypassing any inner horizontal padding on intermediate wrappers — and sits flush against the container's actual bottom edge.
+The `.items-pagination` control SHALL be pinned at the bottom of the viewport while the items grid scrolls, at all viewport widths, rather than sitting only in static flow below the grid. The pagination control's background SHALL be rendered at 90% alpha so the items beneath it are faintly visible, and the last item row SHALL be able to scroll fully into view above the pagination.
+
+The pinning mechanism follows each container's scroll model:
+
+- **`.container--items-library`** (fixed-height inner scroller): the control SHALL be positioned absolutely at the bottom of the container — anchored to the container (not `.items-browser`) so it spans the container's full width, bypassing any inner horizontal padding on intermediate wrappers — and `.item-grid-container` SHALL carry bottom padding sufficient to scroll the last item row clear of the overlay.
+- **`.container--list-details`** (document flow): the control SHALL be `position: sticky; bottom: 0` — in flow at the end of the items browser, pinning to the viewport bottom while the grid scrolls past it. No clearance padding is needed: the control occupies its own flow position at the end of the list.
 
 #### Scenario: Pagination floats over last items at all viewports
 
 - **WHEN** the items list is long enough to require scrolling to the bottom, at any viewport width
-- **THEN** the pagination control is visible at the bottom of the items-browser with items faintly visible through its 90%-alpha background, and the last item row in the list scrolls fully into view above the pagination (not permanently obscured by it)
+- **THEN** the pagination control is visible at the bottom of the viewport with items faintly visible through its 90%-alpha background, and the last item row in the list scrolls fully into view above the pagination (not permanently obscured by it)
 
-#### Scenario: Pagination spans container full width
+#### Scenario: Library pagination spans container full width
 
-- **WHEN** the pagination overlay renders
+- **WHEN** the pagination overlay renders in `.container--items-library`
 - **THEN** its left edge aligns with the container's left padding-box edge and its right edge aligns with the container's right padding-box edge — regardless of any horizontal margin or padding on intermediate wrapper elements
 
 #### Scenario: Pagination affordances remain reachable
@@ -217,19 +222,19 @@ The items browser SHALL persist the selected page size to a cookie named `items_
 - **WHEN** the server renders the items library with an `items_page_size` cookie of `96`
 - **THEN** the browser's initial page size is `96`; with an absent or invalid cookie the initial page size is `24`
 
-### Requirement: Pagination SHALL render a windowed page range with disabled bounds
+### Requirement: Pagination SHALL render first, current and last pages with disabled bounds
 
-The pagination control SHALL render its page buttons via a windowing rule: when `totalPages ≤ 7` it SHALL render a button for every page `1..totalPages` with no gaps; when `totalPages > 7` it SHALL render the first page, an ellipsis gap when the window start is greater than `2`, the window `page-1 … page+1` (clamped within `[2, totalPages-1]`), a trailing ellipsis gap when the window end is less than `totalPages-1`, and the last page. The current page button SHALL be marked `aria-current="page"` and styled as the primary variant while other page buttons are the ghost variant. The Previous control SHALL be disabled on page 1 and the Next control SHALL be disabled on the last page. Navigating to page 1 SHALL remove the `page` param; navigating to any other page SHALL set it.
+The pagination control SHALL render a page button for each of the first page, the current page and the last page, de-duplicated and in ascending order — so a mid-range page renders three buttons, the first or last page renders two, and a single-page result renders one. No ellipsis gap is rendered. The current page button SHALL be marked `aria-current="page"` and styled as the primary variant while other page buttons are the ghost variant. The Previous control SHALL be disabled on page 1 and the Next control SHALL be disabled on the last page. Navigating to page 1 SHALL remove the `page` param; navigating to any other page SHALL set it.
 
-#### Scenario: Seven or fewer pages render without gaps
-
-- **WHEN** `totalPages` is 5
-- **THEN** the control renders page buttons `1 2 3 4 5` with no ellipsis gap
-
-#### Scenario: More than seven pages render a windowed range with gaps
+#### Scenario: Mid-range page renders first, current and last
 
 - **WHEN** `totalPages` is 20 and the current page is 10
-- **THEN** the control renders `1`, an ellipsis gap, `9 10 11`, an ellipsis gap, and `20`
+- **THEN** the control renders page buttons `1 10 20` with no ellipsis gap
+
+#### Scenario: Edge page renders first and last only
+
+- **WHEN** `totalPages` is 20 and the current page is 1 or 20
+- **THEN** the control renders page buttons `1 20` plus the previous/next arrows
 
 #### Scenario: Bounds are disabled at the edges
 

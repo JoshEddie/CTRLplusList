@@ -46,12 +46,6 @@ export const jwtCallback: NonNullable<Callbacks['jwt']> = ({
   return token;
 };
 
-export const sessionCallback: NonNullable<Callbacks['session']> = async ({
-  session,
-}) => {
-  return session;
-};
-
 // Written on the same statements as the phase-1 migration backfill, which is a
 // point-in-time SELECT nothing re-runs: without this, an account created after
 // the migration would hold no profile at all. `signInCallback` mutates the
@@ -115,7 +109,6 @@ const nextAuth = NextAuth({
   callbacks: {
     signIn: signInCallback,
     jwt: jwtCallback,
-    session: sessionCallback,
   },
   events: {
     // The adapter always yields an AdapterUser; the event type widens it to

@@ -1,12 +1,9 @@
+/* Panel chrome comes from the shared .dialog-panel class (global.css). */
 .follow-disclosure-dialog {
   margin: auto;
-  background-color: var(--background-color);
-  color: var(--primary-text-color);
-  border: 1px solid var(--primary-color);
-  border-radius: 0.5rem;
-  padding: 1.5rem;
   width: min(24rem, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
 }
 .follow-disclosure-dialog::backdrop {
   background-color: var(--transparent-overlay);
@@ -29,11 +26,6 @@
   gap: 0.75rem;
   justify-content: flex-end;
 }
-.list-bookmark-indicator {
-  color: var(--primary-color);
-  margin-right: 6px;
-}
-
 /* User card grid + card (re-skin: list-card surface tokens) */
 .user-card-grid {
   display: grid;
@@ -43,29 +35,47 @@
   padding: 0;
   margin: 0;
 }
-.user-card {
+/* Shared card-tile surface: .user-card / .list-card / .more-card differ
+   only in interior layout and the more-card's brand tint. */
+.user-card,
+.list-card,
+.more-card {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
   padding: 18px 20px;
   height: 100%;
-  background-color: var(--light-color);
   border: 1px solid var(--card-border-color);
   border-radius: 10px;
   box-shadow: var(--card-shadow);
   text-decoration: none;
-  color: inherit;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
     box-shadow 0.15s ease;
 }
-.user-card:hover {
+
+.user-card,
+.list-card {
+  flex-direction: column;
+  background-color: var(--light-color);
+  color: inherit;
+}
+
+.user-card:hover,
+.list-card:hover {
   background-color: var(--card-hover-background-color);
+}
+
+.user-card:hover,
+.list-card:hover,
+.more-card:hover {
   border-color: var(--card-border-hover-color);
   box-shadow: var(--card-shadow-hover);
+}
+
+.user-card {
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 
 /* Compact variant: horizontal avatar + name. Used by the home FollowingRail
@@ -278,10 +288,6 @@
    Section headers match the home rail visual register (Crimson Pro,
    --heading-text-color). Rows look like .item-list rows with bottom
    dividers between siblings. Sections separated by .home-rail-divider. */
-.connections-page {
-  padding-top: 8px;
-}
-
 .connections-section {
   padding: 18px 0;
 }
@@ -417,12 +423,6 @@
 .rail.collapsed .rail-body {
   display: none;
 }
-.rail-empty {
-  padding: 12px 0;
-  color: var(--date-text-color);
-  font-family: var(--font-roboto-condensed);
-}
-
 @media (max-width: 800px) {
   .rail {
     padding: 12px 0;
@@ -465,31 +465,16 @@
 /* "+N more" trailing tile — same dimensions as .list-card / .user-card,
    distinguished by a faint brand-tinted background and centered copy. */
 .more-card {
-  display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
   min-height: 100%;
-  padding: 18px 20px;
-  border: 1px solid var(--card-border-color);
-  border-radius: 10px;
   background-color: var(--card-accent-background-color);
-  box-shadow: var(--card-shadow);
   color: var(--primary-color);
   font-family: var(--font-roboto-condensed);
   font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.02em;
   text-align: center;
-  text-decoration: none;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-.more-card:hover {
-  border-color: var(--card-border-hover-color);
-  box-shadow: var(--card-shadow-hover);
 }
 .more-card-text {
   white-space: nowrap;
@@ -504,27 +489,8 @@
 
 /* Home card (used in rails and on the My Lists page) */
 .list-card {
-  display: flex;
-  flex-direction: column;
   justify-content: space-between;
   gap: 14px;
-  border-radius: 10px;
-  padding: 18px 20px;
-  height: 100%;
-  background-color: var(--light-color);
-  border: 1px solid var(--card-border-color);
-  box-shadow: var(--card-shadow);
-  text-decoration: none;
-  color: inherit;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-.list-card:hover {
-  background-color: var(--card-hover-background-color);
-  border-color: var(--card-border-hover-color);
-  box-shadow: var(--card-shadow-hover);
 }
 .list-card-head {
   display: flex;
@@ -642,8 +608,8 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
-  border-bottom: 1px solid var(--divider-color);
 }
+
 .list-collections-tabs {
   display: flex;
   align-items: stretch;
@@ -708,51 +674,29 @@
   margin: 0;
 }
 
-/* ── List-collections container (My Lists / Bookmarks / History / Following) ──
-   Fixed-height flex column. The peer tab strip stays at the top; only the
-   card grid scrolls. Matches the architectural pattern used by
-   .container--list-details and .container--items-library. */
-.container--list-collections {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - var(--app-sticky-top));
-  overflow: hidden;
-}
-
-/* The per-page wrapper (.my-lists-page / .bookmarks-page / .history-page /
-   .following-page) inherits the flex layout from the container. */
+/* ── List-collections pages (My Lists / Bookmarks / History / Following) ──
+   Plain document flow, matching .container--list-details: the document is
+   the only scroller (iOS tap-to-top drives document.scrollingElement) and
+   the tab strip pins as .pinned-page-chrome (app-frame.css). */
 .container--list-collections > .my-lists-page,
 .container--list-collections > .bookmarks-page,
 .container--list-collections > .history-page,
 .container--list-collections > .following-page {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
   width: 100%;
 }
 
 .container--list-collections .list-collections-nav {
-  flex-shrink: 0;
   margin-bottom: 0;
-  padding-top: 8px;
-  background-color: var(--light-color);
+  padding-top: calc(var(--container-padding-top) + 8px);
 }
 
 .container--list-collections .list-card-grid,
 .container--list-collections .user-card-grid {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  align-content: start;
   padding: 16px 0 16px;
 }
 
 .container--list-collections .my-lists-empty,
 .container--list-collections .profile-empty {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
   padding-top: 16px;
 }
 

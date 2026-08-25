@@ -6,10 +6,9 @@ import {
   SegmentedControl,
   SegmentedOption,
 } from '@/app/ui/components/segmented-control';
-import { useKeyboardOffset } from '@/app/ui/hooks/useKeyboardOffset';
 import { SortKey } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MdGridView, MdTune, MdViewList } from 'react-icons/md';
 import { FiltersSheet } from './FiltersSheet';
 import { SearchInputControl } from './SearchInputControl';
@@ -55,8 +54,12 @@ export default function ItemsToolbar({
   const view = searchParams?.get('view') === 'list' ? 'list' : 'grid';
 
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersTriggerRef = useRef<HTMLButtonElement>(null);
 
-  useKeyboardOffset(filtersOpen);
+  const closeFilters = useCallback(() => {
+    setFiltersOpen(false);
+    filtersTriggerRef.current?.focus();
+  }, []);
 
   const updateParams = useCallback(
     (patch: ParamPatch) => {
@@ -75,11 +78,18 @@ export default function ItemsToolbar({
   useEffect(() => {
     if (!filtersOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setFiltersOpen(false);
+      if (e.key === 'Escape') closeFilters();
     };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [filtersOpen]);
+    // The sheet is a fixed overlay over a document that scrolls; without this
+    // the page scrolls behind it. On <html> rather than <body> so the current
+    // scroll position survives (the position:fixed body trick loses it).
+    document.documentElement.classList.add('has-open-sheet');
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.documentElement.classList.remove('has-open-sheet');
+    };
+  }, [filtersOpen, closeFilters]);
 
   const toggleStore = useCallback(
     (name: string) => {
@@ -93,10 +103,25 @@ export default function ItemsToolbar({
   const clearStores = () => updateParams({ store: null, page: null });
 
   const applyPrice = (min: string, max: string) =>
-    updateParams({ price_min: min || null, price_max: max || null, page: null });
+    updateParams({
+      price_min: min || null,
+      price_max: max || null,
+      page: null,
+    });
 
   const clearPrice = () =>
     updateParams({ price_min: null, price_max: null, page: null });
+
+  const clearAll = () =>
+    updateParams({
+      sort: null,
+      purchases: null,
+      show: null,
+      store: null,
+      price_min: null,
+      price_max: null,
+      page: null,
+    });
 
   const sortOptions = useMemo(
     () => sortOptionsFor(mode, showStoreSort, showPriceSort),
@@ -132,6 +157,7 @@ export default function ItemsToolbar({
         </div>
 
         <PopoverTrigger
+          ref={filtersTriggerRef}
           className="items-toolbar-cell--filters"
           icon={<MdTune />}
           label="Filters"
@@ -143,9 +169,12 @@ export default function ItemsToolbar({
           aria-haspopup="dialog"
         />
 
+        {/* Keyed on open state so closing unmounts the sheet: the drill
+            level resets and any pending price edit flushes on cleanup. */}
         <FiltersSheet
+          key={String(filtersOpen)}
           open={filtersOpen}
-          onClose={() => setFiltersOpen(false)}
+          onClose={closeFilters}
           mode={mode}
           sort={sort}
           defaultSort={defaultSort}
@@ -162,12 +191,14 @@ export default function ItemsToolbar({
           clearStores={clearStores}
           applyPrice={applyPrice}
           clearPrice={clearPrice}
+          filterCount={filterCount}
+          clearAll={clearAll}
         />
 
         {filtersOpen && (
           <div
             className="items-toolbar-filters-scrim"
-            onClick={() => setFiltersOpen(false)}
+            onClick={closeFilters}
             role="presentation"
           />
         )}

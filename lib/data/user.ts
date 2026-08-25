@@ -8,18 +8,6 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 import { cache } from 'react';
 
-export const getUserById: (id: string) => Promise<UserTable | null> = cache(
-  async (id: string) => {
-    try {
-      const result = await db.select().from(users).where(eq(users.id, id));
-      return result[0] || null;
-    } catch (error) {
-      console.error('Error getting user by id:', error);
-      return null;
-    }
-  }
-);
-
 export const getUserIdByEmail: (email: string) => Promise<UserTable | null> =
   cache(async (email: string) => {
     try {

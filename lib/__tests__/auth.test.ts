@@ -295,19 +295,3 @@ describe('jwtCallback', () => {
     expect(token.name).toBe('old');
   });
 });
-
-describe('sessionCallback', () => {
-  it('AnySession_ReturnsSessionUnchanged', async () => {
-    const { sessionCallback } = await loadAuth();
-    const session = {
-      user: { id: 'u1', name: 'Alice' },
-      expires: '2099-01-01T00:00:00.000Z',
-    };
-
-    const result = await sessionCallback({
-      session,
-    } as Parameters<typeof sessionCallback>[0]);
-
-    expect(result).toBe(session);
-  });
-});

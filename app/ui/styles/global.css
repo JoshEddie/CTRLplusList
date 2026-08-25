@@ -13,6 +13,9 @@
   --secondary-dark-color: #111111;
   --third-dark-color: #222222;
   --danger-color: #ef4444;
+  --danger-bg: #fbe5e2;
+  --danger-border: #f0bdb6;
+  --danger-text: #b91c1c;
 
   --neutral-text-color: #1f2937;
   --muted-text-color: #6b7280;
@@ -56,11 +59,36 @@
   --buy-link-hover-text: #3520a8;
   --success-bg: #ecfdf3;
   --success-border: #6ee7b7;
-  --success-text: #059669;
+  --success-text: #1c7146;
+  --warn: #845309;
+  --warn-bg: #fbf1d9;
+  --warn-line: #ecd49a;
   --tab-active-color: var(--primary-color);
 
   --WCAG-input-size: 44px;
   --WCAG-input-size-sm: 36px;
+  /* The visible band: the slice of the layout viewport the soft keyboard is not
+     covering. AppViewport overwrites both with exact pixels off visualViewport;
+     these are the pre-JS fallbacks, where the band is the whole viewport.
+     `--app-viewport-top` is for `position: fixed` surfaces only — they translate
+     cleanly. A sticky element renders at max(flowY - scrollY, top), so shifting
+     its `top` moves it relative to the content behind it and the shift appears
+     and disappears as the element pins and unpins. Sticky offsets stay in
+     layout coordinates and simply go out of view while the band is displaced. */
+  --app-viewport-top: 0px;
+  --app-viewport-height: 100vh;
+  /* Layout-viewport distance down to the band's bottom edge. A surface starting
+     at layout-y 0 has to reach this, not merely the band's height, or it stops
+     short by the offset and shows the canvas underneath. */
+  --app-viewport-fill: calc(
+    var(--app-viewport-top) + var(--app-viewport-height)
+  );
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-viewport-height: 100dvh;
+  }
 }
 
 /* @media (prefers-color-scheme: dark) {
@@ -89,34 +117,32 @@
 
 html,
 body {
-  width: 100vw;
-  overflow-x: hidden;
   color: var(--primary-text-color);
 }
 
+/* While a fixed overlay sheet owns the screen, the document behind it must
+   not scroll. On <html> rather than <body> so the scroll position survives
+   (the position:fixed body trick loses it). */
+html.has-open-sheet {
+  overflow: hidden;
+}
+
 html {
-  background-color: var(--primary-color-dark);
+  /* Clips horizontal overflow for the whole page: html's overflow propagates
+     to the viewport, leaving html itself `visible`. Setting it on `body`
+     instead would make body a scroll container (a non-visible axis forces the
+     other to `auto`), and the sticky app nav would pin to body's full-content
+     scrollport rather than the viewport — i.e. never pin. */
+  overflow-x: hidden;
+  /* Painted on the canvas, so it also fills the overscroll gutter iOS
+     rubber-bands into — matching the manifest theme_color. */
+  background-color: var(--secondary-color-dark);
 }
 
 body {
   font-family: var(--font-roboto-condensed);
   -webkit-font-smoothing: antialiased;
   /* background-color: var(--background-color); */
-  height: 100vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: var(--page-frame-gradient);
-  background-attachment: fixed;
-  pointer-events: none;
 }
 
 * {
@@ -125,7 +151,11 @@ body::before {
   margin: 0;
 }
 
-.sr-only {
+/* Grouped: the choose-items checkbox label span is visually hidden but kept
+   for assistive tech (its accessible name is the item name) — same clip
+   block, one home. */
+.sr-only,
+.choose-items-select .checkbox_field > span {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -164,20 +194,9 @@ body::before {
   color: var(--primary-text-color);
 }
 
-.header.saved-lists {
-  margin-top: 16px;
-}
-
 .header .pageTitle {
-  font-size: 40px;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
   text-align: left;
   color: var(--primary-color);
-}
-
-.header .listDetails {
-  text-align: left;
 }
 
 .header-buttons {
@@ -248,34 +267,55 @@ body::before {
 }
 
 /* Navigation Styles */
-.nav-container {
-  width: 100%;
-  max-width: 600px;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
-  order: 2;
-  grid-column: span 2;
-}
-
-.nav-menu {
-  font-size: 1.25rem;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
-  color: #ffffff;
-  border-bottom: 1px solid #ffffff;
-  width: 80%;
-  margin: 0 auto;
-}
-
 .nav-items {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.logout-icon {
-  margin-right: 10px;
+/* Shared panel chrome for the two dialog implementations (confirm dialog +
+   follow disclosure); each keeps only its own sizing. */
+.dialog-panel {
+  background-color: var(--background-color);
+  color: var(--primary-text-color);
+  border: 1px solid var(--primary-color);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+
+/* Shared overlay scrim + shell box for the form-shell and deck-screen
+   modals — purchasemodal's .modal-overlay is a different scrim (z-index/
+   animation) and stays separate. Skins (radius, shadow, height caps) live
+   with each surface. */
+.modal-overlay-scrim {
+  position: fixed;
+  top: var(--app-viewport-top);
+  left: 0;
+  right: 0;
+  height: var(--app-viewport-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  z-index: 60;
+  overflow-y: auto;
+  background: rgba(42, 32, 96, 0.45);
+  backdrop-filter: blur(3px);
+}
+
+.modal-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  background: var(--light-color);
+  color: var(--neutral-text-color);
+}
+
+.modal-shell-wide {
+  max-width: 640px;
 }
 
 .empty-container {
@@ -292,24 +332,26 @@ body::before {
   color: var(--primary-text-color);
 }
 
-.empty-container h3 {
+/* Display-heading pair shared by the big message surfaces (empty states,
+   error boundary, private-list cover, page titles). */
+.empty-container h3,
+.error-boundary h3,
+.header .pageTitle,
+.list-private h1 {
   font-size: 40px;
   font-family: var(--font-crimson-pro);
   font-weight: 100;
 }
 
-.empty-container p {
+.empty-container p,
+.error-boundary p,
+.list-private p {
   font-size: 18px;
 }
 
 @media (min-width: 550px) {
   .menu {
     grid-template-columns: 199px 1fr 45px;
-  }
-
-  .nav-container {
-    order: 0;
-    grid-column: span 1;
   }
 }
 
@@ -320,10 +362,6 @@ body::before {
   }
 
   .header .pageTitle {
-    text-align: left;
-  }
-
-  .header .listDetails {
     text-align: left;
   }
 }
@@ -339,14 +377,10 @@ body::before {
 }
 
 .error-boundary h3 {
-  font-size: 40px;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
   color: var(--heading-text-color);
 }
 
 .error-boundary p {
-  font-size: 18px;
   color: var(--muted-text-color);
 }
 
@@ -358,11 +392,4 @@ body::before {
 .error-boundary-digest {
   font-size: 14px;
   color: var(--subtitle-text-color);
-}
-
-.container--list-details {
-  padding: 0 0 16px;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
 }

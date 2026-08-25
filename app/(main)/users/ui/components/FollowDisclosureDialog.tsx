@@ -33,7 +33,7 @@ export default function FollowDisclosureDialog({
   return (
     <dialog
       ref={dialogRef}
-      className="follow-disclosure-dialog"
+      className="dialog-panel follow-disclosure-dialog"
       aria-labelledby="follow-disclosure-title"
       onCancel={(e) => {
         e.preventDefault();

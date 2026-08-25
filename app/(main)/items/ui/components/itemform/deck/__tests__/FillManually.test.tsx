@@ -69,7 +69,7 @@ describe('FillManually', () => {
     const user = userEvent.setup();
     const { onFocus } = setup(blank);
     await user.click(screen.getByRole('button', { name: /Item name/ }));
-    expect(onFocus).toHaveBeenCalledWith('title');
+    expect(onFocus).toHaveBeenCalledWith('name');
   });
 
   it('ClickStoreRow_OpensStoreFocus', async () => {

@@ -58,3 +58,4 @@ linear.md
 
 # claude code — per-session ephemeral lock
 .claude/scheduled_tasks.lock
+.claude/handoffs

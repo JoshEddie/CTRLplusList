@@ -75,6 +75,34 @@ export async function mintItemPlaceholder(
   }
 }
 
+// Render-only fallback for a dead saved image URL. onError cannot
+// distinguish permanent link rot from a transient glitch or one-off hotlink
+// block, so nothing is persisted — the saved URL is retried on the next page
+// load. The deterministic itemId seed keeps the art identical to minted art
+// and stable across repeated failures.
+export async function fallbackItemPlaceholder(
+  itemId: string
+): Promise<ActionResponse & { url?: string }> {
+  try {
+    const viewer = await authedIdentity();
+    const viewable = await isItemViewable(itemId, viewer?.profile.id ?? null);
+    if (!viewable) return UNAUTHORIZED_RESPONSE;
+
+    return {
+      success: true,
+      message: 'Fallback art generated',
+      url: generatePlaceholderArt(itemId),
+    };
+  } catch (error) {
+    console.error('Error generating fallback placeholder:', error);
+    return {
+      success: false,
+      message: 'An error occurred while generating placeholder art',
+      error: 'Failed to generate fallback',
+    };
+  }
+}
+
 // Transient previews for the deck's placeholder thumbs and reroll — random
 // seeds, nothing persisted; a selected preview is saved later through the
 // normal item save path.

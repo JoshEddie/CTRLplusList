@@ -12,6 +12,14 @@ import { defineConfig } from 'vitest/config';
 // `import { db } from '@/db'` fail to resolve under vitest.
 const aliasRoot = { '@': resolve(__dirname, '.') };
 
+const testExclude = [
+  'node_modules/**',
+  'dist/**',
+  '.next/**',
+  'openspec/**',
+  'e2e/**',
+];
+
 // Universal coverage floor — one bar for every file matched by
 // `coverage.include` (subject to `coverage.exclude`), enforced per file with
 // no per-file numeric variation (testing-foundation). Functions = 100% is
@@ -36,13 +44,7 @@ export default defineConfig({
           name: 'jsdom',
           environment: 'jsdom',
           include: ['**/*.test.tsx'],
-          exclude: [
-            'node_modules/**',
-            'dist/**',
-            '.next/**',
-            'openspec/**',
-            'e2e/**',
-          ],
+          exclude: testExclude,
           setupFiles: ['./test/helpers/setup.ts'],
         },
       },
@@ -52,22 +54,14 @@ export default defineConfig({
           name: 'node',
           environment: 'node',
           include: ['**/*.test.ts'],
-          exclude: [
-            'node_modules/**',
-            'dist/**',
-            '.next/**',
-            'openspec/**',
-            'e2e/**',
-          ],
+          exclude: testExclude,
         },
       },
     ],
-    pool: 'forks',
-    globals: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'html'],
-      include: ['lib/**', 'app/**', 'hooks/**'],
+      include: ['lib/**', 'app/**'],
       exclude: [
         '**/*.d.ts',
         'drizzle/**',
@@ -81,8 +75,6 @@ export default defineConfig({
         // App-side `index.ts` files are pure re-export barrels. Scoped to `app/**`
         // rather than `**/index.ts` so `db/index.ts` (Drizzle init, carries runtime) stays covered.
         'app/**/index.ts',
-        // constant ReactNode table; no executable behavior. See test-form-field-system design D2.
-        'app/ui/components/field/field-icons.tsx',
         // pure re-export of NextAuth's handlers — a framework barrel with no logic;
         // the bypass/session behavior behind it is covered by lib/auth.ts tests.
         // `*` matches the literal `[...nextauth]` segment, which written directly

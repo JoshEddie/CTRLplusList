@@ -25,10 +25,6 @@ export type StoreInput = {
   currency?: string | null;
 };
 
-function emptyStore(store: StoreInput) {
-  return store.name === '' && store.link === '' && store.price === '';
-}
-
 function provenanceOf(store: StoreInput) {
   return {
     price_fetched_at: store.price_fetched_at
@@ -91,7 +87,6 @@ export async function updateItemStores(
     if (count < stores.length) {
       await Promise.all(
         stores.slice(count).map(async (store, index) => {
-          if (emptyStore(store)) return;
           const currentOrder = count + index + 1;
           await db.insert(item_stores).values({
             id: nanoid(),

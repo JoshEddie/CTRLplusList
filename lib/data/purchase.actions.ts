@@ -15,7 +15,6 @@ import {
   appendGuestClaim,
   parseGuestClaims,
   pruneGuestClaim,
-  serializeGuestClaims,
 } from '@/lib/data/purchase.cookie';
 import { authedIdentity } from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
@@ -57,7 +56,11 @@ async function resolveClaimIdentity(
     const identity = await authedIdentity();
     if (!identity) {
       return {
-        error: { success: false, message: 'User not found', error: 'Unauthorized' },
+        error: {
+          success: false,
+          message: 'User not found',
+          error: 'Unauthorized',
+        },
       };
     }
     if (purchasedBy && trimmed) {
@@ -97,7 +100,11 @@ async function resolveClaimIdentity(
       },
     };
   }
-  return { callerProfileId: null, purchaserProfileId: null, guestName: trimmed };
+  return {
+    callerProfileId: null,
+    purchaserProfileId: null,
+    guestName: trimmed,
+  };
 }
 
 export async function createPurchase(data: {
@@ -225,7 +232,7 @@ export async function createPurchase(data: {
       );
       store.set(
         GUEST_CLAIMS_COOKIE,
-        serializeGuestClaims(claims),
+        JSON.stringify(claims),
         GUEST_CLAIMS_COOKIE_ATTRIBUTES
       );
     }
@@ -316,7 +323,7 @@ export async function removePurchase(
       const store = await cookies();
       store.set(
         GUEST_CLAIMS_COOKIE,
-        serializeGuestClaims(pruneGuestClaim(guestClaims, row.id)),
+        JSON.stringify(pruneGuestClaim(guestClaims, row.id)),
         GUEST_CLAIMS_COOKIE_ATTRIBUTES
       );
     }

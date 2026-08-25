@@ -2,9 +2,9 @@
 
 ## Purpose
 
-The `store-filter` capability SHALL govern the behavior of the store filter popover in the items toolbar — specifically how the trigger reflects the selected-store count and toggles the panel, how the search field narrows the rendered store options, how the empty state appears, how each option checkbox reflects and toggles its store's selection, how the Clear/Done footer behaves, and how the panel dismisses. It SHALL apply wherever `StoreFilterPopover` mounts (today: inside `ItemsToolbar` on every page that renders `ItemsBrowser`).
+The `store-filter` capability SHALL govern the behavior of the store filter popover in the items toolbar — specifically how the trigger reflects the selected-store count and toggles the panel, how the search field narrows the rendered store options, how the empty state appears, how each option checkbox reflects and toggles its store's selection, how the Clear/Done footer behaves, and how the panel dismisses. It SHALL apply wherever the store panel mounts — floated by `StoreFilterPopover` in the desktop toolbar, and rendered in place by the mobile filters sheet (today both live inside `ItemsToolbar` on every page that renders `ItemsBrowser`).
 
-This capability SHALL NOT govern: the layout of the items toolbar row (owned by `items-browser-chrome`), the trigger button surface (owned by `popover-trigger-system`), the search input / `CheckboxField` chrome (owned by `form-field-system`), the `Button` primitive used in the footer (owned by `button-system`), or the translation of `onToggle`/`onClear` calls into the `store` URL search param (owned by `items-browser-chrome`). A behavior listed in those primitive/sibling capabilities remains binding under their spec; this capability composes them.
+This capability SHALL NOT govern: the mobile filters sheet's navigation, header, and action bar (owned by `items-filters-sheet`), the layout of the items toolbar row (owned by `items-browser-chrome`), the trigger button surface (owned by `popover-trigger-system`), the search input / `CheckboxField` chrome (owned by `form-field-system`), the `Button` primitive used in the footer (owned by `button-system`), or the translation of `onToggle`/`onClear` calls into the `store` URL search param (owned by `items-browser-chrome`). A behavior listed in those primitive/sibling capabilities remains binding under their spec; this capability composes them.
 
 ## Requirements
 
@@ -35,7 +35,19 @@ The visual surface, sizing, icon-rendering, and badge styling of the trigger are
 
 While the panel is open, typing into the search field SHALL narrow the rendered option list to the `storeOptions` whose name contains the query as a case-insensitive substring. The query SHALL be trimmed of leading and trailing whitespace before matching; an empty or whitespace-only query SHALL render all `storeOptions`. Narrowing SHALL affect only which options are rendered — it SHALL NOT alter `selectedStores` or call `onToggle`/`onClear`.
 
+The search field itself SHALL be rendered only when `storeOptions` is long enough that the list does not fit without scrolling on the surfaces that render it; below that threshold the panel SHALL render the options alone, since a search field would cost a row and a soft keyboard to filter a list already visible in full. When the field is absent, every option SHALL be rendered.
+
 The search input's chrome and clear-affordance are owned by `form-field-system`; this requirement governs only how its value filters the option list.
+
+#### Scenario: A short store list renders no search field
+
+- **WHEN** the panel is open and `storeOptions` is short enough to render in full
+- **THEN** no search field is rendered and every option is present
+
+#### Scenario: A long store list renders the search field
+
+- **WHEN** the panel is open and `storeOptions` is past the threshold
+- **THEN** the search field is rendered above the options
 
 #### Scenario: Empty query renders all options
 
@@ -85,7 +97,12 @@ The checkbox chrome is owned by `form-field-system`; the translation of `onToggl
 
 ### Requirement: The footer Clear button is gated on selection and Done only closes
 
-The panel footer SHALL render a Clear button and a Done button. The Clear button SHALL be `disabled` when `selectedStores` is empty and enabled otherwise; clicking it while enabled SHALL call `onClear` and SHALL NOT close the panel. The Done button SHALL close the panel and SHALL NOT call `onClear` or `onToggle` (it does not mutate the selection). Both buttons are rendered through the `Button` primitive; this requirement governs only their enable-gating and click semantics.
+The panel footer belongs to the popover surface: it SHALL be rendered when the caller supplies close and clear handlers, and SHALL be absent when it does not — the mobile filters sheet supplies neither, because its Clear all and Done serve every facet (owned by `items-filters-sheet`). Where rendered, the footer SHALL render a Clear button and a Done button. The Clear button SHALL be `disabled` when `selectedStores` is empty and enabled otherwise; clicking it while enabled SHALL call `onClear` and SHALL NOT close the panel. The Done button SHALL close the panel and SHALL NOT call `onClear` or `onToggle` (it does not mutate the selection). Both buttons are rendered through the `Button` primitive; this requirement governs only their enable-gating and click semantics.
+
+#### Scenario: The panel renders no footer inside the filters sheet
+
+- **WHEN** the store panel is rendered by the mobile filters sheet
+- **THEN** it renders no Clear or Done button of its own
 
 #### Scenario: Clear is disabled when nothing is selected
 

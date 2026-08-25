@@ -191,6 +191,57 @@ describe('mintItemPlaceholder', () => {
   });
 });
 
+describe('fallbackItemPlaceholder', () => {
+  const seedViewableItem = async (visibility = 'public') => {
+    await seedItem(db, { id: 'IMG', user_id: OWNER.id });
+    await seedList(db, { id: 'PL', user_id: OWNER.id, visibility });
+    await seedListItem(db, { list_id: 'PL', item_id: 'IMG', position: 1 });
+  };
+
+  it('GuestOnPublicListItem_ReturnsDeterministicArtWithoutPersisting', async () => {
+    await seedViewableItem();
+    noSession();
+
+    const first = await actions.fallbackItemPlaceholder('IMG');
+    const second = await actions.fallbackItemPlaceholder('IMG');
+
+    expect(first.success).toBe(true);
+    expect(first.url?.startsWith('data:image/svg+xml;base64,')).toBe(true);
+    expect(second.url).toBe(first.url);
+    expect(await imageRows('IMG')).toHaveLength(0);
+    expect(updateTag).not.toHaveBeenCalled();
+  });
+
+  it('FallbackSeed_MatchesMintedArtForTheSameItem', async () => {
+    await seedViewableItem();
+    noSession();
+
+    const fallback = await actions.fallbackItemPlaceholder('IMG');
+    const minted = await actions.mintItemPlaceholder('IMG');
+
+    expect(fallback.url).toBe(minted.url);
+  });
+
+  it('NonViewerOnPrivateListItem_ReturnsUnauthorized', async () => {
+    await seedViewableItem('private');
+    asOther();
+
+    const res = await actions.fallbackItemPlaceholder('IMG');
+
+    expect(res.success).toBe(false);
+    expect(await imageRows('IMG')).toHaveLength(0);
+  });
+
+  it('SessionLookupThrows_ReturnsFailure', async () => {
+    vi.mocked(auth).mockRejectedValue(new Error('boom'));
+
+    const res = await actions.fallbackItemPlaceholder('IMG');
+
+    expect(res.success).toBe(false);
+    expect(res.error).toBe('Failed to generate fallback');
+  });
+});
+
 describe('previewPlaceholders', () => {
   it('SessionLookupThrows_ReturnsFailure', async () => {
     vi.mocked(auth).mockRejectedValue(new Error('boom'));

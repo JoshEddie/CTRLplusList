@@ -178,15 +178,6 @@ describe('ItemsToolbar', () => {
   });
 
   describe('SheetDismiss', () => {
-    it('CloseButton_ClosesSheet', () => {
-      renderToolbar();
-      openSheet();
-      fireEvent.click(screen.getByRole('button', { name: 'Close filters' }));
-      expect(
-        screen.queryByRole('dialog', { name: 'Filters' })
-      ).not.toBeInTheDocument();
-    });
-
     it('DoneButton_ClosesSheet', () => {
       renderToolbar();
       openSheet();
@@ -237,7 +228,7 @@ describe('ItemsToolbar', () => {
       expect(keydownAdds()).toBe(0);
       openSheet();
       expect(keydownAdds()).toBe(1);
-      fireEvent.click(screen.getByRole('button', { name: 'Close filters' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
       expect(keydownRemoves()).toBe(1);
       openSheet();
       expect(keydownAdds()).toBe(2);
@@ -245,6 +236,45 @@ describe('ItemsToolbar', () => {
       expect(keydownRemoves()).toBe(2);
       add.mockRestore();
       remove.mockRestore();
+    });
+  });
+
+  describe('SheetChrome', () => {
+    it('Clear_ReplaceDropsEveryFilterParam', () => {
+      nav.search = 'sort=name_asc&purchases=only&store=Amazon&price_min=5&page=3';
+      renderToolbar({ storeOptions: ['Amazon'] });
+      openSheet();
+      fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+      expect(nav.replace).toHaveBeenCalledWith('/items');
+    });
+
+    it('SheetOpen_LocksDocumentScrollUntilClosed', () => {
+      renderToolbar();
+      expect(document.documentElement).not.toHaveClass('has-open-sheet');
+      openSheet();
+      expect(document.documentElement).toHaveClass('has-open-sheet');
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      expect(document.documentElement).not.toHaveClass('has-open-sheet');
+    });
+
+    it('SheetClosed_ReturnsFocusToTheFiltersTrigger', () => {
+      renderToolbar();
+      openSheet();
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      expect(screen.getByRole('button', { name: 'Open filters' })).toHaveFocus();
+    });
+
+    it('SheetReopened_StartsAtTheRootLevel', () => {
+      renderToolbar({ storeOptions: ['Amazon'] });
+      openSheet();
+      fireEvent.click(screen.getByRole('button', { name: 'Filter by store' }));
+      expect(screen.getByRole('dialog')).toHaveAttribute('aria-label', 'Stores');
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      openSheet();
+      expect(screen.getByRole('dialog')).toHaveAttribute(
+        'aria-label',
+        'Filters'
+      );
     });
   });
 

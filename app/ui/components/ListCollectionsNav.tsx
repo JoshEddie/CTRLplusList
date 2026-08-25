@@ -17,7 +17,7 @@ export default function ListCollectionsNav({
 }) {
   const pathname = usePathname();
   return (
-    <div className="list-collections-nav">
+    <div className="list-collections-nav pinned-page-chrome">
       <nav className="list-collections-tabs" aria-label="List collections">
         {TABS.map(({ label, href }) => {
           const active = pathname === href;

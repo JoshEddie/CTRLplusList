@@ -32,10 +32,10 @@ describe('manifest', () => {
       expect(result.orientation).toBe('portrait');
     });
 
-    it('Invoked_ReturnsThemeAndBackgroundColor2a2060', () => {
+    it('Invoked_ReturnsThemeAndBackgroundColor05155d', () => {
       const result = manifest();
-      expect(result.background_color).toBe('#2a2060');
-      expect(result.theme_color).toBe('#2a2060');
+      expect(result.background_color).toBe('#05155d');
+      expect(result.theme_color).toBe('#05155d');
     });
 
     it('Invoked_DeclaresNoWebPushFields', () => {

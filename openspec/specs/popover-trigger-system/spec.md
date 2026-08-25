@@ -65,52 +65,49 @@ The system SHALL ensure `<PopoverTrigger>` reuses the `--btn-focus-ring-color` t
 - **WHEN** a `<PopoverTrigger>` is rendered at any viewport width
 - **THEN** its computed height is at least 44 CSS pixels (form-input-shaped doesn't exempt it from the touch target floor)
 
-### Requirement: Filter popovers and list-selection trigger migrate to PopoverTrigger
+### Requirement: Popover triggers SHALL render through the `<PopoverTrigger>` primitive
 
-The system SHALL migrate the trigger button in `StoreFilterPopover.tsx`, `PriceFilterPopover.tsx`, the mobile filters-trigger in `ItemsToolbar.tsx`, and the list-picker trigger in `ListSelection.tsx` (`.if-lp-trigger`) to `<PopoverTrigger>`. Wrappers retain ownership of their popover bodies (which stay page-scoped) and their open/close state. The page-scoped CSS classes `.store-filter-trigger`, `.items-toolbar-filters-trigger`, `.items-toolbar-filters-badge`, `.if-lp-trigger`, `.if-lp-trigger-label`, `.store-filter-badge` MUST be deleted after migration.
+Every control that opens a popover and presents as a form-input-shaped button SHALL render `<PopoverTrigger>`; no surface SHALL define its own trigger-shaped class. Wrappers retain ownership of their popover bodies (which stay page-scoped) and their open/close state. This is stated as a rule over surfaces rather than as an enumeration of call sites, so retiring a surface closes its obligation instead of leaving a requirement that names a component nobody can find.
 
 #### Scenario: StoreFilterPopover uses PopoverTrigger
 
-- **WHEN** `StoreFilterPopover.tsx` is rendered after migration
+- **WHEN** `StoreFilterPopover.tsx` is rendered
 - **THEN** its trigger is `<PopoverTrigger icon={<MdFilterList />} label="Stores" count={selectedStores.length || undefined} active={selectedStores.length > 0} onClick={...} aria-haspopup="dialog" aria-expanded={open}>`; the popover panel body remains page-scoped
 
 #### Scenario: PriceFilterPopover uses PopoverTrigger
 
-- **WHEN** `PriceFilterPopover.tsx` is rendered after migration
+- **WHEN** `PriceFilterPopover.tsx` is rendered
 - **THEN** its trigger is `<PopoverTrigger icon={<MdAttachMoney />} label="Price" count={activeCount || undefined} active={activeCount > 0} ...>`; the price-input body remains page-scoped
 
 #### Scenario: ItemsToolbar filters-trigger uses PopoverTrigger
 
-- **WHEN** `ItemsToolbar.tsx` is rendered after migration
+- **WHEN** `ItemsToolbar.tsx` is rendered
 - **THEN** its mobile-filters trigger is `<PopoverTrigger icon={<MdTune />} label="Filters" count={filterCount || undefined} active={filterCount > 0} ...>`
 
-#### Scenario: ListSelection trigger uses PopoverTrigger
+#### Scenario: No page-scoped trigger class survives anywhere
 
-- **WHEN** `ListSelection.tsx` is rendered after migration
-- **THEN** the `.if-lp-trigger` button is replaced by `<PopoverTrigger label={placeholder-or-add-another} aria-haspopup="listbox" aria-expanded={open}>`; the listbox dropdown body (`.if-lp-menu` + `.if-lp-opt` rows) remains page-scoped per the menu-vs-listbox boundary decision
+- **WHEN** the codebase is grepped for a trigger-shaped page-scoped class in CSS files (`.store-filter-trigger`, `.items-toolbar-filters-trigger`, `.items-toolbar-filters-badge`, `.store-filter-badge`, `.if-lp-trigger`, `.if-lp-trigger-label`, or any successor)
+- **THEN** no definitions remain, and no `.tsx` references them
 
-### Requirement: Popover-body content is not unified by this change
+### Requirement: Popover bodies SHALL remain page-scoped
 
-The system SHALL leave the body content of each popover (the floating panel that appears below the trigger) page-scoped. Each popover's body has specialized content — search input + checklist for stores, two number inputs for price, listbox of options for list-selection — and unifying them is out of scope. The trigger is unified; the body is not.
+The system SHALL leave the body content of each popover (the floating panel that appears below the trigger) page-scoped. Each body carries specialized content — a search input plus checklist for stores, two number inputs for price — and unifying them is out of scope for the trigger primitive. The trigger is unified; the body is not.
+
+Where a body is a listbox rather than a menu, it stays page-scoped for the same reason and does not become a `<Menu>`: the menu-vs-listbox boundary is a semantics distinction, not a styling one. This binds the next listbox built, not any body that exists today.
 
 #### Scenario: StoreFilterPopover's body stays page-scoped
 
-- **WHEN** `StoreFilterPopover.tsx` is migrated
-- **THEN** `.store-filter-panel`, `.store-filter-search`, `.store-filter-list`, `.store-filter-item`, `.store-filter-empty`, `.store-filter-footer` CSS classes remain in place; only `.store-filter-trigger` is removed
+- **WHEN** `StoreFilterPopover.tsx` is rendered
+- **THEN** `.store-filter-panel`, `.store-filter-search`, `.store-filter-list`, `.store-filter-item`, `.store-filter-empty`, `.store-filter-footer` CSS classes remain in place; only the trigger class is absent
 
 #### Scenario: PriceFilterPopover's body stays page-scoped
 
-- **WHEN** `PriceFilterPopover.tsx` is migrated
+- **WHEN** `PriceFilterPopover.tsx` is rendered
 - **THEN** `.price-filter-panel`, `.price-filter-inputs`, `.price-filter-field` CSS classes remain in place
-
-#### Scenario: ListSelection's listbox body stays page-scoped
-
-- **WHEN** `ListSelection.tsx` is migrated
-- **THEN** `.if-lp` (wrapper), `.if-lp-menu` (listbox container), `.if-lp-opt` (listbox option), `.if-lp-empty`, `.if-lp-top`, `.if-lp-chip` (already absorbed by `standardize-buttons`'s Chip primitive) treatment remains — only the trigger button class is removed
 
 ### Requirement: Shared dismiss behavior is provided via a usePopoverDismiss hook
 
-The system SHALL provide a `usePopoverDismiss({ open, onClose, ref })` hook at `app/ui/hooks/usePopoverDismiss.ts` that wires up click-outside detection and Escape-key dismissal. The hook MUST be consumed internally by `<Menu>` and SHOULD be consumed by wrapper components that still own their popover bodies (filter popovers, list-selection) to replace their hand-rolled equivalents.
+The system SHALL provide a `usePopoverDismiss({ open, onClose, ref })` hook at `app/ui/hooks/usePopoverDismiss.ts` that wires up click-outside detection and Escape-key dismissal. The hook MUST be consumed internally by `<Menu>` and SHALL be consumed by every wrapper component that owns its own popover body, in place of a hand-rolled `useEffect` equivalent.
 
 #### Scenario: Hook closes on outside mousedown
 
@@ -129,8 +126,8 @@ The system SHALL provide a `usePopoverDismiss({ open, onClose, ref })` hook at `
 
 #### Scenario: Wrapper components consume the hook in place of hand-rolled effects
 
-- **WHEN** `StoreFilterPopover.tsx`, `PriceFilterPopover.tsx`, and `ListSelection.tsx` are migrated
-- **THEN** their existing `useEffect`-based click-outside + Escape logic is replaced by `usePopoverDismiss`; the per-component effect duplication is removed
+- **WHEN** a wrapper component owning its own popover body is rendered
+- **THEN** its dismissal comes from `usePopoverDismiss` and it carries no `useEffect`-based click-outside or Escape logic of its own
 
 ### Requirement: List-detail hero status pill consumes PopoverTrigger tone="on-dark"
 

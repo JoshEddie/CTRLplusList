@@ -77,12 +77,18 @@ The existing `apple-mobile-web-app-capable`, `apple-mobile-web-app-title`, `appl
 
 ### Requirement: Service worker registration is disabled in development
 
-In `process.env.NODE_ENV === 'development'`, the Serwist plugin SHALL be configured with `disable: true` (or equivalent) so that no service worker is registered against `http://localhost:3000`. This prevents stale SW state from persisting across local code changes and HMR reloads.
+In `process.env.NODE_ENV === 'development'`, `next.config.ts` SHALL export the bare Next config rather than the Serwist-wrapped one, so no service worker is built or registered against `http://localhost:3000`. This prevents stale SW state from persisting across local code changes and HMR reloads. Disabling SHALL be expressed by that export choice alone: the Serwist plugin's own `disable` option SHALL NOT also be set. Two switches on one outcome can disagree — the surviving one silently decides, and the dead one reads as the authority to anyone grepping for it — so the requirement is one switch, not one that happens to be redundant today.
 
 #### Scenario: No SW registration in dev
 
 - **WHEN** the developer runs `npm run dev` and loads the app at `http://localhost:3000`
 - **THEN** `navigator.serviceWorker.getRegistration()` resolves to `undefined` and the network panel shows no `sw.js` request.
+
+#### Scenario: Dev disabling has exactly one mechanism
+
+- **WHEN** `next.config.ts` is read
+- **THEN** the development branch returns the unwrapped config
+- **AND** no `disable` key appears in the options passed to the Serwist plugin initializer
 
 #### Scenario: SW registration in production build
 

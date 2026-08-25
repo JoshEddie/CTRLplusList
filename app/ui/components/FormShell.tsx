@@ -1,7 +1,6 @@
 'use client';
 
-import { LuX } from 'react-icons/lu';
-import { Button } from '@/app/ui/components/button';
+import { Button, CloseButton } from '@/app/ui/components/button';
 import { useDismiss } from '@/app/ui/components/use-dismiss';
 import '@/app/ui/styles/form-shell.css';
 
@@ -22,11 +21,14 @@ export function FormShell({
 }) {
   const dismiss = useDismiss(onClose, closeHref);
 
-  const cls = variant === 'wide' ? 'form-shell form-shell-wide' : 'form-shell';
+  const cls =
+    variant === 'wide'
+      ? 'modal-shell modal-shell-wide form-shell'
+      : 'modal-shell form-shell';
 
   return (
     <div
-      className="form-shell-overlay"
+      className="modal-overlay-scrim form-shell-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) dismiss();
       }}
@@ -34,14 +36,7 @@ export function FormShell({
       <div className={cls}>
         <div className="form-shell-hd">
           <span className="form-shell-title">{title}</span>
-          <button
-            type="button"
-            className="form-shell-close"
-            onClick={dismiss}
-            aria-label="Close"
-          >
-            <LuX />
-          </button>
+          <CloseButton onClick={dismiss} className="close-button--in-flow" />
         </div>
         {children}
       </div>

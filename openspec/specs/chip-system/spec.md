@@ -3,28 +3,25 @@
 ## Purpose
 TBD - created by archiving change test-chip-system. Update Purpose after archive.
 ## Requirements
-### Requirement: Removable chips share the button focus/touch contract via `<Chip>` primitive
+### Requirement: Removable chips SHALL render through the `<Chip>` primitive
 
 The system SHALL provide a `<Chip>` primitive at `app/ui/components/chip/Chip.tsx` for label + remove-× affordances (selected-item chips, active-filter chips). `<Chip>` is a separate component, not a `<Button>` variant — its rendered DOM contains two interactive concerns (a label container and a remove-button child), and conflating those with a single-button styling primitive would violate the orthogonality of variant-as-visual in `button-system`. `<Chip>` MUST consume the same `--btn-*` token surface used by the button system so its focus indicator, hover-on-touch guard, and minimum touch target contract match the rest of the design system.
 
-#### Scenario: Active-filter chip renders in the items toolbar
+Every surface presenting a removable label SHALL render `<Chip>`; no surface SHALL define its own chip-shaped class. This is stated as a rule over surfaces rather than as an enumeration of call sites, so a surface's retirement closes its obligation without leaving a requirement that names a component nobody can find.
+
+#### Scenario: A removable-label surface renders the primitive
 
 - **WHEN** the items toolbar has active filters and renders chips for them
 - **THEN** each chip is rendered as `<Chip onRemove={c.onClear}>{c.label}</Chip>`; clicking the × removes the filter; the remove-button has `aria-label="Remove {label}"`
-
-#### Scenario: Selected-list chip renders in the item-form list picker
-
-- **WHEN** the item form's list picker has selected lists
-- **THEN** each selected list is rendered as a `<Chip onRemove={() => remove(s.value)}>{s.label}</Chip>`; the page-scoped `.if-lp-chip` class is no longer referenced
 
 #### Scenario: Chip's focus and touch contract matches buttons
 
 - **WHEN** a keyboard user tabs to the × of any chip
 - **THEN** a focus indicator appears that meets the same WCAG 1.4.11 contrast contract as `<Button>` focus indicators, sized via the same `--btn-xs-*` token surface
 
-#### Scenario: Legacy chip class definitions are removed
+#### Scenario: No page-scoped chip class survives anywhere
 
-- **WHEN** the codebase is grepped for `.items-toolbar-chip` or `.if-lp-chip` in CSS files after migration
+- **WHEN** the codebase is grepped for a chip-shaped page-scoped class in CSS files (`.items-toolbar-chip`, `.if-lp-chip`, or any successor)
 - **THEN** no definitions remain; the `<Chip>` primitive owns the chip visual surface
 
 ### Requirement: Chip DOM SHALL be a non-interactive wrapper with a `<button>` child for removal

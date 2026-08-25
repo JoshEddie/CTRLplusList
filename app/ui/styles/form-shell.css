@@ -3,41 +3,16 @@
    white card, header with title + close, body, footer with
    [Cancel] ········ [Delete] [Save] convention. */
 
-.form-shell-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
-  z-index: 60;
-  overflow-y: auto;
-  background: rgba(42, 32, 96, 0.45);
-  backdrop-filter: blur(3px);
-}
-
+/* Scrim + shell base come from the shared .modal-overlay-scrim /
+   .modal-shell classes (global.css); this skin keeps only the form
+   shell's radius, shadow, and height cap. */
 .form-shell {
-  position: relative;
-  background: var(--light-color);
   border-radius: 14px;
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.22),
     0 4px 18px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 480px;
-  overflow: hidden;
-  color: var(--neutral-text-color);
-  max-height: calc(100vh - var(--app-sticky-top, 60px) - 48px);
+  max-height: calc(var(--app-viewport-height) - var(--app-sticky-top, 60px) - 48px);
   z-index: 1;
-}
-
-.form-shell-wide {
-  max-width: 640px;
 }
 
 /* The inner <form> should fill the shell so body can scroll and footer stays pinned. */
@@ -64,26 +39,6 @@
   color: var(--heading-text-color);
 }
 
-.form-shell-close {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--muted-text-color);
-  font-size: 18px;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-}
-
-.form-shell-close:hover {
-  background: var(--divider-color);
-  color: var(--neutral-text-color);
-}
-
 .form-shell-body {
   flex: 1;
   overflow-y: auto;
@@ -107,178 +62,6 @@
   gap: 8px;
   align-items: center;
   margin-left: auto;
-}
-
-/* Section labels (V1 sectioned layout) */
-.if-sec {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.if-sec + .if-sec {
-  border-top: 1px solid var(--divider-color);
-  padding-top: 20px;
-  margin-top: 20px;
-}
-
-.if-sec-lbl {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--primary-color);
-}
-
-/* Compact store row grid: Store name | $Price | Link URL | × remove.
-   Each cell is a FormField group (label above input), so the row aligns to the
-   top of the labels. The remove button sits in the input row beneath, offset
-   by --store-rm-offset so it lines up with the inputs instead of the labels. */
-.if-stores {
-  display: flex;
-  flex-direction: column;
-  --store-rm-offset: calc(var(--field-label-font-size) * 1.5 + 4px);
-}
-
-.if-store-row {
-  display: grid;
-  grid-template-columns: 1fr 130px 1fr 28px;
-  gap: 6px;
-  margin-bottom: 6px;
-  align-items: start;
-}
-
-.if-stores-single .if-store-row {
-  grid-template-columns: 1fr 130px 1fr;
-}
-
-.if-store-rm {
-  width: 28px;
-  height: 36px;
-  margin-top: var(--store-rm-offset);
-  border: 1px solid var(--card-border-color);
-  border-radius: 6px;
-  background: none;
-  color: var(--muted-text-color);
-  cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  padding: 0;
-}
-
-.if-store-rm:hover:not(:disabled) {
-  border-color: var(--danger-color);
-  color: var(--danger-color);
-}
-
-.if-store-rm:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.if-add-store {
-  background: none;
-  border: 1.5px dashed var(--card-border-hover-color);
-  border-radius: 8px;
-  padding: 9px 14px;
-  color: var(--primary-color);
-  font:
-    600 13px var(--font-roboto-condensed),
-    sans-serif;
-  cursor: pointer;
-  width: 100%;
-  margin-top: 2px;
-}
-
-.if-add-store:hover {
-  background: var(--card-accent-background-color);
-}
-
-@media (max-width: 500px) {
-  /* Stack the row at narrow widths: Store + Price (+ remove) on row 1,
-     Link URL full-width on row 2. Explicit grid placement keeps the JSX/tab
-     order (Store → Price → Link → Remove) while putting Remove on row 1 col 3. */
-  .if-store-row {
-    grid-template-columns: 1fr 110px 28px;
-  }
-  .if-stores-single .if-store-row {
-    grid-template-columns: 1fr 110px;
-  }
-  .if-store-link {
-    grid-column: 1 / -1;
-    grid-row: 2;
-  }
-  .if-store-rm {
-    grid-column: 3;
-    grid-row: 1;
-  }
-}
-
-/* Inline list picker (chips + trigger + dropdown) */
-.if-lp {
-  position: relative;
-}
-
-/* Invalid state — applied when the parent has a validation error.
-   Mirrors .form_field.invalid by tinting the trigger button border. */
-.if-lp--invalid .popover-trigger {
-  border-color: var(--field-border-color-error);
-}
-
-.if-lp-top {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-/* The list-picker trigger is the PopoverTrigger primitive — its trigger
-   geometry lives in app/ui/components/popover-trigger/. The dropdown
-   listbox below stays page-scoped (Menu vs Listbox boundary, design.md
-   Decision 9). */
-
-.if-lp-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  background: var(--light-color);
-  border: 1px solid var(--card-border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-  overflow: hidden;
-  max-height: 240px;
-  overflow-y: auto;
-}
-
-.if-lp-opt {
-  display: block;
-  width: 100%;
-  min-height: var(--field-min-height);
-  padding: var(--field-padding-y) var(--field-padding-x);
-  cursor: pointer;
-  font-size: var(--field-font-size);
-  color: var(--neutral-text-color);
-  background: none;
-  border: none;
-  text-align: left;
-  font-family: inherit;
-}
-
-.if-lp-opt:hover {
-  background: var(--card-accent-background-color);
-  color: var(--primary-color);
-}
-
-.if-lp-empty {
-  padding: var(--field-padding-y) var(--field-padding-x);
-  font-size: var(--field-font-size);
-  color: var(--meta-text-color);
-  font-style: italic;
 }
 
 @media (max-width: 600px) {
