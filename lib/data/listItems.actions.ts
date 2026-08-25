@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { list_items, lists } from '@/db/schema';
+import { items, list_items, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { touchLists } from '@/lib/data/list.touch';
 import {
@@ -67,6 +67,23 @@ export async function setListItems(
 
     if (toRemove.length === 0 && toInsert.length === 0) {
       return { success: true, message: 'No changes' };
+    }
+
+    if (toInsert.length > 0) {
+      const targetItems = await db
+        .select({ profile_id: items.profile_id })
+        .from(items)
+        .where(inArray(items.id, toInsert));
+      if (
+        targetItems.length !== toInsert.length ||
+        targetItems.some((i) => i.profile_id !== list.profile_id)
+      ) {
+        return {
+          success: false,
+          message: 'Unauthorized - items do not belong to you',
+          error: 'Forbidden',
+        };
+      }
     }
 
     if (toRemove.length > 0) {
