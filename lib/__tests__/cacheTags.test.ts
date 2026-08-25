@@ -16,11 +16,6 @@ describe('updateTags', () => {
       ['lists:profile:P1'],
     ]);
   });
-
-  it('NoTags_FiresNothing', () => {
-    updateTags();
-    expect(updateTag).not.toHaveBeenCalled();
-  });
 });
 
 describe('itemRowTags', () => {

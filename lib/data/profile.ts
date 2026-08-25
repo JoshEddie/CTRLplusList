@@ -163,6 +163,8 @@ export async function getEligiblePurchasers(
   // Membership rows read here (candidates' self memberships) have no narrow
   // tag: self-profile creation happens out-of-band at signup with no
   // invalidation hook, so only the bulk profile_members tag covers them.
+  // Harmless: a candidate enters or leaves this pool only through a follow or
+  // block write, and those fire tags this read carries.
   cacheTag(
     cacheTags.userFollows,
     cacheTags.userBlocks,
