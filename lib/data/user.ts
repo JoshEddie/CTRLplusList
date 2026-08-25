@@ -57,7 +57,7 @@ export async function isFollowing({
   followeeProfileId: string;
 }): Promise<boolean> {
   'use cache';
-  cacheTag(cacheTags.followsOfUser(userId));
+  cacheTag(cacheTags.userFollows, cacheTags.followsOfUser(userId));
   try {
     const result = await db.query.user_follows.findFirst({
       where: and(
@@ -74,7 +74,7 @@ export async function isFollowing({
 
 export async function viewerHasAnyFollows(viewerId: string): Promise<boolean> {
   'use cache';
-  cacheTag(cacheTags.followsOfUser(viewerId));
+  cacheTag(cacheTags.userFollows, cacheTags.followsOfUser(viewerId));
   try {
     const result = await db.query.user_follows.findFirst({
       where: eq(user_follows.follower_id, viewerId),

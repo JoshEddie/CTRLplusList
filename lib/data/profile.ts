@@ -113,7 +113,7 @@ export async function hasBlocked({
   blockedProfileId: string;
 }): Promise<boolean> {
   'use cache';
-  cacheTag(cacheTags.blocksOfProfile(blockerProfileId));
+  cacheTag(cacheTags.userBlocks, cacheTags.blocksOfProfile(blockerProfileId));
   try {
     const result = await db.query.user_blocks.findFirst({
       where: and(
@@ -160,11 +160,17 @@ export async function getEligiblePurchasers(
   claimerProfileId: string
 ) {
   'use cache';
-  // The candidates' self memberships are read under no tag of their own:
-  // self-profile creation happens out-of-band at signup with no invalidation
-  // hook. Harmless here — a candidate only enters or leaves this pool through
-  // a follow or block edge, and every one of those writes fires a tag below.
+  // Membership rows read here (candidates' self memberships) have no narrow
+  // tag: self-profile creation happens out-of-band at signup with no
+  // invalidation hook, so no write refreshes them — only a manual purge of the
+  // bulk profile_members tag would. Harmless: a candidate enters or leaves this
+  // pool only through a follow or block write, and every one of those fires a
+  // tag below.
   cacheTag(
+    cacheTags.userFollows,
+    cacheTags.userBlocks,
+    cacheTags.profileMembers,
+    cacheTags.profiles,
     cacheTags.followersOfProfile(ownerProfileId),
     cacheTags.followersOfProfile(claimerProfileId),
     cacheTags.blocksOfProfile(claimerProfileId)
@@ -349,7 +355,14 @@ export async function getProfileCardsForUser(
   userId: string
 ): Promise<ProfileCardView[]> {
   'use cache';
-  cacheTag(cacheTags.profilesOfUser(userId));
+  cacheTag(
+    cacheTags.profiles,
+    cacheTags.profileMembers,
+    cacheTags.lists,
+    cacheTags.items,
+    cacheTags.profilePreferences,
+    cacheTags.profilesOfUser(userId)
+  );
   try {
     const rows = await db
       .select({
