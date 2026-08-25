@@ -1,5 +1,52 @@
 ## MODIFIED Requirements
 
+### Requirement: List pages SHALL expose a follow affordance for non-owner viewers, colocated with the linked owner name
+
+When an authenticated viewer who is not the list owner renders a list with `visibility != 'private'`, the list-detail hero SHALL display a Follow / Following button targeting the list's **owning profile**. The button SHALL be a full-size button satisfying WCAG 2.5.5 (44×44 CSS px touch target). The button SHALL be rendered in a byline sub-row of the list hero adjacent to the owner's name (which itself SHALL be rendered as a link to `/user/{owning profile id}` on this surface), and SHALL NOT be rendered in the list-hero action row alongside list-actions such as Share and Bookmark.
+
+The button SHALL be hidden when the viewer is unauthenticated, when the **active** profile is the list's owning profile, or when the viewer's **self**-profile has blocked or been blocked by the owning profile. The two comparisons take different profiles and SHALL each name theirs: the owner comparison is an ownership comparison, so it takes the profile the request acts as; the block comparison is a block evaluation, which `active-profile` binds to the human.
+
+A viewer who runs the owning profile but is not acting as it SHALL therefore still be offered the button, and MAY follow a profile they run. This is the behavior on the current trunk rather than something the switcher introduces — an account can already create a managed profile and be offered Follow on its list — and closing it needs a membership containment test this change deliberately does not add. It is carried with the rest of the association model to the change that reworks it.
+
+#### Scenario: Follow button colocated with linked owner name
+
+- **WHEN** an authenticated viewer (not the owner) loads a non-private list
+- **THEN** the list hero renders a byline sub-row containing the owner's name as a link to `/user/{owning profile id}` and a full-size button labeled "Follow {owner-name}" adjacent to it
+- **AND** the list-hero action row contains only list-actions (Share, Bookmark) — no Follow button
+
+#### Scenario: Following state shown after follow
+
+- **WHEN** the viewer already follows the owning profile
+- **THEN** the button label reads "Following" and clicking it unfollows (no dialog gating on unfollow)
+
+#### Scenario: Owner name linkified only on list-detail hero
+
+- **WHEN** the owner's name appears on a list-detail hero
+- **THEN** it renders as a link to `/user/{owning profile id}`
+
+- **WHEN** the owner's name appears on other surfaces (list cards, bookmark rails, feed entries)
+- **THEN** the name's existing presentation is unchanged by this requirement (linkification on those surfaces is out of scope)
+
+#### Scenario: Hidden for owner
+
+- **WHEN** a viewer acting as the profile that owns the list views that list
+- **THEN** no Follow button is rendered in the byline sub-row
+
+#### Scenario: Offered on a list owned by a profile the viewer runs but is not acting as
+
+- **WHEN** a viewer acting as their self-profile loads a non-private list owned by a managed profile they run
+- **THEN** the Follow button is rendered, unchanged from the current trunk behavior
+
+#### Scenario: A block hides the button whatever profile the viewer acts as
+
+- **WHEN** a viewer acting as a managed profile loads a non-private list whose owning profile has blocked the viewer's self-profile
+- **THEN** no Follow button is rendered — the gate compares the self-profile, not the profile being acted as
+
+#### Scenario: Hidden for unauthenticated
+
+- **WHEN** an unauthenticated viewer loads a list
+- **THEN** no Follow button is rendered
+
 ### Requirement: Owners SHALL view and manage their followers
 
 The connections settings page (`/settings/connections`) SHALL show three sections: **Following** (with per-row unfollow), **Followers** (with per-row remove and per-row block), and **Blocked** (with per-row unblock). Each section SHALL be paginated or list-limited as needed. The page is account-scoped: it SHALL resolve the viewer by their self-profile and SHALL NOT follow the active profile, so what it shows does not change as the viewer switches.

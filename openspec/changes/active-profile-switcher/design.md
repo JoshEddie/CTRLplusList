@@ -32,7 +32,9 @@ So `profile` is **deleted**, and `selfProfile` and `activeProfile` take its plac
 
 Alternative considered — adding `activeProfile` beside a `profile` that keeps meaning self. Rejected: it fails in the dangerous direction. A content site that forgets to opt in silently keeps showing the viewer their own lists while the nav says otherwise, and nothing surfaces it.
 
-**The split**, settled during the interview and now specified: active for content and ownership (`lists`, `items`, `list_items`, item associations and placeholders); self for claims (asserter, self-claim purchaser, and the "is this mine" display in `sanitizePurchases`), home rails and feed, `/purchased`, connections, the follow affordance, `list_visits`, and both ends of blocking.
+**The split**, settled during the interview and now specified: active for content and ownership (`lists`, `items`, `list_items`, item associations and placeholders, and the home page's **My Lists** rail, which is an owned-lists read wearing a rail's clothes); self for claims (asserter, self-claim purchaser, and the "is this mine" display in `sanitizePurchases`), the Following / Bookmarks / Recently visited rails and the feed, `/purchased`, connections, the follow affordance's block gate, `list_visits`, and both ends of blocking.
+
+My Lists was the one rail that had to be pulled back out of "rails are the human's". `home-digest` already binds it to the profile the request acts as, and its **See all** goes to `/lists`, which this change leaves reading the resolved profile — so a self-scoped rail would have disagreed with its own destination.
 
 ### Two stores, because the two facts have different lifetimes
 
@@ -56,7 +58,15 @@ Reading the cookie also adds no new dynamic constraint: `auth()` runs NextAuth w
 
 ### No environment override; e2e pins by cookie
 
-`BYPASS_ACTIVE_PROFILE` was cut in advance and is deleted unused. An env var is process-global, so it cannot give one spec a managed-profile context and another the self-profile; `context.addCookies()` can, httpOnly included. Local development switches through the real UI, which is also how the feature gets looked at while it is being built. `BYPASS_SESSION_USER` is untouched.
+`BYPASS_ACTIVE_PROFILE` was cut in advance and is deleted unused. An env var is process-global, so it cannot give one spec a managed-profile context and another the self-profile; `context.addCookies()` can, httpOnly included. Local development switches through the real UI, which is also how the feature gets looked at while it is being built. `BYPASS_SESSION_USER` is untouched. The cookie-pinning rule and the no-override rule are specified in the `e2e-management-flows` delta rather than left here, so a later spec author reads them from the suite's own contract.
+
+One residue to watch: a switch stamps `last_active_at`, which no affordance unsets, and the seed deliberately leaves one membership NULL as the never-acted-as ordering fixture. The e2e delta forbids the switch flow from consuming that one.
+
+### The menus were already spoken for
+
+Both surfaces the switcher lands on are `menu-system`'s: the avatar popover's rows are held to an enumeration there, and the profile card's menu is specified as links to destinations. Neither admits what this change adds — a leading group of switch rows, a count on the `Profiles` row, an action row ahead of the card menu's first link. So `menu-system` carries a delta rather than being quietly outgrown.
+
+The icon rule was the interesting one. `menu-system` requires each navigation row to carry an icon distinct from its siblings', which five profile rows cannot satisfy in any way worth having. Rather than invent five icons, the switch group is exempted and its rows lead with the profile's own avatar slot — the thing the viewer is actually choosing between — which also tells the two groups apart by slot content, not only by position.
 
 ### Switch surfaces: one scalable, one fast
 
@@ -68,7 +78,7 @@ On the card, the body is a click target with the menu excluded by propagation, a
 
 ## Risks / Trade-offs
 
-- **A call site picks the wrong profile.** → The typechecker forces a choice at each one, but not the *right* choice. Mitigation is the split table above plus the e2e spec that drives a real switch and asserts `/lists` re-renders as the other profile — the failure mode is precisely one that a unit test with a mocked session cannot see.
+- **A call site picks the wrong profile.** → The typechecker forces a choice at each one, but not the *right* choice. Mitigation is the split table above plus the e2e spec that drives a real switch and asserts `/lists` re-renders as the other profile — the failure mode is precisely one that a unit test with a mocked session cannot see. That spec is not left to good intentions: the `e2e-management-flows` delta adds the switch to the suite's enumerated flows, where dropping it is a stated violation.
 - **The membership gate is load-bearing twice** — authorization and the recency stamp both hang off it. → That is the point (a write cannot skip either), but it makes the gate a single point of failure worth direct test coverage rather than only incidental coverage through the actions that call it.
 - **A blocked party still reaches managed profiles the blocker runs.** → Accepted, recorded in `adr.md` and in the `following` delta; closes with the association rework ([#298](https://github.com/JoshEddie/CTRLplusList/issues/298)).
 - **Spoiler exposure when viewing a list you own but are not acting as.** → Not fixed here; routed to [#197](https://github.com/JoshEddie/CTRLplusList/issues/197). If this change ships first, the hole is live — a release-ordering question for the map, not for this document.

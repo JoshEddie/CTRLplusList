@@ -25,7 +25,7 @@ This change closes those seams. It makes one of the viewer's profiles active, an
 
 ### The split between acting-as and being
 
-The switcher governs write and ownership only ([#202](https://github.com/JoshEddie/CTRLplusList/issues/202)). Claims stay a human act and keep storing the actor's self-profile; the home rails, feed, `/purchased`, connections, the follow button, and visit history stay the human's. Blocks are the human's too: the blocker end is always the actor's self-profile, and a block filters what that human sees whatever profile they are acting as. This change draws that line explicitly at the seam rather than letting every call site infer it.
+The switcher governs write and ownership only ([#202](https://github.com/JoshEddie/CTRLplusList/issues/202)). Claims stay a human act and keep storing the actor's self-profile; the home page's Following, Bookmarks and Recently visited rails, the feed, `/purchased`, connections, the follow affordance's block gate, and visit history stay the human's. The **My Lists** rail is the exception among the rails: it reads owned lists, which is an ownership comparison, so it follows the switcher exactly as `/lists` behind its own See all does. Blocks are the human's too: the blocker end is always the actor's self-profile, and a block filters what that human sees whatever profile they are acting as. This change draws that line explicitly at the seam rather than letting every call site infer it.
 
 ### The switcher
 
@@ -52,7 +52,9 @@ A viewer may run many profiles. Ordering the switch rows requires knowing which 
 - `app-frame`: The nav avatar renders the active profile with its accent ring instead of the account image, and its dropdown carries the switcher.
 - `profiles-data-model`: Membership rows gain a last-active timestamp; the `BYPASS_ACTIVE_PROFILE` dormant seam is removed rather than consumed; and the seed gains the fixtures the switch path needs.
 - `empty-state-system`: The `Empty` primitive gains an optional secondary action rendered after its CTA, so a profile-scoped surface with nothing to show can offer the way back without a page-scoped one-off.
-- `following`: A block's blocker end is named as the actor's **self**-profile rather than whichever profile they act as, and block checks resolve the viewer by self-profile — so a block belongs to the human who made it and does not change meaning when they switch.
+- `following`: A block's blocker end is named as the actor's **self**-profile rather than whichever profile they act as, and block checks resolve the viewer by self-profile — so a block belongs to the human who made it and does not change meaning when they switch. The list-hero Follow affordance's two gates are separated: the owner comparison takes the active profile, the block comparison the self-profile.
+- `menu-system`: The avatar popover's row enumeration admits the switch group and the `Profiles` row's count, the sibling-distinct-icon rule is scoped to the navigation rows, and the profile card's menu is allowed an action row ahead of its destinations.
+- `e2e-management-flows`: The profile switch joins the enumerated covered flows, and pinning a non-default acting profile by cookie — with no environment override — is stated where the suite's mechanics live.
 
 ## Impact
 
@@ -77,6 +79,7 @@ Reads keyed to the resolved profile vary by a value that can change without a wr
 
 ### Not in scope
 
+- Closing the case where a viewer is offered Follow on a list owned by a profile they run but are not acting as. That is the behavior on trunk today, not something the switcher introduces, and closing it needs a membership containment test this change deliberately does not add; it goes with the association rework ([#298](https://github.com/JoshEddie/CTRLplusList/issues/298)).
 - The list-creation "For:" selector and its inline new-profile escape — removed from this change's scope by owner decision: creating a list for another profile means switching to it first, so that one surface writes content outside the acting context.
 - Spoiler exposure when viewing a list owned by a profile the viewer runs but is not acting as — routed to [#197](https://github.com/JoshEddie/CTRLplusList/issues/197), which owns the per-viewer cascade.
 - The blocker-side block cascade across owned profiles — carried to the circle remap ([#298](https://github.com/JoshEddie/CTRLplusList/issues/298)) with the rest of the blocking overhaul.

@@ -83,7 +83,11 @@ Every completed switch SHALL raise a transient confirmation naming the profile n
 
 The active profile SHALL be the owning profile written on content the request creates, and the identity every ownership comparison is made against.
 
-The self-profile SHALL be the identity used wherever a surface names or acts for the human rather than for a profile they run. This SHALL cover: the claim asserter and a self-claim's purchaser; the display of whether a claim is the viewer's own; the home rails and the following feed; the purchased view; the connections surface; the follow affordance; visit history; and both the creation and the evaluation of blocks.
+The self-profile SHALL be the identity used wherever a surface names or acts for the human rather than for a profile they run. This SHALL cover: the claim asserter and a self-claim's purchaser; the display of whether a claim is the viewer's own; the home page's **Following**, **Bookmarks** and **Recently visited** rails, and the following feed; the purchased view; the connections surface; the follow affordance's block gate; visit history; and both the creation and the evaluation of blocks.
+
+The home page's **My Lists** rail is not among them. It reads the lists a profile owns, which is an ownership comparison and therefore takes the active profile, as `home-digest` already specifies. The rail and its own **See all** destination are one collection under two caps, so binding them to different profiles would show a viewer one set on the home page and another at `/lists`.
+
+The follow affordance is split rather than wholly self-governed: its block gate is the human's, per this division, while the comparison that hides it on the owner's own list is an ownership comparison and takes the active profile. `following` states both.
 
 Switching SHALL NOT change any of the self-profile-governed surfaces. A viewer acting as another profile SHALL still see their own claims as their own, their own feed, and their own connections.
 
@@ -102,10 +106,15 @@ Switching SHALL NOT change any of the self-profile-governed surfaces. A viewer a
 - **WHEN** a viewer who has claimed an item is acting as a managed profile and views that item
 - **THEN** the claim is shown as the viewer's own, with its removal affordance intact
 
-#### Scenario: The feed does not follow the switcher
+#### Scenario: The human's rails do not follow the switcher
 
 - **WHEN** a viewer acting as a managed profile loads the home page
-- **THEN** the rails and following feed are the viewer's own, identical to what they show while acting as their self-profile
+- **THEN** the Following, Bookmarks and Recently visited rails, and the following feed, are the viewer's own, identical to what they show while acting as their self-profile
+
+#### Scenario: The My Lists rail follows the switcher
+
+- **WHEN** a viewer acting as a managed profile loads the home page
+- **THEN** the My Lists rail shows that profile's lists, matching what `/lists` shows behind the rail's own See all
 
 ### Requirement: A membership SHALL record when its account last acted as its profile
 

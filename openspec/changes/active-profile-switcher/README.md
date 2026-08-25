@@ -1,3 +1,3 @@
 # active-profile-switcher
 
-Active-profile switcher plus a For: selector on list creation (issue #193)
+Active-profile switcher: one of the viewer's profiles becomes the profile their requests act as (issue #193)
