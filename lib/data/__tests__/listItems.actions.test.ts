@@ -129,6 +129,10 @@ describe('setListItems', () => {
     expect(byItem).toEqual({ A: 65536, C: 131072 });
     expect(updateTag).toHaveBeenCalledWith('lists:id:L');
     expect(updateTag).toHaveBeenCalledWith('list_items:list:L');
+    // The added item's own cached read (getItemById) names no tag for a list
+    // it was not yet on, so the membership write has to fire it by item.
+    expect(updateTag).toHaveBeenCalledWith('items:id:C');
+    expect(updateTag).toHaveBeenCalledWith('items:id:B');
   });
 
   it('PureAdd_PlacesAtMaxPlus65536-ReportsAddedOnly', async () => {
@@ -230,6 +234,7 @@ describe('removeListItem', () => {
     expect((await listItemRows('L')).map((r) => r.item_id)).toEqual(['B']);
     expect(updateTag).toHaveBeenCalledWith('lists:id:L');
     expect(updateTag).toHaveBeenCalledWith('list_items:list:L');
+    expect(updateTag).toHaveBeenCalledWith('items:id:A');
   });
 
   it('NoSession_ReturnsUnauthorized-NoDelete', async () => {

@@ -102,10 +102,14 @@ export async function setListItems(
 
     await touchLists([list_id]);
 
+    // Per-item tags alongside the list tags: getItemById is keyed by item and
+    // carries membership tags only for the lists the item was already on, so an
+    // added item's cached entry names no tag this write would otherwise fire.
     updateTags(
       cacheTags.list(list_id),
       cacheTags.itemsOfList(list_id),
-      cacheTags.listsOfProfile(list.profile_id)
+      cacheTags.listsOfProfile(list.profile_id),
+      ...[...toInsert, ...toRemove].map((itemId) => cacheTags.item(itemId))
     );
 
     const parts: string[] = [];
@@ -174,7 +178,8 @@ export async function removeListItem(
     updateTags(
       cacheTags.list(list_id),
       cacheTags.itemsOfList(list_id),
-      cacheTags.listsOfProfile(list.profile_id)
+      cacheTags.listsOfProfile(list.profile_id),
+      cacheTags.item(item_id)
     );
 
     return { success: true, message: 'Removed from list' };
