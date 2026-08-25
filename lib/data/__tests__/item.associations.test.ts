@@ -181,7 +181,7 @@ describe('updateItemLists', () => {
         (await db.select().from(lists)).map((r) => [r.id, r.updated_at])
       );
 
-    it('MixedAddRemove_BumpsGainingAndLosingLists-LeavesUnchangedListUntouched-CallsUpdateTagLists', async () => {
+    it('MixedAddRemove_BumpsGainingAndLosingLists-LeavesUnchangedListUntouched-BumpsChangedListTags', async () => {
       const before = Date.now();
       await associations.updateItemLists(['B', 'C'], 'I');
       const after = Date.now();
@@ -192,7 +192,9 @@ describe('updateItemLists', () => {
       expect(byId.B.getTime()).toBeGreaterThanOrEqual(before);
       expect(byId.B.getTime()).toBeLessThanOrEqual(after);
       expect(byId.C.toISOString()).toBe(STALE.toISOString());
-      expect(updateTag).toHaveBeenCalledWith('lists');
+      expect(updateTag).toHaveBeenCalledWith('lists:id:A');
+      expect(updateTag).toHaveBeenCalledWith('lists:id:B');
+      expect(updateTag).not.toHaveBeenCalledWith('lists:id:C');
     });
 
     it('UnchangedMembership_BumpsNoList-NoUpdateTag', async () => {

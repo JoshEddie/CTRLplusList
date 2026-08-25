@@ -156,7 +156,12 @@ describe('createPurchase', () => {
         }),
       ]);
       expect(res.id).toBe(rows[0].id);
-      expect(updateTag).toHaveBeenCalledWith('items');
+      expect(updateTag).toHaveBeenCalledWith(
+        `items:profile:${OWNER_PROFILE}`
+      );
+      expect(updateTag).toHaveBeenCalledWith(
+        `purchases:profile:${OWNER_PROFILE}`
+      );
     });
 
     it('AuthedOnBehalf_RecordsNamedGuestClaimWithCallerAsClaimer', async () => {
@@ -180,7 +185,9 @@ describe('createPurchase', () => {
           guest_name: 'Aunt May',
         }),
       ]);
-      expect(updateTag).toHaveBeenCalledWith('items');
+      expect(updateTag).toHaveBeenCalledWith(
+        `items:profile:${OWNER_PROFILE}`
+      );
     });
 
     it('GuestWithName_InsertsAllNullIdentitiesAndGuestName', async () => {
@@ -483,7 +490,12 @@ describe('createPurchase', () => {
           guest_name: null,
         }),
       ]);
-      expect(updateTag).toHaveBeenCalledWith('items');
+      expect(updateTag).toHaveBeenCalledWith(
+        `items:profile:${OWNER_PROFILE}`
+      );
+      expect(updateTag).toHaveBeenCalledWith(
+        `purchases:profile:${TARGET_PROFILE}`
+      );
     });
 
     it('TargetNotFollowedByOwner_ReturnsIneligiblePurchaser-NoRow-NoUpdateTag', async () => {
@@ -685,13 +697,18 @@ describe('createPurchase', () => {
 
 describe('removePurchase', () => {
   describe('ByPurchaseId', () => {
-    it('AuthedOwner_DeletesOwnRow-CallsUpdateTagItems', async () => {
+    it('AuthedOwner_DeletesOwnRow-BumpsItemAndPurchaserTags', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedPurchase(db, { id: 'p1', item_id: 'I', profile_id: OWNER_PROFILE });
       const res = await actions.removePurchase({ purchase_id: 'p1' });
       expect(res.success).toBe(true);
       expect(await purchaseRows('I')).toHaveLength(0);
-      expect(updateTag).toHaveBeenCalledWith('items');
+      expect(updateTag).toHaveBeenCalledWith(
+        `items:profile:${OWNER_PROFILE}`
+      );
+      expect(updateTag).toHaveBeenCalledWith(
+        `purchases:profile:${OWNER_PROFILE}`
+      );
     });
 
     it('AuthedNonOwner_ReturnsNotYourClaim-RowPersists', async () => {

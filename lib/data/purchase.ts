@@ -4,6 +4,7 @@ import { accountsOfProfiles } from '@/lib/data/profile';
 import { primaryStore } from '@/lib/storeValidity';
 import { withSelfAvatar } from '@/lib/data/profile.identity';
 import { ActionResponse, PurchaseView } from '@/lib/types';
+import { cacheTags, itemRowTags } from '@/lib/cacheTags';
 import { and, eq, or } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
@@ -182,11 +183,11 @@ export function canRemovePurchase(
 
 export async function getItemsByPurchased(profileId?: string) {
   'use cache';
-  cacheTag('items');
-  cacheTag('profiles');
+  cacheTag(cacheTags.items, cacheTags.profiles);
   if (!profileId) {
     return [];
   }
+  cacheTag(cacheTags.purchasesOfProfile(profileId));
   try {
     const result = await db.query.purchases.findMany({
       where: eq(purchases.profile_id, profileId),
@@ -210,6 +211,8 @@ export async function getItemsByPurchased(profileId?: string) {
       },
       orderBy: (purchases, { desc }) => [desc(purchases.purchased_at)],
     });
+
+    cacheTag(...itemRowTags(result.map((row) => row.item)));
 
     return result.map(({ item: { stores, ...item } }) => ({
       ...item,

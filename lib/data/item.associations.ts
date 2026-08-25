@@ -10,7 +10,7 @@ import { touchLists } from '@/lib/data/list.touch';
 import { authedIdentity } from '@/lib/data/user.session';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { updateTag } from 'next/cache';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 
 // Internal write helpers for item ↔ store / item ↔ list associations, invoked
 // only by the item actions. Deliberately NOT in a 'use server' module:
@@ -248,7 +248,12 @@ export async function updateItemLists(
     const changedListIds = [...addedListIds, ...listIdsToDelete];
     if (changedListIds.length > 0) {
       await touchLists(changedListIds);
-      updateTag('lists');
+      updateTags(
+        ...changedListIds.flatMap((listId) => [
+          cacheTags.list(listId),
+          cacheTags.itemsOfList(listId),
+        ])
+      );
     }
   } catch (error) {
     console.error('Database Error:', error);

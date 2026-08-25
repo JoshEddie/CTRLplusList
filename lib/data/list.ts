@@ -7,6 +7,7 @@ import {
   type ListVisibility,
 } from '@/lib/visibility';
 import { withSelfAvatar } from '@/lib/data/profile.identity';
+import { cacheTags } from '@/lib/cacheTags';
 import { and, eq, inArray } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
@@ -20,9 +21,7 @@ export function withVisibility<T extends { visibility: string }>(
 
 export async function getList(id: string) {
   'use cache';
-  cacheTag('lists');
-  cacheTag('items');
-  cacheTag('profiles');
+  cacheTag(cacheTags.lists, cacheTags.profiles, cacheTags.list(id));
   try {
     const result = await db.query.lists.findFirst({
       where: eq(lists.id, id),
@@ -40,6 +39,7 @@ export async function getList(id: string) {
         },
       },
     });
+    if (result) cacheTag(cacheTags.profile(result.profile_id));
     return result ? withVisibility(result) : result;
   } catch (error) {
     console.error(`Error fetching list ${id}:`, error);
@@ -49,8 +49,12 @@ export async function getList(id: string) {
 
 export async function getListsByProfile(profileId: string) {
   'use cache';
-  cacheTag('lists');
-  cacheTag('profiles');
+  cacheTag(
+    cacheTags.lists,
+    cacheTags.profiles,
+    cacheTags.listsOfProfile(profileId),
+    cacheTags.profile(profileId)
+  );
   try {
     const result = await db.query.lists.findMany({
       where: eq(lists.profile_id, profileId),
@@ -70,8 +74,12 @@ export async function getListsByProfile(profileId: string) {
 
 export async function getListsSharedByProfile(profileId: string) {
   'use cache';
-  cacheTag('lists');
-  cacheTag('profiles');
+  cacheTag(
+    cacheTags.lists,
+    cacheTags.profiles,
+    cacheTags.listsOfProfile(profileId),
+    cacheTags.profile(profileId)
+  );
   try {
     const result = await db.query.lists.findMany({
       where: and(

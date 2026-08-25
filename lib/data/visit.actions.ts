@@ -9,8 +9,8 @@ import {
 } from '@/lib/data/user.session';
 import { type ActionResponse } from '@/lib/types';
 import { VISIBILITY, fromDb } from '@/lib/visibility';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
-import { updateTag } from 'next/cache';
 
 export async function bookmarkList(list_id: string): Promise<ActionResponse> {
   try {
@@ -52,7 +52,7 @@ export async function bookmarkList(list_id: string): Promise<ActionResponse> {
         set: { favorited_at: now },
       });
 
-    updateTag('list_visits');
+    updateTags(cacheTags.visitsOfUser(identity.userId));
     return { success: true, message: 'Bookmarked' };
   } catch (error) {
     console.error('Error bookmarking list:', error);
@@ -74,7 +74,7 @@ export async function unbookmarkList(list_id: string): Promise<ActionResponse> {
         and(eq(list_visits.user_id, userId), eq(list_visits.list_id, list_id))
       );
 
-    updateTag('list_visits');
+    updateTags(cacheTags.visitsOfUser(userId));
     return { success: true, message: 'Bookmark removed' };
   } catch (error) {
     console.error('Error unbookmarking list:', error);
@@ -112,7 +112,7 @@ export async function clearVisitHistory(opts: {
         );
     }
 
-    updateTag('list_visits');
+    updateTags(cacheTags.visitsOfUser(userId));
     return { success: true, message: 'History cleared' };
   } catch (error) {
     console.error('Error clearing history:', error);
@@ -157,7 +157,7 @@ export async function removeVisit(list_id: string): Promise<ActionResponse> {
         );
     }
 
-    updateTag('list_visits');
+    updateTags(cacheTags.visitsOfUser(userId));
     return { success: true, message: 'Removed from history' };
   } catch (error) {
     console.error('Error removing visit:', error);

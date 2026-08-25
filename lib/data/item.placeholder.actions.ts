@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { item_images } from '@/db/schema';
+import { item_images, items } from '@/db/schema';
 import {
   authedIdentity,
   authedUserId,
@@ -10,9 +10,9 @@ import {
 import { isItemViewable } from '@/lib/listAccess';
 import { generatePlaceholderArt } from '@/lib/placeholderArt';
 import { type ActionResponse } from '@/lib/types';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { updateTag } from 'next/cache';
 
 // Guest-callable by design (enumerated in server-endpoint-authorization): the
 // payload is the item id alone and the stored row is fully server-derived, so
@@ -49,7 +49,15 @@ export async function mintItemPlaceholder(
       .values({ item_id: itemId, url, active: true })
       .onConflictDoNothing()
       .returning({ url: item_images.url });
-    updateTag('items');
+    const item = await db.query.items.findFirst({
+      where: eq(items.id, itemId),
+      columns: { profile_id: true },
+    });
+    updateTags(
+      cacheTags.item(itemId),
+      /* v8 ignore next 2 -- the missing-item arm: isItemViewable above already proved the row exists; the conditional only satisfies findFirst's `| undefined` return type. */
+      ...(item ? [cacheTags.itemsOfProfile(item.profile_id)] : [])
+    );
 
     const winner = inserted[0] ?? (await activeImage());
     return {

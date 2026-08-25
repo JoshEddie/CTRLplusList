@@ -1,6 +1,7 @@
 import { db } from '@/db';
 import { list_visits } from '@/db/schema';
 import { withVisibility } from '@/lib/data/list';
+import { cacheTags } from '@/lib/cacheTags';
 import { and, eq, isNotNull } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
@@ -38,7 +39,7 @@ export async function getBookmarkStatus(
   userId: string
 ): Promise<boolean> {
   'use cache';
-  cacheTag('list_visits');
+  cacheTag(cacheTags.listVisits, cacheTags.visitsOfUser(userId));
   try {
     const result = await db.query.list_visits.findFirst({
       where: and(

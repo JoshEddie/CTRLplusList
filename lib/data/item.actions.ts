@@ -13,9 +13,9 @@ import { ItemSchema } from '@/lib/data/item.schema';
 import { validateStore } from '@/lib/data/item.store';
 import { authedIdentity, UNAUTHORIZED_RESPONSE } from '@/lib/data/user.session';
 import { type ActionResponse, ItemDetails } from '@/lib/types';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { updateTag } from 'next/cache';
 
 export async function createItem(data: ItemDetails): Promise<ActionResponse> {
   try {
@@ -65,7 +65,10 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       id
     );
 
-    updateTag('items');
+    updateTags(
+      cacheTags.itemsOfProfile(identity.profile.id),
+      cacheTags.listsOfProfile(identity.profile.id)
+    );
 
     return { success: true, message: 'Item created successfully' };
   } catch (error) {
@@ -146,7 +149,11 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
       await replaceItemImages(base, validatedData.image_url || null, data.id);
     }
 
-    updateTag('items');
+    updateTags(
+      cacheTags.item(data.id),
+      cacheTags.itemsOfProfile(identity.profile.id),
+      cacheTags.listsOfProfile(identity.profile.id)
+    );
 
     return { success: true, message: 'Item updated successfully' };
   } catch (error) {
@@ -186,7 +193,10 @@ export async function archiveItem(
       .set({ archived_at: archived ? new Date() : null })
       .where(eq(items.id, item_id));
 
-    updateTag('items');
+    updateTags(
+      cacheTags.item(item_id),
+      cacheTags.itemsOfProfile(identity.profile.id)
+    );
 
     return {
       success: true,
@@ -232,10 +242,19 @@ export async function deleteItem(id: string) {
     const affectedListIds = memberships.map((m) => m.list_id);
     if (affectedListIds.length > 0) {
       await touchLists(affectedListIds);
-      updateTag('lists');
+      updateTags(
+        ...affectedListIds.flatMap((listId) => [
+          cacheTags.list(listId),
+          cacheTags.itemsOfList(listId),
+        ]),
+        cacheTags.listsOfProfile(identity.profile.id)
+      );
     }
 
-    updateTag('items');
+    updateTags(
+      cacheTags.item(id),
+      cacheTags.itemsOfProfile(identity.profile.id)
+    );
 
     return { success: true, message: 'Item deleted successfully' };
   } catch (error) {

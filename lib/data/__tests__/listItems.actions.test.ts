@@ -112,7 +112,7 @@ describe('setListItems', () => {
     expect(res.message).toBe('No changes');
   });
 
-  it('MixedAddRemove_WritesDiff-PlacesInsertsAtMaxPlus65536-ReportsCounts', async () => {
+  it('MixedAddRemove_WritesDiff-PlacesInsertsAtMaxPlus65536-ReportsCounts-BumpsChangedItemTags', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     await seedItem(db, { id: 'A', user_id: OWNER.id });
     await seedItem(db, { id: 'B', user_id: OWNER.id });
@@ -127,8 +127,10 @@ describe('setListItems', () => {
     const rows = await listItemRows('L');
     const byItem = Object.fromEntries(rows.map((r) => [r.item_id, r.position]));
     expect(byItem).toEqual({ A: 65536, C: 131072 });
-    expect(updateTag).toHaveBeenCalledWith('items');
-    expect(updateTag).toHaveBeenCalledWith('lists');
+    expect(updateTag).toHaveBeenCalledWith('lists:id:L');
+    expect(updateTag).toHaveBeenCalledWith('list_items:list:L');
+    expect(updateTag).toHaveBeenCalledWith('items:id:C');
+    expect(updateTag).toHaveBeenCalledWith('items:id:B');
   });
 
   it('PureAdd_PlacesAtMaxPlus65536-ReportsAddedOnly', async () => {
@@ -223,13 +225,14 @@ describe('removeListItem', () => {
     await seedListItem(db, { list_id: 'L', item_id: 'B', position: 131072 });
   });
 
-  it('Owner_DeletesOnlyTargetRow-BumpsItemsAndListsTags', async () => {
+  it('Owner_DeletesOnlyTargetRow-BumpsListMembershipAndItemTags', async () => {
     const res = await actions.removeListItem('L', 'A');
     expect(res.success).toBe(true);
     expect(res.message).toBe('Removed from list');
     expect((await listItemRows('L')).map((r) => r.item_id)).toEqual(['B']);
-    expect(updateTag).toHaveBeenCalledWith('items');
-    expect(updateTag).toHaveBeenCalledWith('lists');
+    expect(updateTag).toHaveBeenCalledWith('lists:id:L');
+    expect(updateTag).toHaveBeenCalledWith('list_items:list:L');
+    expect(updateTag).toHaveBeenCalledWith('items:id:A');
   });
 
   it('NoSession_ReturnsUnauthorized-NoDelete', async () => {
@@ -295,7 +298,7 @@ describe('updatePriority', () => {
       const res = await actions.updatePriority('C', 'B', 'L');
       expect(res.success).toBe(true);
       expect(await positionOf('C')).toBe(Math.floor((65536 + 131072) / 2));
-      expect(updateTag).toHaveBeenCalledWith('items');
+      expect(updateTag).toHaveBeenCalledWith('list_items:list:L');
     });
 
     it('MoveUpToMidpoint_SetsFloorMidpointBetweenTargetAndHigherNeighbor', async () => {

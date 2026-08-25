@@ -4,7 +4,6 @@ import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { getFollowingFeedProfiles } from '@/lib/data/user';
 import { authedUserId } from '@/lib/data/user.session';
 import { eq } from 'drizzle-orm';
-import { updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 import UserCardGrid from '../users/ui/components/UserCardGrid';
@@ -26,13 +25,14 @@ export default async function FollowingPage() {
   // because the deferred work cannot call auth() — Next 16 disallows
   // headers()/cookies() inside after(). The viewer id resolved above is the
   // only request state the closure reads.
+  // No tag fires here: updateTag throws in after(), and the only reader of
+  // last_seen_following_at (getFollowingFeedProfiles) is uncached (#305).
   after(async () => {
     try {
       await db
         .update(users)
         .set({ last_seen_following_at: new Date() })
         .where(eq(users.id, viewerId));
-      updateTag('user_follows');
     } catch (error) {
       console.error('Error marking following seen:', error);
     }

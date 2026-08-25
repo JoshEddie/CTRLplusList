@@ -133,9 +133,12 @@ describe('followUser', () => {
     expect(await followRows()).toHaveLength(0);
   });
 
-  it('Success_CallsUpdateTagUserFollowsOnce', async () => {
+  it('Success_BumpsFollowerAndFolloweeFollowTags', async () => {
     await actions.followUser(TARGET_PROFILE);
-    expect(updateTag.mock.calls).toEqual([['user_follows']]);
+    expect(updateTag.mock.calls).toEqual([
+      [`user_follows:follower:${VIEWER.id}`],
+      [`user_follows:followee:${TARGET_PROFILE}`],
+    ]);
   });
 
   it('EarlyReturns_DoNotCallUpdateTag', async () => {
@@ -176,9 +179,12 @@ describe('unfollowUser', () => {
     expect(res.error).toBe('Unauthorized');
   });
 
-  it('Success_CallsUpdateTagUserFollowsOnce', async () => {
+  it('Success_BumpsFollowerAndFolloweeFollowTags', async () => {
     await actions.unfollowUser(TARGET_PROFILE);
-    expect(updateTag.mock.calls).toEqual([['user_follows']]);
+    expect(updateTag.mock.calls).toEqual([
+      [`user_follows:follower:${VIEWER.id}`],
+      [`user_follows:followee:${TARGET_PROFILE}`],
+    ]);
   });
 
   it('EarlyReturns_DoNotCallUpdateTag', async () => {
@@ -281,9 +287,16 @@ describe('blockUser', () => {
     expect(res.error).toBe('Unauthorized');
   });
 
-  it('Success_CallsUpdateTagUserFollowsAndUserBlocksOnceEach', async () => {
+  it('Success_BumpsBothBlockTagsAndEveryTouchedFollowEdgeTag', async () => {
     await actions.blockUser(TARGET_PROFILE);
-    expect(updateTag.mock.calls).toEqual([['user_follows'], ['user_blocks']]);
+    expect(updateTag.mock.calls).toEqual([
+      [`user_blocks:profile:${VIEWER_PROFILE}`],
+      [`user_blocks:profile:${TARGET_PROFILE}`],
+      [`user_follows:follower:${VIEWER.id}`],
+      [`user_follows:followee:${TARGET_PROFILE}`],
+      [`user_follows:followee:${VIEWER_PROFILE}`],
+      [`user_follows:follower:${TARGET.id}`],
+    ]);
   });
 
   it('StatementThrows_NeitherUpdateTagFires', async () => {
@@ -313,9 +326,12 @@ describe('unblockUser', () => {
     expect(res.error).toBe('Unauthorized');
   });
 
-  it('Success_CallsUpdateTagUserBlocksOnly', async () => {
+  it('Success_BumpsBothBlockTagsOnly', async () => {
     await actions.unblockUser(TARGET_PROFILE);
-    expect(updateTag.mock.calls).toEqual([['user_blocks']]);
+    expect(updateTag.mock.calls).toEqual([
+      [`user_blocks:profile:${VIEWER_PROFILE}`],
+      [`user_blocks:profile:${TARGET_PROFILE}`],
+    ]);
   });
 
   it('DeleteThrows_ReturnsFailed-NoUpdateTag', async () => {
@@ -377,7 +393,7 @@ describe('createProfile', () => {
     expect(members.some((m) => m.role === 'self')).toBe(false);
   });
 
-  it('AuthedValidPayload_StoresAccentValue-BustsProfilesAndMembersTags', async () => {
+  it('AuthedValidPayload_StoresAccentValue-BumpsAccentAndViewerMembershipTags', async () => {
     const res = await actions.createProfile(validPayload);
     const stored = (await accentRows()).filter((r) => r.profile_id === res.id);
     expect(stored).toEqual([
@@ -386,13 +402,13 @@ describe('createProfile', () => {
         value: ACCENT,
       }),
     ]);
-    // The whole set, not a containment check: `getProfileCardsForUser` holds
-    // every one of these tables, so a tag this action stops firing leaves that
-    // read serving a profile it no longer matches.
+    // The whole set, not a containment check: `getProfileCardsForUser` is
+    // keyed by the member tag and the accent by the preference tag, so a tag
+    // this action stops firing leaves that read serving a profile it no
+    // longer matches.
     expect(updateTag.mock.calls).toEqual([
-      ['profile_preferences'],
-      ['profiles'],
-      ['profile_members'],
+      [`profile_preferences:profile:${res.id}`],
+      [`profile_members:user:${VIEWER.id}`],
     ]);
   });
 
@@ -536,8 +552,8 @@ describe('updateProfileSettings', () => {
       expect.objectContaining({ value: String(NEXT_ACCENT) }),
     ]);
     expect(updateTag.mock.calls).toEqual([
-      ['profile_preferences'],
-      ['profiles'],
+      [`profile_preferences:profile:${MANAGED}`],
+      [`profiles:id:${MANAGED}`],
     ]);
   });
 

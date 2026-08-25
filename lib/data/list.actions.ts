@@ -10,9 +10,9 @@ import {
   fromDb,
   type ListVisibility,
 } from '@/lib/visibility';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { updateTag } from 'next/cache';
 import { z } from 'zod';
 
 // Define Zod schema for list validation. The actor's user_id is resolved
@@ -66,7 +66,7 @@ export async function createList(data: ListData): Promise<ActionResponse> {
       updated_by_user_id: identity.userId,
     });
 
-    updateTag('lists');
+    updateTags(cacheTags.listsOfProfile(identity.profile.id));
 
     return {
       success: true,
@@ -172,7 +172,10 @@ export async function updateList(
       };
     }
 
-    updateTag('lists');
+    updateTags(
+      cacheTags.list(id),
+      cacheTags.listsOfProfile(identity.profile.id)
+    );
 
     return {
       success: true,
@@ -213,7 +216,10 @@ export async function deleteList(id: string): Promise<ActionResponse> {
 
     await db.delete(lists).where(eq(lists.id, id));
 
-    updateTag('lists');
+    updateTags(
+      cacheTags.list(id),
+      cacheTags.listsOfProfile(identity.profile.id)
+    );
 
     return { success: true, message: 'List deleted successfully' };
   } catch (error) {
@@ -284,7 +290,10 @@ export async function setListVisibility(
       })
       .where(eq(lists.id, id));
 
-    updateTag('lists');
+    updateTags(
+      cacheTags.list(id),
+      cacheTags.listsOfProfile(identity.profile.id)
+    );
 
     return { success: true, message: 'Visibility updated' };
   } catch (error) {

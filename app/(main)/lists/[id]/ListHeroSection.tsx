@@ -7,7 +7,6 @@ import { authedIdentity } from '@/lib/data/user.session';
 import { guardListViewable } from '@/lib/listAccess';
 import { VISIBILITY } from '@/lib/visibility';
 import { sql } from 'drizzle-orm';
-import { updateTag } from 'next/cache';
 import { after } from 'next/server';
 
 type Props = {
@@ -38,6 +37,10 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
   // Inlined (not a server action) because the deferred work cannot call auth()
   // — Next 16 disallows headers()/cookies() inside after(). Viewer id is
   // captured into a local here so the closure never touches request state.
+  // No tag fires here: updateTag throws in after(), and every read of
+  // last_visited_at/visit_count is uncached — the one cached list_visits read,
+  // getBookmarkStatus, keys on favorited_at, which this write never touches
+  // (#305).
   if (identity && !isOwner && list.visibility !== VISIBILITY.OWNER) {
     const viewerId = identity.userId;
     const listId = id;
@@ -58,7 +61,6 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
               visit_count: sql`${list_visits.visit_count} + 1`,
             },
           });
-        updateTag('list_visits');
       } catch (error) {
         console.error('Error recording visit:', error);
       }

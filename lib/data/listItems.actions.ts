@@ -11,8 +11,8 @@ import {
 } from '@/lib/data/listItems.positions';
 import { authedIdentity } from '@/lib/data/user.session';
 import { type ActionResponse } from '@/lib/types';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { updateTag } from 'next/cache';
 import { z } from 'zod';
 
 export async function setListItems(
@@ -102,8 +102,15 @@ export async function setListItems(
 
     await touchLists([list_id]);
 
-    updateTag('items');
-    updateTag('lists');
+    // Per-item tags alongside the list tags: getItemById is keyed by item and
+    // carries membership tags only for the lists the item was already on, so an
+    // added item's cached entry names no tag this write would otherwise fire.
+    updateTags(
+      cacheTags.list(list_id),
+      cacheTags.itemsOfList(list_id),
+      cacheTags.listsOfProfile(list.profile_id),
+      ...[...toInsert, ...toRemove].map((itemId) => cacheTags.item(itemId))
+    );
 
     const parts: string[] = [];
     if (toInsert.length > 0) parts.push(`Added ${toInsert.length}`);
@@ -168,8 +175,12 @@ export async function removeListItem(
 
     await touchLists([list_id]);
 
-    updateTag('items');
-    updateTag('lists');
+    updateTags(
+      cacheTags.list(list_id),
+      cacheTags.itemsOfList(list_id),
+      cacheTags.listsOfProfile(list.profile_id),
+      cacheTags.item(item_id)
+    );
 
     return { success: true, message: 'Removed from list' };
   } catch (error) {
@@ -253,7 +264,7 @@ export async function updatePriority(
         and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
       );
 
-    updateTag('items');
+    updateTags(cacheTags.itemsOfList(listId));
 
     if (await checkListBalance(listId)) {
       await rebalanceList(listId);
