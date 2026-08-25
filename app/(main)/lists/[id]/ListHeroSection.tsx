@@ -37,11 +37,10 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
   // Inlined (not a server action) because the deferred work cannot call auth()
   // — Next 16 disallows headers()/cookies() inside after(). Viewer id is
   // captured into a local here so the closure never touches request state.
-  // No tag fires here: after() counts as render scope where updateTag throws,
-  // and every read of last_visited_at/visit_count is deliberately uncached
-  // (getBookmarkStatus keys on favorited_at, untouched by this write). A
-  // cached reader of visit recency needs a non-after() invalidation path
-  // first (#305).
+  // No tag fires here: updateTag throws in after(), and every read of
+  // last_visited_at/visit_count is uncached — the one cached list_visits read,
+  // getBookmarkStatus, keys on favorited_at, which this write never touches
+  // (#305).
   if (identity && !isOwner && list.visibility !== VISIBILITY.OWNER) {
     const viewerId = identity.userId;
     const listId = id;

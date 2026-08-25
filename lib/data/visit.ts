@@ -39,7 +39,7 @@ export async function getBookmarkStatus(
   userId: string
 ): Promise<boolean> {
   'use cache';
-  cacheTag(cacheTags.listVisits, cacheTags.visitsOfUser(userId));
+  cacheTag(cacheTags.visitsOfUser(userId));
   try {
     const result = await db.query.list_visits.findFirst({
       where: and(

@@ -21,7 +21,7 @@ export function withVisibility<T extends { visibility: string }>(
 
 export async function getList(id: string) {
   'use cache';
-  cacheTag(cacheTags.lists, cacheTags.profiles, cacheTags.list(id));
+  cacheTag(cacheTags.list(id));
   try {
     const result = await db.query.lists.findFirst({
       where: eq(lists.id, id),
@@ -49,12 +49,7 @@ export async function getList(id: string) {
 
 export async function getListsByProfile(profileId: string) {
   'use cache';
-  cacheTag(
-    cacheTags.lists,
-    cacheTags.profiles,
-    cacheTags.listsOfProfile(profileId),
-    cacheTags.profile(profileId)
-  );
+  cacheTag(cacheTags.listsOfProfile(profileId), cacheTags.profile(profileId));
   try {
     const result = await db.query.lists.findMany({
       where: eq(lists.profile_id, profileId),
@@ -74,12 +69,7 @@ export async function getListsByProfile(profileId: string) {
 
 export async function getListsSharedByProfile(profileId: string) {
   'use cache';
-  cacheTag(
-    cacheTags.lists,
-    cacheTags.profiles,
-    cacheTags.listsOfProfile(profileId),
-    cacheTags.profile(profileId)
-  );
+  cacheTag(cacheTags.listsOfProfile(profileId), cacheTags.profile(profileId));
   try {
     const result = await db.query.lists.findMany({
       where: and(

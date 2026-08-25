@@ -25,10 +25,8 @@ export default async function FollowingPage() {
   // because the deferred work cannot call auth() — Next 16 disallows
   // headers()/cookies() inside after(). The viewer id resolved above is the
   // only request state the closure reads.
-  // No tag fires here: after() counts as render scope where updateTag throws,
-  // and the only reader of last_seen_following_at (getFollowingFeedProfiles)
-  // is deliberately uncached. If that read gains a cache, invalidation needs
-  // a non-after() path first (#305).
+  // No tag fires here: updateTag throws in after(), and the only reader of
+  // last_seen_following_at (getFollowingFeedProfiles) is uncached (#305).
   after(async () => {
     try {
       await db

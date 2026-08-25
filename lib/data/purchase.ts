@@ -183,7 +183,6 @@ export function canRemovePurchase(
 
 export async function getItemsByPurchased(profileId?: string) {
   'use cache';
-  cacheTag(cacheTags.items, cacheTags.profiles);
   if (!profileId) {
     return [];
   }

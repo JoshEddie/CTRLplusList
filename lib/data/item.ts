@@ -16,11 +16,7 @@ export async function getItemsByProfile(
   } = {}
 ) {
   'use cache';
-  cacheTag(
-    cacheTags.items,
-    cacheTags.profiles,
-    cacheTags.itemsOfProfile(profileId)
-  );
+  cacheTag(cacheTags.itemsOfProfile(profileId));
   try {
     const filter = opts.filter ?? 'active';
     const showSpoilers = opts.showSpoilers ?? false;
@@ -80,12 +76,7 @@ export async function getItemsByProfile(
 
 export async function getItemById(id: string, profileId: string) {
   'use cache';
-  cacheTag(
-    cacheTags.items,
-    cacheTags.lists,
-    cacheTags.item(id),
-    cacheTags.itemsOfProfile(profileId)
-  );
+  cacheTag(cacheTags.item(id), cacheTags.itemsOfProfile(profileId));
   try {
     const result = await db.query.items.findFirst({
       where: and(eq(items.id, id), eq(items.profile_id, profileId)),
@@ -153,7 +144,7 @@ export async function getItemsByListId(
   } = {}
 ) {
   'use cache';
-  cacheTag(cacheTags.items, cacheTags.profiles, cacheTags.itemsOfList(listId));
+  cacheTag(cacheTags.itemsOfList(listId));
   try {
     const result = await db.query.list_items.findMany({
       where: eq(list_items.list_id, listId),

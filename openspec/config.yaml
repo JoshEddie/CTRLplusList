@@ -58,9 +58,9 @@ context: |
   # Data freshness
   `lib/data/*.ts` reads use `'use cache'` + `cacheTag(...)`. Mutations
   must call `updateTags(...)` for matching tags or reads go stale. Tags
-  come from `lib/cacheTags.ts`, which states the contract: reads carry
-  their table's coarse tag plus narrow per-key tags; ordinary writes
-  fire only the narrow tags for the keys they wrote.
+  come from `lib/cacheTags.ts`, which states the contract: reads carry a
+  tag per key they read, writes fire a tag per key they wrote, and there
+  is no coarse per-table tag to fall back on.
 
   # Meta: this file is a WIP
   If during any OpenSpec workflow (explore, propose, design, apply)
