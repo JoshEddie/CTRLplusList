@@ -301,73 +301,43 @@
    One sticky element whose CONTENT swaps between the full details and a
    collapsed title+kebab row. Height is pure content sizing — the full
    layer's grid row interpolates 1fr <-> 0fr so the shape change is an
-   animated reflow, never a flash. .is-chrome/.is-collapsed/.is-animating
-   come from ListHeroChrome's scroll handler — without JS the page keeps
-   the plain in-flow hero.
-   Pinned at --app-nav-height rather than --app-sticky-top: the 7px surface
-   bleed scrolls away with the page, so pinning below it would leave a
-   see-through band under the nav. */
+   animated reflow, never a flash. .is-chrome/.is-collapsed come from
+   ListHeroSurface's scroll handler — without JS the page keeps the plain
+   in-flow hero. */
 .list-hero-strip-sentinel {
   height: 1px;
   margin-bottom: -1px;
 }
 
+/* Full-bleed child sitting on the surface's own top edge, so it rounds its
+   top corners to the same radius: pinned, its curve lands exactly on the
+   card's, and the corner notches show the canvas behind both. */
 .list-hero-chrome {
   position: relative;
   background-image: var(--hero-gradient);
-  border-radius: 14px 14px 0 0;
+  border-radius: calc(var(--app-surface-radius) - 1px)
+    calc(var(--app-surface-radius) - 1px) 0 0;
   z-index: 5;
 }
 
-@media (max-width: 800px) {
-  .list-hero-chrome {
-    border-radius: 12px 12px 0 0;
-  }
-}
-
-/* While chrome is armed the element paints nothing itself: positioned
-   pseudos always paint above their own element's background, so the only
-   way to layer square-band-below-rounded-surface is two negative-z pseudos
-   under the content. ::before (z -2) is the square notch-band backing —
-   page frame with fixed attachment, pixel-matching body::before — so the
-   rounded corners' notches always show dark frame, never content scrolling
-   behind the pinned surface. ::after (z -1) is the rounded gradient
-   surface. The base (no-JS) state keeps the plain element gradient. */
 .list-hero-chrome.is-chrome {
   position: sticky;
-  top: var(--app-nav-height);
-  background-image: none;
-}
-
-.list-hero-chrome.is-chrome::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 14px;
-  z-index: -2;
-  background-color: var(--secondary-color-dark)
-}
-
-.list-hero-chrome.is-chrome::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background-image: var(--hero-gradient);
-  border-radius: inherit;
+  top: var(--app-sticky-top);
 }
 
 /* Animated shape change, no measurements: the shape is a grid whose single
    row interpolates 1fr -> 0fr; the collapsed layer is absolute, so it sits
-   outside that row. The clip wrapper's overflow is hidden only while
-   collapsed or mid-transition (.is-animating, dropped on transitionend) so
-   the expanded hero's kebab dropdown can still overflow the surface at
-   rest. visibility rides the clip rather than the grid — on the grid it
-   would hide the collapsed layer too — and flips at the end when hiding,
-   at the start when showing, removing the hidden layer from focus order
-   and the accessibility tree. */
+   outside that row. The clip wrapper's overflow must clip during the
+   transition but be visible at expanded rest so the hero's kebab dropdown
+   can overflow the surface. That asymmetry is a discrete overflow
+   transition: collapsing clips immediately (0s delay on the collapsed
+   rule), expanding unclips only after the row finishes (delay = duration
+   on the base rule). Pre-allow-discrete engines unclip at expand start —
+   a one-transition content spill, cosmetic only. visibility rides the
+   clip rather than the grid — on the grid it would hide the collapsed
+   layer too — and flips at the end when hiding, at the start when
+   showing, removing the hidden layer from focus order and the
+   accessibility tree. */
 .list-hero-shape {
   position: relative;
   min-height: var(--list-hero-strip-height);
@@ -378,11 +348,9 @@
 
 .list-hero-layer-clip {
   min-height: 0;
-  transition: visibility var(--hero-collapse-duration);
-}
-
-.list-hero-chrome:is(.is-collapsed, .is-animating) .list-hero-layer-clip {
-  overflow: hidden;
+  transition:
+    visibility var(--hero-collapse-duration),
+    overflow 0s var(--hero-collapse-duration) allow-discrete;
 }
 
 .list-hero-chrome.is-collapsed .list-hero-shape {
@@ -390,7 +358,11 @@
 }
 
 .list-hero-chrome.is-collapsed .list-hero-layer-clip {
+  overflow: hidden;
   visibility: hidden;
+  transition:
+    visibility var(--hero-collapse-duration),
+    overflow 0s allow-discrete;
 }
 
 .list-hero-layer-collapsed {
@@ -472,15 +444,6 @@
 
 .container--list-details .item-grid-container {
   padding: 16px 28px 0;
-}
-
-/* Pagination stays in flow at the end of the items browser and pins to
-   the viewport bottom while the grid scrolls past it — no clearance
-   padding needed. The shared overlay chrome (padding, 90%-alpha
-   background, shadow, blur) lives in item.css's grouped selector. */
-.container--list-details .items-pagination {
-  position: sticky;
-  bottom: 0;
 }
 
 .container--list-details > .item-grid.sortable {

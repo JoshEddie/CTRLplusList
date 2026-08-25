@@ -223,6 +223,23 @@ describe('ListHeroSection', () => {
       errorSpy.mockRestore();
     });
 
+    it('PrerenderBailout_RethrowsInsteadOfLogging', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const bailout = Object.assign(new Error('bail'), {
+        digest: 'NEXT_PRERENDER_INTERRUPTED',
+      });
+      vi.mocked(updateTag).mockImplementationOnce(() => {
+        throw bailout;
+      });
+      render(await ListHeroSection(props('l1')));
+
+      await expect(
+        Promise.all(afterCbs.map((cb) => cb()))
+      ).rejects.toBe(bailout);
+      expect(errorSpy).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
     it('Owner_DoesNotRecord', async () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',

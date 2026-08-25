@@ -53,13 +53,16 @@ test('PwaSafeArea_NonzeroTopInset_GrowsNavAndToastOffset', async ({ page }) => {
 // Regressions 7cb308f / 4f3a7b0→dae2301: the floating pagination overlay's
 // bottom padding is the greater of its own 12px and the bottom inset — the
 // inset already IS the clearance the home indicator needs, so adding to it
-// over-pads. The overlay box itself stays flush with the container's bottom
-// edge — the layout contract items-browser-chrome owns.
+// over-pads. While the page has scroll overflow the sticky bar pins flush
+// to the viewport's bottom edge — the layout contract items-browser-chrome
+// owns.
 const PAGINATION_PADDING_FLOOR = 12;
 
 test('PwaSafeArea_NonzeroBottomInset_LiftsPaginationPadding', async ({
   page,
 }) => {
+  // Short viewport so the seeded grid overflows and the sticky bar pins.
+  await page.setViewportSize({ width: 390, height: 400 });
   await page.goto('/items');
   const pagination = page.locator('.items-pagination');
   await expect(pagination).toBeVisible();
@@ -74,14 +77,14 @@ test('PwaSafeArea_NonzeroBottomInset_LiftsPaginationPadding', async ({
   expect(BOTTOM_INSET).toBeGreaterThan(PAGINATION_PADDING_FLOOR);
   expect(await paddingBottom()).toBe(BOTTOM_INSET);
 
-  const flush = await pagination.evaluate((el) => {
-    const container = el.closest('.container--items-library');
-    if (!container) throw new Error('no .container--items-library ancestor');
-    return (
-      container.getBoundingClientRect().bottom -
-      el.getBoundingClientRect().bottom
-    );
-  });
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollHeight - window.innerHeight
+  );
+  expect(overflow).toBeGreaterThan(0);
+
+  const flush = await pagination.evaluate(
+    (el) => window.innerHeight - el.getBoundingClientRect().bottom
+  );
   expect(Math.abs(flush)).toBeLessThan(1);
 });
 
@@ -121,6 +124,60 @@ test('AppFrame_ScrollLongPage_DocumentIsTheOnlyScroller', async ({ page }) => {
     )
   ).toBe(0);
 });
+
+// iOS tap-to-top drives document.scrollingElement only, so the gesture works
+// on a route iff the document owns the scroll. The two converted container
+// recipes (items-library, list-collections) used to clamp to viewport height
+// and scroll an inner div — these specs pin the document-flow model: window
+// scrolls, the old inner scrollers own nothing, and the pinned chrome sticks
+// below the nav.
+const DOCUMENT_FLOW_ROUTES = [
+  {
+    name: 'ItemsLibrary',
+    path: '/items',
+    grid: '.item-grid-container',
+    chrome: '.pinned-page-chrome',
+  },
+  {
+    name: 'ListCollections',
+    path: '/lists',
+    grid: '.list-card-grid',
+    chrome: '.list-collections-nav',
+  },
+];
+
+for (const { name, path, grid, chrome } of DOCUMENT_FLOW_ROUTES) {
+  test(`${name}_ScrollPage_DocumentIsTheOnlyScroller`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 400 });
+    await page.goto(path);
+    await expect(page.locator(grid)).toBeVisible();
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollHeight - window.innerHeight
+    );
+    expect(overflow).toBeGreaterThan(200);
+
+    await page.evaluate(() => window.scrollBy(0, 200));
+    expect(await page.evaluate(() => Math.round(window.scrollY))).toBe(200);
+    expect(
+      await page.evaluate((selector) => {
+        const el = document.querySelector(selector)!;
+        return el.scrollHeight - el.clientHeight;
+      }, grid)
+    ).toBe(0);
+
+    // Computed `top` resolves the sticky offset's calc()/env() chain to px,
+    // and the nav is fixed at 0, so the pinned rect must land on it.
+    const pinned = await page.evaluate((selector) => {
+      const el = document.querySelector(selector)!;
+      return {
+        top: el.getBoundingClientRect().top,
+        stickyTop: parseFloat(getComputedStyle(el).top),
+      };
+    }, chrome);
+    expect(Math.abs(pinned.top - pinned.stickyTop)).toBeLessThan(1);
+  });
+}
 
 // Regression 7cb308f: html paints the canvas, so it is the backstop behind
 // every gutter the frame does not cover — the surface bleed, the

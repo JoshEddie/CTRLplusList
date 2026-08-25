@@ -41,7 +41,7 @@ vi.mock('../HeroCollapsedItemsContainer', () => ({
   HeroCollapsedOwnerItems: () => <div data-testid="collapsed-owner-items" />,
   HeroCollapsedViewerItems: () => <div data-testid="collapsed-viewer-items" />,
 }));
-vi.mock('../ListHeroChrome', () => ({
+vi.mock('../ListHeroSurface', () => ({
   default: ({
     title,
     kebab,

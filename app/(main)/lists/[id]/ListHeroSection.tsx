@@ -8,6 +8,7 @@ import { guardListViewable } from '@/lib/listAccess';
 import { VISIBILITY } from '@/lib/visibility';
 import { sql } from 'drizzle-orm';
 import { updateTag } from 'next/cache';
+import { unstable_rethrow } from 'next/navigation';
 import { after } from 'next/server';
 
 type Props = {
@@ -60,6 +61,7 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
           });
         updateTag('list_visits');
       } catch (error) {
+        unstable_rethrow(error);
         console.error('Error recording visit:', error);
       }
     });

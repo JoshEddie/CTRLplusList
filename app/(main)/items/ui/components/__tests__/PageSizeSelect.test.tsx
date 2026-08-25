@@ -15,7 +15,7 @@ describe('PageSizeSelect', () => {
       const select = screen.getByRole('combobox', { name: 'Items per page' });
       const options = screen.getAllByRole('option');
       expect(options.map((o) => o.textContent)).toEqual(
-        PAGE_SIZE_OPTIONS.map((n) => `${n} / page`)
+        PAGE_SIZE_OPTIONS.map((n) => `${n}`)
       );
       expect((select as HTMLSelectElement).value).toBe('24');
     });

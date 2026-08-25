@@ -15,9 +15,11 @@ export default async function ProfilesPage() {
 
   return (
     <div className="profiles-page">
-      <Header title="Profiles">
-        <NewProfileButton />
-      </Header>
+      <div className="pinned-page-chrome">
+        <Header title="Profiles">
+          <NewProfileButton />
+        </Header>
+      </div>
       <p className="profiles-lede">
         Select a profile to make it active — everything you create belongs to
         it. Managing lives behind each card&rsquo;s ⋯ menu.

@@ -5,7 +5,7 @@ import { getFollowingFeedProfiles } from '@/lib/data/user';
 import { authedUserId } from '@/lib/data/user.session';
 import { eq } from 'drizzle-orm';
 import { updateTag } from 'next/cache';
-import { redirect } from 'next/navigation';
+import { redirect, unstable_rethrow } from 'next/navigation';
 import { after } from 'next/server';
 import UserCardGrid from '../users/ui/components/UserCardGrid';
 
@@ -34,6 +34,7 @@ export default async function FollowingPage() {
         .where(eq(users.id, viewerId));
       updateTag('user_follows');
     } catch (error) {
+      unstable_rethrow(error);
       console.error('Error marking following seen:', error);
     }
   });

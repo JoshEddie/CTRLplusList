@@ -288,10 +288,6 @@
    Section headers match the home rail visual register (Crimson Pro,
    --heading-text-color). Rows look like .item-list rows with bottom
    dividers between siblings. Sections separated by .home-rail-divider. */
-.connections-page {
-  padding-top: 8px;
-}
-
 .connections-section {
   padding: 18px 0;
 }
@@ -612,8 +608,8 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
-  border-bottom: 1px solid var(--divider-color);
 }
+
 .list-collections-tabs {
   display: flex;
   align-items: stretch;
@@ -678,51 +674,29 @@
   margin: 0;
 }
 
-/* ── List-collections container (My Lists / Bookmarks / History / Following) ──
-   Fixed-height flex column. The peer tab strip stays at the top; only the
-   card grid scrolls. Matches the architectural pattern used by
-   .container--list-details and .container--items-library. */
-.container--list-collections {
-  display: flex;
-  flex-direction: column;
-  height: calc(var(--app-viewport-fill) - var(--app-sticky-top));
-  overflow: hidden;
-}
-
-/* The per-page wrapper (.my-lists-page / .bookmarks-page / .history-page /
-   .following-page) inherits the flex layout from the container. */
+/* ── List-collections pages (My Lists / Bookmarks / History / Following) ──
+   Plain document flow, matching .container--list-details: the document is
+   the only scroller (iOS tap-to-top drives document.scrollingElement) and
+   the tab strip pins as .pinned-page-chrome (app-frame.css). */
 .container--list-collections > .my-lists-page,
 .container--list-collections > .bookmarks-page,
 .container--list-collections > .history-page,
 .container--list-collections > .following-page {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
   width: 100%;
 }
 
 .container--list-collections .list-collections-nav {
-  flex-shrink: 0;
   margin-bottom: 0;
-  padding-top: 8px;
-  background-color: var(--light-color);
+  padding-top: calc(var(--container-padding-top) + 8px);
 }
 
 .container--list-collections .list-card-grid,
 .container--list-collections .user-card-grid {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  align-content: start;
   padding: 16px 0 16px;
 }
 
 .container--list-collections .my-lists-empty,
 .container--list-collections .profile-empty {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
   padding-top: 16px;
 }
 

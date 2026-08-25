@@ -17,7 +17,10 @@ const redirectMock = vi.hoisted(() =>
     throw new Error(`REDIRECT:${url}`);
   })
 );
-vi.mock('next/navigation', () => ({ redirect: redirectMock }));
+vi.mock('next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/navigation')>()),
+  redirect: redirectMock,
+}));
 
 const afterHolder = vi.hoisted(() => ({
   cb: undefined as undefined | (() => Promise<void>),
@@ -136,5 +139,24 @@ describe('FollowingPage', () => {
     await expect(afterHolder.cb!()).resolves.toBeUndefined();
     expect(errorSpy).toHaveBeenCalled();
     expect(updateTag).not.toHaveBeenCalled();
+  });
+
+  it('AfterCallbackHitsPrerenderBailout_RethrowsInsteadOfLogging', async () => {
+    vi.mocked(auth).mockResolvedValue({
+      user: { email: 'x@test.local' },
+    } as never);
+    vi.mocked(getUserIdByEmail).mockResolvedValue({ id: 'viewer' } as never);
+    vi.mocked(getFollowingFeedProfiles).mockResolvedValue(FEED as never);
+    const bailout = Object.assign(new Error('bail'), {
+      digest: 'NEXT_PRERENDER_INTERRUPTED',
+    });
+    vi.mocked(updateTag).mockImplementationOnce(() => {
+      throw bailout;
+    });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    render(await FollowingPage());
+    await expect(afterHolder.cb!()).rejects.toBe(bailout);
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 });

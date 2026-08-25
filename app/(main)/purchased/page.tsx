@@ -13,7 +13,9 @@ export default async function Purchased() {
   const items = await getItemsByPurchased(identity.profile.id);
   return (
     <main className="container container--items-library">
-      <Header title="Purchased" />
+      <div className="pinned-page-chrome">
+        <Header title="Purchased" />
+      </div>
       <Items items={items} />
     </main>
   );

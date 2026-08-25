@@ -23,6 +23,9 @@
   display: flex;
   flex-direction: column;
   min-height: var(--app-viewport-fill);
+  /* The fixed nav is out of flow; reserve its height so content starts
+     below it. */
+  padding-top: var(--app-nav-height);
 }
 
 /* Surface chain allows fixed-height children (e.g. container--items-library)
@@ -35,14 +38,19 @@
 
 /* Gradient nav bar */
 .app-nav {
-  position: sticky;
+  position: fixed;
   top: 0;
   z-index: 10;
+  width: 100%;
   display: flex;
   height: calc(60px + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) 20px 0;
   background-color: var(--secondary-color-dark);
   flex-shrink: 0;
+  /* The bleed between the nav and the surface's top edge. It belongs to the
+     fixed nav because it is the one strip that has to paint over page
+     content: content scrolls up to the surface's edge and disappears here. */
+  box-shadow: 0 var(--app-surface-bleed-top) 0 var(--secondary-color-dark);
 }
 
 .app-nav-inner {
@@ -234,6 +242,25 @@
   }
 }
 
+/* Page chrome pinned below the nav's bleed band. The band and the surface's
+   rounded top corners are the frame's (.app-nav's shadow and
+   .app-surface::before); the chrome only paints its own white backdrop,
+   rounded to match so its square corners never poke through the frame's.
+   The negative margin cancels the container's padding so the backdrop spans
+   the full surface width and the padding re-adds it for the content, keeping
+   the pinned and at-rest states pixel-identical. */
+.pinned-page-chrome {
+  position: sticky;
+  top: var(--app-sticky-top);
+  z-index: 3;
+  margin: calc(-1 * var(--container-padding-top))
+    calc(-1 * var(--container-padding-x)) 0;
+  padding: var(--container-padding-top) var(--container-padding-x) 0;
+  background-color: var(--light-color);
+  border-radius: var(--app-surface-radius) var(--app-surface-radius) 0 0;
+  border-bottom: 1px solid var(--divider-color);
+}
+
 /* Avatar slot (delegates to existing <User /> popover) */
 .app-nav-avatar {
   display: flex;
@@ -254,12 +281,32 @@
   }
 }
 
-.app-surface {
-  flex: 1;
+/* The white card, pinned. The surface element itself paints nothing: its box
+   scrolls away, and the card's top edge has to stay under the nav's bleed.
+   So the card is this layer instead — a viewport-tall sticky background that
+   parks its rounded top below the bleed and hands its height straight back as
+   negative margin. Behind the content (z-index -1), so content runs right up
+   to the edge and vanishes under the nav's bleed rather than under a strip of
+   card. Outside its own radius it paints nothing, so the corner notches show
+   the canvas, which is what makes the corners read as rounded at every scroll
+   position. Full-bleed children reaching the card's edge round their own top
+   corners to match (--app-surface-radius) for the same reason. */
+.app-surface::before {
+  content: '';
+  display: block;
+  position: sticky;
+  top: var(--app-sticky-top);
+  z-index: -1;
+  height: calc(var(--app-viewport-fill) - var(--app-sticky-top));
+  margin-bottom: calc(-1 * (var(--app-viewport-fill) - var(--app-sticky-top)));
   background-color: var(--light-color);
   border-radius: var(--app-surface-radius) var(--app-surface-radius) 0 0;
+  box-shadow: var(--surface-shadow);
+}
+
+.app-surface {
+  flex: 1;
   max-width: 1700px;
   width: 100%;
   margin: 0 auto;
-  box-shadow: var(--surface-shadow);
 }

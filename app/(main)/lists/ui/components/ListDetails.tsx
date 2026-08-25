@@ -17,7 +17,7 @@ import {
   HeroCollapsedViewerItems,
 } from './HeroCollapsedItemsContainer';
 import ListActionsMenu from './ListActionsMenu';
-import ListHeroChrome from './ListHeroChrome';
+import ListHeroSurface from './ListHeroSurface';
 import ShareButton from './ShareButton';
 import VisibilityPicker from './VisibilityPicker';
 
@@ -124,7 +124,7 @@ export default async function ListDetails({
   }
 
   return (
-    <ListHeroChrome title={list.name} kebab={collapsedKebab}>
+    <ListHeroSurface title={list.name} kebab={collapsedKebab}>
       <div className="list-hero">
         {previewMode && (
           <div className="preview-banner" role="status">
@@ -233,6 +233,6 @@ export default async function ListDetails({
           </div>
         </div>
       </div>
-    </ListHeroChrome>
+    </ListHeroSurface>
   );
 }

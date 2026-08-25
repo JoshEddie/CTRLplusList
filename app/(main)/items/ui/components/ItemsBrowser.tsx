@@ -5,7 +5,7 @@ import { ItemDisplay, SortKey } from '@/lib/types';
 import {
   HERO_SLOT_READY_EVENT,
   HERO_TOOLBAR_SLOT_ID,
-} from '@/app/(main)/lists/ui/components/ListHeroChrome';
+} from '@/app/(main)/lists/ui/components/ListHeroSurface';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';

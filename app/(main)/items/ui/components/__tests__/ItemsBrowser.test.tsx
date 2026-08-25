@@ -10,7 +10,7 @@ import ItemsBrowser from '../ItemsBrowser';
 import {
   HERO_SLOT_READY_EVENT,
   HERO_TOOLBAR_SLOT_ID,
-} from '@/app/(main)/lists/ui/components/ListHeroChrome';
+} from '@/app/(main)/lists/ui/components/ListHeroSurface';
 
 const nav = vi.hoisted(() => ({
   replace: vi.fn(),

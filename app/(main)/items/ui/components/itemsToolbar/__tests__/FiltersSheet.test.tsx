@@ -191,24 +191,25 @@ describe('FiltersSheet', () => {
   });
 
   describe('ClearAll', () => {
-    it('ActiveFilters_ClearAllInvokesHandler', () => {
+    it('ActiveFilters_ClearInvokesHandler', () => {
       const clearAll = vi.fn();
       renderSheet({ filterCount: 2, clearAll });
-      fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
       expect(clearAll).toHaveBeenCalledTimes(1);
     });
 
-    it('NoActiveFilters_ClearAllIsDisabled', () => {
+    it('NoActiveFilters_ClearIsDisabled', () => {
       renderSheet({ filterCount: 0 });
-      expect(screen.getByRole('button', { name: 'Clear all' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled();
     });
 
-    it('DrilledIntoFacet_ClearAllStaysReachable', () => {
-      const clearAll = vi.fn();
-      renderSheet({ filterCount: 1, clearAll });
+    it('DrilledIntoFacet_ClearIsReplacedByBack', () => {
+      renderSheet({ filterCount: 1 });
       fireEvent.click(screen.getByRole('button', { name: 'Filter by store' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
-      expect(clearAll).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Back to filters' })
+      ).toBeInTheDocument();
     });
   });
 
@@ -235,16 +236,6 @@ describe('FiltersSheet', () => {
       typeMin('5000');
       unmount();
       expect(applyPrice).toHaveBeenCalledWith('50.00', '');
-    });
-
-    it('ClearAllWhileTyping_DiscardsTheUncommittedPrice', () => {
-      const applyPrice = vi.fn();
-      renderSheet({ applyPrice, filterCount: 1 });
-      fireEvent.click(screen.getByRole('button', { name: 'Filter by price' }));
-      typeMin('5000');
-      fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Back to filters' }));
-      expect(applyPrice).not.toHaveBeenCalled();
     });
   });
 

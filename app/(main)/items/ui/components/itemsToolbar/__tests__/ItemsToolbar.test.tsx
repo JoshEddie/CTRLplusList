@@ -240,11 +240,11 @@ describe('ItemsToolbar', () => {
   });
 
   describe('SheetChrome', () => {
-    it('ClearAll_ReplaceDropsEveryFilterParam', () => {
+    it('Clear_ReplaceDropsEveryFilterParam', () => {
       nav.search = 'sort=name_asc&purchases=only&store=Amazon&price_min=5&page=3';
       renderToolbar({ storeOptions: ['Amazon'] });
       openSheet();
-      fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
       expect(nav.replace).toHaveBeenCalledWith('/items');
     });
 
