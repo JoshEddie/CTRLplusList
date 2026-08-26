@@ -55,7 +55,7 @@ Row types, view types and the identity pair SHALL be declared in `lib/types.ts`,
 
 #### Scenario: A shared shape is declared in `lib/types.ts`, not a data module
 
-- **WHEN** a change needs a row type, a view type, or the `{ userId, profile }` identity pair in both a data module and its callers
+- **WHEN** a change needs a row type, a view type, or the identity pair in both a data module and its callers
 - **THEN** it is declared in `lib/types.ts` and imported where used, not exported from `lib/data/profile.ts` or any other data module
 
 #### Scenario: No barrel module
