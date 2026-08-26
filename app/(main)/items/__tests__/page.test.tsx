@@ -9,6 +9,7 @@ import { getUserIdByEmail } from '@/lib/data/user';
 import Home from '../page';
 import { makeProfile } from '@/test/helpers/profile';
 
+vi.mock('@/lib/data/profile.active', () => ({ actingAsName: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
@@ -84,7 +85,8 @@ beforeEach(() => {
   } as never);
   vi.mocked(getUserIdentity).mockResolvedValue({
     userId: 'viewer',
-    profile: makeProfile('viewer-profile', 'Test Viewer'),
+    selfProfile: makeProfile('viewer-profile', 'Test Viewer'),
+    activeProfile: makeProfile('viewer-profile', 'Test Viewer'),
   });
   vi.mocked(getItemsByProfile).mockImplementation(
     async (_id: string, opts?: { filter?: string }) =>
@@ -132,6 +134,25 @@ describe('Page', () => {
         'data-profile-id',
         'viewer-profile'
       );
+    });
+
+    it('ActingAsAManagedProfile_ReadsThatProfileButNamesTheHuman', async () => {
+      vi.mocked(getUserIdentity).mockResolvedValue({
+        userId: 'viewer',
+        selfProfile: makeProfile('viewer-profile', 'Test Viewer'),
+        activeProfile: makeProfile('kiddo', 'Kiddo Smith'),
+      });
+
+      render(await callPage());
+
+      expect(getItemsByProfile).toHaveBeenCalledWith('kiddo', {
+        filter: 'active',
+        showSpoilers: false,
+      });
+      expect(getListsByProfile).toHaveBeenCalledWith('kiddo');
+      const page = screen.getByTestId('items-page');
+      expect(page).toHaveAttribute('data-profile-id', 'kiddo');
+      expect(page).toHaveAttribute('data-user-name', 'Test V');
     });
   });
 
@@ -230,7 +251,8 @@ describe('Page', () => {
     it('OneTokenName_UsesFirstToken', async () => {
       vi.mocked(getUserIdentity).mockResolvedValue({
         userId: 'viewer',
-        profile: makeProfile('viewer-profile', 'Madonna'),
+        selfProfile: makeProfile('viewer-profile', 'Madonna'),
+        activeProfile: makeProfile('viewer-profile', 'Madonna'),
       });
       render(await callPage());
       expect(screen.getByTestId('items-page')).toHaveAttribute(
@@ -242,7 +264,8 @@ describe('Page', () => {
     it('NoName_DerivesEmpty', async () => {
       vi.mocked(getUserIdentity).mockResolvedValue({
         userId: 'viewer',
-        profile: makeProfile('viewer-profile', ''),
+        selfProfile: makeProfile('viewer-profile', ''),
+        activeProfile: makeProfile('viewer-profile', ''),
       });
       render(await callPage());
       expect(screen.getByTestId('items-page')).toHaveAttribute(

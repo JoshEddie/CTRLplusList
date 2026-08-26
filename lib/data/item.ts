@@ -1,11 +1,11 @@
 import { db } from '@/db';
-import { items, list_items } from '@/db/schema';
+import { items, list_items, lists } from '@/db/schema';
 import { sanitizePurchases } from '@/lib/data/purchase';
 import { primaryStore } from '@/lib/storeValidity';
 import { withSelfAvatar } from '@/lib/data/profile.identity';
 import { ListTable } from '@/lib/types';
 import { cacheTags, itemRowTags } from '@/lib/cacheTags';
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, eq, exists, isNotNull, isNull, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
 export async function getItemsByProfile(
@@ -147,16 +147,39 @@ export async function getItemById(id: string, profileId: string) {
 export async function getItemsByListId(
   listId: string,
   opts: {
-    viewerProfileId?: string;
+    viewerSelfProfileId?: string;
     isOwner?: boolean;
     showSpoilers?: boolean;
   } = {}
 ) {
   'use cache';
-  cacheTag(cacheTags.items, cacheTags.profiles, cacheTags.itemsOfList(listId));
+  cacheTag(
+    cacheTags.items,
+    cacheTags.profiles,
+    cacheTags.itemsOfList(listId),
+    // The owning profile below is part of this read's answer, so a list that
+    // changes hands has to invalidate it.
+    cacheTags.list(listId)
+  );
   try {
     const result = await db.query.list_items.findMany({
-      where: eq(list_items.list_id, listId),
+      where: and(
+        eq(list_items.list_id, listId),
+        // The item and the list must agree on whose they are — see getList,
+        // which narrows its item count by the same rule.
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(items)
+            .innerJoin(lists, eq(lists.id, list_items.list_id))
+            .where(
+              and(
+                eq(items.id, list_items.item_id),
+                eq(items.profile_id, lists.profile_id)
+              )
+            )
+        )
+      ),
       with: {
         item: {
           with: {
@@ -192,7 +215,7 @@ export async function getItemsByListId(
       store: primaryStore(stores),
       purchases: sanitizePurchases(
         item.purchases,
-        opts.viewerProfileId,
+        opts.viewerSelfProfileId,
         opts.isOwner ?? false,
         opts.showSpoilers ?? false
       ),

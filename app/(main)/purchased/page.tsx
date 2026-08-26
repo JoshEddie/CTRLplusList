@@ -10,7 +10,7 @@ export default async function Purchased() {
     redirect('/');
   }
 
-  const items = await getItemsByPurchased(identity.profile.id);
+  const items = await getItemsByPurchased(identity.selfProfile.id);
   return (
     <main className="container container--items-library">
       <div className="pinned-page-chrome">

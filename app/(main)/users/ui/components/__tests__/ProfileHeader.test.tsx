@@ -8,7 +8,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ProfileHeader from '../ProfileHeader';
 import type { UserIdentity } from '@/lib/types';
-import { makeProfile } from '@/test/helpers/profile';
+import { makeIdentity, makeProfile } from '@/test/helpers/profile';
 
 vi.mock('next/image', async () => ({
   default: (await import('@/app/ui/components/__tests__/test-helpers'))
@@ -102,7 +102,27 @@ describe('ProfileHeader', () => {
   });
 
   it('OwnProfile_RendersManageConnectionsLink', () => {
-    renderHeader({ viewer: { userId: 'u1', profile: makeProfile('p1') } });
+    renderHeader({ viewer: makeIdentity('u1', makeProfile('p1')) });
+    expect(
+      screen.getByRole('link', { name: 'Manage connections' })
+    ).toHaveAttribute('href', '/settings/connections');
+  });
+
+  it('SelfProfileWhileActingAsAnother_StillRendersManageConnectionsLink', () => {
+    renderHeader({
+      viewer: makeIdentity('u1', makeProfile('p1'), makeProfile('managed')),
+      showFollowButton: true,
+    });
+    expect(
+      screen.getByRole('link', { name: 'Manage connections' })
+    ).toHaveAttribute('href', '/settings/connections');
+    expect(screen.queryByTestId('follow-container')).not.toBeInTheDocument();
+  });
+
+  it('ActiveProfileWhileSelfIsAnother_RendersManageConnectionsLink', () => {
+    renderHeader({
+      viewer: makeIdentity('u1', makeProfile('self-u1'), makeProfile('p1')),
+    });
     expect(
       screen.getByRole('link', { name: 'Manage connections' })
     ).toHaveAttribute('href', '/settings/connections');
@@ -110,7 +130,7 @@ describe('ProfileHeader', () => {
 
   it('NonOwnerShowFollowWithViewer_RendersFollowContainer', () => {
     renderHeader({
-      viewer: { userId: 'viewer', profile: makeProfile('self-viewer') },
+      viewer: makeIdentity('viewer', makeProfile('self-viewer')),
       showFollowButton: true,
     });
     expect(screen.getByTestId('follow-container')).toBeInTheDocument();
@@ -118,7 +138,7 @@ describe('ProfileHeader', () => {
 
   it('NoFollowConditions_RendersNothingInActions', () => {
     const { container } = renderHeader({
-      viewer: { userId: 'viewer', profile: makeProfile('self-viewer') },
+      viewer: makeIdentity('viewer', makeProfile('self-viewer')),
       showFollowButton: false,
     });
     const actions = container.querySelector('.profile-actions') as HTMLElement;

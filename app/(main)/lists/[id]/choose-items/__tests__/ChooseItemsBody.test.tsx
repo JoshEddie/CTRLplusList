@@ -8,6 +8,7 @@ import { getUserIdByEmail } from '@/lib/data/user';
 import ChooseItemsBody from '../ChooseItemsBody';
 import { makeProfile } from '@/test/helpers/profile';
 
+vi.mock('@/lib/data/profile.active', () => ({ actingAsName: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/item', () => ({ getItemsByProfile: vi.fn() }));
 vi.mock('@/lib/data/list', () => ({
@@ -75,7 +76,8 @@ beforeEach(() => {
   } as never);
   vi.mocked(getUserIdentity).mockResolvedValue({
     userId: 'u1',
-    profile: makeProfile('p1', 'Owner'),
+    selfProfile: makeProfile('p1', 'Owner'),
+    activeProfile: makeProfile('p1', 'Owner'),
   });
   vi.mocked(getList).mockResolvedValue({
     id: 'l1',

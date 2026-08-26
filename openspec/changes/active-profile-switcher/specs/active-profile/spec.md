@@ -60,7 +60,11 @@ The selection SHALL NOT be readable or writable by client-side script, and SHALL
 
 ### Requirement: Switching SHALL be a server action that re-verifies membership, records the switch, and announces itself
 
-Changing the active profile SHALL be a server action taking the target profile. The action SHALL re-verify the viewer's membership on that profile and SHALL reject a target they hold none on, without writing a selection. On success it SHALL store the selection, record the profile as acted-as, and cause the current route to re-render as the new active profile — the viewer SHALL remain on the page they were on rather than being navigated elsewhere.
+Changing the active profile SHALL be a server action taking the target profile. The action SHALL re-verify the viewer's membership on that profile and SHALL reject a target they hold none on, without writing a selection. On success it SHALL store the selection, record the profile as acted-as, and cause the current route to re-render as the new active profile.
+
+On a profile-**scoped** surface — one that renders whichever profile is active, such as the lists collection, the items library or the Profiles page itself — the viewer SHALL remain on the page they were on rather than being navigated elsewhere. Re-rendering in place is the whole of the change.
+
+A route **keyed** to a particular profile's id is the exception, and SHALL follow the switch. A profile's own space is addressed by its id, so a viewer left there after switching would be editing a profile they are no longer acting as while the nav states otherwise. The switch SHALL therefore carry them to the newly active profile's space, replacing the current entry in history rather than pushing one, so returning does not land them back on a space that contradicts the profile they are acting as.
 
 Every completed switch SHALL raise a transient confirmation naming the profile now being acted as. The confirmation SHALL be raised regardless of which surface initiated the switch, because a switch changes what subsequent pages mean and the surrounding content may change without otherwise saying why.
 
@@ -68,6 +72,16 @@ Every completed switch SHALL raise a transient confirmation naming the profile n
 
 - **WHEN** a viewer on `/lists` switches to another profile they run
 - **THEN** they remain on `/lists`, which now renders that profile's lists
+
+#### Scenario: Switching from a profile's space follows the switch
+
+- **WHEN** a viewer on a profile's space switches to another profile they run
+- **THEN** they are carried to the newly active profile's space, which renders that profile's settings
+
+#### Scenario: A rejected switch moves the viewer nowhere
+
+- **WHEN** a switch initiated from a profile's space is rejected
+- **THEN** the viewer stays on the space they were on and the failure is announced
 
 #### Scenario: Switching to a profile the viewer does not run is rejected
 
@@ -78,6 +92,36 @@ Every completed switch SHALL raise a transient confirmation naming the profile n
 
 - **WHEN** a viewer completes a switch from any surface
 - **THEN** a transient confirmation naming the newly active profile is raised
+
+### Requirement: A switch that would discard unsaved edits SHALL be confirmed first
+
+Where the viewer has edits they have made and not saved, a switch SHALL be held behind a confirmation offering to keep editing or to switch anyway. Declining SHALL leave both the edits and the active profile untouched; confirming SHALL complete the switch, with its own confirmation raised as any other switch's is.
+
+The confirmation SHALL state that the edits are unsaved and SHALL NOT claim they are destroyed. Switching leaves the edits unwritten but does not itself write anything, and a client-side return to the surface may still show them; what the viewer is being warned about is that nothing has been saved, not that something is about to be deleted.
+
+The prompt SHALL be raised regardless of which surface initiated the switch, because the surface holding the unsaved work and the surface initiating the switch are generally not the same one — the work sits in a profile's space while the switch is initiated from the nav.
+
+The hold SHALL be released when the edits stop being unsaved: on saving them, on reverting them to what is stored, and on leaving the surface that holds them.
+
+#### Scenario: Unsaved edits hold the switch
+
+- **WHEN** a viewer who has edited a profile's settings without saving initiates a switch
+- **THEN** a confirmation is raised and no switch is performed
+
+#### Scenario: Declining leaves the viewer editing
+
+- **WHEN** that viewer declines the confirmation
+- **THEN** the confirmation closes, the active profile is unchanged, and their edits are still in the form
+
+#### Scenario: Confirming completes the switch
+
+- **WHEN** that viewer confirms
+- **THEN** the switch is performed and announced, and the edits are left unwritten
+
+#### Scenario: A saved form holds nothing
+
+- **WHEN** a viewer who has saved their edits initiates a switch
+- **THEN** the switch is performed with no confirmation raised
 
 ### Requirement: The active profile SHALL govern creation and ownership, and the self-profile SHALL govern what names the human
 
@@ -157,7 +201,7 @@ Emptiness is the one state in which a profile-scoped surface looks the same for 
 
 The switch route SHALL be offered only to a viewer who runs more than one profile — a viewer who runs only their own has nowhere to switch to, and SHALL see the surface exactly as it is today.
 
-This SHALL NOT extend to surfaces the switcher does not govern. The purchased view is scoped to the human per this capability's division, so its empty state SHALL be unchanged.
+This SHALL NOT extend to surfaces the switcher does not govern. The purchased view is scoped to the human per this capability's division, so it SHALL NOT offer the switch route.
 
 #### Scenario: An empty active profile offers both routes
 
@@ -174,14 +218,14 @@ This SHALL NOT extend to surfaces the switcher does not govern. The purchased vi
 - **WHEN** an empty profile-scoped surface renders its switch route
 - **THEN** the copy names no profile, neither the active one nor any other
 
-#### Scenario: The purchased view is unaffected
+#### Scenario: The purchased view offers no switch route
 
-- **WHEN** a viewer who runs more than one profile loads an empty purchased view
-- **THEN** its empty state is unchanged and offers no switch route
+- **WHEN** a viewer who runs more than one profile loads the purchased view with nothing to show
+- **THEN** no route to the Profiles page is offered
 
 ### Requirement: A creation surface SHALL name the profile the new content will belong to
 
-A surface that creates profile-owned content SHALL state which profile will own it, both in the form's heading region and on its submit control, phrased as creating **for** that profile. The submit control MAY shorten to its bare verb where horizontal space does not permit the profile's name; the heading region SHALL NOT.
+A surface that creates profile-owned content SHALL state which profile will own it, both in the form's heading region and on its submit control, phrased as creating **for** that profile.
 
 The statement SHALL be rendered only for a viewer who runs more than one profile. A viewer who runs only their self-profile has no ambiguity to resolve, and SHALL NOT be shown a statement that could only ever name themselves.
 
@@ -194,8 +238,3 @@ The statement SHALL be rendered only for a viewer who runs more than one profile
 
 - **WHEN** a viewer who runs only their self-profile opens the list or item creation form
 - **THEN** no profile-naming statement is rendered
-
-#### Scenario: The submit control shortens under space constraint
-
-- **WHEN** the submit control cannot fit the profile's name
-- **THEN** it renders its bare verb, and the heading region still names the profile

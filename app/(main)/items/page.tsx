@@ -1,4 +1,5 @@
 import { getItemsByProfile } from '@/lib/data/item';
+import { actingAsName } from '@/lib/data/profile.active';
 import { getListsByProfile } from '@/lib/data/list';
 import { authedIdentity } from '@/lib/data/user.session';
 import { ItemDisplay } from '@/lib/types';
@@ -24,23 +25,32 @@ export default async function Home({
   const initialPageSize = await readItemsPageSize();
 
   const [activeItems, archivedItems] = await Promise.all([
-    getItemsByProfile(identity.profile.id, { filter: 'active', showSpoilers }),
-    getItemsByProfile(identity.profile.id, { filter: 'archived', showSpoilers }),
+    getItemsByProfile(identity.activeProfile.id, {
+      filter: 'active',
+      showSpoilers,
+    }),
+    getItemsByProfile(identity.activeProfile.id, {
+      filter: 'archived',
+      showSpoilers,
+    }),
   ]);
 
-  const lists = await getListsByProfile(identity.profile.id);
+  const lists = await getListsByProfile(identity.activeProfile.id);
 
-  const firstLastInitial = viewerDisplayName(identity.profile.name);
+  const actingAs = await actingAsName(identity);
+
+  const firstLastInitial = viewerDisplayName(identity.selfProfile.name);
 
   return (
     <main className="container container--items-library">
       <ItemsPage
         items={activeItems as ItemDisplay[]}
         archivedItems={archivedItems as ItemDisplay[]}
-        profile_id={identity.profile.id}
+        profile_id={identity.activeProfile.id}
         user_name={firstLastInitial}
         lists={lists}
         initialPageSize={initialPageSize}
+        actingAs={actingAs}
       />
     </main>
   );

@@ -42,8 +42,8 @@ function jsonOk(body: unknown): Response {
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
-function renderCreate() {
-  return render(<ItemFormContainer lists={[]} onClose={vi.fn()} />);
+function renderCreate(props: { actingAs?: string } = {}) {
+  return render(<ItemFormContainer lists={[]} onClose={vi.fn()} {...props} />);
 }
 
 async function fetchUrl(url = 'https://www.amazon.com/dp/B0TEST') {
@@ -113,9 +113,7 @@ describe('ItemFormContainer', () => {
       expect(
         screen.getByRole('button', { name: 'Save changes' })
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole('heading', { name: 'Gift' })
-      ).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Gift' })).toBeInTheDocument();
     });
 
     it('EditWithoutReturnTo_RendersPreview', () => {
@@ -243,7 +241,9 @@ describe('ItemFormContainer', () => {
       expect(
         screen.queryByRole('button', { name: /Store/ })
       ).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^Price/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /^Price/ })
+      ).toBeInTheDocument();
     });
   });
 
@@ -277,6 +277,18 @@ describe('ItemFormContainer', () => {
       ).toBeInTheDocument();
       expect(screen.getByText('Add an item')).toBeInTheDocument();
       expect(screen.queryByText('Last look')).not.toBeInTheDocument();
+    });
+
+    it('MultiProfileViewer_HeadingRegionNamesTheProfileTheItemIsFor', () => {
+      renderCreate({ actingAs: 'Owned Profile' });
+      expect(
+        screen.getByText('Add an item for Owned Profile')
+      ).toBeInTheDocument();
+    });
+
+    it('SingleProfileViewer_HeadingRegionNamesNoProfile', () => {
+      renderCreate();
+      expect(screen.getByText('Add an item')).toBeInTheDocument();
     });
 
     it('ClickUseALinkInstead_ReturnsToUrlEntry', async () => {
@@ -326,9 +338,9 @@ describe('ItemFormContainer', () => {
       const user = await openManualViaFailure();
       await user.click(screen.getByRole('button', { name: /Photo/ }));
       await user.click(screen.getByRole('button', { name: 'Done' }));
-      expect(
-        screen.getByRole('button', { name: /Photo/ })
-      ).toHaveTextContent('No photo yet — add one.');
+      expect(screen.getByRole('button', { name: /Photo/ })).toHaveTextContent(
+        'No photo yet — add one.'
+      );
     });
 
     it('NoErrorAndEveryWarnVisited_AdvancesToPreview', async () => {
@@ -350,7 +362,9 @@ describe('ItemFormContainer', () => {
       );
       const user = await openManualViaFailure();
       await fillManualItem(user);
-      await user.click(screen.getByRole('button', { name: /Lists & quantity/ }));
+      await user.click(
+        screen.getByRole('button', { name: /Lists & quantity/ })
+      );
       expect(
         screen.getByRole('checkbox', { name: 'Birthday' })
       ).toBeInTheDocument();
@@ -372,9 +386,7 @@ describe('ItemFormContainer', () => {
       await user.click(screen.getByRole('button', { name: /Photo/ }));
       await user.click(screen.getByRole('button', { name: 'Done' }));
       expect(screen.getByText('Review anything')).toBeInTheDocument();
-      await user.click(
-        screen.getByRole('button', { name: /Back to preview/ })
-      );
+      await user.click(screen.getByRole('button', { name: /Back to preview/ }));
 
       // Preview → Store editor → rename the store → Done.
       await user.click(screen.getByRole('button', { name: /^Store/ }));
@@ -597,7 +609,9 @@ describe('ItemFormContainer', () => {
       );
       renderCreate();
       await fetchUrl();
-      expect(await screen.findByText("Here's what we pulled.")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Here's what we pulled.")
+      ).toBeInTheDocument();
       expect(screen.queryByText(/Auto-filled from/)).not.toBeInTheDocument();
     });
 
@@ -616,7 +630,11 @@ describe('ItemFormContainer', () => {
 
     it('AbortDuringPhotoPrune_DoesNotEnterDeck', async () => {
       // Hold the image probes open so we can cancel mid-prune, then resolve.
-      const probes: { onload: (() => void) | null; naturalWidth: number; naturalHeight: number }[] = [];
+      const probes: {
+        onload: (() => void) | null;
+        naturalWidth: number;
+        naturalHeight: number;
+      }[] = [];
       class HoldImage {
         naturalWidth = 0;
         naturalHeight = 0;
@@ -653,7 +671,9 @@ describe('ItemFormContainer', () => {
       });
 
       expect(screen.getByText(/Paste a product link/)).toBeInTheDocument();
-      expect(screen.queryByText("Here's what we pulled.")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Here's what we pulled.")
+      ).not.toBeInTheDocument();
       vi.unstubAllGlobals();
     });
 

@@ -2,6 +2,8 @@
 
 import SignInButton from '@/app/(auth)/ui/components/SignInButton';
 import { CloseButton, buttonClasses } from '@/app/ui/components/button';
+import type { ProfileSwitcherView } from '@/lib/data/profile.active';
+import type { ActorProfile } from '@/lib/types';
 import { Session } from 'next-auth';
 
 import '@/app/(auth)/ui/styles/auth.css';
@@ -10,12 +12,26 @@ import { useState } from 'react';
 import AuthContainer from './AuthContainer';
 import UserAvatarPopover from './UserAvatarPopover';
 
-export default function UserMenu({ session }: { session: Session | null }) {
+export default function UserMenu({
+  session,
+  activeProfile,
+  switcher,
+}: {
+  session: Session | null;
+  activeProfile?: ActorProfile;
+  switcher?: ProfileSwitcherView;
+}) {
   const user = session?.user;
 
   // Signed-in users get a compact popover anchored to the avatar.
   if (user) {
-    return <UserAvatarPopover user={user} />;
+    return (
+      <UserAvatarPopover
+        user={user}
+        activeProfile={activeProfile}
+        switcher={switcher}
+      />
+    );
   }
 
   // Signed-out users get the full-screen modal sign-in flow.

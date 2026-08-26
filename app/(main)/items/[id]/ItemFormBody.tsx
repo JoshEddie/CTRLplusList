@@ -20,13 +20,13 @@ export default async function ItemFormBody({ params, searchParams }: Props) {
     redirect('/');
   }
 
-  const item = await getItemById(id, identity.profile.id);
+  const item = await getItemById(id, identity.activeProfile.id);
 
   if (!item) {
     redirect(returnTo ?? '/items');
   }
 
-  const lists = await getListsByProfile(identity.profile.id);
+  const lists = await getListsByProfile(identity.activeProfile.id);
 
   return <ItemFormContainer item={item} lists={lists} returnTo={returnTo} />;
 }

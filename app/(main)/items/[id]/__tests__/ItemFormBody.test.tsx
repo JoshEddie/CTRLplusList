@@ -62,7 +62,8 @@ beforeEach(() => {
   } as never);
   vi.mocked(getUserIdentity).mockResolvedValue({
     userId: 'u1',
-    profile: makeProfile('p1', 'Owner'),
+    selfProfile: makeProfile('p1', 'Owner'),
+    activeProfile: makeProfile('p1', 'Owner'),
   });
   vi.mocked(getItemById).mockResolvedValue({ id: 'i1', name: 'Gift' } as never);
   vi.mocked(getListsByProfile).mockResolvedValue([

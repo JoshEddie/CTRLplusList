@@ -36,7 +36,7 @@ The avatar circle SHALL render the **active profile** — the profile the viewer
 
 The avatar's dropdown SHALL offer the viewer's other profiles as switch rows, placed above its existing destinations so that identity leads the menu. Activating a row SHALL switch the active profile, per `active-profile`.
 
-The rows SHALL exclude the profile currently being acted as, so no row is inert. The row for the viewer's own profile SHALL read `Back to <self name>` whenever the active profile is not their own. A viewer who runs only their self-profile SHALL be offered no switch rows at all, leaving the dropdown as it is without them.
+The rows SHALL exclude the profile currently being acted as, so no row is inert. Each row SHALL read the profile's name and nothing more — including the viewer's own row, which appears only while they are acting as another profile. It carries no return-flavoured prefix: a prefix plus a long profile name is what overflows a menu row first, and the name alone already says where the row leads. A viewer who runs only their self-profile SHALL be offered no switch rows at all, leaving the dropdown as it is without them.
 
 The rows SHALL be capped at five, ordered most-recently-acted-as first per `active-profile`. The cap is the surface's limit, not the viewer's: the Profiles page lists every profile the viewer runs and switches from there, so a viewer past the cap reaches the rest through the dropdown's existing `Profiles` destination. That destination SHALL carry the count of profiles the viewer runs whenever it is more than one, so the capped group does not read as the whole set.
 
@@ -50,10 +50,11 @@ The rows SHALL be capped at five, ordered most-recently-acted-as first per `acti
 - **WHEN** a viewer opens the dropdown
 - **THEN** no row names the profile they are currently acting as
 
-#### Scenario: Returning to the viewer's own profile is named as such
+#### Scenario: The viewer's own profile is offered as a plain row
 
 - **WHEN** a viewer acting as a managed profile opens the dropdown
-- **THEN** the row for their own profile reads `Back to <self name>`
+- **THEN** the row for their own profile reads that profile's name, with no prefix
+- **AND** no row names the managed profile they are acting as
 
 #### Scenario: A single-profile viewer sees no switcher
 

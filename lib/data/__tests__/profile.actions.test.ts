@@ -1,4 +1,11 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearTestCookies,
+  mockNextHeaders,
+  readTestCookie,
+  readTestCookieOptions,
+  setTestCookie,
+} from '@/test/helpers/next-headers';
 
 import {
   preferences,
@@ -17,6 +24,7 @@ import {
   seedBlock,
   seedFollow,
   seedManagedProfile,
+  seedMembership,
   seedUsers,
   selfProfileOf,
 } from '@/test/helpers/seedFollowGraph';
@@ -24,6 +32,7 @@ import { ACCENT_NAMES } from '@/lib/accent';
 import { eq, sql } from 'drizzle-orm';
 
 mockNextCache();
+mockNextHeaders();
 
 type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
 
@@ -82,6 +91,7 @@ beforeEach(async () => {
   await resetDb(db);
   await seedUsers(db, [VIEWER, TARGET, THIRD]);
   await seedAccentCatalog(db);
+  clearTestCookies();
   updateTag.mockClear();
   asViewer();
 });
@@ -445,9 +455,7 @@ describe('createProfile', () => {
       expect(updateTag).not.toHaveBeenCalled();
     } finally {
       await db.execute(
-        sql.raw(
-          `ALTER TABLE "profile_members" DROP CONSTRAINT tmp_no_owner`
-        )
+        sql.raw(`ALTER TABLE "profile_members" DROP CONSTRAINT tmp_no_owner`)
       );
     }
   });
@@ -542,15 +550,16 @@ describe('updateProfileSettings', () => {
     const res = await actions.updateProfileSettings(MANAGED, edit);
     expect(res.success).toBe(true);
 
-    const [row] = await db.select().from(profiles).where(eq(profiles.id, MANAGED));
+    const [row] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, MANAGED));
     expect(row).toEqual(
       expect.objectContaining({ name: 'Renamed', tagline: 'New tagline' })
     );
     expect(
       (await accentRows()).filter((r) => r.profile_id === MANAGED)
-    ).toEqual([
-      expect.objectContaining({ value: String(NEXT_ACCENT) }),
-    ]);
+    ).toEqual([expect.objectContaining({ value: String(NEXT_ACCENT) })]);
     expect(updateTag.mock.calls).toEqual([
       [`profile_preferences:profile:${MANAGED}`],
       [`profiles:id:${MANAGED}`],
@@ -566,7 +575,10 @@ describe('updateProfileSettings', () => {
     const res = await actions.updateProfileSettings(MANAGED, edit);
     expect(res.error).toBe('Unauthorized');
 
-    const [row] = await db.select().from(profiles).where(eq(profiles.id, MANAGED));
+    const [row] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, MANAGED));
     expect(row.name).toBe('Kiddo');
     expect(row.tagline).toBeNull();
     expect(await accentRows()).toHaveLength(0);
@@ -576,7 +588,10 @@ describe('updateProfileSettings', () => {
     const res = await actions.updateProfileSettings(MANAGED, edit);
     expect(res.error).toBe('Unauthorized');
 
-    const [row] = await db.select().from(profiles).where(eq(profiles.id, MANAGED));
+    const [row] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, MANAGED));
     expect(row.name).toBe('Kiddo');
     expect(await accentRows()).toHaveLength(0);
   });
@@ -607,7 +622,10 @@ describe('updateProfileSettings', () => {
       .where(eq(profiles.id, VIEWER_PROFILE));
     expect(profile.name).toBe('New Display Name');
 
-    const [account] = await db.select().from(users).where(eq(users.id, VIEWER.id));
+    const [account] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, VIEWER.id));
     expect(account.name).toBe(VIEWER.id);
   });
 });
@@ -728,5 +746,143 @@ describe('ProfileWriteErrors', () => {
     expect(res.success).toBe(true);
     const [created] = (await profileRows()).filter((p) => p.id === res.id);
     expect(created.tagline).toBeNull();
+  });
+});
+
+describe('BlockerIsAlwaysTheHuman', () => {
+  // A block is an act by a human, so the blocker end does not follow the
+  // switcher — it means the same thing before and after one.
+  beforeEach(async () => {
+    await seedManagedProfile(db, { id: 'kiddo', name: 'Kiddo' });
+    await seedMembership(db, { user_id: VIEWER.id, profile_id: 'kiddo' });
+    setTestCookie('active_profile', 'kiddo');
+  });
+
+  it('BlockWhileActingAsAManagedProfile_InsertsOneRowBlockedByTheSelfProfile', async () => {
+    const res = await actions.blockUser(TARGET_PROFILE);
+
+    expect(res.success).toBe(true);
+    expect(await blockRows()).toEqual([
+      expect.objectContaining({
+        blocker_profile_id: VIEWER_PROFILE,
+        blocked_profile_id: TARGET_PROFILE,
+      }),
+    ]);
+  });
+
+  it('UnblockWhileActingAsAManagedProfile_RemovesTheSelfProfilesRow', async () => {
+    await seedBlock(db, VIEWER.id, TARGET.id);
+
+    const res = await actions.unblockUser(TARGET_PROFILE);
+
+    expect(res.success).toBe(true);
+    expect(await blockRows()).toEqual([]);
+  });
+
+  it('FollowWhileActingAsAManagedProfile_IsStillGatedByTheHumansBlock', async () => {
+    await seedBlock(db, TARGET.id, VIEWER.id);
+
+    const res = await actions.followUser(TARGET_PROFILE);
+
+    expect(res.error).toBe('Blocked');
+    expect(await followRows()).toEqual([]);
+  });
+});
+
+describe('switchActiveProfile', () => {
+  const ACTIVE_PROFILE_COOKIE = 'active_profile';
+
+  async function lastActiveAt(profileId: string) {
+    const [row] = await db
+      .select({ at: profile_members.last_active_at })
+      .from(profile_members)
+      .where(eq(profile_members.profile_id, profileId));
+    return row?.at ?? null;
+  }
+
+  beforeEach(async () => {
+    await seedManagedProfile(db, { id: 'kiddo', name: 'Kiddo' });
+  });
+
+  it('HeldTarget_StoresTheSelection-StampsIt-ConfirmsByName', async () => {
+    await seedMembership(db, { user_id: VIEWER.id, profile_id: 'kiddo' });
+
+    const res = await actions.switchActiveProfile('kiddo');
+
+    expect(res).toMatchObject({
+      success: true,
+      message: 'Profile switched to Kiddo',
+      id: 'kiddo',
+    });
+    expect(readTestCookie(ACTIVE_PROFILE_COOKIE)).toBe('kiddo');
+    expect(await lastActiveAt('kiddo')).not.toBeNull();
+  });
+
+  it('HeldTarget_WritesTheSelectionBeyondTheReachOfClientScript', async () => {
+    await seedMembership(db, { user_id: VIEWER.id, profile_id: 'kiddo' });
+
+    await actions.switchActiveProfile('kiddo');
+
+    // The selection is an authorization input, so `httpOnly` is the load-
+    // bearing attribute; `maxAge` is what makes it survive a browser restart.
+    expect(readTestCookieOptions(ACTIVE_PROFILE_COOKIE)).toMatchObject({
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60,
+    });
+  });
+
+  it('UnheldTarget_RejectsForbidden-StoresNothing-LeavesTheTimestamp', async () => {
+    const res = await actions.switchActiveProfile('kiddo');
+
+    expect(res.error).toBe('Forbidden');
+    expect(readTestCookie(ACTIVE_PROFILE_COOKIE)).toBeUndefined();
+    expect(await lastActiveAt('kiddo')).toBeNull();
+  });
+
+  it('UnheldTarget_LeavesAnExistingSelectionUntouched', async () => {
+    setTestCookie(ACTIVE_PROFILE_COOKIE, VIEWER_PROFILE);
+
+    await actions.switchActiveProfile('kiddo');
+
+    expect(readTestCookie(ACTIVE_PROFILE_COOKIE)).toBe(VIEWER_PROFILE);
+  });
+
+  it('TargetLookupThrows_ReturnsFailed-LogsError-StoresNothing', async () => {
+    await seedMembership(db, { user_id: VIEWER.id, profile_id: 'kiddo' });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Three selects run: the account lookup and the memberships read (both of
+    // which swallow their own errors, so a blanket throw would only produce an
+    // Unauthorized rejection), then the action's own membership lookup. Only
+    // the third reaches the catch under test — if resolution ever stops
+    // costing exactly two, this fails loudly rather than passing silently.
+    // `db.select` is overloaded, so the passthrough is called through an
+    // unknown-arg signature rather than trying to spread into an overload set.
+    const realSelect = db.select.bind(db) as (...a: unknown[]) => unknown;
+    let selects = 0;
+    vi.spyOn(db, 'select').mockImplementation(((...args: unknown[]) => {
+      selects += 1;
+      if (selects === 3) throw new Error('boom');
+      return realSelect(...args);
+    }) as typeof db.select);
+
+    const res = await actions.switchActiveProfile('kiddo');
+
+    expect(res).toMatchObject({ success: false, error: 'Failed' });
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Error switching active profile:',
+      expect.any(Error)
+    );
+    expect(readTestCookie(ACTIVE_PROFILE_COOKIE)).toBeUndefined();
+  });
+
+  it('NoSession_RejectsUnauthorized-StoresNothing', async () => {
+    noSession();
+
+    const res = await actions.switchActiveProfile('kiddo');
+
+    expect(res.error).toBe('Unauthorized');
+    expect(readTestCookie(ACTIVE_PROFILE_COOKIE)).toBeUndefined();
   });
 });

@@ -74,7 +74,7 @@ const viewerProps = {
   ownerProfileId: OWNER_PROFILE,
   ownerName: 'Bob',
   viewerUserId: VIEWER_ID,
-  viewerProfileId: VIEWER_PROFILE,
+  viewerSelfProfileId: VIEWER_PROFILE,
 };
 
 const dialogProto = HTMLDialogElement.prototype as unknown as Record<

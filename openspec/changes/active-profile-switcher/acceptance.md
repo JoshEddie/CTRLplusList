@@ -28,7 +28,7 @@
 - **And** no row names their self-profile
 - **And** the rows are ordered most-recently-acted-as first, with the never-acted-as profile after both
 - **And** each switch row's leading slot renders that profile's initials on its accent, and carries no navigation icon
-- **And** the `Profiles` destination carries the count of all three profiles, rendered as *TODO: specify how the count is presented on the Profiles row*
+- **And** the `Profiles` destination carries the count of all three profiles as a trailing badge reading `3`, with the row's accessible name reading `Profiles (3)`
 - **And** the `Profiles` destination still links to `/profiles`
 
 ### Flow: A viewer past the dropdown's cap reaches the rest through Profiles
@@ -45,7 +45,7 @@
 
 - **Given** the viewer is acting as a managed profile they own
 - **When** they open the avatar dropdown
-- **Then** one switch row reads `Back to <their self-profile's name>`
+- **Then** one switch row reads their self-profile's name, with no prefix ahead of it
 - **And** no row names the managed profile they are acting as
 
 ### Flow: A single-profile viewer sees no switcher
@@ -65,9 +65,53 @@
 - **Then** they remain on `/lists`
 - **And** `/lists` renders the managed profile's lists
 - **And** none of their self-profile's lists are rendered
-- **And** a transient confirmation naming the managed profile is raised, reading *TODO: specify the confirmation copy*
+- **And** a transient confirmation naming the managed profile is raised, reading `Profile switched to <the managed profile's name>`
 - **And** the avatar circle renders the managed profile's initials with its accent as a ring
 - **And** that membership's last-acted-as timestamp records the switch
+
+### Flow: Switching while in a profile's space carries the viewer to the new one
+
+- **Given** the viewer is on `/profiles/<owned profile's id>` acting as their self-profile
+- **And** they have made no edits to the Settings form
+- **When** they open the avatar dropdown and click the switch row naming a second profile they run
+- **Then** they are carried to `/profiles/<that second profile's id>`
+- **And** the Settings form renders the second profile's name, tagline and accent
+- **And** a transient confirmation is raised reading `Profile switched to <the second profile's name>`
+- **And** the avatar circle renders the second profile's initials with its accent as a ring
+- **And** going back does not return them to the first profile's space
+
+### Flow: Unsaved profile edits hold the switch behind a confirmation
+
+- **Given** the viewer is on `/profiles/<owned profile's id>` acting as their self-profile
+- **And** they have typed into the Settings form's `Name` field without saving
+- **When** they open the avatar dropdown and click the switch row naming a second profile they run
+- **Then** a confirmation is raised reading `You have unsaved changes`, asking `Keep editing, or switch anyway?`
+- **And** it offers `Keep editing` and `Switch anyway`
+- **And** no switch has been performed and no `Profile switched to …` confirmation has been raised
+
+### Flow: Keeping the edits leaves the viewer where they were
+
+- **Given** the confirmation above is open
+- **When** the viewer clicks `Keep editing`
+- **Then** the confirmation closes
+- **And** they are still on `/profiles/<the first profile's id>`
+- **And** their typed `Name` value is still in the field
+- **And** the avatar circle still renders their self-profile
+
+### Flow: Switching anyway leaves the edits unwritten and follows the route
+
+- **Given** the confirmation above is open
+- **When** the viewer clicks `Switch anyway`
+- **Then** they are carried to `/profiles/<the second profile's id>`
+- **And** a transient confirmation reading `Profile switched to <the second profile's name>` is raised
+- **And** loading the first profile's space afresh shows its stored `Name`, not what they typed
+
+### Flow: A saved form holds nothing
+
+- **Given** the viewer is on `/profiles/<owned profile's id>` and has edited and saved the Settings form
+- **When** they switch to a second profile they run from the avatar dropdown
+- **Then** no unsaved-changes confirmation is raised
+- **And** they are carried straight to `/profiles/<the second profile's id>`
 
 ### Flow: Switching from a profile card leaves the viewer on the Profiles page
 
@@ -76,7 +120,7 @@
 - **When** they click the body of the managed profile's card, outside its management menu
 - **Then** no navigation occurs and the viewer remains on `/profiles`
 - **And** the managed profile's card carries the active mark, its accent painted across the whole face
-- **And** a badge on that card's avatar carries a text alternative naming the active state, reading *TODO: specify the badge's text alternative*
+- **And** a badge on that card's avatar carries a text alternative naming the active state, reading `Active profile`
 - **And** their self-profile's card carries neither the active mark nor the badge
 - **And** a transient confirmation naming the managed profile is raised
 
@@ -111,8 +155,8 @@
 - **Given** the viewer runs more than one profile
 - **And** they are acting as a managed profile they own
 - **When** they open the list creation form
-- **Then** the form's heading region names the managed profile as the one the new list is for, phrased as *TODO: specify the heading-region copy*
-- **And** the submit control names the managed profile, or renders its bare verb where the profile's name does not fit the available width
+- **Then** the form's heading region names the managed profile as the one the new list is for, reading `New List for <the managed profile's name>`
+- **And** the submit control names the managed profile
 
 ### Flow: A single-profile viewer is shown no profile statement
 
@@ -181,7 +225,8 @@
 - **When** they load `/lists`
 - **And** load `/items`
 - **Then** each empty state renders its create affordance
-- **And** each renders a secondary link to `/profiles` after that affordance, labelled *TODO: specify the secondary action's label*
+- **And** each renders a secondary link to `/profiles` beside that affordance, labelled `Go to Profiles` — the label names the destination, because the link navigates rather than switching
+- **And** each description reads `This profile has no <Item|List>s yet — create one below, or switch profiles.`
 - **And** neither the title, the description nor the secondary link names any profile
 
 ### Flow: A single-profile viewer's empty state is unchanged
@@ -191,14 +236,6 @@
 - **When** they load `/lists`
 - **Then** the empty state renders its title, description and create affordance
 - **And** no secondary link to `/profiles` is rendered
-
-### Flow: The purchased view's empty state gains nothing
-
-- **Given** the viewer runs more than one profile
-- **And** they have marked no items as purchased
-- **When** they load `/purchased`
-- **Then** the empty state renders its title and description
-- **And** no button and no link is rendered inside the empty container
 
 ### Flow: A revoked membership falls back to the self-profile without rewriting the selection
 
@@ -334,11 +371,12 @@
 ### Flow: The owner seeds a switchable set
 
 - **Given** a local database provisioned by `drizzle-kit push` from the schema
-- **When** the owner runs the dev seed
+- **When** the owner runs `npm run db:seed:dev`
 - **Then** the command exits 0
-- **And** the primary test viewer holds a `self`, an `owner` and a `manager` membership on three distinct profiles
-- **And** those memberships carry distinct last-acted-as timestamps, far enough apart to order unambiguously
-- **And** at least one of them is NULL
+- **And** `dev-test-viewer` holds `self` on `self-dev-test-viewer` ("Test Viewer"), `owner` on `dev-profile-owned` ("Owned Profile") and `manager` on `dev-profile-managed` ("Managed Profile")
+- **And** those memberships carry distinct last-acted-as timestamps, far enough apart to order unambiguously — `2026-08-20T12:00:00Z` on the self-profile and `2026-02-14T09:00:00Z` on `dev-profile-owned`
+- **And** `dev-profile-managed`'s is NULL
+- **And** `dev-profile-owned` owns `dev-list-owned-wishlist` ("Owned Profile Wishlist")
 - **And** the preferences catalog holds the `accent` row
 - **And** the per-profile preference values table holds no rows
 
@@ -351,13 +389,15 @@
 - **And** none of their membership or preference rows remain
 - **And** the seed's profile fixtures are present again with the same deterministic timestamps
 
-### Flow: The dormant environment override governs nothing
+### Flow: The environment override governs nothing
 
 - **Given** a local-mode dev server
 - **When** the owner starts it with `BYPASS_ACTIVE_PROFILE` set to a seeded managed profile's id
 - **And** loads `/lists`
 - **Then** `/lists` renders the bypassed viewer's self-profile's lists
 - **And** the avatar circle renders their self-profile's initials
+- **And** the variable is unknown to the application: no source file reads it, and `bypassActiveProfile()` no longer exists
+- **And** the only way to act as another profile locally is a real switching affordance
 
 ### Flow: The seam's split is enumerated by the typechecker
 
@@ -368,8 +408,9 @@
 
 ### Flow: The suite drives a real switch and leaves the ordering fixture intact
 
-- **Given** a seeded e2e database whose test viewer holds three memberships, one with a NULL last-acted-as timestamp
+- **Given** a seeded e2e database whose test viewer holds three memberships, `dev-profile-managed`'s carrying a NULL last-acted-as timestamp
 - **When** the owner runs `npm run test:e2e`
 - **Then** the command exits 0
-- **And** the membership the seed left NULL is still NULL
+- **And** `e2e/profile-switch.auth.spec.ts` switched only to `dev-profile-owned`, through the avatar dropdown and a profile card, never by pinning
+- **And** `dev-profile-managed`'s last-acted-as timestamp is still NULL — the one spec that acts as it pins it by cookie through `pinActingProfile`, which writes nothing
 - **And** the test viewer's stored selection at the end of the run names their self-profile

@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockNextHeaders } from '@/test/helpers/next-headers';
 
 import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { auth } from '@/lib/auth';
@@ -10,6 +11,13 @@ import MyListsGrid from '../ui/components/MyListsGrid';
 import NewListButton from '../ui/components/NewListButton';
 
 mockNextCache();
+mockNextHeaders();
+// Only the derivation this page forwards is stubbed; the membership read
+// stays real, because this suite resolves the identity against pglite.
+vi.mock('@/lib/data/profile.active', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/data/profile.active')>()),
+  actingAsName: vi.fn(),
+}));
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 const redirectMock = vi.hoisted(() =>

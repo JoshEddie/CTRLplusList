@@ -63,6 +63,25 @@ export async function seedManagedProfile(
   });
 }
 
+// A membership beyond the `self` rows `seedUsers` writes. `last_active_at`
+// defaults to NULL — the never-acted-as value a fresh membership carries.
+export async function seedMembership(
+  db: TestDb,
+  membership: {
+    user_id: string;
+    profile_id: string;
+    role?: 'self' | 'owner' | 'manager';
+    last_active_at?: Date | null;
+  }
+): Promise<void> {
+  await db.insert(profile_members).values({
+    user_id: membership.user_id,
+    profile_id: membership.profile_id,
+    role: membership.role ?? 'owner',
+    last_active_at: membership.last_active_at ?? null,
+  });
+}
+
 export async function seedFollow(
   db: TestDb,
   follower_id: string,

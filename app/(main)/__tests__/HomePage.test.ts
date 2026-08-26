@@ -1,10 +1,21 @@
 import { Suspense } from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearTestCookies,
+  mockNextHeaders,
+  setTestCookie,
+} from '@/test/helpers/next-headers';
 
 import { auth } from '@/lib/auth';
+import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers, selfProfileOf } from '@/test/helpers/seedFollowGraph';
+import {
+  seedManagedProfile,
+  seedMembership,
+  seedUsers,
+  selfProfileOf,
+} from '@/test/helpers/seedFollowGraph';
 import BookmarkMigrationToast from '../lists/ui/components/BookmarkMigrationToast';
 import CollapsibleRail from '../lists/ui/components/CollapsibleRail';
 import BookmarksRail from '../lists/ui/components/rails/BookmarksRail';
@@ -13,6 +24,7 @@ import MyListsRail from '../lists/ui/components/rails/MyListsRail';
 import RecentlyVisitedRail from '../lists/ui/components/rails/RecentlyVisitedRail';
 
 mockNextCache();
+mockNextHeaders();
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 const redirectMock = vi.hoisted(() =>
@@ -43,6 +55,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetDb(db);
+  clearTestCookies();
   redirectMock.mockClear();
 });
 
@@ -128,6 +141,30 @@ describe('HomePage', () => {
       const inner = suspense.props.children as El;
       expect(inner.type).toBe(expected[i].component);
       expect(inner.props).toEqual(expected[i].props);
+    });
+  });
+
+  it('ActingAsAManagedProfile_KeysMyListsToItAndTheRestToTheAccount', async () => {
+    const unswitched = await renderWithViewer();
+    await seedManagedProfile(db, { id: 'kiddo', name: 'Kiddo' });
+    await seedMembership(db, { user_id: 'viewer', profile_id: 'kiddo' });
+    setTestCookie(ACTIVE_PROFILE_COOKIE, 'kiddo');
+    const switched = (await HomePage()) as unknown as El;
+
+    const railProps = (t: El) =>
+      rails(t).map((rail) => {
+        const suspense = rail.props.children as El;
+        return (suspense.props.children as El).props;
+      });
+
+    expect(railProps(switched)).toEqual([
+      { profileId: 'kiddo' },
+      { userId: 'viewer' },
+      { userId: 'viewer' },
+      { userId: 'viewer' },
+    ]);
+    expect(railProps(unswitched)[0]).toEqual({
+      profileId: selfProfileOf('viewer'),
     });
   });
 

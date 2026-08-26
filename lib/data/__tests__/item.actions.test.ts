@@ -1,5 +1,10 @@
 import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearTestCookies,
+  mockNextHeaders,
+  setTestCookie,
+} from '@/test/helpers/next-headers';
 
 import {
   item_images,
@@ -9,10 +14,15 @@ import {
   lists,
 } from '@/db/schema';
 import { auth } from '@/lib/auth';
+import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
 import type { ItemDetails } from '@/lib/types';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedManagedProfile,
+  seedMembership,
+  seedUsers,
+} from '@/test/helpers/seedFollowGraph';
 
 import {
   seedItem,
@@ -25,6 +35,7 @@ import {
 } from './test-helpers';
 
 mockNextCache();
+mockNextHeaders();
 
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock('@/db', () => ({
@@ -77,6 +88,17 @@ function makeItem(overrides: Partial<ItemDetails> = {}): ItemDetails {
 }
 
 const itemRows = () => db.select().from(items);
+
+const MANAGED = 'kiddo';
+
+// The owner acting as a profile that is not their own. Every other case in
+// this file leaves the selection unset, which collapses the active profile
+// onto the self-profile and makes the two interchangeable.
+async function ownerActsAsManaged() {
+  await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
+  await seedMembership(db, { user_id: OWNER.id, profile_id: MANAGED });
+  setTestCookie(ACTIVE_PROFILE_COOKIE, MANAGED);
+}
 const listItemRows = (listId: string) =>
   db.select().from(list_items).where(eq(list_items.list_id, listId));
 const storeRows = (itemId: string) =>
@@ -104,6 +126,7 @@ beforeEach(async () => {
   vi.restoreAllMocks();
   await resetDb(db);
   await seedUsers(db, [OWNER, OTHER]);
+  clearTestCookies();
   updateTag.mockClear();
   asOwner();
 });
@@ -236,6 +259,22 @@ describe('createItem', () => {
       );
     });
 
+    it('ActingAsAManagedProfile_OwnsTheNewItemToThatProfile', async () => {
+      await ownerActsAsManaged();
+
+      const res = await actions.createItem(
+        makeItem({ name: 'Kiddo Gift', lists: [] })
+      );
+
+      expect(res.success).toBe(true);
+      const rows = await itemRows();
+      expect(rows[0]).toMatchObject({
+        profile_id: MANAGED,
+        updated_by_user_id: OWNER.id,
+      });
+      expect(updateTag).toHaveBeenCalledWith(`items:profile:${MANAGED}`);
+    });
+
     it('NoLists_InsertsItemWithStore-DefaultsDescriptionEmpty', async () => {
       const res = await actions.createItem(
         makeItem({ name: 'Bare Item', description: '', lists: [] })
@@ -318,7 +357,12 @@ describe('createItem', () => {
       expect(res.success).toBe(true);
       const rows = await itemRows();
       expect(await storeRows(rows[0].id)).toEqual([
-        expect.objectContaining({ name: '', link: '', price: '12.50', order: 1 }),
+        expect.objectContaining({
+          name: '',
+          link: '',
+          price: '12.50',
+          order: 1,
+        }),
       ]);
     });
 
@@ -369,6 +413,19 @@ describe('updateItem', () => {
       asGhost();
       const res = await actions.updateItem(makeItem({ id: 'whatever' }));
       expect(res.error).toBe('Unauthorized');
+    });
+
+    it('ActingAsAManagedProfile_RefusesTheSelfProfilesItem', async () => {
+      await seedItem(db, { id: 'mine', user_id: OWNER.id, name: 'Mine' });
+      await ownerActsAsManaged();
+
+      const res = await actions.updateItem(
+        makeItem({ id: 'mine', name: 'Hacked' })
+      );
+
+      expect(res.error).toBe('Unauthorized');
+      const row = (await itemRows()).find((i) => i.id === 'mine');
+      expect(row?.name).toBe('Mine');
     });
 
     it('ForeignItem_ReturnsUnauthorized-NoWrite', async () => {
@@ -565,7 +622,12 @@ describe('updateItem', () => {
       );
       expect(res.success).toBe(true);
       expect(await storeRows('I')).toEqual([
-        expect.objectContaining({ id: 'S1', name: '', link: '', price: '8.00' }),
+        expect.objectContaining({
+          id: 'S1',
+          name: '',
+          link: '',
+          price: '8.00',
+        }),
       ]);
     });
 
@@ -741,7 +803,11 @@ describe('ImageCandidates', () => {
   describe('createItem', () => {
     it('FetchedCandidates_PersistsPoolInExtractorOrder-MarksActive', async () => {
       const res = await actions.createItem(
-        makeItem({ name: 'Fetched Gift', image_url: POOL[0], image_candidates: POOL })
+        makeItem({
+          name: 'Fetched Gift',
+          image_url: POOL[0],
+          image_candidates: POOL,
+        })
       );
       expect(res.success).toBe(true);
       const created = (await itemRows())[0];
@@ -752,7 +818,10 @@ describe('ImageCandidates', () => {
 
     it('ManualImageUrlNoCandidates_SavesSingleActiveRow', async () => {
       const res = await actions.createItem(
-        makeItem({ name: 'Manual Gift', image_url: 'https://img.test/manual.jpg' })
+        makeItem({
+          name: 'Manual Gift',
+          image_url: 'https://img.test/manual.jpg',
+        })
       );
       expect(res.success).toBe(true);
       const created = (await itemRows())[0];
@@ -808,9 +877,16 @@ describe('ImageCandidates', () => {
     });
 
     it('RefetchedCandidates_ReplacesPool-MarksActive', async () => {
-      const refetched = ['https://img.test/new0.jpg', 'https://img.test/new1.jpg'];
+      const refetched = [
+        'https://img.test/new0.jpg',
+        'https://img.test/new1.jpg',
+      ];
       const res = await actions.updateItem(
-        makeItem({ id: 'I', image_url: refetched[1], image_candidates: refetched })
+        makeItem({
+          id: 'I',
+          image_url: refetched[1],
+          image_candidates: refetched,
+        })
       );
       expect(res.success).toBe(true);
       const rows = await imageRows('I');
@@ -829,7 +905,9 @@ describe('ImageCandidates', () => {
       const rows = await imageRows('I');
       // The pool is preserved and the hand-entered URL is appended as active.
       expect(rows.map((r) => r.url)).toEqual([...POOL, handPicked]);
-      expect(rows.filter((r) => r.active).map((r) => r.url)).toEqual([handPicked]);
+      expect(rows.filter((r) => r.active).map((r) => r.url)).toEqual([
+        handPicked,
+      ]);
     });
 
     it('PoolDeleteThrows_ReturnsFailedToUpdateItem', async () => {
@@ -926,4 +1004,3 @@ describe('UpdateRecency', () => {
     expect(byId.M2.toISOString()).toBe(STALE.toISOString());
   });
 });
-

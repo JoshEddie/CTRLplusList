@@ -132,3 +132,33 @@
 .menu-item-radio[aria-checked='true'] {
   background-color: var(--secondary-background-color);
 }
+
+/* The switch group's leading slot — the same disc the profile card paints,
+   sized to the menu row rather than the card. */
+.menu-profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-disc);
+  color: var(--accent-ink);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* The count that keeps the capped switch group from reading as the whole set.
+   Pushed to the row's trailing edge; the row's own aria-label carries it for
+   assistive tech, so this stays presentational. */
+.menu-item-count {
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--secondary-background-color);
+  color: var(--muted-text-color);
+  font-size: 12px;
+  font-weight: 600;
+}

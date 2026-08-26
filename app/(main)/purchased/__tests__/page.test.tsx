@@ -38,7 +38,8 @@ beforeEach(() => {
   vi.mocked(getUserIdByEmail).mockResolvedValue({ id: 'viewer' } as never);
   vi.mocked(getUserIdentity).mockResolvedValue({
     userId: 'viewer',
-    profile: makeProfile('viewer-profile', 'Viewer'),
+    selfProfile: makeProfile('viewer-profile', 'Viewer'),
+    activeProfile: makeProfile('viewer-profile', 'Viewer'),
   });
   vi.mocked(getItemsByPurchased).mockResolvedValue([] as never);
 });
@@ -60,8 +61,20 @@ describe('Purchased', () => {
   });
 
   describe('Render', () => {
-    it('ViewerResolved_ReadsPurchasedItemsForProfileId', async () => {
+    it('ViewerResolved_ReadsPurchasedItemsForTheSelfProfile', async () => {
       await Purchased();
+      expect(getItemsByPurchased).toHaveBeenCalledWith('viewer-profile');
+    });
+
+    it('ActingAsAManagedProfile_StillReadsTheSelfProfile', async () => {
+      vi.mocked(getUserIdentity).mockResolvedValue({
+        userId: 'viewer',
+        selfProfile: makeProfile('viewer-profile', 'Viewer'),
+        activeProfile: makeProfile('kiddo', 'Kiddo'),
+      });
+
+      await Purchased();
+
       expect(getItemsByPurchased).toHaveBeenCalledWith('viewer-profile');
     });
 

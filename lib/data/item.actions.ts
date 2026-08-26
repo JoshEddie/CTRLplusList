@@ -11,7 +11,7 @@ import {
 import { touchLists } from '@/lib/data/list.touch';
 import { ItemSchema } from '@/lib/data/item.schema';
 import { validateStore } from '@/lib/data/item.store';
-import { authedIdentity, UNAUTHORIZED_RESPONSE } from '@/lib/data/user.session';
+import { authedWriter } from '@/lib/data/profile.gate';
 import { type ActionResponse, ItemDetails } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { eq } from 'drizzle-orm';
@@ -19,10 +19,11 @@ import { nanoid } from 'nanoid';
 
 export async function createItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    const identity = await authedIdentity();
-    if (!identity) {
-      return UNAUTHORIZED_RESPONSE;
+    const actor = await authedWriter();
+    if ('error' in actor) {
+      return actor.error;
     }
+    const { identity } = actor;
 
     const validationResult = ItemSchema.safeParse(data);
     if (!validationResult.success) {
@@ -48,7 +49,7 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       description: validatedData.description || '',
       created_at: new Date(),
       updated_at: new Date(),
-      profile_id: identity.profile.id,
+      profile_id: identity.activeProfile.id,
       updated_by_user_id: identity.userId,
       quantity_limit: validatedData.quantity_limit,
     });
@@ -66,8 +67,8 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
     );
 
     updateTags(
-      cacheTags.itemsOfProfile(identity.profile.id),
-      cacheTags.listsOfProfile(identity.profile.id)
+      cacheTags.itemsOfProfile(identity.activeProfile.id),
+      cacheTags.listsOfProfile(identity.activeProfile.id)
     );
 
     return { success: true, message: 'Item created successfully' };
@@ -83,16 +84,17 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
 
 export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    const identity = await authedIdentity();
-    if (!identity) {
-      return UNAUTHORIZED_RESPONSE;
+    const actor = await authedWriter();
+    if ('error' in actor) {
+      return actor.error;
     }
+    const { identity } = actor;
 
     const existing = await db.query.items.findFirst({
       where: eq(items.id, data.id),
       columns: { profile_id: true },
     });
-    if (!existing || existing.profile_id !== identity.profile.id) {
+    if (!existing || existing.profile_id !== identity.activeProfile.id) {
       return {
         success: false,
         message: 'Unauthorized - item does not belong to you',
@@ -151,8 +153,8 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
 
     updateTags(
       cacheTags.item(data.id),
-      cacheTags.itemsOfProfile(identity.profile.id),
-      cacheTags.listsOfProfile(identity.profile.id)
+      cacheTags.itemsOfProfile(identity.activeProfile.id),
+      cacheTags.listsOfProfile(identity.activeProfile.id)
     );
 
     return { success: true, message: 'Item updated successfully' };
@@ -171,16 +173,17 @@ export async function archiveItem(
   archived: boolean
 ): Promise<ActionResponse> {
   try {
-    const identity = await authedIdentity();
-    if (!identity) {
-      return UNAUTHORIZED_RESPONSE;
+    const actor = await authedWriter();
+    if ('error' in actor) {
+      return actor.error;
     }
+    const { identity } = actor;
 
     const item = await db.query.items.findFirst({
       where: eq(items.id, item_id),
       columns: { profile_id: true },
     });
-    if (!item || item.profile_id !== identity.profile.id) {
+    if (!item || item.profile_id !== identity.activeProfile.id) {
       return {
         success: false,
         message: 'Unauthorized - item does not belong to you',
@@ -195,7 +198,7 @@ export async function archiveItem(
 
     updateTags(
       cacheTags.item(item_id),
-      cacheTags.itemsOfProfile(identity.profile.id)
+      cacheTags.itemsOfProfile(identity.activeProfile.id)
     );
 
     return {
@@ -214,10 +217,11 @@ export async function archiveItem(
 
 export async function deleteItem(id: string) {
   try {
-    const identity = await authedIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
+    const actor = await authedWriter();
+    if ('error' in actor) {
+      throw new Error(actor.error.error);
     }
+    const { identity } = actor;
 
     // Verify item ownership
     const item = await db.query.items.findFirst({
@@ -225,7 +229,7 @@ export async function deleteItem(id: string) {
       columns: { profile_id: true },
     });
 
-    if (!item || item.profile_id !== identity.profile.id) {
+    if (!item || item.profile_id !== identity.activeProfile.id) {
       throw new Error('Unauthorized - Item does not belong to you');
     }
 
@@ -247,13 +251,13 @@ export async function deleteItem(id: string) {
           cacheTags.list(listId),
           cacheTags.itemsOfList(listId),
         ]),
-        cacheTags.listsOfProfile(identity.profile.id)
+        cacheTags.listsOfProfile(identity.activeProfile.id)
       );
     }
 
     updateTags(
       cacheTags.item(id),
-      cacheTags.itemsOfProfile(identity.profile.id)
+      cacheTags.itemsOfProfile(identity.activeProfile.id)
     );
 
     return { success: true, message: 'Item deleted successfully' };

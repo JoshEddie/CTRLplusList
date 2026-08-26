@@ -2,6 +2,7 @@
 
 import { Button } from '@/app/ui/components/button';
 import Empty from '@/app/ui/components/Empty';
+import { SWITCH_PROFILE_ACTION } from '@/lib/activeProfile';
 import Header from '@/app/ui/components/Header';
 import { HERO_TOOLBAR_SLOT_ID } from '@/app/(main)/lists/ui/components/ListHeroSurface';
 import { ItemDisplay, ListTable } from '@/lib/types';
@@ -18,6 +19,10 @@ interface ItemsPageProps {
   user_name?: string | null;
   lists?: ListTable[];
   initialPageSize?: number;
+  // The active profile's name, present only for a viewer who runs more than
+  // one. It names the profile on the creation surface, and its presence is
+  // what offers the empty state a route to the Profiles page.
+  actingAs?: string;
 }
 
 type Tab = 'active' | 'archived';
@@ -29,6 +34,7 @@ export default function ItemsPage({
   user_name,
   lists,
   initialPageSize,
+  actingAs,
 }: ItemsPageProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -93,7 +99,11 @@ export default function ItemsPage({
 
       {source.length === 0 ? (
         tab === 'active' ? (
-          <Empty type="item" setShowNewItem={setShowNewItem} />
+          <Empty
+            type="item"
+            setShowNewItem={setShowNewItem}
+            secondaryAction={actingAs ? SWITCH_PROFILE_ACTION : undefined}
+          />
         ) : (
           <div className="empty-container">
             <h3>No archived items</h3>
@@ -113,6 +123,7 @@ export default function ItemsPage({
       )}
       {showNewItem && (
         <ItemFormContainer
+          actingAs={actingAs}
           lists={lists || []}
           onClose={() => setShowNewItem(false)}
           onSuccess={() => setShowNewItem(false)}

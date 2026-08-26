@@ -30,6 +30,7 @@ export default function ChooseItemsForm({
   isNew = false,
   profile_id,
   lists,
+  actingAs,
 }: {
   list_id: string;
   list_name: string;
@@ -38,6 +39,7 @@ export default function ChooseItemsForm({
   isNew?: boolean;
   profile_id: string;
   lists: ListTable[];
+  actingAs?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -302,6 +304,7 @@ export default function ChooseItemsForm({
       {showNewItem && (
         <ItemFormContainer
           lists={lists}
+          actingAs={actingAs}
           onClose={() => setShowNewItem(false)}
           onSuccess={() => setShowNewItem(false)}
         />

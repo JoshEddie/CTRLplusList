@@ -19,7 +19,7 @@ import {
 import { authedIdentity } from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
-import { type ActionResponse } from '@/lib/types';
+import { type ActionResponse, type UserIdentity } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -44,6 +44,7 @@ async function resolveClaimIdentity(
   purchasedBy: string | null
 ): Promise<
   | {
+      viewer: UserIdentity | null;
       callerProfileId: string | null;
       purchaserProfileId: string | null;
       guestName: string | null;
@@ -74,20 +75,23 @@ async function resolveClaimIdentity(
     }
     if (purchasedBy) {
       return {
-        callerProfileId: identity.profile.id,
+        viewer: identity,
+        callerProfileId: identity.selfProfile.id,
         purchaserProfileId: purchasedBy,
         guestName: null,
       };
     }
     return trimmed
       ? {
-          callerProfileId: identity.profile.id,
+          viewer: identity,
+          callerProfileId: identity.selfProfile.id,
           purchaserProfileId: null,
           guestName: trimmed,
         }
       : {
-          callerProfileId: identity.profile.id,
-          purchaserProfileId: identity.profile.id,
+          viewer: identity,
+          callerProfileId: identity.selfProfile.id,
+          purchaserProfileId: identity.selfProfile.id,
           guestName: null,
         };
   }
@@ -101,6 +105,7 @@ async function resolveClaimIdentity(
     };
   }
   return {
+    viewer: null,
     callerProfileId: null,
     purchaserProfileId: null,
     guestName: trimmed,
@@ -120,16 +125,19 @@ export async function createPurchase(data: {
     if ('error' in identity) {
       return identity.error;
     }
-    // callerProfileId authorizes the request (the viewability/block gate
-    // below) and is stored as the asserter; purchaserProfileId + guestName
-    // identify the purchaser we STORE for the claim.
-    const { callerProfileId, purchaserProfileId, guestName } = identity;
+    // callerProfileId is the caller's self-profile: it is stored as the
+    // asserter, and is the claimer the eligibility check names — a claim is a
+    // human act whatever profile the caller is acting as. `viewer` carries the
+    // whole identity because the viewability gate below splits it, comparing
+    // ownership against the active profile and blocks against the self one.
+    // purchaserProfileId + guestName identify the purchaser we STORE.
+    const { viewer, callerProfileId, purchaserProfileId, guestName } = identity;
 
     // Gate by viewability: items on lists the caller can't see are unclaimable.
     // Indistinguishable from a missing item on purpose. Gated on the
     // authenticated caller (not the stored attribution) so a blocked caller
     // cannot slip a claim through the on-behalf path.
-    const viewable = await isItemViewable(data.item_id, callerProfileId);
+    const viewable = await isItemViewable(data.item_id, viewer);
     if (!viewable) {
       return {
         success: false,
@@ -307,7 +315,7 @@ export async function removePurchase(
       !canRemovePurchase(
         row,
         targetItem?.profile_id ?? null,
-        actorIdentity?.profile.id ?? null,
+        actorIdentity,
         new Set(guestClaims?.purchases)
       )
     ) {
@@ -329,9 +337,7 @@ export async function removePurchase(
     }
     updateTags(
       ...(targetItem ? [cacheTags.itemsOfProfile(targetItem.profile_id)] : []),
-      ...(row.profile_id
-        ? [cacheTags.purchasesOfProfile(row.profile_id)]
-        : [])
+      ...(row.profile_id ? [cacheTags.purchasesOfProfile(row.profile_id)] : [])
     );
     return {
       success: true,

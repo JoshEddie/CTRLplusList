@@ -83,7 +83,8 @@ beforeEach(() => {
   } as never);
   vi.mocked(getUserIdentity).mockResolvedValue({
     userId: 'viewer',
-    profile: makeProfile('self-viewer', 'Test Viewer'),
+    selfProfile: makeProfile('self-viewer', 'Test Viewer'),
+    activeProfile: makeProfile('self-viewer', 'Test Viewer'),
   });
   vi.mocked(getItemsByProfile).mockResolvedValue(VIEWER_ITEMS as never);
   vi.mocked(getItemsByListId).mockResolvedValue(LIST_ITEMS as never);
@@ -119,12 +120,12 @@ describe('ItemsContainer', () => {
         await ItemsContainer({
           listId: 'list1',
           isListOwner: true,
-          viewerProfileId: 'v2',
+          viewerSelfProfileId: 'v2',
           showSpoilers: true,
         })
       );
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
-        viewerProfileId: 'v2',
+        viewerSelfProfileId: 'v2',
         isOwner: true,
         showSpoilers: true,
       });
@@ -137,7 +138,7 @@ describe('ItemsContainer', () => {
     it('ListIdNoFlags_DefaultsViewerToProfileOwnerFalseSpoilerFalse', async () => {
       render(await ItemsContainer({ listId: 'list1' }));
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
-        viewerProfileId: 'self-viewer',
+        viewerSelfProfileId: 'self-viewer',
         isOwner: false,
         showSpoilers: false,
       });
@@ -151,7 +152,7 @@ describe('ItemsContainer', () => {
       render(await ItemsContainer({ listId: 'list1' }));
       expect(redirectMock).not.toHaveBeenCalled();
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
-        viewerProfileId: undefined,
+        viewerSelfProfileId: undefined,
         isOwner: false,
         showSpoilers: false,
       });
@@ -164,7 +165,12 @@ describe('ItemsContainer', () => {
         id: 'i1',
         purchases: [
           { id: 'p1', by: 'other', firstName: 'Gifty', claimedByViewer: false },
-          { id: 'p2', by: 'other', firstName: 'Someone', claimedByViewer: false },
+          {
+            id: 'p2',
+            by: 'other',
+            firstName: 'Someone',
+            claimedByViewer: false,
+          },
         ],
       },
     ];

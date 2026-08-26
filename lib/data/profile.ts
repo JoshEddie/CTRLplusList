@@ -1,52 +1,41 @@
 import { db } from '@/db';
 import {
-  ACCENT_PREFERENCE_ID,
   items,
   lists,
-  profile_members,
-  profile_preferences,
   profiles,
   user_blocks,
   user_follows,
   users,
 } from '@/db/schema';
+import {
+  getMembershipsForUser,
+  resolveIdentity,
+} from '@/lib/data/profile.active';
+import { readActiveProfileSelection } from '@/lib/data/profile.cookie';
 import { selfMemberships } from '@/lib/data/profile.identity';
 import { isFollowing } from '@/lib/data/user';
 import type { ProfileCardView, UserIdentity } from '@/lib/types';
 import { VISIBILITY, visibilityDbValues } from '@/lib/visibility';
 import { cacheTags } from '@/lib/cacheTags';
-import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { isViewersOwnProfile } from '@/lib/activeProfile';
+import { and, count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 import { cache } from 'react';
 
-// Request-scoped React cache(), not 'use cache': identity resolution is not a
-// table read, so it carries no cache tag and no updateTag obligation.
-// `profile` means "the profile this request acts as" — today always the
-// account's self-profile; a later change makes it switchable.
-export const getUserIdentity: (
-  userId: string
-) => Promise<UserIdentity | null> = cache(async (userId: string) => {
-  try {
-    const [profile] = await db
-      .select({
-        id: profiles.id,
-        name: profiles.name,
-        created_at: profiles.created_at,
-        updated_at: profiles.updated_at,
-      })
-      .from(profiles)
-      .innerJoin(
-        selfMemberships,
-        eq(selfMemberships.profile_id, profiles.id)
-      )
-      .where(eq(selfMemberships.user_id, userId));
-    if (!profile) return null;
-    return { userId, profile };
-  } catch (error) {
-    console.error('Error resolving user identity:', error);
-    return null;
-  }
-});
+// Request-scoped React cache(), not 'use cache': identity resolution reads the
+// selection cookie, which a cached function may not do. The membership read it
+// wraps takes the account id as an argument, so it caches on its own.
+export const getUserIdentity: (userId: string) => Promise<UserIdentity | null> =
+  cache(async (userId: string) => {
+    try {
+      const memberships = await getMembershipsForUser(userId);
+      const selection = await readActiveProfileSelection();
+      return resolveIdentity(userId, memberships, selection);
+    } catch (error) {
+      console.error('Error resolving user identity:', error);
+      return null;
+    }
+  });
 
 // Not cached: joins `users` for follower name/image. The follower is an
 // account; its self-profile id rides along so rows can link to the profile
@@ -206,7 +195,10 @@ export async function getEligiblePurchasers(
     // The two follow legs of a profile P (account A): the profiles A follows,
     // and the accounts following P. B is a mutual of P when B is in the first
     // set and B's account is in the second.
-    const legsOf = (profileId: string, accountId: string | null | undefined) => {
+    const legsOf = (
+      profileId: string,
+      accountId: string | null | undefined
+    ) => {
       const followees = new Set<string>();
       const followerAccounts = new Set<string>();
       for (const row of followRows) {
@@ -318,17 +310,20 @@ export async function getProfileForViewer(
     let viewerIsFollowing = false;
     let viewerIsBlocked = false;
     let blockedByViewer = false;
-    if (viewer && viewer.profile.id !== profileId) {
+    // Both block checks name the human, so they take the self-profile whatever
+    // profile is active. The whole identity is the parameter precisely so one
+    // profile cannot be passed for both.
+    if (viewer && !isViewersOwnProfile(viewer, profileId)) {
       viewerIsFollowing = await isFollowing({
         userId: viewer.userId,
         followeeProfileId: profileId,
       });
       viewerIsBlocked = await hasBlocked({
         blockerProfileId: profileId,
-        blockedProfileId: viewer.profile.id,
+        blockedProfileId: viewer.selfProfile.id,
       });
       blockedByViewer = await hasBlocked({
-        blockerProfileId: viewer.profile.id,
+        blockerProfileId: viewer.selfProfile.id,
         blockedProfileId: profileId,
       });
     }
@@ -346,68 +341,60 @@ export async function getProfileForViewer(
   }
 }
 
-// Membership containment is the whole query: `profiles` carries no account
-// reference, so a membership row is the only handle onto a profile. Counts are
-// correlated subqueries rather than joins — joining both `lists` and `items`
-// would multiply the rows and make each count the other's row count.
+// The Profiles page's view: the membership read plus the counts that only this
+// surface pays for. Membership containment is not restated here —
+// `getMembershipsForUser` owns it. The counts are two grouped aggregates
+// rather than one query joining both `lists` and `items`, which would multiply
+// the rows and make each count the other's row count.
 export async function getProfileCardsForUser(
   userId: string
 ): Promise<ProfileCardView[]> {
   'use cache';
-  cacheTag(
-    cacheTags.profiles,
-    cacheTags.profileMembers,
-    cacheTags.lists,
-    cacheTags.items,
-    cacheTags.profilePreferences,
-    cacheTags.profilesOfUser(userId)
-  );
+  cacheTag(cacheTags.lists, cacheTags.items, cacheTags.profilesOfUser(userId));
   try {
-    const rows = await db
-      .select({
-        id: profiles.id,
-        name: profiles.name,
-        tagline: profiles.tagline,
-        role: profile_members.role,
-        listCount: sql<number>`(SELECT COUNT(*) FROM ${lists} WHERE ${lists.profile_id} = ${profiles.id})`,
-        itemCount: sql<number>`(SELECT COUNT(*) FROM ${items} WHERE ${items.profile_id} = ${profiles.id} AND ${items.archived_at} IS NULL)`,
-        accent: profile_preferences.value,
-      })
-      .from(profile_members)
-      .innerJoin(profiles, eq(profiles.id, profile_members.profile_id))
-      .leftJoin(
-        profile_preferences,
-        and(
-          eq(profile_preferences.profile_id, profiles.id),
-          eq(profile_preferences.preference_id, ACCENT_PREFERENCE_ID)
-        )
-      )
-      .where(eq(profile_members.user_id, userId))
-      // Owner-only editing makes owned-vs-managed a capability boundary, so
-      // the runs sort separately rather than one A-Z pass across both.
-      .orderBy(
-        sql`CASE ${profile_members.role} WHEN 'self' THEN 0 WHEN 'owner' THEN 1 ELSE 2 END`,
-        asc(profiles.name)
-      );
+    const memberships = await getMembershipsForUser(userId);
+    const ids = memberships.map((m) => m.id);
+
+    const [listCounts, itemCounts] = await Promise.all([
+      db
+        .select({ profile_id: lists.profile_id, count: count() })
+        .from(lists)
+        .where(inArray(lists.profile_id, ids))
+        .groupBy(lists.profile_id),
+      db
+        .select({ profile_id: items.profile_id, count: count() })
+        .from(items)
+        .where(and(inArray(items.profile_id, ids), isNull(items.archived_at)))
+        .groupBy(items.profile_id),
+    ]);
+    const listCountOf = new Map(listCounts.map((r) => [r.profile_id, r.count]));
+    const itemCountOf = new Map(itemCounts.map((r) => [r.profile_id, r.count]));
 
     cacheTag(
-      ...rows.flatMap((row) => [
-        cacheTags.profile(row.id),
-        cacheTags.listsOfProfile(row.id),
-        cacheTags.itemsOfProfile(row.id),
-        cacheTags.preferencesOfProfile(row.id),
+      ...ids.flatMap((id) => [
+        cacheTags.listsOfProfile(id),
+        cacheTags.itemsOfProfile(id),
       ])
     );
 
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      tagline: row.tagline,
-      role: row.role as ProfileCardView['role'],
-      listCount: Number(row.listCount),
-      itemCount: Number(row.itemCount),
-      accent: row.accent,
-    }));
+    // Owner-only editing makes owned-vs-managed a capability boundary, so the
+    // runs sort separately rather than one A-Z pass across both — a different
+    // order from the recency one the switching surfaces take.
+    const roleRank = { self: 0, owner: 1, manager: 2 };
+    return memberships
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        tagline: m.tagline,
+        role: m.role,
+        listCount: listCountOf.get(m.id) ?? 0,
+        itemCount: itemCountOf.get(m.id) ?? 0,
+        accent: m.accent,
+      }))
+      .sort(
+        (a, b) =>
+          roleRank[a.role] - roleRank[b.role] || a.name.localeCompare(b.name)
+      );
   } catch (error) {
     console.error('Error fetching profile cards:', error);
     throw new Error('Failed to fetch profile cards');

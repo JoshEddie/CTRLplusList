@@ -1,29 +1,43 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
-import { Menu, MenuLinkItem } from '@/app/ui/components/menu';
+import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
 import { useRef, useState } from 'react';
-import { MdModeEdit, MdMoreHoriz } from 'react-icons/md';
+import { MdModeEdit, MdMoreHoriz, MdSwapHoriz } from 'react-icons/md';
 
-// One row today. Permissions (#194) and "Transfer a list in" (#198) join it
-// here as their chunks land — the menu is the card's management home from the
-// start so those arrive as rows rather than as a change of shape.
+// A switch row and an edit destination. The menu is the card's management
+// home from the start, so later management rows arrive as rows rather than as
+// a change of shape.
 //
-// The row reads "Edit", not the mockup's "Manage": *managed* already names a
-// kind of profile here, so "Manage" on a card labelled `Owner` reads as a
-// statement about the profile rather than as the action.
+// `Switch to` leads because switching is the more frequent act, and it is a
+// MenuItem rather than a MenuLinkItem because it acts in place: the Profiles
+// page re-renders rather than being left. It is the card's keyboard-reachable
+// path to switching, so it is absent only from the card already being acted
+// as, where it would be inert.
+//
+// The edit row reads "Edit", not the mockup's "Manage": *managed* already
+// names a kind of profile here, so "Manage" on a card labelled `Owner` reads
+// as a statement about the profile rather than as the action.
 export default function ProfileCardMenu({
   profileId,
   profileName,
+  isActive,
+  onSwitch,
 }: {
   profileId: string;
   profileName: string;
+  isActive: boolean;
+  onSwitch: (profileId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   return (
-    <div className="profile-card-menu">
+    <div
+      className="profile-card-menu"
+      onClick={(e) => e.stopPropagation()}
+      role="presentation"
+    >
       <Button
         ref={triggerRef}
         variant="on-dark"
@@ -42,6 +56,17 @@ export default function ProfileCardMenu({
         anchorRef={triggerRef}
         aria-label={`${profileName} actions`}
       >
+        {!isActive && (
+          <MenuItem
+            icon={<MdSwapHoriz size={18} />}
+            onClick={() => {
+              setOpen(false);
+              onSwitch(profileId);
+            }}
+          >
+            Switch to {profileName}
+          </MenuItem>
+        )}
         <MenuLinkItem
           href={`/profiles/${profileId}`}
           icon={<MdModeEdit size={18} />}

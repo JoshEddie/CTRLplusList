@@ -17,14 +17,14 @@ import { readItemsPageSize, viewerDisplayName } from '../../utils';
 interface ItemsContainerProps {
   listId?: string;
   isListOwner?: boolean;
-  viewerProfileId?: string;
+  viewerSelfProfileId?: string;
   showSpoilers?: boolean;
 }
 
 export default async function ItemsContainer({
   listId,
   isListOwner,
-  viewerProfileId,
+  viewerSelfProfileId,
   showSpoilers,
 }: ItemsContainerProps) {
   let items: ItemDisplay[];
@@ -33,7 +33,10 @@ export default async function ItemsContainer({
 
   if (listId) {
     items = await getItemsByListId(listId, {
-      viewerProfileId: viewerProfileId ?? identity?.profile.id,
+      // Claims are the human's, so the viewer they are attributed against is
+      // the self-profile whatever profile the request acts as; `isListOwner`
+      // is the caller's own ownership comparison and arrives separately.
+      viewerSelfProfileId: viewerSelfProfileId ?? identity?.selfProfile.id,
       isOwner: isListOwner ?? false,
       showSpoilers: showSpoilers ?? false,
     });
@@ -45,12 +48,12 @@ export default async function ItemsContainer({
       items = overlayGuestClaims(items, new Set(claims?.purchases));
     }
   } else if (identity) {
-    items = await getItemsByProfile(identity.profile.id);
+    items = await getItemsByProfile(identity.activeProfile.id);
   } else {
     redirect('/');
   }
 
-  const firstLastInitial = viewerDisplayName(identity?.profile.name);
+  const firstLastInitial = viewerDisplayName(identity?.selfProfile.name);
 
   if (listId) {
     const initialPageSize = await readItemsPageSize();
@@ -60,7 +63,7 @@ export default async function ItemsContainer({
           items={items}
           mode="list"
           initialPageSize={initialPageSize}
-          profile_id={identity?.profile.id}
+          profile_id={identity?.activeProfile.id}
           user_name={firstLastInitial}
         />
       </Suspense>
@@ -71,7 +74,7 @@ export default async function ItemsContainer({
     <Suspense fallback={<LoadingIndicator size="page" />}>
       <Items
         items={items}
-        profile_id={identity?.profile.id}
+        profile_id={identity?.activeProfile.id}
         user_name={firstLastInitial}
       />
     </Suspense>

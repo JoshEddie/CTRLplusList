@@ -135,45 +135,6 @@ describe('authBypass', () => {
   });
 });
 
-describe('bypassActiveProfile', () => {
-  it('BypassOnAndProfileSet_ExposesTheEnvValue', async () => {
-    vi.stubEnv('USE_PG_DRIVER', '1');
-    vi.stubEnv('BYPASS_ACTIVE_PROFILE', 'dev-profile-kiddo');
-
-    const { bypassActiveProfile } = await loadAuth();
-
-    expect(bypassActiveProfile()).toBe('dev-profile-kiddo');
-  });
-
-  it('BypassOnAndProfileUnset_ExposesUndefined', async () => {
-    vi.stubEnv('USE_PG_DRIVER', '1');
-
-    const { bypassActiveProfile } = await loadAuth();
-
-    expect(bypassActiveProfile()).toBeUndefined();
-  });
-
-  it('BypassOffAndProfileSet_ExposesUndefined', async () => {
-    vi.stubEnv('USE_PG_DRIVER', '');
-    vi.stubEnv('BYPASS_ACTIVE_PROFILE', 'dev-profile-kiddo');
-
-    const { bypassActiveProfile } = await loadAuth();
-
-    expect(bypassActiveProfile()).toBeUndefined();
-  });
-
-  it('ProfileSet_LeavesSessionSynthesisUnchanged', async () => {
-    vi.stubEnv('USE_PG_DRIVER', '1');
-    vi.stubEnv('BYPASS_ACTIVE_PROFILE', 'dev-profile-kiddo');
-
-    const { auth, BYPASS_USER_ID, BYPASS_USER_EMAIL } = await loadAuth();
-    const session = await auth();
-
-    expect(session?.user?.id).toBe(BYPASS_USER_ID);
-    expect(session?.user?.email).toBe(BYPASS_USER_EMAIL);
-  });
-});
-
 describe('createUserEvent', () => {
   it('NewAccount_WritesNanoidProfileAndSelfMembershipThroughTheAppDb', async () => {
     await loadAuth();

@@ -74,14 +74,16 @@ export async function createSelfProfile(
       .insert(profile_members)
       .select(
         // Every column, in table order: drizzle rejects an insert-select whose
-        // projection is not the table's own, so the two defaults are restated
-        // here rather than left to the column definitions.
+        // projection is not the table's own, so the defaults are restated here
+        // rather than left to the column definitions. `last_active_at` is NULL
+        // because a membership just created has never been acted as.
         database
           .select({
             user_id: sql<string>`${user.id}`.as('user_id'),
             profile_id: created.id,
             role: sql<string>`'self'`.as('role'),
             ride_along: sql<boolean>`false`.as('ride_along'),
+            last_active_at: sql<Date | null>`NULL`.as('last_active_at'),
             created_at: sql<Date>`now()`.as('created_at'),
           })
           .from(created)
@@ -142,15 +144,6 @@ export const BYPASS_USER_EMAIL = 'test-viewer@dev.local';
 // `BYPASS_SESSION_USER` set to this literal yields a logged-out request
 // (auth() ⇒ null). Mirrored as GUEST_SESSION_USER in e2e/helpers/constants.ts.
 export const GUEST_SESSION_USER = 'guest';
-// Inline SVG avatar matching the seeded user row — UserImage requires a
-// non-empty src (UserAvatarPopover passes `user.image || ''` and an empty
-// string triggers next/image "missing src" errors).
-const BYPASS_USER_IMAGE =
-  'data:image/svg+xml;utf8,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><circle cx="40" cy="40" r="40" fill="#5b21b6"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="system-ui,sans-serif" font-size="32" font-weight="600" fill="white">TV</text></svg>'
-  );
-
 function bypassEnabled(): boolean {
   return process.env.USE_PG_DRIVER === '1';
 }
@@ -171,18 +164,11 @@ function synthesizeSession(userId: string) {
         id: BYPASS_USER_ID,
         email: BYPASS_USER_EMAIL,
         name: 'Test Viewer',
-        image: BYPASS_USER_IMAGE,
       },
       expires: BYPASS_EXPIRES,
     };
   }
   return { user: { id: userId }, expires: BYPASS_EXPIRES };
-}
-
-// Dormant seam for active-profile resolution: nothing consumes it until the
-// resolver exists.
-export function bypassActiveProfile(): string | undefined {
-  return bypassEnabled() ? process.env.BYPASS_ACTIVE_PROFILE : undefined;
 }
 
 export const auth: typeof nextAuth.auth = ((...args: unknown[]) => {

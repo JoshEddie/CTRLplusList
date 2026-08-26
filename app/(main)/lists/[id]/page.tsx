@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   let isOwner = false;
   if (!isShared) {
     const identity = await authedIdentity();
-    isOwner = identity?.profile.id === list.profile_id;
+    isOwner = identity?.activeProfile.id === list.profile_id;
   }
 
   const showFullMetadata = isShared || isOwner;

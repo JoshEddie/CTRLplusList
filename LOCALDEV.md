@@ -19,10 +19,6 @@ Orthogonal to bypass.
 - Any other seeded id ⇒ session for that id.
 - E2e Playwright projects: `authenticated` unset, `guest` sets `guest`.
 
-## Active profile (`BYPASS_ACTIVE_PROFILE`)
-
-Dormant seam. Read in local mode and exposed as `bypassActiveProfile()`; consumed by nothing yet. Setting it changes no behavior, including session synthesis. Outside local mode it always reads undefined.
-
 ## Seeded data coverage
 
 Deterministic states baked into `npm run db:reset:dev` / `dev:local` seed ([scripts/seed-dev-users.ts](scripts/seed-dev-users.ts)). Read when hunting a specific UI state from seed.
@@ -45,7 +41,11 @@ Hand-authored non-link states: `dev-list-viewer-birthday-item-5` PRICED (single 
 
 ### Profile coverage
 
-One self-profile per seeded user, id `self-<userId>` (`dev-test-viewer` ⇒ `self-dev-test-viewer`), name = the user's, carrying a `self` membership. One managed fixture: `dev-profile-kiddo` (name "Kiddo", no `self` membership) with `dev-test-viewer` as `owner` and `dev-friend-alice` as `manager` — the account-less profile shape, and the id `BYPASS_ACTIVE_PROFILE` takes. No per-profile preference values: `profile_preferences` seeds empty, so every seeded profile renders the accent fallback. `preferences` seeds the shipped catalog — today the single `accent` row — because `drizzle-kit push` builds these databases from the schema and replays no migration data, so a catalog row migration 0013 inserts on Neon reaches local and e2e only through the seed. The feature introducing a preference owns its catalog row. Profile + membership inserts use `.onConflictDoNothing()`, so a reseed does not pick up edits to a seeded profile's name or role — `db:reset:dev` does.
+One self-profile per seeded user, id `self-<userId>` (`dev-test-viewer` ⇒ `self-dev-test-viewer`), name = the user's, carrying a `self` membership. Two managed fixtures, both account-less (no `self` membership): `dev-profile-owned` (name "Owned Profile") with `dev-test-viewer` as `owner` and `dev-friend-alice` as `manager`, and `dev-profile-managed` (name "Managed Profile") with `dev-friend-bob` as `owner` and `dev-test-viewer` as `manager`. The test viewer therefore runs three profiles across all three roles, so a switchable set exists and `manager` is covered by a fixture. Owned Profile owns one list (`dev-list-owned-wishlist`, "Owned Profile Wishlist") — what `/lists` renders once the viewer switches to it.
+
+**Last-acted-as fixtures.** The viewer's memberships carry deterministic, absolute `last_active_at` values, far enough apart to order unambiguously: self-profile `2026-08-20T12:00:00Z`, Owned Profile `2026-02-14T09:00:00Z`, Managed Profile **NULL**. NULL is the never-acted-as ordering branch's fixture and orders after every membership carrying a value — no e2e flow may switch to Managed Profile, because a switch stamps the row and no affordance unsets it. Local development switches through the real UI (the avatar dropdown or a profile card); there is no environment override for the acting profile, per [2026-08-25-no-environment-override-for-the-acting-profile](openspec/adr/2026-08-25-no-environment-override-for-the-acting-profile.md).
+
+No per-profile preference values: `profile_preferences` seeds empty, so every seeded profile renders the accent fallback. `preferences` seeds the shipped catalog — today the single `accent` row — because `drizzle-kit push` builds these databases from the schema and replays no migration data, so a catalog row migration 0013 inserts on Neon reaches local and e2e only through the seed. The feature introducing a preference owns its catalog row. Profile + membership inserts use `.onConflictDoNothing()`, so a reseed does not pick up edits to a seeded profile's name or role — `db:reset:dev` does.
 
 ### Claim-attribution coverage
 
@@ -54,7 +54,7 @@ Authenticated fan-out purchase rows = self-claims (`claimed_by_profile_id` = the
 ## Implementation files
 
 - [db/index.ts](db/index.ts) — `USE_PG_DRIVER` driver-switch (postgres-js vs neon-http) + localhost boot guard.
-- [lib/auth.ts](lib/auth.ts) — bypass keyed on `USE_PG_DRIVER`; `BYPASS_SESSION_USER` selector; exports `BYPASS_USER_ID = 'dev-test-viewer'`, `GUEST_SESSION_USER = 'guest'`, `bypassActiveProfile()`.
+- [lib/auth.ts](lib/auth.ts) — bypass keyed on `USE_PG_DRIVER`; `BYPASS_SESSION_USER` selector; exports `BYPASS_USER_ID = 'dev-test-viewer'` and `GUEST_SESSION_USER = 'guest'`.
 - [scripts/seed-dev-users.ts](scripts/seed-dev-users.ts) — idempotent; refuses prod; upserts most tables via Drizzle `.insert().onConflictDoUpdate()` (few `.onConflictDoNothing()`) so reseeds pick up edits.
 - [scripts/setup-e2e-db.sh](scripts/setup-e2e-db.sh) / [scripts/dev-local.sh](scripts/dev-local.sh) / [scripts/test-e2e.sh](scripts/test-e2e.sh) — `setup-e2e-db.sh` = Docker bring-up + schema only; data-state step is caller's: `dev:local` seeds (preserves UI-created rows), `test:e2e` runs `db:reset:dev` (cascade wipe + reseed) so every e2e run starts identical.
 - Route-handler / middleware overloads of `auth(req, ctx)` pass through to real NextAuth — production auth path unchanged.

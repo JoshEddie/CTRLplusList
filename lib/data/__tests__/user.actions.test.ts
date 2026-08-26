@@ -1,4 +1,11 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearTestCookies,
+  mockNextHeaders,
+  readTestCookie,
+  setTestCookie,
+} from '@/test/helpers/next-headers';
+import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
 
 import { lists, user_follows } from '@/db/schema';
 import { auth, signIn, signOut } from '@/lib/auth';
@@ -14,6 +21,7 @@ import { redirect } from 'next/navigation';
 import { seedItem, seedList, seedListItem } from './test-helpers';
 
 mockNextCache();
+mockNextHeaders();
 
 type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
 
@@ -85,6 +93,7 @@ beforeEach(async () => {
   vi.mocked(signIn).mockReset();
   vi.mocked(signOut).mockReset();
   vi.mocked(redirect).mockClear();
+  clearTestCookies();
 });
 
 describe('signInUser', () => {
@@ -114,13 +123,21 @@ describe('signOutUser', () => {
   it('Invoked_ClearsSessionBeforeRedirect', async () => {
     await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
     expect(vi.mocked(signOut).mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(redirect).mock.invocationCallOrder[0],
+      vi.mocked(redirect).mock.invocationCallOrder[0]
     );
   });
 
   it('Invoked_DoesNotCallSignIn', async () => {
     await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
     expect(signIn).not.toHaveBeenCalled();
+  });
+
+  it('SelectionPinnedToAManagedProfile_DiscardsItWithTheSession', async () => {
+    setTestCookie(ACTIVE_PROFILE_COOKIE, 'kiddo');
+
+    await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
+
+    expect(readTestCookie(ACTIVE_PROFILE_COOKIE)).toBeUndefined();
   });
 });
 

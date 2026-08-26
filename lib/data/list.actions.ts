@@ -2,7 +2,7 @@
 
 import { db } from '@/db';
 import { lists } from '@/db/schema';
-import { UNAUTHORIZED_RESPONSE, authedIdentity } from '@/lib/data/user.session';
+import { authedWriter } from '@/lib/data/profile.gate';
 import { type ActionResponse } from '@/lib/types';
 import {
   VISIBILITY,
@@ -40,10 +40,11 @@ export type ListData = z.infer<typeof ListSchema>;
 
 export async function createList(data: ListData): Promise<ActionResponse> {
   try {
-    const identity = await authedIdentity();
-    if (!identity) {
-      return UNAUTHORIZED_RESPONSE;
+    const actor = await authedWriter();
+    if ('error' in actor) {
+      return actor.error;
     }
+    const { identity } = actor;
 
     const validationResult = ListSchema.safeParse(data);
     if (!validationResult.success) {
@@ -62,11 +63,11 @@ export async function createList(data: ListData): Promise<ActionResponse> {
       subtitle: validatedData.subtitle ?? null,
       occasion: validatedData.occasion ?? '',
       date: validatedData.date,
-      profile_id: identity.profile.id,
+      profile_id: identity.activeProfile.id,
       updated_by_user_id: identity.userId,
     });
 
-    updateTags(cacheTags.listsOfProfile(identity.profile.id));
+    updateTags(cacheTags.listsOfProfile(identity.activeProfile.id));
 
     return {
       success: true,
@@ -88,10 +89,11 @@ export async function updateList(
   data: Partial<ListData>
 ): Promise<ActionResponse> {
   try {
-    const identity = await authedIdentity();
-    if (!identity) {
-      return UNAUTHORIZED_RESPONSE;
+    const actor = await authedWriter();
+    if ('error' in actor) {
+      return actor.error;
     }
+    const { identity } = actor;
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, id),
@@ -106,7 +108,7 @@ export async function updateList(
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
-    if (list.profile_id !== identity.profile.id) {
+    if (list.profile_id !== identity.activeProfile.id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -174,7 +176,7 @@ export async function updateList(
 
     updateTags(
       cacheTags.list(id),
-      cacheTags.listsOfProfile(identity.profile.id)
+      cacheTags.listsOfProfile(identity.activeProfile.id)
     );
 
     return {
@@ -194,10 +196,11 @@ export async function updateList(
 
 export async function deleteList(id: string): Promise<ActionResponse> {
   try {
-    const identity = await authedIdentity();
-    if (!identity) {
-      return UNAUTHORIZED_RESPONSE;
+    const actor = await authedWriter();
+    if ('error' in actor) {
+      return actor.error;
     }
+    const { identity } = actor;
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, id),
@@ -206,7 +209,7 @@ export async function deleteList(id: string): Promise<ActionResponse> {
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
-    if (list.profile_id !== identity.profile.id) {
+    if (list.profile_id !== identity.activeProfile.id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -218,7 +221,7 @@ export async function deleteList(id: string): Promise<ActionResponse> {
 
     updateTags(
       cacheTags.list(id),
-      cacheTags.listsOfProfile(identity.profile.id)
+      cacheTags.listsOfProfile(identity.activeProfile.id)
     );
 
     return { success: true, message: 'List deleted successfully' };
@@ -239,10 +242,11 @@ export async function setListVisibility(
   visibility: ListVisibility
 ): Promise<ActionResponse> {
   try {
-    const identity = await authedIdentity();
-    if (!identity) {
-      return UNAUTHORIZED_RESPONSE;
+    const actor = await authedWriter();
+    if ('error' in actor) {
+      return actor.error;
     }
+    const { identity } = actor;
 
     const parsed = VisibilitySchema.safeParse(visibility);
     if (!parsed.success) {
@@ -260,7 +264,7 @@ export async function setListVisibility(
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
-    if (list.profile_id !== identity.profile.id) {
+    if (list.profile_id !== identity.activeProfile.id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -292,7 +296,7 @@ export async function setListVisibility(
 
     updateTags(
       cacheTags.list(id),
-      cacheTags.listsOfProfile(identity.profile.id)
+      cacheTags.listsOfProfile(identity.activeProfile.id)
     );
 
     return { success: true, message: 'Visibility updated' };

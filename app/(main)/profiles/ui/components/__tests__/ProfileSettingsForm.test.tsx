@@ -1,19 +1,24 @@
 /**
  * Pins `profiles-surface` — "A profile's space SHALL render an identity header
  * and a Settings form" (the manager's read-only view and the unwritten accent
- * suggestion).
+ * suggestion) — and `active-profile` — "A switch that would discard unsaved
+ * edits SHALL be confirmed first", from the form's side of that wiring.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithProfileSwitch } from '@/test/helpers/profile-switch';
 
 import { ACCENT_NAMES, ACCENT_PRESETS } from '@/lib/accent';
 import type { ProfileCardView } from '@/lib/types';
+import { useProfileSwitch } from '@/app/ui/components/ProfileSwitchProvider';
 import ProfileSettingsForm from '../ProfileSettingsForm';
 
 const updateProfileSettings = vi.fn();
+const switchActiveProfile = vi.fn();
 vi.mock('@/lib/data/profile.actions', () => ({
   updateProfileSettings: (...args: unknown[]) => updateProfileSettings(...args),
+  switchActiveProfile: (...args: unknown[]) => switchActiveProfile(...args),
 }));
 vi.mock('react-hot-toast', () => ({
   default: { error: vi.fn(), success: vi.fn() },
@@ -36,15 +41,42 @@ function makeProfile(
 
 const save = () => screen.queryByRole('button', { name: /save changes/i });
 
+// The switch is raised from the nav, a different subtree, so the guard is
+// only observable with something that switches rendered alongside the form.
+function Switcher() {
+  const switchProfile = useProfileSwitch();
+  return (
+    <button type="button" onClick={() => switchProfile('p2')}>
+      Switch
+    </button>
+  );
+}
+
+const renderWithSwitcher = () =>
+  renderWithProfileSwitch(
+    <>
+      <ProfileSettingsForm
+        profile={makeProfile()}
+        suggestedAccent={ACCENT_NAMES[0]}
+        readOnly={false}
+      />
+      <Switcher />
+    </>
+  );
+
+const switchButton = () => screen.getByRole('button', { name: 'Switch' });
+const prompt = () => screen.queryByText('You have unsaved changes');
+
 beforeEach(() => {
   vi.clearAllMocks();
   updateProfileSettings.mockResolvedValue({ success: true, message: 'Saved' });
+  switchActiveProfile.mockResolvedValue({ success: true, message: 'Switched' });
 });
 
 describe('ProfileSettingsForm', () => {
   describe('IdentityHeader', () => {
     it('ProfileWithTagline_RendersNameInitialsAndTagline', () => {
-      render(
+      renderWithProfileSwitch(
         <ProfileSettingsForm
           profile={makeProfile({
             name: 'Ada Lovelace',
@@ -62,7 +94,7 @@ describe('ProfileSettingsForm', () => {
     });
 
     it('ProfileWithoutTagline_RendersNoTaglineNode', () => {
-      const { container } = render(
+      const { container } = renderWithProfileSwitch(
         <ProfileSettingsForm
           profile={makeProfile({ tagline: null })}
           suggestedAccent={ACCENT_NAMES[0]}
@@ -76,7 +108,7 @@ describe('ProfileSettingsForm', () => {
     it('AccentPicked_RepaintsTheBandAndTheDiscBeforeAnySave', async () => {
       const user = userEvent.setup();
       const [first, second] = ACCENT_NAMES;
-      const { container } = render(
+      const { container } = renderWithProfileSwitch(
         <ProfileSettingsForm
           profile={makeProfile()}
           suggestedAccent={first}
@@ -109,7 +141,7 @@ describe('ProfileSettingsForm', () => {
 
   describe('Owner', () => {
     it('RoleOwner_RendersEditableFieldsAndSubmitControl', () => {
-      render(
+      renderWithProfileSwitch(
         <ProfileSettingsForm
           profile={makeProfile({ role: 'owner' })}
           suggestedAccent={ACCENT_NAMES[0]}
@@ -125,7 +157,7 @@ describe('ProfileSettingsForm', () => {
     });
 
     it('SubmitEditedFields_SendsProfileIdWithNameTaglineAndAccent', async () => {
-      render(
+      renderWithProfileSwitch(
         <ProfileSettingsForm
           profile={makeProfile({ role: 'owner' })}
           suggestedAccent={ACCENT_NAMES[0]}
@@ -152,7 +184,7 @@ describe('ProfileSettingsForm', () => {
 
   describe('Manager', () => {
     const renderAsManager = () =>
-      render(
+      renderWithProfileSwitch(
         <ProfileSettingsForm
           profile={makeProfile({ role: 'manager' })}
           suggestedAccent={ACCENT_NAMES[0]}
@@ -184,7 +216,7 @@ describe('ProfileSettingsForm', () => {
         success: false,
         message: 'Name is required',
       });
-      render(
+      renderWithProfileSwitch(
         <ProfileSettingsForm
           profile={makeProfile({ role: 'owner' })}
           suggestedAccent={ACCENT_NAMES[0]}
@@ -203,7 +235,7 @@ describe('ProfileSettingsForm', () => {
         message: 'Validation failed',
         errors: { tagline: ['Tagline must be 40 characters or less'] },
       });
-      render(
+      renderWithProfileSwitch(
         <ProfileSettingsForm
           profile={makeProfile({ role: 'owner' })}
           suggestedAccent={ACCENT_NAMES[0]}
@@ -220,7 +252,7 @@ describe('ProfileSettingsForm', () => {
 
   describe('UnsetAccent', () => {
     it('NoStoredAccent_SelectsSuggestedPresetWithoutWriting', () => {
-      render(
+      renderWithProfileSwitch(
         <ProfileSettingsForm
           profile={makeProfile({ accent: null })}
           suggestedAccent={ACCENT_NAMES[2]}
@@ -236,7 +268,7 @@ describe('ProfileSettingsForm', () => {
     });
 
     it('StoredAccent_SelectsTheStoredHue', () => {
-      render(
+      renderWithProfileSwitch(
         <ProfileSettingsForm
           profile={makeProfile({ accent: ACCENT_NAMES[4] })}
           suggestedAccent={ACCENT_NAMES[4]}
@@ -247,6 +279,47 @@ describe('ProfileSettingsForm', () => {
         .getAllByRole('radio')
         .find((s) => (s as HTMLInputElement).checked);
       expect(checked).toHaveAttribute('value', String(ACCENT_NAMES[4]));
+    });
+  });
+
+  describe('UnsavedChanges', () => {
+    it('UneditedForm_SwitchesWithoutPrompting', async () => {
+      renderWithSwitcher();
+      await userEvent.click(switchButton());
+
+      expect(prompt()).not.toBeInTheDocument();
+      expect(switchActiveProfile).toHaveBeenCalledWith('p2');
+    });
+
+    it('EditedField_PromptsBeforeSwitching', async () => {
+      renderWithSwitcher();
+      await userEvent.type(screen.getByLabelText(/name/i), '!');
+      await userEvent.click(switchButton());
+
+      expect(prompt()).toBeInTheDocument();
+      expect(switchActiveProfile).not.toHaveBeenCalled();
+    });
+
+    it('EditReverted_SwitchesWithoutPrompting', async () => {
+      renderWithSwitcher();
+      await userEvent.type(screen.getByLabelText(/name/i), '!');
+      await userEvent.type(screen.getByLabelText(/name/i), '{backspace}');
+      await userEvent.click(switchButton());
+
+      expect(prompt()).not.toBeInTheDocument();
+      expect(switchActiveProfile).toHaveBeenCalledWith('p2');
+    });
+
+    it('SavedEdit_SwitchesWithoutPrompting', async () => {
+      renderWithSwitcher();
+      await userEvent.type(screen.getByLabelText(/name/i), '!');
+      await userEvent.click(save() as HTMLElement);
+      await waitFor(() => expect(updateProfileSettings).toHaveBeenCalled());
+
+      await userEvent.click(switchButton());
+
+      expect(prompt()).not.toBeInTheDocument();
+      expect(switchActiveProfile).toHaveBeenCalledWith('p2');
     });
   });
 });

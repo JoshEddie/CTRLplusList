@@ -39,13 +39,13 @@ export async function HeroCollapsedViewerItems({
   ownerProfileId,
   ownerName,
   viewerUserId,
-  viewerProfileId,
+  viewerSelfProfileId,
 }: {
   list: ListTable;
   ownerProfileId: string;
   ownerName: string | null;
   viewerUserId: string;
-  viewerProfileId: string;
+  viewerSelfProfileId: string;
 }) {
   const [
     bookmarked,
@@ -58,10 +58,10 @@ export async function HeroCollapsedViewerItems({
     isFollowing({ userId: viewerUserId, followeeProfileId: ownerProfileId }),
     hasBlocked({
       blockerProfileId: ownerProfileId,
-      blockedProfileId: viewerProfileId,
+      blockedProfileId: viewerSelfProfileId,
     }),
     hasBlocked({
-      blockerProfileId: viewerProfileId,
+      blockerProfileId: viewerSelfProfileId,
       blockedProfileId: ownerProfileId,
     }),
     viewerHasAnyFollows(viewerUserId),

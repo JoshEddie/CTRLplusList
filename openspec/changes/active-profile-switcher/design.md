@@ -46,7 +46,7 @@ The inverse — putting the *selection* in the column too — was rejected becau
 
 `last_active_at` means *last acted as*, which fires on writes as well as switches. Adding an `after()` call to each of the ~10 mutation sites means a mutation added next year forgets it. Instead the stamp rides inside the shared `owner`-or-`manager` membership gate that every profile-scoped write must pass — structural rather than remembered — plus the switch action itself.
 
-The statement is one conditional `UPDATE` guarded on `last_active_at IS NULL OR last_active_at < now() - interval '1 hour'`, fired from `after()`. Single statement, so the driver's lack of transactions is irrelevant; idempotent, so a repeat is free; hourly, so reordering twenty items fires one write and one narrow `profilesOfUser` invalidation rather than twenty.
+The statement is one conditional `UPDATE` guarded on `last_active_at IS NULL OR last_active_at < now() - interval '1 hour'`, awaited before its invalidation — a switch calls `refresh()` in the same request, so invalidating ahead of the write would let the re-render refill the memberships read from the pre-write row. Single statement, so the driver's lack of transactions is irrelevant; idempotent, so a repeat is free; hourly, so reordering twenty items fires one write and one narrow `profilesOfUser` invalidation rather than twenty.
 
 Day granularity was considered and rejected: it measures wall clock rather than elapsed time, so 11pm and 12:01am read a day apart.
 
@@ -54,7 +54,9 @@ Day granularity was considered and rejected: it measures wall clock rather than 
 
 The proposal flagged that reads keyed to the resolved profile now vary by a value that changes without a write. Checked: `getUserIdentity` is a request-scoped `cache()`, not `'use cache'`, and every `'use cache'` read takes its profile id as an **argument**, so the profile is already part of the cache key. No `'use cache'` function reads the session — the only `'use cache'` string in `app/` is a comment in `ItemsContainer.tsx:42` explaining why a cookie read is kept below a cached call.
 
-Reading the cookie also adds no new dynamic constraint: `auth()` runs NextAuth with `session: { strategy: 'jwt' }`, so resolving the session is already a cookie read, and all ~38 sites are already dynamic. This is worth re-verifying during apply rather than trusting, but nothing here needs designing around.
+Reading the cookie also adds no new dynamic constraint: `auth()` runs NextAuth with `session: { strategy: 'jwt' }`, so resolving the session is already a cookie read, and all ~38 sites are already dynamic.
+
+**Re-verified at apply, and it holds.** Every `'use cache'` function in `lib/data/**` takes the id it keys on as an argument — `getItemsByProfile(profileId)`, `getItemsByListId(listId)`, `getProfileCardsForUser(userId)`, `hasBlocked({…})`, `getBookmarkStatus(listId, userId)`, `getEligiblePurchasers(…)`, `isFollowing({…})`, and the membership read this change adds, `getMembershipsForUser(userId)`. None reads the session or `cookies()`; the only cookie read on the resolution path is in `getUserIdentity`, which is a request-scoped React `cache()` rather than `'use cache'`. Passing the resolved profile id **into** a cached read is the intended shape: it makes the acting profile part of the cache key, which is exactly why no tag narrowing is needed.
 
 ### No environment override; e2e pins by cookie
 

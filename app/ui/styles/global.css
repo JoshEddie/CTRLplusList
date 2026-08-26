@@ -332,6 +332,17 @@ body {
   color: var(--primary-text-color);
 }
 
+/* The two ways out of an empty profile-scoped surface, side by side while the
+   row fits and stacked once it does not — `wrap` is the whole rule, so there is
+   no breakpoint to keep in step with the buttons' own widths. */
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
 /* Display-heading pair shared by the big message surfaces (empty states,
    error boundary, private-list cover, page titles). */
 .empty-container h3,

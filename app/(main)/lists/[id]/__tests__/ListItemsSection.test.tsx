@@ -1,11 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockNextHeaders } from '@/test/helpers/next-headers';
 import { auth } from '@/lib/auth';
 import { getList } from '@/lib/data/list';
 import { getUserIdentity, hasBlocked } from '@/lib/data/profile';
 import { getUserIdByEmail } from '@/lib/data/user';
 import ListItemsSection from '../ListItemsSection';
 import { makeProfile } from '@/test/helpers/profile';
+
+mockNextHeaders();
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/list', () => ({ getList: vi.fn() }));
@@ -47,14 +50,14 @@ vi.mock('@/app/(main)/items/ui/components/ItemsContainer', () => ({
   default: (p: {
     listId: string;
     isListOwner?: boolean;
-    viewerProfileId?: string;
+    viewerSelfProfileId?: string;
     showSpoilers?: boolean;
   }) => (
     <div
       data-testid="items-container"
       data-list-id={p.listId}
       data-is-list-owner={String(p.isListOwner)}
-      data-viewer-profile-id={p.viewerProfileId ?? ''}
+      data-viewer-self-profile-id={p.viewerSelfProfileId ?? ''}
       data-show-spoilers={String(p.showSpoilers)}
     />
   ),
@@ -78,7 +81,8 @@ beforeEach(() => {
   } as never);
   vi.mocked(getUserIdentity).mockImplementation(async (userId: string) => ({
     userId,
-    profile: makeProfile(`p-${userId}`, userId),
+    selfProfile: makeProfile(`p-${userId}`, userId),
+    activeProfile: makeProfile(`p-${userId}`, userId),
   }));
   vi.mocked(hasBlocked).mockResolvedValue(false as never);
   vi.mocked(getList).mockResolvedValue({
@@ -109,7 +113,7 @@ describe('ListItemsSection', () => {
     } as never);
     render(await ListItemsSection(props('l1')));
     const c = screen.getByTestId('items-container');
-    expect(c).toHaveAttribute('data-viewer-profile-id', 'p-u2');
+    expect(c).toHaveAttribute('data-viewer-self-profile-id', 'p-u2');
     expect(c).toHaveAttribute('data-is-list-owner', 'false');
   });
 
@@ -117,7 +121,7 @@ describe('ListItemsSection', () => {
     render(await ListItemsSection(props('l1', { preview: 'viewer' })));
     const c = screen.getByTestId('items-container');
     expect(c).toHaveAttribute('data-is-list-owner', 'true');
-    expect(c).toHaveAttribute('data-viewer-profile-id', 'p-u1');
+    expect(c).toHaveAttribute('data-viewer-self-profile-id', 'p-u1');
   });
 
   it('OwnerOnlyListNonOwner_RendersNothing', async () => {

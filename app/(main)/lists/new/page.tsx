@@ -1,17 +1,18 @@
-import { authedUserId } from '@/lib/data/user.session';
+import { actingAsName } from '@/lib/data/profile.active';
+import { authedIdentity } from '@/lib/data/user.session';
 import { redirect } from 'next/navigation';
 import ListForm from '../ui/components/ListForm';
 
 const NewList = async () => {
-  const viewerId = await authedUserId();
+  const identity = await authedIdentity();
 
-  if (!viewerId) {
+  if (!identity) {
     redirect('/');
   }
 
   return (
     <main className="container">
-      <ListForm />
+      <ListForm actingAs={await actingAsName(identity)} />
     </main>
   );
 };

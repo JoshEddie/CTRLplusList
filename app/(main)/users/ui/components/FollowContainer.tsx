@@ -7,13 +7,13 @@ export default async function FollowContainer({
   ownerProfileId,
   ownerName,
   viewerUserId,
-  viewerProfileId,
+  viewerSelfProfileId,
   variant = 'primary',
 }: {
   ownerProfileId: string;
   ownerName: string | null;
   viewerUserId: string;
-  viewerProfileId: string;
+  viewerSelfProfileId: string;
   variant?: ButtonVariant;
 }) {
   const [following, blockedByOwner, blockedByViewer, hasAnyFollows] =
@@ -21,10 +21,10 @@ export default async function FollowContainer({
       isFollowing({ userId: viewerUserId, followeeProfileId: ownerProfileId }),
       hasBlocked({
         blockerProfileId: ownerProfileId,
-        blockedProfileId: viewerProfileId,
+        blockedProfileId: viewerSelfProfileId,
       }),
       hasBlocked({
-        blockerProfileId: viewerProfileId,
+        blockerProfileId: viewerSelfProfileId,
         blockedProfileId: ownerProfileId,
       }),
       viewerHasAnyFollows(viewerUserId),

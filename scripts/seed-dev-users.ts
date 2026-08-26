@@ -74,6 +74,11 @@ const FRIENDS: { slug: string; first: string; bg: string }[] = [
 ];
 const friendId = (slug: string) => `dev-friend-${slug}`;
 const selfProfileOf = (userId: string) => `self-${userId}`;
+// A list and its items must land on the same profile: a list pinned to an
+// owned profile whose items stayed on the account's self-profile renders as a
+// stranger's items to the profile that owns the list.
+const listProfileOf = (list: { user_id: string; profile_id?: string }) =>
+  list.profile_id ?? selfProfileOf(list.user_id);
 const seedUsers: SeedUser[] = [
   {
     id: VIEWER_ID,
@@ -89,7 +94,24 @@ const seedUsers: SeedUser[] = [
   })),
 ];
 
-const KIDDO_PROFILE_ID = 'dev-profile-kiddo';
+// The two account-less profile fixtures, named for the viewer's role on each:
+// the viewer is `owner` on the first and `manager` on the second, so between
+// them and their own self-profile the viewer runs all three roles. The
+// `manager` role — the one the membership floor admits and #194 later narrows —
+// is therefore covered by a fixture rather than only by a unit test.
+const OWNED_PROFILE_ID = 'dev-profile-owned';
+const MANAGED_PROFILE_ID = 'dev-profile-managed';
+
+// Last-acted-as fixtures. Absolute rather than relative to the seed run, so a
+// switcher ordered most-recently-acted-as first is testable against values that
+// do not move; far enough apart that a broken ordering cannot pass by accident.
+// `dev-profile-managed` is deliberately absent from this map: NULL is the
+// never-acted-as ordering branch's fixture, and no e2e flow may consume it,
+// because a switch stamps the row and no affordance unsets it.
+const LAST_ACTIVE_AT: Record<string, Date> = {
+  [selfProfileOf(VIEWER_ID)]: new Date('2026-08-20T12:00:00Z'),
+  [OWNED_PROFILE_ID]: new Date('2026-02-14T09:00:00Z'),
+};
 
 type SeedList = {
   id: string;
@@ -97,6 +119,10 @@ type SeedList = {
   subtitle?: string;
   occasion: string;
   user_id: string;
+  // A managed profile owns lists but has no account, so the owning profile is
+  // named directly where it is not a seeded user's own. `user_id` still carries
+  // the account whose reset sweep reaches the row.
+  profile_id?: string;
   visibility: ListVisibility;
   itemNames: string[];
 };
@@ -488,6 +514,18 @@ const seedLists: SeedList[] = [
       itemNames: itemsForList(id),
     };
   }),
+  // The owned profile's own collection: what `/lists` renders once the viewer
+  // switches to it, and the fixture the profile-switch e2e flow asserts against.
+  {
+    id: 'dev-list-owned-wishlist',
+    name: 'Owned Profile Wishlist',
+    subtitle: 'Turning six',
+    occasion: 'Birthday',
+    user_id: VIEWER_ID,
+    profile_id: OWNED_PROFILE_ID,
+    visibility: VISIBILITY.FOLLOWERS,
+    itemNames: itemsForList('dev-list-owned-wishlist'),
+  },
 ];
 
 type SeedVisit = {
@@ -567,7 +605,8 @@ const LINKLESS_EXTRAS: {
   {
     list_id: 'dev-list-alice-wedding',
     name: 'A homemade dinner for two',
-    description: 'Your signature dish, delivered — better than any registry box.',
+    description:
+      'Your signature dish, delivered — better than any registry box.',
     price: '',
   },
   {
@@ -598,7 +637,7 @@ function appendLinklessExtras(
       id: itemId,
       name: extra.name,
       description: extra.description,
-      profile_id: selfProfileOf(list.user_id),
+      profile_id: listProfileOf(list),
       image_url: '',
       archived_at: null,
       quantity_limit: 1,
@@ -686,7 +725,7 @@ async function main() {
     .onConflictDoNothing();
 
   // Profiles: one self-profile per seeded user (the invariant the migration
-  // backfill guarantees in Neon) plus one managed fixture. No per-profile
+  // backfill guarantees in Neon) plus the two account-less fixtures. No per-profile
   // preference values — every seeded profile renders the accent fallback.
   await db
     .insert(profiles)
@@ -695,7 +734,8 @@ async function main() {
         id: selfProfileOf(u.id),
         name: u.name,
       })),
-      { id: KIDDO_PROFILE_ID, name: 'Kiddo' },
+      { id: OWNED_PROFILE_ID, name: 'Owned Profile' },
+      { id: MANAGED_PROFILE_ID, name: 'Managed Profile' },
     ])
     .onConflictDoNothing();
   await db
@@ -705,17 +745,38 @@ async function main() {
         user_id: u.id,
         profile_id: selfProfileOf(u.id),
         role: 'self',
+        last_active_at: LAST_ACTIVE_AT[selfProfileOf(u.id)] ?? null,
       })),
-      { user_id: VIEWER_ID, profile_id: KIDDO_PROFILE_ID, role: 'owner' },
+      {
+        user_id: VIEWER_ID,
+        profile_id: OWNED_PROFILE_ID,
+        role: 'owner',
+        last_active_at: LAST_ACTIVE_AT[OWNED_PROFILE_ID] ?? null,
+      },
       {
         user_id: friendId('alice'),
-        profile_id: KIDDO_PROFILE_ID,
+        profile_id: OWNED_PROFILE_ID,
         role: 'manager',
+        last_active_at: null,
+      },
+      // The viewer as `manager`, never acted as: the third role, and the NULL
+      // that orders after every membership carrying a value.
+      {
+        user_id: VIEWER_ID,
+        profile_id: MANAGED_PROFILE_ID,
+        role: 'manager',
+        last_active_at: null,
+      },
+      {
+        user_id: friendId('bob'),
+        profile_id: MANAGED_PROFILE_ID,
+        role: 'owner',
+        last_active_at: null,
       },
     ])
     .onConflictDoNothing();
   console.log(
-    `  preferences: 1 catalog row inserted-if-absent\n  profiles: ${seedUsers.length} self + 1 managed inserted-if-absent, profile_members: ${seedUsers.length + 2} inserted-if-absent (existing rows keep their current values)`
+    `  preferences: 1 catalog row inserted-if-absent\n  profiles: ${seedUsers.length} self + 2 managed inserted-if-absent, profile_members: ${seedUsers.length + 4} inserted-if-absent (existing rows keep their current values)`
   );
 
   const now = Date.now();
@@ -732,7 +793,7 @@ async function main() {
           name: l.name,
           subtitle: l.subtitle ?? null,
           occasion: l.occasion,
-          profile_id: selfProfileOf(l.user_id),
+          profile_id: listProfileOf(l),
           visibility: l.visibility,
           shared,
           shared_at: shared ? sharedAt : null,
@@ -797,7 +858,7 @@ async function main() {
         id: itemId,
         name,
         description: descriptionFor(itemId),
-        profile_id: selfProfileOf(list.user_id),
+        profile_id: listProfileOf(list),
         image_url: imageless
           ? ''
           : `https://picsum.photos/seed/${itemId}/400/400`,
@@ -1067,7 +1128,13 @@ async function main() {
       const item = itemRows.find((r) => r.id === itemId);
       if (!item) return;
 
-      const purchaseCount = purchaseCountFor(item, list.user_id, listIdx, idx, purchaseRatio);
+      const purchaseCount = purchaseCountFor(
+        item,
+        list.user_id,
+        listIdx,
+        idx,
+        purchaseRatio
+      );
       if (purchaseCount === 0) return;
 
       // Eligible buyer pool (owner excluded). Rotate by (h + n) so each

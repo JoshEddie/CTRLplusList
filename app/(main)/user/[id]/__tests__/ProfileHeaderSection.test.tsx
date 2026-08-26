@@ -35,7 +35,7 @@ vi.mock('@/app/(main)/users/ui/components/ProfileHeader', () => ({
       data-name={props.profile.name ?? ''}
       data-image={props.profile.image ?? ''}
       data-public-list-count={String(props.publicListCount)}
-      data-viewer-profile-id={props.viewer?.profile.id ?? ''}
+      data-viewer-profile-id={props.viewer?.activeProfile.id ?? ''}
       data-show-follow-button={String(props.showFollowButton)}
     />
   ),
@@ -48,7 +48,8 @@ vi.mock('@/app/(main)/users/ui/components/FollowPrompt', () => ({
 
 const IDENTITY = {
   userId: 'viewer',
-  profile: makeProfileRow('self-viewer', 'Viewer'),
+  selfProfile: makeProfileRow('self-viewer', 'Viewer'),
+  activeProfile: makeProfileRow('self-viewer', 'Viewer'),
 };
 
 function makeProfile(
@@ -143,7 +144,8 @@ describe('ProfileHeaderSection', () => {
     it('SelfProfile_RendersNoPrompt-ShowFollowButtonFalse', async () => {
       vi.mocked(getUserIdentity).mockResolvedValue({
         userId: 'viewer',
-        profile: makeProfileRow('target', 'Viewer'),
+        selfProfile: makeProfileRow('target', 'Viewer'),
+        activeProfile: makeProfileRow('target', 'Viewer'),
       });
       render(await ProfileHeaderSection(props({ sp: { follow: '1' } })));
       expect(screen.queryByTestId('follow-prompt')).not.toBeInTheDocument();

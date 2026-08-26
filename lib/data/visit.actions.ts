@@ -19,15 +19,16 @@ export async function bookmarkList(list_id: string): Promise<ActionResponse> {
       return UNAUTHORIZED_RESPONSE;
     }
 
-    // Owner check compares profile ids; the row written below stays keyed by
-    // the caller's account — list_visits records what a human did.
+    // The owner check is an ownership comparison, so it takes the profile the
+    // request acts as; the row written below stays keyed by the caller's
+    // account — list_visits records what a human did, whoever they act as.
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, list_id),
       columns: { profile_id: true, visibility: true },
     });
     if (
       !list ||
-      (list.profile_id !== identity.profile.id &&
+      (list.profile_id !== identity.activeProfile.id &&
         fromDb(list.visibility) === VISIBILITY.OWNER)
     ) {
       return {
