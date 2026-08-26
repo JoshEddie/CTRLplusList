@@ -25,7 +25,7 @@ export async function mintItemPlaceholder(
 ): Promise<ActionResponse & { url?: string }> {
   try {
     const viewer = await authedIdentity();
-    const viewable = await isItemViewable(itemId, viewer?.profile.id ?? null);
+    const viewable = await isItemViewable(itemId, viewer);
     if (!viewable) return UNAUTHORIZED_RESPONSE;
 
     const activeImage = () =>
@@ -40,7 +40,11 @@ export async function mintItemPlaceholder(
 
     const existing = await activeImage();
     if (existing) {
-      return { success: true, message: 'Image already exists', url: existing.url };
+      return {
+        success: true,
+        message: 'Image already exists',
+        url: existing.url,
+      };
     }
 
     const url = generatePlaceholderArt(itemId);
@@ -85,7 +89,7 @@ export async function fallbackItemPlaceholder(
 ): Promise<ActionResponse & { url?: string }> {
   try {
     const viewer = await authedIdentity();
-    const viewable = await isItemViewable(itemId, viewer?.profile.id ?? null);
+    const viewable = await isItemViewable(itemId, viewer);
     if (!viewable) return UNAUTHORIZED_RESPONSE;
 
     return {

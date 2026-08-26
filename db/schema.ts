@@ -238,6 +238,7 @@ export const profile_members = pgTable(
       .notNull(),
     role: text('role').notNull(),
     ride_along: boolean('ride_along').notNull().default(false),
+    last_active_at: timestamp('last_active_at'),
     created_at: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [

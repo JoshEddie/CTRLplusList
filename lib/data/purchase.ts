@@ -3,7 +3,7 @@ import { purchases, user_blocks, user_follows } from '@/db/schema';
 import { accountsOfProfiles } from '@/lib/data/profile';
 import { primaryStore } from '@/lib/storeValidity';
 import { withSelfAvatar } from '@/lib/data/profile.identity';
-import { ActionResponse, PurchaseView } from '@/lib/types';
+import { ActionResponse, PurchaseView, UserIdentity } from '@/lib/types';
 import { cacheTags, itemRowTags } from '@/lib/cacheTags';
 import { and, eq, or } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
@@ -14,9 +14,10 @@ type RawPurchase = {
   claimed_by_profile_id: string | null;
   guest_name: string | null;
   purchased_at: Date;
-  purchaserProfile:
-    | { name: string | null; members: { user: { image: string | null } }[] }
-    | null;
+  purchaserProfile: {
+    name: string | null;
+    members: { user: { image: string | null } }[];
+  } | null;
   claimerProfile: { name: string | null } | null;
 };
 
@@ -27,9 +28,14 @@ function firstNameOf(name: string | null | undefined): string {
   return trimmed.split(/\s+/)[0];
 }
 
+// The viewer is named by their SELF-profile, not the profile they act as: a
+// claim is a human act, so a viewer's own claims stay recognisable as theirs —
+// and keep their unclaim affordance — while they act as another profile.
+// `isOwner` is the caller's own ownership comparison and takes the active
+// profile, which is why it arrives as a separate argument.
 export function sanitizePurchases(
   raw: RawPurchase[],
-  viewerProfileId: string | undefined,
+  viewerSelfProfileId: string | undefined,
   isOwner: boolean,
   showSpoilers: boolean = false
 ): PurchaseView[] {
@@ -38,13 +44,15 @@ export function sanitizePurchases(
   // attributed profile sees the claim as their own. claimedByViewer keys off
   // claimed_by_profile_id and drives the asserter's unclaim affordance.
   return raw.map((p) => {
-    const isSelf = !!viewerProfileId && p.profile_id === viewerProfileId;
+    const isSelf =
+      !!viewerSelfProfileId && p.profile_id === viewerSelfProfileId;
     const view: PurchaseView = {
       id: p.id,
       by: isSelf ? ('self' as const) : ('other' as const),
       firstName: firstNameOf(p.purchaserProfile?.name ?? p.guest_name),
       claimedByViewer:
-        !!viewerProfileId && p.claimed_by_profile_id === viewerProfileId,
+        !!viewerSelfProfileId &&
+        p.claimed_by_profile_id === viewerSelfProfileId,
       purchasedAt: p.purchased_at,
       image: p.purchaserProfile?.members[0]?.user.image ?? null,
     };
@@ -159,6 +167,10 @@ export function claimConflictResponse(
 // comparisons. Unauthenticated callers are authorized only on
 // all-NULL-identity rows whose id their guest_claims cookie lists — the cookie
 // is ambient request state, never a payload field.
+// Three routes to removal, and they do not take the same profile: the first
+// two ask whether this claim is the human's, so they compare the self-profile;
+// the third is an ownership comparison and compares the profile the request
+// acts as. The identity arrives whole so neither can be reached by default.
 export function canRemovePurchase(
   row: {
     id: string;
@@ -166,14 +178,14 @@ export function canRemovePurchase(
     claimed_by_profile_id: string | null;
   },
   itemOwnerProfileId: string | null,
-  actorProfileId: string | null,
+  actor: UserIdentity | null,
   cookiePurchaseIds: ReadonlySet<string>
 ): boolean {
-  if (actorProfileId) {
+  if (actor) {
     return (
-      row.claimed_by_profile_id === actorProfileId ||
-      row.profile_id === actorProfileId ||
-      itemOwnerProfileId === actorProfileId
+      row.claimed_by_profile_id === actor.selfProfile.id ||
+      row.profile_id === actor.selfProfile.id ||
+      itemOwnerProfileId === actor.activeProfile.id
     );
   }
   if (row.claimed_by_profile_id !== null || row.profile_id !== null)

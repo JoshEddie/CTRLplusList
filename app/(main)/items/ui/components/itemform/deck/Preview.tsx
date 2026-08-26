@@ -25,6 +25,8 @@ interface PreviewProps {
   actions: ItemActions;
   isEditing: boolean;
   isPending: boolean;
+  /** The active profile's name, only for a viewer who runs more than one. */
+  actingAs?: string;
   onSubmit: () => void;
   onOpenTriage: () => void;
   onOpenStore: () => void;
@@ -43,6 +45,7 @@ export function Preview({
   actions,
   isEditing,
   isPending,
+  actingAs,
   onSubmit,
   onOpenTriage,
   onOpenStore,
@@ -84,7 +87,11 @@ export function Preview({
             disabled={blocked}
             width="full"
           >
-            {isEditing ? 'Save changes' : 'Create item'}
+            {isEditing
+              ? 'Save changes'
+              : actingAs
+                ? `Create item for ${actingAs}`
+                : 'Create item'}
           </Button>
         </div>
       }

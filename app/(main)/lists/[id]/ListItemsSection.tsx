@@ -19,12 +19,9 @@ export default async function ListItemsSection({
   const { id } = await params;
   const sp = await searchParams;
 
-  const list = await guardListViewable(
-    await getList(id),
-    identity?.profile.id ?? null
-  );
+  const list = await guardListViewable(await getList(id), identity);
 
-  const isOwner = identity?.profile.id === list.profile_id;
+  const isOwner = identity?.activeProfile.id === list.profile_id;
   const previewMode = isOwner && sp.preview === 'viewer';
   const showSpoilers = isOwner && sp.spoilers === '1';
 
@@ -50,7 +47,7 @@ export default async function ListItemsSection({
       // spoilers toggle fully gates visibility (off = nothing, on = full names)
       // instead of leaking first names regardless.
       isListOwner={previewMode}
-      viewerProfileId={identity?.profile.id}
+      viewerSelfProfileId={identity?.selfProfile.id}
       showSpoilers={showSpoilers}
     />
   );

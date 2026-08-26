@@ -1,17 +1,17 @@
 import Header from '@/app/ui/components/Header';
 import { getProfileCardsForUser } from '@/lib/data/profile';
-import { authedUserId } from '@/lib/data/user.session';
+import { authedIdentity } from '@/lib/data/user.session';
 import { redirect } from 'next/navigation';
 import NewProfileButton from './ui/components/NewProfileButton';
 import ProfileCard from './ui/components/ProfileCard';
 
 export default async function ProfilesPage() {
-  const userId = await authedUserId();
-  if (!userId) redirect('/');
+  const identity = await authedIdentity();
+  if (!identity) redirect('/');
 
   // No empty state: every account holds a `self` membership on its own
   // profile, so a zero-card page is unreachable.
-  const profiles = await getProfileCardsForUser(userId);
+  const profiles = await getProfileCardsForUser(identity.userId);
 
   return (
     <div className="profiles-page">
@@ -26,7 +26,11 @@ export default async function ProfilesPage() {
       </p>
       <div className="profiles-grid">
         {profiles.map((profile) => (
-          <ProfileCard key={profile.id} profile={profile} />
+          <ProfileCard
+            key={profile.id}
+            profile={profile}
+            activeProfileId={identity.activeProfile.id}
+          />
         ))}
       </div>
     </div>

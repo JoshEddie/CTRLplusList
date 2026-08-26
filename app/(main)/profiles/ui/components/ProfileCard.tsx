@@ -1,6 +1,9 @@
+'use client';
+
 import { initialsOf } from '@/app/(main)/users/ui/utils';
 import { accentVars } from '@/lib/accent';
 import type { ProfileCardView } from '@/lib/types';
+import { useProfileSwitch } from '@/app/ui/components/ProfileSwitchProvider';
 import ProfileCardMenu from './ProfileCardMenu';
 
 const ROLE_LABEL: Record<ProfileCardView['role'], string> = {
@@ -15,20 +18,35 @@ function countsText({ listCount, itemCount }: ProfileCardView): string {
   return `${lists} · ${items}`;
 }
 
-// The avatar is a slot: #199 fills the disc with the profile's Altvatar, and
-// until then it paints the accent's light stop behind the initials fallback.
-export default function ProfileCard({ profile }: { profile: ProfileCardView }) {
-  // There is exactly one active profile at all times, and it is the viewer's
-  // own until #193 makes it switchable — so the role IS the active state.
-  const isActive = profile.role === 'self';
+// The avatar is a slot: it paints the accent's light stop behind an initials
+// fallback until a profile image fills the disc.
+export default function ProfileCard({
+  profile,
+  activeProfileId,
+}: {
+  profile: ProfileCardView;
+  activeProfileId: string;
+}) {
+  const isActive = profile.id === activeProfileId;
+  const switchProfile = useProfileSwitch();
 
   return (
     <div
       className={`profile-card${isActive ? ' is-active' : ''}`}
       style={accentVars(profile.accent)}
+      // The body is the fast path to switching, not the accessible one: it is
+      // a region rather than a control, so the menu's `Switch to` row is what a
+      // viewer without a pointer uses. The menu stops propagation, so opening
+      // it does not also switch.
+      onClick={isActive ? undefined : () => switchProfile(profile.id)}
     >
       <div className="profile-card-band">
-        <ProfileCardMenu profileId={profile.id} profileName={profile.name} />
+        <ProfileCardMenu
+          profileId={profile.id}
+          profileName={profile.name}
+          isActive={isActive}
+          onSwitch={switchProfile}
+        />
         <span className="profile-card-avatar" aria-hidden>
           {initialsOf(profile.name)}
         </span>

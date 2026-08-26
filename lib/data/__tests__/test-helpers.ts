@@ -5,6 +5,7 @@ import {
   list_items,
   list_visits,
   lists,
+  profile_members,
   profiles,
   purchases,
 } from '@/db/schema';
@@ -88,8 +89,7 @@ export async function seedItem(
     image_url: item.image_url ?? null,
     profile_id: profileId,
     // Matches the schema default — explicit so the seeded state is readable.
-    quantity_limit:
-      item.quantity_limit === undefined ? 1 : item.quantity_limit,
+    quantity_limit: item.quantity_limit === undefined ? 1 : item.quantity_limit,
     archived_at: item.archived_at ?? null,
     ...(item.created_at ? { created_at: item.created_at } : {}),
   });
@@ -177,4 +177,29 @@ export async function seedItemStore(
     price: store.price ?? '10',
     order: store.order ?? 1,
   });
+}
+
+// The tags a mutation fired for the content it wrote, with the acted-as
+// recency tag filtered out. The shared write gate fires
+// `profile_members:user:<id>` on the first write of each hour so the switcher's
+// ordering read refreshes; it is not the subject of any content module's
+// suite, and the gate's own suite pins it. Filtering only that prefix leaves
+// every content tag asserted exactly.
+export function contentTagCalls(updateTag: {
+  mock: { calls: unknown[][] };
+}): unknown[][] {
+  return updateTag.mock.calls.filter(
+    ([tag]) => !String(tag).startsWith('profile_members:')
+  );
+}
+
+// The UPDATEs a mutation issued against its own content, with the gate's
+// acted-as stamp filtered out. The shared write gate updates `profile_members`
+// on the first write of each hour; that write is pinned by the gate's own
+// suite, and filtering it here leaves an "issued no write" assertion meaning
+// exactly that about the content table.
+export function contentUpdateCalls(spy: {
+  mock: { calls: unknown[][] };
+}): unknown[][] {
+  return spy.mock.calls.filter(([table]) => table !== profile_members);
 }

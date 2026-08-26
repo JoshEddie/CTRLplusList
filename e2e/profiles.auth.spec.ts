@@ -10,14 +10,15 @@ import { cssRgb } from '../test/helpers/contrast';
 // updateProfileSettings).
 //
 // Seed baseline: `dev-test-viewer` holds `self` on `self-dev-test-viewer`
-// ("Test Viewer") and `owner` on `dev-profile-kiddo` ("Kiddo"); `dev-friend-
-// alice` holds `manager` on Kiddo, so the viewer never sees a Manager card.
+// ("Test Viewer"), `owner` on `dev-profile-owned` ("Owned Profile"), and
+// `manager` on `dev-profile-managed` ("Managed Profile") — all three roles, and
+// the switchable set the profile-switch flow drives.
 //
 // RESIDUE (contained, documented for future spec authors): the creation test
 // inserts a managed profile plus its owner membership and accent row, and the
-// edit test renames Kiddo's tagline. Both persist for the remainder of the run
+// edit test renames the owned profile's tagline. Both persist for the remainder of the run
 // until the next `db:reset:dev`. No other spec asserts profile counts or
-// Kiddo's tagline, so the residue is invisible outside this file.
+// the owned profile's tagline, so the residue is invisible outside this file.
 //
 // The created profile's name is unique per attempt because only
 // `scripts/test-e2e.sh` reseeds, once per run: a retry after a failed creation
@@ -38,7 +39,8 @@ test('Profiles_ViewerOpensFromAvatarPopover_ListsSelfThenOwnedCards', async ({
   const names = page.locator('.profile-card-name');
   await expect(names.first()).toHaveText('Test Viewer');
   await expect(page.locator('.profile-card-role').first()).toHaveText('You');
-  await expect(names.filter({ hasText: 'Kiddo' })).toBeVisible();
+  await expect(names.filter({ hasText: 'Owned Profile' })).toBeVisible();
+  await expect(names.filter({ hasText: 'Managed Profile' })).toBeVisible();
 
   // The viewer's own card is always present, so no empty state is reachable.
   await expect(page.getByText('No Profiles Found')).toHaveCount(0);
@@ -50,20 +52,20 @@ test('Profiles_ViewerOpensCardMenu_NavigatesToTheProfileSpace', async ({
   await page.goto('/profiles');
   const card = page
     .locator('.profile-card')
-    .filter({ hasText: 'Kiddo' })
+    .filter({ hasText: 'Owned Profile' })
     .first();
   await expect(card).toBeVisible();
 
   // The card's ⋯ menu is what carries the management intent.
-  await card.getByRole('button', { name: 'Kiddo actions' }).click();
-  await card.getByRole('menuitem', { name: 'Edit Kiddo' }).click();
-  await expect(page).toHaveURL(/\/profiles\/dev-profile-kiddo$/);
+  await card.getByRole('button', { name: 'Owned Profile actions' }).click();
+  await card.getByRole('menuitem', { name: 'Edit Owned Profile' }).click();
+  await expect(page).toHaveURL(/\/profiles\/dev-profile-owned$/);
 });
 
 test('ProfileSpace_OwnerSavesTagline_PersistsAcrossAFreshRead', async ({
   page,
 }) => {
-  await page.goto('/profiles/dev-profile-kiddo');
+  await page.goto('/profiles/dev-profile-owned');
   await page.getByLabel('Tagline').fill('Loves dinosaurs');
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(page.getByText('Profile updated')).toBeVisible();
@@ -71,7 +73,7 @@ test('ProfileSpace_OwnerSavesTagline_PersistsAcrossAFreshRead', async ({
   // A fresh server read proves the write round-tripped past the cache tag.
   await page.goto('/profiles');
   await expect(
-    page.locator('.profile-card').filter({ hasText: 'Kiddo' })
+    page.locator('.profile-card').filter({ hasText: 'Owned Profile' })
   ).toContainText('Loves dinosaurs');
 });
 
@@ -104,10 +106,10 @@ test('Profiles_ViewerCreatesManagedProfile_NavigatesToItsSpaceAndItListsAfterwar
 test('ProfileSpace_OwnerPicksASwatch_RepaintsTheBandFromTheAccentVariable', async ({
   page,
 }) => {
-  await page.goto('/profiles/dev-profile-kiddo');
+  await page.goto('/profiles/dev-profile-owned');
   const band = page.locator('.profile-space-band');
 
-  // Kiddo carries no accent row, so the space opens on a rolled suggestion —
+  // Owned Profile carries no accent row, so the space opens on a rolled suggestion —
   // which preset it lands on is unseeded, so only the paint is asserted here.
   await expect(band).toHaveCSS('background-image', /gradient/);
 

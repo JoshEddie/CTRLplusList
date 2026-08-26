@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { list_items } from '@/db/schema';
 import { getItemsByProfile } from '@/lib/data/item';
 import { getList, getListsByProfile } from '@/lib/data/list';
+import { actingAsName } from '@/lib/data/profile.active';
 import { authedIdentity } from '@/lib/data/user.session';
 import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
@@ -28,17 +29,17 @@ export default async function ChooseItemsBody({ params, searchParams }: Props) {
     redirect('/lists');
   }
 
-  if (list.profile_id !== identity.profile.id) {
+  if (list.profile_id !== identity.activeProfile.id) {
     redirect(`/lists/${id}`);
   }
 
   const [allItems, currentListItems, userLists] = await Promise.all([
-    getItemsByProfile(identity.profile.id, { filter: 'all' }),
+    getItemsByProfile(identity.activeProfile.id, { filter: 'all' }),
     db
       .select({ item_id: list_items.item_id })
       .from(list_items)
       .where(eq(list_items.list_id, id)),
-    getListsByProfile(identity.profile.id),
+    getListsByProfile(identity.activeProfile.id),
   ]);
 
   const currentListItemIds = new Set(currentListItems.map((r) => r.item_id));
@@ -54,8 +55,9 @@ export default async function ChooseItemsBody({ params, searchParams }: Props) {
       items={displayItems}
       initialSelectedIds={Array.from(currentListItemIds)}
       isNew={isNew}
-      profile_id={identity.profile.id}
+      profile_id={identity.activeProfile.id}
       lists={userLists}
+      actingAs={await actingAsName(identity)}
     />
   );
 }

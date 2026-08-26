@@ -6,14 +6,25 @@ export type ActionResponse = {
   id?: string;
 };
 
-export type ProfileTable = {
+// The two profiles a request names, never one. Ownership columns and creation
+// take the active profile; anything naming the human takes the self-profile.
+export type ActorProfile = {
   id: string;
   name: string;
-  created_at: Date;
-  updated_at: Date;
+  accent: string | null;
 };
 
-export type UserIdentity = { userId: string; profile: ProfileTable };
+export type ProfileMembershipView = ActorProfile & {
+  tagline: string | null;
+  role: 'self' | 'owner' | 'manager';
+  last_active_at: Date | null;
+};
+
+export type UserIdentity = {
+  userId: string;
+  selfProfile: ActorProfile;
+  activeProfile: ActorProfile;
+};
 
 export type ListTable = {
   id: string;
@@ -131,3 +142,7 @@ export type OptionType = {
   label: string;
 };
 
+// The primitive decides neither when a secondary action is warranted nor what
+// it says — it renders what its consumer supplies. Which profile-scoped
+// surfaces supply one, and under what condition, is `active-profile`'s.
+export type EmptySecondaryAction = { href: string; label: string };

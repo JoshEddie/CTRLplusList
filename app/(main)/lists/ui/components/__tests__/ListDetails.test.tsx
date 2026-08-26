@@ -78,9 +78,8 @@ const baseProps: Props = {
   isOwner: true,
   list: makeList(),
   owner_name: 'Olivia Owner',
-  owner_image: undefined,
   viewer_user_id: 'owner-1',
-  viewer_profile_id: 'owner-profile-1',
+  viewer_self_profile_id: 'owner-profile-1',
   itemCount: 3,
 };
 
@@ -203,7 +202,7 @@ describe('ListDetails', () => {
     const viewerProps: Partial<Props> = {
       isOwner: false,
       viewer_user_id: 'viewer-9',
-      viewer_profile_id: 'viewer-profile-9',
+      viewer_self_profile_id: 'viewer-profile-9',
       list: makeList({ shared: true, profile_id: 'owner-profile-1' }),
     };
 

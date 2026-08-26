@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { Suspense } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockNextHeaders } from '@/test/helpers/next-headers';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { auth } from '@/lib/auth';
 import { getItemsByListId } from '@/lib/data/item';
@@ -8,6 +9,8 @@ import { getUserIdentity } from '@/lib/data/profile';
 import { getUserIdByEmail } from '@/lib/data/user';
 import SortItemsContainer from '../SortItemsContainer';
 import { makeProfile } from '@/test/helpers/profile';
+
+mockNextHeaders();
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/item', () => ({
@@ -42,7 +45,8 @@ beforeEach(() => {
   } as never);
   vi.mocked(getUserIdentity).mockResolvedValue({
     userId: 'u1',
-    profile: makeProfile('p1', 'Owner'),
+    selfProfile: makeProfile('p1', 'Owner'),
+    activeProfile: makeProfile('p1', 'Owner'),
   });
   vi.mocked(getItemsByListId).mockResolvedValue([
     { id: 'x1' },
@@ -60,7 +64,7 @@ describe('SortItemsContainer', () => {
       })
     );
     expect(getItemsByListId).toHaveBeenCalledWith('l1', {
-      viewerProfileId: 'p1',
+      viewerSelfProfileId: 'p1',
       isOwner: true,
       showSpoilers: true,
     });
@@ -75,7 +79,7 @@ describe('SortItemsContainer', () => {
     render(await SortItemsContainer({ listId: 'l1' }));
     expect(getUserIdByEmail).not.toHaveBeenCalled();
     expect(getItemsByListId).toHaveBeenCalledWith('l1', {
-      viewerProfileId: undefined,
+      viewerSelfProfileId: undefined,
       isOwner: false,
       showSpoilers: false,
     });

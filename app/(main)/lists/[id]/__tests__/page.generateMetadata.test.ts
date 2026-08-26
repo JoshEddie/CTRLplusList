@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockNextHeaders } from '@/test/helpers/next-headers';
 
 import { seedList } from '@/lib/data/__tests__/test-helpers';
 import { lists } from '@/db/schema';
@@ -8,6 +9,7 @@ import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 
 mockNextCache();
+mockNextHeaders();
 
 type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
 

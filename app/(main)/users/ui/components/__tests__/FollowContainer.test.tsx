@@ -31,7 +31,7 @@ const PROPS = {
   ownerProfileId: 'owner-profile',
   ownerName: 'Owner',
   viewerUserId: 'viewer',
-  viewerProfileId: 'viewer-profile',
+  viewerSelfProfileId: 'viewer-profile',
 };
 
 beforeEach(() => {

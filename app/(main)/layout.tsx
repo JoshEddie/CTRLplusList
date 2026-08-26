@@ -1,4 +1,5 @@
 import AppFrame from '../ui/components/AppFrame';
+import { ProfileSwitchProvider } from '../ui/components/ProfileSwitchProvider';
 import '../ui/styles/app-frame.css';
 import './items/ui/styles/item.css';
 import './lists/ui/styles/following-and-history.css';
@@ -14,9 +15,11 @@ export default function MainLayout({
   modal: React.ReactNode;
 }) {
   return (
-    <AppFrame>
-      {children}
-      {modal}
-    </AppFrame>
+    <ProfileSwitchProvider>
+      <AppFrame>
+        {children}
+        {modal}
+      </AppFrame>
+    </ProfileSwitchProvider>
   );
 }

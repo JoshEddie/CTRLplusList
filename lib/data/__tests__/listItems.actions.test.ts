@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockNextHeaders } from '@/test/helpers/next-headers';
 
 import { items, list_items, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
@@ -7,9 +8,16 @@ import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 
-import { seedItem, seedList, seedListItem, type TestDb } from './test-helpers';
+import {
+  contentTagCalls,
+  seedItem,
+  seedList,
+  seedListItem,
+  type TestDb,
+} from './test-helpers';
 
 mockNextCache();
+mockNextHeaders();
 
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock('@/db', () => ({
@@ -111,7 +119,7 @@ describe('setListItems', () => {
     const res = await actions.setListItems('L', ['MINE', 'THEIRS']);
     expect(res.error).toBe('Forbidden');
     expect(await listItemRows('L')).toHaveLength(0);
-    expect(updateTag).not.toHaveBeenCalled();
+    expect(contentTagCalls(updateTag)).toEqual([]);
   });
 
   it('NonexistentItemInSelection_ReturnsForbidden-NoWrite', async () => {
@@ -286,7 +294,7 @@ describe('removeListItem', () => {
     const res = await actions.removeListItem('L', 'ghost');
     expect(res.error).toBe('Not found');
     expect(res.message).toBe('Item is not on this list');
-    expect(updateTag).not.toHaveBeenCalled();
+    expect(contentTagCalls(updateTag)).toEqual([]);
   });
 
   it('DeleteThrows_ReturnsFailedToRemoveItem', async () => {

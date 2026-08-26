@@ -9,7 +9,7 @@ export default async function FollowersSection() {
   const identity = await authedIdentity();
   if (!identity) redirect('/');
 
-  const followers = await getFollowersOfProfile(identity.profile.id);
+  const followers = await getFollowersOfProfile(identity.selfProfile.id);
 
   return (
     <ConnectionsSection

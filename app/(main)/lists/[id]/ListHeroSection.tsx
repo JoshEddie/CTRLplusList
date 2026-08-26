@@ -20,12 +20,13 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
 
-  const list = await guardListViewable(
-    await getList(id),
-    identity?.profile.id ?? null
-  );
+  // The guard's block check is the human's, so it takes the whole identity
+  // and compares the self-profile; `isOwner` is an ownership comparison and
+  // takes the profile the request acts as. The Follow affordance downstream
+  // needs both, which is why neither is folded into one viewer id.
+  const list = await guardListViewable(await getList(id), identity);
 
-  const isOwner = identity?.profile.id === list.profile_id;
+  const isOwner = identity?.activeProfile.id === list.profile_id;
   const previewMode = isOwner && sp.preview === 'viewer';
   const showSpoilers = isOwner && sp.spoilers === '1';
 
@@ -73,13 +74,12 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
       <ListDetails
         isOwner={isOwner}
         list={list}
-        owner_name={list.profile?.name || undefined}
-        owner_image={list.profile?.members[0]?.user.image || undefined}
+        owner_name={list.profile.name}
         viewer_user_id={identity?.userId || undefined}
-        viewer_profile_id={identity?.profile.id || undefined}
+        viewer_self_profile_id={identity?.selfProfile.id || undefined}
         showSpoilers={showSpoilers}
         previewMode={previewMode}
-        itemCount={list.items?.length ?? 0}
+        itemCount={list.item_count}
       />
     </>
   );

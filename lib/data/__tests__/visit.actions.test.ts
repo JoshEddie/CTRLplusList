@@ -1,5 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockNextHeaders } from '@/test/helpers/next-headers';
 
 import { list_visits } from '@/db/schema';
 import { auth } from '@/lib/auth';
@@ -11,6 +12,7 @@ import { seedList as seedVisitList, seedVisit } from './seedVisitGraph';
 import { seedList, seedListVisit, type TestDb } from './test-helpers';
 
 mockNextCache();
+mockNextHeaders();
 
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock('@/db', () => ({

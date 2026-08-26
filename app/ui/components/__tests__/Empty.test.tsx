@@ -37,23 +37,23 @@ describe('Empty', () => {
   describe('Title', () => {
     it('TypeItem_TitleCapitalized', () => {
       render(<Empty type="item" setShowNewItem={vi.fn()} />);
-      expect(
-        screen.getByRole('heading', { level: 3 }).textContent
-      ).toBe('No Items Found');
+      expect(screen.getByRole('heading', { level: 3 }).textContent).toBe(
+        'No Items Found'
+      );
     });
 
     it('TypeList_TitleCapitalized', () => {
       render(<Empty type="list" />);
-      expect(
-        screen.getByRole('heading', { level: 3 }).textContent
-      ).toBe('No Lists Found');
+      expect(screen.getByRole('heading', { level: 3 }).textContent).toBe(
+        'No Lists Found'
+      );
     });
 
     it('TypePurchase_TitleExactString', () => {
       render(<Empty type="purchase" />);
-      expect(
-        screen.getByRole('heading', { level: 3 }).textContent
-      ).toBe('No Purchases Found');
+      expect(screen.getByRole('heading', { level: 3 }).textContent).toBe(
+        'No Purchases Found'
+      );
     });
   });
 
@@ -141,6 +141,51 @@ describe('Empty', () => {
           screen.getByRole('link', { name: 'Create Item' })
         ).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('SecondaryAction', () => {
+    const SWITCH = { href: '/profiles', label: 'Go to Profiles' };
+
+    it('Supplied_RendersAfterTheCTAInAWrappingRow', () => {
+      const { container } = render(
+        <Empty type="item" setShowNewItem={vi.fn()} secondaryAction={SWITCH} />
+      );
+
+      const row = container.querySelector('.empty-container .empty-actions');
+      expect(row).not.toBeNull();
+      expect(Array.from(row!.children).map((child) => child.tagName)).toEqual([
+        'BUTTON',
+        'A',
+      ]);
+
+      const link = screen.getByRole('link', { name: 'Go to Profiles' });
+      expect(link).toHaveAttribute('href', '/profiles');
+      expect(link).toHaveClass('secondary');
+    });
+
+    it('Supplied_DescriptionScopesTheEmptinessAndNamesNoProfile', () => {
+      render(
+        <Empty type="item" setShowNewItem={vi.fn()} secondaryAction={SWITCH} />
+      );
+      expect(
+        screen.getByText(
+          'This profile has no Items yet — create one below, or switch profiles.'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('Absent_LeavesTheCTAADirectChildWithNoRow', () => {
+      const { container } = render(
+        <Empty type="item" setShowNewItem={vi.fn()} />
+      );
+      expect(container.querySelector('.empty-actions')).toBeNull();
+      expect(
+        container.querySelector('.empty-container > button')
+      ).not.toBeNull();
+      expect(
+        screen.getByText('Create your first Item below.')
+      ).toBeInTheDocument();
     });
   });
 

@@ -9,7 +9,7 @@ export default async function BlockedSection() {
   const identity = await authedIdentity();
   if (!identity) redirect('/');
 
-  const blocked = await getBlockedByProfile(identity.profile.id);
+  const blocked = await getBlockedByProfile(identity.selfProfile.id);
 
   return (
     <ConnectionsSection

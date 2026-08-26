@@ -47,7 +47,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(authedIdentity).mockResolvedValue({
     userId: 'viewer',
-    profile: makeProfile('self-viewer', 'Viewer'),
+    selfProfile: makeProfile('self-viewer', 'Viewer'),
+    activeProfile: makeProfile('self-viewer', 'Viewer'),
   });
   vi.mocked(getFollowersOfProfile).mockResolvedValue(FOLLOWERS as never);
 });
@@ -102,6 +103,19 @@ describe('FollowersSection', () => {
         'data-target-id',
         'self-ua'
       );
+    });
+
+    it('ActingAsAManagedProfile_StillReadsTheSelfProfile', async () => {
+      vi.mocked(authedIdentity).mockResolvedValue({
+        userId: 'viewer',
+        selfProfile: makeProfile('self-viewer', 'Viewer'),
+        activeProfile: makeProfile('kiddo', 'Kiddo'),
+      });
+
+      render(await FollowersSection());
+
+      expect(getFollowersOfProfile).toHaveBeenCalledWith('self-viewer');
+      expect(getFollowersOfProfile).not.toHaveBeenCalledWith('kiddo');
     });
 
     it('NoFollowers_RendersZeroHeading-EmptyMessage', async () => {

@@ -1,3 +1,4 @@
+import { isViewersOwnProfile } from '@/lib/activeProfile';
 import { getProfileForViewer } from '@/lib/data/profile';
 import { authedIdentity } from '@/lib/data/user.session';
 import { notFound } from 'next/navigation';
@@ -25,7 +26,7 @@ export default async function ProfileHeaderSection({
   // not-found so the existence of the account isn't disclosed.
   if (profile.viewerIsBlocked) notFound();
 
-  const isOtherUser = !!identity && identity.profile.id !== id;
+  const isOtherUser = !!identity && !isViewersOwnProfile(identity, id);
   const isReachable =
     isOtherUser && !profile.viewerIsBlocked && !profile.blockedByViewer;
   const showFollowPrompt =

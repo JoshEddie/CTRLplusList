@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockNextHeaders } from '@/test/helpers/next-headers';
 
 import { profile_members, profiles, user_follows, users } from '@/db/schema';
 import { bootPglite, resetDb } from '@/test/helpers/db';
@@ -12,11 +13,12 @@ import {
   seedUsers,
   selfProfileOf,
 } from '@/test/helpers/seedFollowGraph';
-import { makeProfile } from '@/test/helpers/profile';
+import { makeIdentity, makeProfile } from '@/test/helpers/profile';
 import { seedItem, seedList } from './test-helpers';
 import { eq, sql } from 'drizzle-orm';
 
 mockNextCache();
+mockNextHeaders();
 
 type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
 
@@ -52,10 +54,11 @@ describe('getUserIdentity', () => {
     ]);
   });
 
-  it('AccountWithSelfProfile_ReturnsUserIdAndSelfProfileRow', async () => {
+  it('AccountWithSelfProfile_ResolvesSelfProfileAsBothSelfAndActive', async () => {
     expect(await dal.getUserIdentity(VIEWER.id)).toMatchObject({
       userId: VIEWER.id,
-      profile: { id: selfProfileOf(VIEWER.id), name: 'Viewer' },
+      selfProfile: { id: selfProfileOf(VIEWER.id), name: 'Viewer' },
+      activeProfile: { id: selfProfileOf(VIEWER.id), name: 'Viewer' },
     });
   });
 
@@ -67,7 +70,8 @@ describe('getUserIdentity', () => {
     await seedManagedProfile(db, { id: 'managed-1' });
     expect(await dal.getUserIdentity(VIEWER.id)).toMatchObject({
       userId: VIEWER.id,
-      profile: { id: selfProfileOf(VIEWER.id) },
+      selfProfile: { id: selfProfileOf(VIEWER.id) },
+      activeProfile: { id: selfProfileOf(VIEWER.id) },
     });
   });
 
@@ -86,10 +90,10 @@ describe('getUserIdentity', () => {
 });
 
 describe('getProfileForViewer', () => {
-  const viewerIdentity = {
-    userId: 'viewer',
-    profile: makeProfile(selfProfileOf('viewer'), 'Viewer'),
-  };
+  const viewerIdentity = makeIdentity(
+    'viewer',
+    makeProfile(selfProfileOf('viewer'), 'Viewer')
+  );
 
   it('UnknownProfile_ReturnsNull', async () => {
     expect(await dal.getProfileForViewer('missing', null)).toBeNull();
@@ -99,9 +103,16 @@ describe('getProfileForViewer', () => {
     await seedUsers(db, [{ id: 'target', name: 'Tara', image: 't.png' }]);
     await seedList(db, { id: 'p1', user_id: 'target', visibility: 'public' });
     await seedList(db, { id: 'p2', user_id: 'target', visibility: 'public' });
-    await seedList(db, { id: 'priv', user_id: 'target', visibility: 'private' });
+    await seedList(db, {
+      id: 'priv',
+      user_id: 'target',
+      visibility: 'private',
+    });
 
-    const profile = await dal.getProfileForViewer(selfProfileOf('target'), null);
+    const profile = await dal.getProfileForViewer(
+      selfProfileOf('target'),
+      null
+    );
     expect(profile).toMatchObject({
       id: selfProfileOf('target'),
       name: 'Tara',
@@ -116,10 +127,10 @@ describe('getProfileForViewer', () => {
   it('SelfViewer_ReturnsFalseRelationshipFlags', async () => {
     await seedUsers(db, [{ id: 'target' }]);
 
-    const profile = await dal.getProfileForViewer(selfProfileOf('target'), {
-      userId: 'target',
-      profile: makeProfile(selfProfileOf('target'), 'Tara'),
-    });
+    const profile = await dal.getProfileForViewer(
+      selfProfileOf('target'),
+      makeIdentity('target', makeProfile(selfProfileOf('target'), 'Tara'))
+    );
     expect(profile).toMatchObject({
       viewerIsFollowing: false,
       viewerIsBlocked: false,
@@ -187,9 +198,9 @@ describe('getFollowersOfProfile', () => {
 
   it('NoFollowers_ReturnsEmptyArray', async () => {
     await seedUsers(db, [{ id: 'followee' }]);
-    expect(
-      await dal.getFollowersOfProfile(selfProfileOf('followee'))
-    ).toEqual([]);
+    expect(await dal.getFollowersOfProfile(selfProfileOf('followee'))).toEqual(
+      []
+    );
   });
 });
 
@@ -376,9 +387,7 @@ describe('getEligiblePurchasers', () => {
     // the pool is empty by consequence of the predicate, not a special case.
     await resetDb(db);
     await seedUsers(db, [{ id: 'claimer' }]);
-    await db
-      .insert(profiles)
-      .values({ id: 'kiddo', name: 'Kiddo' });
+    await db.insert(profiles).values({ id: 'kiddo', name: 'Kiddo' });
     expect(await dal.getEligiblePurchasers('kiddo', pClaimer)).toEqual([]);
   });
 

@@ -63,7 +63,9 @@ describe('getItemsByProfile', () => {
         archived_at: new Date('2021-01-01'),
       });
 
-      const rows = await dal.getItemsByProfile(selfProfileOf('u'), { filter: 'archived' });
+      const rows = await dal.getItemsByProfile(selfProfileOf('u'), {
+        filter: 'archived',
+      });
       expect(rows.map((r) => r.id)).toEqual(['archived']);
     });
 
@@ -81,7 +83,9 @@ describe('getItemsByProfile', () => {
         archived_at: new Date('2021-06-01'),
       });
 
-      const rows = await dal.getItemsByProfile(selfProfileOf('u'), { filter: 'all' });
+      const rows = await dal.getItemsByProfile(selfProfileOf('u'), {
+        filter: 'all',
+      });
       expect(rows.map((r) => r.id)).toEqual(['active', 'archived']);
     });
   });
@@ -146,7 +150,9 @@ describe('getItemsByProfile', () => {
         profile_id: selfProfileOf('claimer'),
       });
 
-      const rows = await dal.getItemsByProfile(selfProfileOf('owner'), { showSpoilers: true });
+      const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
+        showSpoilers: true,
+      });
       expect(rows[0].purchases).toEqual([
         {
           id: 'p1',
@@ -165,7 +171,9 @@ describe('getItemsByProfile', () => {
     vi.spyOn(db.query.items, 'findMany').mockRejectedValueOnce(
       new Error('boom')
     );
-    await expect(dal.getItemsByProfile(selfProfileOf('u'))).rejects.toThrow('boom');
+    await expect(dal.getItemsByProfile(selfProfileOf('u'))).rejects.toThrow(
+      'boom'
+    );
   });
 });
 
@@ -231,14 +239,18 @@ describe('getItemById', () => {
 
   it('UnknownId_ReturnsUndefined', async () => {
     await seedUsers(db, [{ id: 'u' }]);
-    expect(await dal.getItemById('missing', selfProfileOf('u'))).toBeUndefined();
+    expect(
+      await dal.getItemById('missing', selfProfileOf('u'))
+    ).toBeUndefined();
   });
 
   it('QueryThrows_RejectsWithRawError', async () => {
     vi.spyOn(db.query.items, 'findFirst').mockRejectedValueOnce(
       new Error('boom')
     );
-    await expect(dal.getItemById('i1', selfProfileOf('u'))).rejects.toThrow('boom');
+    await expect(dal.getItemById('i1', selfProfileOf('u'))).rejects.toThrow(
+      'boom'
+    );
   });
 });
 
@@ -253,6 +265,18 @@ describe('getItemsByListId', () => {
 
     const rows = await dal.getItemsByListId('l1');
     expect(rows.map((r) => r.id)).toEqual(['first', 'second']);
+  });
+
+  it('ItemProfileDiffersFromList_ExcludedFromMembership', async () => {
+    await seedUsers(db, [{ id: 'owner' }, { id: 'stranger' }]);
+    await seedList(db, { id: 'l1', user_id: 'owner' });
+    await seedItem(db, { id: 'mine', user_id: 'owner' });
+    await seedItem(db, { id: 'theirs', user_id: 'stranger' });
+    await seedListItem(db, { list_id: 'l1', item_id: 'mine', position: 1 });
+    await seedListItem(db, { list_id: 'l1', item_id: 'theirs', position: 2 });
+
+    const rows = await dal.getItemsByListId('l1');
+    expect(rows.map((r) => r.id)).toEqual(['mine']);
   });
 
   it('ItemWithStores_MapsScalarPrimaryStore', async () => {
@@ -320,7 +344,7 @@ describe('getItemsByListId', () => {
     it('NonOwnerWithViewerId_TagsSelfAndOther', async () => {
       await seedClaimedItem();
       const rows = await dal.getItemsByListId('l1', {
-        viewerProfileId: selfProfileOf('viewer'),
+        viewerSelfProfileId: selfProfileOf('viewer'),
       });
       const byId = Object.fromEntries(rows[0].purchases.map((p) => [p.id, p]));
       expect(byId.pv).toEqual({
@@ -361,7 +385,7 @@ describe('getItemsByListId', () => {
       });
 
       const rows = await dal.getItemsByListId('l1', {
-        viewerProfileId: selfProfileOf('viewer'),
+        viewerSelfProfileId: selfProfileOf('viewer'),
       });
       expect(rows[0].purchases).toEqual([
         {
@@ -425,7 +449,9 @@ describe('firstNameOf', () => {
     await seedItem(db, { id: 'iNull', user_id: 'owner' });
     await seedPurchase(db, { id: 'p-iNull', item_id: 'iNull' });
 
-    const rows = await dal.getItemsByProfile(selfProfileOf('owner'), { showSpoilers: true });
+    const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
+      showSpoilers: true,
+    });
     const firstNameByItem = Object.fromEntries(
       rows.map((r) => [r.id, r.purchases[0]?.firstName])
     );

@@ -48,9 +48,8 @@ export default async function ListDetails({
   isOwner,
   list,
   owner_name,
-  owner_image,
   viewer_user_id,
-  viewer_profile_id,
+  viewer_self_profile_id,
   showSpoilers,
   previewMode,
   itemCount,
@@ -58,9 +57,8 @@ export default async function ListDetails({
   isOwner: boolean;
   list: ListWithVisibility;
   owner_name: string | undefined;
-  owner_image: string | undefined;
   viewer_user_id: string | undefined;
-  viewer_profile_id: string | undefined;
+  viewer_self_profile_id: string | undefined;
   showSpoilers?: boolean;
   previewMode?: boolean;
   itemCount: number;
@@ -76,7 +74,7 @@ export default async function ListDetails({
   const itemsDisplay = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
   const showOwnerControls = isOwner && !previewMode;
   const showViewerControls =
-    !isOwner && viewer_user_id && viewer_profile_id && !previewMode;
+    !isOwner && viewer_user_id && viewer_self_profile_id && !previewMode;
 
   // Compose the prepended kebab items shown on the sticky strip while the
   // full hero is scrolled away. Owner-preview gets the owner items
@@ -95,7 +93,7 @@ export default async function ListDetails({
         ownerProfileId={list.profile_id}
         ownerName={owner_name ?? null}
         viewerUserId={viewer_user_id}
-        viewerProfileId={viewer_profile_id}
+        viewerSelfProfileId={viewer_self_profile_id}
       />
     );
   }
@@ -186,7 +184,7 @@ export default async function ListDetails({
             {showViewerControls && (
               <>
                 <div className="list-hero-byline-group">
-                  <Avatar src={owner_image} name={owner_name} size={44} />
+                  <Avatar src={null} name={owner_name} size={44} />
                   <div className="list-hero-byline-text">
                     <Link
                       href={`/user/${list.profile_id}`}
@@ -198,7 +196,7 @@ export default async function ListDetails({
                       ownerProfileId={list.profile_id}
                       ownerName={owner_name ?? null}
                       viewerUserId={viewer_user_id}
-                      viewerProfileId={viewer_profile_id}
+                      viewerSelfProfileId={viewer_self_profile_id}
                       variant="on-dark"
                     />
                   </div>

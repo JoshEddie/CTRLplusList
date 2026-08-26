@@ -8,6 +8,8 @@ import { mockNextCache } from '@/test/helpers/next-cache';
 import {
   seedBlock,
   seedFollow,
+  seedManagedProfile,
+  seedMembership,
   seedUsers,
 } from '@/test/helpers/seedFollowGraph';
 
@@ -53,11 +55,13 @@ function setGuestCookie(claims: {
 
 function readGuestCookie() {
   const raw = cookieJar.store.get('guest_claims');
-  return raw === undefined ? null : (JSON.parse(raw) as {
-    id: string;
-    name: string;
-    purchases: string[];
-  });
+  return raw === undefined
+    ? null
+    : (JSON.parse(raw) as {
+        id: string;
+        name: string;
+        purchases: string[];
+      });
 }
 
 // Booting a fresh pglite (full migration set) per test is the dominant per-test
@@ -129,7 +133,10 @@ describe('createPurchase', () => {
     await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
     await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
 
-    const res = await actions.createPurchase({ item_id: 'I', guest_name: null });
+    const res = await actions.createPurchase({
+      item_id: 'I',
+      guest_name: null,
+    });
 
     expect(res.success).toBe(true);
     const row = (await db.select().from(lists).where(eq(lists.id, 'L')))[0];
@@ -137,6 +144,32 @@ describe('createPurchase', () => {
   });
 
   describe('IdentityContract', () => {
+    // A claim is a human act, so switching does not move it: both ends stay
+    // the actor's self-profile whatever profile the request acts as.
+    it('ClaimerActingAsAManagedProfile_StillRecordsTheirSelfProfileAtBothEnds', async () => {
+      // A third party's public list, so viewability does not depend on the
+      // claimer's own ownership and the claim is the only thing under test.
+      await seedList(db, { id: 'L', user_id: OTHER.id, visibility: 'public' });
+      await seedItem(db, { id: 'I', user_id: OTHER.id, quantity_limit: null });
+      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+      await seedManagedProfile(db, { id: 'kiddo', name: 'Kiddo' });
+      await seedMembership(db, { user_id: OWNER.id, profile_id: 'kiddo' });
+      cookieJar.store.set('active_profile', 'kiddo');
+
+      const res = await actions.createPurchase({
+        item_id: 'I',
+        guest_name: null,
+      });
+
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toEqual([
+        expect.objectContaining({
+          profile_id: OWNER_PROFILE,
+          claimed_by_profile_id: OWNER_PROFILE,
+        }),
+      ]);
+    });
+
     it('AuthedSelfClaim_InsertsSelfProfileForBothRoles-NullGuestName', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });
       await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
@@ -156,9 +189,7 @@ describe('createPurchase', () => {
         }),
       ]);
       expect(res.id).toBe(rows[0].id);
-      expect(updateTag).toHaveBeenCalledWith(
-        `items:profile:${OWNER_PROFILE}`
-      );
+      expect(updateTag).toHaveBeenCalledWith(`items:profile:${OWNER_PROFILE}`);
       expect(updateTag).toHaveBeenCalledWith(
         `purchases:profile:${OWNER_PROFILE}`
       );
@@ -185,9 +216,7 @@ describe('createPurchase', () => {
           guest_name: 'Aunt May',
         }),
       ]);
-      expect(updateTag).toHaveBeenCalledWith(
-        `items:profile:${OWNER_PROFILE}`
-      );
+      expect(updateTag).toHaveBeenCalledWith(`items:profile:${OWNER_PROFILE}`);
     });
 
     it('GuestWithName_InsertsAllNullIdentitiesAndGuestName', async () => {
@@ -215,7 +244,11 @@ describe('createPurchase', () => {
     });
 
     it('FirstGuestClaim_SetsCookieWithMintedIdAndSingleId', async () => {
-      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'unlisted' });
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'unlisted',
+      });
       await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
       noSession();
@@ -232,7 +265,11 @@ describe('createPurchase', () => {
     });
 
     it('SecondGuestClaim_KeepsIdPrependsPurchaseUpdatesName', async () => {
-      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'unlisted' });
+      await seedList(db, {
+        id: 'L',
+        user_id: OWNER.id,
+        visibility: 'unlisted',
+      });
       await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
       noSession();
@@ -371,7 +408,11 @@ describe('createPurchase', () => {
 
     it('DuplicateSameUser_ReturnsDuplicateClaim-NoNewRow', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
-      await seedPurchase(db, { id: 'p1', item_id: 'I', profile_id: OWNER_PROFILE });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        profile_id: OWNER_PROFILE,
+      });
       const res = await actions.createPurchase({
         item_id: 'I',
         guest_name: null,
@@ -405,7 +446,11 @@ describe('createPurchase', () => {
 
     it('CapacityReached_ReturnsFullyClaimed-NoNewRow', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: 1 });
-      await seedPurchase(db, { id: 'p1', item_id: 'I', profile_id: OTHER_PROFILE });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        profile_id: OTHER_PROFILE,
+      });
       const res = await actions.createPurchase({
         item_id: 'I',
         guest_name: null,
@@ -490,9 +535,7 @@ describe('createPurchase', () => {
           guest_name: null,
         }),
       ]);
-      expect(updateTag).toHaveBeenCalledWith(
-        `items:profile:${OWNER_PROFILE}`
-      );
+      expect(updateTag).toHaveBeenCalledWith(`items:profile:${OWNER_PROFILE}`);
       expect(updateTag).toHaveBeenCalledWith(
         `purchases:profile:${TARGET_PROFILE}`
       );
@@ -699,13 +742,15 @@ describe('removePurchase', () => {
   describe('ByPurchaseId', () => {
     it('AuthedOwner_DeletesOwnRow-BumpsItemAndPurchaserTags', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
-      await seedPurchase(db, { id: 'p1', item_id: 'I', profile_id: OWNER_PROFILE });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        profile_id: OWNER_PROFILE,
+      });
       const res = await actions.removePurchase({ purchase_id: 'p1' });
       expect(res.success).toBe(true);
       expect(await purchaseRows('I')).toHaveLength(0);
-      expect(updateTag).toHaveBeenCalledWith(
-        `items:profile:${OWNER_PROFILE}`
-      );
+      expect(updateTag).toHaveBeenCalledWith(`items:profile:${OWNER_PROFILE}`);
       expect(updateTag).toHaveBeenCalledWith(
         `purchases:profile:${OWNER_PROFILE}`
       );
@@ -713,11 +758,36 @@ describe('removePurchase', () => {
 
     it('AuthedNonOwner_ReturnsNotYourClaim-RowPersists', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
-      await seedPurchase(db, { id: 'p1', item_id: 'I', profile_id: OWNER_PROFILE });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        profile_id: OWNER_PROFILE,
+      });
       asOther();
       const res = await actions.removePurchase({ purchase_id: 'p1' });
       expect(res.error).toBe('Not your claim');
       expect(await purchaseRows('I')).toHaveLength(1);
+    });
+
+    it('ClaimerActingAsAManagedProfile_StillRemovesTheirOwnClaim', async () => {
+      // The claim was recorded at both ends as the human's self-profile, so a
+      // removal gate reading the active profile would refuse the claimer their
+      // own unclaim the moment they switch.
+      await seedItem(db, { id: 'I', user_id: OTHER.id });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        profile_id: OWNER_PROFILE,
+        claimed_by_profile_id: OWNER_PROFILE,
+      });
+      await seedManagedProfile(db, { id: 'kiddo', name: 'Kiddo' });
+      await seedMembership(db, { user_id: OWNER.id, profile_id: 'kiddo' });
+      cookieJar.store.set('active_profile', 'kiddo');
+
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
+
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toHaveLength(0);
     });
 
     it('GuestCookieListedRow_DeletesRow-PrunesCookie', async () => {
@@ -742,7 +812,11 @@ describe('removePurchase', () => {
 
     it('GuestCookieOnIdentityBearingRow_ReturnsNotYourClaim-RowPersists', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
-      await seedPurchase(db, { id: 'p1', item_id: 'I', profile_id: OWNER_PROFILE });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        profile_id: OWNER_PROFILE,
+      });
       noSession();
       setGuestCookie({ id: 'g1', name: 'Gifty', purchases: ['p1'] });
       const res = await actions.removePurchase({ purchase_id: 'p1' });
@@ -804,7 +878,11 @@ describe('removePurchase', () => {
 
     it('DeleteThrows_ReturnsFailedToRemovePurchase', async () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
-      await seedPurchase(db, { id: 'p1', item_id: 'I', profile_id: OWNER_PROFILE });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        profile_id: OWNER_PROFILE,
+      });
       vi.spyOn(db, 'delete').mockImplementation(() => {
         throw new Error('boom');
       });
@@ -855,6 +933,48 @@ describe('removePurchase', () => {
       const res = await actions.removePurchase({ purchase_id: 'p1' });
       expect(res.success).toBe(true);
       expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    // The owner's master unclaim is an ownership comparison, so it follows the
+    // profile the request acts as — it reaches a claim on the acted-as
+    // profile's item and stops reaching one on the human's own.
+    it('ItemOwnedByTheActedAsProfile_DeletesUnrelatedClaim', async () => {
+      await seedManagedProfile(db, { id: 'kiddo', name: 'Kiddo' });
+      await seedMembership(db, { user_id: OWNER.id, profile_id: 'kiddo' });
+      await seedItem(db, {
+        id: 'K',
+        profile_id: 'kiddo',
+        quantity_limit: null,
+      });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'K',
+        profile_id: TARGET_PROFILE,
+        claimed_by_profile_id: TARGET_PROFILE,
+      });
+      cookieJar.store.set('active_profile', 'kiddo');
+
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
+
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('K')).toHaveLength(0);
+    });
+
+    it('ItemOwnedBySelfProfileWhileActingAsAnother_ReturnsNotYourClaim', async () => {
+      await seedManagedProfile(db, { id: 'kiddo', name: 'Kiddo' });
+      await seedMembership(db, { user_id: OWNER.id, profile_id: 'kiddo' });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        profile_id: TARGET_PROFILE,
+        claimed_by_profile_id: TARGET_PROFILE,
+      });
+      cookieJar.store.set('active_profile', 'kiddo');
+
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
+
+      expect(res.error).toBe('Not your claim');
+      expect(await purchaseRows('I')).toHaveLength(1);
     });
 
     it('ItemOwnerOnAllNullGuestRow_DeletesRowWithoutName', async () => {

@@ -1,12 +1,22 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderWithProfileSwitch } from '@/test/helpers/profile-switch';
 import type { Session } from 'next-auth';
+import { switchActiveProfile } from '@/lib/data/profile.actions';
+import type { ProfileSwitcherView } from '@/lib/data/profile.active';
 import UserAvatarPopover from '../UserAvatarPopover';
+import { ACCENT_NAMES, ACCENT_PRESETS } from '@/lib/accent';
 
 vi.mock('@/lib/data/user.actions', () => ({
   signInUser: vi.fn(),
   signOutUser: vi.fn(),
+}));
+vi.mock('@/lib/data/profile.actions', () => ({
+  switchActiveProfile: vi.fn(),
+}));
+vi.mock('react-hot-toast', () => ({
+  default: { success: vi.fn(), error: vi.fn() },
 }));
 vi.mock('next/image', async () => ({
   default: (await import('./test-helpers')).MockNextImage,
@@ -24,20 +34,35 @@ const fullUser: User = {
 
 const trigger = () => screen.getByRole('button', { name: 'User menu' });
 
+const SELF = { id: 'p-self', name: 'Ada Lovelace', accent: null };
+const KIDDO = { id: 'p-kiddo', name: 'Kiddo', accent: null };
+const NANA = { id: 'p-nana', name: 'Nana', accent: null };
+
+// The viewer acts as their own profile, so the two managed ones are offered
+// and neither reads as the way back.
+const THREE_PROFILES: ProfileSwitcherView = {
+  rows: [KIDDO, NANA],
+  profileCount: 3,
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(switchActiveProfile).mockResolvedValue({
+    success: true,
+    message: 'Profile switched to Kiddo',
+  });
 });
 
 describe('UserAvatarPopover', () => {
   it('Default_RendersClosedTrigger', () => {
-    render(<UserAvatarPopover user={fullUser} />);
+    renderWithProfileSwitch(<UserAvatarPopover user={fullUser} />);
     expect(trigger()).toHaveAttribute('aria-expanded', 'false');
     expect(trigger()).toHaveAttribute('aria-haspopup', 'menu');
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
   it('ClickTrigger_OpensMenuWithHeader-Profiles-Connections-SignOut', async () => {
-    render(<UserAvatarPopover user={fullUser} />);
+    renderWithProfileSwitch(<UserAvatarPopover user={fullUser} />);
     await userEvent.click(trigger());
 
     expect(trigger()).toHaveAttribute('aria-expanded', 'true');
@@ -54,8 +79,34 @@ describe('UserAvatarPopover', () => {
     ).toBeInTheDocument();
   });
 
+  it('ActiveProfile_RendersItsInitialsInTheTriggerNotTheAccountImage', () => {
+    renderWithProfileSwitch(
+      <UserAvatarPopover user={fullUser} activeProfile={KIDDO} />
+    );
+    expect(trigger()).toHaveTextContent('K');
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+
+  it('ActiveProfileAccent_RingsTheTriggerWithThatProfilesColour', () => {
+    const accent = ACCENT_NAMES[0];
+    const { dark, light, ink } = ACCENT_PRESETS[accent];
+    renderWithProfileSwitch(
+      <UserAvatarPopover user={fullUser} activeProfile={{ ...KIDDO, accent }} />
+    );
+
+    /* eslint-disable testing-library/no-node-access -- the accent variables sit on the initials span inside the trigger, which carries only a class: no role and no accessible name of its own. */
+    const style =
+      trigger().querySelector('.avatar-initials')?.getAttribute('style') ?? '';
+    /* eslint-enable testing-library/no-node-access */
+
+    // The ring is keyed off the dark stop; the disc paints the light one.
+    expect(style).toContain(`--accent-dark: ${dark}`);
+    expect(style).toContain(`--accent-disc: ${light}`);
+    expect(style).toContain(`--accent-ink: ${ink}`);
+  });
+
   it('ClickTrigger_OrdersProfilesBeforeConnectionsBeforeSignOut', async () => {
-    render(<UserAvatarPopover user={fullUser} />);
+    renderWithProfileSwitch(<UserAvatarPopover user={fullUser} />);
     await userEvent.click(trigger());
 
     expect(
@@ -64,7 +115,7 @@ describe('UserAvatarPopover', () => {
   });
 
   it('ClickTrigger_GivesProfilesAndConnectionsDistinctIcons', async () => {
-    render(<UserAvatarPopover user={fullUser} />);
+    renderWithProfileSwitch(<UserAvatarPopover user={fullUser} />);
     await userEvent.click(trigger());
 
     /* eslint-disable testing-library/no-node-access -- an icon is a decorative <svg> carrying no role or accessible name, so comparing the two rows' rendered paths is the only way to assert they differ at icon size. */
@@ -78,14 +129,104 @@ describe('UserAvatarPopover', () => {
   });
 
   it('SparseUser_ShowsSignedInFallbackWithoutEmail', async () => {
-    render(<UserAvatarPopover user={{} as User} />);
+    renderWithProfileSwitch(<UserAvatarPopover user={{} as User} />);
     await userEvent.click(trigger());
     expect(screen.getByText('Signed in')).toBeInTheDocument();
     expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
   });
 
+  describe('Switcher', () => {
+    it('SingleProfileViewer_OffersNoSwitchRowsAndNoCount', async () => {
+      renderWithProfileSwitch(
+        <UserAvatarPopover user={fullUser} activeProfile={SELF} />
+      );
+      await userEvent.click(trigger());
+
+      expect(
+        screen.getAllByRole('menuitem').map((item) => item.textContent)
+      ).toEqual(['Profiles', 'Connections', 'Sign out']);
+    });
+
+    it('ThreeProfilesActingAsSelf_OffersTheOtherTwoAboveTheDestinations', async () => {
+      renderWithProfileSwitch(
+        <UserAvatarPopover
+          user={fullUser}
+          activeProfile={SELF}
+          switcher={THREE_PROFILES}
+        />
+      );
+      await userEvent.click(trigger());
+
+      // Accessible names rather than textContent: a switch row's leading slot
+      // is aria-hidden, and the count on the Profiles row rides in its label.
+      const rows = screen.getAllByRole('menuitem');
+      expect(rows).toHaveLength(5);
+      for (const [index, name] of [
+        'Kiddo',
+        'Nana',
+        'Profiles (3)',
+        'Connections',
+        'Sign out',
+      ].entries()) {
+        expect(rows[index]).toHaveAccessibleName(name);
+      }
+      expect(rows[2]).toHaveAttribute('href', '/profiles');
+      expect(screen.getByText('3')).toBeInTheDocument();
+    });
+
+    it('ActingAsManagedProfile_OffersTheViewersOwnRowByNameAndDropsTheActiveOne', async () => {
+      renderWithProfileSwitch(
+        <UserAvatarPopover
+          user={fullUser}
+          activeProfile={KIDDO}
+          switcher={{ rows: [SELF, NANA], profileCount: 3 }}
+        />
+      );
+      await userEvent.click(trigger());
+
+      expect(
+        screen.getByRole('menuitem', { name: 'Ada Lovelace' })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('menuitem', { name: 'Kiddo' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('SwitchRowActivated_CallsSwitchActiveProfileAndClosesTheMenu', async () => {
+      renderWithProfileSwitch(
+        <UserAvatarPopover
+          user={fullUser}
+          activeProfile={SELF}
+          switcher={THREE_PROFILES}
+        />
+      );
+      await userEvent.click(trigger());
+      await userEvent.click(screen.getByRole('menuitem', { name: 'Kiddo' }));
+
+      expect(switchActiveProfile).toHaveBeenCalledExactlyOnceWith('p-kiddo');
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+
+    it('SwitchRow_LeadsWithTheProfilesInitialsAndNoNavigationIcon', async () => {
+      renderWithProfileSwitch(
+        <UserAvatarPopover
+          user={fullUser}
+          activeProfile={SELF}
+          switcher={THREE_PROFILES}
+        />
+      );
+      await userEvent.click(trigger());
+
+      /* eslint-disable testing-library/no-node-access -- the leading slot is a decorative span carrying no role; reaching for it is the only way to assert it holds the profile's initials rather than an icon. */
+      const row = screen.getByRole('menuitem', { name: 'Kiddo' });
+      expect(row.querySelector('.menu-profile-avatar')).toHaveTextContent('K');
+      expect(row.querySelector('svg')).toBeNull();
+      /* eslint-enable testing-library/no-node-access */
+    });
+  });
+
   it('Escape_ClosesMenu', async () => {
-    render(<UserAvatarPopover user={fullUser} />);
+    renderWithProfileSwitch(<UserAvatarPopover user={fullUser} />);
     await userEvent.click(trigger());
     expect(screen.getByRole('menu')).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
@@ -94,7 +235,7 @@ describe('UserAvatarPopover', () => {
   });
 
   it('ReClickTrigger_TogglesMenuClosed', async () => {
-    render(<UserAvatarPopover user={fullUser} />);
+    renderWithProfileSwitch(<UserAvatarPopover user={fullUser} />);
     await userEvent.click(trigger());
     expect(screen.getByRole('menu')).toBeInTheDocument();
     await userEvent.click(trigger());

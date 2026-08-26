@@ -7,12 +7,13 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getProfileCardsForUser } from '@/lib/data/profile';
-import { authedUserId } from '@/lib/data/user.session';
+import { authedIdentity } from '@/lib/data/user.session';
 import type { ProfileCardView } from '@/lib/types';
+import { makeIdentity, makeProfile } from '@/test/helpers/profile';
 import ProfilesPage from '../ProfilesPage';
 
 vi.mock('@/lib/data/profile', () => ({ getProfileCardsForUser: vi.fn() }));
-vi.mock('@/lib/data/user.session', () => ({ authedUserId: vi.fn() }));
+vi.mock('@/lib/data/user.session', () => ({ authedIdentity: vi.fn() }));
 vi.mock('../ui/components/NewProfileButton', () => ({
   default: () => <button type="button">New Profile</button>,
 }));
@@ -43,13 +44,15 @@ function card(id: string, name: string): ProfileCardView {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(authedUserId).mockResolvedValue('viewer');
+  vi.mocked(authedIdentity).mockResolvedValue(
+    makeIdentity('viewer', makeProfile('p1', 'Test Viewer'))
+  );
   vi.mocked(getProfileCardsForUser).mockResolvedValue([]);
 });
 
 describe('ProfilesPage', () => {
   it('NoSession_RedirectsToRoot', async () => {
-    vi.mocked(authedUserId).mockResolvedValue(null);
+    vi.mocked(authedIdentity).mockResolvedValue(null);
     await expect(ProfilesPage()).rejects.toThrow('REDIRECT:/');
     expect(getProfileCardsForUser).not.toHaveBeenCalled();
   });

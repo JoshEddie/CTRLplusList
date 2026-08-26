@@ -50,7 +50,8 @@ beforeEach(() => {
   vi.mocked(getUserIdByEmail).mockResolvedValue(makeViewer() as never);
   vi.mocked(getUserIdentity).mockResolvedValue({
     userId: 'viewer',
-    profile: makeProfile('self-viewer', 'Viewer'),
+    selfProfile: makeProfile('self-viewer', 'Viewer'),
+    activeProfile: makeProfile('self-viewer', 'Viewer'),
   });
   vi.mocked(getBlockedByProfile).mockResolvedValue(BLOCKED as never);
 });
@@ -98,6 +99,19 @@ describe('BlockedSection', () => {
       expect(screen.getAllByRole('button', { name: 'Unblock' })).toHaveLength(
         2
       );
+    });
+
+    it('ActingAsAManagedProfile_StillReadsTheSelfProfile', async () => {
+      vi.mocked(getUserIdentity).mockResolvedValue({
+        userId: 'viewer',
+        selfProfile: makeProfile('self-viewer', 'Viewer'),
+        activeProfile: makeProfile('kiddo', 'Kiddo'),
+      });
+
+      render(await BlockedSection());
+
+      expect(getBlockedByProfile).toHaveBeenCalledWith('self-viewer');
+      expect(getBlockedByProfile).not.toHaveBeenCalledWith('kiddo');
     });
 
     it('NoBlocked_RendersZeroHeading-EmptyMessage', async () => {

@@ -9,7 +9,11 @@ import {
   users,
 } from '@/db/schema';
 import { bootPglite } from '../../test/helpers/db';
-import { selfProfileOf } from '../../test/helpers/profile';
+import {
+  makeIdentity,
+  makeProfile,
+  selfProfileOf,
+} from '../../test/helpers/profile';
 
 // Holder mutated in `beforeAll` after pglite boots. Static imports of `@/db`
 // from production source (lib/listAccess.ts, lib/data/user.ts) read through the
@@ -56,6 +60,14 @@ const { guardListViewable, isItemViewable } = await import('../listAccess');
 // schema and we insert the rows needed for every viewability axis.
 const VIEWER = 'dev-test-viewer';
 const P = selfProfileOf;
+// A viewer acting as themselves — what every case below assumes. Both gates
+// take the whole identity now, so a fixture cannot pass one profile for both.
+const V = (userId: string) => makeIdentity(userId, makeProfile(P(userId)));
+// The same human, acting as a managed profile they run. The gates must split:
+// ownership follows `acting`, the block still names `userId`'s self-profile.
+const ACTING_AS = (userId: string, acting: string) =>
+  makeIdentity(userId, makeProfile(P(userId)), makeProfile(acting));
+const MANAGED_BY_VIEWER = 'profile-managed-by-viewer';
 const ALICE = 'dev-friend-alice'; // owns a public list
 const DAVE = 'dev-friend-dave'; // not followed; owns the OWNER list
 const JACK = 'dev-friend-jack'; // not followed; owns the LINK list
@@ -103,10 +115,15 @@ beforeAll(async () => {
     }))
   );
 
+  // A managed profile the viewer runs. It owns nothing and Carol has never
+  // blocked it — so a gate that compared it instead of the viewer's own
+  // profile would let the viewer walk straight past Carol's block.
+  await db.insert(profiles).values([{ id: MANAGED_BY_VIEWER, name: 'Kiddo' }]);
+
   // Carol blocks viewer — used by §3.4 and §3.15.
-  await db.insert(user_blocks).values([
-    { blocker_profile_id: P(CAROL), blocked_profile_id: P(VIEWER) },
-  ]);
+  await db
+    .insert(user_blocks)
+    .values([{ blocker_profile_id: P(CAROL), blocked_profile_id: P(VIEWER) }]);
 
   await db.insert(lists).values([
     {
@@ -201,7 +218,7 @@ beforeEach(() => {
 describe('listAccess', () => {
   describe('guardListViewable', () => {
     it('NullListAuthedViewer_RedirectsToLists', async () => {
-      await expect(guardListViewable(null, P(VIEWER))).rejects.toThrow(
+      await expect(guardListViewable(null, V(VIEWER))).rejects.toThrow(
         /__redirect:\/lists__/
       );
       expect(redirect).toHaveBeenCalledWith('/lists');
@@ -216,7 +233,7 @@ describe('listAccess', () => {
 
     it('OwnerBlockedViewer_RedirectsToLists', async () => {
       const list = { profile_id: P(CAROL) };
-      await expect(guardListViewable(list, P(VIEWER))).rejects.toThrow(
+      await expect(guardListViewable(list, V(VIEWER))).rejects.toThrow(
         /__redirect:\/lists__/
       );
       expect(redirect).toHaveBeenCalledWith('/lists');
@@ -224,7 +241,7 @@ describe('listAccess', () => {
 
     it('AuthedViewerNotBlocked_ReturnsListVerbatim', async () => {
       const list = { profile_id: P(DAVE) };
-      const result = await guardListViewable(list, P(VIEWER));
+      const result = await guardListViewable(list, V(VIEWER));
       expect(redirect).not.toHaveBeenCalled();
       expect(result).toBe(list);
     });
@@ -237,17 +254,48 @@ describe('listAccess', () => {
     });
   });
 
+  describe('BlockGateTakesTheSelfProfile', () => {
+    it('ViewerActingAsAManagedProfile_IsStillRedirectedByTheOwnersBlock', async () => {
+      const list = { profile_id: P(CAROL) };
+      await expect(
+        guardListViewable(list, ACTING_AS(VIEWER, MANAGED_BY_VIEWER))
+      ).rejects.toThrow(/__redirect:\/lists__/);
+      expect(redirect).toHaveBeenCalledWith('/lists');
+    });
+
+    it('ViewerActingAsAManagedProfile_StillCannotSeeAnItemOnTheBlockersList', async () => {
+      expect(
+        await isItemViewable(
+          ITEM_ON_CAROL_FOLLOWERS,
+          ACTING_AS(VIEWER, MANAGED_BY_VIEWER)
+        )
+      ).toBe(false);
+    });
+
+    it('ViewerActingAsAManagedProfile_LosesTheOwnershipShortCircuitOnTheirOwnItem', async () => {
+      // The other half of the split: ownership follows the acting profile, so
+      // an item the viewer's own profile owns is no longer theirs to short
+      // through while they act as another.
+      expect(
+        await isItemViewable(
+          ITEM_ON_VIEWER_OWNER,
+          ACTING_AS(VIEWER, MANAGED_BY_VIEWER)
+        )
+      ).toBe(false);
+    });
+  });
+
   describe('isItemViewable', () => {
     it('PrivateListOtherOwnerAuthedViewer_ReturnsFalse', async () => {
-      expect(await isItemViewable(ITEM_ON_DAVE_OWNER, P(VIEWER))).toBe(false);
+      expect(await isItemViewable(ITEM_ON_DAVE_OWNER, V(VIEWER))).toBe(false);
     });
 
     it('ViewerOwnsItemOnPrivateList_ReturnsTrueViaItemOwnerShortCircuit', async () => {
-      expect(await isItemViewable(ITEM_ON_VIEWER_OWNER, P(VIEWER))).toBe(true);
+      expect(await isItemViewable(ITEM_ON_VIEWER_OWNER, V(VIEWER))).toBe(true);
     });
 
     it('ItemOwnerEqualsViewer_ReturnsTrueViaItemOwnerShortCircuit', async () => {
-      expect(await isItemViewable(ITEM_ON_DAVE_OWNER, P(DAVE))).toBe(true);
+      expect(await isItemViewable(ITEM_ON_DAVE_OWNER, V(DAVE))).toBe(true);
     });
 
     it('UnlistedLinkListAnonymousViewer_ReturnsTrue', async () => {
@@ -255,11 +303,13 @@ describe('listAccess', () => {
     });
 
     it('UnlistedLinkListAuthedViewer_ReturnsTrue', async () => {
-      expect(await isItemViewable(ITEM_ON_JACK_LINK, P(VIEWER))).toBe(true);
+      expect(await isItemViewable(ITEM_ON_JACK_LINK, V(VIEWER))).toBe(true);
     });
 
     it('PublicListAuthedViewer_ReturnsTrue', async () => {
-      expect(await isItemViewable(ITEM_ON_ALICE_FOLLOWERS, P(VIEWER))).toBe(true);
+      expect(await isItemViewable(ITEM_ON_ALICE_FOLLOWERS, V(VIEWER))).toBe(
+        true
+      );
     });
 
     it('PublicListAnonymousViewer_ReturnsTrue', async () => {
@@ -267,21 +317,23 @@ describe('listAccess', () => {
     });
 
     it('OwnerBlockedViewer_ReturnsFalse', async () => {
-      expect(await isItemViewable(ITEM_ON_CAROL_FOLLOWERS, P(VIEWER))).toBe(false);
+      expect(await isItemViewable(ITEM_ON_CAROL_FOLLOWERS, V(VIEWER))).toBe(
+        false
+      );
     });
 
     it('ItemOnPrivateAndPublicListsOtherOwner_ReturnsTrue', async () => {
-      expect(await isItemViewable(ITEM_MULTI_LIST, P(VIEWER))).toBe(true);
+      expect(await isItemViewable(ITEM_MULTI_LIST, V(VIEWER))).toBe(true);
     });
 
     it('ItemOwnedByOtherOnViewersOwnList_ReturnsTrueViaLoopOwnerBranch', async () => {
       expect(
-        await isItemViewable(ITEM_ON_VIEWERS_LIST_OTHER_OWNER, P(VIEWER))
+        await isItemViewable(ITEM_ON_VIEWERS_LIST_OTHER_OWNER, V(VIEWER))
       ).toBe(true);
     });
 
     it('ItemNoListMembershipOwnerIsViewer_ReturnsTrue', async () => {
-      expect(await isItemViewable(ITEM_NO_LISTS, P(DAVE))).toBe(true);
+      expect(await isItemViewable(ITEM_NO_LISTS, V(DAVE))).toBe(true);
     });
 
     it('ItemNoListMembershipAnonymousViewer_ReturnsFalse', async () => {
@@ -289,9 +341,9 @@ describe('listAccess', () => {
     });
 
     it('NonExistentItemId_ReturnsFalse', async () => {
-      expect(
-        await isItemViewable('00000000-does-not-exist', P(VIEWER))
-      ).toBe(false);
+      expect(await isItemViewable('00000000-does-not-exist', V(VIEWER))).toBe(
+        false
+      );
     });
   });
 });

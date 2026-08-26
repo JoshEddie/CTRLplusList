@@ -2,6 +2,7 @@
 
 import { Button } from '@/app/ui/components/button';
 import { FieldError } from '@/app/ui/components/field';
+import { useUnsavedChanges } from '@/app/ui/components/ProfileSwitchProvider';
 import { updateProfileSettings } from '@/lib/data/profile.actions';
 import type { ProfileCardView } from '@/lib/types';
 import type { ActionResponse } from '@/lib/types';
@@ -26,6 +27,18 @@ export default function ProfileSettingsForm({
   const [tagline, setTagline] = useState(profile.tagline ?? '');
   const [accent, setAccent] = useState<string>(suggestedAccent);
 
+  // Compared against what was last written rather than against the props: a
+  // save revalidates the route, and until that render lands the props still
+  // carry the old values, which would read as unsaved changes.
+  const [saved, setSaved] = useState({
+    name: profile.name,
+    tagline: profile.tagline ?? '',
+    accent: suggestedAccent,
+  });
+  useUnsavedChanges(
+    name !== saved.name || tagline !== saved.tagline || accent !== saved.accent
+  );
+
   const [state, formAction, isPending] = useActionState<
     ActionResponse,
     FormData
@@ -35,8 +48,10 @@ export default function ProfileSettingsForm({
       tagline,
       accent,
     });
-    if (result.success) toast.success(result.message);
-    else toast.error(result.message);
+    if (result.success) {
+      toast.success(result.message);
+      setSaved({ name, tagline, accent });
+    } else toast.error(result.message);
     return result;
   }, initialState);
 

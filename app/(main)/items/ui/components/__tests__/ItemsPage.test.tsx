@@ -34,11 +34,16 @@ vi.mock('../ItemsBrowser', () => ({
 }));
 vi.mock('../itemform/ItemFormContainer', () => ({
   default: (props: {
+    actingAs?: string;
     lists: unknown[];
     onClose: () => void;
     onSuccess: () => void;
   }) => (
-    <div data-testid="item-form" data-lists-count={props.lists.length}>
+    <div
+      data-testid="item-form"
+      data-lists-count={props.lists.length}
+      data-acting-as={props.actingAs ?? ''}
+    >
       <button type="button" onClick={props.onClose}>
         close-form
       </button>
@@ -134,6 +139,23 @@ describe('ItemsPage', () => {
       expect(screen.queryByTestId('items-browser')).not.toBeInTheDocument();
     });
 
+    it('MultiProfileViewerEmpty_OffersTheProfilesRouteBesideCreate', () => {
+      renderPage({ items: [], actingAs: 'Kiddo' });
+      expect(
+        screen.getByRole('button', { name: /Create Item/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'Go to Profiles' })
+      ).toHaveAttribute('href', '/profiles');
+    });
+
+    it('SingleProfileViewerEmpty_OffersNoSwitchRoute', () => {
+      renderPage({ items: [] });
+      expect(
+        screen.queryByRole('link', { name: 'Go to Profiles' })
+      ).not.toBeInTheDocument();
+    });
+
     it('ArchivedEmpty_RendersDistinctMessageWithoutNewItemAffordance', () => {
       nav.search = 'tab=archived';
       renderPage({ archivedItems: [] });
@@ -177,6 +199,24 @@ describe('ItemsPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
       fireEvent.click(screen.getByRole('button', { name: 'submit-form' }));
       expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
+    });
+
+    it('ActingAsAManagedProfile_ForwardsItsNameToTheItemForm', () => {
+      renderPage({ actingAs: 'Kiddo' });
+      fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
+      expect(screen.getByTestId('item-form')).toHaveAttribute(
+        'data-acting-as',
+        'Kiddo'
+      );
+    });
+
+    it('SingleProfileViewer_ForwardsNoActingProfileToTheItemForm', () => {
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
+      expect(screen.getByTestId('item-form')).toHaveAttribute(
+        'data-acting-as',
+        ''
+      );
     });
 
     it('MissingLists_FormDefaultsToEmptyListCount', () => {

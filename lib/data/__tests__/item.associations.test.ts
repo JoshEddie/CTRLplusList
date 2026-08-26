@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockNextHeaders } from '@/test/helpers/next-headers';
 
 import { lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
@@ -6,9 +7,16 @@ import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 
-import { seedItem, seedList, seedListItem, type TestDb } from './test-helpers';
+import {
+  contentTagCalls,
+  seedItem,
+  seedList,
+  seedListItem,
+  type TestDb,
+} from './test-helpers';
 
 mockNextCache();
+mockNextHeaders();
 
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock('@/db', () => ({
@@ -204,7 +212,7 @@ describe('updateItemLists', () => {
       expect(byId.A.toISOString()).toBe(STALE.toISOString());
       expect(byId.B.toISOString()).toBe(STALE.toISOString());
       expect(byId.C.toISOString()).toBe(STALE.toISOString());
-      expect(updateTag).not.toHaveBeenCalled();
+      expect(contentTagCalls(updateTag)).toEqual([]);
     });
   });
 });

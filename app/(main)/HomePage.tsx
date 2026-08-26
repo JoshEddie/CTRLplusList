@@ -19,7 +19,7 @@ export default async function HomePage() {
 
       <CollapsibleRail name="my-lists" title="My Lists" seeAllHref="/lists">
         <Suspense fallback={<LoadingIndicator size="rail" />}>
-          <MyListsRail profileId={identity.profile.id} />
+          <MyListsRail profileId={identity.activeProfile.id} />
         </Suspense>
       </CollapsibleRail>
       <div className="home-rail-divider" role="separator" />

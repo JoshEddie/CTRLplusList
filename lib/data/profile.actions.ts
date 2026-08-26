@@ -15,6 +15,15 @@ import {
   type ProfileSettingsData,
 } from '@/lib/data/profile.schema';
 import {
+  ACTIVE_PROFILE_COOKIE,
+  ACTIVE_PROFILE_COOKIE_ATTRIBUTES,
+} from '@/lib/data/profile.cookie';
+import {
+  FORBIDDEN_RESPONSE,
+  stampActedAs,
+  writableMembership,
+} from '@/lib/data/profile.gate';
+import {
   UNAUTHORIZED_RESPONSE,
   authedIdentity,
   authedUserId,
@@ -23,6 +32,8 @@ import { type ActionResponse } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { refresh } from 'next/cache';
+import { cookies } from 'next/headers';
 
 export async function followUser(
   followee_profile_id: string
@@ -32,7 +43,7 @@ export async function followUser(
     if (!viewer) {
       return UNAUTHORIZED_RESPONSE;
     }
-    if (viewer.profile.id === followee_profile_id) {
+    if (viewer.selfProfile.id === followee_profile_id) {
       return {
         success: false,
         message: 'Cannot follow yourself',
@@ -40,17 +51,19 @@ export async function followUser(
       };
     }
 
-    // Either-direction block prevents follow.
+    // Either-direction block prevents follow. The gate names the viewer by
+    // their self-profile: a block belongs to the human who made it, so it
+    // means the same thing whatever profile they are acting as.
     const blocked = await db.query.user_blocks.findFirst({
       where: (b, { or, and: andOp, eq: eqOp }) =>
         or(
           andOp(
-            eqOp(b.blocker_profile_id, viewer.profile.id),
+            eqOp(b.blocker_profile_id, viewer.selfProfile.id),
             eqOp(b.blocked_profile_id, followee_profile_id)
           ),
           andOp(
             eqOp(b.blocker_profile_id, followee_profile_id),
-            eqOp(b.blocked_profile_id, viewer.profile.id)
+            eqOp(b.blocked_profile_id, viewer.selfProfile.id)
           )
         ),
     });
@@ -115,7 +128,7 @@ export async function blockUser(
     if (!viewer) {
       return UNAUTHORIZED_RESPONSE;
     }
-    if (viewer.profile.id === blocked_profile_id) {
+    if (viewer.selfProfile.id === blocked_profile_id) {
       return {
         success: false,
         message: 'Cannot block yourself',
@@ -123,6 +136,10 @@ export async function blockUser(
       };
     }
 
+    // The blocker end is always the acting account's self-profile, whatever
+    // profile they act as — a block is an act by a human, and exactly one row
+    // is written however many profiles either party runs.
+    //
     // Sequential statements, block-first: the neon-http driver does not
     // support interactive transactions, so cross-statement atomicity comes
     // from idempotent ordering + DB constraints. Insert the block row first
@@ -135,7 +152,7 @@ export async function blockUser(
     await db
       .insert(user_blocks)
       .values({
-        blocker_profile_id: viewer.profile.id,
+        blocker_profile_id: viewer.selfProfile.id,
         blocked_profile_id,
       })
       .onConflictDoNothing();
@@ -159,17 +176,17 @@ export async function blockUser(
         .where(
           and(
             eq(user_follows.follower_id, blockedAccount.user_id),
-            eq(user_follows.followee_profile_id, viewer.profile.id)
+            eq(user_follows.followee_profile_id, viewer.selfProfile.id)
           )
         );
     }
 
     updateTags(
-      cacheTags.blocksOfProfile(viewer.profile.id),
+      cacheTags.blocksOfProfile(viewer.selfProfile.id),
       cacheTags.blocksOfProfile(blocked_profile_id),
       cacheTags.followsOfUser(viewer.userId),
       cacheTags.followersOfProfile(blocked_profile_id),
-      cacheTags.followersOfProfile(viewer.profile.id)
+      cacheTags.followersOfProfile(viewer.selfProfile.id)
     );
     if (blockedAccount?.user_id) {
       updateTags(cacheTags.followsOfUser(blockedAccount.user_id));
@@ -194,13 +211,13 @@ export async function unblockUser(
       .delete(user_blocks)
       .where(
         and(
-          eq(user_blocks.blocker_profile_id, viewer.profile.id),
+          eq(user_blocks.blocker_profile_id, viewer.selfProfile.id),
           eq(user_blocks.blocked_profile_id, blocked_profile_id)
         )
       );
 
     updateTags(
-      cacheTags.blocksOfProfile(viewer.profile.id),
+      cacheTags.blocksOfProfile(viewer.selfProfile.id),
       cacheTags.blocksOfProfile(blocked_profile_id)
     );
     return { success: true, message: 'User unblocked' };
@@ -209,7 +226,6 @@ export async function unblockUser(
     return { success: false, message: 'Failed to unblock', error: 'Failed' };
   }
 }
-
 
 // Deliberately not atomic with the profile and membership rows: a profile
 // without its accent renders the fallback and its owner can write one, while a
@@ -263,12 +279,14 @@ export async function createProfile(
     const { name, tagline, accent } = validationResult.data;
 
     const id = nanoid();
-    const created = db.$with('created').as(
-      db
-        .insert(profiles)
-        .values({ id, name, tagline })
-        .returning({ id: profiles.id })
-    );
+    const created = db
+      .$with('created')
+      .as(
+        db
+          .insert(profiles)
+          .values({ id, name, tagline })
+          .returning({ id: profiles.id })
+      );
 
     // Both rows in one statement — the only atomicity neon-http offers. A
     // membership row is the sole handle onto a profile, so a second statement
@@ -280,13 +298,15 @@ export async function createProfile(
       .insert(profile_members)
       .select(
         // Every column, in table order: drizzle rejects an insert-select whose
-        // projection is not the table's own.
+        // projection is not the table's own. `last_active_at` is NULL because a
+        // membership just created has never been acted as.
         db
           .select({
             user_id: sql<string>`${userId}`.as('user_id'),
             profile_id: created.id,
             role: sql<string>`'owner'`.as('role'),
             ride_along: sql<boolean>`false`.as('ride_along'),
+            last_active_at: sql<Date | null>`NULL`.as('last_active_at'),
             created_at: sql<Date>`now()`.as('created_at'),
           })
           .from(created)
@@ -368,6 +388,52 @@ export async function updateProfileSettings(
       success: false,
       message: 'An error occurred while updating the profile',
       error: 'Failed to update profile',
+    };
+  }
+}
+
+// Changing the profile a viewer acts as. Membership is re-verified here rather
+// than trusted from whichever surface offered the row: the client's claim about
+// what it may select is an input, never a grant, and a target the viewer holds
+// no membership on is refused without writing a selection.
+//
+// `refresh()` re-renders the route the viewer is already on, so a switch never
+// navigates. The confirmation copy rides back on `message` so every switching
+// surface raises the same words rather than each keeping its own.
+export async function switchActiveProfile(
+  profileId: string
+): Promise<ActionResponse> {
+  try {
+    const identity = await authedIdentity();
+    if (!identity) {
+      return UNAUTHORIZED_RESPONSE;
+    }
+
+    const target = await writableMembership(identity.userId, profileId);
+    if (!target) {
+      return FORBIDDEN_RESPONSE;
+    }
+
+    const store = await cookies();
+    store.set(
+      ACTIVE_PROFILE_COOKIE,
+      profileId,
+      ACTIVE_PROFILE_COOKIE_ATTRIBUTES
+    );
+    await stampActedAs(identity.userId, profileId, target.last_active_at);
+    refresh();
+
+    return {
+      success: true,
+      message: `Profile switched to ${target.name}`,
+      id: profileId,
+    };
+  } catch (error) {
+    console.error('Error switching active profile:', error);
+    return {
+      success: false,
+      message: 'Failed to switch profile',
+      error: 'Failed',
     };
   }
 }

@@ -34,6 +34,12 @@
     border-color: var(--card-border-hover-color);
     box-shadow: var(--card-shadow-hover);
   }
+
+  /* The card already being acted as carries no click handler, so the pointer
+     is scoped away from it rather than advertising a click that does nothing. */
+  .profile-card:not(.is-active):hover {
+    cursor: pointer;
+  }
 }
 
 /* The active card paints the accent band across its whole face and holds the
@@ -108,7 +114,7 @@
 
 .profile-card-body {
   padding: 38px 12px 14px;
-  margin: 0 8px 8px
+  margin: 0 8px 8px;
 }
 
 .profile-card-heading {

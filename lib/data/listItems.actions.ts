@@ -9,7 +9,7 @@ import {
   rebalanceList,
   reorderPosition,
 } from '@/lib/data/listItems.positions';
-import { authedIdentity } from '@/lib/data/user.session';
+import { authedWriter } from '@/lib/data/profile.gate';
 import { type ActionResponse } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq, inArray, sql } from 'drizzle-orm';
@@ -37,8 +37,16 @@ export async function setListItems(
       return { success: false, message: 'List not found', error: 'Not found' };
     }
 
-    const identity = await authedIdentity();
-    if (!identity || identity.profile.id !== list.profile_id) {
+    // The gate's own rejection collapses into this one: the session-presence
+    // check above already refused the no-session cause, so a stale session and
+    // a revoked membership both fall to the ownership comparison a null actor
+    // can never pass, and all three keep the endpoint's own 'Forbidden' code
+    // per server-endpoint-authorization's exemption.
+    const actor = await authedWriter();
+    if (
+      'error' in actor ||
+      actor.identity.activeProfile.id !== list.profile_id
+    ) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -152,14 +160,11 @@ export async function removeListItem(
   item_id: string
 ): Promise<ActionResponse> {
   try {
-    const identity = await authedIdentity();
-    if (!identity) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
+    const actor = await authedWriter();
+    if ('error' in actor) {
+      return actor.error;
     }
+    const { identity } = actor;
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, list_id),
@@ -168,7 +173,7 @@ export async function removeListItem(
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
-    if (list.profile_id !== identity.profile.id) {
+    if (list.profile_id !== identity.activeProfile.id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -216,19 +221,16 @@ export async function updatePriority(
   listId: string
 ): Promise<ActionResponse> {
   try {
-    const identity = await authedIdentity();
-    if (!identity) {
-      return {
-        success: false,
-        message: 'Unauthorized',
-        error: 'Unauthorized',
-      };
+    const actor = await authedWriter();
+    if ('error' in actor) {
+      return actor.error;
     }
+    const { identity } = actor;
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, listId),
       columns: { profile_id: true },
     });
-    if (!list || list.profile_id !== identity.profile.id) {
+    if (!list || list.profile_id !== identity.activeProfile.id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',

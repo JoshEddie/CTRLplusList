@@ -49,11 +49,21 @@ describe('getList', () => {
     expect(list?.profile).toEqual({
       id: selfProfileOf('owner'),
       name: 'Owen',
-      members: [{ user: { image: 'o.png' } }],
     });
-    expect(list?.items).toHaveLength(2);
-    expect(list?.items.map((i) => i.item_id).sort()).toEqual(['i1', 'i2']);
+    expect(list?.item_count).toBe(2);
     expect(list?.visibility).toBe(VISIBILITY.FOLLOWERS);
+  });
+
+  it('ItemProfileDiffersFromList_ExcludedFromItemCount', async () => {
+    await seedUsers(db, [{ id: 'owner' }, { id: 'stranger' }]);
+    await seedList(db, { id: 'l1', user_id: 'owner' });
+    await seedItem(db, { id: 'mine', user_id: 'owner' });
+    await seedItem(db, { id: 'theirs', user_id: 'stranger' });
+    await seedListItem(db, { list_id: 'l1', item_id: 'mine', position: 1 });
+    await seedListItem(db, { list_id: 'l1', item_id: 'theirs', position: 2 });
+
+    const list = await dal.getList('l1');
+    expect(list?.item_count).toBe(1);
   });
 
   it('UnknownId_ReturnsUndefined', async () => {
@@ -61,9 +71,9 @@ describe('getList', () => {
   });
 
   it('QueryThrows_RejectsWithFetchListError', async () => {
-    vi.spyOn(db.query.lists, 'findFirst').mockRejectedValueOnce(
-      new Error('boom')
-    );
+    vi.spyOn(db, 'select').mockImplementationOnce(() => {
+      throw new Error('boom');
+    });
     await expect(dal.getList('l1')).rejects.toThrow('Failed to fetch list');
   });
 });

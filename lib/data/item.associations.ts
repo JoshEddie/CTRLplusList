@@ -7,7 +7,7 @@ import {
   lists,
 } from '@/db/schema';
 import { touchLists } from '@/lib/data/list.touch';
-import { authedIdentity } from '@/lib/data/user.session';
+import { authedWriter } from '@/lib/data/profile.gate';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
@@ -40,15 +40,16 @@ export async function updateItemStores(
   itemId: string
 ): Promise<void> {
   try {
-    const identity = await authedIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
+    const actor = await authedWriter();
+    if ('error' in actor) {
+      throw new Error(actor.error.error);
     }
+    const { identity } = actor;
     const item = await db.query.items.findFirst({
       where: eq(items.id, itemId),
       columns: { profile_id: true },
     });
-    if (!item || item.profile_id !== identity.profile.id) {
+    if (!item || item.profile_id !== identity.activeProfile.id) {
       throw new Error('Unauthorized');
     }
 
@@ -167,15 +168,16 @@ export async function updateItemLists(
   itemId: string
 ): Promise<void> {
   try {
-    const identity = await authedIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized');
+    const actor = await authedWriter();
+    if ('error' in actor) {
+      throw new Error(actor.error.error);
     }
+    const { identity } = actor;
     const item = await db.query.items.findFirst({
       where: eq(items.id, itemId),
       columns: { profile_id: true },
     });
-    if (!item || item.profile_id !== identity.profile.id) {
+    if (!item || item.profile_id !== identity.activeProfile.id) {
       throw new Error('Unauthorized');
     }
     if (listIds.length > 0) {
@@ -185,7 +187,7 @@ export async function updateItemLists(
         .where(inArray(lists.id, listIds));
       if (
         targetLists.length !== listIds.length ||
-        targetLists.some((l) => l.profile_id !== identity.profile.id)
+        targetLists.some((l) => l.profile_id !== identity.activeProfile.id)
       ) {
         throw new Error('Unauthorized');
       }

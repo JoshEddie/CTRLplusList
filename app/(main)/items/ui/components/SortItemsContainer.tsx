@@ -19,7 +19,7 @@ export default async function SortItemsContainer({
   const identity = await authedIdentity();
 
   const items: ItemDisplay[] = await getItemsByListId(listId, {
-    viewerProfileId: identity?.profile.id,
+    viewerSelfProfileId: identity?.selfProfile.id,
     isOwner: isOwner ?? false,
     showSpoilers: showSpoilers ?? false,
   });
@@ -28,7 +28,7 @@ export default async function SortItemsContainer({
     <Suspense fallback={<LoadingIndicator size="page" />}>
       <SortItems
         items={items}
-        profile_id={identity?.profile.id}
+        profile_id={identity?.activeProfile.id}
         listId={listId}
         showSpoilers={showSpoilers}
       />
