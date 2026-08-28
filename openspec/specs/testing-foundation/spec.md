@@ -11,7 +11,9 @@ completed at the `test-coverage` program's close-out, when the Tier-1
 foundation rules accumulated across its sub-proposals (per that change's
 design D13) rolled up here. Carve-out bookkeeping (which slice was tested
 when) lives only in the archived sub-proposals.
+
 ## Requirements
+
 ### Requirement: Test suite SHALL exist and SHALL run as a pre-merge gate
 
 The repository SHALL include an automated test suite executed via `npm run test:coverage` (vitest with coverage reporting) and `npm run test:e2e` (Playwright). Each command SHALL exit non-zero if any test fails, and the pre-merge gate SHALL block merge on a non-zero exit. The pre-merge gate SHALL consist of five required tasks executed independently: `npm run lint`, `npx tsc --noEmit`, `npm run build`, `npm run test:coverage`, and `npm run test:e2e`. The five gates SHALL be encoded as required tasks in `openspec/config.yaml`'s `tasks` rule, and every `tasks.md` written after this capability is established SHALL include the five-gate pre-merge section with separately-checkable items, minus any gate omitted under the doc-only exemption below. The `lint` gate SHALL run `eslint .` alone — spec-hygiene verification is deliberately not part of any pre-merge gate (owned by `spec-hygiene`).
@@ -775,6 +777,8 @@ Local mode SHALL be entered through dedicated npm scripts (e.g. `dev:local`, and
 
 Real Google OAuth and the existence of a session are separate concerns. Whether auth is **bypassed** (real OAuth off, sessions synthesized) SHALL be governed by `USE_PG_DRIVER === '1'` — the same flag that selects the local DB — and SHALL NOT depend on `NODE_ENV` (so a production build via `next start` can still run bypassed locally). The previous `AUTH_BYPASS` flag and the `NODE_ENV !== 'production'` condition SHALL be removed. **Which** session a zero-argument `auth()` returns SHALL be chosen by a separate identity selector (a seeded user id, or the literal value meaning "no session"); the selector SHALL accept any seeded user id rather than being fixed to one identity. When the selector is unset the default identity SHALL be the seeded test viewer (`dev-test-viewer`), preserving the prior preview behavior. The production safety guarantee SHALL be the `USE_PG_DRIVER` localhost boot guard (above), NOT a `NODE_ENV` check. Route-handler / middleware `auth(req, ctx)` overloads SHALL continue to pass through to real NextAuth. This complements — and does not restate — the existing "NextAuth is not invoked against real Google" requirement, which remains the owner of the no-real-OAuth constraint.
 
+A synthesized session SHALL carry every field the application's own actor resolution reads, for **every** seeded identity and not only the default. A session that resolves to no actor is indistinguishable from being logged out, so an identity synthesized without those fields would silently fail the promise above rather than serve a different seeded user. Display fields beyond that minimum remain the concern of the flow that introduces an identity.
+
 #### Scenario: Bypass active, identity unset, yields the default viewer session
 
 - **WHEN** a server component calls zero-argument `auth()` with `USE_PG_DRIVER=1` and the identity selector unset
@@ -791,6 +795,11 @@ Real Google OAuth and the existence of a session are separate concerns. Whether 
 - **WHEN** the identity selector names a seeded user id other than the default
 - **THEN** the synthesized session represents that user id
 - **AND** the harness does not require code changes to support an additional seeded identity
+
+#### Scenario: A non-default identity resolves an actor
+
+- **WHEN** the identity selector names a seeded user id other than the default, and a server component resolves the acting account from that session
+- **THEN** it resolves to that seeded account rather than to nothing
 
 #### Scenario: Deployed configuration keeps real auth
 

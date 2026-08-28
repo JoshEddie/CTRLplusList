@@ -110,26 +110,6 @@ On owner views (non-preview), no element of the hero SHALL render an avatar, own
 - **WHEN** the owner views their own list via `?preview=viewer`
 - **THEN** the hero renders the viewer composition (including the owner's own identity as if a viewer were looking at it), so the owner can preview how viewers will see their list — except no Follow button is rendered (since following yourself is meaningless)
 
-### Requirement: Viewer views SHALL anchor on a byline group containing avatar, linked owner name, and Follow
-
-On viewer views (the authenticated viewer is not the list owner, on a non-preview view), the controls card SHALL render — at the top of the controls card — a byline group containing in left-to-right order:
-
-1. A 44px avatar (`<Avatar>`) resolved via the chain: `user.image` → our own initials chip generated from `users.name` → a generic `<FaUser>` icon (defensive fallback only).
-2. The owner's name rendered as a link to `/user/{owner_id}` (per the `following` capability).
-3. The Follow / Following button (per the `following` capability's colocation requirement), stretched to fill the byline column.
-
-The avatar, name, and Follow button SHALL be visually grouped (flex siblings with shared alignment) such that they read as one unit anchoring the controls card. The Follow button SHALL satisfy WCAG 2.5.5 (44×44 CSS px touch target) as required by the `following` capability.
-
-#### Scenario: Viewer sees avatar + linked name + Follow grouped
-
-- **WHEN** an authenticated viewer (not the owner) on a non-preview view loads a non-private list
-- **THEN** the controls card's top group contains a 44px avatar, the owner's name as an anchor with `href="/user/{owner_id}"`, and a Follow / Following button — all visually grouped inside `.list-hero-byline-group`
-
-#### Scenario: Avatar falls back when user.image is null
-
-- **WHEN** the list owner's `user.image` is null
-- **THEN** the avatar renders an initials chip generated from `users.name` (first letter, on a brand-tinted background) at the same 44px size
-
 ### Requirement: The action set inside the controls card SHALL differ between owner and viewer views
 
 The controls card's action affordances SHALL be composed as follows:
@@ -198,3 +178,28 @@ The existing on-dark `<CheckboxField>` color overrides in `.list-hero-side .visi
 
 - **WHEN** the redesign ships
 - **THEN** no new CSS rule in `app/(main)/lists/ui/styles/list.css` targets `.btn`, `.popover-trigger`, `.segmented`, or `.menu-item` (or their descendants) to override geometry, padding, border-radius, or palette tokens; any required visual adjustments are handled by the consuming primitive's API or by adding a normative variant to the primitive's spec via a separate change
+
+### Requirement: Viewer views SHALL anchor on a byline group containing the owning profile's avatar, linked name, and Follow
+
+On viewer views (the authenticated viewer is not the list owner, on a non-preview view), the controls card SHALL render — at the top of the controls card — a byline group containing in left-to-right order:
+
+1. A 44px avatar resolving the **owning profile** through `altvatar`'s chain: the profile's Altvatar art where it has any, its initials otherwise. The account behind the profile SHALL NOT be consulted, and no generic-icon fallback SHALL be rendered — a profile's name is required, so initials always resolve.
+2. The owner's name rendered as a link to `/user/{owner_id}` (per the `following` capability).
+3. The Follow / Following button (per the `following` capability's colocation requirement), stretched to fill the byline column.
+
+The avatar, name, and Follow button SHALL be visually grouped (flex siblings with shared alignment) such that they read as one unit anchoring the controls card. The Follow button SHALL satisfy WCAG 2.5.5 (44×44 CSS px touch target) as required by the `following` capability.
+
+#### Scenario: Viewer sees avatar + linked name + Follow grouped
+
+- **WHEN** an authenticated viewer (not the owner) on a non-preview view loads a non-private list
+- **THEN** the controls card's top group contains a 44px avatar, the owner's name as an anchor with `href="/user/{owner_id}"`, and a Follow / Following button — all visually grouped inside `.list-hero-byline-group`
+
+#### Scenario: Avatar falls back to initials where the owning profile has no art
+
+- **WHEN** the list's owning profile carries no Altvatar art
+- **THEN** the avatar renders an initials chip generated from the profile's name at the same 44px size
+
+#### Scenario: A managed profile's list carries a face like any other
+
+- **WHEN** the list is owned by a managed profile carrying Altvatar art
+- **THEN** the byline avatar renders that art, with no account consulted and no difference in treatment from a self-profile's list

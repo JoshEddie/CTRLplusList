@@ -3,6 +3,7 @@
 ## Purpose
 
 The `claim-attribution` capability governs who may be recorded as an item's purchaser and who may undo that record. It defines the `claimed_by_profile_id` (asserter) plus `profile_id` (purchaser) row model, the eligible attributed-purchaser pool (the list owner's mutual follows, block-filtered, server-re-verified) with a free-text guest fallback, the unclaim-rights matrix (claimer, purchaser, or list-owner master unclaim), spoiler-gated owner claiming, and the viewer-relative claim display. It exists because a purchaser who is a real user needs a linked account, self-marking, and durable unclaim rights that the former free-text-only "someone else purchased it" flow could not provide.
+
 ## Requirements
 
 ### Requirement: Purchase rows SHALL record the claimer separately from the purchaser
@@ -253,7 +254,7 @@ When the purchase modal opens in the viewer manage state (via `Manage claim`, or
 
 A signed-out guest whose claim is cookie-recognized (`claimedByViewer` set by `guest-claim-identity`'s overlay) SHALL reach this state through the same affordances and default rule as an authenticated viewer; their cookie-identified rows carry the removal action.
 
-Each row SHALL render: the purchaser's avatar (their profile image when the purchaser is a linked account, initials derived from the display name otherwise), the claim label — the viewer's own claim as "{first name} (you)", falling back to plain "You" when no viewer name is available, and other claims as the purchaser's first name — the claim's relative date (from the row's `purchased_at`, via the shared relative-time derivation), and, for a claim whose asserter differs from its purchaser, a gender-neutral attribution line ("Added by you" when the viewer recorded it; "Added by {claimer first name}" in the owner's view). The "(you)" long-form label is scoped to this list — the card banner and spoiler banner retain the short "You" form. Removal actions SHALL carry per-claim accessible names distinguishing whose claim they remove. The list region SHALL scroll independently when claims overflow, keeping the modal header and store row in place.
+Each row SHALL render: the purchaser's avatar — for a purchaser that is a profile, resolved through `altvatar`'s chain (its Altvatar art where it has any, its initials otherwise); for a free-text purchaser, initials derived from the entered name. Whether an account backs the profile SHALL NOT govern what the row can show: a managed profile carries a face on the same terms as anyone else, and no branch decides between an account's image and a fallback. The row SHALL also render the claim label — the viewer's own claim as "{first name} (you)", falling back to plain "You" when no viewer name is available, and other claims as the purchaser's first name — the claim's relative date (from the row's `purchased_at`, via the shared relative-time derivation), and, for a claim whose asserter differs from its purchaser, a gender-neutral attribution line ("Added by you" when the viewer recorded it; "Added by {claimer first name}" in the owner's view). The "(you)" long-form label is scoped to this list — the card banner and spoiler banner retain the short "You" form. Removal actions SHALL carry per-claim accessible names distinguishing whose claim they remove. The list region SHALL scroll independently when claims overflow, keeping the modal header and store row in place.
 
 The list SHALL order rows the viewer can remove ahead of all other claims, and SHALL initially render a bounded number of rows with a "See more" control (naming the remaining count) that reveals additional rows in batches — never the whole set at once — so an item with arbitrarily many claims (an unlimited-quantity item with a large audience) cannot render an unbounded list. The bound and batch size are design-recorded constants.
 
@@ -268,6 +269,16 @@ The claimer always retains store-link access from this state, so claiming an ite
 
 - **WHEN** a viewer holding a self-claim and one claim recorded for another person opens the manage state on an item that also carries a third claim recorded by someone else
 - **THEN** the claims list SHALL render three rows, the viewer's two rows SHALL carry removal actions, and the third row SHALL render without one
+
+#### Scenario: A profile purchaser's row renders that profile's art
+
+- **WHEN** a claim's purchaser is a profile carrying Altvatar art
+- **THEN** its row's avatar renders that art, whether or not an account backs the profile
+
+#### Scenario: A free-text purchaser's row renders initials
+
+- **WHEN** a claim's purchaser was entered as free text
+- **THEN** its row's avatar renders initials derived from the entered name
 
 #### Scenario: Own claim is labeled with the viewer's name
 

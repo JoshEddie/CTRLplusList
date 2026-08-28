@@ -41,7 +41,7 @@ The page SHALL state, above the cards, what selecting a profile does. It SHALL N
 
 Each card SHALL render the profile's name, its avatar, the viewer's role on it, its tagline, its counts, and its accent.
 
-The avatar is a **slot**: it SHALL render the profile's avatar art where the profile has any, and its initials otherwise. Until the change that gives profiles avatar art, every profile renders the initials fallback. The slot SHALL paint the accent's light stop behind whatever fills it, so a faceless card is still told apart from its neighbours by colour, and filling the slot later SHALL NOT change the card's shape.
+The avatar is a **slot**: it SHALL render the profile's Altvatar art where the profile has any, and its initials otherwise, per `altvatar`'s resolution chain. The slot SHALL paint the accent's light stop behind whatever fills it, so a faceless card is still told apart from its neighbours by colour, and art SHALL NOT carry a background of its own.
 
 The role label SHALL read `You` on the viewer's self-profile, `Owner` on a profile they own, and `Manager` on a profile they manage. The label is non-interactive text, not a removable chip.
 
@@ -95,6 +95,11 @@ Management SHALL be carried by a menu opened from a control on the card's accent
 
 - **WHEN** the viewer opens the management menu on the card of the profile they are acting as
 - **THEN** the menu carries `Edit <name>` and no switch row
+
+#### Scenario: The avatar slot renders art where the profile has it
+
+- **WHEN** a profile carrying Altvatar art renders as a card
+- **THEN** the slot renders that art over the accent's light stop
 
 #### Scenario: The avatar slot falls back to initials
 
@@ -154,7 +159,9 @@ Every preset SHALL carry a distinct band and a distinct ink. The ink also marks 
 
 This requirement fixes the invariants, not the palette — presets may be added, removed or re-coloured, and the thresholds these invariants are measured at may be tuned, without a spec change, provided each preset satisfies them. The order the swatches are offered in is likewise a design matter and deliberately unfixed here: sorting by a computed property of each band was tried and read worse than an arranged run, so the palette's order is authored rather than derived, and no rule fits every palette a designer might author next.
 
-A profile carrying no stored accent, or one naming a preset the palette no longer carries, SHALL render a fixed fallback distinct from every preset, and SHALL NOT derive one. The fallback is not selectable: it is what a profile with no accent looks like, not an additional preset.
+A profile carrying no stored accent, or one naming a preset the palette no longer carries, SHALL render a fixed fallback, and SHALL NOT derive one. The fallback SHALL be one named preset of the palette applied whole — its two stops, its ink and its shadow together — rather than a colour of its own. An accent-less profile is then drawn by the same code path and held to the same invariants as every stored accent, so no fallback-only colour has to satisfy them separately and no derivation can drift from the palette. Which preset serves as the fallback is a palette decision, not a spec one.
+
+In exchange the fallback preset stays selectable, and a profile storing it is indistinguishable from one storing nothing. That is accepted: the distinction was never visible to a viewer, only to the database, and the alternative is a colour that no palette invariant covers.
 
 #### Scenario: Every selectable accent is legible
 
@@ -194,8 +201,7 @@ A profile carrying no stored accent, or one naming a preset the palette no longe
 #### Scenario: A profile with no stored accent renders the fallback
 
 - **WHEN** a profile carrying no stored accent renders
-- **THEN** the fallback is shown
-- **AND** no preset is shown
+- **THEN** the fallback preset's band, ink and shadow are shown, all five derivations agreeing on it
 
 #### Scenario: A name the palette no longer carries falls back
 
@@ -205,7 +211,12 @@ A profile carrying no stored accent, or one naming a preset the palette no longe
 #### Scenario: The fallback is not offered as a choice
 
 - **WHEN** the selectable accents are offered
-- **THEN** the fallback is not among them
+- **THEN** no "no accent" entry is among them — carrying no accent is a state, not something the picker offers
+
+#### Scenario: The fallback is a preset the palette also offers
+
+- **WHEN** the selectable accents are offered
+- **THEN** the fallback preset is among them, and a profile storing it renders exactly as one storing nothing
 
 #### Scenario: Re-colouring a preset rewrites no stored row
 
@@ -240,43 +251,62 @@ An authenticated viewer holding no membership on it SHALL be redirected to `/pro
 
 ### Requirement: A profile's space SHALL render an identity header and a Settings form
 
-The space SHALL render an identity header carrying the profile's name, initials art, tagline where present, and accent, followed by a Settings form over the profile's name, tagline and accent. It SHALL render for a self-profile and a managed profile alike: a profile's name is editable — unlike the account name, which stays as the accountability anchor an external identity provider keeps writing — so renaming a self-profile here never touches the account.
+The space SHALL render an identity header carrying the profile's name, its avatar per `altvatar`'s resolution chain, tagline where present, and accent, followed by a Settings form over the profile's name and tagline. It SHALL render for a self-profile and a managed profile alike: a profile's name is editable — unlike the account name, which stays as the accountability anchor an external identity provider keeps writing — so renaming a self-profile here never touches the account.
 
-Where the viewer's role on the profile is `manager`, the Settings form SHALL render with every field disabled and no submit control. A disabled submit control SHALL NOT be rendered in its place.
+The identity header's avatar SHALL carry an edit affordance opening the Altvatar customizer, for a viewer whose role is `self` or `owner` and no other. This is how a profile's face and accent are changed: both are edited inside the customizer, and neither appears as a field of the Settings form. The customizer writes nothing itself; confirming it commits, because this host is editing a profile that already carries an identity, per `altvatar`. The Settings form's own submit commits the name and tagline alone, and SHALL be inert while neither field is dirty — those fields are the only thing it still commits, so a press with none of them edited could only write what is already stored.
 
-Where the profile carries no stored accent, the Settings form SHALL open with one preset selected, chosen at random on each open, and SHALL write nothing until submitted. Dismissing the form SHALL leave the profile with no stored accent.
+Where the viewer's role on the profile is `manager`, the Settings form SHALL render with every field disabled and no submit control, and the identity header's avatar SHALL carry no edit affordance. A disabled submit control SHALL NOT be rendered in its place.
+
+Where the profile carries no stored accent, the customizer SHALL open with one preset selected, chosen at random on each open, and SHALL write nothing until the viewer confirms. Dismissing the customizer without confirming SHALL leave the profile with no stored accent.
 
 #### Scenario: An owner sees an editable form
 
 - **WHEN** a viewer holding `self` or `owner` opens the profile's space
 - **THEN** the Settings form's fields are editable and a submit control is present
 
+#### Scenario: The identity header's avatar opens the customizer
+
+- **WHEN** a viewer holding `self` or `owner` activates the identity header's avatar edit affordance
+- **THEN** the Altvatar customizer opens for that profile
+
+#### Scenario: The Settings form carries no accent field
+
+- **WHEN** a viewer holding `self` or `owner` opens the profile's space
+- **THEN** the Settings form's fields are the profile's name and tagline, and no accent picker renders among them
+
 #### Scenario: A manager sees the settings but cannot edit them
 
 - **WHEN** a viewer holding `manager` opens the profile's space
 - **THEN** the Settings form renders with every field disabled
 - **AND** no submit control is present
+- **AND** the identity header's avatar carries no edit affordance
 
 #### Scenario: The Settings form suggests without writing
 
-- **WHEN** a viewer opens the space of a profile carrying no stored accent
-- **THEN** one preset is selected in the Settings form
+- **WHEN** a viewer opens the space of a profile carrying no stored accent and opens its customizer
+- **THEN** one preset is selected
 - **AND** the profile still carries no stored accent
+
+#### Scenario: The Settings form's submit touches neither accent nor art
+
+- **WHEN** an owner edits the name and tagline and submits the Settings form
+- **THEN** the name and tagline columns are updated
+- **AND** neither the accent preference row nor the Altvatar row is written
 
 ### Requirement: Only a profile's self or owner member SHALL change its settings
 
-The action that updates a profile's name, tagline or accent SHALL resolve the acting account from the session, load the acting account's membership on the target profile, and proceed only where that membership's role is `self` or `owner`. A `manager` and a non-member SHALL both be rejected with `Unauthorized` and no write SHALL occur.
+The action that updates a profile's name, tagline, accent or Altvatar SHALL resolve the acting account from the session, load the acting account's membership on the target profile, and proceed only where that membership's role is `self` or `owner`. A `manager` and a non-member SHALL both be rejected with `Unauthorized` and no write SHALL occur.
 
 Enforcement SHALL be independent of what the page rendered: a manager who submits the form by any means is rejected by the action, not by the disabled fields. `server-endpoint-authorization` owns the general rule that a mutation resolves its actor from the session and checks before writing; this requirement fixes which roles pass for a profile.
 
-Identity is what this rule protects: a profile's name, tagline and accent are how it is recognized wherever it appears, so changing them is an ownership act. Which further rights a `manager` holds is settled by the capability that introduces profile permissions, and this requirement is the floor it starts from.
+Identity is what this rule protects: a profile's name, tagline, accent and face are how it is recognized wherever it appears, so changing them is an ownership act. Which further rights a `manager` holds is settled by the capability that introduces profile permissions, and this requirement is the floor it starts from.
 
-The accent is written separately from the name and tagline columns — `profiles-data-model` owns why — so an update MAY persist those columns and fail to persist the accent. Where that happens the action SHALL report failure naming what was and was not saved, rather than reporting success. This is deliberately unlike creation, which reports success and lets the profile render the fallback: a creator has no prior accent to lose and is navigated away, while an editor is left looking at the form they submitted, so reporting success would claim a colour the profile does not carry.
+The accent and the Altvatar art are written by an action of their own, separate from the one that writes the name and tagline columns — the two commit at different moments, per the identity header's requirement above, and `profiles-data-model` and `altvatar` own why the rows are separate. That identity action writes the accent and the art together and MAY persist one and fail the other. Where either fails it SHALL report failure rather than success, and SHALL NOT name which half failed: neither half is recoverable by hand and both are fixed the same way — by confirming again — so naming the half would offer the viewer a distinction they cannot act on. Reporting at all is what matters, because the surface has already repainted to the confirmed identity, so silence would let the screen lie about what was stored. This is deliberately unlike creation, which reports success and lets the profile render the fallback: a creator has no prior identity to lose and is navigated away.
 
 #### Scenario: A manager's submission is rejected
 
 - **WHEN** a viewer holding `manager` invokes the profile-update action
-- **THEN** it returns `Unauthorized` and no column and no preference row is written
+- **THEN** it returns `Unauthorized` and no column, no preference row and no Altvatar row is written
 
 #### Scenario: A non-member's submission is rejected
 
@@ -285,8 +315,20 @@ The accent is written separately from the name and tagline columns — `profiles
 
 #### Scenario: An owner's submission persists every field
 
-- **WHEN** a viewer holding `owner` submits a changed name, tagline and accent
-- **THEN** the name and tagline columns and the accent preference value are updated, and subsequent reads return them
+- **WHEN** a viewer holding `owner` confirms a changed accent and Altvatar and submits a changed name and tagline
+- **THEN** the name and tagline columns, the accent preference value and the Altvatar row are all updated, and subsequent reads return them
+- **AND** each was written at its own moment: the identity on confirm, the fields on submit
+
+#### Scenario: An owner's field submission persists the fields alone
+
+- **WHEN** a viewer holding `owner` submits a changed name and tagline
+- **THEN** the name and tagline columns are updated, and subsequent reads return them
+- **AND** neither the accent preference value nor the Altvatar row is written
+
+#### Scenario: An owner's confirmed identity persists both halves
+
+- **WHEN** a viewer holding `owner` confirms a changed accent and Altvatar in the customizer
+- **THEN** the accent preference value and the Altvatar row are updated, and subsequent reads return them
 
 #### Scenario: A member updates their own self-profile
 
@@ -295,13 +337,19 @@ The accent is written separately from the name and tagline columns — `profiles
 
 #### Scenario: An accent that fails to save is reported, not swallowed
 
-- **WHEN** an owner's submission persists the name and tagline columns
-- **AND** the accent value fails to persist
-- **THEN** the action reports failure with a message naming that the name and tagline were saved and the accent was not
+- **WHEN** an owner confirms an identity and the accent value fails to persist
+- **THEN** the identity action reports failure rather than success
+- **AND** the name and tagline columns are untouched
+
+#### Scenario: A half-saved identity is reported, not swallowed
+
+- **WHEN** an owner confirms an identity and either the accent value or the Altvatar row fails to persist
+- **THEN** the identity action reports failure rather than success
+- **AND** the message does not claim the identity was stored
 
 ### Requirement: A profile change SHALL be visible on the next read of any surface that shows it
 
-Where a profile is created, or its name, tagline or accent changed, the next read of any surface listing or rendering that profile SHALL reflect the change. A viewer SHALL NOT have to force a reload to see a profile they just created or edited.
+Where a profile is created, or its name, tagline, accent or Altvatar changed, the next read of any surface listing or rendering that profile SHALL reflect the change. A viewer SHALL NOT have to force a reload to see a profile they just created or edited.
 
 A rejected write SHALL leave every such surface as it was: an `Unauthorized` submission changes nothing a reader can observe.
 
@@ -312,8 +360,13 @@ A rejected write SHALL leave every such surface as it was: an `Unauthorized` sub
 
 #### Scenario: An edited profile shows its new identity
 
-- **WHEN** an owner changes a profile's name, tagline or accent
+- **WHEN** an owner changes a profile's name, tagline, accent or Altvatar
 - **THEN** the next read of its card and of its space shows the submitted values
+
+#### Scenario: A new face reaches every surface that renders it
+
+- **WHEN** a viewer changes their self-profile's Altvatar
+- **THEN** the next read of the frame's avatar circle, the switcher's rows, and their profile card all show the new art
 
 #### Scenario: A rejected write changes nothing observable
 
@@ -324,11 +377,23 @@ A rejected write SHALL leave every such surface as it was: an `Unauthorized` sub
 
 Creating a managed profile SHALL be an overlay opened from a "New Profile" control in the Profiles page header, not a route of its own. It has exactly one call site, so there is no navigation to intercept.
 
-The form SHALL carry three fields: name, required, between 1 and 60 characters after trimming; tagline, optional, subject to the tagline contract `profiles-data-model` owns; and an accent chosen from the named presets. The name floor is 1 rather than the 3 that list and item names use, because two-character names are real names. The accent SHALL be required, and the field SHALL open with one preset already selected, chosen at random. Random rather than fixed: a fixed opening selection lands every profile whose creator did not change it on one colour, which is the failure the accent exists to prevent. The random choice SHALL NOT be determined by the creating account, the profile, or any other existing value — none of which the form holds, since the profile has no id until creation.
+The form SHALL carry three inputs: name, required, between 1 and 60 characters after trimming; tagline, optional, subject to the tagline contract `profiles-data-model` owns; and an Altvatar, edited through the customizer `altvatar` owns, which carries the accent with it. The name floor is 1 rather than the 3 that list and item names use, because two-character names are real names.
+
+The Altvatar SHALL be pre-seeded and its accent SHALL open on a preset chosen at random, so submitting the form without opening the customizer is valid and always produces a profile with a face and a colour. Random rather than fixed: a fixed opening selection lands every profile whose creator did not change it on one colour and one face, which is the failure a generated identity exists to prevent. The random choice SHALL NOT be determined by the creating account, the profile, or any other existing value — none of which the form holds, since the profile has no id until creation.
+
+The form SHALL NOT carry a separate accent field: accent and face are one identity, edited in one place.
+
+The form SHALL wear the customizer's own header band in place of a title bar — the brand mark on the accent the form is currently holding, repainting live as that accent changes, with the close affordance in the band. The mark is the form's own label, so a title beside it would name the same thing twice, and the band is what puts the colour being chosen on the surface choosing it from the first render. Its actions SHALL sit in a footer of the same family rather than the shell's, so the band and the footer frame the form as one piece. The shell hosting it is unchanged in every other respect.
 
 On success the browser SHALL navigate to the new profile's space, and no success toast SHALL be raised — the navigation is the confirmation, and a toast raised into it would be discarded. On failure the overlay SHALL stay mounted, render the returned message inline, and raise a failure toast; no navigation SHALL occur.
 
 The rows this form writes, and their atomicity, are owned by `profiles-data-model`.
+
+#### Scenario: The form wears the accent it is holding
+
+- **WHEN** a viewer changes the accent inside the form's customizer and confirms
+- **THEN** the form's header band repaints to the new accent
+- **AND** no title bar of the shell's own renders
 
 #### Scenario: A successful creation navigates into the new profile
 
@@ -358,3 +423,19 @@ The rows this form writes, and their atomicity, are owned by `profiles-data-mode
 - **WHEN** the birth form opens
 - **THEN** exactly one preset is selected
 - **AND** it is not determined by the creating account or any existing profile
+
+#### Scenario: The form opens on a composed Altvatar
+
+- **WHEN** the birth form opens
+- **THEN** an Altvatar is already composed
+- **AND** it is not determined by the creating account or any existing profile
+
+#### Scenario: Submitting untouched still gives the profile a face
+
+- **WHEN** a viewer submits the form with a name and never opens the customizer
+- **THEN** the created profile carries Altvatar art and a stored accent
+
+#### Scenario: No accent field renders beside the fields
+
+- **WHEN** the birth form renders
+- **THEN** its inputs are name, tagline, and the Altvatar affordance, and no accent picker renders among them

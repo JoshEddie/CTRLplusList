@@ -19,6 +19,7 @@ The covered flows SHALL be:
 5. **Bookmark / unbookmark** — the viewer bookmarks a seeded viewable non-bookmarked list, the list appears on the bookmarks page and the home Bookmarks rail, then the viewer unbookmarks and the removal is reflected. This pins the `list_visits` cache-tag loop.
 6. **Visit history** — visiting a list surfaces it as the most recent entry on the visit-history page (recency proves the in-run visit write, since the seeded visit for the target list is older).
 7. **Profile switch** — the viewer switches from their self-profile to a seeded profile they run, through a real switching affordance, and `/lists` re-renders as that profile's collection; the viewer switches back and `/lists` is their own again. This flow SHALL drive the switch through the UI rather than by pinning the selection, and SHALL assert the profile-scoped surface across the switch, because the failure mode it covers — a call site resolving the self-profile where it owes the active one, or the reverse — is invisible to a unit test holding a mocked session.
+8. **The onboarding gate** — for each of the two un-onboarded seeded identities `profiles-data-model` provides, requesting a page renders the gate instead of that page, the gate survives a reload and offers no route out, and activating cancel on the identity holding no membership raises the deletion confirmation. This flow SHALL NOT submit the gate and SHALL NOT confirm the deletion: both are irreversible against a shared seeded database and would consume the fixture for every later run. Minting, atomicity and the deletion itself are covered by tests over the action, which can supply their own rows; what only a browser can prove is that the gate actually replaces the application and cannot be escaped.
 
 A spec that needs a *starting* acting profile other than the self-profile SHALL establish it by setting the same selection cookie the application sets, on its own browser context. There SHALL be no environment override for the acting profile: an environment variable is process-global and cannot give one spec a managed-profile context and another the self-profile. A context carrying no selection cookie already resolves to the self-profile, so the un-pinned starting state needs no mechanism of its own — and flow 7 SHALL take exactly that path, so the switching mechanism itself stays exercised rather than bypassed.
 
@@ -56,6 +57,22 @@ A spec that needs a *starting* acting profile other than the self-profile SHALL 
 - **THEN** `/lists` renders that profile's lists rather than the viewer's own
 - **AND** after switching back, `/lists` renders the viewer's own again
 
+#### Scenario: The gate replaces the page that was requested
+
+- **WHEN** an un-onboarded seeded identity requests a page inside the application frame
+- **THEN** the onboarding gate renders and the requested page's content does not
+
+#### Scenario: The gate offers no route out
+
+- **WHEN** the gate is showing and the spec reloads the page, activates the backdrop, and presses Escape
+- **THEN** the gate is still showing after each, and no close control is present
+
+#### Scenario: Cancel on a fresh sign-up raises the confirmation and stops there
+
+- **WHEN** the un-onboarded identity holding no membership activates cancel
+- **THEN** the deletion confirmation renders
+- **AND** the spec declines it, so no account is deleted and the fixture survives the run
+
 #### Scenario: A spec needing a non-default acting profile pins it by cookie
 
 - **WHEN** a spec requires its browser context to start out acting as a profile other than the viewer's self-profile
@@ -82,7 +99,11 @@ The suite SHALL assert, for each of the four home rails (My Lists, Following, Bo
 
 ### Requirement: Management-flow specs SHALL run authenticated and end at seed-equivalent state or with documented contained residue
 
-All management-flow specs SHALL run under the authenticated session mode of the foundation harness (single server process, so the cross-process freshness rule is satisfied by construction) and SHALL NOT redefine harness mechanics. Each mutating flow SHALL end at seed-equivalent state (create→delete, follow→unfollow, bookmark→unbookmark, switch→switch back) wherever the UI permits restoration. Where restoration is structurally impossible from the viewer's UI (remove-follower and block sever an edge only the other user could recreate; a switch stamps the membership's last-acted-as timestamp, which no affordance unsets), the spec SHALL select a target whose loss no other spec observes, and SHALL document the residue in the spec file. No spec SHALL assert another spec's leftover state, and no spec SHALL create a visit row for the seeded user reserved as having zero visit history.
+All management-flow specs SHALL run under a bypassed session mode of the foundation harness and SHALL NOT redefine harness mechanics. Because the identity selector is process-global, a spec needing an identity other than the default SHALL be assigned to its own server mode — which `testing-foundation` already requires the harness to admit as configuration — and SHALL respect the cross-process freshness rule: it SHALL assert only state its own server produced or that the seed established. The onboarding-gate flow is the case this exists for: it runs under the un-onboarded identities' own modes, and asserts nothing about state another mode wrote.
+
+Each mutating flow SHALL end at seed-equivalent state (create→delete, follow→unfollow, bookmark→unbookmark, switch→switch back) wherever the UI permits restoration. Where restoration is structurally impossible from the viewer's UI (remove-follower and block sever an edge only the other user could recreate; a switch stamps the membership's last-acted-as timestamp, which no affordance unsets), the spec SHALL select a target whose loss no other spec observes, and SHALL document the residue in the spec file. No spec SHALL assert another spec's leftover state, and no spec SHALL create a visit row for the seeded user reserved as having zero visit history.
+
+A flow whose only restorable path is destructive SHALL NOT take it. The onboarding gate has two such paths — submitting it onboards the identity permanently, and confirming its cancel deletes the account — and a spec SHALL take neither, because both consume a seeded fixture no reseed short of `db:reset:dev` restores.
 
 The switch flow SHALL NOT switch to the seeded membership the seed leaves with a NULL last-acted-as timestamp. That NULL is the fixture for the never-acted-as ordering branch `profiles-data-model` seeds, and stamping it would consume the fixture for every later run against the same database.
 
@@ -96,6 +117,17 @@ The switch flow SHALL NOT switch to the seeded membership the seed leaves with a
 - **WHEN** a spec performs a mutation the viewer's UI cannot reverse (remove follower, block, the last-acted-as stamp a switch leaves)
 - **THEN** the target is one whose altered state no other spec asserts
 - **AND** the spec file documents the residual state for future spec authors
+
+#### Scenario: The un-onboarded fixtures survive every run
+
+- **WHEN** the onboarding-gate flow completes
+- **THEN** both un-onboarded seeded identities are still un-onboarded and still exist
+- **AND** re-running the suite against the same database exercises the flow identically
+
+#### Scenario: A non-default identity runs in its own server mode
+
+- **WHEN** a spec requires a seeded identity other than the harness default
+- **THEN** it is assigned to a server mode configured for that identity, and asserts no state another mode wrote
 
 #### Scenario: The never-acted-as fixture survives the switch flow
 
