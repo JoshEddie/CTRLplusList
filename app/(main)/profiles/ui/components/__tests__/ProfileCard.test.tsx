@@ -45,6 +45,8 @@ function makeCard(overrides: Partial<ProfileCardView> = {}): ProfileCardView {
     listCount: 3,
     itemCount: 3,
     accent: ACCENT,
+    art: null,
+    avatarStyle: null,
     ...overrides,
   };
 }
@@ -353,14 +355,16 @@ describe('ProfileCard', () => {
       expect(style).toContain(`--accent-ink: ${ink}`);
     });
 
-    it('NoStoredAccent_RendersHeroGradientFallbackAndNoPresetColour', () => {
+    it('NoStoredAccent_RendersTheIrisPresetFallback', () => {
       const { container } = renderCard({ accent: null });
       const style =
         container.querySelector('.profile-card')?.getAttribute('style') ?? '';
-      expect(style).toContain('--hero-gradient');
-      for (const preset of Object.values(ACCENT_PRESETS)) {
-        expect(style).not.toContain(preset.light);
-      }
+      const { light, dark, ink } = ACCENT_PRESETS.iris;
+      expect(style).toContain(
+        `--accent-bg: linear-gradient(120deg, ${light}, ${dark})`
+      );
+      expect(style).toContain(`--accent-disc: ${light}`);
+      expect(style).toContain(`--accent-ink: ${ink}`);
     });
   });
 });

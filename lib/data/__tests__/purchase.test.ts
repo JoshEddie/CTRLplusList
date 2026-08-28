@@ -121,7 +121,7 @@ describe('getItemsByPurchased', () => {
       firstName: 'Bea',
       claimedByViewer: false,
       purchasedAt: expect.any(Date),
-      image: null,
+      avatar: { name: 'Bea', accent: null, art: null, avatarStyle: null },
     });
     expect(byId.theirs).toEqual({
       id: 'theirs',
@@ -129,7 +129,7 @@ describe('getItemsByPurchased', () => {
       firstName: 'Otto',
       claimedByViewer: false,
       purchasedAt: expect.any(Date),
-      image: null,
+      avatar: { name: 'Otto', accent: null, art: null, avatarStyle: null },
     });
   });
 
@@ -198,7 +198,11 @@ describe('sanitizePurchases', () => {
     profile_id: 'bea',
     claimed_by_profile_id: 'carl',
     guest_name: null,
-    purchaserProfile: { name: 'Bea Buyer', members: [] },
+    purchaserProfile: {
+      name: 'Bea Buyer',
+      avatar: { art: '<svg id="bea" />', style: 'icons' },
+      preferences: [{ value: 'spice' }],
+    },
     claimerProfile: { name: 'Carl Claimer' },
   };
 
@@ -208,7 +212,12 @@ describe('sanitizePurchases', () => {
       expect(view).toEqual({
         id: 'p1',
         purchasedAt: CLAIMED_AT,
-        image: null,
+        avatar: {
+          name: 'Bea Buyer',
+          accent: 'spice',
+          art: '<svg id="bea" />',
+          avatarStyle: 'icons',
+        },
         by: 'self',
         firstName: 'Bea',
         claimedByViewer: false,
@@ -220,7 +229,12 @@ describe('sanitizePurchases', () => {
       expect(view).toEqual({
         id: 'p1',
         purchasedAt: CLAIMED_AT,
-        image: null,
+        avatar: {
+          name: 'Bea Buyer',
+          accent: 'spice',
+          art: '<svg id="bea" />',
+          avatarStyle: 'icons',
+        },
         by: 'other',
         firstName: 'Bea',
         claimedByViewer: true,
@@ -232,7 +246,12 @@ describe('sanitizePurchases', () => {
       expect(view).toEqual({
         id: 'p1',
         purchasedAt: CLAIMED_AT,
-        image: null,
+        avatar: {
+          name: 'Bea Buyer',
+          accent: 'spice',
+          art: '<svg id="bea" />',
+          avatarStyle: 'icons',
+        },
         by: 'other',
         firstName: 'Bea',
         claimedByViewer: false,
@@ -252,7 +271,12 @@ describe('sanitizePurchases', () => {
       expect(view).toEqual({
         id: 'p1',
         purchasedAt: CLAIMED_AT,
-        image: null,
+        avatar: {
+          name: 'Bea Buyer',
+          accent: 'spice',
+          art: '<svg id="bea" />',
+          avatarStyle: 'icons',
+        },
         by: 'other',
         firstName: 'Bea',
         claimedByViewer: false,
@@ -280,7 +304,6 @@ describe('sanitizePurchases', () => {
       expect(view).toEqual({
         id: 'p2',
         purchasedAt: CLAIMED_AT,
-        image: null,
         by: 'other',
         firstName: 'Mom',
         claimedByViewer: false,
@@ -297,7 +320,7 @@ describe('sanitizePurchases', () => {
             profile_id: 'own',
             claimed_by_profile_id: 'own',
             guest_name: null,
-            purchaserProfile: { name: 'Olive Owner', members: [] },
+            purchaserProfile: { name: 'Olive Owner' },
             claimerProfile: { name: 'Olive Owner' },
           },
         ],
@@ -308,7 +331,12 @@ describe('sanitizePurchases', () => {
       expect(view).toEqual({
         id: 'p3',
         purchasedAt: CLAIMED_AT,
-        image: null,
+        avatar: {
+          name: 'Olive Owner',
+          accent: null,
+          art: null,
+          avatarStyle: null,
+        },
         by: 'self',
         firstName: 'Olive',
         claimedByViewer: true,
@@ -336,7 +364,6 @@ describe('sanitizePurchases', () => {
       expect(view).toEqual({
         id: 'p4',
         purchasedAt: CLAIMED_AT,
-        image: null,
         by: 'other',
         firstName: 'Grandma',
         claimedByViewer: false,
@@ -352,7 +379,7 @@ describe('sanitizePurchases', () => {
             profile_id: 'ghost',
             claimed_by_profile_id: 'ghost',
             guest_name: null,
-            purchaserProfile: { name: null, members: [] },
+            purchaserProfile: { name: '' },
             claimerProfile: { name: null },
           },
         ],
@@ -362,7 +389,7 @@ describe('sanitizePurchases', () => {
       expect(view).toEqual({
         id: 'p5',
         purchasedAt: CLAIMED_AT,
-        image: null,
+        avatar: { name: '', accent: null, art: null, avatarStyle: null },
         by: 'other',
         firstName: 'Someone',
         claimedByViewer: false,

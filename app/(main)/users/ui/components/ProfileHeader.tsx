@@ -1,9 +1,8 @@
-import Image from 'next/image';
+import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import { LinkButton } from '@/app/ui/components/button';
 import FollowContainer from './FollowContainer';
-import { initialsOf } from '../utils';
 import { isViewersOwnProfile } from '@/lib/activeProfile';
-import type { UserIdentity } from '@/lib/types';
+import type { ProfileAvatarView, UserIdentity } from '@/lib/types';
 
 export default function ProfileHeader({
   profile,
@@ -11,34 +10,18 @@ export default function ProfileHeader({
   viewer,
   showFollowButton,
 }: {
-  profile: { id: string; name: string | null; image: string | null };
+  profile: ProfileAvatarView & { id: string };
   publicListCount: number;
   viewer: UserIdentity | null;
   showFollowButton: boolean;
 }) {
   const isOwnProfile = isViewersOwnProfile(viewer, profile.id);
-  const hasImage = !!profile.image && profile.image.length > 0;
 
   return (
     <div className="profile-header">
-      <div className="profile-avatar">
-        {hasImage ? (
-          <Image
-            src={profile.image!}
-            alt=""
-            width={96}
-            height={96}
-            className="profile-avatar-img"
-            priority
-          />
-        ) : (
-          <span className="profile-avatar-initials">
-            {initialsOf(profile.name) || '?'}
-          </span>
-        )}
-      </div>
+      <ProfileAvatar profile={profile} />
       <div className="profile-meta">
-        <h1 className="profile-name">{profile.name ?? 'Unnamed'}</h1>
+        <h1 className="profile-name">{profile.name}</h1>
         <div className="profile-stats">
           {publicListCount} shared list{publicListCount === 1 ? '' : 's'}
         </div>

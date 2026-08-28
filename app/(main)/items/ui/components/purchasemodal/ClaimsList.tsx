@@ -1,4 +1,4 @@
-import Avatar from '@/app/(main)/users/ui/components/Avatar';
+import ProfileAvatar, { facelessView } from '@/app/ui/components/ProfileAvatar';
 import { Button } from '@/app/ui/components/button';
 import { timeAgo } from '@/lib/timeAgo';
 import { PurchaseView } from '@/lib/types';
@@ -54,7 +54,13 @@ export default function ClaimsList({
       <ul className="claims-list">
         {visible.map((claim) => (
           <li key={claim.id} className="claim-row">
-            <Avatar src={claim.image ?? null} name={claim.firstName} size={32} />
+            {/* A free-text purchaser has no profile and so no face: the name
+                that was typed is all there is to draw initials from. Account
+                linkage governs nothing here — a managed profile carries art on
+                the same terms as anyone else. */}
+            <ProfileAvatar
+              profile={claim.avatar ?? facelessView(claim.firstName)}
+            />
             <div className="claim-row-info">
               <span className="claim-row-name">{rowLabel(claim)}</span>
               {rowMeta(claim) && (

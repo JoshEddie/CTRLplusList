@@ -2,6 +2,7 @@ import {
   ACCENT_PREFERENCE_ID,
   lists,
   preferences,
+  profile_avatars,
   profile_members,
   profile_preferences,
   profiles,
@@ -153,5 +154,21 @@ export async function seedAccentValue(
     profile_id,
     preference_id: ACCENT_PREFERENCE_ID,
     value: accent,
+  });
+}
+
+// The one row every avatar read joins. `options` is opaque to the reads —
+// only `style` and `art` are ever selected — so fixtures carry the minimum the
+// column's type admits.
+export async function seedAvatar(
+  db: TestDb,
+  profile_id: string,
+  avatar: { style?: string; art?: string } = {}
+): Promise<void> {
+  await db.insert(profile_avatars).values({
+    profile_id,
+    style: avatar.style ?? 'icons',
+    options: { seed: profile_id, selections: {} },
+    art: avatar.art ?? '<svg />',
   });
 }

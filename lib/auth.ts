@@ -1,20 +1,8 @@
-import {
-  accounts,
-  profile_members,
-  profiles,
-  SELF_MEMBERSHIP_PER_USER_IDX,
-  users,
-} from '@/db/schema';
+import { accounts, users } from '@/db/schema';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
-import { sql } from 'drizzle-orm';
-import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
-import type * as schema from '@/db/schema';
-import { nanoid } from 'nanoid';
 import NextAuth, { type NextAuthConfig } from 'next-auth';
-import type { AdapterUser } from 'next-auth/adapters';
 import Google from 'next-auth/providers/google';
 import { db } from '../db';
-import { constraintOf, sqlstateOf } from './sqlstate';
 
 type Callbacks = NonNullable<NextAuthConfig['callbacks']>;
 
@@ -46,59 +34,6 @@ export const jwtCallback: NonNullable<Callbacks['jwt']> = ({
   return token;
 };
 
-// Written on the same statements as the phase-1 migration backfill, which is a
-// point-in-time SELECT nothing re-runs: without this, an account created after
-// the migration would hold no profile at all. `signInCallback` mutates the
-// provider user before the adapter inserts it, so `user.name` here is already
-// the composed first + last name the backfill wrote.
-export async function createSelfProfile(
-  database: PgDatabase<PgQueryResultHKT, typeof schema>,
-  user: Pick<AdapterUser, 'id' | 'name'>
-) {
-  const created = database.$with('created').as(
-    database
-      .insert(profiles)
-      .values({ id: nanoid(), name: user.name ?? 'UNTITLED' })
-      .returning({ id: profiles.id })
-  );
-
-  try {
-    // Both rows in one statement — the only atomicity neon-http offers. A
-    // membership row is what makes a profile reachable at all, so a second
-    // statement that lost the uniqueness race would strand the profile as a
-    // permanent orphan. Here the 23505 rolls the profile insert back with it,
-    // and catching it IS the idempotency: the account already has a
-    // self-profile. Any other constraint is someone else's problem.
-    await database
-      .with(created)
-      .insert(profile_members)
-      .select(
-        // Every column, in table order: drizzle rejects an insert-select whose
-        // projection is not the table's own, so the defaults are restated here
-        // rather than left to the column definitions. `last_active_at` is NULL
-        // because a membership just created has never been acted as.
-        database
-          .select({
-            user_id: sql<string>`${user.id}`.as('user_id'),
-            profile_id: created.id,
-            role: sql<string>`'self'`.as('role'),
-            ride_along: sql<boolean>`false`.as('ride_along'),
-            last_active_at: sql<Date | null>`NULL`.as('last_active_at'),
-            created_at: sql<Date>`now()`.as('created_at'),
-          })
-          .from(created)
-      );
-  } catch (err) {
-    if (
-      sqlstateOf(err) === '23505' &&
-      constraintOf(err) === SELF_MEMBERSHIP_PER_USER_IDX
-    ) {
-      return;
-    }
-    throw err;
-  }
-}
-
 const nextAuth = NextAuth({
   theme: { logo: 'https://ctrlpluslist.com/ctrlpluslist_logo-hor-white.webp' },
   adapter: DrizzleAdapter(db, {
@@ -111,11 +46,6 @@ const nextAuth = NextAuth({
   callbacks: {
     signIn: signInCallback,
     jwt: jwtCallback,
-  },
-  events: {
-    // The adapter always yields an AdapterUser; the event type widens it to
-    // User, whose `id` is optional.
-    createUser: ({ user }) => createSelfProfile(db, user as AdapterUser),
   },
 });
 
@@ -140,7 +70,18 @@ export const { handlers, signIn, signOut } = nextAuth;
 // Route-handler / middleware overloads (`auth(req, ctx)`, args.length > 0)
 // always pass through to real NextAuth, so the deployed auth path is unchanged.
 export const BYPASS_USER_ID = 'dev-test-viewer';
-export const BYPASS_USER_EMAIL = 'test-viewer@dev.local';
+// The one id → email rule, shared with the seed that writes the rows. Actor
+// resolution goes through the email — a real session carries no internal user
+// id, only the provider's — so a synthesized session missing it resolves to no
+// actor and is indistinguishable from being logged out, which is how every
+// non-default identity used to resolve to nothing.
+//
+// The `dev-` / `dev-friend-` prefixes are the seed's id scheme, not part of the
+// address: stripping them here is what lets this rule name the rows the seed
+// already wrote, so adopting it rewrites no seeded email.
+export const seedUserEmail = (userId: string) =>
+  `${userId.replace(/^dev-(friend-)?/, '')}@dev.local`;
+export const BYPASS_USER_EMAIL = seedUserEmail(BYPASS_USER_ID);
 // `BYPASS_SESSION_USER` set to this literal yields a logged-out request
 // (auth() ⇒ null). Mirrored as GUEST_SESSION_USER in e2e/helpers/constants.ts.
 export const GUEST_SESSION_USER = 'guest';
@@ -153,22 +94,20 @@ function bypassEnabled(): boolean {
 // source. Bypass sessions never actually expire.
 const BYPASS_EXPIRES = '2099-01-01T00:00:00.000Z';
 
-// The default identity (`dev-test-viewer`) carries the full display fields the
-// preview UI expects; any other seeded id gets a minimal session (display
-// fields are resolved by the flow that introduces that identity). `guest` is
-// handled by the caller (⇒ null), never reaching here.
+// Every identity carries the email actor resolution reads, not only the
+// default: an identity synthesized without it resolves to no actor at all,
+// which reads as logged out rather than as a different seeded user. The
+// default additionally carries the display name the preview UI expects; other
+// identities leave display fields to the flow that introduces them.
 function synthesizeSession(userId: string) {
-  if (userId === BYPASS_USER_ID) {
-    return {
-      user: {
-        id: BYPASS_USER_ID,
-        email: BYPASS_USER_EMAIL,
-        name: 'Test Viewer',
-      },
-      expires: BYPASS_EXPIRES,
-    };
-  }
-  return { user: { id: userId }, expires: BYPASS_EXPIRES };
+  return {
+    user: {
+      id: userId,
+      email: seedUserEmail(userId),
+      ...(userId === BYPASS_USER_ID ? { name: 'Test Viewer' } : {}),
+    },
+    expires: BYPASS_EXPIRES,
+  };
 }
 
 export const auth: typeof nextAuth.auth = ((...args: unknown[]) => {

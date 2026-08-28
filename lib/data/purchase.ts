@@ -2,7 +2,7 @@ import { db } from '@/db';
 import { purchases, user_blocks, user_follows } from '@/db/schema';
 import { accountsOfProfiles } from '@/lib/data/profile';
 import { primaryStore } from '@/lib/storeValidity';
-import { withSelfAvatar } from '@/lib/data/profile.identity';
+import { avatarViewOf, withProfileAvatar } from '@/lib/data/profileAvatar';
 import { ActionResponse, PurchaseView, UserIdentity } from '@/lib/types';
 import { cacheTags, itemRowTags } from '@/lib/cacheTags';
 import { and, eq, or } from 'drizzle-orm';
@@ -15,8 +15,9 @@ type RawPurchase = {
   guest_name: string | null;
   purchased_at: Date;
   purchaserProfile: {
-    name: string | null;
-    members: { user: { image: string | null } }[];
+    name: string;
+    avatar?: { art: string; style: string } | null;
+    preferences?: { value: string }[];
   } | null;
   claimerProfile: { name: string | null } | null;
 };
@@ -54,8 +55,8 @@ export function sanitizePurchases(
         !!viewerSelfProfileId &&
         p.claimed_by_profile_id === viewerSelfProfileId,
       purchasedAt: p.purchased_at,
-      image: p.purchaserProfile?.members[0]?.user.image ?? null,
     };
+    if (p.purchaserProfile) view.avatar = avatarViewOf(p.purchaserProfile);
     if (
       isOwner &&
       p.claimed_by_profile_id &&
@@ -195,7 +196,12 @@ export function canRemovePurchase(
 
 export async function getItemsByPurchased(profileId?: string) {
   'use cache';
-  cacheTag(cacheTags.items, cacheTags.profiles);
+  cacheTag(
+    cacheTags.items,
+    cacheTags.profiles,
+    cacheTags.profileAvatars,
+    cacheTags.profilePreferences
+  );
   if (!profileId) {
     return [];
   }
@@ -211,7 +217,7 @@ export async function getItemsByPurchased(profileId?: string) {
               with: {
                 purchaserProfile: {
                   columns: { name: true },
-                  with: withSelfAvatar,
+                  with: withProfileAvatar,
                 },
                 claimerProfile: {
                   columns: { name: true },

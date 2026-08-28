@@ -1,6 +1,6 @@
 'use client';
 
-import { initialsOf } from '@/app/(main)/users/ui/utils';
+import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import { accentVars } from '@/lib/accent';
 import type { ProfileCardView } from '@/lib/types';
 import { useProfileSwitch } from '@/app/ui/components/ProfileSwitchProvider';
@@ -18,8 +18,6 @@ function countsText({ listCount, itemCount }: ProfileCardView): string {
   return `${lists} · ${items}`;
 }
 
-// The avatar is a slot: it paints the accent's light stop behind an initials
-// fallback until a profile image fills the disc.
 export default function ProfileCard({
   profile,
   activeProfileId,
@@ -47,9 +45,10 @@ export default function ProfileCard({
           isActive={isActive}
           onSwitch={switchProfile}
         />
-        <span className="profile-card-avatar" aria-hidden>
-          {initialsOf(profile.name)}
-        </span>
+        <ProfileAvatar
+          profile={profile}
+          className="profile-card-avatar"
+        />
         {isActive && (
           <span className="profile-card-active">
             <span aria-hidden>✓</span>

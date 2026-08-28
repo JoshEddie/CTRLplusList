@@ -2,16 +2,18 @@
 
 import { db } from '@/db';
 import {
-  ACCENT_PREFERENCE_ID,
   profile_members,
-  profile_preferences,
   profiles,
   user_blocks,
   user_follows,
 } from '@/db/schema';
 import { selfMemberships } from '@/lib/data/profile.identity';
 import {
+  ProfileFieldsSchema,
+  ProfileIdentitySchema,
   ProfileSettingsSchema,
+  type ProfileFieldsData,
+  type ProfileIdentityData,
   type ProfileSettingsData,
 } from '@/lib/data/profile.schema';
 import {
@@ -20,6 +22,7 @@ import {
 } from '@/lib/data/profile.cookie';
 import {
   FORBIDDEN_RESPONSE,
+  ownsProfile,
   stampActedAs,
   writableMembership,
 } from '@/lib/data/profile.gate';
@@ -29,6 +32,8 @@ import {
   authedUserId,
 } from '@/lib/data/user.session';
 import { type ActionResponse } from '@/lib/types';
+import { writeAltvatar } from '@/lib/data/profileAvatar.write';
+import { writeAccent } from '@/lib/data/profilePreference.write';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -227,38 +232,6 @@ export async function unblockUser(
   }
 }
 
-// Deliberately not atomic with the profile and membership rows: a profile
-// without its accent renders the fallback and its owner can write one, while a
-// profile without its membership row is unreachable by anyone. The fixability
-// criterion on 2026-08-18-atomic-writes-in-one-cte is what splits them, so this
-// raises nothing and reports instead — creation ignores the report and
-// succeeds, an edit surfaces it rather than claiming a colour it did not save.
-async function writeAccent(profileId: string, accent: string) {
-  try {
-    await db
-      .insert(profile_preferences)
-      .values({
-        profile_id: profileId,
-        preference_id: ACCENT_PREFERENCE_ID,
-        value: accent,
-      })
-      .onConflictDoUpdate({
-        target: [
-          profile_preferences.profile_id,
-          profile_preferences.preference_id,
-        ],
-        set: { value: accent },
-      });
-    // Fired here rather than by each caller so the tag tracks the write that
-    // lands the row: a failure below invalidates nothing.
-    updateTags(cacheTags.preferencesOfProfile(profileId));
-    return true;
-  } catch (error) {
-    console.error('Error writing profile accent:', error);
-    return false;
-  }
-}
-
 export async function createProfile(
   data: ProfileSettingsData
 ): Promise<ActionResponse> {
@@ -276,7 +249,7 @@ export async function createProfile(
         errors: validationResult.error.flatten().fieldErrors,
       };
     }
-    const { name, tagline, accent } = validationResult.data;
+    const { name, tagline, accent, altvatar } = validationResult.data;
 
     const id = nanoid();
     const created = db
@@ -312,8 +285,10 @@ export async function createProfile(
           .from(created)
       );
 
-    // Report ignored on purpose: the profile exists and renders the fallback.
+    // Reports ignored on purpose: the profile exists, and each of these
+    // failing leaves it rendering the fallback its own capability defines.
     await writeAccent(id, accent);
+    await writeAltvatar(id, altvatar);
 
     updateTags(cacheTags.profilesOfUser(userId));
 
@@ -330,31 +305,18 @@ export async function createProfile(
 
 export async function updateProfileSettings(
   profileId: string,
-  data: ProfileSettingsData
+  data: ProfileFieldsData
 ): Promise<ActionResponse> {
   try {
     const userId = await authedUserId();
     if (!userId) {
       return UNAUTHORIZED_RESPONSE;
     }
-
-    // Identity is an ownership act, so the check is on the role this account
-    // holds on this profile, not on what the page rendered: a manager who
-    // submits by any other means lands here too.
-    const [membership] = await db
-      .select({ role: profile_members.role })
-      .from(profile_members)
-      .where(
-        and(
-          eq(profile_members.user_id, userId),
-          eq(profile_members.profile_id, profileId)
-        )
-      );
-    if (membership?.role !== 'self' && membership?.role !== 'owner') {
+    if (!(await ownsProfile(userId, profileId))) {
       return UNAUTHORIZED_RESPONSE;
     }
 
-    const validationResult = ProfileSettingsSchema.safeParse(data);
+    const validationResult = ProfileFieldsSchema.safeParse(data);
     if (!validationResult.success) {
       return {
         success: false,
@@ -362,24 +324,14 @@ export async function updateProfileSettings(
         errors: validationResult.error.flatten().fieldErrors,
       };
     }
-    const { name, tagline, accent } = validationResult.data;
+    const { name, tagline } = validationResult.data;
 
     await db
       .update(profiles)
       .set({ name, tagline, updated_at: new Date() })
       .where(eq(profiles.id, profileId));
 
-    const accentWritten = await writeAccent(profileId, accent);
-
     updateTags(cacheTags.profile(profileId));
-
-    if (!accentWritten) {
-      return {
-        success: false,
-        message: 'Name and tagline were saved, but the accent was not',
-        error: 'Failed to update profile',
-      };
-    }
 
     return { success: true, message: 'Profile updated', id: profileId };
   } catch (error) {
@@ -387,6 +339,62 @@ export async function updateProfileSettings(
     return {
       success: false,
       message: 'An error occurred while updating the profile',
+      error: 'Failed to update profile',
+    };
+  }
+}
+
+// The identity's own writer, separate from the fields because the settings
+// surface commits them at different moments: confirming the customizer is a
+// decision the viewer has made, while a name still being typed is not. Folding
+// both into one action is what made every field submit re-render and re-write
+// art that had not changed.
+export async function updateProfileIdentity(
+  profileId: string,
+  data: ProfileIdentityData
+): Promise<ActionResponse> {
+  try {
+    const userId = await authedUserId();
+    if (!userId) {
+      return UNAUTHORIZED_RESPONSE;
+    }
+    if (!(await ownsProfile(userId, profileId))) {
+      return UNAUTHORIZED_RESPONSE;
+    }
+
+    const validationResult = ProfileIdentitySchema.safeParse(data);
+    if (!validationResult.success) {
+      return {
+        success: false,
+        message: 'Validation failed',
+        errors: validationResult.error.flatten().fieldErrors,
+      };
+    }
+    const { accent, altvatar } = validationResult.data;
+
+    const accentWritten = await writeAccent(profileId, accent);
+    const altvatarWritten = await writeAltvatar(profileId, altvatar);
+
+    updateTags(cacheTags.profile(profileId));
+
+    // A half-saved identity is reported rather than claimed: the viewer is
+    // looking at a face the surface already repainted, so saying nothing would
+    // let the screen lie about what was stored. Which half failed is not named
+    // — neither is recoverable by hand, and both are fixed the same way.
+    if (!accentWritten || !altvatarWritten) {
+      return {
+        success: false,
+        message: 'Your Altvatar was not fully saved',
+        error: 'Failed to update profile',
+      };
+    }
+
+    return { success: true, message: 'Altvatar saved', id: profileId };
+  } catch (error) {
+    console.error('Error updating profile identity:', error);
+    return {
+      success: false,
+      message: 'An error occurred while saving your Altvatar',
       error: 'Failed to update profile',
     };
   }

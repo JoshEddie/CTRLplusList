@@ -1,8 +1,7 @@
 'use client';
 
-import { initialsOf } from '@/app/(main)/users/ui/utils';
+import ProfileAvatar, { facelessView } from '@/app/ui/components/ProfileAvatar';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
-import { accentVars } from '@/lib/accent';
 import type { ProfileSwitcherView } from '@/lib/data/profile.active';
 import { signOutUser } from '@/lib/data/user.actions';
 import type { ActorProfile } from '@/lib/types';
@@ -27,9 +26,8 @@ export default function UserAvatarPopover({
   const close = () => setOpen(false);
 
   // The nav states who the viewer is acting as, so the circle is the active
-  // profile's — its initials on its accent. The account's own image is not
-  // rendered here at all.
-  const initials = initialsOf(activeProfile?.name ?? user.name);
+  // profile's — its Altvatar art on its accent, its initials otherwise. The
+  // account's own image is not rendered here at all.
   const rows = switcher?.rows ?? [];
   const profileCount = switcher?.profileCount ?? 0;
 
@@ -49,12 +47,10 @@ export default function UserAvatarPopover({
         aria-label="User menu"
         onClick={() => setOpen((o) => !o)}
       >
-        <span
-          className="avatar avatar-initials"
-          style={accentVars(activeProfile?.accent)}
-        >
-          {initials}
-        </span>
+        <ProfileAvatar
+          profile={activeProfile ?? facelessView(user.name)}
+          className="avatar"
+        />
         <div className="gradientOverlay" />
       </button>
 
@@ -80,13 +76,10 @@ export default function UserAvatarPopover({
           <MenuItem
             key={row.id}
             icon={
-              <span
+              <ProfileAvatar
+                profile={row}
                 className="menu-profile-avatar"
-                style={accentVars(row.accent)}
-                aria-hidden
-              >
-                {initialsOf(row.name)}
-              </span>
+              />
             }
             onClick={() => switchTo(row.id)}
           >

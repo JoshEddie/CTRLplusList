@@ -1,5 +1,8 @@
+import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
+import { accentVars } from '@/lib/accent';
+import type { ProfileAvatarView } from '@/lib/types';
 import Link from 'next/link';
-import { FaBookmark, FaUser } from 'react-icons/fa';
+import { FaBookmark } from 'react-icons/fa';
 
 export type ListCardData = {
   id: string;
@@ -7,7 +10,7 @@ export type ListCardData = {
   subtitle?: string | null;
   occasion: string;
   date: Date;
-  profile?: { name: string | null } | null;
+  profile?: ProfileAvatarView | null;
 };
 
 export default function ListCard({
@@ -19,9 +22,13 @@ export default function ListCard({
   showOwner?: boolean;
   bookmarked?: boolean;
 }) {
-  const ownerName = showOwner ? list.profile?.name : null;
+  const owner = showOwner ? list.profile : null;
   return (
-    <Link className="list-card" href={`/lists/${list.id}`}>
+    <Link
+      className="list-card"
+      href={`/lists/${list.id}`}
+      style={accentVars(list.profile?.accent)}
+    >
       <div className="list-card-head">
         <div className="list-card-name">
           {bookmarked && (
@@ -34,9 +41,13 @@ export default function ListCard({
             {list.name}
           </span>
         </div>
-        {ownerName && (
+        {owner && (
           <div className="list-card-byline">
-            <FaUser aria-hidden /> {ownerName}
+            <ProfileAvatar
+              profile={owner}
+              className="list-card-byline-avatar"
+            />
+            <span className="list-card-byline-name">{owner.name}</span>
           </div>
         )}
         {list.subtitle ? (

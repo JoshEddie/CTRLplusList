@@ -97,24 +97,23 @@ describe('FollowingRail', () => {
     expect(hasMoreCard).toBe(false);
   });
 
-  it('UserCard_ReceivesIdNameImageNewCountLatestSharedCompact', async () => {
+  it('UserCard_ReceivesProfileFaceNewCountAndLatestShared', async () => {
     await seedFollowees(1);
 
     const tree = (await FollowingRail({ userId: 'viewer' })) as unknown as El;
     const card = userCardItems(tree)[0].props.children as El;
     const props = card.props as {
-      profile: unknown;
+      profile: { id: string; name: string; accent: unknown; art: unknown };
       newCount: number;
       latestSharedAt: unknown;
-      compact: boolean;
     };
-    expect(props.profile).toEqual({
+    expect(props.profile).toMatchObject({
       id: selfProfileOf('f0'),
       name: 'Followee 0',
-      image: 'f0.png',
+      accent: null,
+      art: null,
     });
     expect(props.newCount).toBe(0);
     expect(String(props.latestSharedAt)).toContain('2021');
-    expect(props.compact).toBe(true);
   });
 });

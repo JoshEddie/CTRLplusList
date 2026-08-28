@@ -30,6 +30,10 @@ export const cacheTags = {
   preferencesOfProfile: (profileId: string) =>
     `profile_preferences:profile:${profileId}`,
 
+  profileAvatars: 'profile_avatars',
+  avatarOfProfile: (profileId: string) =>
+    `profile_avatars:profile:${profileId}`,
+
   userFollows: 'user_follows',
   followsOfUser: (userId: string) => `user_follows:follower:${userId}`,
   followersOfProfile: (profileId: string) =>
@@ -51,20 +55,35 @@ type PurchaseAttribution = {
   claimed_by_profile_id: string | null;
 };
 
+// A rendered profile is three rows in three tables — the profile, its avatar
+// art and its accent preference — and every surface that shows a face reads
+// all three. One helper rather than three tags per call site: a read naming
+// two of the three keeps painting the old identity when the third changes.
+export function profileIdentityTags(profileIds: Iterable<string>): string[] {
+  const tags = new Set<string>();
+  for (const id of profileIds) {
+    tags.add(cacheTags.profile(id));
+    tags.add(cacheTags.avatarOfProfile(id));
+    tags.add(cacheTags.preferencesOfProfile(id));
+  }
+  return [...tags];
+}
+
 // Narrow tags for fetched item rows: the owning profile's item pool, plus the
-// profiles whose names render on the embedded purchase attributions.
+// identities that render on the embedded purchase attributions.
 export function itemRowTags(
   rows: { profile_id: string; purchases?: PurchaseAttribution[] }[]
 ): string[] {
   const tags = new Set<string>();
+  const attributed = new Set<string>();
   for (const row of rows) {
     tags.add(cacheTags.itemsOfProfile(row.profile_id));
     for (const purchase of row.purchases ?? []) {
-      if (purchase.profile_id)
-        tags.add(cacheTags.profile(purchase.profile_id));
+      if (purchase.profile_id) attributed.add(purchase.profile_id);
       if (purchase.claimed_by_profile_id)
-        tags.add(cacheTags.profile(purchase.claimed_by_profile_id));
+        attributed.add(purchase.claimed_by_profile_id);
     }
   }
+  for (const tag of profileIdentityTags(attributed)) tags.add(tag);
   return [...tags];
 }

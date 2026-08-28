@@ -1,0 +1,53 @@
+/* The gate renders on the sign-in page's own full-screen treatment, for both
+   populations alike, so arriving at it reads as a continuation of signing in
+   rather than as a dialog over the app. It is not an overlay over content:
+   nothing is behind it, because the layout renders it instead of the page. */
+.onboarding-gate-page {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 20px 12px;
+  background-color: var(--dark-color);
+  background-image: var(--page-frame-gradient);
+  background-attachment: fixed;
+}
+
+/* The rest of the card is the shared `.altvatar-shell` treatment in
+   altvatar.css; the gate is a fixed-width column rather than a full-height
+   modal, which is the only thing it states for itself. */
+.onboarding-gate {
+  max-width: 460px;
+}
+
+.onboarding-gate-body {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 24px 20px;
+}
+
+.onboarding-gate-title {
+  margin: 0;
+  font-family: var(--font-crimson-pro);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.15;
+  color: var(--primary-color);
+}
+
+.onboarding-gate-lede {
+  margin: -14px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted-text-color);
+}
+
+@media (max-width: 600px) {
+  .onboarding-gate-body {
+    padding: 20px 18px;
+  }
+}

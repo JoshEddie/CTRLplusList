@@ -1,11 +1,12 @@
 import { db } from '@/db';
 import {
   ACCENT_PREFERENCE_ID,
+  profile_avatars,
   profile_members,
   profile_preferences,
   profiles,
 } from '@/db/schema';
-import { cacheTags } from '@/lib/cacheTags';
+import { cacheTags, profileIdentityTags } from '@/lib/cacheTags';
 import type {
   ActorProfile,
   ProfileMembershipView,
@@ -28,6 +29,7 @@ export async function getMembershipsForUser(
     cacheTags.profiles,
     cacheTags.profileMembers,
     cacheTags.profilePreferences,
+    cacheTags.profileAvatars,
     cacheTags.profilesOfUser(userId)
   );
   const rows = await db
@@ -37,6 +39,8 @@ export async function getMembershipsForUser(
       tagline: profiles.tagline,
       role: profile_members.role,
       accent: profile_preferences.value,
+      art: profile_avatars.art,
+      avatarStyle: profile_avatars.style,
       last_active_at: profile_members.last_active_at,
     })
     .from(profile_members)
@@ -48,17 +52,13 @@ export async function getMembershipsForUser(
         eq(profile_preferences.preference_id, ACCENT_PREFERENCE_ID)
       )
     )
+    .leftJoin(profile_avatars, eq(profile_avatars.profile_id, profiles.id))
     .where(eq(profile_members.user_id, userId))
     .orderBy(
       sql`${profile_members.last_active_at} DESC NULLS LAST`,
       asc(profiles.name)
     );
-  cacheTag(
-    ...rows.flatMap((row) => [
-      cacheTags.profile(row.id),
-      cacheTags.preferencesOfProfile(row.id),
-    ])
-  );
+  cacheTag(...profileIdentityTags(rows.map((row) => row.id)));
   return rows.map((row) => ({
     ...row,
     role: row.role as ProfileMembershipView['role'],
@@ -104,7 +104,13 @@ export function switcherView(
   return {
     rows: memberships
       .filter((m) => m.id !== identity.activeProfile.id)
-      .map(({ id, name, accent }) => ({ id, name, accent }))
+      .map(({ id, name, accent, art, avatarStyle }) => ({
+        id,
+        name,
+        accent,
+        art,
+        avatarStyle,
+      }))
       .slice(0, SWITCH_ROW_CAP),
     profileCount: memberships.length,
   };

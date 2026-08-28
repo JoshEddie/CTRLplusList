@@ -35,7 +35,12 @@
 .avatar-popover-wrap {
   position: relative;
 }
-.avatar-popover-wrap .avatar-container {
+.avatar-popover-wrap .avatar {
+  width: 45px;
+  height: 45px;
+}
+
+.avatar-container {
   /* Override the existing div-as-button: this is now a real <button>. */
   background: none;
   border: none;
@@ -115,28 +120,6 @@
 
 .avatar-container.hide {
   display: none;
-}
-
-.avatar-container .avatar {
-  width: 45px;
-  height: 45px;
-}
-
-/* The active profile's face: its initials on its accent disc, ringed in the
-   accent's dark stop so the frame states who the viewer is acting as at a
-   glance. The ring is inset (box-shadow, not border) so the circle keeps the
-   45px the gradient nav's three-region layout is measured against. */
-.avatar-container .avatar-initials {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--accent-disc);
-  color: var(--accent-ink);
-  font-weight: 600;
-  font-size: 16px;
-  line-height: 1;
-  box-shadow: inset 0 0 0 2px var(--accent-dark);
 }
 
 .avatar-container .gradientOverlay {

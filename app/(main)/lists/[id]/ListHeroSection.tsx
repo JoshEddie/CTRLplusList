@@ -74,7 +74,7 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
       <ListDetails
         isOwner={isOwner}
         list={list}
-        owner_name={list.profile.name}
+        owner={list.profile}
         viewer_user_id={identity?.userId || undefined}
         viewer_self_profile_id={identity?.selfProfile.id || undefined}
         showSpoilers={showSpoilers}

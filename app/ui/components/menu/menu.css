@@ -133,21 +133,12 @@
   background-color: var(--secondary-background-color);
 }
 
-/* The switch group's leading slot — the same disc the profile card paints,
+/* The switch group's leading slot — the same disc every other surface paints,
    sized to the menu row rather than the card. */
 .menu-profile-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  width: 32px;
+  height: 32px;
   flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--accent-disc);
-  color: var(--accent-ink);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
 }
 
 /* The count that keeps the capped switch group from reading as the whole set.

@@ -247,6 +247,11 @@
   background-color: var(--card-hover-background-color);
 }
 
+.claim-row .altvatar-disc {
+  width: 32px;
+  height: 32px;
+}
+
 .claim-row-info {
   flex: 1;
   min-width: 0;
@@ -300,7 +305,12 @@
   display: inline-flex;
 }
 
-.claim-disclosure-avatars .user-avatar:not(:first-child) {
+.claim-disclosure-avatars .altvatar-disc {
+  width: 24px;
+  height: 24px;
+}
+
+.claim-disclosure-avatars .altvatar-disc:not(:first-child) {
   margin-left: -8px;
 }
 
@@ -365,6 +375,11 @@
   font-size: 16px;
   cursor: pointer;
   color: inherit;
+}
+
+.claim-pool-row .altvatar-disc {
+  width: 32px;
+  height: 32px;
 }
 
 .claim-pool-row:hover,

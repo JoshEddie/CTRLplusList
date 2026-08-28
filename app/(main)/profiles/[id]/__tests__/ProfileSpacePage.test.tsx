@@ -6,25 +6,35 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ACCENT_NAMES } from '@/lib/accent';
+import type { AltvatarDraft } from '@/app/ui/components/altvatar/AltvatarCustomizer';
 import { getProfileMembership } from '@/lib/data/profile';
+import { getAltvatarOptions } from '@/lib/data/profileAvatar';
+import { writeAltvatar } from '@/lib/data/profileAvatar.write';
+import { ALTVATAR_STYLES } from '@/lib/altvatar/registry';
+import {
+  ALTVATAR_STYLE_IDS,
+  type AltvatarStyleId,
+} from '@/lib/altvatar/types';
 import type { ProfileCardView } from '@/lib/types';
 import { authedUserId } from '@/lib/data/user.session';
 import ProfileSpacePage from '../ProfileSpacePage';
 
 vi.mock('@/lib/data/profile', () => ({ getProfileMembership: vi.fn() }));
+vi.mock('@/lib/data/profileAvatar', () => ({ getAltvatarOptions: vi.fn() }));
+vi.mock('@/lib/data/profileAvatar.write', () => ({ writeAltvatar: vi.fn() }));
 vi.mock('@/lib/data/user.session', () => ({ authedUserId: vi.fn() }));
 vi.mock('../../ui/components/ProfileSettingsForm', () => ({
   default: ({
     readOnly,
-    suggestedAccent,
+    draft,
   }: {
     readOnly: boolean;
-    suggestedAccent: string;
+    draft: AltvatarDraft | null;
   }) => (
     <div
       data-testid="settings-form"
       data-readonly={String(readOnly)}
-      data-suggested={suggestedAccent}
+      data-draft={draft ? JSON.stringify(draft) : ''}
     />
   ),
 }));
@@ -45,15 +55,22 @@ function card(overrides: Partial<ProfileCardView> = {}): ProfileCardView {
     listCount: 0,
     itemCount: 0,
     accent: null,
+    art: null,
+    avatarStyle: null,
     ...overrides,
   };
 }
 
 const form = () => screen.getByTestId('settings-form');
+const draftOf = () => {
+  const raw = form().getAttribute('data-draft');
+  return raw ? (JSON.parse(raw) as AltvatarDraft) : null;
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(authedUserId).mockResolvedValue('viewer');
+  vi.mocked(getAltvatarOptions).mockResolvedValue(null);
   vi.mocked(getProfileMembership).mockResolvedValue(card());
 });
 
@@ -95,19 +112,52 @@ describe('ProfileSpacePage', () => {
       }
     );
 
+    it('RoleManager_PassesNoDraft', async () => {
+      vi.mocked(getProfileMembership).mockResolvedValue(
+        card({ role: 'manager' })
+      );
+      render(await ProfileSpacePage({ params: Promise.resolve({ id: 'p1' }) }));
+      expect(draftOf()).toBeNull();
+      // Nothing is rolled for a viewer who has no way to save it.
+      expect(getAltvatarOptions).not.toHaveBeenCalled();
+    });
+
     it('StoredAccent_SuggestsThatPreset', async () => {
       vi.mocked(getProfileMembership).mockResolvedValue(
         card({ accent: ACCENT_NAMES[3] })
       );
       render(await ProfileSpacePage({ params: Promise.resolve({ id: 'p1' }) }));
-      expect(form()).toHaveAttribute('data-suggested', ACCENT_NAMES[3]);
+      expect(draftOf()?.accent).toBe(ACCENT_NAMES[3]);
     });
 
     it('NoStoredAccent_SuggestsAPresetWithoutWriting', async () => {
       vi.mocked(getProfileMembership).mockResolvedValue(card({ accent: null }));
       render(await ProfileSpacePage({ params: Promise.resolve({ id: 'p1' }) }));
-      const suggested = form().getAttribute('data-suggested') ?? '';
-      expect(ACCENT_NAMES).toContain(suggested);
+      expect(ACCENT_NAMES).toContain(draftOf()?.accent);
+    });
+
+    it('StoredAltvatar_OpensOnItRatherThanARoll', async () => {
+      vi.mocked(getAltvatarOptions).mockResolvedValue({
+        style: 'icons',
+        options: { seed: 'kiddo', selections: { glyph: 'cat' } },
+      });
+      render(await ProfileSpacePage({ params: Promise.resolve({ id: 'p1' }) }));
+      expect(draftOf()).toMatchObject({
+        style: 'icons',
+        options: { seed: 'kiddo', selections: { glyph: 'cat' } },
+      });
+    });
+
+    it('NoStoredAltvatar_RollsARollableStyleWithoutWriting', async () => {
+      render(await ProfileSpacePage({ params: Promise.resolve({ id: 'p1' }) }));
+      const style = draftOf()?.style as AltvatarStyleId;
+
+      expect(ALTVATAR_STYLE_IDS).toContain(style);
+      // A glyph style answers a different question — a household, not a face —
+      // so it is reachable in the chooser but never rolled into.
+      expect(ALTVATAR_STYLES[style].glyph).toBeFalsy();
+      expect(draftOf()?.options.seed).toBeTruthy();
+      expect(writeAltvatar).not.toHaveBeenCalled();
     });
   });
 });

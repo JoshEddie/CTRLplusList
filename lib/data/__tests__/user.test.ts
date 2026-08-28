@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import {
+  seedAvatar,
   seedFollow,
   seedPublicList,
   seedUsers,
@@ -80,12 +81,15 @@ describe('getUserIdByEmail', () => {
 });
 
 describe('getFollowingByUser', () => {
-  it('ViewerFollowsTwo_ReturnsFolloweeProfilesWithAccountImage', async () => {
+  it('ViewerFollowsTwo_ReturnsFolloweeProfilesWithTheirOwnFace', async () => {
     await seedUsers(db, [
       { id: 'follower' },
-      { id: 'followeeA', name: 'Alice', image: 'a.png' },
-      { id: 'followeeB', name: 'Bob', image: null },
+      { id: 'followeeA', name: 'Alice' },
+      { id: 'followeeB', name: 'Bob' },
     ]);
+    await seedAvatar(db, selfProfileOf('followeeA'), {
+      art: '<svg id="alice" />',
+    });
     await seedFollow(db, 'follower', 'followeeA');
     await seedFollow(db, 'follower', 'followeeB');
 
@@ -96,12 +100,16 @@ describe('getFollowingByUser', () => {
     expect(byId[selfProfileOf('followeeA')]).toEqual({
       id: selfProfileOf('followeeA'),
       name: 'Alice',
-      image: 'a.png',
+      accent: null,
+      art: '<svg id="alice" />',
+      avatarStyle: 'icons',
     });
     expect(byId[selfProfileOf('followeeB')]).toEqual({
       id: selfProfileOf('followeeB'),
       name: 'Bob',
-      image: null,
+      accent: null,
+      art: null,
+      avatarStyle: null,
     });
   });
 

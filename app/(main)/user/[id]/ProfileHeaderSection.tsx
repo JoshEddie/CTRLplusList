@@ -35,7 +35,7 @@ export default async function ProfileHeaderSection({
   return (
     <>
       <ProfileHeader
-        profile={{ id: profile.id, name: profile.name, image: profile.image }}
+        profile={profile}
         publicListCount={profile.publicListCount}
         viewer={identity}
         showFollowButton={isReachable}

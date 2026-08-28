@@ -9,12 +9,17 @@ type Variant = 'default' | 'wide';
 export function FormShell({
   variant = 'default',
   title,
+  header,
   closeHref,
   onClose,
   children,
 }: {
   variant?: Variant;
-  title: string;
+  title?: string;
+  /** Chrome of its own in place of the title bar, for a form whose header
+      carries something other than a title. A header given here owns its own
+      close affordance. */
+  header?: React.ReactNode;
   closeHref?: string;
   onClose?: () => void;
   children: React.ReactNode;
@@ -34,10 +39,12 @@ export function FormShell({
       }}
     >
       <div className={cls}>
-        <div className="form-shell-hd">
-          <span className="form-shell-title">{title}</span>
-          <CloseButton onClick={dismiss} className="close-button--in-flow" />
-        </div>
+        {header ?? (
+          <div className="form-shell-hd">
+            <span className="form-shell-title">{title}</span>
+            <CloseButton onClick={dismiss} className="close-button--in-flow" />
+          </div>
+        )}
         {children}
       </div>
     </div>

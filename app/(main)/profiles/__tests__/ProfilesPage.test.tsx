@@ -39,6 +39,8 @@ function card(id: string, name: string): ProfileCardView {
     listCount: 0,
     itemCount: 0,
     accent: null,
+    art: null,
+    avatarStyle: null,
   };
 }
 

@@ -31,15 +31,16 @@ vi.mock('@/app/ui/components/MoreCard', () => ({
   ),
 }));
 
+const face = { accent: null, art: null, avatarStyle: null };
 const profiles: FollowingFeedProfile[] = [
   {
     id: 'a',
     name: 'Alice',
-    image: null,
+    ...face,
     new_count: 2,
     latest_shared_at: new Date(),
   },
-  { id: 'b', name: 'Bob', image: null, new_count: 0, latest_shared_at: null },
+  { id: 'b', name: 'Bob', ...face, new_count: 0, latest_shared_at: null },
 ];
 
 describe('UserCardGrid', () => {

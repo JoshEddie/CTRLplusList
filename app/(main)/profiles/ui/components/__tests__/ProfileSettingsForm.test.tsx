@@ -1,8 +1,8 @@
 /**
  * Pins `profiles-surface` — "A profile's space SHALL render an identity header
- * and a Settings form" (the manager's read-only view and the unwritten accent
- * suggestion) — and `active-profile` — "A switch that would discard unsaved
- * edits SHALL be confirmed first", from the form's side of that wiring.
+ * and a Settings form" (the manager's read-only view and the unwritten
+ * Altvatar suggestion) — and `active-profile` — "A switch that would discard
+ * unsaved edits SHALL be confirmed first", from the form's side of that wiring.
  */
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -10,14 +10,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProfileSwitch } from '@/test/helpers/profile-switch';
 
 import { ACCENT_NAMES, ACCENT_PRESETS } from '@/lib/accent';
+import type { AltvatarDraft } from '@/app/ui/components/altvatar/AltvatarCustomizer';
 import type { ProfileCardView } from '@/lib/types';
 import { useProfileSwitch } from '@/app/ui/components/ProfileSwitchProvider';
 import ProfileSettingsForm from '../ProfileSettingsForm';
 
 const updateProfileSettings = vi.fn();
+const updateProfileIdentity = vi.fn();
 const switchActiveProfile = vi.fn();
 vi.mock('@/lib/data/profile.actions', () => ({
   updateProfileSettings: (...args: unknown[]) => updateProfileSettings(...args),
+  updateProfileIdentity: (...args: unknown[]) => updateProfileIdentity(...args),
   switchActiveProfile: (...args: unknown[]) => switchActiveProfile(...args),
 }));
 vi.mock('react-hot-toast', () => ({
@@ -35,11 +38,39 @@ function makeProfile(
     listCount: 0,
     itemCount: 0,
     accent: null,
+    art: null,
+    avatarStyle: null,
+    ...overrides,
+  };
+}
+
+// Selections only — the rendering is the server's, so a draft never carries
+// one. `icons` keeps the customizer's option panel to a single axis.
+function makeDraft(overrides: Partial<AltvatarDraft> = {}): AltvatarDraft {
+  return {
+    style: 'icons',
+    options: { seed: 'kiddo', selections: {} },
+    accent: ACCENT_NAMES[0],
     ...overrides,
   };
 }
 
 const save = () => screen.queryByRole('button', { name: /save changes/i });
+const editAltvatar = () =>
+  screen.queryByRole('button', { name: /edit altvatar/i });
+
+const renderForm = (
+  profile: ProfileCardView = makeProfile(),
+  draft: AltvatarDraft | null = makeDraft(),
+  readOnly = false
+) =>
+  renderWithProfileSwitch(
+    <ProfileSettingsForm
+      profile={profile}
+      draft={draft}
+      readOnly={readOnly}
+    />
+  );
 
 // The switch is raised from the nav, a different subtree, so the guard is
 // only observable with something that switches rendered alongside the form.
@@ -57,7 +88,7 @@ const renderWithSwitcher = () =>
     <>
       <ProfileSettingsForm
         profile={makeProfile()}
-        suggestedAccent={ACCENT_NAMES[0]}
+        draft={makeDraft()}
         readOnly={false}
       />
       <Switcher />
@@ -70,50 +101,37 @@ const prompt = () => screen.queryByText('You have unsaved changes');
 beforeEach(() => {
   vi.clearAllMocks();
   updateProfileSettings.mockResolvedValue({ success: true, message: 'Saved' });
+  updateProfileIdentity.mockResolvedValue({
+    success: true,
+    message: 'Altvatar saved',
+  });
   switchActiveProfile.mockResolvedValue({ success: true, message: 'Switched' });
 });
 
 describe('ProfileSettingsForm', () => {
   describe('IdentityHeader', () => {
-    it('ProfileWithTagline_RendersNameInitialsAndTagline', () => {
-      renderWithProfileSwitch(
-        <ProfileSettingsForm
-          profile={makeProfile({
-            name: 'Ada Lovelace',
-            tagline: 'Runs the household',
-          })}
-          suggestedAccent={ACCENT_NAMES[0]}
-          readOnly={false}
-        />
+    it('ProfileWithTagline_RendersNameAndTagline', () => {
+      renderForm(
+        makeProfile({ name: 'Ada Lovelace', tagline: 'Runs the household' })
       );
       expect(
         screen.getByRole('heading', { name: 'Ada Lovelace' })
       ).toBeInTheDocument();
-      expect(screen.getByText('AL')).toBeInTheDocument();
       expect(screen.getByText('Runs the household')).toBeInTheDocument();
     });
 
     it('ProfileWithoutTagline_RendersNoTaglineNode', () => {
-      const { container } = renderWithProfileSwitch(
-        <ProfileSettingsForm
-          profile={makeProfile({ tagline: null })}
-          suggestedAccent={ACCENT_NAMES[0]}
-          readOnly={false}
-        />
-      );
+      const { container } = renderForm(makeProfile({ tagline: null }));
       // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access -- the tagline node carries no role; asserting its ABSENCE needs the container.
       expect(container.querySelector('.profile-space-tagline')).toBeNull();
     });
 
-    it('AccentPicked_RepaintsTheBandAndTheDiscBeforeAnySave', async () => {
+    it('AltvatarConfirmed_RepaintsTheBandAndSavesImmediately', async () => {
       const user = userEvent.setup();
       const [first, second] = ACCENT_NAMES;
-      const { container } = renderWithProfileSwitch(
-        <ProfileSettingsForm
-          profile={makeProfile()}
-          suggestedAccent={first}
-          readOnly={false}
-        />
+      const { container } = renderForm(
+        makeProfile(),
+        makeDraft({ accent: first })
       );
       /* eslint-disable testing-library/no-container, testing-library/no-node-access -- the band is a decorative node carrying the accent's custom properties, reachable by neither role nor name. */
       const bandStyle = () =>
@@ -122,8 +140,12 @@ describe('ProfileSettingsForm', () => {
       /* eslint-enable testing-library/no-container, testing-library/no-node-access */
 
       const before = bandStyle();
+      await user.click(editAltvatar()!);
       await user.click(
         screen.getByRole('radio', { name: new RegExp(second, 'i') })
+      );
+      await user.click(
+        screen.getByRole('button', { name: /use this altvatar/i })
       );
 
       // The band carries both the strip's gradient and the disc's ink, so one
@@ -135,35 +157,140 @@ describe('ProfileSettingsForm', () => {
       expect(bandStyle()).toContain(
         `--accent-ink: ${ACCENT_PRESETS[second].ink}`
       );
+      // Confirming is the commit: the viewer who leaves the page now leaves a
+      // decision that stuck, without touching Save Changes.
+      await waitFor(() =>
+        expect(updateProfileIdentity).toHaveBeenCalledWith(
+          'p1',
+          expect.objectContaining({ accent: second })
+        )
+      );
+    });
+
+    it('AltvatarConfirmedWithFieldsEdited_CommitsTheIdentityAloneAndLeavesTheFields', async () => {
+      const user = userEvent.setup();
+      const [, second] = ACCENT_NAMES;
+      renderForm(makeProfile({ name: 'Kiddo' }));
+
+      await user.type(screen.getByLabelText(/name/i), ' the half-typed');
+      await user.click(editAltvatar()!);
+      await user.click(
+        screen.getByRole('radio', { name: new RegExp(second, 'i') })
+      );
+      await user.click(
+        screen.getByRole('button', { name: /use this altvatar/i })
+      );
+
+      // The two edits are on different contracts: choosing a face commits, and
+      // a name still being typed is not dragged along by it.
+      await waitFor(() => expect(updateProfileIdentity).toHaveBeenCalled());
       expect(updateProfileSettings).not.toHaveBeenCalled();
+      expect(screen.getByLabelText(/name/i)).toHaveValue('Kiddo the half-typed');
+    });
+
+    it('AltvatarSaveFails_StillPromptsBeforeSwitching', async () => {
+      const user = userEvent.setup();
+      const [, second] = ACCENT_NAMES;
+      updateProfileIdentity.mockResolvedValue({
+        success: false,
+        message: 'Your Altvatar was not fully saved',
+      });
+      renderWithSwitcher();
+
+      await user.click(editAltvatar()!);
+      await user.click(
+        screen.getByRole('radio', { name: new RegExp(second, 'i') })
+      );
+      await user.click(
+        screen.getByRole('button', { name: /use this altvatar/i })
+      );
+      await waitFor(() => expect(updateProfileIdentity).toHaveBeenCalled());
+      await user.click(switchButton());
+
+      // A face the write did not land is still an unsaved edit, so the guard
+      // that survived the immediate save is what keeps it recoverable.
+      expect(prompt()).toBeInTheDocument();
+    });
+
+    it('CustomizerCancelled_LeavesTheHostsAccentUntouched', async () => {
+      const user = userEvent.setup();
+      const [first, second] = ACCENT_NAMES;
+      const { container } = renderForm(
+        makeProfile(),
+        makeDraft({ accent: first })
+      );
+      /* eslint-disable-next-line testing-library/no-container, testing-library/no-node-access -- see above. */
+      const band = () => container.querySelector('.profile-space-band');
+      const before = band()?.getAttribute('style');
+
+      await user.click(editAltvatar()!);
+      await user.click(
+        screen.getByRole('radio', { name: new RegExp(second, 'i') })
+      );
+      await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+
+      expect(band()?.getAttribute('style')).toBe(before);
     });
   });
 
   describe('Owner', () => {
     it('RoleOwner_RendersEditableFieldsAndSubmitControl', () => {
-      renderWithProfileSwitch(
-        <ProfileSettingsForm
-          profile={makeProfile({ role: 'owner' })}
-          suggestedAccent={ACCENT_NAMES[0]}
-          readOnly={false}
-        />
-      );
+      renderForm(makeProfile({ role: 'owner' }));
       expect(screen.getByLabelText(/name/i)).toBeEnabled();
       expect(screen.getByLabelText(/tagline/i)).toBeEnabled();
-      for (const swatch of screen.getAllByRole('radio')) {
-        expect(swatch).toBeEnabled();
-      }
+      expect(editAltvatar()).toBeEnabled();
       expect(save()).toBeInTheDocument();
     });
 
-    it('SubmitEditedFields_SendsProfileIdWithNameTaglineAndAccent', async () => {
-      renderWithProfileSwitch(
-        <ProfileSettingsForm
-          profile={makeProfile({ role: 'owner' })}
-          suggestedAccent={ACCENT_NAMES[0]}
-          readOnly={false}
-        />
+    it('ClosedForm_CarriesNoAccentFieldAmongItsInputs', () => {
+      renderForm(makeProfile({ role: 'owner' }));
+      // Accent and face are one identity edited in one place. The picker
+      // exists, but only inside the customizer — never as a field of the form.
+      expect(screen.queryByRole('group', { name: /accent/i })).toBeNull();
+      expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    });
+
+    it('UneditedFields_DisablesTheSubmitControl', () => {
+      renderForm(makeProfile({ role: 'owner' }));
+      expect(save()).toBeDisabled();
+    });
+
+    it('EditedField_EnablesTheSubmitControl', async () => {
+      renderForm(makeProfile({ role: 'owner' }));
+      await userEvent.type(screen.getByLabelText(/tagline/i), 'Edited');
+      expect(save()).toBeEnabled();
+    });
+
+    it('FieldEditReverted_DisablesTheSubmitControlAgain', async () => {
+      renderForm(makeProfile({ role: 'owner', name: 'Kiddo' }));
+      const name = screen.getByLabelText(/name/i);
+      await userEvent.type(name, '!');
+      expect(save()).toBeEnabled();
+
+      await userEvent.type(name, '{backspace}');
+      expect(save()).toBeDisabled();
+    });
+
+    it('AltvatarConfirmedWithNoFieldEdit_LeavesTheSubmitControlDisabled', async () => {
+      const [, second] = ACCENT_NAMES;
+      renderForm(makeProfile({ role: 'owner' }));
+      await userEvent.click(editAltvatar()!);
+      await userEvent.click(
+        screen.getByRole('radio', { name: new RegExp(second, 'i') })
       );
+      await userEvent.click(
+        screen.getByRole('button', { name: /use this altvatar/i })
+      );
+
+      // The face is already committed by its own write, so the control has
+      // nothing left to save — offering it would write the fields for a change
+      // the viewer made somewhere else.
+      await waitFor(() => expect(updateProfileIdentity).toHaveBeenCalled());
+      expect(save()).toBeDisabled();
+    });
+
+    it('SubmitEditedFields_SendsNameAndTaglineAlone', async () => {
+      renderForm(makeProfile({ role: 'owner' }));
       await userEvent.clear(screen.getByLabelText(/name/i));
       await userEvent.type(screen.getByLabelText(/name/i), 'Renamed');
       await userEvent.type(
@@ -176,29 +303,21 @@ describe('ProfileSettingsForm', () => {
         expect(updateProfileSettings).toHaveBeenCalledWith('p1', {
           name: 'Renamed',
           tagline: 'Loves dinosaurs',
-          accent: ACCENT_NAMES[0],
         })
       );
     });
   });
 
   describe('Manager', () => {
+    // A viewer who cannot save is shown what the profile holds, not a roll.
     const renderAsManager = () =>
-      renderWithProfileSwitch(
-        <ProfileSettingsForm
-          profile={makeProfile({ role: 'manager' })}
-          suggestedAccent={ACCENT_NAMES[0]}
-          readOnly
-        />
-      );
+      renderForm(makeProfile({ role: 'manager' }), null, true);
 
-    it('RoleManager_DisablesEveryField', () => {
+    it('RoleManager_DisablesEveryFieldAndOffersNoAltvatarEdit', () => {
       renderAsManager();
       expect(screen.getByLabelText(/name/i)).toBeDisabled();
       expect(screen.getByLabelText(/tagline/i)).toBeDisabled();
-      for (const swatch of screen.getAllByRole('radio')) {
-        expect(swatch).toBeDisabled();
-      }
+      expect(editAltvatar()).toBeNull();
     });
 
     it('RoleManager_RendersNoSubmitControlAtAll', () => {
@@ -216,13 +335,8 @@ describe('ProfileSettingsForm', () => {
         success: false,
         message: 'Name is required',
       });
-      renderWithProfileSwitch(
-        <ProfileSettingsForm
-          profile={makeProfile({ role: 'owner' })}
-          suggestedAccent={ACCENT_NAMES[0]}
-          readOnly={false}
-        />
-      );
+      renderForm(makeProfile({ role: 'owner' }));
+      await userEvent.type(screen.getByLabelText(/tagline/i), 'Edited');
       await userEvent.click(save()!);
 
       expect(await screen.findByText('Name is required')).toBeInTheDocument();
@@ -235,13 +349,8 @@ describe('ProfileSettingsForm', () => {
         message: 'Validation failed',
         errors: { tagline: ['Tagline must be 40 characters or less'] },
       });
-      renderWithProfileSwitch(
-        <ProfileSettingsForm
-          profile={makeProfile({ role: 'owner' })}
-          suggestedAccent={ACCENT_NAMES[0]}
-          readOnly={false}
-        />
-      );
+      renderForm(makeProfile({ role: 'owner' }));
+      await userEvent.type(screen.getByLabelText(/tagline/i), 'Edited');
       await userEvent.click(save()!);
 
       expect(
@@ -250,35 +359,19 @@ describe('ProfileSettingsForm', () => {
     });
   });
 
-  describe('UnsetAccent', () => {
-    it('NoStoredAccent_SelectsSuggestedPresetWithoutWriting', () => {
-      renderWithProfileSwitch(
-        <ProfileSettingsForm
-          profile={makeProfile({ accent: null })}
-          suggestedAccent={ACCENT_NAMES[2]}
-          readOnly={false}
-        />
-      );
+  describe('SuggestedDraft', () => {
+    it('DraftAccent_OpensTheCustomizerOnThatPresetWithoutWriting', async () => {
+      renderForm(makeProfile({ accent: null }), makeDraft({
+        accent: ACCENT_NAMES[2],
+      }));
+      await userEvent.click(editAltvatar()!);
+
       const checked = screen
         .getAllByRole('radio')
         .filter((s) => (s as HTMLInputElement).checked);
       expect(checked).toHaveLength(1);
       expect(checked[0]).toHaveAttribute('value', String(ACCENT_NAMES[2]));
-      expect(updateProfileSettings).not.toHaveBeenCalled();
-    });
-
-    it('StoredAccent_SelectsTheStoredHue', () => {
-      renderWithProfileSwitch(
-        <ProfileSettingsForm
-          profile={makeProfile({ accent: ACCENT_NAMES[4] })}
-          suggestedAccent={ACCENT_NAMES[4]}
-          readOnly={false}
-        />
-      );
-      const checked = screen
-        .getAllByRole('radio')
-        .find((s) => (s as HTMLInputElement).checked);
-      expect(checked).toHaveAttribute('value', String(ACCENT_NAMES[4]));
+      expect(updateProfileIdentity).not.toHaveBeenCalled();
     });
   });
 

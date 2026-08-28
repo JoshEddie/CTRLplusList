@@ -18,6 +18,14 @@ names, and act on it before writing. No matching row means no decision binds.
 | `DAL` | [2026-08-25-active-selection-in-a-cookie-recency-on-the-membership](2026-08-25-active-selection-in-a-cookie-recency-on-the-membership.md) |
 | `DB Queries` | [2026-08-25-the-active-profile-is-the-authorization-context](2026-08-25-the-active-profile-is-the-authorization-context.md) |
 | `DB Queries` | [2026-08-25-a-block-belongs-to-the-human](2026-08-25-a-block-belongs-to-the-human.md) |
+| `DB Schema` | [2026-08-26-customizable-art-stores-its-inputs-and-its-rendering](2026-08-26-customizable-art-stores-its-inputs-and-its-rendering.md) |
+| `DAL` | [2026-08-26-onboarding-is-a-layout-short-circuit-not-a-guard](2026-08-26-onboarding-is-a-layout-short-circuit-not-a-guard.md) |
+| `DAL` | [2026-08-26-profile-art-never-comes-from-the-account](2026-08-26-profile-art-never-comes-from-the-account.md) |
+| `DB Queries` | [2026-08-26-profile-art-never-comes-from-the-account](2026-08-26-profile-art-never-comes-from-the-account.md) |
+| `Generated Art` | [2026-08-26-generated-art-speaks-our-own-option-vocabulary](2026-08-26-generated-art-speaks-our-own-option-vocabulary.md) |
+| `Generated Art` | [2026-08-26-customizable-art-stores-its-inputs-and-its-rendering](2026-08-26-customizable-art-stores-its-inputs-and-its-rendering.md) |
+| `Generated Art` | [2026-08-27-patched-library-markup-is-re-verified-by-rendering](2026-08-27-patched-library-markup-is-re-verified-by-rendering.md) |
+| `app/(main)/layout.tsx` | [2026-08-26-onboarding-is-a-layout-short-circuit-not-a-guard](2026-08-26-onboarding-is-a-layout-short-circuit-not-a-guard.md) |
 | `E2E Test` | [2026-08-25-no-environment-override-for-the-acting-profile](2026-08-25-no-environment-override-for-the-acting-profile.md) |
 | `Local Dev` | [2026-08-25-no-environment-override-for-the-acting-profile](2026-08-25-no-environment-override-for-the-acting-profile.md) |
 
@@ -32,6 +40,7 @@ names, and act on it before writing. No matching row means no decision binds.
 | `Migrations` | `drizzle/` |
 | `DAL` | `lib/data/` |
 | `DB Queries` | writing a query in any caller |
+| `Generated Art` | `lib/placeholderArt.ts`, `lib/altvatar/` |
 | `Seeding / Reset` | `scripts/seed-dev-users.ts`, `db:reset:dev` |
 | `Local Dev` | local mode via `USE_PG_DRIVER`, dev-server state |
 | `Skills & Agents` | `.claude/skills/`, `.claude/agents/` |

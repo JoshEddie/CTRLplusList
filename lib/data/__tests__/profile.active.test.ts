@@ -70,6 +70,8 @@ function membership(
     tagline: null,
     role: 'owner',
     accent: null,
+    art: null,
+    avatarStyle: null,
     last_active_at: null,
     ...overrides,
   };

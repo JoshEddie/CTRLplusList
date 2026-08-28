@@ -9,6 +9,7 @@ import {
 
 import {
   preferences,
+  profile_avatars,
   profile_members,
   profile_preferences,
   profiles,
@@ -29,6 +30,8 @@ import {
   selfProfileOf,
 } from '@/test/helpers/seedFollowGraph';
 import { ACCENT_NAMES } from '@/lib/accent';
+import * as accentWrite from '@/lib/data/profilePreference.write';
+import * as altvatarWrite from '@/lib/data/profileAvatar.write';
 import { eq, sql } from 'drizzle-orm';
 
 mockNextCache();
@@ -368,10 +371,16 @@ describe('NoInteractiveTransactions', () => {
 });
 
 const ACCENT = ACCENT_NAMES[0];
+// Selections only: the art is derived server-side, so no payload carries one.
+const ALTVATAR = {
+  style: 'icons',
+  options: { seed: 'kiddo', selections: {} },
+};
 const validPayload = {
   name: 'Kiddo',
   tagline: 'Loves dinosaurs',
   accent: ACCENT,
+  altvatar: ALTVATAR,
 };
 
 async function profileRows() {
@@ -382,6 +391,9 @@ async function membershipRows() {
 }
 async function accentRows() {
   return db.select().from(profile_preferences);
+}
+async function avatarRows() {
+  return db.select().from(profile_avatars);
 }
 
 describe('createProfile', () => {
@@ -418,6 +430,7 @@ describe('createProfile', () => {
     // longer matches.
     expect(updateTag.mock.calls).toEqual([
       [`profile_preferences:profile:${res.id}`],
+      [`profile_avatars:profile:${res.id}`],
       [`profile_members:user:${VIEWER.id}`],
     ]);
   });
@@ -531,22 +544,23 @@ describe('createProfile', () => {
 describe('updateProfileSettings', () => {
   const MANAGED = 'managed-profile';
   const NEXT_ACCENT = ACCENT_NAMES[1];
-  const edit = {
-    name: 'Renamed',
-    tagline: 'New tagline',
-    accent: NEXT_ACCENT,
-  };
+  const edit = { name: 'Renamed', tagline: 'New tagline' };
 
   beforeEach(async () => {
     await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
   });
 
-  it('Owner_PersistsNameTaglineAndAccent', async () => {
+  it('Owner_PersistsNameAndTagline-TouchesNeitherAccentNorAltvatar', async () => {
     await db.insert(profile_members).values({
       user_id: VIEWER.id,
       profile_id: MANAGED,
       role: 'owner',
     });
+    await accentWrite.writeAccent(MANAGED, NEXT_ACCENT);
+    await altvatarWrite.writeAltvatar(MANAGED, ALTVATAR);
+    const [avatarBefore] = await avatarRows();
+    updateTag.mockClear();
+
     const res = await actions.updateProfileSettings(MANAGED, edit);
     expect(res.success).toBe(true);
 
@@ -557,16 +571,15 @@ describe('updateProfileSettings', () => {
     expect(row).toEqual(
       expect.objectContaining({ name: 'Renamed', tagline: 'New tagline' })
     );
-    expect(
-      (await accentRows()).filter((r) => r.profile_id === MANAGED)
-    ).toEqual([expect.objectContaining({ value: String(NEXT_ACCENT) })]);
-    expect(updateTag.mock.calls).toEqual([
-      [`profile_preferences:profile:${MANAGED}`],
-      [`profiles:id:${MANAGED}`],
-    ]);
+    // The identity has its own writer and its own commit. A field submit that
+    // re-derived the art would re-render it and invalidate its tag for a value
+    // nobody changed.
+    const [avatar] = await avatarRows();
+    expect(avatar.updated_at).toEqual(avatarBefore.updated_at);
+    expect(updateTag.mock.calls).toEqual([[`profiles:id:${MANAGED}`]]);
   });
 
-  it('Manager_ReturnsUnauthorized-NoColumnOrPreferenceWritten', async () => {
+  it('Manager_ReturnsUnauthorized-NoColumnWritten', async () => {
     await db.insert(profile_members).values({
       user_id: VIEWER.id,
       profile_id: MANAGED,
@@ -581,10 +594,10 @@ describe('updateProfileSettings', () => {
       .where(eq(profiles.id, MANAGED));
     expect(row.name).toBe('Kiddo');
     expect(row.tagline).toBeNull();
-    expect(await accentRows()).toHaveLength(0);
   });
 
-  it('NonMember_ReturnsUnauthorized-NoColumnOrPreferenceWritten', async () => {
+  it('NoSession_ReturnsUnauthorized-NoColumnWritten', async () => {
+    noSession();
     const res = await actions.updateProfileSettings(MANAGED, edit);
     expect(res.error).toBe('Unauthorized');
 
@@ -593,7 +606,17 @@ describe('updateProfileSettings', () => {
       .from(profiles)
       .where(eq(profiles.id, MANAGED));
     expect(row.name).toBe('Kiddo');
-    expect(await accentRows()).toHaveLength(0);
+  });
+
+  it('NonMember_ReturnsUnauthorized-NoColumnWritten', async () => {
+    const res = await actions.updateProfileSettings(MANAGED, edit);
+    expect(res.error).toBe('Unauthorized');
+
+    const [row] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, MANAGED));
+    expect(row.name).toBe('Kiddo');
   });
 
   it('RejectedPaths_DoNotCallUpdateTag', async () => {
@@ -630,6 +653,80 @@ describe('updateProfileSettings', () => {
   });
 });
 
+describe('updateProfileIdentity', () => {
+  const MANAGED = 'identity-profile';
+  const NEXT_ACCENT = ACCENT_NAMES[1];
+  const identity = { accent: NEXT_ACCENT, altvatar: ALTVATAR };
+
+  beforeEach(async () => {
+    await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
+  });
+
+  it('Owner_PersistsAccentAndAltvatar-LeavesNameAndTagline', async () => {
+    await db.insert(profile_members).values({
+      user_id: VIEWER.id,
+      profile_id: MANAGED,
+      role: 'owner',
+    });
+    const res = await actions.updateProfileIdentity(MANAGED, identity);
+    expect(res.success).toBe(true);
+
+    expect(
+      (await accentRows()).filter((r) => r.profile_id === MANAGED)
+    ).toEqual([expect.objectContaining({ value: String(NEXT_ACCENT) })]);
+    expect(
+      (await avatarRows()).filter((r) => r.profile_id === MANAGED)
+    ).toHaveLength(1);
+    // Confirming a face settles the face. The fields are still whatever the
+    // form holds, unwritten until their own submit.
+    const [row] = await db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.id, MANAGED));
+    expect(row.name).toBe('Kiddo');
+    expect(row.tagline).toBeNull();
+  });
+
+  it('Manager_ReturnsUnauthorized-NoPreferenceOrAltvatarWritten', async () => {
+    await db.insert(profile_members).values({
+      user_id: VIEWER.id,
+      profile_id: MANAGED,
+      role: 'manager',
+    });
+    const res = await actions.updateProfileIdentity(MANAGED, identity);
+    expect(res.error).toBe('Unauthorized');
+
+    // The art is an ownership act like the accent: a manager submitting a
+    // changed one writes no row.
+    expect(await accentRows()).toHaveLength(0);
+    expect(await avatarRows()).toHaveLength(0);
+  });
+
+  it('NoSession_ReturnsUnauthorized-NoPreferenceOrAltvatarWritten', async () => {
+    noSession();
+    const res = await actions.updateProfileIdentity(MANAGED, identity);
+    expect(res.error).toBe('Unauthorized');
+    expect(await accentRows()).toHaveLength(0);
+    expect(await avatarRows()).toHaveLength(0);
+  });
+
+  it('UnknownAccent_ReturnsAccentFieldError-WritesNothing', async () => {
+    await db.insert(profile_members).values({
+      user_id: VIEWER.id,
+      profile_id: MANAGED,
+      role: 'owner',
+    });
+    const res = await actions.updateProfileIdentity(MANAGED, {
+      ...identity,
+      accent: 'not-a-preset',
+    });
+    expect(res.errors?.accent).toBeDefined();
+    expect(await accentRows()).toHaveLength(0);
+    expect(await avatarRows()).toHaveLength(0);
+    expect(updateTag).not.toHaveBeenCalled();
+  });
+});
+
 describe('AccentWriteFailure', () => {
   const MANAGED = 'accent-fail-profile';
 
@@ -661,7 +758,7 @@ describe('AccentWriteFailure', () => {
     });
   });
 
-  it('UpdateWithFailingAccentWrite_ReportsFailureThoughNameAndTaglinePersisted', async () => {
+  it('IdentityWithFailingAccentWrite_ReportsFailureAndStoresNoAccent', async () => {
     await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
     await db.insert(profile_members).values({
       user_id: VIEWER.id,
@@ -670,21 +767,82 @@ describe('AccentWriteFailure', () => {
     });
 
     await withNoAccentCatalog(async () => {
-      const res = await actions.updateProfileSettings(MANAGED, {
-        name: 'Renamed',
-        tagline: 'New tagline',
+      const res = await actions.updateProfileIdentity(MANAGED, {
         accent: ACCENT_NAMES[1],
+        altvatar: ALTVATAR,
       });
-      expect(res.success).toBe(false);
-      expect(res.message).toContain('accent');
-
-      const [row] = await db
-        .select()
-        .from(profiles)
-        .where(eq(profiles.id, MANAGED));
-      expect(row.name).toBe('Renamed');
+      expect(res).toMatchObject({
+        success: false,
+        message: 'Your Altvatar was not fully saved',
+      });
       expect(await accentRows()).toHaveLength(0);
     });
+  });
+});
+
+describe('AltvatarWriteFailure', () => {
+  const MANAGED = 'altvatar-fail-profile';
+
+  // The art write has no foreign key to break, so its failure is provoked at
+  // the writer itself — what the action does with the report is the behaviour
+  // under test.
+  function withFailingAltvatarWrite() {
+    return vi.spyOn(altvatarWrite, 'writeAltvatar').mockResolvedValue(false);
+  }
+
+  beforeEach(async () => {
+    await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
+    await db.insert(profile_members).values({
+      user_id: VIEWER.id,
+      profile_id: MANAGED,
+      role: 'owner',
+    });
+  });
+
+  it('CreateWithFailingAltvatarWrite_StillCreatesProfileAndMembership', async () => {
+    withFailingAltvatarWrite();
+    const res = await actions.createProfile(validPayload);
+    expect(res.success).toBe(true);
+
+    expect((await profileRows()).filter((p) => p.id === res.id)).toHaveLength(
+      1
+    );
+    expect(
+      (await membershipRows()).filter((m) => m.profile_id === res.id)
+    ).toEqual([expect.objectContaining({ role: 'owner' })]);
+    // The profile carries no art and renders initials.
+    expect(await avatarRows()).toHaveLength(0);
+  });
+
+  it('IdentityWithFailingAltvatarWrite_ReportsFailureThoughAccentLanded', async () => {
+    withFailingAltvatarWrite();
+    const res = await actions.updateProfileIdentity(MANAGED, {
+      accent: ACCENT_NAMES[1],
+      altvatar: ALTVATAR,
+    });
+    expect(res).toMatchObject({
+      success: false,
+      message: 'Your Altvatar was not fully saved',
+    });
+    expect(
+      (await accentRows()).filter((r) => r.profile_id === MANAGED)
+    ).toHaveLength(1);
+  });
+
+  it('IdentityWithBothHalvesFailing_ReportsFailureAndStoresNeither', async () => {
+    withFailingAltvatarWrite();
+    vi.spyOn(accentWrite, 'writeAccent').mockResolvedValue(false);
+
+    const res = await actions.updateProfileIdentity(MANAGED, {
+      accent: ACCENT_NAMES[1],
+      altvatar: ALTVATAR,
+    });
+    expect(res).toMatchObject({
+      success: false,
+      message: 'Your Altvatar was not fully saved',
+    });
+    expect(await accentRows()).toHaveLength(0);
+    expect(await avatarRows()).toHaveLength(0);
   });
 });
 
@@ -704,7 +862,6 @@ describe('ProfileWriteErrors', () => {
     const res = await actions.updateProfileSettings(MANAGED, {
       name: '   ',
       tagline: 'New tagline',
-      accent: ACCENT_NAMES[0],
     });
     expect(res.errors?.name).toBeDefined();
 
@@ -726,7 +883,6 @@ describe('ProfileWriteErrors', () => {
       const res = await actions.updateProfileSettings(MANAGED, {
         name: 'Renamed',
         tagline: null,
-        accent: ACCENT_NAMES[0],
       });
       expect(res.error).toBe('Failed to update profile');
       expect(updateTag).not.toHaveBeenCalled();
@@ -742,6 +898,7 @@ describe('ProfileWriteErrors', () => {
       name: 'No Tagline',
       tagline: undefined as unknown as null,
       accent: ACCENT_NAMES[0],
+      altvatar: ALTVATAR,
     });
     expect(res.success).toBe(true);
     const [created] = (await profileRows()).filter((p) => p.id === res.id);

@@ -28,8 +28,20 @@ export const E2E_DATABASE_URL = e2eEnv.DATABASE_URL;
 // needs one `next start` per mode. Non-secrets.
 export const AUTH_PORT = 3100;
 export const GUEST_PORT = 3101;
+export const SIGNUP_PORT = 3102;
+export const EXISTING_PORT = 3103;
 export const AUTH_BASE_URL = `http://localhost:${AUTH_PORT}`;
 export const GUEST_BASE_URL = `http://localhost:${GUEST_PORT}`;
+export const SIGNUP_BASE_URL = `http://localhost:${SIGNUP_PORT}`;
+export const EXISTING_BASE_URL = `http://localhost:${EXISTING_PORT}`;
+
+// The two un-onboarded seeded identities, one per arm of the onboarding latch.
+// Mirrors SIGNUP_FIXTURE_ID / EXISTING_FIXTURE_ID in scripts/seed-dev-users.ts,
+// kept as separate literals for the same reason GUEST_SESSION_USER is: the
+// Playwright config may not import the seed's DB module graph. Because the
+// bypass is process-wide, each is a server mode rather than a per-test switch.
+export const SIGNUP_SESSION_USER = 'dev-unonboarded-signup';
+export const EXISTING_SESSION_USER = 'dev-unonboarded-existing';
 
 // The session-identity selector value meaning "no session" (guest mode).
 // Mirrors GUEST_SESSION_USER in lib/auth.ts (kept as a separate literal to

@@ -1,10 +1,9 @@
 import MoreCard from '@/app/ui/components/MoreCard';
+import type { ProfileAvatarView } from '@/lib/types';
 import UserCard from './UserCard';
 
-export type FollowingFeedProfile = {
+export type FollowingFeedProfile = ProfileAvatarView & {
   id: string;
-  name: string | null;
-  image: string | null;
   new_count: number;
   latest_shared_at: Date | null;
 };
@@ -29,7 +28,7 @@ export default function UserCardGrid({
       {profiles.map((p) => (
         <li key={p.id}>
           <UserCard
-            profile={{ id: p.id, name: p.name, image: p.image }}
+            profile={p}
             newCount={p.new_count}
             latestSharedAt={p.latest_shared_at}
           />

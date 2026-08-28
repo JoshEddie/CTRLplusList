@@ -5,7 +5,7 @@ import { getUserIdentity } from '@/lib/data/profile';
 import { getProfileForViewer } from '@/lib/data/profile';
 import { getUserIdByEmail } from '@/lib/data/user';
 import ProfileHeaderSection from '../ProfileHeaderSection';
-import type { UserIdentity } from '@/lib/types';
+import type { ProfileAvatarView, UserIdentity } from '@/lib/types';
 import { makeProfile as makeProfileRow } from '@/test/helpers/profile';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
@@ -24,7 +24,7 @@ vi.mock('next/navigation', () => ({ notFound: notFoundMock }));
 
 vi.mock('@/app/(main)/users/ui/components/ProfileHeader', () => ({
   default: (props: {
-    profile: { id: string; name: string | null; image: string | null };
+    profile: ProfileAvatarView & { id: string };
     publicListCount: number;
     viewer: UserIdentity | null;
     showFollowButton: boolean;
@@ -33,7 +33,7 @@ vi.mock('@/app/(main)/users/ui/components/ProfileHeader', () => ({
       data-testid="profile-header"
       data-profile-id={props.profile.id}
       data-name={props.profile.name ?? ''}
-      data-image={props.profile.image ?? ''}
+      data-art={props.profile.art ?? ''}
       data-public-list-count={String(props.publicListCount)}
       data-viewer-profile-id={props.viewer?.activeProfile.id ?? ''}
       data-show-follow-button={String(props.showFollowButton)}
@@ -56,7 +56,9 @@ function makeProfile(
   overrides: Partial<{
     id: string;
     name: string | null;
-    image: string | null;
+    accent: string | null;
+    art: string | null;
+    avatarStyle: string | null;
     publicListCount: number;
     viewerIsFollowing: boolean;
     viewerIsBlocked: boolean;
@@ -66,7 +68,9 @@ function makeProfile(
   return {
     id: 'target',
     name: 'Target User',
-    image: null,
+    accent: null,
+    art: null,
+    avatarStyle: null,
     publicListCount: 3,
     viewerIsFollowing: false,
     viewerIsBlocked: false,

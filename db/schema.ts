@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   serial,
@@ -12,6 +13,8 @@ import {
 } from 'drizzle-orm/pg-core';
 import { nanoid } from 'nanoid';
 import type { AdapterAccountType } from 'next-auth/adapters';
+
+import type { AltvatarOptions } from '@/lib/altvatar/types';
 
 export const users = pgTable('user', {
   id: text('id')
@@ -283,6 +286,19 @@ export const profile_preferences = pgTable(
   (table) => [primaryKey({ columns: [table.profile_id, table.preference_id] })]
 );
 
+// The primary key is the one-row-per-profile rule. No default and no backfill:
+// the row's absence is what `onboarding-gate` reads to raise the gate.
+export const profile_avatars = pgTable('profile_avatars', {
+  profile_id: text('profile_id')
+    .references(() => profiles.id, { onDelete: 'cascade' })
+    .primaryKey(),
+  style: text('style').notNull(),
+  options: jsonb('options').$type<AltvatarOptions>().notNull(),
+  art: text('art').notNull(),
+  created_at: timestamp('created_at').defaultNow().notNull(),
+  updated_at: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Relations between tables
 export const item_storesRelations = relations(item_stores, ({ one }) => ({
   item: one(items, {
@@ -389,12 +405,23 @@ export const user_followsRelations = relations(user_follows, ({ one }) => ({
   }),
 }));
 
-export const profilesRelations = relations(profiles, ({ many }) => ({
+export const profilesRelations = relations(profiles, ({ many, one }) => ({
   members: many(profile_members),
   preferences: many(profile_preferences),
+  avatar: one(profile_avatars),
   lists: many(lists, { relationName: 'listOwnerProfile' }),
   items: many(items, { relationName: 'itemOwnerProfile' }),
 }));
+
+export const profile_avatarsRelations = relations(
+  profile_avatars,
+  ({ one }) => ({
+    profile: one(profiles, {
+      fields: [profile_avatars.profile_id],
+      references: [profiles.id],
+    }),
+  })
+);
 
 export const profile_membersRelations = relations(
   profile_members,

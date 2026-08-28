@@ -34,9 +34,10 @@ const fullUser: User = {
 
 const trigger = () => screen.getByRole('button', { name: 'User menu' });
 
-const SELF = { id: 'p-self', name: 'Ada Lovelace', accent: null };
-const KIDDO = { id: 'p-kiddo', name: 'Kiddo', accent: null };
-const NANA = { id: 'p-nana', name: 'Nana', accent: null };
+const face = { accent: null, art: null, avatarStyle: null };
+const SELF = { id: 'p-self', name: 'Ada Lovelace', ...face };
+const KIDDO = { id: 'p-kiddo', name: 'Kiddo', ...face };
+const NANA = { id: 'p-nana', name: 'Nana', ...face };
 
 // The viewer acts as their own profile, so the two managed ones are offered
 // and neither reads as the way back.
@@ -94,9 +95,9 @@ describe('UserAvatarPopover', () => {
       <UserAvatarPopover user={fullUser} activeProfile={{ ...KIDDO, accent }} />
     );
 
-    /* eslint-disable testing-library/no-node-access -- the accent variables sit on the initials span inside the trigger, which carries only a class: no role and no accessible name of its own. */
+    /* eslint-disable testing-library/no-node-access -- the accent variables sit on the disc inside the trigger, which is aria-hidden and carries only a class: no role and no accessible name of its own. */
     const style =
-      trigger().querySelector('.avatar-initials')?.getAttribute('style') ?? '';
+      trigger().querySelector('.altvatar-disc')?.getAttribute('style') ?? '';
     /* eslint-enable testing-library/no-node-access */
 
     // The ring is keyed off the dark stop; the disc paints the light one.

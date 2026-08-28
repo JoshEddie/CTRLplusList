@@ -22,7 +22,6 @@ import {
   randomAccentName,
 } from '@/lib/accent';
 
-const FALLBACK = 'var(--hero-gradient)';
 // The custom properties are the module's only export surface, so every colour
 // assertion reads the one a component would actually set.
 const varsOf = (name: string | null | undefined) =>
@@ -113,37 +112,20 @@ describe('accent', () => {
   });
 
   describe('Fallback', () => {
-    it.each([null, undefined])(
-      'Accent%s_ReturnsHeroGradientAndWhiteInk',
+    it.each([null, undefined, 'not-a-preset'])(
+      'Accent%s_RendersTheIrisPresetRatherThanNothing',
       (value) => {
-        expect(varsOf(value)['--accent-bg']).toBe(FALLBACK);
-        expect(varsOf(value)['--accent-disc']).toBe(FALLBACK);
-        expect(varsOf(value)['--accent-ink']).toBe('var(--light-color)');
-        // The marks that sit beside the band fall back to the brand purple,
-        // which is what the fallback band's own dark end is.
-        expect(varsOf(value)['--accent-dark']).toBe('var(--primary-color)');
-        // A complete colour, not the brand token with an alpha stuck on it —
-        // that renders as invalid CSS and drops the whole declaration.
-        expect(varsOf(value)['--accent-shadow']).toBe(
-          'color-mix(in srgb, var(--primary-color) 33%, transparent)'
-        );
+        expect(varsOf(value)).toEqual(varsOf('iris'));
       }
     );
 
-    it('NameNoPresetCarries_FallsBackRatherThanRenderingNothing', () => {
-      const vars = varsOf('not-a-preset');
-      expect(vars['--accent-bg']).toBe(FALLBACK);
-      expect(vars['--accent-ink']).toBe('var(--light-color)');
-      expect(vars['--accent-dark']).toBe('var(--primary-color)');
-      expect(vars['--accent-shadow']).toBe(
-        'color-mix(in srgb, var(--primary-color) 33%, transparent)'
-      );
-    });
-
-    it('HeroGradient_IsNotAmongSelectablePresets', () => {
-      expect(ACCENT_NAMES.map((n) => varsOf(n)['--accent-bg'])).not.toContain(
-        FALLBACK
-      );
+    it('Fallback_PaintsCompleteColoursOnEveryDerivation', () => {
+      // One fallback rule, one answer: no derivation may keep a brand token
+      // while its siblings resolve a preset, and an alpha appended to a
+      // `var(...)` renders as invalid CSS and drops the declaration.
+      for (const value of Object.values(varsOf(null))) {
+        expect(value).not.toContain('var(');
+      }
     });
   });
 

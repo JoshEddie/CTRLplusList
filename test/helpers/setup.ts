@@ -9,3 +9,9 @@ import { afterEach } from 'vitest';
 afterEach(() => {
   cleanup();
 });
+
+// jsdom implements no scrolling, so `Element.scrollTo` is simply absent — any
+// component that restores scroll position on its own throws rather than
+// no-oping. Stubbed here rather than guarded in the components, whose call is
+// correct in a browser.
+Element.prototype.scrollTo = () => {};

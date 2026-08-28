@@ -1,7 +1,19 @@
 import { db } from '@/db';
-import { items, list_items, lists, profiles } from '@/db/schema';
-import { cacheTags } from '@/lib/cacheTags';
-import { withSelfAvatar } from '@/lib/data/profile.identity';
+import {
+  items,
+  list_items,
+  lists,
+  profile_avatars,
+  profiles,
+} from '@/db/schema';
+import { cacheTags, profileIdentityTags } from '@/lib/cacheTags';
+import {
+  accentPreferences,
+  avatarColumns,
+  avatarViewOf,
+  withProfileAvatar,
+  type RelationalProfile,
+} from '@/lib/data/profileAvatar';
 import {
   VISIBILITY,
   fromDb,
@@ -19,18 +31,42 @@ export function withVisibility<T extends { visibility: string }>(
   return { ...row, visibility: fromDb(row.visibility) };
 }
 
+// Collapses the relational avatar join into the flat ProfileAvatarView every
+// list card paints its accent and owner disc from. The join scaffolding
+// (`avatar`, `preferences`) is dropped rather than forwarded, so nothing
+// downstream can read a profile's face two different ways.
+export function withOwnerAvatar<
+  T extends {
+    visibility: string;
+    profile: NonNullable<RelationalProfile> & { id: string };
+  },
+>(row: T) {
+  return {
+    ...withVisibility(row),
+    profile: { id: row.profile.id, ...avatarViewOf(row.profile) },
+  };
+}
+
 export async function getList(id: string) {
   'use cache';
-  cacheTag(cacheTags.lists, cacheTags.profiles, cacheTags.list(id));
+  cacheTag(
+    cacheTags.lists,
+    cacheTags.profiles,
+    cacheTags.profileAvatars,
+    cacheTags.profilePreferences,
+    cacheTags.list(id)
+  );
   try {
     const [result] = await db
       .select({
         ...getTableColumns(lists),
-        profile: { id: profiles.id, name: profiles.name },
+        profile: { id: profiles.id, name: profiles.name, ...avatarColumns },
         item_count: count(items.id),
       })
       .from(lists)
       .innerJoin(profiles, eq(profiles.id, lists.profile_id))
+      .leftJoin(profile_avatars, eq(profile_avatars.profile_id, profiles.id))
+      .leftJoin(accentPreferences, eq(accentPreferences.profile_id, profiles.id))
       .leftJoin(list_items, eq(list_items.list_id, lists.id))
       .leftJoin(
         items,
@@ -40,10 +76,15 @@ export async function getList(id: string) {
         )
       )
       .where(eq(lists.id, id))
-      .groupBy(lists.id, profiles.id);
+      .groupBy(
+        lists.id,
+        profiles.id,
+        profile_avatars.profile_id,
+        accentPreferences.accent
+      );
 
     if (!result) return undefined;
-    cacheTag(cacheTags.profile(result.profile_id));
+    cacheTag(...profileIdentityTags([result.profile_id]));
     return withVisibility(result);
   } catch (error) {
     console.error(`Error fetching list ${id}:`, error);
@@ -56,8 +97,10 @@ export async function getListsByProfile(profileId: string) {
   cacheTag(
     cacheTags.lists,
     cacheTags.profiles,
+    cacheTags.profileAvatars,
+    cacheTags.profilePreferences,
     cacheTags.listsOfProfile(profileId),
-    cacheTags.profile(profileId)
+    ...profileIdentityTags([profileId])
   );
   try {
     const result = await db.query.lists.findMany({
@@ -65,11 +108,12 @@ export async function getListsByProfile(profileId: string) {
       with: {
         profile: {
           columns: { id: true, name: true },
+          with: withProfileAvatar,
         },
       },
       orderBy: (lists, { desc }) => [desc(lists.updated_at)],
     });
-    return result.map(withVisibility);
+    return result.map(withOwnerAvatar);
   } catch (error) {
     console.error('Error fetching lists:', error);
     throw new Error('Failed to fetch lists');
@@ -81,8 +125,10 @@ export async function getListsSharedByProfile(profileId: string) {
   cacheTag(
     cacheTags.lists,
     cacheTags.profiles,
+    cacheTags.profileAvatars,
+    cacheTags.profilePreferences,
     cacheTags.listsOfProfile(profileId),
-    cacheTags.profile(profileId)
+    ...profileIdentityTags([profileId])
   );
   try {
     const result = await db.query.lists.findMany({
@@ -96,19 +142,21 @@ export async function getListsSharedByProfile(profileId: string) {
       with: {
         profile: {
           columns: { id: true, name: true },
+          with: withProfileAvatar,
         },
       },
       orderBy: (lists, { desc }) => [desc(lists.created_at)],
     });
-    return result.map(withVisibility);
+    return result.map(withOwnerAvatar);
   } catch (error) {
     console.error('Error fetching lists:', error);
     throw new Error('Failed to fetch lists');
   }
 }
 
-// Not cached: joins the owning profile's account for image (NextAuth updates
-// user rows out-of-band on sign-in; no invalidation hook).
+// Not cached: the account join that once forced this is gone, but adopting
+// `'use cache'` is a freshness decision with its own tag audit, and this read
+// keeps its current behaviour until one is made.
 export async function getPublicListsByProfile(
   profileId: string,
   opts: { limit?: number } = {}
@@ -122,13 +170,13 @@ export async function getPublicListsByProfile(
       with: {
         profile: {
           columns: { id: true, name: true },
-          with: withSelfAvatar,
+          with: withProfileAvatar,
         },
       },
       orderBy: (lists, { desc }) => [desc(lists.shared_at)],
       limit: opts.limit,
     });
-    return result.map(withVisibility);
+    return result.map(withOwnerAvatar);
   } catch (error) {
     console.error('Error fetching public lists:', error);
     throw new Error('Failed to fetch public lists');

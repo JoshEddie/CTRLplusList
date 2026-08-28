@@ -16,10 +16,9 @@ export default async function FollowingRail({ userId }: { userId: string }) {
       {profiles.map((p) => (
         <div className="list-card-row-item" role="listitem" key={p.id}>
           <UserCard
-            profile={{ id: p.id, name: p.name, image: p.image }}
+            profile={p}
             newCount={p.new_count}
             latestSharedAt={p.latest_shared_at}
-            compact
           />
         </div>
       ))}

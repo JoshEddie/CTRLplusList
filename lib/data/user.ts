@@ -1,6 +1,13 @@
 import { db } from '@/db';
-import { lists, profiles, user_follows, users } from '@/db/schema';
+import {
+  lists,
+  profile_avatars,
+  profiles,
+  user_follows,
+  users,
+} from '@/db/schema';
 import { selfMemberships } from '@/lib/data/profile.identity';
+import { accentPreferences, avatarColumns } from '@/lib/data/profileAvatar';
 import { UserTable } from '@/lib/types';
 import { VISIBILITY, visibilityDbValues } from '@/lib/visibility';
 import { cacheTags } from '@/lib/cacheTags';
@@ -22,7 +29,7 @@ export const getUserIdByEmail: (email: string) => Promise<UserTable | null> =
     }
   });
 
-// Not cached: joins the followee profile's account for image.
+// Not cached: joins the followee profile's own face.
 export async function getFollowingByUser(userId: string) {
   try {
     const result = await db
@@ -33,13 +40,13 @@ export async function getFollowingByUser(userId: string) {
         followee: {
           id: profiles.id,
           name: profiles.name,
-          image: users.image,
+          ...avatarColumns,
         },
       })
       .from(user_follows)
       .innerJoin(profiles, eq(profiles.id, user_follows.followee_profile_id))
-      .leftJoin(selfMemberships, eq(selfMemberships.profile_id, profiles.id))
-      .leftJoin(users, eq(users.id, selfMemberships.user_id))
+      .leftJoin(profile_avatars, eq(profile_avatars.profile_id, profiles.id))
+      .leftJoin(accentPreferences, eq(accentPreferences.profile_id, profiles.id))
       .where(eq(user_follows.follower_id, userId))
       .orderBy(desc(user_follows.created_at));
     return result;
@@ -96,15 +103,14 @@ export async function viewerHasAnyFollows(viewerId: string): Promise<boolean> {
  *     last visited /following (or since the follow was created, whichever is
  *     later)
  */
-// Not cached: reads `users.image` which NextAuth updates out-of-band on
-// sign-in (no invalidation hook).
+// Not cached: joins `users` for the viewer's own last-seen timestamp.
 export async function getFollowingFeedProfiles(viewerId: string) {
   try {
     const rows = await db
       .select({
         id: profiles.id,
         name: profiles.name,
-        image: users.image,
+        ...avatarColumns,
         follow_created_at: user_follows.created_at,
         last_seen_following_at: users.last_seen_following_at,
         latest_shared_at: sql<Date | null>`MAX(${lists.shared_at})`.as(
@@ -119,6 +125,8 @@ export async function getFollowingFeedProfiles(viewerId: string) {
       .innerJoin(profiles, eq(profiles.id, user_follows.followee_profile_id))
       .leftJoin(selfMemberships, eq(selfMemberships.profile_id, profiles.id))
       .leftJoin(users, eq(users.id, selfMemberships.user_id))
+      .leftJoin(profile_avatars, eq(profile_avatars.profile_id, profiles.id))
+      .leftJoin(accentPreferences, eq(accentPreferences.profile_id, profiles.id))
       .leftJoin(
         lists,
         and(
@@ -127,7 +135,13 @@ export async function getFollowingFeedProfiles(viewerId: string) {
         )
       )
       .where(eq(user_follows.follower_id, viewerId))
-      .groupBy(profiles.id, users.id, user_follows.created_at)
+      .groupBy(
+        profiles.id,
+        users.id,
+        user_follows.created_at,
+        profile_avatars.profile_id,
+        accentPreferences.accent
+      )
       .orderBy(desc(sql`MAX(${lists.shared_at})`));
 
     // Convert Postgres-returned count strings to numbers.

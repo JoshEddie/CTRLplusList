@@ -1,14 +1,16 @@
 import { db } from '@/db';
 import { list_visits } from '@/db/schema';
-import { withVisibility } from '@/lib/data/list';
+import { withOwnerAvatar } from '@/lib/data/list';
+import { withProfileAvatar } from '@/lib/data/profileAvatar';
 import { cacheTags } from '@/lib/cacheTags';
 import { and, eq, isNotNull } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
-// Not cached: joins the owning profile for `list.profile.name`. The profile
-// actions do fire `updateTag('profiles')`, but NextAuth's createUser event
-// still writes a self-profile out of band with no invalidation hook, so a tag
-// here would not cover every writer and caching can pin a stale name.
+// Not cached: joins the owning profile for `list.profile.name` and its face.
+// Every writer of those now fires narrow tags, so the reason this read was
+// exempt has gone — but adopting `'use cache'` is a freshness decision with
+// its own tag audit, and this read keeps its current behaviour until one is
+// made.
 export async function getBookmarkedListsByUser(userId: string) {
   try {
     const result = await db.query.list_visits.findMany({
@@ -20,14 +22,15 @@ export async function getBookmarkedListsByUser(userId: string) {
         list: {
           with: {
             profile: {
-              columns: { name: true },
+              columns: { id: true, name: true },
+              with: withProfileAvatar,
             },
           },
         },
       },
       orderBy: (list_visits, { desc }) => [desc(list_visits.favorited_at)],
     });
-    return result.map((row) => ({ ...row, list: withVisibility(row.list) }));
+    return result.map((row) => ({ ...row, list: withOwnerAvatar(row.list) }));
   } catch (error) {
     console.error('Error fetching bookmarked lists:', error);
     throw new Error('Failed to fetch bookmarked lists');
@@ -56,8 +59,7 @@ export async function getBookmarkStatus(
 }
 
 // Not cached: joins the owning profile (see getBookmarkedListsByUser above for
-// why an incompletely-invalidated `profiles` join keeps this read
-// fresh-per-request).
+// why this read keeps its current behaviour).
 export async function getVisitHistoryByUser(
   userId: string,
   opts: { limit?: number } = {}
@@ -72,7 +74,8 @@ export async function getVisitHistoryByUser(
         list: {
           with: {
             profile: {
-              columns: { name: true },
+              columns: { id: true, name: true },
+              with: withProfileAvatar,
             },
           },
         },
@@ -80,7 +83,7 @@ export async function getVisitHistoryByUser(
       orderBy: (list_visits, { desc }) => [desc(list_visits.last_visited_at)],
       limit: opts.limit,
     });
-    return result.map((row) => ({ ...row, list: withVisibility(row.list) }));
+    return result.map((row) => ({ ...row, list: withOwnerAvatar(row.list) }));
   } catch (error) {
     console.error('Error fetching visit history:', error);
     throw new Error('Failed to fetch visit history');

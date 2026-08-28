@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { bootPglite, resetDb } from '../../test/helpers/db';
 import {
@@ -7,6 +7,7 @@ import {
   lists,
   ACCENT_PREFERENCE_ID,
   preferences,
+  profile_avatars,
   profile_members,
   profile_preferences,
   profiles,
@@ -15,23 +16,9 @@ import {
   users,
 } from '../schema';
 
-// lib/auth.ts pulls in NextAuth, the Drizzle adapter and the Neon-backed db
-// module at import time; only the exported account-creation handler is under
-// test here, and it takes its database as an argument.
-vi.mock('next-auth', () => ({
-  default: () => ({
-    handlers: {},
-    signIn: vi.fn(),
-    signOut: vi.fn(),
-    auth: vi.fn(),
-  }),
-}));
-vi.mock('next-auth/providers/google', () => ({ default: {} }));
-vi.mock('@auth/drizzle-adapter', () => ({ DrizzleAdapter: () => ({}) }));
-vi.mock('@/db', () => ({ db: {} }));
+import { createSelfProfile } from '../../lib/data/profile.self';
 
 let db: Awaited<ReturnType<typeof bootPglite>>['db'];
-let createSelfProfile: (typeof import('../../lib/auth'))['createSelfProfile'];
 
 // Drizzle wraps the driver error in a generic "Failed query" message; the
 // violated constraint's name only survives on `cause`.
@@ -45,7 +32,6 @@ async function violatedConstraint(write: Promise<unknown>) {
 
 beforeAll(async () => {
   ({ db } = await bootPglite());
-  ({ createSelfProfile } = await import('../../lib/auth'));
 });
 
 beforeEach(async () => {
@@ -187,7 +173,7 @@ describe('profiles', () => {
 
   describe('createSelfProfile', () => {
     it('NewAccount_WritesNanoidSelfProfileAndSelfMembership', async () => {
-      await createSelfProfile(db, { id: 'u1', name: 'Owner' });
+      const minted = await createSelfProfile(db, 'u1', 'Owner');
 
       const profileRows = await db
         .select({ id: profiles.id, name: profiles.name })
@@ -203,22 +189,16 @@ describe('profiles', () => {
       expect(profileRows).toHaveLength(1);
       expect(profileRows[0].name).toBe('Owner');
       expect(profileRows[0].id).toMatch(/^[A-Za-z0-9_-]{21}$/);
+      expect(minted).toBe(profileRows[0].id);
       expect(memberRows).toEqual([
         { user_id: 'u1', profile_id: profileRows[0].id, role: 'self' },
       ]);
     });
 
-    it('NamelessAccount_WritesUNTITLEDSentinel', async () => {
-      await createSelfProfile(db, { id: 'u1', name: null });
-
-      const rows = await db.select({ name: profiles.name }).from(profiles);
-      expect(rows).toEqual([{ name: 'UNTITLED' }]);
-    });
-
     it('SecondRunForSameAccount_AddsNothing', async () => {
-      await createSelfProfile(db, { id: 'u1', name: 'Owner' });
+      await createSelfProfile(db, 'u1', 'Owner');
 
-      await createSelfProfile(db, { id: 'u1', name: 'Renamed' });
+      await createSelfProfile(db, 'u1', 'Renamed');
 
       const profileRows = await db
         .select({ name: profiles.name })
@@ -235,9 +215,7 @@ describe('profiles', () => {
         .insert(profile_members)
         .values({ user_id: 'u1', profile_id: 'winner', role: 'self' });
 
-      await expect(
-        createSelfProfile(db, { id: 'u1', name: 'Owner' })
-      ).resolves.toBeUndefined();
+      await expect(createSelfProfile(db, 'u1', 'Owner')).resolves.toBeNull();
 
       const profileRows = await db.select({ id: profiles.id }).from(profiles);
       const memberRows = await db.select().from(profile_members);
@@ -271,6 +249,40 @@ describe('profiles', () => {
         .delete(preferences)
         .where(eq(preferences.id, ACCENT_PREFERENCE_ID));
       expect(await db.select().from(profile_preferences)).toHaveLength(0);
+    });
+  });
+
+  // The one-row-per-profile rule and the cascade are DDL, not application
+  // code: `writeAltvatar`'s ON CONFLICT never reaches the rejection, so
+  // nothing else exercises either.
+  describe('AvatarRowConstraints', () => {
+    const art = (style: string) => ({
+      profile_id: 'p1',
+      style,
+      options: { seed: 'p1', selections: {} },
+      art: '<svg />',
+    });
+
+    beforeEach(async () => {
+      await db.insert(profiles).values({ id: 'p1', name: 'Kiddo' });
+      await db.insert(profile_avatars).values(art('icons'));
+    });
+
+    it('SecondRowForOneProfile_IsRejectedByThePrimaryKey', async () => {
+      const constraint = await violatedConstraint(
+        db.insert(profile_avatars).values(art('personas'))
+      );
+
+      expect(constraint).toBe('profile_avatars_pkey');
+      const rows = await db
+        .select({ style: profile_avatars.style })
+        .from(profile_avatars);
+      expect(rows).toEqual([{ style: 'icons' }]);
+    });
+
+    it('ProfileDeleted_DiscardsItsArt', async () => {
+      await db.delete(profiles).where(eq(profiles.id, 'p1'));
+      expect(await db.select().from(profile_avatars)).toHaveLength(0);
     });
   });
 });

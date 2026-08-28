@@ -13,11 +13,12 @@ vi.mock('@/lib/data/user.actions', () => ({
   signInUser: vi.fn(),
 }));
 
+const face = { accent: null, art: null, avatarStyle: null };
 const PICKER = {
   ownerName: 'Olivia Owner',
   pool: [
-    { id: 'u2', name: 'Sam Smith', image: null },
-    { id: 'u3', name: 'Jo Jones', image: null },
+    { id: 'u2', name: 'Sam Smith', ...face },
+    { id: 'u3', name: 'Jo Jones', ...face },
   ],
 };
 
@@ -308,7 +309,7 @@ describe('PurchaseFlowContainer', () => {
         )
         .mockResolvedValueOnce({
           ownerName: 'Fresh Fiona',
-          pool: [{ id: 'u7', name: 'Fresh Fred', image: null }],
+          pool: [{ id: 'u7', name: 'Fresh Fred', ...face }],
         });
       const user = userEvent.setup();
       const props: React.ComponentProps<typeof PurchaseFlowContainer> = {

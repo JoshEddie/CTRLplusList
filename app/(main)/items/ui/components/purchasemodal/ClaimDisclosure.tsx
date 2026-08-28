@@ -1,6 +1,6 @@
 'use client';
 
-import Avatar from '@/app/(main)/users/ui/components/Avatar';
+import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import { Button } from '@/app/ui/components/button';
 import { SearchField, TextField } from '@/app/ui/components/field';
 import { type ClaimPicker } from '@/lib/data/user.actions';
@@ -46,13 +46,15 @@ export default function ClaimDisclosure({
   const filteredPool = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return pool;
-    return pool.filter((u) => (u.name ?? '').toLowerCase().includes(q));
+    return pool.filter((u) => u.name.toLowerCase().includes(q));
   }, [pool, query]);
 
   const selected = pool.find((u) => u.id === selectedId) ?? null;
   const trimmedFreeText = freeText.trim();
+  // Falsy rather than nullish: a profile's name is required but not non-empty,
+  // and an unnamed member's confirm control has to say something.
   const confirmName = selected
-    ? (selected.name ?? 'Someone')
+    ? selected.name || 'Someone'
     : trimmedFreeText || null;
 
   const selectRow = (id: string) => {
@@ -81,7 +83,7 @@ export default function ClaimDisclosure({
         {status === 'ready' && pool.length > 0 && (
           <span className="claim-disclosure-avatars" aria-hidden>
             {pool.slice(0, 3).map((u) => (
-              <Avatar key={u.id} src={u.image} name={u.name} size={24} />
+              <ProfileAvatar key={u.id} profile={u} />
             ))}
           </span>
         )}
@@ -126,7 +128,7 @@ export default function ClaimDisclosure({
                         aria-pressed={u.id === selectedId}
                         onClick={() => selectRow(u.id)}
                       >
-                        <Avatar src={u.image} name={u.name} size={32} />
+                        <ProfileAvatar profile={u} />
                         <span className="claim-pool-name">{u.name}</span>
                         {u.id === selectedId && (
                           <MdCheck className="claim-pool-check" aria-hidden />

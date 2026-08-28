@@ -7,6 +7,7 @@ import { mockNextCache } from '@/test/helpers/next-cache';
 import {
   seedAccentCatalog,
   seedAccentValue,
+  seedAvatar,
   seedBlock,
   seedFollow,
   seedManagedProfile,
@@ -100,7 +101,8 @@ describe('getProfileForViewer', () => {
   });
 
   it('NullViewer_ReturnsProfileWithFalseRelationshipFlags-PublicListCount', async () => {
-    await seedUsers(db, [{ id: 'target', name: 'Tara', image: 't.png' }]);
+    await seedUsers(db, [{ id: 'target', name: 'Tara' }]);
+    await seedAvatar(db, selfProfileOf('target'), { art: '<svg id="t" />' });
     await seedList(db, { id: 'p1', user_id: 'target', visibility: 'public' });
     await seedList(db, { id: 'p2', user_id: 'target', visibility: 'public' });
     await seedList(db, {
@@ -116,7 +118,8 @@ describe('getProfileForViewer', () => {
     expect(profile).toMatchObject({
       id: selfProfileOf('target'),
       name: 'Tara',
-      image: 't.png',
+      art: '<svg id="t" />',
+      avatarStyle: 'icons',
       publicListCount: 2,
       viewerIsFollowing: false,
       viewerIsBlocked: false,
@@ -169,8 +172,9 @@ describe('getFollowersOfProfile', () => {
   it('HasFollowers_ReturnsFollowerAccountWithItsProfileId', async () => {
     await seedUsers(db, [
       { id: 'followee' },
-      { id: 'follower', name: 'Alice', image: 'a.png' },
+      { id: 'follower', name: 'Alice' },
     ]);
+    await seedAvatar(db, selfProfileOf('follower'), { art: '<svg id="a" />' });
     await seedFollow(db, 'follower', 'followee');
 
     const rows = await dal.getFollowersOfProfile(selfProfileOf('followee'));
@@ -179,7 +183,9 @@ describe('getFollowersOfProfile', () => {
       id: 'follower',
       profile_id: selfProfileOf('follower'),
       name: 'Alice',
-      image: 'a.png',
+      accent: null,
+      art: '<svg id="a" />',
+      avatarStyle: 'icons',
     });
   });
 
@@ -251,9 +257,10 @@ describe('getBlockedByProfile', () => {
   it('BlockedRows_OrderedByCreatedAtDesc-IncludesBlockedProfileJoin', async () => {
     await seedUsers(db, [
       { id: 'blocker' },
-      { id: 'blockedX', name: 'Xena', image: 'x.png' },
-      { id: 'blockedY', name: 'Yara', image: null },
+      { id: 'blockedX', name: 'Xena' },
+      { id: 'blockedY', name: 'Yara' },
     ]);
+    await seedAvatar(db, selfProfileOf('blockedX'), { art: '<svg id="x" />' });
     await seedBlock(db, 'blocker', 'blockedX', new Date('2020-01-01'));
     await seedBlock(db, 'blocker', 'blockedY', new Date('2022-01-01'));
 
@@ -265,7 +272,9 @@ describe('getBlockedByProfile', () => {
     expect(rows[1].blocked).toEqual({
       id: selfProfileOf('blockedX'),
       name: 'Xena',
-      image: 'x.png',
+      accent: null,
+      art: '<svg id="x" />',
+      avatarStyle: 'icons',
     });
   });
 });
@@ -367,12 +376,14 @@ describe('getEligiblePurchasers', () => {
     ]);
   });
 
-  it('PoolMembers_CarryNameAndImageForPickerRows', async () => {
+  it('PoolMembers_CarryNameAndFaceForPickerRows', async () => {
     const pool = await dal.getEligiblePurchasers(pOwn, pClaimer);
     expect(pool[0]).toEqual({
       id: selfProfileOf('m-shared'),
       name: 'Zara Shared',
-      image: null,
+      accent: null,
+      art: null,
+      avatarStyle: null,
     });
   });
 

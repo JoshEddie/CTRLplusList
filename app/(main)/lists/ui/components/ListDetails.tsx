@@ -1,8 +1,8 @@
-import Avatar from '@/app/(main)/users/ui/components/Avatar';
+import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import FollowContainer from '@/app/(main)/users/ui/components/FollowContainer';
 import { LinkButton } from '@/app/ui/components/button';
 import { timeAgo } from '@/lib/timeAgo';
-import { ListTable } from '@/lib/types';
+import { ListTable, type ProfileAvatarView } from '@/lib/types';
 import {
   VISIBILITY,
   resolveListVisibility,
@@ -47,7 +47,7 @@ function navHrefs(
 export default async function ListDetails({
   isOwner,
   list,
-  owner_name,
+  owner,
   viewer_user_id,
   viewer_self_profile_id,
   showSpoilers,
@@ -56,7 +56,7 @@ export default async function ListDetails({
 }: {
   isOwner: boolean;
   list: ListWithVisibility;
-  owner_name: string | undefined;
+  owner: ProfileAvatarView;
   viewer_user_id: string | undefined;
   viewer_self_profile_id: string | undefined;
   showSpoilers?: boolean;
@@ -91,7 +91,7 @@ export default async function ListDetails({
       <HeroCollapsedViewerItems
         list={list}
         ownerProfileId={list.profile_id}
-        ownerName={owner_name ?? null}
+        ownerName={owner.name}
         viewerUserId={viewer_user_id}
         viewerSelfProfileId={viewer_self_profile_id}
       />
@@ -184,17 +184,17 @@ export default async function ListDetails({
             {showViewerControls && (
               <>
                 <div className="list-hero-byline-group">
-                  <Avatar src={null} name={owner_name} size={44} />
+                  <ProfileAvatar profile={owner} />
                   <div className="list-hero-byline-text">
                     <Link
                       href={`/user/${list.profile_id}`}
                       className="list-hero-byline-link"
                     >
-                      {owner_name}
+                      {owner.name}
                     </Link>
                     <FollowContainer
                       ownerProfileId={list.profile_id}
-                      ownerName={owner_name ?? null}
+                      ownerName={owner.name}
                       viewerUserId={viewer_user_id}
                       viewerSelfProfileId={viewer_self_profile_id}
                       variant="on-dark"

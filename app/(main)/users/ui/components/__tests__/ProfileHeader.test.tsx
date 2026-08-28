@@ -1,8 +1,8 @@
 /* eslint-disable testing-library/no-container, testing-library/no-node-access --
- * The avatar image carries `alt=""` (no `img` role), and the avatar-initials,
+ * The avatar art carries `alt=""` (no `img` role), and the disc initials,
  * profile-stats, and profile-actions wrapper carry only classes with no role or
  * accessible name. Classed `container.querySelector` is the only path to assert
- * the image attributes, initials fallback, list-count text, and empty actions.
+ * the art, initials fallback, list-count text, and empty actions.
  */
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -10,10 +10,6 @@ import ProfileHeader from '../ProfileHeader';
 import type { UserIdentity } from '@/lib/types';
 import { makeIdentity, makeProfile } from '@/test/helpers/profile';
 
-vi.mock('next/image', async () => ({
-  default: (await import('@/app/ui/components/__tests__/test-helpers'))
-    .MockNextImage,
-}));
 vi.mock('next/link', async () => ({
   default: (await import('@/app/ui/components/__tests__/test-helpers'))
     .MockNextLink,
@@ -22,11 +18,14 @@ vi.mock('../FollowContainer', () => ({
   default: () => <div data-testid="follow-container" />,
 }));
 
-const profile = { id: 'p1', name: 'Alice Bob', image: null as string | null };
+const profile = {
+  ...makeProfile('p1', 'Alice Bob'),
+  art: null as string | null,
+};
 
 function renderHeader(
   overrides: Partial<{
-    profile: { id: string; name: string | null; image: string | null };
+    profile: typeof profile;
     publicListCount: number;
     viewer: UserIdentity | null;
     showFollowButton: boolean;
@@ -43,41 +42,27 @@ function renderHeader(
 }
 
 describe('ProfileHeader', () => {
-  it('HasImage_RendersSizedImageWithHighFetchPriority', () => {
+  it('HasArt_RendersTheProfilesOwnArt', () => {
     const { container } = renderHeader({
-      profile: { ...profile, image: 'a.png' },
+      profile: { ...profile, art: 'data:image/svg+xml,<svg/>', avatarStyle: 'avataaars' },
     });
-    const img = container.querySelector('img') as HTMLImageElement;
-    expect(img).toHaveAttribute('src', 'a.png');
-    expect(img).toHaveAttribute('width', '96');
-    expect(img).toHaveAttribute('height', '96');
-    expect(img).toHaveAttribute('fetchpriority', 'high');
+    expect(container.querySelector('.altvatar-disc-art')).toHaveAttribute(
+      'src',
+      'data:image/svg+xml,<svg/>'
+    );
+    expect(container.querySelector('.altvatar-disc-initials')).toBeNull();
   });
 
-  it('NoImage_RendersInitialsFromInitialsOf', () => {
+  it('NoArt_RendersInitialsFromInitialsOf', () => {
     const { container } = renderHeader();
     expect(
-      container.querySelector('.profile-avatar-initials')
+      container.querySelector('.altvatar-disc-initials')
     ).toHaveTextContent('AB');
-  });
-
-  it('NoImageNullName_RendersQuestionMarkFallback', () => {
-    const { container } = renderHeader({
-      profile: { ...profile, name: null },
-    });
-    expect(
-      container.querySelector('.profile-avatar-initials')
-    ).toHaveTextContent('?');
   });
 
   it('Name_RendersName', () => {
     renderHeader();
     expect(screen.getByRole('heading')).toHaveTextContent('Alice Bob');
-  });
-
-  it('NullName_RendersUnnamed', () => {
-    renderHeader({ profile: { ...profile, name: null } });
-    expect(screen.getByRole('heading')).toHaveTextContent('Unnamed');
   });
 
   it('OneList_Singular', () => {

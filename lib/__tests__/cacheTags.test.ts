@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { itemRowTags, updateTags } from '@/lib/cacheTags';
+import {
+  itemRowTags,
+  profileIdentityTags,
+  updateTags,
+} from '@/lib/cacheTags';
 import { updateTag } from 'next/cache';
 
 vi.mock('next/cache', () => ({ updateTag: vi.fn() }));
@@ -18,6 +22,28 @@ describe('updateTags', () => {
   });
 });
 
+describe('profileIdentityTags', () => {
+  it('OneProfile_CoversItsRowItsArtAndItsAccent', () => {
+    // A face is three rows in three tables; a read naming two of them keeps
+    // painting the old identity when the third changes.
+    expect(profileIdentityTags(['p1'])).toEqual([
+      'profiles:id:p1',
+      'profile_avatars:profile:p1',
+      'profile_preferences:profile:p1',
+    ]);
+  });
+
+  it('RepeatedProfile_EmitsEachTagOnce', () => {
+    expect(profileIdentityTags(['p1', 'p1'])).toEqual(
+      profileIdentityTags(['p1'])
+    );
+  });
+
+  it('NoProfiles_ReturnsNoTags', () => {
+    expect(profileIdentityTags([])).toEqual([]);
+  });
+});
+
 describe('itemRowTags', () => {
   it('RowsWithPurchaseAttributions_ReturnsOwnerAndAttributionProfileTags', () => {
     const tags = itemRowTags([
@@ -30,8 +56,7 @@ describe('itemRowTags', () => {
     ]);
     expect(tags).toEqual([
       'items:profile:p-owner',
-      'profiles:id:p-buyer',
-      'profiles:id:p-claimer',
+      ...profileIdentityTags(['p-buyer', 'p-claimer']),
     ]);
   });
 
@@ -62,8 +87,7 @@ describe('itemRowTags', () => {
     ]);
     expect(tags).toEqual([
       'items:profile:p-owner',
-      'profiles:id:p-owner',
-      'profiles:id:p-buyer',
+      ...profileIdentityTags(['p-owner', 'p-buyer']),
     ]);
   });
 

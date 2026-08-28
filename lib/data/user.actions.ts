@@ -1,13 +1,18 @@
 'use server';
 
 import { db } from '@/db';
-import { items, profiles, user_follows } from '@/db/schema';
+import { items, profiles, user_follows, users } from '@/db/schema';
 import { signIn, signOut } from '@/lib/auth';
 import { getEligiblePurchasers } from '@/lib/data/profile';
+import { getMembershipsForUser } from '@/lib/data/profile.active';
 import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
-import { UNAUTHORIZED_RESPONSE, authedIdentity } from '@/lib/data/user.session';
+import {
+  UNAUTHORIZED_RESPONSE,
+  authedIdentity,
+  authedUserId,
+} from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
-import { type ActionResponse } from '@/lib/types';
+import { type ActionResponse, type ProfileAvatarView } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
@@ -15,7 +20,7 @@ import { redirect } from 'next/navigation';
 
 export type ClaimPicker = {
   ownerName: string | null;
-  pool: { id: string; name: string | null; image: string | null }[];
+  pool: (ProfileAvatarView & { id: string })[];
 };
 
 // Read bridge for the claim modal's attributed-purchaser picker: resolves the
@@ -94,4 +99,25 @@ export async function removeFollower(
       error: 'Failed',
     };
   }
+}
+
+// The destructive arm, reachable only from the gate's signup population. Such
+// an account owns nothing by construction: content hangs off profiles,
+// profiles are reachable only through membership, and guest claims are
+// cookie-scoped with no account linkage at sign-in — so nothing a guest built
+// is destroyed. No ownership check stands in front of it, because with no
+// profile there is nothing to own.
+export async function abandonAccount(): Promise<void> {
+  const userId = await authedUserId();
+  if (userId) {
+    const memberships = await getMembershipsForUser(userId);
+    // Not a defence against a caller: the row set is what makes deletion safe,
+    // so it is re-read here rather than trusted from the surface that asked.
+    if (!memberships.some((m) => m.role === 'self')) {
+      // `accounts` cascades from `user`.
+      await db.delete(users).where(eq(users.id, userId));
+      updateTags(cacheTags.profilesOfUser(userId));
+    }
+  }
+  await signOut();
 }

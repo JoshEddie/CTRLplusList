@@ -6,9 +6,9 @@ import type { ActorProfile, UserIdentity } from '@/lib/types';
 export const selfProfileOf = (userId: string) => `self-${userId}`;
 
 // A profile for suites that mock a read rather than seed one. Id and name are
-// what assertions discriminate on, so the accent is left unset.
+// what assertions discriminate on, so the face is left unset.
 export function makeProfile(id: string, name = id): ActorProfile {
-  return { id, name, accent: null };
+  return { id, name, accent: null, art: null, avatarStyle: null };
 }
 
 // A resolved identity. One argument acts as themselves — the common case, and

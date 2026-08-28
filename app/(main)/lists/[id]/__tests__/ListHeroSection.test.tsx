@@ -63,7 +63,7 @@ vi.mock('@/app/(main)/lists/ui/components/ListDetails', () => ({
     itemCount: number;
     viewer_user_id?: string;
     viewer_self_profile_id?: string;
-    owner_name?: string;
+    owner: { name: string };
   }) => (
     <div
       data-testid="list-details"
@@ -73,7 +73,7 @@ vi.mock('@/app/(main)/lists/ui/components/ListDetails', () => ({
       data-item-count={String(p.itemCount)}
       data-viewer-user-id={p.viewer_user_id ?? ''}
       data-viewer-self-profile-id={p.viewer_self_profile_id ?? ''}
-      data-owner-name={p.owner_name ?? ''}
+      data-owner-name={p.owner.name}
     />
   ),
 }));

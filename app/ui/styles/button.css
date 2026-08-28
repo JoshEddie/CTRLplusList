@@ -182,7 +182,7 @@
 
   .btn.primary[aria-pressed='true']:hover {
     background-color: transparent;
-    color: var(--primary-color);
+    color: #ffffff;
   }
 
   .btn.link:hover {

@@ -1,10 +1,8 @@
 'use client';
 
 import { TextField } from '@/app/ui/components/field';
-import type { ReactNode } from 'react';
-import AccentPicker from './AccentPicker';
 
-// The three fields both writers share. The tagline's `maxLength` mirrors its
+// The two text fields both writers share. The tagline's `maxLength` mirrors its
 // server contract client-side per profiles-data-model; the trim-to-null is the
 // schema's own transform, not restated here.
 export default function ProfileFields({
@@ -12,23 +10,15 @@ export default function ProfileFields({
   onNameChange,
   tagline,
   onTaglineChange,
-  accent,
-  onAccentChange,
   disabled,
   errors,
-  preview,
 }: {
   name: string;
   onNameChange: (value: string) => void;
   tagline: string;
   onTaglineChange: (value: string) => void;
-  accent: string;
-  onAccentChange: (accent: string) => void;
   disabled?: boolean;
   errors?: Record<string, string[]>;
-  /** Filled by the birth form, which has no surface of its own to repaint;
-      the profile space leaves it empty because its own head is the preview. */
-  preview?: ReactNode;
 }) {
   return (
     <>
@@ -53,14 +43,6 @@ export default function ProfileFields({
         placeholder="Short description"
         maxLength={40}
         error={errors?.tagline?.join(', ')}
-      />
-
-      {preview}
-
-      <AccentPicker
-        value={accent}
-        onChange={onAccentChange}
-        disabled={disabled}
       />
     </>
   );

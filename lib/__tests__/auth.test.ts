@@ -1,53 +1,16 @@
-import { getTableName } from 'drizzle-orm';
-
-import { SELF_MEMBERSHIP_PER_USER_IDX } from '@/db/schema';
-import type { NextAuthConfig } from 'next-auth';
-import type { PgTable } from 'drizzle-orm/pg-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // Real NextAuth, the Drizzle adapter, the Google provider, and the DB module
 // are all mocked so the test exercises ONLY the bypass seam in lib/auth.ts.
 // `realAuth` is the sentinel the flag-off path must delegate to.
-// `nextAuthConfig` captures the config lib/auth.ts hands to NextAuth, so the
-// event wiring can be driven without the real callback machinery; `insertedRows`
-// stands in for the database the createUser event writes through.
-const { realAuth, nextAuthConfig, insertedRows, recordingDb } = vi.hoisted(
-  () => ({
-    realAuth: vi.fn(),
-    nextAuthConfig: { current: undefined as NextAuthConfig | undefined },
-    insertedRows: [] as { table: unknown; values: unknown }[],
-    // Stands in for the database the createUser event writes through. The
-    // write is one data-modifying CTE, so the profile row arrives through the
-    // `$with` body and the membership row through the insert-select's
-    // projection.
-    recordingDb: (rows: { table: unknown; values: unknown }[]) => ({
-      $with: () => ({
-        as: (body: unknown) => ({ id: 'created.id', body }),
-      }),
-      insert: (table: unknown) => ({
-        values: (values: unknown) => ({
-          returning: () => {
-            rows.push({ table, values });
-            return {};
-          },
-        }),
-      }),
-      select: (fields: unknown) => ({ from: () => ({ fields }) }),
-      with: () => ({
-        insert: (table: unknown) => ({
-          select: (query: { fields: unknown }) => {
-            rows.push({ table, values: query.fields });
-            return Promise.resolve();
-          },
-        }),
-      }),
-    }),
-  })
-);
+const { realAuth, captured } = vi.hoisted(() => ({
+  realAuth: vi.fn(),
+  captured: { config: undefined as { events?: Record<string, unknown> } | undefined },
+}));
 
 vi.mock('next-auth', () => ({
-  default: (config: NextAuthConfig) => {
-    nextAuthConfig.current = config;
+  default: (config: { events?: Record<string, unknown> }) => {
+    captured.config = config;
     return {
       handlers: {},
       signIn: vi.fn(),
@@ -58,10 +21,9 @@ vi.mock('next-auth', () => ({
 }));
 vi.mock('next-auth/providers/google', () => ({ default: {} }));
 vi.mock('@auth/drizzle-adapter', () => ({ DrizzleAdapter: () => ({}) }));
-vi.mock('@/db', () => ({ db: recordingDb(insertedRows) }));
+vi.mock('@/db', () => ({ db: {} }));
 
 afterEach(() => {
-  insertedRows.length = 0;
   vi.unstubAllEnvs();
   vi.resetModules();
   vi.clearAllMocks();
@@ -93,15 +55,19 @@ describe('authBypass', () => {
     expect(realAuth).not.toHaveBeenCalled();
   });
 
-  it('BypassOnOtherSeededIdentity_ReturnsSessionForThatId', async () => {
+  it('BypassOnOtherSeededIdentity_CarriesThatIdentitysSeededEmail', async () => {
     vi.stubEnv('USE_PG_DRIVER', '1');
     vi.stubEnv('BYPASS_SESSION_USER', 'dev-friend-alice');
 
-    const { auth, BYPASS_USER_ID } = await loadAuth();
+    const { auth, BYPASS_USER_ID, BYPASS_USER_EMAIL } = await loadAuth();
     const session = await auth();
 
     expect(session?.user?.id).toBe('dev-friend-alice');
     expect(session?.user?.id).not.toBe(BYPASS_USER_ID);
+    // Actor resolution goes through the email, so a synthesized session
+    // missing it resolves to no actor and reads as logged out instead.
+    expect(session?.user?.email).toBe('alice@dev.local');
+    expect(session?.user?.email).not.toBe(BYPASS_USER_EMAIL);
   });
 
   it('BypassOff_DelegatesToRealNextAuth', async () => {
@@ -135,65 +101,26 @@ describe('authBypass', () => {
   });
 });
 
-describe('createUserEvent', () => {
-  it('NewAccount_WritesNanoidProfileAndSelfMembershipThroughTheAppDb', async () => {
-    await loadAuth();
+describe('seedUserEmail', () => {
+  it.each([
+    ['dev-test-viewer', 'test-viewer@dev.local'],
+    ['dev-friend-alice', 'alice@dev.local'],
+    ['alice', 'alice@dev.local'],
+  ])('SeedId%s_StripsThePrefixAndAppendsTheDevDomain', async (id, email) => {
+    const { seedUserEmail } = await loadAuth();
 
-    await nextAuthConfig.current?.events?.createUser?.({
-      user: { id: 'u1', name: 'Ada Lovelace', email: 'ada@example.com' },
-    });
-
-    expect(
-      insertedRows.map(({ table }) => getTableName(table as PgTable))
-    ).toEqual(['profiles', 'profile_members']);
-    const profile = insertedRows[0].values as { id: string; name: string };
-    expect(profile.name).toBe('Ada Lovelace');
-    expect(profile.id).toMatch(/^[A-Za-z0-9_-]{21}$/);
-    expect(profile).not.toHaveProperty('user_id');
+    expect(seedUserEmail(id)).toBe(email);
   });
 });
 
-describe('createSelfProfile', () => {
-  // The membership insert has no ON CONFLICT: losing the self-role race raises
-  // 23505 and rolls the profile insert back with it, and swallowing exactly
-  // that violation is what makes creation idempotent.
-  function throwingDb(cause: { code: string; constraint: string }) {
-    return {
-      $with: () => ({ as: () => ({ id: 'created.id' }) }),
-      insert: () => ({ values: () => ({ returning: () => ({}) }) }),
-      select: () => ({ from: () => ({}) }),
-      with: () => ({
-        insert: () => ({
-          select: () =>
-            Promise.reject(Object.assign(new Error('Failed query'), { cause })),
-        }),
-      }),
-    };
-  }
+describe('nextAuthConfig', () => {
+  it('AccountCreation_WiresNoEventThatMintsAProfile', async () => {
+    await loadAuth();
 
-  it('SelfMembershipUniqueViolation_ResolvesWithoutError', async () => {
-    const { createSelfProfile } = await loadAuth();
-
-    await expect(
-      createSelfProfile(
-        throwingDb({
-          code: '23505',
-          constraint: SELF_MEMBERSHIP_PER_USER_IDX,
-        }) as never,
-        { id: 'u1', name: 'Ada' }
-      )
-    ).resolves.toBeUndefined();
-  });
-
-  it('UnrelatedUniqueViolation_Rethrows', async () => {
-    const { createSelfProfile } = await loadAuth();
-
-    await expect(
-      createSelfProfile(
-        throwingDb({ code: '23505', constraint: 'some_other_idx' }) as never,
-        { id: 'u1', name: 'Ada' }
-      )
-    ).rejects.toThrow('Failed query');
+    // The gate's whole premise: a new account holds no profile until it
+    // onboards. Re-adding a `createUser` event that mints one would void that
+    // while every other test here stayed green.
+    expect(captured.config?.events?.createUser).toBeUndefined();
   });
 });
 

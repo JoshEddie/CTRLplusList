@@ -1,0 +1,9 @@
+# Onboarding is a layout short-circuit, not a guard
+
+**Touching**: `DAL`, `app/(main)/layout.tsx`
+
+**Context**: `profiles.name` is notNull with no automatic source, so an account must supply a name and a face before it can own anything — but `createSelfProfile` ran inside NextAuth's `createUser` event, where nothing can ask a human for either. Guarding every server action against a profile-less actor would mean a check per action that any new action can forget to add.
+
+**Decision**: Self-profile creation happens in the onboarding submit action, and the `(main)` layout renders onboarding *instead of* `children` for an un-onboarded account. Between sign-in and submit there is no profile, so no page component runs and no data is fetched. Every write that resolves its actor through `resolveIdentity` — `authedIdentity()` / `authedWriter()` — yields null for an account holding no `self` membership, so no profile-scoped write lands. No per-action onboarding guard ships, and none is to be added. The gate covers every route under `(main)`, public content included; it is not a route and never changes the URL, so submitting reveals the page that was requested.
+
+**Consequences**: A new page, and any server action resolving through `resolveIdentity`, inherits the guarantee without doing anything, and an actor that resolves is by construction fully set up. An action resolving on `authedUserId()` alone does not: `createProfile` mints a profile and an `'owner'` membership for an un-onboarded account that calls it directly, and the visit writers key rows on the account id. Those stand — the surfaces are unreachable before the gate and the endpoints only by hand — but an action choosing that resolution is outside the guarantee and owes a reason. In exchange the layout performs a read on every authenticated request, and any future surface that must render for a profile-less account has to live outside `(main)`.

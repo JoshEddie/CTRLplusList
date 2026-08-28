@@ -41,7 +41,6 @@
 .list-card,
 .more-card {
   display: flex;
-  padding: 18px 20px;
   height: 100%;
   border: 1px solid var(--card-border-color);
   border-radius: 10px;
@@ -51,6 +50,11 @@
     background-color 0.15s ease,
     border-color 0.15s ease,
     box-shadow 0.15s ease;
+}
+
+.list-card,
+.more-card {
+  padding: 18px 20px;
 }
 
 .user-card,
@@ -72,59 +76,36 @@
   box-shadow: var(--card-shadow-hover);
 }
 
+/* Banded card: the accent gradient runs across the head and the avatar disc
+   straddles its lower edge, so a followed profile is recognised by colour
+   before its name is read. */
 .user-card {
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+  overflow: hidden;
 }
 
-/* Compact variant: horizontal avatar + name. Used by the home FollowingRail
-   so user cards share the rhythm of the list cards in the row. */
-.user-card--compact {
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-}
-.user-card--compact .user-card-avatar {
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-}
-.user-card--compact .user-card-avatar-initials {
-  font-size: 1.1rem;
-}
-.user-card--compact .user-card-meta {
-  text-align: left;
-  flex: 1;
-  min-width: 0;
-}
-.user-card--compact .user-card-name {
-  font-size: 20px;
-  word-break: break-word;
-}
-.user-card-avatar {
+.user-card-band {
   position: relative;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  overflow: hidden;
-  background-color: var(--secondary-background-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 34px;
+  flex-shrink: 0;
+  background-image: var(--accent-bg);
 }
-.user-card-avatar img,
-.user-card-avatar-img {
+
+.user-card-avatar {
+  position: absolute;
+  left: 50%;
+  bottom: -28px;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--light-color);
+}
+
+.user-card-avatar .altvatar-disc {
   width: 100%;
   height: 100%;
-  object-fit: cover;
 }
-.user-card-avatar-initials {
-  font-weight: 600;
-  font-size: 1.5rem;
-  color: var(--primary-color);
-}
+
 .user-card-badge {
   position: absolute;
   top: -4px;
@@ -142,19 +123,26 @@
   padding: 0 6px;
 }
 .user-card-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 32px 14px 14px;
   text-align: center;
 }
 .user-card-name {
   font-family: var(--font-crimson-pro);
   font-weight: 300;
   font-size: 18px;
-  color: var(--heading-text-color);
+  color: var(--accent-ink);
   line-height: 1.2;
+  word-break: break-word;
 }
 .user-card-sub {
   font-family: var(--font-roboto-condensed);
-  font-size: 11px;
-  color: var(--meta-text-color);
+  font-size: 12px;
+  color: var(--muted-text-color);
+  min-height: 15px;
 }
 .user-card-sub-muted {
   color: var(--date-text-color);
@@ -170,26 +158,10 @@
   gap: 16px;
   padding: 24px 0;
 }
-.profile-avatar {
+
+.profile-header .altvatar-disc {
   width: 96px;
   height: 96px;
-  border-radius: 50%;
-  overflow: hidden;
-  background-color: var(--third-background-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.profile-avatar img,
-.profile-avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.profile-avatar-initials {
-  font-size: 2.5rem;
-  font-weight: 600;
-  color: var(--primary-color);
 }
 .profile-meta {
   flex: 1;
@@ -489,8 +461,23 @@
 
 /* Home card (used in rails and on the My Lists page) */
 .list-card {
+  position: relative;
+  overflow: hidden;
   justify-content: space-between;
   gap: 14px;
+  padding-left: 24px;
+}
+/* Owner's accent as a spine down the card's leading edge. Falls back to the
+   brand gradient through --accent-bg, so a list with no owner accent still
+   reads as deliberate rather than clipped. */
+.list-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background-image: var(--accent-bg);
 }
 .list-card-head {
   display: flex;
@@ -541,20 +528,29 @@
    hero's owner indicator; its own slot so it never competes with the subtitle
    or the occasion/date footer. Uses --muted-text-color for WCAG AA contrast. */
 .list-card-byline {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   font-family: var(--font-roboto-condensed);
   font-size: 12px;
   color: var(--muted-text-color);
+  min-width: 0;
+  /* The disc is taller than the text line, so the row must not be squeezed by
+     a height-constrained card — a shrunk row clips the disc flat. */
+  flex-shrink: 0;
+}
+/* Truncation lives on the name, not the row: an `overflow: hidden` row clips
+   the disc's top and bottom. */
+.list-card-byline-name {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
 }
-.list-card-byline > svg {
-  font-size: 10px;
-  flex-shrink: 0;
+.list-card-byline-avatar {
+  width: 22px;
+  height: 22px;
+  box-shadow: 0 0 0 1.5px var(--accent-dark);
 }
 .list-card-meta {
   display: flex;
@@ -584,7 +580,7 @@
 @media (max-width: 800px) {
   .list-card {
     gap: 10px;
-    padding: 14px 16px;
+    padding: 14px 16px 14px 20px;
   }
   .list-card-name {
     font-size: 18px;

@@ -19,14 +19,3 @@ export const selfMemberships = new QueryBuilder()
   .from(profile_members)
   .where(eq(profile_members.role, 'self'))
   .as('self_memberships');
-
-// The same link for the relational query builder, which cannot join a
-// subquery: the `self` membership row carrying only its account's avatar.
-// Consumers read `profile.members[0]?.user.image`.
-export const withSelfAvatar = {
-  members: {
-    columns: {},
-    where: eq(profile_members.role, 'self'),
-    with: { user: { columns: { image: true } } },
-  },
-} as const;

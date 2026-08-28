@@ -69,34 +69,18 @@
   right: 10px;
 }
 
-.profile-card-avatar,
-.profile-space-initials {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  /* The ink is derived from the accent's own hue, so it cannot be a static
-     token — it arrives with the band it sits on. */
-  background: var(--accent-disc);
-  color: var(--accent-ink);
-  font-weight: 600;
-  line-height: 1;
-  overflow: hidden;
-}
-
 .profile-card-avatar {
+  width: 72px;
+  height: 72px;
   position: absolute;
   left: 20px;
   bottom: -32px;
-  width: 72px;
-  height: 72px;
-  font-size: 26px;
   box-shadow: 0 0 0 4px var(--background-color);
 }
 
 .profile-card-active {
   position: absolute;
-  background: var(--accent-dark);
+  background: var(--accent-ink);
   left: 74px;
   bottom: -30px;
   z-index: 2;
@@ -127,7 +111,7 @@
   font-family: var(--font-crimson-pro);
   font-weight: 300;
   font-size: 24px;
-  color: var(--heading-text-color);
+  color: var(--accent-ink);
 }
 
 .profile-card-role {
@@ -160,76 +144,6 @@
    held off the swatch by a background-coloured gap so it never sits against
    the hue it is marking. */
 
-.profile-accent-picker {
-  border: none;
-  margin: 0;
-  padding: 0;
-  min-inline-size: 0;
-}
-
-.profile-accent-picker > legend {
-  padding: 0;
-}
-
-.profile-accent-selected {
-  margin-left: 8px;
-  font-weight: 400;
-  text-transform: capitalize;
-  color: var(--muted-text-color);
-}
-
-.profile-accent-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 8px;
-}
-
-.profile-accent-option {
-  display: inline-flex;
-  cursor: pointer;
-}
-
-.profile-accent-picker:disabled .profile-accent-option {
-  cursor: default;
-  opacity: 0.55;
-}
-
-.profile-accent-swatch {
-  display: block;
-  background-image: var(--accent-bg);
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  transition: box-shadow 0.15s;
-}
-
-.profile-accent-input:checked ~ .profile-accent-swatch {
-  box-shadow:
-    0 0 0 3px var(--background-color),
-    0 0 0 5px var(--accent-ink);
-}
-
-/* No separate focus outline. Arrow keys in a radio group move selection as
-    they move focus, so the two states always coincide here and a second ring
-    could only ever stack on the first. Focus thickens the one ring instead. */
-.profile-accent-input:focus-visible ~ .profile-accent-swatch {
-  box-shadow:
-    0 0 0 3px var(--background-color),
-    0 0 0 7px var(--accent-ink);
-}
-
-/* Live preview — the card's own head, so the accent is seen applied. */
-
-.profile-accent-preview {
-  position: relative;
-  background-color: var(--background-color);
-  border: 1px solid var(--card-border-color);
-  border-radius: 12px;
-  margin: 4px 0 4px;
-  max-width: 280px;
-}
-
 /* Full bleed: the band sits on the white surface's own top edge, not inside
    the container's well, so it cancels the well's padding rather than
    restating it. The card's band at the space's scale — the disc is set into
@@ -250,14 +164,46 @@
   margin: 54px 0 24px;
 }
 
-.profile-space-initials {
+.profile-space-avatar {
   position: absolute;
   left: var(--container-padding-x);
   bottom: -42px;
+  display: inline-flex;
+  border: none;
+  padding: 0;
+  background: none;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px var(--background-color);
+}
+
+.profile-space-avatar .altvatar-disc {
   width: 84px;
   height: 84px;
-  font-size: 30px;
-  box-shadow: 0 0 0 4px var(--background-color);
+}
+
+.profile-space-avatar-edit {
+  cursor: pointer;
+}
+
+.profile-space-avatar-badge {
+  position: absolute;
+  right: -2px;
+  bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent-dark);
+  color: var(--light-color);
+  font-size: 15px;
+  box-shadow: 0 0 0 3px var(--background-color);
+}
+
+.profile-space-avatar-edit:hover .profile-space-avatar-badge,
+.profile-space-avatar-edit:focus-visible .profile-space-avatar-badge {
+  background: var(--accent-ink);
 }
 
 .profile-space-name {
@@ -291,8 +237,15 @@
   margin-top: 20px;
 }
 
+.avatar_new-profile {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+}
+
 .new-profile-explainer {
-  font-size: 13px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
   color: var(--muted-text-color);
-  margin: 0 0 16px;
 }

@@ -7,7 +7,7 @@ import {
 } from '@/test/helpers/next-headers';
 import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
 
-import { lists, user_follows } from '@/db/schema';
+import { accounts, lists, profiles, user_follows, users } from '@/db/schema';
 import { auth, signIn, signOut } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
@@ -228,7 +228,15 @@ describe('getClaimPickerForItem', () => {
     const picker = await actions.getClaimPickerForItem('I');
     expect(picker).toEqual({
       ownerName: 'target',
-      pool: [{ id: selfProfileOf(THIRD.id), name: 'third', image: null }],
+      pool: [
+        {
+          id: selfProfileOf(THIRD.id),
+          name: 'third',
+          accent: null,
+          art: null,
+          avatarStyle: null,
+        },
+      ],
     });
   });
 
@@ -260,5 +268,69 @@ describe('getClaimPickerForItem', () => {
       new Error('boom')
     );
     await expect(actions.getClaimPickerForItem('I')).resolves.toBeNull();
+  });
+});
+
+describe('abandonAccount', () => {
+  // The population this is reachable from holds no profile at all, so its
+  // account cannot come from `seedUsers` — that seeds a self membership.
+  const ABANDONING = { id: 'abandoning', email: 'abandoning@test.local' };
+
+  async function seedSignedInWithNoProfile() {
+    await db.insert(users).values(ABANDONING);
+    await db.insert(accounts).values({
+      userId: ABANDONING.id,
+      type: 'oidc',
+      provider: 'google',
+      providerAccountId: 'g-abandoning',
+    });
+    vi.mocked(auth).mockResolvedValue({
+      user: { email: ABANDONING.email },
+    } as never);
+  }
+
+  const userRows = () => db.select().from(users);
+  const accountRows = () => db.select().from(accounts);
+
+  it('AccountWithNoSelfProfile_DeletesTheAccountRecordAndItsProviderLink-SignsOut', async () => {
+    await seedSignedInWithNoProfile();
+
+    await actions.abandonAccount();
+
+    expect((await userRows()).map((u) => u.id)).not.toContain(ABANDONING.id);
+    expect(await accountRows()).toHaveLength(0);
+    expect(signOut).toHaveBeenCalledOnce();
+  });
+
+  it('AccountWithNoSelfProfile_BumpsItsOwnProfileMembershipTag', async () => {
+    await seedSignedInWithNoProfile();
+
+    await actions.abandonAccount();
+
+    expect(updateTag.mock.calls).toEqual([
+      [`profile_members:user:${ABANDONING.id}`],
+    ]);
+  });
+
+  it('AccountHoldingASelfProfile_DeletesNothing-SignsOut', async () => {
+    // The existing arm signs out only: the profile row and everything hanging
+    // off it survive.
+    await actions.abandonAccount();
+
+    expect((await userRows()).map((u) => u.id)).toContain(VIEWER.id);
+    expect((await db.select().from(profiles)).map((p) => p.id)).toContain(
+      selfProfileOf(VIEWER.id)
+    );
+    expect(signOut).toHaveBeenCalledOnce();
+    expect(updateTag).not.toHaveBeenCalled();
+  });
+
+  it('NoSession_DeletesNothing-SignsOut', async () => {
+    noSession();
+
+    await actions.abandonAccount();
+
+    expect(await userRows()).toHaveLength(3);
+    expect(signOut).toHaveBeenCalledOnce();
   });
 });

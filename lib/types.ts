@@ -6,12 +6,19 @@ export type ActionResponse = {
   id?: string;
 };
 
-// The two profiles a request names, never one. Ownership columns and creation
-// take the active profile; anything naming the human takes the self-profile.
-export type ActorProfile = {
-  id: string;
+// What the one avatar disc needs, and nothing more: the art where the profile
+// has any, the style that art was drawn in (a glyph style is painted from the
+// accent's ink rather than shown), the name its initials fall back to, and the
+// accent behind both. No account column is among them.
+export type ProfileAvatarView = {
   name: string;
   accent: string | null;
+  art: string | null;
+  avatarStyle: string | null;
+};
+
+export type ActorProfile = ProfileAvatarView & {
+  id: string;
 };
 
 export type ProfileMembershipView = ActorProfile & {
@@ -20,6 +27,8 @@ export type ProfileMembershipView = ActorProfile & {
   last_active_at: Date | null;
 };
 
+// The two profiles a request names, never one. Ownership columns and creation
+// take the active profile; anything naming the human takes the self-profile.
 export type UserIdentity = {
   userId: string;
   selfProfile: ActorProfile;
@@ -58,14 +67,12 @@ export type ItemTable = {
   archived_at?: Date | null;
 };
 
-export type ProfileCardView = {
+export type ProfileCardView = ProfileAvatarView & {
   id: string;
-  name: string;
   tagline: string | null;
   role: 'self' | 'owner' | 'manager';
   listCount: number;
   itemCount: number;
-  accent: string | null;
 };
 
 export type PurchaseView = {
@@ -78,8 +85,8 @@ export type PurchaseView = {
   claimerFirstName?: string;
   /** Absent only on legacy fixtures — every persisted row carries it; optimistic rows stamp client time. */
   purchasedAt?: Date;
-  /** Purchaser's avatar URL when the purchaser is a linked account; null for guest-name claims. Optimistic rows omit it (initials render until the next server render). */
-  image?: string | null;
+  /** The purchaser profile's own face, where the purchaser is a profile. Absent for a free-text purchaser and on optimistic rows, both of which render initials. Account linkage does not govern it: a managed profile carries a face on the same terms as anyone else. */
+  avatar?: ProfileAvatarView;
 };
 
 export type ItemDisplay = ItemTable & {

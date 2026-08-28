@@ -8,34 +8,34 @@ import type { CSSProperties } from 'react';
 // two match.
 export const ACCENT_PRESETS = {
   // Red into orange
-  spice: { light: '#f0d6b0', dark: '#73431a', ink: '#633710' },
-  rosewood: { light: '#e8c9c4', dark: '#6d1f1f', ink: '#5f1717' },
-  rose: { light: '#fbcfe8', dark: '#be123c', ink: '#bf012f' },
-  cardinal: { light: '#ffeded', dark: '#a30a0a', ink: '#8a0404' },
+  spice: { light: '#f0d6b0', dark: '#73431a', ink: '#62360e' },
+  rosewood: { light: '#e8c9c4', dark: '#6d1f1f', ink: '#5d1516' },
+  rose: { light: '#fbcfe8', dark: '#be123c', ink: '#b3042c' },
+  cardinal: { light: '#ffeded', dark: '#a30a0a', ink: '#820102' },
   coral: { light: '#ffc4a3', dark: '#9f1239', ink: '#ad0433' },
   ember: { light: '#fdba74', dark: '#991b1b', ink: '#a60e0e' },
-  lion: { light: '#fac455', dark: '#cc5416', ink: '#8f3208' },
-  sunburst: { light: '#fde047', dark: '#db2777', ink: '#900096' },
-  joy: { light: '#ffff8c', dark: '#bfa70b', ink: '#7a6803' },
+  lion: { light: '#fac455', dark: '#cc5416', ink: '#832a00' },
+  sunburst: { light: '#fde047', dark: '#db2777', ink: '#7c0081' },
+  joy: { light: '#ffff8c', dark: '#bfa70b', ink: '#005293' },
 
   // Yellow into green
-  juniper: { light: '#bcc9a4', dark: '#0f4a26', ink: '#0b3b1d' },
-  clover: { light: '#d9f99d', dark: '#15803d', ink: '#097b34' },
+  juniper: { light: '#bcc9a4', dark: '#0f4a26', ink: '#07381a' },
+  clover: { light: '#d9f99d', dark: '#15803d', ink: '#006728' },
   jade: { light: '#B8FFE7', dark: '#116a4c', ink: '#003a27' },
-  aspen: { light: '#a1cbd8', dark: '#256551', ink: '#164445' },
-  oasis: { light: '#fef08a', dark: '#0e7490', ink: '#3f568c' },
+  aspen: { light: '#a1cbd8', dark: '#256551', ink: '#0c3c3d' },
+  oasis: { light: '#fef08a', dark: '#0e7490', ink: '#3a5187' },
 
   // Teal into blue
-  fathom: { light: '#a9e6cf', dark: '#0541b7', ink: '#0f3a6b' },
-  denim: { light: '#c6dcf8', dark: '#0f56b3', ink: '#0b4390' },
+  fathom: { light: '#a9e6cf', dark: '#0541b7', ink: '#033060' },
+  denim: { light: '#c6dcf8', dark: '#0f56b3', ink: '#00367f' },
   midnight: { light: '#b6c9e4', dark: '#172554', ink: '#101a3f' },
-  slate: { light: '#d8e0e9', dark: '#334155', ink: '#29354a' },
+  slate: { light: '#d8e0e9', dark: '#334155', ink: '#002976' },
 
   // Violet into pink, closing the wheel back at red
-  iris: { light: '#7dd3fc', dark: '#512bc2', ink: '#43199f' },
-  blacklight: { light: '#cda2ff', dark: '#05155d', ink: '#2a2060' },
-  nebula: { light: '#fca5a5', dark: '#7c3aed', ink: '#4c1d95' },
-  orchid: { light: '#c4b5fd', dark: '#be123c', ink: '#0e4d5c' },
+  iris: { light: '#7dd3fc', dark: '#512bc2', ink: '#3f1099' },
+  blacklight: { light: '#a98dff', dark: '#180770', ink: '#14065C' },
+  nebula: { light: '#fca5a5', dark: '#7c3aed', ink: '#46138d' },
+  orchid: { light: '#c4b5fd', dark: '#be123c', ink: '#003f4d' },
 
   // No hue to sort by, so they close the list
 } as const;
@@ -52,36 +52,30 @@ function presetOf(name: string | null | undefined) {
   return name && isAccentName(name) ? ACCENT_PRESETS[name] : null;
 }
 
-// No accent, or a dropped preset, falls back to the brand gradient: reads as
-// unset rather than as another accent.
+// No accent, or a dropped preset, falls back to the `iris` preset: one
+// fallback rule with one answer across all five derivations, so an accent-less
+// surface paints a complete accent rather than a half-brand hybrid.
+const FALLBACK_ACCENT = ACCENT_PRESETS.iris;
+
 function accentBackground(name: string | null | undefined): string {
-  const preset = presetOf(name);
-  if (!preset) return 'var(--hero-gradient)';
+  const preset = presetOf(name) ?? FALLBACK_ACCENT;
   return `linear-gradient(120deg, ${preset.light}, ${preset.dark})`;
 }
 
 function accentDisc(name: string | null | undefined): string {
-  return presetOf(name)?.light ?? 'var(--hero-gradient)';
+  return presetOf(name)?.light ?? FALLBACK_ACCENT.light;
 }
 
 function accentDark(name: string | null | undefined): string {
-  return presetOf(name)?.dark ?? 'var(--primary-color)';
+  return presetOf(name)?.dark ?? FALLBACK_ACCENT.dark;
 }
 
 function accentInk(name: string | null | undefined): string {
-  // Brand purple is dark, so its fallback ink is white.
-  return presetOf(name)?.ink ?? 'var(--light-color)';
+  return presetOf(name)?.ink ?? FALLBACK_ACCENT.ink;
 }
 
-// A complete colour on both branches. Appending an alpha to `accentDark` at the
-// call site emits `var(--primary-color)55` on the fallback path — invalid CSS,
-// so the whole declaration is dropped — and the fallback is the common case
-// while `profile_preferences` is still filling up.
 function accentShadow(name: string | null | undefined): string {
-  const preset = presetOf(name);
-  if (!preset)
-    return 'color-mix(in srgb, var(--primary-color) 33%, transparent)';
-  return `${preset.dark}55`;
+  return `${presetOf(name)?.dark ?? FALLBACK_ACCENT.dark}55`;
 }
 
 // Every accent-derived colour at once, as custom properties set on a

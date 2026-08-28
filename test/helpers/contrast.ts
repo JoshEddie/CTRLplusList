@@ -6,6 +6,8 @@
  * Consumed by `app/(main)/lists/ui/styles/__tests__/hero-contrast.test.ts`.
  */
 
+import { relativeLuminance as srgbLuminance } from '@/lib/color';
+
 export type Rgba = { r: number; g: number; b: number; a: number };
 
 /**
@@ -73,14 +75,10 @@ export function compositeOver(
   };
 }
 
-/** sRGB relative luminance (WCAG): linearize each channel, then weight. */
+/** sRGB relative luminance (WCAG) of a parsed colour. */
 export function relativeLuminance(color: string | Rgba): number {
   const { r, g, b } = toRgba(color);
-  const channel = (value: number) => {
-    const cs = value / 255;
-    return cs <= 0.03928 ? cs / 12.92 : ((cs + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  return srgbLuminance([r / 255, g / 255, b / 255]);
 }
 
 /**

@@ -28,7 +28,7 @@ vi.mock('../ListActionsMenu', () => ({
     />
   ),
 }));
-vi.mock('@/app/(main)/users/ui/components/Avatar', () => ({
+vi.mock('@/app/ui/components/ProfileAvatar', () => ({
   default: () => <div data-testid="avatar-stub" />,
 }));
 vi.mock('@/app/(main)/users/ui/components/FollowContainer', () => ({
@@ -77,7 +77,12 @@ type Props = Parameters<typeof ListDetails>[0];
 const baseProps: Props = {
   isOwner: true,
   list: makeList(),
-  owner_name: 'Olivia Owner',
+  owner: {
+    name: 'Olivia Owner',
+    accent: null,
+    art: null,
+    avatarStyle: null,
+  },
   viewer_user_id: 'owner-1',
   viewer_self_profile_id: 'owner-profile-1',
   itemCount: 3,
@@ -262,7 +267,7 @@ describe('ListDetails', () => {
     it('UnnamedOwner_BylineLinkRendersWithEmptyName', async () => {
       const { container } = await renderHero({
         ...viewerProps,
-        owner_name: undefined,
+        owner: { name: '', accent: null, art: null, avatarStyle: null },
       });
       const link = container.querySelector(
         '.list-hero-byline-link'

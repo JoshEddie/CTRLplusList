@@ -1,6 +1,7 @@
 'use client';
 
 import '@/app/ui/components/field/form-field.css';
+import '@/app/ui/styles/altvatar.css';
 import { ACCENT_NAMES, accentVars } from '@/lib/accent';
 import { useId } from 'react';
 
@@ -26,11 +27,10 @@ export default function AccentPicker({
 
   return (
     <fieldset className="profile-accent-picker" disabled={disabled}>
+      {/* No required marker: one preset is always selected, so there is no
+          unfilled state for it to warn about. */}
       <legend className="form_field_label">
         Accent
-        <span className="required_indicator" aria-hidden="true">
-          {' *'}
-        </span>
         {/* The stored value is the preset's name, so naming the selection is
             showing what is actually saved, not a label invented for the UI. */}
         <span className="profile-accent-selected">{value}</span>
@@ -55,6 +55,9 @@ export default function AccentPicker({
             />
             <span className="sr-only">{accent}</span>
             <span className="profile-accent-swatch" aria-hidden />
+            <span className="profile-accent-name" aria-hidden>
+              {accent}
+            </span>
           </label>
         ))}
       </div>

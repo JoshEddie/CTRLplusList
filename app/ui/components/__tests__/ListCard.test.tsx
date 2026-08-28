@@ -5,10 +5,14 @@
  * the link and the labeled bookmark icon but cannot read class-named spans or
  * assert element absence by class; classed `document` queries are required.
  */
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ListCard from '../ListCard';
 import { makeList } from './test-helpers';
+import { makeProfile } from '@/test/helpers/profile';
+import { ACCENT_PRESETS } from '@/lib/accent';
+
+const ART = 'data:image/svg+xml;utf8,%3Csvg%2F%3E';
 
 vi.mock('next/link', async () => ({
   default: (await import('./test-helpers')).MockNextLink,
@@ -91,17 +95,19 @@ describe('ListCard', () => {
   });
 
   describe('OwnerByline', () => {
-    it('ShowOwnerTrueWithName_RendersByline', () => {
+    it('ShowOwnerTrueWithName_RendersBylineWithOwnerDisc', () => {
       render(
-        <ListCard list={makeList({ profile: { name: 'Alice' } })} showOwner />
+        <ListCard list={makeList({ profile: makeProfile('p1', 'Alice') })} showOwner />
       );
-      expect(document.querySelector('.list-card-byline')).toHaveTextContent(
-        'Alice'
-      );
+      const byline = document.querySelector('.list-card-byline');
+      expect(byline).toHaveTextContent('Alice');
+      expect(byline?.querySelector('.list-card-byline-avatar')).not.toBeNull();
     });
 
     it('ShowOwnerFalse_NoByline-EvenWithName', () => {
-      render(<ListCard list={makeList({ profile: { name: 'Alice' } })} />);
+      render(
+        <ListCard list={makeList({ profile: makeProfile('p1', 'Alice') })} />
+      );
       expect(document.querySelector('.list-card-byline')).toBeNull();
     });
 
@@ -110,11 +116,60 @@ describe('ListCard', () => {
       expect(document.querySelector('.list-card-byline')).toBeNull();
     });
 
-    it('ShowOwnerTrueButNullName_NoByline', () => {
+    it('OwnerProfileWithArt_BylineRendersThatProfilesArt', () => {
       render(
-        <ListCard list={makeList({ profile: { name: null } })} showOwner />
+        <ListCard
+          list={makeList({
+            profile: {
+              ...makeProfile('p1', 'Alice'),
+              art: ART,
+              avatarStyle: 'avataaars',
+            },
+          })}
+          showOwner
+        />
       );
-      expect(document.querySelector('.list-card-byline')).toBeNull();
+      expect(screen.getByTestId('altvatar-art')).toHaveAttribute('src', ART);
+    });
+
+    it('OwnerProfileWithNoArt_BylineRendersInitials', () => {
+      // The byline reads the profile and only the profile. There is no account
+      // hop behind it, so nothing here can branch on whether one exists.
+      render(
+        <ListCard list={makeList({ profile: makeProfile('p1', 'Alice') })} showOwner />
+      );
+      expect(screen.getByText('A')).toBeInTheDocument();
+      expect(screen.queryByTestId('altvatar-art')).toBeNull();
+    });
+  });
+
+  describe('AccentEdge', () => {
+    it('OwnerHasAccent_CardCarriesAccentVars', () => {
+      render(
+        <ListCard
+          list={makeList({
+            profile: { ...makeProfile('p1', 'Alice'), accent: 'rose' },
+          })}
+        />
+      );
+      // The leading edge is a ::before painted from --accent-bg, so the custom
+      // property on the root is what carries the owner's colour to it.
+      expect(
+        document
+          .querySelector<HTMLElement>('a.list-card')
+          ?.style.getPropertyValue('--accent-bg')
+      ).toBe('linear-gradient(120deg, #fbcfe8, #be123c)');
+    });
+
+    it('NoOwnerAccent_EdgeFallsBackToTheIrisPreset', () => {
+      render(<ListCard list={makeList({ profile: null })} />);
+      expect(
+        document
+          .querySelector<HTMLElement>('a.list-card')
+          ?.style.getPropertyValue('--accent-bg')
+      ).toBe(
+        `linear-gradient(120deg, ${ACCENT_PRESETS.iris.light}, ${ACCENT_PRESETS.iris.dark})`
+      );
     });
   });
 });

@@ -2,7 +2,7 @@ import { db } from '@/db';
 import { items, list_items, lists } from '@/db/schema';
 import { sanitizePurchases } from '@/lib/data/purchase';
 import { primaryStore } from '@/lib/storeValidity';
-import { withSelfAvatar } from '@/lib/data/profile.identity';
+import { withProfileAvatar } from '@/lib/data/profileAvatar';
 import { ListTable } from '@/lib/types';
 import { cacheTags, itemRowTags } from '@/lib/cacheTags';
 import { and, eq, exists, isNotNull, isNull, sql } from 'drizzle-orm';
@@ -19,6 +19,8 @@ export async function getItemsByProfile(
   cacheTag(
     cacheTags.items,
     cacheTags.profiles,
+    cacheTags.profileAvatars,
+    cacheTags.profilePreferences,
     cacheTags.itemsOfProfile(profileId)
   );
   try {
@@ -39,7 +41,7 @@ export async function getItemsByProfile(
           with: {
             purchaserProfile: {
               columns: { name: true },
-              with: withSelfAvatar,
+              with: withProfileAvatar,
             },
             claimerProfile: {
               columns: { name: true },
@@ -156,6 +158,8 @@ export async function getItemsByListId(
   cacheTag(
     cacheTags.items,
     cacheTags.profiles,
+    cacheTags.profileAvatars,
+    cacheTags.profilePreferences,
     cacheTags.itemsOfList(listId),
     // The owning profile below is part of this read's answer, so a list that
     // changes hands has to invalidate it.
@@ -188,7 +192,7 @@ export async function getItemsByListId(
               with: {
                 purchaserProfile: {
                   columns: { name: true },
-                  with: withSelfAvatar,
+                  with: withProfileAvatar,
                 },
                 claimerProfile: {
                   columns: { name: true },

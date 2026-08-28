@@ -6,7 +6,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ACCENT_NAMES, ACCENT_PRESETS } from '@/lib/accent';
+import { ACCENT_NAMES, ACCENT_PRESETS, isAccentName } from '@/lib/accent';
 import NewProfileForm from '../NewProfileForm';
 
 const push = vi.fn();
@@ -34,24 +34,63 @@ beforeEach(() => {
 });
 
 describe('NewProfileForm', () => {
-  describe('AccentPreselection', () => {
-    it('Open_SelectsExactlyOnePresetSwatch', () => {
+  describe('AltvatarPreselection', () => {
+    // The field wears its accent rather than naming it, so the preset it is
+    // holding is read back off the custom properties it sets; the swatches
+    // themselves live in the customizer, which opens over the form.
+    /* eslint-disable testing-library/no-node-access -- the field carries no role, and the option ring is a custom property on a wrapper around an aria-hidden swatch. */
+    const fieldAccent = (container: HTMLElement) => {
+      const field = container.querySelector<HTMLElement>('.altvatar-field');
+      const disc = field?.style.getPropertyValue('--accent-disc');
+      return ACCENT_NAMES.find((n) => ACCENT_PRESETS[n].light === disc) ?? '';
+    };
+    // The customizer portals to document.body, so its swatches are outside
+    // the render container.
+    const optionAt = (index: number) =>
+      document.body.querySelectorAll('.profile-accent-option')[index];
+    /* eslint-enable testing-library/no-node-access */
+
+    const openCustomizer = () =>
+      userEvent.click(screen.getByRole('button', { name: /edit altvatar/i }));
+    const confirm = () =>
+      userEvent.click(
+        screen.getByRole('button', { name: /use this altvatar/i })
+      );
+    const checkedSwatch = () =>
+      screen
+        .getAllByRole('radio')
+        .find((s) => (s as HTMLInputElement).checked) as HTMLInputElement;
+
+    it('ClosedForm_RendersNoAccentFieldBesideItsInputs', () => {
       render(<NewProfileForm onClose={onClose} />);
-      const swatches = screen.getAllByRole('radio');
+      // Accent and face are one identity edited in one place: the picker lives
+      // in the customizer, not among the form's own fields.
+      expect(screen.queryByRole('group', { name: /accent/i })).toBeNull();
+      expect(screen.queryAllByRole('radio')).toHaveLength(0);
+    });
+
+    it('Open_PreselectsExactlyOnePreset', async () => {
+      const { container } = render(<NewProfileForm onClose={onClose} />);
+      expect(ACCENT_NAMES).toContain(fieldAccent(container));
+
+      await openCustomizer();
+      const swatches = screen.getAllByRole('radio', {
+        name: new RegExp(`^(${ACCENT_NAMES.join('|')})$`),
+      });
       expect(swatches).toHaveLength(ACCENT_NAMES.length);
       expect(
         swatches.filter((s) => (s as HTMLInputElement).checked)
       ).toHaveLength(1);
+      expect(checkedSwatch().value).toBe(fieldAccent(container));
     });
 
     it('OpenedRepeatedly_SelectsOnlyPresetNamesNeverTheFallback', () => {
       const chosen = new Set<string>();
       for (let i = 0; i < 40; i += 1) {
-        const { unmount } = render(<NewProfileForm onClose={onClose} />);
-        const checked = screen
-          .getAllByRole('radio')
-          .find((s) => (s as HTMLInputElement).checked);
-        chosen.add((checked as HTMLInputElement | undefined)?.value ?? '');
+        const { container, unmount } = render(
+          <NewProfileForm onClose={onClose} />
+        );
+        chosen.add(fieldAccent(container));
         unmount();
       }
       for (const value of chosen) {
@@ -60,14 +99,17 @@ describe('NewProfileForm', () => {
       expect(chosen.size).toBeGreaterThan(1);
     });
 
-    it('ClickAnotherSwatch_MovesSelection-SendsThatHue', async () => {
+    it('PickAnotherSwatch_MovesSelection-SendsThatHue', async () => {
       render(<NewProfileForm onClose={onClose} />);
-      const swatches = screen.getAllByRole('radio') as HTMLInputElement[];
-      const other = swatches.find((s) => !s.checked)!;
+      await openCustomizer();
+      const other = (screen.getAllByRole('radio') as HTMLInputElement[]).find(
+        (s) => !s.checked && isAccentName(s.value)
+      )!;
 
       await userEvent.click(other);
       expect(other.checked).toBe(true);
-      expect(swatches.filter((s) => s.checked)).toHaveLength(1);
+      expect(checkedSwatch()).toBe(other);
+      await confirm();
 
       await userEvent.type(screen.getByLabelText(/name/i), 'Kiddo');
       await userEvent.click(submit());
@@ -78,62 +120,49 @@ describe('NewProfileForm', () => {
       );
     });
 
-    it('ClickAnotherSwatch_NamesTheNewSelectionInTheLegend', async () => {
-      render(<NewProfileForm onClose={onClose} />);
-      const swatches = screen.getAllByRole('radio') as HTMLInputElement[];
-      const other = swatches.find((s) => !s.checked)!;
+    it('PickAnotherSwatch_NamesTheNewSelectionInTheField', async () => {
+      const { container } = render(<NewProfileForm onClose={onClose} />);
+      await openCustomizer();
+      const other = (screen.getAllByRole('radio') as HTMLInputElement[]).find(
+        (s) => !s.checked && isAccentName(s.value)
+      )!;
+      const picked = other.value;
 
       await userEvent.click(other);
-      expect(
-        screen.getByText(other.value, { selector: '.profile-accent-selected' })
-      ).toBeInTheDocument();
+      await confirm();
+
+      expect(fieldAccent(container)).toBe(picked);
     });
 
-    it('Open_RingsTheSelectedSwatchInItsOwnInk', () => {
-      const { container } = render(<NewProfileForm onClose={onClose} />);
-      const checked = (
-        screen
-          .getAllByRole('radio')
-          .find((s) => (s as HTMLInputElement).checked) as HTMLInputElement
-      ).value as keyof typeof ACCENT_PRESETS;
+    it('Open_RingsTheSelectedSwatchInItsOwnInk', async () => {
+      render(<NewProfileForm onClose={onClose} />);
+      await openCustomizer();
+      const checked = checkedSwatch().value as keyof typeof ACCENT_PRESETS;
 
-      // eslint-disable-next-line testing-library/no-node-access, testing-library/no-container -- the option wraps a decorative aria-hidden swatch; the custom property it sets is the only place the ring colour is observable.
-      const option = container.querySelectorAll('.profile-accent-option')[
-        ACCENT_NAMES.indexOf(checked)
-      ];
       // Custom properties survive as authored, so this reads the hex the
       // palette holds rather than a colour spelled out in the test.
-      expect(option.getAttribute('style')).toContain(
-        `--accent-ink: ${ACCENT_PRESETS[checked].ink}`
-      );
-    });
-
-    it('Open_NamesThePreselectedAccentInTheLegend', () => {
-      render(<NewProfileForm onClose={onClose} />);
-      const checked = (
-        screen
-          .getAllByRole('radio')
-          .find((s) => (s as HTMLInputElement).checked) as HTMLInputElement
-      ).value;
       expect(
-        screen.getByText(checked, { selector: '.profile-accent-selected' })
-      ).toBeInTheDocument();
+        optionAt(ACCENT_NAMES.indexOf(checked)).getAttribute('style')
+      ).toContain(`--accent-ink: ${ACCENT_PRESETS[checked].ink}`);
     });
 
-    it('SubmitWithoutChangingAccent_SendsThePreselectedPreset', async () => {
-      render(<NewProfileForm onClose={onClose} />);
-      const preselected = (
-        screen
-          .getAllByRole('radio')
-          .find((s) => (s as HTMLInputElement).checked) as HTMLInputElement
-      ).value;
+    it('SubmitWithoutOpeningTheCustomizer_SendsThePreselectedAltvatar', async () => {
+      const { container } = render(<NewProfileForm onClose={onClose} />);
+      const preselected = fieldAccent(container);
 
       await userEvent.type(screen.getByLabelText(/name/i), 'Kiddo');
       await userEvent.click(submit());
 
       await waitFor(() =>
         expect(createProfile).toHaveBeenCalledWith(
-          expect.objectContaining({ accent: preselected })
+          expect.objectContaining({
+            accent: preselected,
+            // Selections only — the rendering is derived server-side.
+            altvatar: {
+              style: expect.any(String),
+              options: expect.objectContaining({ seed: expect.any(String) }),
+            },
+          })
         )
       );
     });

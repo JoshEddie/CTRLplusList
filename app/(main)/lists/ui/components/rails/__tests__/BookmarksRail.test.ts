@@ -75,7 +75,7 @@ describe('BookmarksRail', () => {
     expect(entry.subtitle).toBe('Sub');
     expect(entry.occasion).toBe('birthday');
     expect(entry.date).toBeInstanceOf(Date);
-    expect(entry.profile).toEqual({ name: 'Olive' });
+    expect(entry.profile).toMatchObject({ name: 'Olive', accent: null });
   });
 
   it('NoBookmarks_PassesEmptyMessage', async () => {

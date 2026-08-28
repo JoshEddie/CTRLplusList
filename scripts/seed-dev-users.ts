@@ -33,12 +33,23 @@ import {
   list_visits,
   lists,
   preferences,
+  profile_avatars,
   profile_members,
+  profile_preferences,
   profiles,
   purchases,
   user_follows,
   users,
 } from '../db/schema';
+import { seedUserEmail } from '../lib/auth';
+import { styleOf } from '../lib/altvatar/registry';
+import { renderAltvatar } from '../lib/altvatar/render';
+import { offersOf } from '../lib/altvatar/resolve';
+import type {
+  AltvatarStyle,
+  AltvatarStyleId,
+  Selections,
+} from '../lib/altvatar/types';
 import { VISIBILITY, type ListVisibility } from '../lib/visibility';
 
 if (process.env.NODE_ENV === 'production') {
@@ -48,29 +59,40 @@ if (process.env.NODE_ENV === 'production') {
 
 const VIEWER_ID = 'dev-test-viewer';
 
-// Inline SVG data URL so dev avatars render through next/image without needing
-// an extra remotePatterns entry (and so UserImage doesn't get an empty src,
-// which it doesn't null-check — see app/(auth)/ui/components/UserAvatarPopover).
-function avatar(initials: string, bg: string): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><circle cx="40" cy="40" r="40" fill="${bg}"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="system-ui,sans-serif" font-size="32" font-weight="600" fill="white">${initials}</text></svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-}
+// The two un-onboarded fixtures, one per arm of `onboarding-gate`'s latch.
+// Neither is the primary viewer: the viewer is onboarded, so every other spec
+// and every local page renders the application rather than the gate.
+//
+// SIGNUP holds an account row and nothing else — no profile, no membership —
+// which is the state an account is in between sign-in and the gate's submit.
+// EXISTING holds a self-profile carrying no Altvatar art, which is the state
+// the phase-1 backfill left every account that predates the gate in. They are
+// reached through BYPASS_SESSION_USER, one Playwright server mode each, and
+// nothing submits against them: the latch is one-shot per seeded database, so
+// a spec that completed the gate would consume the fixture for every run after
+// it.
+const SIGNUP_FIXTURE_ID = 'dev-unonboarded-signup';
+const EXISTING_FIXTURE_ID = 'dev-unonboarded-existing';
 
-type SeedUser = { id: string; name: string; email: string; image: string };
+// `users.image` carries no seeded value: a profile's face comes from its own
+// Altvatar row and never from the account, so a synthesized account image would
+// be a source nothing reads. NextAuth still writes the column on sign-in; the
+// application asks it for nothing.
+type SeedUser = { id: string; name: string; email: string };
 // Expanded roster — enough friends to push the Following rail past horizontal
 // scroll and to give Recently Visited / Bookmarks enough variety.
-const FRIENDS: { slug: string; first: string; bg: string }[] = [
-  { slug: 'alice', first: 'Alice', bg: '#0ea5e9' },
-  { slug: 'bob', first: 'Bob', bg: '#16a34a' },
-  { slug: 'carol', first: 'Carol', bg: '#ea580c' },
-  { slug: 'dave', first: 'Dave', bg: '#dc2626' },
-  { slug: 'eve', first: 'Eve', bg: '#7c3aed' },
-  { slug: 'frank', first: 'Frank', bg: '#0891b2' },
-  { slug: 'grace', first: 'Grace', bg: '#db2777' },
-  { slug: 'hank', first: 'Hank', bg: '#65a30d' },
-  { slug: 'iris', first: 'Iris', bg: '#f59e0b' },
-  { slug: 'jack', first: 'Jack', bg: '#475569' },
-  { slug: 'kim', first: 'Kim', bg: '#9333ea' },
+const FRIENDS: { slug: string; first: string }[] = [
+  { slug: 'alice', first: 'Alice' },
+  { slug: 'bob', first: 'Bob' },
+  { slug: 'carol', first: 'Carol' },
+  { slug: 'dave', first: 'Dave' },
+  { slug: 'eve', first: 'Eve' },
+  { slug: 'frank', first: 'Frank' },
+  { slug: 'grace', first: 'Grace' },
+  { slug: 'hank', first: 'Hank' },
+  { slug: 'iris', first: 'Iris' },
+  { slug: 'jack', first: 'Jack' },
+  { slug: 'kim', first: 'Kim' },
 ];
 const friendId = (slug: string) => `dev-friend-${slug}`;
 const selfProfileOf = (userId: string) => `self-${userId}`;
@@ -83,16 +105,28 @@ const seedUsers: SeedUser[] = [
   {
     id: VIEWER_ID,
     name: 'Test Viewer',
-    email: 'test-viewer@dev.local',
-    image: avatar('TV', '#5b21b6'),
+    email: seedUserEmail(VIEWER_ID),
   },
   ...FRIENDS.map((f) => ({
     id: friendId(f.slug),
     name: `${f.first} Example`,
-    email: `${f.slug}@dev.local`,
-    image: avatar(`${f.first[0]}E`, f.bg),
+    email: seedUserEmail(friendId(f.slug)),
   })),
+  {
+    id: SIGNUP_FIXTURE_ID,
+    name: 'Newly Signed Up',
+    email: seedUserEmail(SIGNUP_FIXTURE_ID),
+  },
+  {
+    id: EXISTING_FIXTURE_ID,
+    name: 'Faceless Veteran',
+    email: seedUserEmail(EXISTING_FIXTURE_ID),
+  },
 ];
+
+// Everyone but the signup fixture, which holds no profile and no membership by
+// definition — that absence is the whole of what the gate's first arm reads.
+const profiledUsers = seedUsers.filter((u) => u.id !== SIGNUP_FIXTURE_ID);
 
 // The two account-less profile fixtures, named for the viewer's role on each:
 // the viewer is `owner` on the first and `manager` on the second, so between
@@ -101,6 +135,57 @@ const seedUsers: SeedUser[] = [
 // is therefore covered by a fixture rather than only by a unit test.
 const OWNED_PROFILE_ID = 'dev-profile-owned';
 const MANAGED_PROFILE_ID = 'dev-profile-managed';
+
+// Accents and Altvatars for a slice of the roster, so every branch of the
+// avatar disc is on screen at once: art on an accent, initials on an accent,
+// and the unset fallback. `kim` and MANAGED_PROFILE_ID carry neither on
+// purpose — a seed where everything has a face hides the fallback path that
+// most real profiles start in.
+//
+//
+// The viewer carries art on purpose: art is what `onboarding-gate` latches on,
+// so a viewer without it would meet the gate on every local page and in front
+// of every e2e spec. EXISTING_FIXTURE_ID is the profile deliberately left
+// without it, and it is not the viewer.
+const SEEDED_FACES: Record<
+  string,
+  { accent: string; face?: AltvatarStyleId }
+> = {
+  [selfProfileOf(VIEWER_ID)]: { accent: 'midnight', face: 'avataaars' },
+  [selfProfileOf(friendId('alice'))]: { accent: 'rose', face: 'personas' },
+  [selfProfileOf(friendId('bob'))]: { accent: 'denim', face: 'avataaars' },
+  [selfProfileOf(friendId('carol'))]: { accent: 'lion', face: 'icons' },
+  [selfProfileOf(friendId('dave'))]: { accent: 'juniper', face: 'avataaars' },
+  [selfProfileOf(friendId('eve'))]: { accent: 'nebula', face: 'personas' },
+  [selfProfileOf(friendId('frank'))]: { accent: 'fathom', face: 'icons' },
+  [selfProfileOf(friendId('grace'))]: { accent: 'coral', face: 'avataaars' },
+  [selfProfileOf(friendId('hank'))]: { accent: 'clover', face: 'toon-head' },
+  // Accent, no art: the initials-on-an-accent-disc branch.
+  [selfProfileOf(friendId('iris'))]: { accent: 'oasis' },
+  [selfProfileOf(friendId('jack'))]: { accent: 'slate' },
+  // OWNED_PROFILE_ID is absent on purpose: e2e/profiles.auth.spec.ts opens its
+  // space to prove the no-accent-row branch rolls a suggestion, so seeding it
+  // one would erase the only fixture for that path.
+  //
+  // EXISTING_FIXTURE_ID's self-profile is absent for a different reason: no art
+  // is exactly what leaves that account un-onboarded, so giving it a face here
+  // would silently retire the gate's second arm.
+};
+
+// A colour axis has no seed-driven default — left unset, every face lands on
+// the same skin and hair — so each is picked from its own palette by a hash of
+// the profile id. Hashing rather than `shuffleAltvatar` keeps a re-run's faces
+// identical to the last run's, which is what makes them usable as fixtures.
+function seededSelections(style: AltvatarStyle, key: string): Selections {
+  let hash = 0;
+  for (const ch of key) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const selections: Selections = {};
+  for (const offer of offersOf(style)) {
+    if (offer.kind !== 'color') continue;
+    selections[offer.axis] = offer.palette[hash++ % offer.palette.length].value;
+  }
+  return selections;
+}
 
 // Last-acted-as fixtures. Absolute rather than relative to the seed run, so a
 // switcher ordered most-recently-acted-as first is testable against values that
@@ -693,7 +778,7 @@ async function main() {
     );
   }
 
-  // Update name + image on conflict so re-runs pick up avatar changes.
+  // Update name on conflict so re-runs pick up roster edits.
   await db
     .insert(users)
     .values(
@@ -702,12 +787,11 @@ async function main() {
         name: u.name,
         email: u.email,
         emailVerified: new Date(),
-        image: u.image,
       }))
     )
     .onConflictDoUpdate({
       target: users.id,
-      set: { name: sql`excluded.name`, image: sql`excluded.image` },
+      set: { name: sql`excluded.name` },
     });
   console.log(`  users: ${seedUsers.length} upserted`);
 
@@ -725,12 +809,11 @@ async function main() {
     .onConflictDoNothing();
 
   // Profiles: one self-profile per seeded user (the invariant the migration
-  // backfill guarantees in Neon) plus the two account-less fixtures. No per-profile
-  // preference values — every seeded profile renders the accent fallback.
+  // backfill guarantees in Neon) plus the two account-less fixtures.
   await db
     .insert(profiles)
     .values([
-      ...seedUsers.map((u) => ({
+      ...profiledUsers.map((u) => ({
         id: selfProfileOf(u.id),
         name: u.name,
       })),
@@ -738,10 +821,62 @@ async function main() {
       { id: MANAGED_PROFILE_ID, name: 'Managed Profile' },
     ])
     .onConflictDoNothing();
+
+  // Accents and faces. Upserted rather than ignored on conflict so re-running
+  // the seed after editing SEEDED_FACES actually repaints.
+  const seededFaces = Object.entries(SEEDED_FACES);
+  await db
+    .insert(profile_preferences)
+    .values(
+      seededFaces.map(([profile_id, { accent }]) => ({
+        profile_id,
+        preference_id: ACCENT_PREFERENCE_ID,
+        value: accent,
+      }))
+    )
+    .onConflictDoUpdate({
+      target: [
+        profile_preferences.profile_id,
+        profile_preferences.preference_id,
+      ],
+      set: { value: sql`excluded.value` },
+    });
+  const avatarRows = await Promise.all(
+    seededFaces
+      .filter(([, f]) => f.face)
+      .map(async ([profile_id, f]) => {
+        const style = styleOf(f.face as string);
+        const options = {
+          seed: profile_id,
+          selections: seededSelections(style, profile_id),
+        };
+        return {
+          profile_id,
+          style: style.id,
+          options,
+          art: await renderAltvatar(style.id, options),
+        };
+      })
+  );
+  await db
+    .insert(profile_avatars)
+    .values(avatarRows)
+    .onConflictDoUpdate({
+      target: profile_avatars.profile_id,
+      set: {
+        style: sql`excluded.style`,
+        options: sql`excluded.options`,
+        art: sql`excluded.art`,
+        updated_at: new Date(),
+      },
+    });
+  console.log(
+    `  faces: ${seededFaces.length} accents, ${avatarRows.length} Altvatars upserted`
+  );
   await db
     .insert(profile_members)
     .values([
-      ...seedUsers.map((u) => ({
+      ...profiledUsers.map((u) => ({
         user_id: u.id,
         profile_id: selfProfileOf(u.id),
         role: 'self',
@@ -776,7 +911,7 @@ async function main() {
     ])
     .onConflictDoNothing();
   console.log(
-    `  preferences: 1 catalog row inserted-if-absent\n  profiles: ${seedUsers.length} self + 2 managed inserted-if-absent, profile_members: ${seedUsers.length + 4} inserted-if-absent (existing rows keep their current values)`
+    `  preferences: 1 catalog row inserted-if-absent\n  profiles: ${profiledUsers.length} self + 2 managed inserted-if-absent, profile_members: ${profiledUsers.length + 4} inserted-if-absent (existing rows keep their current values)`
   );
 
   const now = Date.now();

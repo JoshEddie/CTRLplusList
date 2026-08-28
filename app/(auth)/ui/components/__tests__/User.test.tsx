@@ -42,7 +42,16 @@ function membership(
   name: string,
   role: ProfileMembershipView['role']
 ): ProfileMembershipView {
-  return { id, name, role, tagline: null, accent: null, last_active_at: null };
+  return {
+    id,
+    name,
+    role,
+    tagline: null,
+    accent: null,
+    art: null,
+    avatarStyle: null,
+    last_active_at: null,
+  };
 }
 
 beforeEach(() => {

@@ -2,6 +2,7 @@ import { db } from '@/db';
 import {
   items,
   lists,
+  profile_avatars,
   profiles,
   user_blocks,
   user_follows,
@@ -13,10 +14,11 @@ import {
 } from '@/lib/data/profile.active';
 import { readActiveProfileSelection } from '@/lib/data/profile.cookie';
 import { selfMemberships } from '@/lib/data/profile.identity';
+import { accentPreferences, avatarColumns } from '@/lib/data/profileAvatar';
 import { isFollowing } from '@/lib/data/user';
 import type { ProfileCardView, UserIdentity } from '@/lib/types';
 import { VISIBILITY, visibilityDbValues } from '@/lib/visibility';
-import { cacheTags } from '@/lib/cacheTags';
+import { cacheTags, profileIdentityTags } from '@/lib/cacheTags';
 import { isViewersOwnProfile } from '@/lib/activeProfile';
 import { and, count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
@@ -37,9 +39,9 @@ export const getUserIdentity: (userId: string) => Promise<UserIdentity | null> =
     }
   });
 
-// Not cached: joins `users` for follower name/image. The follower is an
-// account; its self-profile id rides along so rows can link to the profile
-// route.
+// Not cached: joins `users` for the follower's account name. The follower is
+// an account; its self-profile id rides along so rows can link to the profile
+// route, and the face is that profile's.
 export async function getFollowersOfProfile(profileId: string) {
   try {
     const result = await db
@@ -51,13 +53,15 @@ export async function getFollowersOfProfile(profileId: string) {
           id: users.id,
           profile_id: profiles.id,
           name: users.name,
-          image: users.image,
+          ...avatarColumns,
         },
       })
       .from(user_follows)
       .innerJoin(users, eq(users.id, user_follows.follower_id))
       .innerJoin(selfMemberships, eq(selfMemberships.user_id, users.id))
       .innerJoin(profiles, eq(profiles.id, selfMemberships.profile_id))
+      .leftJoin(profile_avatars, eq(profile_avatars.profile_id, profiles.id))
+      .leftJoin(accentPreferences, eq(accentPreferences.profile_id, profiles.id))
       .where(eq(user_follows.followee_profile_id, profileId))
       .orderBy(desc(user_follows.created_at));
     return result;
@@ -67,7 +71,7 @@ export async function getFollowersOfProfile(profileId: string) {
   }
 }
 
-// Not cached: joins the blocked profile's account for image.
+// Not cached: joins the blocked profile's own face.
 export async function getBlockedByProfile(profileId: string) {
   try {
     const result = await db
@@ -78,13 +82,13 @@ export async function getBlockedByProfile(profileId: string) {
         blocked: {
           id: profiles.id,
           name: profiles.name,
-          image: users.image,
+          ...avatarColumns,
         },
       })
       .from(user_blocks)
       .innerJoin(profiles, eq(profiles.id, user_blocks.blocked_profile_id))
-      .leftJoin(selfMemberships, eq(selfMemberships.profile_id, profiles.id))
-      .leftJoin(users, eq(users.id, selfMemberships.user_id))
+      .leftJoin(profile_avatars, eq(profile_avatars.profile_id, profiles.id))
+      .leftJoin(accentPreferences, eq(accentPreferences.profile_id, profiles.id))
       .where(eq(user_blocks.blocker_profile_id, profileId))
       .orderBy(desc(user_blocks.created_at));
     return result;
@@ -150,15 +154,18 @@ export async function getEligiblePurchasers(
 ) {
   'use cache';
   // Membership rows read here (candidates' self memberships) have no narrow
-  // tag: self-profile creation happens out-of-band at signup with no
-  // invalidation hook, so only the bulk profile_members tag covers them.
-  // Harmless: a candidate enters or leaves this pool only through a follow or
-  // block write, and those fire tags this read carries.
+  // tag: the onboarding mint fires `profilesOfUser(userId)`, keyed by the
+  // account rather than by anything this read knows, so only the bulk
+  // profile_members tag covers them. Harmless: a candidate enters or leaves
+  // this pool only through a follow or block write, and those fire tags this
+  // read carries.
   cacheTag(
     cacheTags.userFollows,
     cacheTags.userBlocks,
     cacheTags.profileMembers,
     cacheTags.profiles,
+    cacheTags.profileAvatars,
+    cacheTags.profilePreferences,
     cacheTags.followersOfProfile(ownerProfileId),
     cacheTags.followersOfProfile(claimerProfileId),
     cacheTags.blocksOfProfile(claimerProfileId)
@@ -245,13 +252,14 @@ export async function getEligiblePurchasers(
         id: profiles.id,
         user_id: selfMemberships.user_id,
         name: profiles.name,
-        image: users.image,
+        ...avatarColumns,
       })
       .from(profiles)
       .leftJoin(selfMemberships, eq(selfMemberships.profile_id, profiles.id))
-      .leftJoin(users, eq(users.id, selfMemberships.user_id))
+      .leftJoin(profile_avatars, eq(profile_avatars.profile_id, profiles.id))
+      .leftJoin(accentPreferences, eq(accentPreferences.profile_id, profiles.id))
       .where(inArray(profiles.id, candidateIds));
-    cacheTag(...rows.map((row) => cacheTags.profile(row.id)));
+    cacheTag(...profileIdentityTags(rows.map((row) => row.id)));
 
     // The return-follow leg: the candidate's own account follows the owner's
     // profile. A candidate with no account fails the leg.
@@ -274,7 +282,13 @@ export async function getEligiblePurchasers(
     const sortKey = (p: { id: string; name: string | null }) =>
       `${claimerMutuals.has(p.id) ? 0 : 1}:${p.name ?? ''}`;
     return pool
-      .map(({ id, name, image }) => ({ id, name, image }))
+      .map(({ id, name, accent, art, avatarStyle }) => ({
+        id,
+        name,
+        accent,
+        art,
+        avatarStyle,
+      }))
       .sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
   } catch (error) {
     console.error('Error fetching eligible purchasers:', error);
@@ -282,18 +296,19 @@ export async function getEligiblePurchasers(
   }
 }
 
-// Not cached: reads `users.image` which NextAuth updates out-of-band on
-// sign-in (no invalidation hook).
+// Not cached: resolves per-viewer visibility, so a cache entry would have to
+// be keyed on the viewer as well as the profile — a freshness decision with
+// its own tag audit that this read does not make.
 export async function getProfileForViewer(
   profileId: string,
   viewer: UserIdentity | null
 ) {
   try {
     const profile = await db
-      .select({ id: profiles.id, name: profiles.name, image: users.image })
+      .select({ id: profiles.id, name: profiles.name, ...avatarColumns })
       .from(profiles)
-      .leftJoin(selfMemberships, eq(selfMemberships.profile_id, profiles.id))
-      .leftJoin(users, eq(users.id, selfMemberships.user_id))
+      .leftJoin(profile_avatars, eq(profile_avatars.profile_id, profiles.id))
+      .leftJoin(accentPreferences, eq(accentPreferences.profile_id, profiles.id))
       .where(eq(profiles.id, profileId));
     if (!profile[0]) return null;
 
@@ -350,7 +365,14 @@ export async function getProfileCardsForUser(
   userId: string
 ): Promise<ProfileCardView[]> {
   'use cache';
-  cacheTag(cacheTags.lists, cacheTags.items, cacheTags.profilesOfUser(userId));
+  cacheTag(
+    cacheTags.lists,
+    cacheTags.items,
+    cacheTags.profiles,
+    cacheTags.profileAvatars,
+    cacheTags.profilePreferences,
+    cacheTags.profilesOfUser(userId)
+  );
   try {
     const memberships = await getMembershipsForUser(userId);
     const ids = memberships.map((m) => m.id);
@@ -374,7 +396,8 @@ export async function getProfileCardsForUser(
       ...ids.flatMap((id) => [
         cacheTags.listsOfProfile(id),
         cacheTags.itemsOfProfile(id),
-      ])
+      ]),
+      ...profileIdentityTags(ids)
     );
 
     // Owner-only editing makes owned-vs-managed a capability boundary, so the
@@ -387,6 +410,8 @@ export async function getProfileCardsForUser(
         name: m.name,
         tagline: m.tagline,
         role: m.role,
+        art: m.art,
+        avatarStyle: m.avatarStyle,
         listCount: listCountOf.get(m.id) ?? 0,
         itemCount: itemCountOf.get(m.id) ?? 0,
         accent: m.accent,

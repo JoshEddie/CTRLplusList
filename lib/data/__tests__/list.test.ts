@@ -3,7 +3,11 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VISIBILITY } from '@/lib/visibility';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers, selfProfileOf } from '@/test/helpers/seedFollowGraph';
+import {
+  seedAvatar,
+  seedUsers,
+  selfProfileOf,
+} from '@/test/helpers/seedFollowGraph';
 
 import { seedItem, seedList, seedListItem } from './test-helpers';
 
@@ -37,8 +41,9 @@ beforeEach(async () => {
 describe('getList', () => {
   it('ExistingList_ReturnsListWithProfileJoin-ItemCount-DecodedVisibility', async () => {
     await seedUsers(db, [
-      { id: 'owner', name: 'Owen', email: 'owen@test.local', image: 'o.png' },
+      { id: 'owner', name: 'Owen', email: 'owen@test.local' },
     ]);
+    await seedAvatar(db, selfProfileOf('owner'), { art: '<svg id="owen" />' });
     await seedList(db, { id: 'l1', user_id: 'owner', visibility: 'public' });
     await seedItem(db, { id: 'i1', user_id: 'owner' });
     await seedItem(db, { id: 'i2', user_id: 'owner' });
@@ -49,6 +54,9 @@ describe('getList', () => {
     expect(list?.profile).toEqual({
       id: selfProfileOf('owner'),
       name: 'Owen',
+      accent: null,
+      art: '<svg id="owen" />',
+      avatarStyle: 'icons',
     });
     expect(list?.item_count).toBe(2);
     expect(list?.visibility).toBe(VISIBILITY.FOLLOWERS);
@@ -177,7 +185,9 @@ describe('getPublicListsByProfile', () => {
     expect(rows[0].profile).toEqual({
       id: selfProfileOf('owner'),
       name: 'Not Owen',
-      members: [{ user: { image: 'o.png' } }],
+      accent: null,
+      art: null,
+      avatarStyle: null,
     });
   });
 

@@ -7,9 +7,15 @@ import {
   E2E_AUTH_GOOGLE_SECRET,
   E2E_AUTH_SECRET,
   E2E_DATABASE_URL,
+  EXISTING_BASE_URL,
+  EXISTING_PORT,
+  EXISTING_SESSION_USER,
   GUEST_BASE_URL,
   GUEST_PORT,
   GUEST_SESSION_USER,
+  SIGNUP_BASE_URL,
+  SIGNUP_PORT,
+  SIGNUP_SESSION_USER,
 } from './e2e/helpers/constants';
 
 // Shared production-server env for both modes. USE_PG_DRIVER=1 routes the app
@@ -68,11 +74,24 @@ export default defineConfig({
       testMatch: /.*\.guest\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], baseURL: GUEST_BASE_URL },
     },
+    // One project per un-onboarded identity. They exist because the gate is
+    // read from the session's own rows, so the only way to meet it is to be
+    // that account — and the bypass admits one account per process.
+    {
+      name: 'onboarding-signup',
+      testMatch: /.*\.signup\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], baseURL: SIGNUP_BASE_URL },
+    },
+    {
+      name: 'onboarding-existing',
+      testMatch: /.*\.existing\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], baseURL: EXISTING_BASE_URL },
+    },
   ],
 
-  // Two production servers sharing one Docker DB. authenticated → identity
+  // Four production servers sharing one Docker DB. authenticated → identity
   // selector unset ⇒ dev-test-viewer session; guest → BYPASS_SESSION_USER=guest
-  // ⇒ no session.
+  // ⇒ no session; the two onboarding modes → their un-onboarded seeded ids.
   webServer: [
     {
       command: `npx next start -p ${AUTH_PORT}`,
@@ -91,6 +110,24 @@ export default defineConfig({
       stdout: 'pipe',
       stderr: 'pipe',
       env: { ...baseServerEnv, BYPASS_SESSION_USER: GUEST_SESSION_USER },
+    },
+    {
+      command: `npx next start -p ${SIGNUP_PORT}`,
+      url: SIGNUP_BASE_URL,
+      timeout: 120_000,
+      reuseExistingServer: !process.env.CI,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: { ...baseServerEnv, BYPASS_SESSION_USER: SIGNUP_SESSION_USER },
+    },
+    {
+      command: `npx next start -p ${EXISTING_PORT}`,
+      url: EXISTING_BASE_URL,
+      timeout: 120_000,
+      reuseExistingServer: !process.env.CI,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: { ...baseServerEnv, BYPASS_SESSION_USER: EXISTING_SESSION_USER },
     },
   ],
 });

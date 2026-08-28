@@ -1,0 +1,43 @@
+/* The avatar slot: the accent's light stop behind whatever fills it, so a
+   faceless profile is still told apart from its neighbours by colour. Art
+   carries no background of its own, which is what lets an accent change
+   re-colour the disc without regenerating anything. */
+.altvatar-disc {
+  position: relative;
+  container-type: size;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--accent-disc);
+  color: var(--accent-ink);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.altvatar-disc-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A glyph style draws flat alpha, so the ink is painted here and the art is
+   only the shape of the hole it shows through. */
+.altvatar-disc-glyph {
+  width: 62%;
+  height: 62%;
+  background: var(--accent-ink);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+.altvatar-disc-initials {
+  font-size: 40cqw;
+  letter-spacing: 0.5px;
+}

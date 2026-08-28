@@ -17,7 +17,11 @@ Orthogonal to bypass.
 - Unset ⇒ default `dev-test-viewer`.
 - Literal `guest` ⇒ `auth()` resolves `null` (logged out).
 - Any other seeded id ⇒ session for that id.
-- E2e Playwright projects: `authenticated` unset, `guest` sets `guest`.
+- `dev-unonboarded-signup` ⇒ an account holding no profile and no membership: the onboarding gate's signup arm, which offers to delete the account on cancel.
+- `dev-unonboarded-existing` ⇒ an account whose self-profile carries no Altvatar art: the gate's existing-account arm, which only signs out on cancel.
+- E2e Playwright projects: `authenticated` unset, `guest` sets `guest`, `onboarding-signup` and `onboarding-existing` set the two above.
+
+Both onboarding values are one-shot against a given database: submitting the gate writes art that no affordance unsets, so previewing an arm a second time needs `npm run db:reset:dev`.
 
 ## Seeded data coverage
 
@@ -41,11 +45,15 @@ Hand-authored non-link states: `dev-list-viewer-birthday-item-5` PRICED (single 
 
 ### Profile coverage
 
-One self-profile per seeded user, id `self-<userId>` (`dev-test-viewer` ⇒ `self-dev-test-viewer`), name = the user's, carrying a `self` membership. Two managed fixtures, both account-less (no `self` membership): `dev-profile-owned` (name "Owned Profile") with `dev-test-viewer` as `owner` and `dev-friend-alice` as `manager`, and `dev-profile-managed` (name "Managed Profile") with `dev-friend-bob` as `owner` and `dev-test-viewer` as `manager`. The test viewer therefore runs three profiles across all three roles, so a switchable set exists and `manager` is covered by a fixture. Owned Profile owns one list (`dev-list-owned-wishlist`, "Owned Profile Wishlist") — what `/lists` renders once the viewer switches to it.
+One self-profile per seeded user except `dev-unonboarded-signup` (below, which holds none by design), id `self-<userId>` (`dev-test-viewer` ⇒ `self-dev-test-viewer`), name = the user's, carrying a `self` membership. Two managed fixtures, both account-less (no `self` membership): `dev-profile-owned` (name "Owned Profile") with `dev-test-viewer` as `owner` and `dev-friend-alice` as `manager`, and `dev-profile-managed` (name "Managed Profile") with `dev-friend-bob` as `owner` and `dev-test-viewer` as `manager`. The test viewer therefore runs three profiles across all three roles, so a switchable set exists and `manager` is covered by a fixture. Owned Profile owns one list (`dev-list-owned-wishlist`, "Owned Profile Wishlist") — what `/lists` renders once the viewer switches to it.
+
+**Altvatar + accent coverage.** Every self-profile in the friend roster carries an accent, and eight of them carry Altvatar art across all four styles (`avataaars`, `personas`, `toon-head`, `icons`), so every fill of the avatar disc is on screen at once. `self-dev-friend-iris` and `self-dev-friend-jack` carry an accent and no art — the initials-on-an-accent-disc branch — and `self-dev-friend-kim` plus `dev-profile-managed` carry neither, the unset fallback. `dev-profile-owned` is deliberately accentless: `e2e/profiles.auth.spec.ts` opens its space to prove the no-accent-row branch rolls a suggestion. The test viewer's own self-profile carries both (`midnight` + `avataaars`), because art is what `onboarding-gate` latches on and a viewer without it would meet the gate on every local page. `users.image` is seeded on nobody: a profile's face comes from its own Altvatar row and never from the account.
+
+**Un-onboarded fixtures.** Two accounts sit deliberately on the far side of the gate, one per arm of its latch, and neither is the test viewer: `dev-unonboarded-signup` ("Newly Signed Up") holds a `users` row and nothing else — no profile, no membership — and `dev-unonboarded-existing` ("Faceless Veteran") holds a self-profile carrying no Altvatar art. Reach either through `BYPASS_SESSION_USER` (above).
 
 **Last-acted-as fixtures.** The viewer's memberships carry deterministic, absolute `last_active_at` values, far enough apart to order unambiguously: self-profile `2026-08-20T12:00:00Z`, Owned Profile `2026-02-14T09:00:00Z`, Managed Profile **NULL**. NULL is the never-acted-as ordering branch's fixture and orders after every membership carrying a value — no e2e flow may switch to Managed Profile, because a switch stamps the row and no affordance unsets it. Local development switches through the real UI (the avatar dropdown or a profile card); there is no environment override for the acting profile, per [2026-08-25-no-environment-override-for-the-acting-profile](openspec/adr/2026-08-25-no-environment-override-for-the-acting-profile.md).
 
-No per-profile preference values: `profile_preferences` seeds empty, so every seeded profile renders the accent fallback. `preferences` seeds the shipped catalog — today the single `accent` row — because `drizzle-kit push` builds these databases from the schema and replays no migration data, so a catalog row migration 0013 inserts on Neon reaches local and e2e only through the seed. The feature introducing a preference owns its catalog row. Profile + membership inserts use `.onConflictDoNothing()`, so a reseed does not pick up edits to a seeded profile's name or role — `db:reset:dev` does.
+`profile_preferences` seeds an accent row for each profile named above and for no other, so the accent fallback stays reachable from the profiles left out. `preferences` seeds the shipped catalog — today the single `accent` row — because `drizzle-kit push` builds these databases from the schema and replays no migration data, so a catalog row migration 0013 inserts on Neon reaches local and e2e only through the seed. The feature introducing a preference owns its catalog row. Profile + membership inserts use `.onConflictDoNothing()`, so a reseed does not pick up edits to a seeded profile's name or role — `db:reset:dev` does.
 
 ### Claim-attribution coverage
 

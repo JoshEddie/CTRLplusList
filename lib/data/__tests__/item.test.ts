@@ -2,7 +2,11 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers, selfProfileOf } from '@/test/helpers/seedFollowGraph';
+import {
+  seedAvatar,
+  seedUsers,
+  selfProfileOf,
+} from '@/test/helpers/seedFollowGraph';
 
 import {
   seedItem,
@@ -143,6 +147,9 @@ describe('getItemsByProfile', () => {
         { id: 'owner' },
         { id: 'claimer', name: 'Cara Lee' },
       ]);
+      await seedAvatar(db, selfProfileOf('claimer'), {
+        art: '<svg id="cara" />',
+      });
       await seedItem(db, { id: 'gift', user_id: 'owner' });
       await seedPurchase(db, {
         id: 'p1',
@@ -160,7 +167,12 @@ describe('getItemsByProfile', () => {
           firstName: 'Cara',
           claimedByViewer: false,
           purchasedAt: expect.any(Date),
-          image: null,
+          avatar: {
+            name: 'Cara Lee',
+            accent: null,
+            art: '<svg id="cara" />',
+            avatarStyle: 'icons',
+          },
         },
       ]);
       expect(rows[0].hasPurchases).toBe(true);
@@ -353,7 +365,7 @@ describe('getItemsByListId', () => {
         firstName: 'Vic',
         claimedByViewer: false,
         purchasedAt: expect.any(Date),
-        image: null,
+        avatar: { name: 'Vic', accent: null, art: null, avatarStyle: null },
       });
       expect(byId.po).toEqual({
         id: 'po',
@@ -361,7 +373,7 @@ describe('getItemsByListId', () => {
         firstName: 'Otto',
         claimedByViewer: false,
         purchasedAt: expect.any(Date),
-        image: null,
+        avatar: { name: 'Otto', accent: null, art: null, avatarStyle: null },
       });
     });
 
@@ -394,7 +406,6 @@ describe('getItemsByListId', () => {
           firstName: 'Gabby',
           claimedByViewer: false,
           purchasedAt: expect.any(Date),
-          image: null,
         },
       ]);
     });

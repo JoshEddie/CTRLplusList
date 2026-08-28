@@ -74,6 +74,26 @@ export async function writableMembership(
   return membership ?? null;
 }
 
+// Editing a profile is an ownership act, so it is a strictly narrower rule than
+// `writableMembership`: a manager may act as the profile but may not change who
+// it is. Read here rather than trusted from what the page rendered — an account
+// that submits by any other means lands on the same refusal.
+export async function ownsProfile(
+  userId: string,
+  profileId: string
+): Promise<boolean> {
+  const [membership] = await db
+    .select({ role: profile_members.role })
+    .from(profile_members)
+    .where(
+      and(
+        eq(profile_members.user_id, userId),
+        eq(profile_members.profile_id, profileId)
+      )
+    );
+  return membership?.role === 'self' || membership?.role === 'owner';
+}
+
 // An hour, so reordering twenty items writes the row once rather than twenty
 // times. One threshold feeds both the in-request check, which decides whether
 // the write and its invalidation are worth issuing at all, and the statement's

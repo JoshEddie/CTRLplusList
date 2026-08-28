@@ -32,6 +32,16 @@ describe('generatePlaceholderArt', () => {
     }
   });
 
+  it('ManySeeds_YieldStillArt', () => {
+    // The style's animation axis carries no probability gate, so most of its
+    // variants would set a placeholder moving unless it is pinned off.
+    for (let i = 0; i < 30; i++) {
+      expect(decodeSvg(generatePlaceholderArt(`item-${i}`))).not.toContain(
+        '<animate'
+      );
+    }
+  });
+
   it('ManySeeds_UseMoreThanOnePalette', () => {
     const seen = new Set(
       Array.from({ length: 12 }, (_, i) => {

@@ -114,11 +114,20 @@ test('ProfileSpace_OwnerPicksASwatch_RepaintsTheBandFromTheAccentVariable', asyn
   await expect(band).toHaveCSS('background-image', /gradient/);
 
   const [name, preset] = Object.entries(ACCENT_PRESETS)[0];
-  // The radio is `sr-only`; its label is the hit target a user actually gets.
-  await page
+  // The accent is edited inside the customizer now — one identity settled in
+  // one place — so the swatch is reached through the band's own edit control.
+  await page.getByRole('button', { name: 'Edit Altvatar' }).click();
+  const customizer = page.getByRole('dialog', {
+    name: 'Customise your Altvatar',
+  });
+  // The radio is `sr-only` and its own swatch covers it, so the label is the
+  // hit target a user actually gets. Selected by the radio it wraps rather than
+  // by its text, which the visible and screen-reader names repeat.
+  await customizer
     .locator('.profile-accent-option')
-    .filter({ hasText: new RegExp(`^${name}$`) })
+    .filter({ has: page.getByRole('radio', { name, exact: true }) })
     .click();
+  await customizer.getByRole('button', { name: 'Use this Altvatar' }).click();
 
   await expect(band).toHaveCSS(
     'background-image',
