@@ -83,7 +83,7 @@ Normative: each skill's SKILL.md — for the departure arc (`/embark-design`, `/
 
 #### Where extracted helpers live
 
-- Small/generic/pure helpers → **co-located `utils.ts`** for that directory (create if absent), not own single-purpose file. `capRail` in `app/(main)/lists/ui/components/rails/utils.ts`, following `app/(main)/users/ui/utils.ts` (`initialsOf`).
+- Small/generic/pure helpers → **co-located `utils.ts`** for that directory (create if absent), not own single-purpose file. `capRail` in `app/(main)/lists/ui/components/rails/utils.ts`, following `app/ui/components/utils.ts` (`initialsOf`).
 - Descriptively-named standalone module reserved for genuine domain/capability concept (`lib/data/user.ts`, `lib/visibility.ts`, `lib/listAccess.ts`). `utils.ts` = small stuff, not domain-logic dump.
 
 #### Worked example: `Button` / `LinkButton`

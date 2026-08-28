@@ -34,6 +34,30 @@ const eyesOffer: AxisOffer = {
   fallback: 'wink',
 };
 
+// avataaars folds hair and headwear into one native `top` option, so a hat
+// covers whatever hair is under it. These two offers are the pair that proves
+// the tiles lift the covering overlay for the axis beneath and leave it on for
+// the overlay's own axis.
+const hairOffer: AxisOffer = {
+  axis: 'hair',
+  kind: 'enum',
+  values: [
+    { value: 'bob', label: 'Bob' },
+    { value: 'curly', label: 'Curly' },
+  ],
+  fallback: 'short-flat',
+};
+
+const hatOffer: AxisOffer = {
+  axis: 'hat',
+  kind: 'enum',
+  values: [
+    { value: 'turban', label: 'Turban' },
+    { value: 'hat', label: 'Hat' },
+  ],
+  fallback: 'hat',
+};
+
 const skinOffer: AxisOffer = {
   axis: 'skinColor',
   kind: 'color',
@@ -96,6 +120,32 @@ describe('EnumAxis', () => {
       expect(art).toEqual([
         'data:avataaars:{"eyes":"wink","skinColor":"edb98a"}',
         'data:avataaars:{"eyes":"happy","skinColor":"edb98a"}',
+      ]);
+    });
+  });
+
+  it('AxisUnderAnOverlay_DrawsItsTilesWithTheOverlayLifted', async () => {
+    renderControls([hairOffer], { hair: 'bob', hat: 'turban' });
+    await waitFor(() => {
+      const art = screen
+        .getAllByRole('radio')
+        .map((t) => t.querySelector('img')?.getAttribute('src'));
+      expect(art).toEqual([
+        'data:avataaars:{"hair":"bob","hat":"none"}',
+        'data:avataaars:{"hair":"curly","hat":"none"}',
+      ]);
+    });
+  });
+
+  it('TheOverlayAxisItself_DrawsItsTilesStillWearingIt', async () => {
+    renderControls([hatOffer], { hair: 'bob', hat: 'turban' });
+    await waitFor(() => {
+      const art = screen
+        .getAllByRole('radio')
+        .map((t) => t.querySelector('img')?.getAttribute('src'));
+      expect(art).toEqual([
+        'data:avataaars:{"hair":"bob","hat":"turban"}',
+        'data:avataaars:{"hair":"bob","hat":"hat"}',
       ]);
     });
   });

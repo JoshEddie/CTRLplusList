@@ -247,7 +247,7 @@ In exchange the fallback preset stays selectable, and a profile storing it is in
 #### Scenario: A profile with no stored accent renders the fallback
 
 - **WHEN** a profile carrying no stored accent renders
-- **THEN** the fallback preset's band, ink and shadow are shown, all four derivations agreeing on it
+- **THEN** the fallback preset's band, ink and shadow are shown, all five derivations agreeing on it
 
 #### Scenario: A name the palette no longer carries falls back
 

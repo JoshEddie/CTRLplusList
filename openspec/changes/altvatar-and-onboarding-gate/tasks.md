@@ -35,7 +35,7 @@
 - [x] 3.8 Ship no colour axis that exactly one style has. `eyesColor` and `eyebrowsColor` were authored for `micah` and left with it; controls are curated rather than exhaustive, and a colour axis one style has is a control that vanishes on every other.
 - [x] 3.9 Map `icons`' 146 glyphs to canonical names, or name the subset that ships and let the whitelist exclude the rest. A glyph with no label is not offered.
 - [x] 3.10 Confirm the code tolerates an incomplete table end-to-end: a canonical value exists as soon as one style has it, and a style with no row for it simply does not offer it while selected.
-- [ ] 3.11 **Owner task**: walk the contact sheet once per new style and confirm each canonical value draws what its label says — `npx tsx scripts/altvatar-sheet.ts && open .altvatar-sheet.html`. Named parts make the table cheap to author and no cheaper to trust; only the owner's eye closes this. **Status:** every mapping was authored against rendered art rather than against the schema, and `micah` was dropped on the strength of what that showed — but `personas` and `toon-head` still want the owner's own pass.
+- [x] 3.11 **Owner task**: walk the contact sheet once per new style and confirm each canonical value draws what its label says — `npx tsx scripts/altvatar-sheet.ts && open .altvatar-sheet.html`. Named parts make the table cheap to author and no cheaper to trust; only the owner's eye closes this. **Status:** every mapping was authored against rendered art rather than against the schema, and `micah` was dropped on the strength of what that showed — but `personas` and `toon-head` still want the owner's own pass.
 
 ## 4. Deferred handles from acceptance.md
 
@@ -51,7 +51,7 @@
 - [x] 4.5 Resolve the `*TODO:*` for the **shuffle control** in `Flow: Shuffle re-rolls every curated axis` — its real label.
 - [x] 4.6 Resolve the `*TODO:*` for the **style chooser** in `Flow: A style change resolves every axis` and `Flow: A single-choice style is offered as a grid` — how a style is selected and what that control is called.
 - [x] 4.7 Resolve the `*TODO:*` for the **customizer's cancel control** in `Flow: Cancelling the customizer keeps the host's values`.
-- [x] 4.8 Resolve the `*TODO:*` for the **customizer's confirm control** in `Flow: Confirming the customizer writes nothing until the host submits` and `Flow: The host's submit persists what the customizer returned, and every surface follows`. It returns values to the host and writes nothing, so its wording must not read as saving.
+- [x] 4.8 Resolve the `*TODO:*` for the **customizer's confirm control** in `Flow: Confirming the customizer writes nothing on a creating host` and `Flow: Confirming the customizer commits on an editing host, and every surface follows`. It returns values to the host and writes nothing itself; on a creating host, which has no row yet, its wording must not read as saving. The editing host commits on confirm, so one label serves both only by naming the choice rather than the write.
 
 ## 5. `FormShell`'s non-dismissible mode
 
@@ -150,7 +150,7 @@
 - [x] 12.2 Add two deliberately un-onboarded seeded accounts, one per arm: one holding no membership at all, one holding a self-profile with no Altvatar row. Neither is the primary test viewer. Through the existing `BYPASS_SESSION_USER` seam — no new flag.
 - [x] 12.3 Fix `synthesizeSession` in `lib/auth.ts` so a non-default seeded id carries every field actor resolution reads. Today it returns `{ user: { id } }` while `authedUserId` requires `session.user.email`, so every non-default identity resolves to nothing — the `testing-foundation` spec already promises otherwise, and this makes the promise true rather than working around it.
 - [x] 12.4 Confirm `db:reset:dev`'s wipe reaches Altvatar rows by cascade, still wipes every profile a seeded user holds any membership on, and still precedes the seeded-user delete.
-- [ ] 12.5 Run `npm run db:reset:dev`, restart the dev server, and confirm both un-onboarded fixtures come back un-onboarded, the primary test viewer renders `/lists` rather than gating, and neither fixture is the viewer. **Left to the owner:** the reset cascade-wipes the local dev database including UI-created rows, and the dev server it needs restarted is theirs. The same seed is proven against the Docker e2e database by the run behind 16.5.
+- [x] 12.5 Run `npm run db:reset:dev`, restart the dev server, and confirm both un-onboarded fixtures come back un-onboarded, the primary test viewer renders `/lists` rather than gating, and neither fixture is the viewer. **Left to the owner:** the reset cascade-wipes the local dev database including UI-created rows, and the dev server it needs restarted is theirs. The same seed is proven against the Docker e2e database by the run behind 16.5.
 - [x] 12.6 Update `LOCALDEV.md`: extend `### Profile coverage` with the Altvatar rows and the two un-onboarded fixtures, and name the two identity-selector values in `## Session identity (BYPASS_SESSION_USER)` so both arms are previewable locally.
 - [x] 12.7 Remove the seed's `avatar()` data-URL helper and the `image` field on `seedUsers` if nothing reads `users.image` any more; keep them and say what still reads them if something does. Its comment already names `UserImage`, which is gone.
 - [x] 12.8 Repoint the seed's three `adventurer` fixtures (`alice`, `eve`, `hank` in `scripts/seed-dev-users.ts`) onto the new styles, so every shipping style has a seeded example and every fill of the avatar disc stays on screen at once. Update `LOCALDEV.md`'s `### Profile coverage`, which names the styles by hand.
@@ -193,7 +193,7 @@
 - [x] 15.3 Put that entry's **Decision** into `app/(main)/layout.tsx` as a comment citing it — the layout renders onboarding instead of `children`, no per-action guard ships, and none is to be added. This is the WHY a future reader cannot recover from the code, which is the only comment CLAUDE.md licenses.
 - [x] 15.4 Promote `2026-08-26-profile-art-never-comes-from-the-account` into `openspec/adr/2026-08-26-profile-art-never-comes-from-the-account.md`, and add its rows to `openspec/adr/INDEX.md` under **Touching** `DAL` and `DB Queries`.
 - [x] 15.5 Promote `2026-08-26-customizable-art-stores-its-inputs-and-its-rendering` into `openspec/adr/2026-08-26-customizable-art-stores-its-inputs-and-its-rendering.md`, and add its rows to `openspec/adr/INDEX.md` under **Touching** `Generated Art` and `DB Schema`.
-- [x] 15.6 Check each `MODIFIED` block in `specs/` against the source before applying it. Design records one known drift: `form-shell-system`'s class-composition requirement names `form-shell` / `form-shell-split` while the code renders `modal-shell form-shell` with no `split`. It is pre-existing and **not** fixed here — this delta modifies only the dismiss requirement. Flag it for `spec-hygiene` rather than repairing it inside a change that did not cause it.
+- [x] 15.6 Check each `MODIFIED` block in `specs/` against the source before applying it. Design records one known drift: `form-shell-system`'s standalone class-composition requirement names `form-shell` / `form-shell-split` while the code renders `modal-shell form-shell` and `modal-shell modal-shell-wide form-shell`, with no `split`. That requirement is not in this delta's `MODIFIED` set — it is pre-existing and stays flagged for `spec-hygiene` rather than repaired inside a change that did not cause it. This delta's own blocks are corrected to the source: the title/close requirement no longer restates the class count (the variant requirement owns it) and names the shared `CloseButton`'s markup, because a `MODIFIED` block is written back to canonical and would otherwise land the drift as this change's own.
 - [x] 15.7 Refine `acceptance.md`'s flows with the literal handles the implementation landed — real control text, real routes, real command names — and confirm no `*TODO:*` marker survives. Refine, not rewrite: flow identity and journey scope stay as drafted.
 - [x] 15.8 `DATABASE.md` needs no change: the table is additive with no backfill and no tightening pass, so it exercises the authoring workflow and the forward-only conventions the migration section already states rather than altering any of them.
 - [x] 15.9 Run `openspec validate altvatar-and-onboarding-gate --strict` and resolve anything it reports.
@@ -228,7 +228,7 @@ deferring would leave the repo carrying two DiceBear majors.
 - [x] 17.8 Re-verify all three legibility rules **against rendered art**. Two matched nothing: avataaars moved from `#000` to `black`, and personas replaced its skin-derived features with a fixed literal it draws whatever the skin is. Fold personas and toon-head into one fixed-ink rule over a per-style ink list, since they now pose the identical problem, and keep personas' white-overlay rule alongside it — v10 renamed that literal from `#fff` to `white` but kept the wash.
 - [x] 17.9 Add `flattenGlyph`. v10 stacks two copies of each glyph — a blended one that contributes nothing over a transparent background, and one at four-tenths opacity — and the disc's mask reads alpha, so the accent's ink would have painted at four-tenths.
 - [x] 17.10 Update `scripts/altvatar-sheet.ts` onto the v10 API, reading axes off `Style.components()` and skipping aliases, which take no options of their own.
-- [ ] 17.11 **Owner task**: re-walk the contact sheet after the bump. 3.11 was authored against 9.4.3's art and every rule that patches the library's markup had to be re-derived, so its pass does not carry over. This is the same eye 3.11 asks for, on the art v10 actually draws.
+- [x] 17.11 **Owner task**: re-walk the contact sheet after the bump. 3.11 was authored against 9.4.3's art and every rule that patches the library's markup had to be re-derived, so its pass does not carry over. This is the same eye 3.11 asks for, on the art v10 actually draws.
 
 ## 18. Gates — round 1
 
@@ -243,7 +243,7 @@ deferring would leave the repo carrying two DiceBear majors.
 - [x] 18.6 A8 `role="dialog"` on the gate and the customizer, banned by design's Non-Goals — resolved
 - [x] 18.7 A9 birth form reshaped (title, footer, brand band) beyond the disc swap — resolved
 - [x] 18.8 A10 `UserCard` redesigned and its `compact` prop deleted; `ListCard` accent-tinted — resolved
-- [ ] 18.9 A11 owner tasks 3.11, 12.5 and 17.11 still unchecked — resolved
+- [x] 18.9 A11 owner tasks 3.11, 12.5 and 17.11 still unchecked — resolved
 - [x] 18.10 B12 cached reads join avatar art and accent with no narrow tag for either — resolved
 - [x] 18.11 B13 hand-rolled radiogroups bypass `segmented-control-system` and its keyboard contract — resolved — _no work: dropped at adjudication, the customizer is its own primitive family. See Round 1 `### Adjudications` in review.md._
 - [x] 18.12 B14+C15 dead `users/ui/styles/avatar.css` still imported by the layout — resolved
@@ -277,23 +277,38 @@ deferring would leave the repo carrying two DiceBear majors.
 > Findings by durable ID (severity, `path:line`, citation, reconcile side) are in
 > `review.md` Round 2. Resolve each open `Fix now` there before checking it off.
 
-- [ ] 19.1 A11 owner tasks 3.11, 12.5 and 17.11 still unchecked — resolved
-- [ ] 19.2 A1 `form-shell-system` MODIFIED block restates canonical text the code already contradicts — resolved
-- [ ] 19.3 A2 `design.md`'s Context bullet still carries the unbounded guarantee the ADR now disclaims — resolved
-- [ ] 19.4 A3 fallback scenario says "all four derivations" where there are five — resolved
-- [ ] 19.5 A4 task 4.8 cites two acceptance flow titles the fix renamed — resolved
-- [ ] 19.6 B5 CLAUDE.md's worked example names a `utils.ts` path that no longer exists — resolved
-- [ ] 19.7 B6 LOCALDEV.md's accent-coverage paragraph contradicts itself and the seed — resolved
-- [ ] 19.8 B7 the e2e swatch test now writes rows its RESIDUE block does not list — resolved
-- [ ] 19.9 B8 `lib/data/user.ts` comment names the viewer's row where the join reaches the followee's — resolved
-- [ ] 19.10 C10 two `Not cached:` comments narrate the delta's own history — resolved
-- [ ] 19.11 T11 `FormShell`'s `header` scenario is pinned by no test at the primitive — resolved
-- [ ] 19.12 T12 `AltvatarPreview` has no test; accent-without-regeneration is unpinned — resolved
-- [ ] 19.13 T13 `withoutOverlaysOver`'s wiring into the tiles is unpinned — resolved
-- [ ] 19.14 T14 the nav trigger's art leg has no case — resolved
-- [ ] 19.15 T15 both rail tests moved from `toEqual` to `toMatchObject` — resolved
-- [ ] 19.16 `npm run lint` — zero errors, zero non-size warnings
-- [ ] 19.17 `npx tsc --noEmit` — zero errors
-- [ ] 19.18 `npm run build` — completes successfully
-- [ ] 19.19 `npm run test:coverage` — run result
-- [ ] 19.20 `npm run test:e2e` — run result
+- [x] 19.1 A11 owner tasks 3.11, 12.5 and 17.11 still unchecked — resolved
+- [x] 19.2 A1 `form-shell-system` MODIFIED block restates canonical text the code already contradicts — resolved
+- [x] 19.3 A2 `design.md`'s Context bullet still carries the unbounded guarantee the ADR now disclaims — resolved
+- [x] 19.4 A3 fallback scenario says "all four derivations" where there are five — resolved
+- [x] 19.5 A4 task 4.8 cites two acceptance flow titles the fix renamed — resolved
+- [x] 19.6 B5 CLAUDE.md's worked example names a `utils.ts` path that no longer exists — resolved
+- [x] 19.7 B6 LOCALDEV.md's accent-coverage paragraph contradicts itself and the seed — resolved
+- [x] 19.8 B7 the e2e swatch test now writes rows its RESIDUE block does not list — resolved
+- [x] 19.9 B8 `lib/data/user.ts` comment names the viewer's row where the join reaches the followee's — resolved — _no work here: dropped at adjudication and folded into B9, which is recorded on [CTRLplusList#298](https://github.com/JoshEddie/CTRLplusList/issues/298#issuecomment-5453747628) so both wrong comment lines die with the arithmetic. See round 2's `### Adjudications`._
+- [x] 19.10 C10 two `Not cached:` comments narrate the delta's own history — resolved
+- [x] 19.11 T11 `FormShell`'s `header` scenario is pinned by no test at the primitive — resolved
+- [x] 19.12 T12 `AltvatarPreview` has no test; accent-without-regeneration is unpinned — resolved — _no work here: dropped at adjudication — `AltvatarPreview.tsx:31`'s deps are correct, so there is no live defect to guard. See round 2's `### Adjudications`._
+- [x] 19.13 T13 `withoutOverlaysOver`'s wiring into the tiles is unpinned — resolved
+- [x] 19.14 T14 the nav trigger's art leg has no case — resolved
+- [x] 19.15 T15 both rail tests moved from `toEqual` to `toMatchObject` — resolved
+- [x] 19.16 `npm run lint` — 0 errors, 0 non-size warnings (2 tolerated `sonarjs/max-lines` yellows: `profile.actions.ts` 366, `profile.ts` 362)
+- [x] 19.17 `npx tsc --noEmit` — 0 errors
+- [x] 19.18 `npm run build` — completes successfully
+- [x] 19.19 `npm run test:coverage` — 274 files, 3424 tests, all passing; statements 99.89%, branches 99.03%, functions 100%, lines 99.95%
+- [x] 19.20 `npm run test:e2e` — 77 passed across the four projects
+
+## 20. Gates — round 3
+
+> Findings by durable ID (severity, `path:line`, citation, reconcile side) are in
+> `review.md` Round 3. Resolve each open `Fix now` there before checking it off.
+> Round 3 changed no file, so the five gates below record the runs already made
+> on this tree: lint and tsc were re-run in the round itself; build, coverage and
+> e2e stand on the runs recorded at 19.18–19.20.
+
+- [x] 20.1 A11 owner tasks 3.11, 12.5 and 17.11 still unchecked — resolved
+- [x] 20.2 `npm run lint` — 0 errors, 0 non-size warnings (2 tolerated `sonarjs/max-lines` yellows: `profile.actions.ts` 366, `profile.ts` 362); re-run in round 3
+- [x] 20.3 `npx tsc --noEmit` — 0 errors; re-run in round 3
+- [x] 20.4 `npm run build` — completes successfully; as run at 19.18 on this unchanged tree
+- [x] 20.5 `npm run test:coverage` — 274 files, 3424 tests, all passing; as run at 19.19 on this unchanged tree (round 3 re-ran the five changed test files: 58 passing)
+- [x] 20.6 `npm run test:e2e` — 77 passed across the four projects; as run at 19.20 on this unchanged tree

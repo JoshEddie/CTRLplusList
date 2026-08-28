@@ -154,9 +154,8 @@ export async function getListsSharedByProfile(profileId: string) {
   }
 }
 
-// Not cached: the account join that once forced this is gone, but adopting
-// `'use cache'` is a freshness decision with its own tag audit, and this read
-// keeps its current behaviour until one is made.
+// Not cached: adopting `'use cache'` is a freshness decision with its own tag
+// audit, and this read keeps its current behaviour until one is made.
 export async function getPublicListsByProfile(
   profileId: string,
   opts: { limit?: number } = {}

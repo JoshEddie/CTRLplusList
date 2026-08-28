@@ -88,6 +88,24 @@ describe('UserAvatarPopover', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
 
+  it('ActiveProfileWithArt_RendersThatArtInTheTriggerNotInitials', () => {
+    renderWithProfileSwitch(
+      <UserAvatarPopover
+        user={fullUser}
+        activeProfile={{
+          ...KIDDO,
+          art: 'data:image/svg+xml,<svg/>',
+          avatarStyle: 'avataaars',
+        }}
+      />
+    );
+    expect(screen.getByTestId('altvatar-art')).toHaveAttribute(
+      'src',
+      'data:image/svg+xml,<svg/>'
+    );
+    expect(trigger()).not.toHaveTextContent('K');
+  });
+
   it('ActiveProfileAccent_RingsTheTriggerWithThatProfilesColour', () => {
     const accent = ACCENT_NAMES[0];
     const { dark, light, ink } = ACCENT_PRESETS[accent];

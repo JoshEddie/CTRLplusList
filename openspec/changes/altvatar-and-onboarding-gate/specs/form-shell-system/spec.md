@@ -2,7 +2,7 @@
 
 ### Requirement: FormShell SHALL render an overlay-wrapped inner container with title, close, and children
 
-The `<FormShell>` primitive at `app/ui/components/FormShell.tsx` SHALL render an outer `<div class="form-shell-overlay">` containing an inner `<div>` whose class composition is one of three exact-string values based on the `variant` prop. Inside the inner div, the shell SHALL render a header `<div class="form-shell-hd">` containing a `<span class="form-shell-title">` (with the `title` prop text) and a close `<button type="button" class="form-shell-close" aria-label="Close">` (containing an `<LuX>` icon); the children prop SHALL render as the inner div's content after the header.
+The `<FormShell>` primitive at `app/ui/components/FormShell.tsx` SHALL render an outer `<div class="form-shell-overlay">` containing an inner `<div>` whose class composition the variant requirement below governs. Inside the inner div, the shell SHALL render a header `<div class="form-shell-hd">` containing a `<span class="form-shell-title">` (with the `title` prop text) and the shared `<CloseButton>`, which renders `<button type="button" class="close-button close-button--in-flow" aria-label="Close">` (containing an `<LuX>` icon); the children prop SHALL render as the inner div's content after the header.
 
 The shell SHALL also accept a `header` node in place of that title bar, for a consumer whose header carries something other than a title. Where one is supplied the shell SHALL render it instead of `form-shell-hd`, and SHALL render neither `form-shell-title` nor a close button of its own — a header given here owns its own close affordance, because the shell cannot know where in someone else's chrome the control belongs. `title` is therefore optional, and a consumer SHALL supply exactly one of the two. The shell offers this rather than growing a slot per header part: the alternative is one prop per element the consumer might want to move, each with a default the shell has to keep rendering.
 
@@ -12,7 +12,7 @@ The shell SHALL also accept a `header` node in place of that title bar, for a co
 - **THEN** an outer element with class `form-shell-overlay` is present
 - **AND** inside the overlay, an inner div contains a header (class `form-shell-hd`) followed by the child content
 - **AND** the header contains a span (class `form-shell-title`) with text `"New list"`
-- **AND** the header contains a button (class `form-shell-close`) with `aria-label="Close"`
+- **AND** the header contains a button (class `close-button`) with `aria-label="Close"`
 
 #### Scenario: Close button is type=button to avoid form submission
 

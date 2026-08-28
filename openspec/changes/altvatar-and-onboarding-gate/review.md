@@ -3,7 +3,7 @@ review: spec-review
 target: altvatar-and-onboarding-gate
 anchor: 28f2151f76d2809cc21301bcb2fda7ae7a3a0473
 diff-source: git diff --staged
-round: 2
+round: 4
 ---
 
 ## Round 1 — spec-review (2026-08-27)
@@ -193,3 +193,82 @@ The fix delta closed 28 of round 1's 29 open findings and the tree now typecheck
 - The ADR's Consequences now state the guarantee's boundary rather than overclaiming it — an artifact made weaker and truer.
 
 **Verdict:** findings remain — 15 open `Fix now` findings: prior A11 plus fresh A1, A2, A3, A4, B5, B6, B7, B8, C10, T11, T12, T13, T14, T15. B9 is `File issue` and does not block. `npx tsc --noEmit` and `npx vitest run` are green on the working tree; `npm run lint`, `npm run build` and `npm run test:e2e` were not re-run in this round and are recorded only as the fix session's own claims (18.32/18.34/18.36). CI remains **unverified** (no PR invocation).
+
+### Adjudications (2026-08-28)
+
+| # | Old → New | Rationale |
+|---|-----------|-----------|
+| A1 | `Fix now` (either arm) → `Fix now` (code-truth arm) | Owner settles the arm: the code is truth for every artifact/doc finding in this round, so the spec text is corrected rather than the drift being knowingly carried forward. Verified stale: `grep -rn 'form-shell-close' app/` returns nothing, `FormShell.tsx:44` renders `<CloseButton className="close-button--in-flow" />`, and `Variant` is `'default' \| 'wide'` — two class strings, not three. Correct the restated close-button sentence, its scenario, and the "three exact-string values" clause to what the code renders; 15.6's "modifies only the dismiss requirement" clause still goes. Kept open rather than dropped because this block is written into canonical `openspec/specs/form-shell-system/spec.md` on archive, where a later agent codes to it. |
+| B7 | `Fix now` (whole) → `Fix now` (RESIDUE block only) | Re-grounding narrowed it: `scripts/test-e2e.sh:45` runs `db:reset:dev` on every `npm run test:e2e`, so the pre-merge gate never meets the residue and the swatch test's own no-accent assertion runs before its write. The test writing an accent + art row for `dev-profile-owned` is correct under the commit-on-confirm contract and stays. What is wrong is that the file's RESIDUE block (`:17-21`) tells the next author the residue is contained when it now clobbers the file's own fixture on the bare `npx playwright test` iteration path. Fix is the two-line RESIDUE amendment; no test rewrite, no seed change. |
+| B8 | `Fix now` → `Drop` | Same defect as B9 seen from the comment side, and B9 is not being fixed in this change. Fixing the comment alone would leave a correctly-described bug that is harder to notice, not easier. Both wrong statements — the `Not cached:` line at `lib/data/user.ts:106` and the docblock's "since the viewer last visited /following" at `:100-103`, which the finding did not cite — are folded into B9's note so they die with the arithmetic. |
+| B9 | `File issue` → `File issue` (target settled) | Confirmed on the code: the join reaches `users` through the followee's self-membership (`user.ts:124-126`), so `new_count` measures each followee against that followee's own `last_seen_following_at` while `FollowingFeed.tsx:35` stamps the viewer's. Predates the anchor (`d3b7c77` #190, re-pointed by `e3ecf55` #191). Recorded as a note on the existing social-overhaul intake ticket rather than a new issue, per the owner: [CTRLplusList#298 (comment)](https://github.com/JoshEddie/CTRLplusList/issues/298#issuecomment-5453747628). Framed with the narrow join fix as the floor and the per-acting-profile grain off `profile_members.last_active_at` as the direction, because fixing the join alone bakes in the account-grain answer that issue is about to change. Non-blocking; carries no gate line. |
+| T12 | `Fix now` → `Drop` | Re-grounding found no live defect to guard: `AltvatarPreview.tsx:31`'s `[styleId, options]` deps are correct, because `draft.options` keeps referential identity through `AltvatarCustomizer`'s `setDraft` and is replaced only on an axis or style change — an accent change re-renders on the new accent without regenerating art, exactly as the scenario says. The ask is a whole new test file guarding a dependency array that is currently right. Dropped against the owner's line: absence of coverage over correct code is not a functioning defect. T11 and T14 stay open — each is one case in a file that already exists, pinning a branch this change introduced. |
+
+**Verdict:** findings remain — 13 open `Fix now` findings after adjudication: A11, A1, A2, A3, A4, B5, B6, B7, C10, T11, T13, T14, T15. B8 and T12 dropped; B9 recorded on CTRLplusList#298 and does not block. The artifact and documentation findings (A1, A2, A3, A4, B5, B6, C10) are settled to one arm — the code is correct, the artifact or doc is amended to match. Gate coverage unchanged: `npx tsc --noEmit` and `npx vitest run` green on the working tree; `npm run lint`, `npm run build` and `npm run test:e2e` still unre-run this round. CI remains **unverified**.
+
+## Round 3 — recheck (2026-08-28)
+
+Every one of round 2's twelve non-owner `Fix now` findings is resolved in the tree, verified against the code and the seed rather than the diff, and the fix delta introduced nothing new. The one finding still open is A11 — the three owner-only tasks — which no fix session can close.
+
+**Scope:** `git diff` (unstaged) · altvatar-and-onboarding-gate (active)
+
+**Routing note.** The fix delta touches both code (`lib/data/list.ts`, `lib/data/visit.ts`, five test files, `e2e/profiles.auth.spec.ts`) and spec artifacts (`design.md`, two delta specs, `tasks.md`), which is `/recheck-review`'s escalation tell for `/incremental-spec-review`. The owner overrode the routing after two full rounds and directed a straight fix-verification pass; this round is that pass and carries no fresh arena audit.
+
+### Prior findings
+
+| # | Prior finding | Status | Notes |
+|---|---------------|--------|-------|
+| A11 | Owner tasks 3.11, 12.5, 17.11 unchecked | **Still open** | All three remain `[ ]` at `tasks.md:38,153,231`; gate items 18.9 and 19.1 are correspondingly `[ ]`. Owner-only work — the v10 contact-sheet walk and the local `db:reset:dev`. `/landfall`'s all-tasks-checked gate stands on them. |
+| A1 | `form-shell-system` MODIFIED block restated stale canonical text | Resolved | Code-truth arm taken as adjudicated. The block now defers class composition to the variant requirement (canonical `:23`, below this one after archive) and names the shared `<CloseButton>`'s real markup `close-button close-button--in-flow`; the scenario asserts a button with class `close-button`. Verified `grep -rn 'form-shell-close' app/` → no matches, `FormShell.tsx:44` renders `<CloseButton className="close-button--in-flow" />`. Task 15.6 rewritten: the "modifies only the dismiss requirement" clause is gone and the pre-existing class-string drift stays flagged for `spec-hygiene` on the requirement this delta does not modify. |
+| A2 | `design.md` Context bullet carried the unbounded guarantee | Resolved | `design.md:6` now bounds it to "a write that resolves that way" and names `createProfile` and the `visit.actions.ts` writers as outside it, matching the ADR's Decision/Consequences and task 9.8. |
+| A3 | Fallback scenario said "all four derivations" | Resolved | `specs/profiles-surface/spec.md:250` reads "all five". Verified against `lib/accent.ts:58-79` — five `FALLBACK_ACCENT` derivations (`accentBackground`, `accentDisc`, `accentDark`, `accentInk`, `accentShadow`). |
+| A4 | Task 4.8 cited two renamed acceptance flow titles | Resolved | `tasks.md:54` repoints at "Confirming the customizer writes nothing on a creating host" and "…commits on an editing host, and every surface follows" (`acceptance.md:272,281`), and the "must not read as saving" clause is scoped to the creating host. |
+| B5 | CLAUDE.md's worked example named a moved `utils.ts` | Resolved | `CLAUDE.md:86` names `app/ui/components/utils.ts`; `initialsOf` is at that file's `:1`. |
+| B6 | LOCALDEV's accent paragraph contradicted itself and the seed | Resolved | `LOCALDEV.md:50` now reads "Ten of the eleven self-profiles in the friend roster carry an accent, and eight of those carry Altvatar art". Verified against the seed: `FRIENDS` holds eleven slugs (`alice`…`kim`), `SEEDED_FACES` carries ten of them, eight with a `face` across `avataaars` / `personas` / `icons` / `toon-head`, `kim` absent. |
+| B7 | e2e swatch test writes rows the RESIDUE block omits | Resolved | RESIDUE-only arm taken as adjudicated. `e2e/profiles.auth.spec.ts:17-28` now lists the swatch test's accent + Altvatar row, states plainly that it clobbers the file's own accentless fixture, and names `scripts/test-e2e.sh`'s reset as why `npm run test:e2e` never meets it and a bare `npx playwright test` does. No test or seed change. |
+| C10 | Two `Not cached:` comments narrated the delta's history | Resolved | `lib/data/list.ts:157` and `lib/data/visit.ts:9-10` keep only the standing half; the "used to be X, X is gone now" clauses are gone. `visit.ts:58` shortened to the cross-reference. |
+| T11 | `FormShell`'s `header` scenario pinned by no test | Resolved | `FormShell.test.tsx:109` `SuppliedHeader_ReplacesTheTitleBarAheadOfTheChildren` asserts the supplied node renders ahead of the children and that `form-shell-hd`, `form-shell-title` and a Close button are all absent — the scenario's negative leg included. |
+| T13 | `withoutOverlaysOver`'s wiring into the tiles unpinned | Resolved | Two cases at `AltvatarControls.test.tsx:127,140`: `AxisUnderAnOverlay_DrawsItsTilesWithTheOverlayLifted` renders the `hair` offer holding `hat: 'turban'` and expects tile art at `hat: "none"` — deleting the `withoutOverlaysOver` call at `AltvatarControls.tsx:53` would yield `"turban"` and fail it — and `TheOverlayAxisItself_DrawsItsTilesStillWearingIt` pins the scenario's second leg. |
+| T14 | The nav trigger's art leg had no case | Resolved | `UserAvatarPopover.test.tsx:91` `ActiveProfileWithArt_RendersThatArtInTheTriggerNotInitials` asserts the trigger's `altvatar-art` image carries the profile's art and that the initial is not rendered. `ProfileAvatar` is not mocked in that file, so the case exercises the real nav→disc wiring. |
+| T15 | Both rail tests moved to `toMatchObject` | Resolved | `BookmarksRail.test.ts:78` and `FollowingRail.test.ts:112` are back on `toEqual` with the full expected key set, so a re-added `image` on either projection now fails. |
+
+### New findings
+
+None. The fix delta introduced no new `Fix now` finding.
+
+### Gate coverage this round
+
+- `npx tsc --noEmit` — 0 errors (re-run this round).
+- `npm run lint` — 0 errors, 2 tolerated `sonarjs/max-lines` warnings (`profile.actions.ts` 366, `profile.ts` 362) (re-run this round).
+- `npx vitest run` over the five changed test files — 5 files, 58 tests, all passing (re-run this round).
+- `npm run build`, `npm run test:coverage` and `npm run test:e2e` were not re-run this round; they stand on the fix session's runs recorded at 19.18–19.20, which were made on this same tree — round 3 changed no file. CI remains **unverified** (no PR invocation).
+
+### What looks good
+
+- The adjudicated arm was honoured on every finding: A1 corrected the spec to the code rather than carrying the drift forward, B7 amended only the RESIDUE block, and the two dropped findings (B8, T12) were checked off with an italic note pointing at the adjudication rather than silently fixed.
+- The T13 cases are the kind that fail when the production line is deleted — the `hat: "none"` expectation is only reachable through `withoutOverlaysOver`, unlike the `eyes`-axis case that motivated the finding.
+- `FollowingRail`'s restored `toEqual` carries the whole row shape, including the join columns, so the seam proves absence rather than presence.
+
+**Verdict:** findings remain — one open `Fix now` finding: A11, the three unchecked owner tasks (3.11, 12.5, 17.11). Every other round 2 finding is resolved and no new finding was introduced. A11 is owner-only work; once those three are walked and checked, nothing in this report blocks `/landfall`.
+
+## Round 4 — recheck (2026-08-28)
+
+A11, round 3's sole remaining open finding, is closed: the owner walked the three owner-only tasks and checked them. No file in the change's executable footprint moved, so round 3's gate coverage stands unchanged.
+
+**Scope:** `git diff` (unstaged, `tasks.md` checkbox state only) · altvatar-and-onboarding-gate (active)
+
+### Prior findings
+
+| # | Prior finding | Status | Notes |
+|---|---------------|--------|-------|
+| A11 | Owner tasks 3.11, 12.5, 17.11 unchecked | Resolved | All three now `[x]` at `tasks.md:38,153,231` — the v10 contact-sheet walk and the local `db:reset:dev`, closed by the owner as owner-only work. Gate items 18.9, 19.1 and 20.1 are checked accordingly; `grep '^- \[ \]'` over `tasks.md` returns nothing, so `/landfall`'s all-tasks-checked gate has no outstanding item. |
+
+### New findings
+
+None. The delta since round 3 is checkbox state in `tasks.md` and touches no executable file.
+
+### Gate coverage this round
+
+Unchanged from round 3 and not re-run: `npm run lint` (0 errors, 2 tolerated size warnings) and `npx tsc --noEmit` (0 errors) were run in round 3 on this tree; `npm run build`, `npm run test:coverage` and `npm run test:e2e` stand on the runs recorded at 19.18–19.20 / 20.4–20.6. CI remains **unverified** (no PR invocation) — `/landfall` owns that check.
+
+**Verdict:** clear to land — no open `Fix now` findings remain. B9 is recorded on [CTRLplusList#298](https://github.com/JoshEddie/CTRLplusList/issues/298#issuecomment-5453747628) and does not block; B8 and T12 were dropped at adjudication.

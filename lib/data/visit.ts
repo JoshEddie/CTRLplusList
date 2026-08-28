@@ -6,11 +6,8 @@ import { cacheTags } from '@/lib/cacheTags';
 import { and, eq, isNotNull } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
-// Not cached: joins the owning profile for `list.profile.name` and its face.
-// Every writer of those now fires narrow tags, so the reason this read was
-// exempt has gone — but adopting `'use cache'` is a freshness decision with
-// its own tag audit, and this read keeps its current behaviour until one is
-// made.
+// Not cached: adopting `'use cache'` is a freshness decision with its own tag
+// audit, and this read keeps its current behaviour until one is made.
 export async function getBookmarkedListsByUser(userId: string) {
   try {
     const result = await db.query.list_visits.findMany({
@@ -58,8 +55,8 @@ export async function getBookmarkStatus(
   }
 }
 
-// Not cached: joins the owning profile (see getBookmarkedListsByUser above for
-// why this read keeps its current behaviour).
+// Not cached: see getBookmarkedListsByUser above for why this read keeps its
+// current behaviour.
 export async function getVisitHistoryByUser(
   userId: string,
   opts: { limit?: number } = {}

@@ -14,11 +14,18 @@ import { cssRgb } from '../test/helpers/contrast';
 // `manager` on `dev-profile-managed` ("Managed Profile") — all three roles, and
 // the switchable set the profile-switch flow drives.
 //
-// RESIDUE (contained, documented for future spec authors): the creation test
-// inserts a managed profile plus its owner membership and accent row, and the
-// edit test renames the owned profile's tagline. Both persist for the remainder of the run
-// until the next `db:reset:dev`. No other spec asserts profile counts or
-// the owned profile's tagline, so the residue is invisible outside this file.
+// RESIDUE (documented for future spec authors): the creation test inserts a
+// managed profile plus its owner membership and accent row, the edit test
+// renames the owned profile's tagline, and the swatch test commits an accent
+// and an Altvatar row for `dev-profile-owned`. All persist for the remainder of
+// the run until the next `db:reset:dev`. No other spec asserts profile counts
+// or the owned profile's tagline, so that much is invisible outside this file
+// — but the swatch row is not contained: it clobbers this file's own fixture,
+// the accentless `dev-profile-owned` whose rolled-suggestion branch the swatch
+// test opens on. `scripts/test-e2e.sh` resets first, so `npm run test:e2e`
+// never meets it; a bare `npx playwright test` re-run does, and the assertion
+// keeps passing over a branch that is no longer there. Reseed with
+// `npm run db:reset:dev` before trusting that leg on the iteration path.
 //
 // The created profile's name is unique per attempt because only
 // `scripts/test-e2e.sh` reseeds, once per run: a retry after a failed creation

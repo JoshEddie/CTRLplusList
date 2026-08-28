@@ -105,6 +105,21 @@ describe('FormShell', () => {
       const inner = container.querySelector('.form-shell')!;
       expect(inner.querySelector('[data-testid="child"]')).not.toBeNull();
     });
+
+    it('SuppliedHeader_ReplacesTheTitleBarAheadOfTheChildren', () => {
+      const { container } = render(
+        <FormShell header={<div data-testid="own-hd">chrome</div>}>
+          <div data-testid="child">body</div>
+        </FormShell>
+      );
+      const inner = container.querySelector('.form-shell')!;
+      expect(inner.querySelector('.form-shell-hd')).toBeNull();
+      expect(inner.querySelector('.form-shell-title')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+      expect(
+        Array.from(inner.children).map((n) => n.getAttribute('data-testid'))
+      ).toEqual(['own-hd', 'child']);
+    });
   });
 
   describe('CloseButton', () => {
