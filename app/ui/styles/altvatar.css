@@ -3,8 +3,12 @@
    Every option is drawn as the face it produces rather than named, so choosing
    is looking — grouping into tabs is what makes that affordable, since only one
    panel's worth of art is rendered at a time. */
+/* Above the onboarding gate and the sign-in page (150), not just above a host
+   modal (60): the customizer portals to `document.body`, so it is a sibling of
+   whatever opened it rather than a descendant, and a host that outranks this
+   buries it. */
 .altvatar-scrim {
-  z-index: 120;
+  z-index: 160;
 }
 
 /* The card every surface wearing the mark is built on: the customizer's modal
