@@ -68,15 +68,15 @@ describe('ProfileSwitchProvider', () => {
     });
 
     it('ProfileSpace_NavigatesToTheNewProfilesSpace', async () => {
-      setTestPathname('/profiles/p-other');
+      setTestPathname('/altvatar/p-other');
       renderWithProfileSwitch(<Switcher />);
       await userEvent.click(switchButton());
 
-      expect(routerReplace).toHaveBeenCalledWith(`/profiles/${TARGET}`);
+      expect(routerReplace).toHaveBeenCalledWith(`/altvatar/${TARGET}`);
     });
 
     it('ProfilesIndex_SwitchesWithoutNavigating', async () => {
-      setTestPathname('/profiles');
+      setTestPathname('/altvatar');
       renderWithProfileSwitch(<Switcher />);
       await userEvent.click(switchButton());
 
@@ -84,7 +84,7 @@ describe('ProfileSwitchProvider', () => {
     });
 
     it('RejectedSwitch_RaisesTheErrorAndStaysPut', async () => {
-      setTestPathname('/profiles/p-other');
+      setTestPathname('/altvatar/p-other');
       vi.mocked(switchActiveProfile).mockResolvedValue({
         success: false,
         message: 'You do not run that profile',

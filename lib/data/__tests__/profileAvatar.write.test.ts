@@ -113,13 +113,45 @@ describe('writeAltvatar', () => {
     it('SecondWrite_ReplacesTheRowRatherThanDuplicatingIt', async () => {
       await writeAltvatar(PROFILE, input);
       await writeAltvatar(PROFILE, {
-        style: 'icons',
-        options: { seed: 'fixed-seed', selections: { glyph: 'star' } },
+        style: 'openmoji',
+        options: { seed: 'fixed-seed', selections: { glyph: '1F415' } },
       });
 
       const rows = await db.select().from(profile_avatars);
       expect(rows).toHaveLength(1);
-      expect(rows[0].style).toBe('icons');
+      expect(rows[0].style).toBe('openmoji');
+    });
+
+    it('ThingStyle_StoresTheBundledArtAsADataUriWithTheCodepoint', async () => {
+      // The stored corpus stays one shape whatever drew it: a data URI, never
+      // the route URL the display path uses for unconfirmed drafts.
+      await writeAltvatar(PROFILE, {
+        style: 'openmoji',
+        options: { seed: 'fixed-seed', selections: { glyph: '1F415' } },
+      });
+
+      const [row] = await db.select().from(profile_avatars);
+      expect(row.options).toEqual({
+        seed: 'fixed-seed',
+        selections: { glyph: '1F415' },
+      });
+      expect(row.art).toMatch(/^data:image\/svg\+xml;utf8,/);
+      expect(decodeURIComponent(row.art)).toContain('<svg');
+    });
+
+    it('ThingStyleWithACodeOutsideTheCatalog_StoresTheDefaultGlyph', async () => {
+      // Pinned before the write, so the stored selection and the stored art
+      // can never disagree.
+      await writeAltvatar(PROFILE, {
+        style: 'openmoji',
+        options: { seed: 'fixed-seed', selections: { glyph: 'ABCDEF' } },
+      });
+
+      const [row] = await db.select().from(profile_avatars);
+      expect(row.options).toEqual({
+        seed: 'fixed-seed',
+        selections: { glyph: '2B50' },
+      });
     });
   });
 

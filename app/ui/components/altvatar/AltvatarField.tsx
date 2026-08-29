@@ -20,20 +20,15 @@ import { useState } from 'react';
 export default function AltvatarField({
   value,
   onChange,
-  name,
-  description,
 }: {
   value: AltvatarDraft;
   onChange: (draft: AltvatarDraft) => void;
-  name?: string;
-  description?: string;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
     <div className="form_field_group">
       <span className="form_field_label">Altvatar</span>
-      {description && <p className="form_field_description">{description}</p>}
       <div className="altvatar-field" style={accentVars(value.accent)}>
         <AltvatarPreview
           styleId={value.style}
@@ -41,7 +36,6 @@ export default function AltvatarField({
           accent={value.accent}
         />
         <div className="altvatar-field-detail">
-          {name && <span className="altvatar-field-name">{name}</span>}
           <Button variant="primary" onClick={() => setOpen(true)}>
             Edit Altvatar
           </Button>

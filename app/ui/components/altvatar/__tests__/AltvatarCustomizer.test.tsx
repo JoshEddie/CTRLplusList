@@ -25,6 +25,22 @@ vi.mock('@/app/ui/hooks/useIsClient', () => ({
 const onConfirm = vi.fn();
 const onCancel = vi.fn();
 
+// The thing surface searches over a route; two entries are all the surface
+// needs to render tiles.
+vi.stubGlobal(
+  'fetch',
+  vi.fn().mockResolvedValue({
+    json: () =>
+      Promise.resolve({
+        entries: [
+          { code: '1F415', label: 'dog' },
+          { code: '1F680', label: 'rocket' },
+        ],
+        hasMore: false,
+      }),
+  })
+);
+
 function makeDraft(overrides: Partial<AltvatarDraft> = {}): AltvatarDraft {
   return {
     style: 'avataaars',
@@ -87,10 +103,68 @@ describe('Basics', () => {
 });
 
 describe('StyleChange', () => {
-  it('SelectIcons_OffersOnlyBasicsAndIcon', async () => {
+  it('SelectThingKind_OffersBasicsAndIcon-OpensOnTheAccent', async () => {
+    // Two surfaces, not one surface with branches: the thing kind keeps the
+    // familiar tab shape but carries its own pair — Basics for the accent,
+    // Icon for the search-led picker — with no style picker and no shuffle.
     renderCustomizer();
-    await userEvent.click(screen.getByRole('radio', { name: 'Icons' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Thing' }));
     expect(tabNames()).toEqual(['Basics', 'Icon']);
+    expect(screen.queryByRole('button', { name: /surprise me/i })).toBeNull();
+    expect(
+      screen.queryByRole('radiogroup', { name: 'Avatar style' })
+    ).toBeNull();
+    expect(screen.getByRole('radio', { name: ACCENT_NAMES[0] })).toBeChecked();
+  });
+
+  it('OpenTheIconTab_OffersSearchOverTheSetWithAttribution', async () => {
+    renderCustomizer();
+    await userEvent.click(screen.getByRole('radio', { name: 'Thing' }));
+    await openTab('Icon');
+    expect(screen.getByRole('searchbox')).toBeInTheDocument();
+    expect(screen.getByText(/OpenMoji/)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('radio', { name: /dog/i })
+    ).toBeInTheDocument();
+  });
+
+  it('PickAnIconThenConfirm_HandsBackTheCodepoint', async () => {
+    renderCustomizer();
+    await userEvent.click(screen.getByRole('radio', { name: 'Thing' }));
+    await openTab('Icon');
+    await userEvent.click(await screen.findByRole('radio', { name: /dog/i }));
+    await userEvent.click(
+      screen.getByRole('button', { name: /use this altvatar/i })
+    );
+    expect(onConfirm).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        style: 'openmoji',
+        options: expect.objectContaining({
+          selections: expect.objectContaining({ glyph: '1F415' }),
+        }),
+      })
+    );
+  });
+
+  it('AccentEditedOnTheThingSurface_TravelsWithTheConfirm', async () => {
+    renderCustomizer();
+    await userEvent.click(screen.getByRole('radio', { name: 'Thing' }));
+    await userEvent.click(screen.getByRole('radio', { name: ACCENT_NAMES[2] }));
+    await userEvent.click(
+      screen.getByRole('button', { name: /use this altvatar/i })
+    );
+    expect(onConfirm).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ accent: ACCENT_NAMES[2] })
+    );
+  });
+
+  it('ThingThenPersonAgain_ReturnsToThePriorPersonStyle', async () => {
+    renderCustomizer(makeDraft({ style: 'personas' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Thing' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Person' }));
+    expect(
+      screen.getByRole('radio', { name: 'Personas' })
+    ).toHaveAttribute('aria-checked', 'true');
   });
 
   it('SelectToonHead_DropsTheExtrasTabItHasNothingToPutIn', async () => {
@@ -102,20 +176,20 @@ describe('StyleChange', () => {
 
   it('SelectStyleThenConfirm_HandsBackTheResolvedSelections', async () => {
     renderCustomizer();
-    await userEvent.click(screen.getByRole('radio', { name: 'Icons' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Personas' }));
     await userEvent.click(
       screen.getByRole('button', { name: /use this altvatar/i })
     );
-    // `bob` is an avataaars hair icons has no row for, so it is left alone;
-    // the axis icons does have resolves to its default rather than staying
-    // unset behind a control that shows one.
+    // `bob` and `wink` are values personas maps, so both carry; every axis
+    // personas has and the draft does not resolves to its default rather than
+    // staying unset behind a control that shows one.
     expect(onConfirm).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
-        style: 'icons',
-        options: {
+        style: 'personas',
+        options: expect.objectContaining({
           seed: 'kiddo',
-          selections: { hair: 'bob', eyes: 'wink', glyph: 'star' },
-        },
+          selections: expect.objectContaining({ hair: 'bob', eyes: 'wink' }),
+        }),
       })
     );
   });
@@ -199,7 +273,7 @@ describe('Dismissal', () => {
 
   it('EditedThenCancelled_ConfirmsNoDraft', async () => {
     renderCustomizer();
-    await userEvent.click(screen.getByRole('radio', { name: 'Icons' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Thing' }));
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onConfirm).not.toHaveBeenCalled();
   });

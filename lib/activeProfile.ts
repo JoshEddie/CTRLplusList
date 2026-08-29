@@ -10,12 +10,12 @@ import type { EmptySecondaryAction, UserIdentity } from '@/lib/types';
 // same for every profile, so it is where a viewer who has switched is least
 // able to tell another profile's view from their own content having vanished.
 //
-// The label names the destination, not the act: this is a link to the Profiles
+// The label names the destination, not the act: this is a link to the Altvatars
 // page, and switching happens there. It names no profile either — the offer is
 // true whichever one is active.
 export const SWITCH_PROFILE_ACTION: EmptySecondaryAction = {
-  href: '/profiles',
-  label: 'Go to Profiles',
+  href: '/altvatar',
+  label: 'Go to Altvatars',
 };
 
 // Whether a profile page is the viewer's own, for the surfaces that offer to

@@ -187,7 +187,7 @@ export default async function ListDetails({
                   <ProfileAvatar profile={owner} />
                   <div className="list-hero-byline-text">
                     <Link
-                      href={`/user/${list.profile_id}`}
+                      href={`/altvatar/${list.profile_id}`}
                       className="list-hero-byline-link"
                     >
                       {owner.name}

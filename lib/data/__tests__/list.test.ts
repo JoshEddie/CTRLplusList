@@ -56,7 +56,7 @@ describe('getList', () => {
       name: 'Owen',
       accent: null,
       art: '<svg id="owen" />',
-      avatarStyle: 'icons',
+      avatarStyle: 'toon-head',
     });
     expect(list?.item_count).toBe(2);
     expect(list?.visibility).toBe(VISIBILITY.FOLLOWERS);

@@ -102,7 +102,7 @@ describe('getFollowingByUser', () => {
       name: 'Alice',
       accent: null,
       art: '<svg id="alice" />',
-      avatarStyle: 'icons',
+      avatarStyle: 'toon-head',
     });
     expect(byId[selfProfileOf('followeeB')]).toEqual({
       id: selfProfileOf('followeeB'),

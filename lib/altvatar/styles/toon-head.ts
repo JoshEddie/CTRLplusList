@@ -55,7 +55,7 @@ export const toonHeadStyle: AltvatarStyle = {
         surprised: 'wide',
         happy: 'bow',
         closed: 'humble',
-        wink: 'wink',
+        // wink: 'wink',
       },
     },
     mouth: {
@@ -64,9 +64,9 @@ export const toonHeadStyle: AltvatarStyle = {
       map: {
         smile: 'smile',
         laughing: 'laugh',
-        surprised: 'agape',
-        grimace: 'angry',
-        sad: 'sad',
+        // surprised: 'agape',
+        // grimace: 'angry',
+        // sad: 'sad',
       },
     },
     facialHair: {

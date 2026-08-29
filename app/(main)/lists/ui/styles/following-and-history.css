@@ -152,28 +152,21 @@
 .profile-page {
   width: 100%;
 }
+/* Header row under the accent band: the band, disc and name come from the
+   profile space's own rules (altvatar-space.css), so a visited profile and an edited
+   one wear one look. Only the row's actions slot is this surface's. */
 .profile-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 16px;
-  padding: 24px 0;
-}
-
-.profile-header .altvatar-disc {
-  width: 96px;
-  height: 96px;
 }
 .profile-meta {
   flex: 1;
 }
-.profile-name {
-  margin: 0;
-  font-family: var(--font-crimson-pro);
-  font-size: 1.75rem;
-}
 .profile-stats {
-  font-size: 0.9rem;
-  opacity: 0.7;
+  font-size: 13px;
+  color: var(--muted-text-color);
+  margin-top: 4px;
 }
 .profile-follow-prompt {
   padding: 12px 16px;
@@ -465,19 +458,6 @@
   overflow: hidden;
   justify-content: space-between;
   gap: 14px;
-  padding-left: 24px;
-}
-/* Owner's accent as a spine down the card's leading edge. Falls back to the
-   brand gradient through --accent-bg, so a list with no owner accent still
-   reads as deliberate rather than clipped. */
-.list-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 8px;
-  background-image: var(--accent-bg);
 }
 .list-card-head {
   display: flex;
@@ -524,16 +504,22 @@
   border-radius: 3px;
   background-color: var(--secondary-background-color);
 }
-/* Owner line under the list title on non-viewer rails. Person icon mirrors the
-   hero's owner indicator; its own slot so it never competes with the subtitle
-   or the occasion/date footer. Uses --muted-text-color for WCAG AA contrast. */
+/* Owner line under the list title on non-viewer rails: a pill in the owner's
+   accent, so a list is recognised by colour before its name is read. */
 .list-card-byline {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  align-self: flex-start;
+  max-width: 100%;
   gap: 6px;
+  margin: 2px 0;
+  padding: 3px 10px 3px 3px;
+  border-radius: 999px;
+  background-color: var(--accent-disc);
   font-family: var(--font-roboto-condensed);
   font-size: 12px;
-  color: var(--muted-text-color);
+  font-weight: 600;
+  color: var(--accent-ink);
   min-width: 0;
   /* The disc is taller than the text line, so the row must not be squeezed by
      a height-constrained card — a shrunk row clips the disc flat. */
@@ -550,7 +536,6 @@
 .list-card-byline-avatar {
   width: 22px;
   height: 22px;
-  box-shadow: 0 0 0 1.5px var(--accent-dark);
 }
 .list-card-meta {
   display: flex;

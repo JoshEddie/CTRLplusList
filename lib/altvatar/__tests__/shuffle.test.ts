@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { ALTVATAR_STYLES } from '@/lib/altvatar/registry';
+import { ALTVATAR_STYLES, kindOf } from '@/lib/altvatar/registry';
 import { offersOf } from '@/lib/altvatar/resolve';
 import { shuffleAltvatar, shuffleStyle } from '@/lib/altvatar/shuffle';
 import { ALTVATAR_STYLE_IDS } from '@/lib/altvatar/types';
@@ -19,10 +19,10 @@ describe('shuffleStyle', () => {
     expect(new Set(rolled().map((s) => s.id)).size).toBeGreaterThan(1);
   });
 
-  it('AnyRoll_LandsOnAStyleThatDrawsAFigure', () => {
-    // A glyph style answers a different question, so it is chosen and never
-    // rolled into.
-    expect(rolled().every((s) => s.glyph === undefined)).toBe(true);
+  it('AnyRoll_LandsInThePersonKind', () => {
+    // A thing answers a different question, so it is chosen and never rolled
+    // into.
+    expect(rolled().every((s) => kindOf(s.id) === 'person')).toBe(true);
   });
 });
 
@@ -41,9 +41,10 @@ describe('shuffleAltvatar', () => {
     expect(unset).toEqual([]);
   });
 
-  it('ReligiousHeadwear_RollsFarBelowItsUniformShare', () => {
+  it('ReligiousHeadwear_RollsNearItsTargetShare-FarBelowUniform', () => {
     // avataaars offers eight hats, so a uniform roll would put a hijab or a
-    // turban on a quarter of all faces. Weighted, both together land near 1%.
+    // turban on a quarter of all faces. Each carries a 5% target share, so
+    // together they land near a tenth — still rolled, never a quarter.
     const ROLLS = 400;
     const style = ALTVATAR_STYLES.avataaars;
     const worn = Array.from({ length: ROLLS }, () =>
@@ -52,7 +53,8 @@ describe('shuffleAltvatar', () => {
       ({ selections }) =>
         selections.hat === 'hijab' || selections.hat === 'turban'
     );
-    expect(worn.length).toBeLessThan(ROLLS * 0.05);
+    expect(worn.length).toBeLessThan(ROLLS * 0.2);
+    expect(worn.length).toBeGreaterThan(ROLLS * 0.02);
   });
 
   it('SuccessiveRolls_ChangeTheSeed', () => {

@@ -373,7 +373,7 @@ describe('NoInteractiveTransactions', () => {
 const ACCENT = ACCENT_NAMES[0];
 // Selections only: the art is derived server-side, so no payload carries one.
 const ALTVATAR = {
-  style: 'icons',
+  style: 'toon-head',
   options: { seed: 'kiddo', selections: {} },
 };
 const validPayload = {

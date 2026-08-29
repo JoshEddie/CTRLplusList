@@ -2,6 +2,7 @@ import { AXIS_ORDER, COLOR_AXES, ENUM_AXES } from '@/lib/altvatar/vocabulary';
 import type {
   AltvatarStyle,
   AxisGate,
+  CanonicalAxis,
   EnumAxisBinding,
   CanonicalValue,
   ColorAxis,
@@ -223,22 +224,31 @@ function writeEnumAxis(
 // the vocabulary does not name cannot be produced by any control, so one
 // arriving in a payload was not chosen — it is dropped rather than stored,
 // which is what keeps a library-native name out of storage for good.
+function sanitizedValue(axis: string, value: string): string | undefined {
+  if (Object.hasOwn(COLOR_AXES, axis))
+    return /^[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : undefined;
+  // The one axis whose values the vocabulary imports rather than names: an
+  // OpenMoji codepoint, validated here by shape and against the catalog at
+  // the write, where the set is loadable.
+  if (axis === 'glyph')
+    return /^[0-9A-Fa-f]{2,7}(-[0-9A-Fa-f]{2,7})*$/.test(value)
+      ? value.toUpperCase()
+      : undefined;
+  if (!Object.hasOwn(ENUM_AXES, axis)) return undefined;
+  const named = ENUM_AXES[axis as EnumAxis].values.some(
+    (v) => v.value === value
+  );
+  return named ? value : undefined;
+}
+
 export function sanitizeSelections(
   selections: Record<string, unknown>
 ): Selections {
   const clean: Selections = {};
   for (const [axis, value] of Object.entries(selections)) {
     if (typeof value !== 'string') continue;
-    if (Object.hasOwn(COLOR_AXES, axis)) {
-      if (/^[0-9a-f]{6}$/i.test(value))
-        clean[axis as ColorAxis] = value.toLowerCase();
-      continue;
-    }
-    if (!Object.hasOwn(ENUM_AXES, axis)) continue;
-    const named = ENUM_AXES[axis as EnumAxis].values.some(
-      (v) => v.value === value
-    );
-    if (named) clean[axis as EnumAxis] = value;
+    const cleaned = sanitizedValue(axis, value);
+    if (cleaned !== undefined) clean[axis as CanonicalAxis] = cleaned;
   }
   return clean;
 }

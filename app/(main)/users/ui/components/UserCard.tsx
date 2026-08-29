@@ -19,7 +19,7 @@ export default function UserCard({
 }) {
   return (
     <Link
-      href={`/user/${profile.id}`}
+      href={`/altvatar/${profile.id}`}
       className="user-card"
       style={accentVars(profile.accent)}
     >

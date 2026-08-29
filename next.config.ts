@@ -27,6 +27,14 @@ const lanOrigins = Object.values(networkInterfaces())
 const nextConfig: NextConfig = {
   cacheComponents: true,
   allowedDevOrigins: lanOrigins,
+  // The thing kind's art is read from disk at request time (openmoji.server.ts),
+  // which file tracing cannot see through a runtime-built path. Every function
+  // rather than just the art route, because the avatar write path runs inside
+  // server actions on ordinary pages.
+  // ponytail: ~9MB per function; scope to the routes that write avatars if size bites.
+  outputFileTracingIncludes: {
+    '/**': ['./node_modules/openmoji/color/svg/**'],
+  },
   typescript: { ignoreBuildErrors: true },
   images: {
     remotePatterns: [

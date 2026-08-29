@@ -25,7 +25,7 @@ import { expect, test } from '@playwright/test';
 test('Follow_ViewerFollowsThenUnfollowsDave_FollowingPageReflectsEachState', async ({
   page,
 }) => {
-  await page.goto('/user/self-dev-friend-dave');
+  await page.goto('/altvatar/self-dev-friend-dave');
   await page.getByRole('button', { name: 'Follow Dave Example' }).click();
   await expect(page.getByRole('button', { name: 'Following' })).toBeVisible();
   // The button flip above is optimistic; the success toast fires only after
@@ -41,7 +41,7 @@ test('Follow_ViewerFollowsThenUnfollowsDave_FollowingPageReflectsEachState', asy
 
   // Unfollow — the affordance flips back, and /following drops Dave. A fresh
   // navigation proves the server state, not the optimistic flip.
-  await page.goto('/user/self-dev-friend-dave');
+  await page.goto('/altvatar/self-dev-friend-dave');
   await page.getByRole('button', { name: 'Following' }).click();
   await expect(
     page.getByRole('button', { name: 'Follow Dave Example' })

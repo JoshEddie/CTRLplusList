@@ -51,6 +51,15 @@ The system SHALL provide a `sm` size variant for genuinely-small contexts (pagin
 - **WHEN** a developer uses the default (`md`) size in a dense layout
 - **THEN** the 44px floor still applies; the resolution is to opt into `size="sm"` with a documented inline reason, not to override the floor
 
+### Requirement: Icon-only buttons use the shared disc shape
+
+The system SHALL provide an `icon` shape modifier on `<Button>` that renders the button as a disc at the size floor for its size tier — square, zero padding, fully rounded — composable with any variant. Call sites MUST use it rather than restyling a button's width, padding or radius in a page-scoped stylesheet.
+
+#### Scenario: A nav arrow renders as a disc
+
+- **WHEN** the onboarding gate renders its Back arrow as `<Button variant="on-dark" icon aria-label="Back">`
+- **THEN** it is a round 44px target carrying the variant's own border, color and hover treatment, with no page-scoped override
+
 ### Requirement: Buttons render a visible focus indicator on keyboard focus
 
 The system SHALL render a visible focus indicator on every button when reached by keyboard navigation. The indicator MUST be styled via `:focus-visible` so mouse clicks do not produce a persistent focus ring, and MUST meet WCAG 1.4.11 contrast (3:1 against the adjacent background) for every variant including `on-dark`.
@@ -122,9 +131,14 @@ The system SHALL treat toggle behavior as a `pressed` prop independent of `varia
 - **WHEN** a toggle button on a light surface (e.g. `SpoilerToggle` in the items toolbar) is rendered as `<Button variant="secondary" pressed={true}>` or `<Button variant="ghost" pressed={true}>`
 - **THEN** the pressed-state CSS for that variant applies — the system MUST provide pressed-state styling for every variant that supports toggle callers, not only `on-dark`. Variant-switching to fake pressed-state (e.g. swapping `primary` ↔ `secondary` based on state) is an antipattern and MUST be migrated to a single variant + `pressed`
 
-### Requirement: Variant set is purely visual and includes on-dark and link
+### Requirement: Variant set is purely visual and includes on-dark, white and link
 
-The system SHALL expose exactly these variants for `<Button>` and `<LinkButton>`: `primary`, `secondary`, `ghost`, `danger`, `on-dark`, `link`. Variant names MUST describe visual treatment, not domain or page-region. The previous `.nav` class is replaced by `on-dark`, which serves every saturated-purple surface in the app (header nav, list hero) with one treatment. The `link` variant is a text-button affordance — no border, no background, no horizontal padding, primary-color text, underline on hover — for cases where a button is semantically required but the visual intent is "inline text link" (disclosure affordances, "See all" links).
+The system SHALL expose exactly these variants for `<Button>` and `<LinkButton>`: `primary`, `secondary`, `ghost`, `danger`, `on-dark`, `white`, `link`. `white` is the solid counterpart to `on-dark` — white fill, primary-dark label — for the one call-to-action on a dark surface that must outrank the outlined buttons beside it. Variant names MUST describe visual treatment, not domain or page-region. The previous `.nav` class is replaced by `on-dark`, which serves every saturated-purple surface in the app (header nav, list hero) with one treatment. The `link` variant is a text-button affordance — no border, no background, no horizontal padding, primary-color text, underline on hover — for cases where a button is semantically required but the visual intent is "inline text link" (disclosure affordances, "See all" links).
+
+#### Scenario: A dark surface needs one dominant call to action
+
+- **WHEN** the onboarding gate renders its Next / Choose / Save button beside an outlined `on-dark` Back button
+- **THEN** it is a `<Button variant="white">` carrying only layout-only overrides (width, elevation) — a page-scoped stylesheet MUST NOT restyle a button's radius, fill or hover color to invent a variant
 
 #### Scenario: Nav header buttons use on-dark
 

@@ -1,7 +1,7 @@
 # altvatar Specification
 
 ## Purpose
-Generated avatar art as a profile's face — the per-profile art it holds, the app-owned option vocabulary that lets one set of choices span several drawing styles, the customizer that edits it, and the brand it ships under. No uploads: every face in the app is generated.
+Avatar art as a profile's look — the per-profile art it holds, the two kinds it comes in (a generated person, a picked thing), the app-owned option vocabulary that lets one set of choices span several drawing styles, the customizer that edits it, and the brand it ships under. No uploads: every look in the app is generated or drawn from a bundled set.
 
 ## Requirements
 
@@ -29,9 +29,44 @@ A profile carrying no row SHALL render the initials fallback `profiles-surface` 
 - **WHEN** a profile holding Altvatar art is deleted
 - **THEN** its Altvatar row is gone
 
+### Requirement: An Altvatar SHALL have a kind, one level above style
+
+An Altvatar is a person or a thing, and the kind SHALL sit one level above style: a person wears a generated face built from parts across the figurative styles, a thing wears a full-colour picture picked from a bundled set. The kind SHALL be derived from the stored style id rather than stored itself, so no storage migration hangs off the split.
+
+The two kinds SHALL be two surfaces, not one surface with branches: the person kind gets the style picker and the curated control stack, the thing kind gets a search-led picker over the bundled set. The thing kind's set is large enough that a browse grid is not a control — search SHALL be the way in, with a populated first page and a way to ask for more.
+
+The thing kind's art SHALL be flat and full-colour, sourced from a bundled SVG set rather than native OS emoji, which renders differently per viewer — an identity mark cannot. People, faces, flags and brand marks SHALL be excluded from the set: the kind exists for profiles that are not people, and the person kind already owns faces. The stored value SHALL be the set's stable codepoint, not its wording, and labels and search keywords SHALL be imported from the set's own metadata rather than hand-authored. The set's licence attribution SHALL render wherever the set is offered.
+
+#### Scenario: Kind is derived, not stored
+
+- **WHEN** a profile's stored style id names the thing kind's style
+- **THEN** it is a thing, with no column recording that
+
+#### Scenario: The thing surface is search-led
+
+- **WHEN** a viewer on the thing kind types a word the set's metadata carries
+- **THEN** pictures matching it are offered, each drawn on the same disc every avatar renders on
+
+#### Scenario: A picture is stored as its codepoint
+
+- **WHEN** a viewer picks a picture and saves
+- **THEN** the stored selection is the set's codepoint for it, and the stored art is the server's own read of that codepoint's file
+
+#### Scenario: People, faces and flags are not offered
+
+- **WHEN** a viewer searches the thing kind's set
+- **THEN** no person, face, flag, skin-tone variant or brand mark is offered
+
+#### Scenario: Attribution renders with the set
+
+- **WHEN** the thing kind's picker renders
+- **THEN** the bundled set's attribution and licence are visible
+
 ### Requirement: Altvatar options SHALL be named in an app-owned vocabulary, mapped per style
 
 Every option a viewer can choose SHALL be named by this capability rather than by the drawing library — both the axis (for example, hair) and the value (for example, short-curly). A per-style table SHALL map each canonical value to the native option that style draws it with. The library's own names SHALL reach neither a viewer nor storage.
+
+The thing kind's picture axis is the one carve-out: its values are the bundled set's codepoints, imported rather than named here. The canonical rule exists so a selection survives a style change, and that axis has no sibling style to carry a value to.
 
 The vocabulary SHALL be a closed whitelist: a native option carrying no canonical name SHALL NOT be offered, so a library release adds nothing until it is named. The mapping table MAY be incomplete, because matching an opaquely-named native value to a canonical one can only be done by looking at rendered art.
 
@@ -107,7 +142,7 @@ Because the rendering is stored rather than recomputed, upgrading the drawing li
 
 Generated art SHALL be transparent behind the figure. The colour behind it is the accent's light stop, painted by the avatar slot `profiles-surface` owns, so changing a profile's accent SHALL re-colour its avatar without regenerating any art.
 
-Where a style draws a single-colour glyph rather than a figure, the glyph SHALL be painted in the accent's ink rather than in a colour baked into the art, so it re-themes with the accent on the same terms. It SHALL be painted at the ink's full strength: the disc reads the art's shape and nothing else, so any transparency the style drew the glyph with SHALL be removed on the path that derives the art rather than dimming the ink.
+The thing kind's art is baked full-colour and gives up the re-inking a single-colour mark could have had: the accent still drives the disc behind it, but nothing inks the art itself. Design owns the clash a saturated picture on a saturated disc can produce.
 
 #### Scenario: Art has no background of its own
 
@@ -120,16 +155,18 @@ Where a style draws a single-colour glyph rather than a figure, the glyph SHALL 
 - **THEN** the avatar renders on the new accent's light stop
 - **AND** the stored art is unchanged
 
-#### Scenario: A glyph style takes the accent's ink
+#### Scenario: A thing's picture keeps its own colours
 
-- **WHEN** a profile whose style draws a single-colour glyph renders
-- **THEN** the glyph is painted in the accent's ink, at full strength rather than dimmed by the art
+- **WHEN** a profile of the thing kind renders and its accent changes
+- **THEN** the disc behind the picture re-colours and the picture itself does not
 
 ### Requirement: The customizer SHALL offer style, the styles' own controls, and shuffle, over a live preview
 
 The customizer SHALL render a live preview of the art as edited, wearing the profile's accent, alongside a choice of style, the accent picker, and the controls the selected style has. Controls SHALL be curated rather than exhaustive: the customizer offers what this capability names, never every option the library exposes.
 
-Shuffle SHALL re-roll the style along with every curated axis at once. There is no notion of a pinned or unpinned axis: every axis always holds an explicit value, so nothing has to be unselected. The style SHALL be drawn from the styles that draw a figure — a style whose whole content is a single glyph choice is a deliberate selection rather than a roll — and the controls on offer SHALL follow the rolled style, leaving the viewer on a group of controls that style has.
+The kind switch SHALL sit above everything either surface owns — met at the door, not among the controls — and switching it SHALL swap the whole surface while touching nothing stored.
+
+Shuffle SHALL re-roll the style along with every curated axis at once. There is no notion of a pinned or unpinned axis: every axis always holds an explicit value, so nothing has to be unselected. The roll SHALL stay within the person kind — a thing is chosen, never rolled, so shuffle does not render on the thing surface — and the controls on offer SHALL follow the rolled style, leaving the viewer on a group of controls that style has.
 
 A roll SHALL NOT treat every value on an axis as equally likely where that would misrepresent what a value means. Religious headwear SHALL be rolled at roughly the rate people wear it rather than at one in however many values the axis holds. Choosing it from a control SHALL remain exactly as available as choosing anything else — the weighting is on the dice, not on the offer.
 

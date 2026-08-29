@@ -80,7 +80,7 @@ function accentShadow(name: string | null | undefined): string {
 
 // Every accent-derived colour at once, as custom properties set on a
 // component's root. The stylesheet decides where each one lands, so adding a
-// painted element is a rule in profiles.css rather than another inline style
+// painted element is a rule in altvatar-space.css rather than another inline style
 // object in a component.
 export function accentVars(name: string | null | undefined): CSSProperties {
   return {

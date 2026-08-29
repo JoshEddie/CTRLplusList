@@ -79,11 +79,11 @@ describe('FollowersSection', () => {
 
       expect(screen.getByRole('link', { name: 'Alice' })).toHaveAttribute(
         'href',
-        '/user/self-ua'
+        '/altvatar/self-ua'
       );
       expect(screen.getByRole('link', { name: 'Unnamed' })).toHaveAttribute(
         'href',
-        '/user/self-ub'
+        '/altvatar/self-ub'
       );
 
       expect(screen.getAllByRole('button', { name: 'remove' })).toHaveLength(2);

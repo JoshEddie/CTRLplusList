@@ -70,6 +70,18 @@
   width: 100%;
 }
 
+/* Icon-only shape — a disc at the size floor, for arrows and other
+   label-less controls. Composes with any variant. */
+.btn-icon {
+  width: var(--btn-min-height);
+  padding: 0;
+  border-radius: 50%;
+}
+
+.btn-sm.btn-icon {
+  width: var(--btn-sm-min-height);
+}
+
 /* Variants */
 
 .btn.primary {
@@ -112,6 +124,18 @@
 }
 
 .btn.on-dark:focus-visible {
+  outline-color: #ffffff;
+}
+
+/* Solid counterpart to on-dark: the filled call-to-action on a dark surface,
+   where an outlined button reads as secondary. */
+.btn.white {
+  background-color: #ffffff;
+  border-color: #ffffff;
+  color: var(--primary-color-dark);
+}
+
+.btn.white:focus-visible {
   outline-color: #ffffff;
 }
 
@@ -172,7 +196,12 @@
 
   .btn.on-dark:hover {
     background-color: #ffffff;
-    color: var(--primary-color);
+    color: var(--secondary-color-dark);
+  }
+
+  .btn.white:hover {
+    background-color: transparent;
+    color: #ffffff;
   }
 
   .btn.on-dark[aria-pressed='true']:hover {

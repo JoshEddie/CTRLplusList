@@ -259,6 +259,7 @@
   background-color: var(--light-color);
   border-radius: var(--app-surface-radius) var(--app-surface-radius) 0 0;
   border-bottom: 1px solid var(--divider-color);
+  margin-bottom: 16px;
 }
 
 /* Avatar slot (delegates to existing <User /> popover) */

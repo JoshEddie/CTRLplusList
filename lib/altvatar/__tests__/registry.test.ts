@@ -18,7 +18,7 @@ describe('isAltvatarStyleId', () => {
 
 describe('styleOf', () => {
   it('NamedStyle_ReturnsThatStyle', () => {
-    expect(styleOf('icons').id).toBe('icons');
+    expect(styleOf('openmoji').id).toBe('openmoji');
   });
 
   it('UnregisteredId_ReturnsTheDefaultStyle', () => {

@@ -14,7 +14,7 @@ import MainLayout from '../layout';
 
 vi.mock('@/lib/data/onboarding', () => ({ resolveOnboarding: vi.fn() }));
 vi.mock('@/lib/altvatar/shuffle', () => ({
-  rollAltvatar: () => ({ style: 'icons', options: { seed: 's' } }),
+  rollAltvatar: () => ({ style: 'toon-head', options: { seed: 's' } }),
 }));
 vi.mock('@/lib/accent', () => ({ randomAccentName: () => 'rose' }));
 vi.mock('@/app/ui/components/onboarding/OnboardingGate', () => ({

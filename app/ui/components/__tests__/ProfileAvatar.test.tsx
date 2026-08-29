@@ -31,22 +31,19 @@ describe('ProfileAvatar', () => {
     expect(screen.getByTestId('altvatar-art')).toHaveAttribute('src', ART);
     // The art speaks for the name beside it, so it announces nothing itself.
     expect(screen.getByTestId('altvatar-art')).toHaveAttribute('alt', '');
-    expect(screen.queryByTestId('altvatar-glyph')).toBeNull();
     expect(screen.queryByText('GH')).toBeNull();
   });
 
-  it('GlyphStyleWithArt_MasksTheAccentsInkThroughTheArt', () => {
+  it('ThingStyleWithArt_RendersItAsAnImageLikeAnyOther', () => {
+    // Full-colour bundled art: no mask, no ink — the accent drives the disc
+    // behind it and nothing else.
     render(
       <ProfileAvatar
-        profile={profile({ art: ART, avatarStyle: 'icons' })}
+        profile={profile({ art: ART, avatarStyle: 'openmoji' })}
       />
     );
 
-    // A glyph carries flat alpha and no colour, so it is a mask over the
-    // accent rather than an image painted as-is.
-    const glyph = screen.getByTestId('altvatar-glyph');
-    expect(glyph).toHaveStyle({ maskImage: `url("${ART}")` });
-    expect(screen.queryByTestId('altvatar-art')).toBeNull();
+    expect(screen.getByTestId('altvatar-art')).toHaveAttribute('src', ART);
   });
 
   it('NoArt_FallsBackToInitialsAndNotToAnIcon', () => {
@@ -54,7 +51,6 @@ describe('ProfileAvatar', () => {
 
     expect(screen.getByText('GH')).toBeInTheDocument();
     expect(screen.queryByTestId('altvatar-art')).toBeNull();
-    expect(screen.queryByTestId('altvatar-glyph')).toBeNull();
     // No generic user icon stands in for a missing face: a profile's name is
     // required, so initials always resolve and the third leg has no reason to
     // exist.

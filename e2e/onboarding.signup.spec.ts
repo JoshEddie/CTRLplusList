@@ -5,14 +5,13 @@ import { expect, test } from '@playwright/test';
 // submit. Reached as `dev-unonboarded-signup` (scripts/seed-dev-users.ts), its
 // own server mode because the auth bypass admits one account per process.
 //
-// Residue: none, by construction. Nothing here submits and nothing confirms —
-// the destructive path is raised and DECLINED. Completing the gate or deleting
-// the account would consume a fixture the seeded database holds exactly one of,
-// so a second run would find no gate to meet. Minting, atomicity and deletion
-// are covered over the actions in lib/data/__tests__/onboarding.actions.test.ts
-// and user.actions.test.ts. Because this spec writes nothing, re-running the
-// suite against the same database exercises it identically.
-const GATE = { name: 'Finish setting up your profile' };
+// Residue: none, by construction. Nothing here submits. Completing the gate
+// would consume a fixture the seeded database holds exactly one of, so a
+// second run would find no gate to meet. Minting and atomicity are covered
+// over the actions in lib/data/__tests__/onboarding.actions.test.ts. Because
+// this spec writes nothing, re-running the suite against the same database
+// exercises it identically.
+const GATE = { name: 'Finish setting up your Altvatar' };
 
 test('Onboarding_AccountWithNoProfileRequestsAPage_GateStandsInsteadOfIt', async ({
   page,
@@ -58,32 +57,6 @@ test('Onboarding_ReloadBackdropAndEscape_LeaveTheGateStanding', async ({
   await page.keyboard.press('Escape');
   await expect(gate).toBeVisible();
 
-  await page.reload();
-  await expect(page.getByRole('dialog', { name: GATE.name })).toBeVisible();
-});
-
-test('Onboarding_CancelOnTheSignupArm_RaisesTheDeletionConfirmation-DeclineLeavesTheAccount', async ({
-  page,
-}) => {
-  await page.goto('/lists');
-  const gate = page.getByRole('dialog', { name: GATE.name });
-  await expect(gate).toBeVisible();
-
-  await gate.getByRole('button', { name: 'Cancel' }).click();
-
-  // Raised, named, and declined. Confirming would delete the fixture.
-  const confirm = page.locator('.confirm-dialog-content');
-  await expect(confirm).toContainText('Cancel sign-up?');
-  await expect(confirm).toContainText('deletes the account');
-  await expect(
-    confirm.getByRole('button', { name: 'Delete account' })
-  ).toBeVisible();
-
-  await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(confirm).toHaveCount(0);
-
-  // The account survived the decline: the gate is still what a request meets,
-  // which it would not be if the account had been deleted and signed out.
   await page.reload();
   await expect(page.getByRole('dialog', { name: GATE.name })).toBeVisible();
 });

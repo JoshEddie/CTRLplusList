@@ -27,6 +27,7 @@ const robotoCondensed = Roboto_Condensed({
 const crimsonPro = Crimson_Pro({
   variable: '--font-crimson-pro',
   subsets: ['latin'],
+  style: ['normal', 'italic'],
   display: 'swap',
   preload: true,
   fallback: ['georgia', 'serif'],

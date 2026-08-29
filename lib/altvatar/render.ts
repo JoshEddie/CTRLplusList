@@ -1,6 +1,7 @@
-import { flattenGlyph, liftFeatures } from '@/lib/altvatar/legibility';
+import { liftFeatures } from '@/lib/altvatar/legibility';
 import { toNativeOptions } from '@/lib/altvatar/resolve';
 import { styleOf } from '@/lib/altvatar/registry';
+import { openmojiArtUrl } from '@/lib/altvatar/styles/openmoji';
 import type { AltvatarOptions } from '@/lib/altvatar/types';
 import { Avatar, Style } from '@dicebear/core';
 
@@ -17,8 +18,6 @@ async function definitionOf(id: string): Promise<unknown> {
       return (await import('@dicebear/styles/personas.json')).default;
     case 'toon-head':
       return (await import('@dicebear/styles/toon-head.json')).default;
-    case 'icons':
-      return (await import('@dicebear/styles/icons.json')).default;
     default:
       return (await import('@dicebear/styles/avataaars.json')).default;
   }
@@ -42,6 +41,13 @@ export async function renderAltvatar(
   options: AltvatarOptions
 ): Promise<string> {
   const style = styleOf(styleId);
+
+  // The thing kind leaves the DiceBear path entirely: its art is a bundled
+  // picture the route serves, not a generation. This is the display path only
+  // — the save path derives the stored data URI through its own server read
+  // (openmoji.server.ts), because the filesystem is not reachable here.
+  if (style.id === 'openmoji') return openmojiArtUrl(options.selections.glyph);
+
   const native = toNativeOptions(style, options.selections);
   const svg = new Avatar(await styleFor(style.id), {
     seed: options.seed,
@@ -53,8 +59,6 @@ export async function renderAltvatar(
   // deliberate where the library now writes `charset=utf-8`: art already
   // stored carries this prefix, and nothing gains by splitting the corpus.
   const skin = (native.skinColor as string[] | undefined)?.[0];
-  const patched = style.glyph
-    ? flattenGlyph(svg)
-    : liftFeatures(svg, style.id, skin);
+  const patched = liftFeatures(svg, style.id, skin);
   return `data:image/svg+xml;utf8,${encodeURIComponent(patched)}`;
 }

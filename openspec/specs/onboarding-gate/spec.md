@@ -1,7 +1,7 @@
 # onboarding-gate Specification
 
 ## Purpose
-The blocking one-time step every account passes through exactly once before it can use the app: it collects the name and face a profile cannot exist without, and it is where the self-profile is minted — so an account that has not passed it owns nothing and can own nothing.
+The blocking one-time step every account passes through exactly once before it can use the app: it collects the name and look a profile cannot exist without, and it is where the self-profile is minted — so an account that has not passed it owns nothing and can own nothing.
 
 ## Requirements
 
@@ -69,18 +69,18 @@ An unauthenticated request SHALL be unaffected — it takes the path it takes to
 - **WHEN** an unauthenticated request reaches any page
 - **THEN** the gate does not render and the request behaves as it does for an account that has onboarded
 
-### Requirement: The gate SHALL offer no way out but submit or cancel
+### Requirement: The gate SHALL offer no way out but submit
 
-The gate SHALL render with no close control, SHALL NOT dismiss when its backdrop is activated, and SHALL NOT dismiss on Escape. Its only two exits are a successful submit and its cancel control.
+The gate SHALL render with no close control and no cancel control, SHALL NOT dismiss when its backdrop is activated, and SHALL NOT dismiss on Escape. Its only exit is a successful submit.
 
 It SHALL render on the same full-screen treatment the sign-in page uses, for both populations alike, so arriving at it reads as a continuation of signing in.
 
-Focus SHALL move into the gate when it renders.
+Focus SHALL move into the gate when it renders, and onto each step's primary control as the steps change — never into the name field, which is usually already right and whose focus raises a phone keyboard over the controls that matter.
 
-#### Scenario: No close control renders
+#### Scenario: No close or cancel control renders
 
 - **WHEN** the gate renders
-- **THEN** it carries no close control
+- **THEN** it carries no close control and no cancel control
 
 #### Scenario: The backdrop does not dismiss
 
@@ -97,28 +97,56 @@ Focus SHALL move into the gate when it renders.
 - **WHEN** an un-onboarded account reloads the page
 - **THEN** the gate renders again
 
-### Requirement: The gate SHALL collect a name and an Altvatar, both already supplied
+### Requirement: The gate SHALL introduce Altvatars before it asks for anything
 
-The gate SHALL carry exactly two inputs: a name, and an Altvatar edited through the customizer `altvatar` owns.
+The gate SHALL open on an introduction rather than a form: a short sequence of steps presenting what an Altvatar is, through which the viewer moves forward and back at will. The last introductory step SHALL offer opening the customizer as the only way forward, and the confirmation step — the one carrying the gate's inputs and its submit — SHALL be reachable only by confirming a look in the customizer.
 
-The name SHALL be pre-filled from whatever name the account already carries where it carries one, and SHALL be subject to the same bounds a profile name is subject to everywhere else. The Altvatar SHALL be pre-seeded, so submitting it untouched is a valid answer and no interaction is forced.
+The number of steps and their content are not fixed here; that the inputs come after the introduction, and after a confirmed look, is.
 
-No other setting SHALL appear. Everything else an account can configure is reachable afterwards, and the gate SHALL say so.
+#### Scenario: The gate opens on an introduction
+
+- **WHEN** the gate renders
+- **THEN** an introductory step renders, and neither the name input nor the submit does
+
+#### Scenario: Steps retreat as well as advance
+
+- **WHEN** the viewer advances a step and then goes back
+- **THEN** the prior step renders again
+
+#### Scenario: The introduction ends at the customizer
+
+- **WHEN** the viewer has advanced through every introductory step without confirming a look
+- **THEN** no submit is offered and opening the customizer is the only way forward
+
+#### Scenario: Confirming a look reveals the confirmation step
+
+- **WHEN** the viewer confirms a look in the customizer
+- **THEN** the confirmation step renders, carrying the inputs and the submit
+
+### Requirement: The gate SHALL collect a name and a confirmed look, and nothing else
+
+The gate SHALL carry exactly two inputs: a name, and an Altvatar chosen through the customizer `altvatar` owns.
+
+The name SHALL be pre-filled from whatever name the account already carries where it carries one, and SHALL be subject to the same bounds a profile name is subject to everywhere else.
+
+The look SHALL NOT be accepted unseen. A rolled suggestion seeds the customizer, but nothing is submitted that the viewer has not confirmed there — confirming the suggestion untouched is sufficient, and is the shortest path through.
+
+No other setting SHALL appear. Nothing collected here is final, and the gate SHALL say so — the name and the look stay changeable afterwards.
 
 #### Scenario: The name arrives pre-filled
 
-- **WHEN** the gate renders for an account carrying a name
+- **WHEN** the gate's confirmation step renders for an account carrying a name
 - **THEN** the name input holds that name
 
 #### Scenario: A nameless account gets an empty name input
 
-- **WHEN** the gate renders for an account carrying no name
+- **WHEN** the gate's confirmation step renders for an account carrying no name
 - **THEN** the name input is empty and submitting requires one to be typed
 
-#### Scenario: An untouched Altvatar is a valid submission
+#### Scenario: The customizer's suggestion, confirmed untouched, is a valid answer
 
-- **WHEN** the gate renders and the viewer submits without opening the customizer
-- **THEN** the submission succeeds and the pre-seeded Altvatar is what is stored
+- **WHEN** the viewer opens the customizer and confirms it without changing anything
+- **THEN** submitting succeeds and the suggested look is what is stored
 
 #### Scenario: A blank name is rejected without a write
 
@@ -128,20 +156,20 @@ No other setting SHALL appear. Everything else an account can configure is reach
 #### Scenario: No other setting is offered
 
 - **WHEN** the gate renders
-- **THEN** its only inputs are the name and the Altvatar
+- **THEN** its only inputs are the name and the look
 
 ### Requirement: The gate's copy SHALL differ by population
 
-The gate serves someone who has just created an account and someone who has been using the app for months, and its copy SHALL acknowledge which. It SHALL remain one screen with one layout: only its wording differs.
+The gate serves someone who has just created an account and someone who has been using the app for months, and its copy SHALL acknowledge which. It SHALL remain one story with one layout: only its wording differs.
 
-Copy for an account with no self-profile SHALL read as finishing signing up, and its cancel control SHALL make unmissable that cancelling abandons the account being created. Copy for an account that already has one SHALL NOT read as signing up: that person is being introduced to a new feature and asked to confirm a name they already have.
+Copy for an account with no self-profile SHALL read as finishing signing up, and SHALL read as a standing part of signing up rather than as news — that arm greets every future signup, long after the feature stops being new. Copy for an account that already has one SHALL NOT read as signing up: that person is being introduced to a new feature and asked to confirm a name they already have.
 
 The exact wording is not fixed here.
 
 #### Scenario: A new account is addressed as signing up
 
 - **WHEN** the gate renders for an account with no self-profile
-- **THEN** its copy addresses completing sign-up, and its cancel control states that cancelling abandons the account
+- **THEN** its copy addresses completing sign-up
 
 #### Scenario: An existing account is not addressed as signing up
 
@@ -151,7 +179,7 @@ The exact wording is not fixed here.
 #### Scenario: One layout serves both
 
 - **WHEN** the gate renders for either population
-- **THEN** the same inputs, in the same arrangement, are presented
+- **THEN** the same steps, inputs and arrangement are presented
 
 ### Requirement: Submit SHALL mint whatever the account lacks, and the gate SHALL stand until it is complete
 
@@ -189,47 +217,13 @@ Every cached read holding a table the submit wrote SHALL be invalidated, so the 
 - **WHEN** a submission succeeds
 - **THEN** the next read no longer finds the account un-onboarded
 
-### Requirement: Cancel SHALL behave by population, and destructively only where nothing exists
-
-The gate SHALL carry one cancel control and no separate sign-out control — at this point the account is still, semantically, in the act of signing in.
-
-For an account with no self-profile, cancelling SHALL raise a confirmation naming what is about to happen; only on confirmation SHALL the account and its authentication records be deleted and the viewer signed out. Such an account owns nothing: content hangs off profiles, and profiles are reachable only through membership, so an account holding no membership holds nothing.
-
-For an account that already holds a self-profile, cancelling SHALL sign the viewer out and SHALL delete nothing.
-
-#### Scenario: Cancelling a fresh sign-up confirms first
-
-- **WHEN** an account with no self-profile activates cancel
-- **THEN** a confirmation is raised stating that the account will be deleted
-- **AND** nothing is deleted until it is confirmed
-
-#### Scenario: Declining the confirmation returns to the gate
-
-- **WHEN** the confirmation is declined
-- **THEN** the gate is still showing and the account still exists
-
-#### Scenario: Confirming deletes the account and signs out
-
-- **WHEN** the confirmation is accepted
-- **THEN** the account and its authentication records are deleted and the viewer is signed out
-
-#### Scenario: Cancelling an existing account only signs out
-
-- **WHEN** an account that already holds a self-profile activates cancel
-- **THEN** the viewer is signed out, no confirmation is raised, and no row is deleted
-
 ### Requirement: Abandoning the gate SHALL leave nothing to clean up
 
-Closing the browser at the gate SHALL have no consequence beyond leaving the account as it was. An account that has never completed the gate persists un-onboarded indefinitely, meets the gate again on its next request, and can be cancelled away then.
+Closing the browser at the gate SHALL have no consequence beyond leaving the account as it was. An account that has never completed the gate persists un-onboarded indefinitely and meets the gate again on its next request. Such an account owns nothing: content hangs off profiles, and profiles are reachable only through membership.
 
 No sweep, expiry, or background collection SHALL be introduced for accounts abandoned at the gate.
 
 #### Scenario: Abandonment leaves the account un-onboarded
 
-- **WHEN** an account reaches the gate and the browser is closed without submitting or cancelling
+- **WHEN** an account reaches the gate and the browser is closed without submitting
 - **THEN** the account still exists, still holds no self-profile, and meets the gate on its next request
-
-#### Scenario: An abandoned account is cancellable later
-
-- **WHEN** an account abandoned at the gate returns and cancels
-- **THEN** the destructive path applies, exactly as it would have on the first visit

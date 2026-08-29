@@ -18,17 +18,14 @@ vi.mock('@/lib/altvatar/render', () => ({
 const onChange = vi.fn();
 
 const draft: AltvatarDraft = {
-  style: 'icons',
+  style: 'toon-head',
   options: { seed: 'kiddo', selections: {} },
   accent: ACCENT_NAMES[0],
 };
 
 const renderField = (
   props: Partial<Parameters<typeof AltvatarField>[0]> = {}
-) =>
-  render(
-    <AltvatarField value={draft} onChange={onChange} name="Kiddo" {...props} />
-  );
+) => render(<AltvatarField value={draft} onChange={onChange} {...props} />);
 
 // The field wears its accent rather than naming it, so what it is holding is
 // read back off the custom properties it sets.
@@ -49,10 +46,9 @@ beforeEach(() => {
 });
 
 describe('Closed', () => {
-  it('Rendered_LabelsItselfAltvatar-PreviewsTheHostsName', () => {
+  it('Rendered_LabelsItselfAltvatar-WearsTheHostsAccent', () => {
     const { container } = renderField();
     expect(screen.getByText('Altvatar')).toBeInTheDocument();
-    expect(screen.getByText('Kiddo')).toBeInTheDocument();
     expect(fieldAccentDisc(container)).toBe(
       ACCENT_PRESETS[ACCENT_NAMES[0]].light
     );

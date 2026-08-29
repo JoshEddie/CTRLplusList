@@ -19,7 +19,7 @@ describe('ConnectionRow', () => {
     );
     expect(screen.getByRole('link', { name: 'Alice' })).toHaveAttribute(
       'href',
-      '/user/p1'
+      '/altvatar/p1'
     );
   });
 
@@ -27,7 +27,7 @@ describe('ConnectionRow', () => {
     render(<ConnectionRow profileId="p2" name={null} actions={<span />} />);
     expect(screen.getByRole('link', { name: 'Unnamed' })).toHaveAttribute(
       'href',
-      '/user/p2'
+      '/altvatar/p2'
     );
   });
 

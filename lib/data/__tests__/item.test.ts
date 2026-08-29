@@ -171,7 +171,7 @@ describe('getItemsByProfile', () => {
             name: 'Cara Lee',
             accent: null,
             art: '<svg id="cara" />',
-            avatarStyle: 'icons',
+            avatarStyle: 'toon-head',
           },
         },
       ]);

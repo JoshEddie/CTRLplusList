@@ -1,53 +1,506 @@
-/* The gate renders on the sign-in page's own full-screen treatment, for both
-   populations alike, so arriving at it reads as a continuation of signing in
-   rather than as a dialog over the app. It is not an overlay over content:
-   nothing is behind it, because the layout renders it instead of the page. */
+/* The gate as a four-beat story on the sign-in page's own full-screen
+   treatment, for both populations alike, so arriving at it reads as a
+   continuation of signing in rather than as a dialog over the app. It is not
+   an overlay over content: nothing is behind it, because the layout renders it
+   instead of the page. */
 .onboarding-gate-page {
   position: fixed;
   inset: 0;
   z-index: 150;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  overflow-y: auto;
-  padding: 20px 12px;
   background-color: var(--dark-color);
   background-image: var(--page-frame-gradient);
-  background-attachment: fixed;
 }
 
-/* The rest of the card is the shared `.altvatar-shell` treatment in
-   altvatar.css; the gate is a fixed-width column rather than a full-height
-   modal, which is the only thing it states for itself. */
-.onboarding-gate {
-  max-width: 460px;
+.onboarding-story {
+  /* Neutral iris before a look is confirmed, the chosen accent after — the
+     component swaps the accent vars this derives from. */
+  --onboarding-glow: rgb(from var(--accent-disc) r g b / 30%);
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  color: var(--light-color);
+  font-family: var(--font-roboto-condensed);
 }
 
-.onboarding-gate-body {
+.onboarding-story-glow {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 1000px;
+  height: 1000px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  /* Fades to a zero-alpha of the glow's own hue, not `transparent`: fading
+     through rgba(0,0,0,0) renders the ring's edge as a visible dark band on
+     the gradient background. */
+  background: radial-gradient(
+    circle,
+    var(--onboarding-glow) 0%,
+    rgb(from var(--accent-disc) r g b / 0) 70%
+  );
+  pointer-events: none;
+}
+
+.onboarding-story form {
+  position: absolute;
+  inset: 0;
+}
+
+.onboarding-story-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 24px 20px;
+  align-items: center;
+  padding: 40px 32px 152px;
 }
 
-.onboarding-gate-title {
+.onboarding-story-stage {
+  position: relative;
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 720px;
+}
+
+/* Beat typography */
+
+.onboarding-story-hd {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.onboarding-story-eyebrow {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+}
+
+.onboarding-story-title,
+.onboarding-story-beat-title {
   margin: 0;
   font-family: var(--font-crimson-pro);
+  font-style: italic;
   font-weight: 700;
-  font-size: 28px;
-  line-height: 1.15;
-  color: var(--primary-color);
+  line-height: 1.05;
+  text-align: center;
+  text-wrap: balance;
+  background-image: linear-gradient(
+    110deg,
+    #7dd3fc 15%,
+    var(--primary-color-light) 85%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--primary-color-light);
 }
 
-.onboarding-gate-lede {
-  margin: -14px 0 0;
-  font-size: 15px;
-  line-height: 1.5;
+.onboarding-story-title {
+  font-size: 72px;
+  line-height: 1.02;
+}
+
+.onboarding-story-beat-title {
+  font-size: 48px;
+}
+
+.onboarding-story-lede {
+  margin: 0;
+  max-width: 70ch;
+  font-size: 17px;
+  line-height: 1.55;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.88);
+  text-wrap: pretty;
+}
+
+.onboarding-story-poster {
+  width: 520px;
+  max-width: 100%;
+  padding: 10px;
+  border-radius: 20px;
+  background: var(--light-color);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 40px 110px rgba(0, 0, 0, 0.55),
+    0 0 130px var(--onboarding-glow);
+}
+
+.onboarding-story-poster img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
+/* Vignette cards — beats 2 and 3. Each card wears one persona's accent vars. */
+
+.onboarding-vig-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.onboarding-vig {
+  position: relative;
+  overflow: hidden;
+  flex: 1 1 200px;
+  max-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 12px;
+  border-radius: 12px;
+  background: var(--light-color);
+  color: var(--neutral-text-color);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4);
+  animation: onboarding-card 0.6s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+
+.onboarding-vig-row > :nth-child(1) {
+  animation-delay: 0.25s;
+}
+
+.onboarding-vig-row > :nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.onboarding-vig-row > :nth-child(3) {
+  animation-delay: 0.75s;
+}
+
+.onboarding-vig-band-left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  background-image: var(--accent-bg);
+}
+
+.onboarding-vig-band-top {
+  height: 30px;
+  width: 100%;
+  flex-shrink: 0;
+  background-image: var(--accent-bg);
+}
+
+.onboarding-vig-serif {
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.onboarding-vig-ink {
+  color: var(--accent-ink);
+}
+
+.onboarding-vig-sub {
+  font-size: 11px;
   color: var(--muted-text-color);
 }
 
-@media (max-width: 600px) {
-  .onboarding-gate-body {
-    padding: 20px 18px;
+.onboarding-vig-list {
+  padding-left: 24px;
+}
+
+.onboarding-vig-owner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted-text-color);
+}
+
+.onboarding-vig-owner .altvatar-disc,
+.onboarding-vig-claimed .altvatar-disc {
+  width: 26px;
+  height: 26px;
+}
+
+.onboarding-vig-tag {
+  align-self: flex-start;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--meta-text-color);
+  background-color: var(--secondary-light-color);
+  border-radius: 20px;
+  padding: 3px 9px;
+}
+
+.onboarding-vig-claimed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--success-border);
+  border-radius: 8px;
+  background: var(--success-bg);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--success-text);
+}
+
+.onboarding-vig-profile {
+  align-items: center;
+  padding: 0;
+  gap: 0;
+  border-radius: 14px;
+}
+
+.onboarding-vig-profile .onboarding-vig-band-top {
+  height: 34px;
+}
+
+.onboarding-vig-profile .altvatar-disc {
+  width: 56px;
+  height: 56px;
+  margin-top: -28px;
+  box-shadow: 0 0 0 3px var(--light-color);
+}
+
+.onboarding-vig-profile-name {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 14px 14px;
+}
+
+.onboarding-vig-profile .onboarding-vig-serif {
+  font-size: 18px;
+}
+
+/* Final beat — the chosen look and the name it goes with */
+
+.onboarding-story-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.onboarding-story-hero .altvatar-disc {
+  width: 128px;
+  height: 128px;
+  box-shadow:
+    0 0 0 5px var(--light-color),
+    0 18px 50px rgba(0, 0, 0, 0.5),
+    0 0 80px var(--onboarding-glow);
+}
+
+.onboarding-story-name {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.onboarding-story-name .form_field_label {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.onboarding-story-name .form_field {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.45);
+  border-radius: 10px;
+  min-height: 48px;
+  color: var(--light-color);
+  font-weight: 500;
+  font-size: 17px;
+}
+
+.onboarding-story-name .form_field:hover:not(.invalid) {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.onboarding-story-name .form_field_input::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* The error red measured against white fails on this dark stage. */
+.onboarding-story-name .field_error {
+  color: #ffb4ab;
+}
+
+/* Navigation — anchored to the viewport bottom, stationary between beats */
+
+.onboarding-story-nav {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px 18px;
+  pointer-events: none;
+}
+
+.onboarding-story-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+/* Twin fixed slots keep the centre button centred whether or not Back shows. */
+.onboarding-story-nav-slot {
+  width: var(--WCAG-input-size);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Layout-only pivot: the CTA holds one width across beats so the row doesn't
+   jump as the label changes. */
+.onboarding-story-nav .btn.onboarding-story-cta {
+  min-width: 200px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.onboarding-story-dots {
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.onboarding-story-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.35);
+  transition: all 0.3s ease;
+}
+
+.onboarding-story-dots span[data-active] {
+  width: 26px;
+  background: var(--light-color);
+}
+
+/* Beat entrance animation */
+
+@keyframes onboarding-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes onboarding-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes onboarding-card {
+  0% {
+    opacity: 0;
+    transform: translateY(26px) scale(0.92);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.os-rise {
+  animation: onboarding-rise 0.55s ease both;
+}
+
+.os-pop {
+  animation: onboarding-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.55s both;
+}
+
+.os-late {
+  animation-delay: 1.05s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-story * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .onboarding-story-scroll {
+    padding: 32px 20px 132px;
+  }
+
+  .onboarding-story-stage {
+    gap: 20px;
+  }
+
+  .onboarding-story-eyebrow {
+    font-size: 12px;
+  }
+
+  .onboarding-story-title {
+    font-size: 46px;
+  }
+
+  .onboarding-story-beat-title {
+    font-size: 34px;
+  }
+
+  .onboarding-story-lede {
+    font-size: 15px;
+  }
+
+  .onboarding-story-poster {
+    padding: 8px;
+  }
+
+  .onboarding-story-hero .altvatar-disc {
+    width: 108px;
+    height: 108px;
+  }
+
+  /* The story scrolls behind the nav on small screens; the scrim keeps the
+     buttons legible over whatever is passing under them. Extra top padding is
+     the fade's run-up, so text is already dimmed before it reaches the row —
+     at the old height it crossed the buttons still legible. */
+  .onboarding-story-nav {
+    padding-top: 48px;
+    background: linear-gradient(
+      180deg,
+      rgba(13, 26, 86, 0) 0%,
+      rgba(13, 26, 86, 0.85) 40%,
+      rgba(13, 26, 86, 0.95) 100%
+    );
   }
 }

@@ -116,9 +116,7 @@ function TileGrid({
             onClick={() => onChange(v.value)}
           >
             {/* The same disc every other surface fills, so a tile shows what
-                the avatar will actually look like — a glyph style is painted
-                from the accent's ink through a mask, which a bare <img> of the
-                generated art cannot do. */}
+                the avatar will actually look like. */}
             <ProfileAvatar
               profile={{
                 name: '',

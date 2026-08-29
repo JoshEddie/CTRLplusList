@@ -23,20 +23,6 @@
   object-fit: cover;
 }
 
-/* A glyph style draws flat alpha, so the ink is painted here and the art is
-   only the shape of the hole it shows through. */
-.altvatar-disc-glyph {
-  width: 62%;
-  height: 62%;
-  background: var(--accent-ink);
-  mask-size: contain;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-}
-
 .altvatar-disc-initials {
   font-size: 40cqw;
   letter-spacing: 0.5px;

@@ -89,11 +89,11 @@ describe('BlockedSection', () => {
 
       expect(screen.getByRole('link', { name: 'Alice' })).toHaveAttribute(
         'href',
-        '/user/self-ba'
+        '/altvatar/self-ba'
       );
       expect(screen.getByRole('link', { name: 'Unnamed' })).toHaveAttribute(
         'href',
-        '/user/self-bb'
+        '/altvatar/self-bb'
       );
 
       expect(screen.getAllByRole('button', { name: 'Unblock' })).toHaveLength(

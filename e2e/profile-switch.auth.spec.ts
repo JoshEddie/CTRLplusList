@@ -66,7 +66,7 @@ test('ProfileSwitch_ViewerSwitchesFromTheAvatarDropdown_ListsRerenderAsThatProfi
 test('ProfileSwitch_ViewerSwitchesFromAProfileCard_StaysOnProfilesWithTheMarkMoved', async ({
   page,
 }) => {
-  await page.goto('/profiles');
+  await page.goto('/altvatar');
   const ownedCard = page
     .locator('.profile-card')
     .filter({ hasText: 'Owned Profile' })
@@ -83,7 +83,7 @@ test('ProfileSwitch_ViewerSwitchesFromAProfileCard_StaysOnProfilesWithTheMarkMov
   await expect(
     page.getByText('Profile switched to Owned Profile')
   ).toBeVisible();
-  await expect(page).toHaveURL(/\/profiles$/);
+  await expect(page).toHaveURL(/\/altvatar$/);
   await expect(ownedCard).toHaveClass(/is-active/);
   await expect(selfCard).not.toHaveClass(/is-active/);
 
@@ -116,14 +116,14 @@ test('Lists_ActingAsAProfileWithNoLists_OffersTheProfilesRouteBesideCreate', asy
     )
   ).toBeVisible();
   await expect(
-    page.getByRole('link', { name: 'Go to Profiles' })
-  ).toHaveAttribute('href', '/profiles');
+    page.getByRole('link', { name: 'Go to Altvatars' })
+  ).toHaveAttribute('href', '/altvatar');
 });
 
 test('ProfileSpace_ViewerSwitchesWithUnsavedEdits_ConfirmsThenFollowsTheRoute', async ({
   page,
 }) => {
-  await page.goto('/profiles/self-dev-test-viewer');
+  await page.goto('/altvatar/self-dev-test-viewer');
   // By role, not by label: after a navigation Next leaves the previous
   // segment's DOM in the document, hidden — it still carries a labelled input,
   // but no longer appears in the accessibility tree.
@@ -137,7 +137,7 @@ test('ProfileSpace_ViewerSwitchesWithUnsavedEdits_ConfirmsThenFollowsTheRoute', 
   // switch is confirmed before anything is discarded.
   await expect(page.getByText('You have unsaved changes')).toBeVisible();
   await page.getByRole('button', { name: 'Keep editing' }).click();
-  await expect(page).toHaveURL(/\/profiles\/self-dev-test-viewer$/);
+  await expect(page).toHaveURL(/\/altvatar\/self-dev-test-viewer$/);
   await expect(nameField).toHaveValue('Test Viewer edited');
 
   await page.getByRole('button', { name: 'User menu' }).click();
@@ -149,7 +149,7 @@ test('ProfileSpace_ViewerSwitchesWithUnsavedEdits_ConfirmsThenFollowsTheRoute', 
   await expect(
     page.getByText('Profile switched to Owned Profile')
   ).toBeVisible();
-  await expect(page).toHaveURL(/\/profiles\/dev-profile-owned$/);
+  await expect(page).toHaveURL(/\/altvatar\/dev-profile-owned$/);
   await expect(nameField).toHaveValue('Owned Profile');
 
   // Switching back restores the seed's acting profile. The abandoned edit is
@@ -158,7 +158,7 @@ test('ProfileSpace_ViewerSwitchesWithUnsavedEdits_ConfirmsThenFollowsTheRoute', 
   // proves nothing was written.
   await page.getByRole('button', { name: 'User menu' }).click();
   await page.getByRole('menuitem', { name: 'Test Viewer' }).click();
-  await expect(page).toHaveURL(/\/profiles\/self-dev-test-viewer$/);
+  await expect(page).toHaveURL(/\/altvatar\/self-dev-test-viewer$/);
 
   await page.reload();
   await expect(nameField).toHaveValue('Test Viewer');

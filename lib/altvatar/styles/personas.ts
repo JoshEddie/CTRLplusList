@@ -81,8 +81,6 @@ export const personasStyle: AltvatarStyle = {
         smile: 'smile',
         smirk: 'smirk',
         laughing: 'bigSmile',
-        surprised: 'surprise',
-        frown: 'frown',
         lips: 'lips',
         pacifier: 'pacifier',
       },

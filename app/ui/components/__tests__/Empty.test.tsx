@@ -145,7 +145,7 @@ describe('Empty', () => {
   });
 
   describe('SecondaryAction', () => {
-    const SWITCH = { href: '/profiles', label: 'Go to Profiles' };
+    const SWITCH = { href: '/altvatar', label: 'Go to Altvatars' };
 
     it('Supplied_RendersAfterTheCTAInAWrappingRow', () => {
       const { container } = render(
@@ -159,8 +159,8 @@ describe('Empty', () => {
         'A',
       ]);
 
-      const link = screen.getByRole('link', { name: 'Go to Profiles' });
-      expect(link).toHaveAttribute('href', '/profiles');
+      const link = screen.getByRole('link', { name: 'Go to Altvatars' });
+      expect(link).toHaveAttribute('href', '/altvatar');
       expect(link).toHaveClass('secondary');
     });
 

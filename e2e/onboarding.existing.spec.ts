@@ -8,9 +8,6 @@ import { expect, test } from '@playwright/test';
 // Residue: none, by construction. Nothing here submits — writing art would
 // clear the latch permanently and leave the next run with no gate to meet, so
 // re-running the suite against the same database exercises this identically.
-// Cancel on this arm signs out and is not exercised: the bypass synthesizes a
-// session per request, so signing out is unobservable here and the action's
-// own behaviour is covered in lib/data/__tests__/user.actions.test.ts.
 const GATE = { name: 'Pick your Altvatar' };
 
 test('Onboarding_BackfilledAccountRequestsAPage_GateStandsInsteadOfIt', async ({
@@ -29,11 +26,18 @@ test('Onboarding_ExistingArm_DoesNotAddressTheViewerAsSigningUp', async ({
   await page.goto('/lists');
   const gate = page.getByRole('dialog', { name: GATE.name });
 
-  // The name it already carries arrives in the field; the copy introduces a
-  // feature rather than describing an account being created.
-  await expect(gate.getByLabel('Name')).toHaveValue('Faceless Veteran');
+  // The name it already carries arrives in the field on the story's final
+  // beat; the copy introduces a feature rather than describing an account
+  // being created.
   await expect(gate).not.toContainText('signing up');
   await expect(gate).not.toContainText('sign-up');
+  const next = gate.getByRole('button', { name: 'Next' });
+  await next.click();
+  await next.click();
+  await gate.getByRole('button', { name: 'Choose your look' }).click();
+  await page.getByRole('button', { name: 'Use this Altvatar' }).click();
+  await expect(gate.getByLabel('Name')).toHaveValue('Faceless Veteran');
+  await expect(gate).not.toContainText('signing up');
 });
 
 test('Onboarding_ReloadBackdropAndEscape_LeaveTheGateStanding', async ({

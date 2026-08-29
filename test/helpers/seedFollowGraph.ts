@@ -167,7 +167,7 @@ export async function seedAvatar(
 ): Promise<void> {
   await db.insert(profile_avatars).values({
     profile_id,
-    style: avatar.style ?? 'icons',
+    style: avatar.style ?? 'toon-head',
     options: { seed: profile_id, selections: {} },
     art: avatar.art ?? '<svg />',
   });

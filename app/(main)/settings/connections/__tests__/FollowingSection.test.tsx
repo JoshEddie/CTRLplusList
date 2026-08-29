@@ -81,9 +81,9 @@ describe('FollowingSection', () => {
       expect(screen.getAllByRole('listitem')).toHaveLength(2);
 
       const alice = screen.getByRole('link', { name: 'Alice' });
-      expect(alice).toHaveAttribute('href', '/user/self-fa');
+      expect(alice).toHaveAttribute('href', '/altvatar/self-fa');
       const unnamed = screen.getByRole('link', { name: 'Unnamed' });
-      expect(unnamed).toHaveAttribute('href', '/user/self-fb');
+      expect(unnamed).toHaveAttribute('href', '/altvatar/self-fb');
 
       expect(screen.getByText('May 19, 2026')).toBeInTheDocument();
 

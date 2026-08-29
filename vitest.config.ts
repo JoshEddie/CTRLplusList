@@ -83,6 +83,8 @@ export default defineConfig({
         // dev-only scenario fixtures, dead outside local mode; the gating
         // behavior is asserted through its callers (seam + route tests).
         'lib/product-fetch/mock.ts',
+        // dev-only workbench pages (poster export), 404 outside local mode.
+        'app/dev/**',
       ],
       thresholds: {
         perFile: true,

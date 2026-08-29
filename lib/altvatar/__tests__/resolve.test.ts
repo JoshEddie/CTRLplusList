@@ -13,7 +13,7 @@ import {
   withoutOverlaysOver,
 } from '@/lib/altvatar/resolve';
 import { avataaarsStyle } from '@/lib/altvatar/styles/avataaars';
-import { iconsStyle } from '@/lib/altvatar/styles/icons';
+import { openmojiStyle } from '@/lib/altvatar/styles/openmoji';
 import { personasStyle } from '@/lib/altvatar/styles/personas';
 import { AXIS_ORDER } from '@/lib/altvatar/vocabulary';
 import type { AltvatarStyle } from '@/lib/altvatar/types';
@@ -107,9 +107,10 @@ describe('offersOf', () => {
     });
   });
 
-  describe('GlyphStyle', () => {
-    it('IconsStyle_OffersGlyphOnly', () => {
-      expect(axesOf(iconsStyle)).toEqual(['glyph']);
+  describe('ThingStyle', () => {
+    it('OpenmojiStyle_OffersNoAxes', () => {
+      // The search surface writes the glyph directly; no control stack renders.
+      expect(axesOf(openmojiStyle)).toEqual([]);
     });
   });
 });
@@ -160,9 +161,10 @@ describe('resolveSelections', () => {
     expect(resolveSelections(personasStyle, {}).skinColor).toBe('edb98a');
   });
 
-  it('EveryAxisTheTargetStyleHas_ResolvesToAConcreteValue', () => {
-    const resolved = resolveSelections(iconsStyle, {});
-    expect(resolved).toEqual({ glyph: 'star' });
+  it('StyleWithNoAxes_ResolvesToTheSelectionsAsStored', () => {
+    expect(resolveSelections(openmojiStyle, { glyph: '1F415' })).toEqual({
+      glyph: '1F415',
+    });
   });
 });
 
@@ -278,7 +280,7 @@ describe('toNativeOptions', () => {
   it('AnyStyle_WritesFullyTransparentBackground', () => {
     // Eight-digit hex rather than the `transparent` keyword, which the drawing
     // library's option schema rejects.
-    expect(toNativeOptions(iconsStyle, {}).backgroundColor).toEqual([
+    expect(toNativeOptions(openmojiStyle, {}).backgroundColor).toEqual([
       '00000000',
     ]);
   });

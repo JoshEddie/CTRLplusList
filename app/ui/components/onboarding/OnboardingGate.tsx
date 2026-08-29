@@ -1,52 +1,70 @@
 'use client';
 
-import type { AltvatarDraft } from '@/app/ui/components/altvatar/AltvatarCustomizer';
-import AltvatarField from '@/app/ui/components/altvatar/AltvatarField';
-import AltvatarMark from '@/app/ui/components/altvatar/AltvatarMark';
+import AltvatarCustomizer, {
+  type AltvatarDraft,
+} from '@/app/ui/components/altvatar/AltvatarCustomizer';
+import AltvatarPreview from '@/app/ui/components/altvatar/AltvatarPreview';
 import { Button } from '@/app/ui/components/button';
-import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { FieldError, TextField } from '@/app/ui/components/field';
 import '@/app/ui/styles/altvatar.css';
 import '@/app/ui/styles/onboarding.css';
 import { accentVars } from '@/lib/accent';
 import type { AltvatarValue } from '@/lib/altvatar/types';
 import { completeOnboarding } from '@/lib/data/onboarding.actions';
-import { abandonAccount } from '@/lib/data/user.actions';
 import type { ActionResponse } from '@/lib/types';
 import { useActionState, useEffect, useRef, useState } from 'react';
+import { LuArrowLeft, LuArrowRight, LuCheck } from 'react-icons/lu';
 import toast from 'react-hot-toast';
+import {
+  EverywhereBeat,
+  IntroBeat,
+  ProfilesBeat,
+  SAMPLE_IDENTITIES,
+  type Persona,
+} from './StoryBeats';
 
 const initialState: ActionResponse = { success: false, message: '' };
 
-// One layout for both populations; only the wording differs. The signup arm is
-// finishing an account it can still abandon; the existing arm is being shown a
-// new feature and asked to confirm a name it already has, so its copy must not
-// describe creating an account.
+// One story for both populations; only the wording differs. The signup arm is
+// finishing an account; the existing arm is being shown a new feature and
+// asked to confirm a name it already has, so its copy must not describe
+// creating an account.
 const COPY = {
   signup: {
-    title: 'Finish setting up your profile',
-    lede: 'Your profile is the name, face and colour your lists appear under. Pick them to finish signing up — everything else can wait, and you can change any of it later.',
-    fieldHelp:
-      'Your face and accent colour. Shown wherever your profile appears — on your lists, beside your name, and to anyone you share with.',
-    submit: 'Create my profile',
-    cancelPrompt: 'Cancel sign-up?',
-    cancelMessage:
-      'This deletes the account you just created. Nothing is kept, and signing in again starts over.',
+    title: 'Finish setting up your Altvatar',
+    eyebrow: 'Welcome to Ctrl+List',
+    // Evergreen, not launch copy: this arm greets every future signup, long
+    // after Altvatars stop being news.
+    introTitle: 'Meet Altvatars',
+    introLede:
+      'Ctrl+List runs on Altvatars. Your alter ego, each with its own look, lists, and items, with more planned. They can be co-owned or managed. The next two pages show how it works, and setting yours up is the last step of signing up.',
+    profilesLede:
+      "Altvatars don't stop at what you set up today. From the Altvatars page you can create as many as you like: one for the pets, the kids, a special event, anything you can think of! And best of all, an Altvatar can be managed together with someone else: one set of lists and items, kept by both of you.",
+    submit: 'Create my Altvatar and jump in',
   },
   existing: {
     title: 'Pick your Altvatar',
-    lede: 'Profiles have faces now, and everyone picks one once. Your lists, items and claims are exactly where you left them — choose a face and a colour to carry on. It takes a few seconds, you will not be asked again, and you can change both any time from your profile.',
-    fieldHelp:
-      'Your face and accent colour. Shown wherever your profile appears — on your lists, beside your name, and to anyone you share with.',
-    submit: 'Save and continue',
+    eyebrow: 'New in Ctrl+List',
+    introTitle: 'Introducing',
+    introLede:
+      "Ctrl+List now has Altvatars. Your alter ego, each with its own look, lists, and items, with more planned. They can be co-owned or managed. The next two pages show how it works, and you'll set yours up at the end.",
+    profilesLede:
+      "Altvatars don't stop at what you set up today. From the new Altvatars page you can create as many as you like: one for the pets, the kids, a special event, anything you can think of! And best of all, an Altvatar can be managed together with someone else: one set of lists and items, kept by both of you.",
+    submit: 'Save and jump in',
   },
 } as const;
+
+const EVERYWHERE_LEDE =
+  'Sharing a list, claiming a gift, following a friend: the look goes wherever the Altvatar does.';
+const FINAL_LEDE =
+  "You can change your look or name any time. Save, and you're in.";
 
 export default function OnboardingGate({
   arm,
   initialName,
   suggested,
   suggestedAccent,
+  samples,
 }: {
   arm: 'signup' | 'existing';
   initialName: string | null;
@@ -54,20 +72,45 @@ export default function OnboardingGate({
       server's render and the browser's. */
   suggested: AltvatarValue;
   suggestedAccent: string;
+  /** Also rolled by the layout — one rolled look per sample identity in the story's
+      vignettes. */
+  samples: AltvatarValue[];
 }) {
   const copy = COPY[arm];
+  const [beat, setBeat] = useState(1);
   const [name, setName] = useState(initialName ?? '');
   const [altvatar, setAltvatar] = useState<AltvatarDraft>({
     ...suggested,
     accent: suggestedAccent,
   });
-  const [confirming, setConfirming] = useState(false);
-  const nameRef = useRef<HTMLInputElement>(null);
+  const [chosen, setChosen] = useState(false);
+  const [customizing, setCustomizing] = useState(false);
+  const ctaRef = useRef<HTMLButtonElement>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
 
-  // Focus moves into the gate when it renders: it replaces the page that was
-  // requested, so the caret starting outside it would leave a keyboard user
-  // tabbing through nothing.
-  useEffect(() => nameRef.current?.focus(), []);
+  // Swiping mirrors the buttons, never exceeds them: forward stops at the
+  // third beat because confirming a look in the customizer is the only way
+  // into the final one. Horizontal dominance keeps vertical scrolls scrolling.
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start) return;
+    const dx = e.changedTouches[0].clientX - start.x;
+    const dy = e.changedTouches[0].clientY - start.y;
+    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0 && beat < 3) setBeat(beat + 1);
+    if (dx > 0 && beat > 1) setBeat(beat - 1);
+  };
+
+  // Focus lands on the beat's primary control, on mount and on every beat
+  // change: the gate replaces the page that was requested, so the caret
+  // starting outside it would leave a keyboard user tabbing through nothing.
+  // Never the name field — it is usually already right, and focusing it on a
+  // phone raises the keyboard over the control that actually matters.
+  useEffect(() => ctaRef.current?.focus(), [beat]);
 
   const [state, formAction, isPending] = useActionState<
     ActionResponse,
@@ -84,78 +127,180 @@ export default function OnboardingGate({
     return result;
   }, initialState);
 
-  const cancel = () => {
-    if (arm === 'signup') setConfirming(true);
-    // The existing arm signs out and deletes nothing; the profile row and
-    // everything hanging off it survive.
-    else void abandonAccount();
+  const me: Persona = {
+    name: name.trim() || 'You',
+    accent: altvatar.accent,
+    look: { style: altvatar.style, options: altvatar.options },
   };
+  const persona = (i: number): Persona => ({
+    ...SAMPLE_IDENTITIES[i],
+    look: SAMPLE_IDENTITIES[i].look ?? samples[i],
+  });
 
   return (
     // The backdrop carries no role and no name on purpose — it is scenery, not
     // an affordance. `data-testid` is how both harnesses reach it to prove that
     // clicking it does nothing.
     <div className="onboarding-gate-page" data-testid="onboarding-backdrop">
-      {/* Its own shell rather than `FormShell`: the header is an accent
-          gradient carrying the mark, and there is no close affordance to
-          suppress — the gate has none by construction. */}
       <div
-        className="onboarding-gate"
+        className="onboarding-story"
         role="dialog"
         aria-label={copy.title}
-        style={accentVars(altvatar.accent)}
+        // Neutral until a look is confirmed: the accent flooding the glow and
+        // the vignettes is the reward for picking, so the suggestion must not
+        // leak in early.
+        style={accentVars(chosen ? altvatar.accent : 'iris')}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
       >
-        <div className="altvatar-hd">
-          <AltvatarMark />
-        </div>
+        <div className="onboarding-story-glow" aria-hidden />
         <form action={formAction}>
-          <div className="onboarding-gate-body">
-            <h1 className="onboarding-gate-title">{copy.title}</h1>
-            <p className="onboarding-gate-lede">{copy.lede}</p>
-            {state.message && !state.success && (
-              <FieldError>{state.message}</FieldError>
-            )}
-            <TextField
-              label="Name"
-              required
-              name="name"
-              ref={nameRef}
-              placeholder="Display name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={isPending}
-              maxLength={60}
-              error={state.errors?.name?.join(', ')}
-            />
-            <AltvatarField
-              value={altvatar}
-              onChange={setAltvatar}
-              name={name}
-              description={copy.fieldHelp}
-            />
+          {/* Keyed on the beat so the scroller itself remounts: iOS Safari
+              keeps stale rasterized tiles of the previous beat (the poster's
+              edges linger as ghosts) when only the content inside it swaps.
+              Remounting also resets any scroll a taller beat left behind. */}
+          <div className="onboarding-story-scroll" key={beat}>
+            <div className="onboarding-story-stage">
+              {beat === 1 && (
+                <IntroBeat
+                  eyebrow={copy.eyebrow}
+                  title={copy.introTitle}
+                  lede={copy.introLede}
+                />
+              )}
+              {beat === 2 && (
+                <EverywhereBeat
+                  owners={
+                    chosen ? [me, me, me] : [persona(0), persona(1), persona(2)]
+                  }
+                  lede={EVERYWHERE_LEDE}
+                />
+              )}
+              {beat === 3 && (
+                <ProfilesBeat
+                  profiles={[
+                    {
+                      persona: chosen
+                        ? me
+                        : { name: me.name, accent: 'iris', look: null },
+                      sub: 'You',
+                    },
+                    { persona: persona(3), sub: 'Managed by you' },
+                    { persona: persona(4), sub: 'Shared space' },
+                  ]}
+                  lede={copy.profilesLede}
+                />
+              )}
+              {beat === 4 && (
+                <>
+                  <h2 className="onboarding-story-beat-title os-rise">
+                    You&rsquo;re all set
+                  </h2>
+                  <div className="onboarding-story-hero os-pop">
+                    <AltvatarPreview
+                      styleId={altvatar.style}
+                      options={altvatar.options}
+                      accent={altvatar.accent}
+                    />
+                    <Button
+                      variant="on-dark"
+                      onClick={() => setCustomizing(true)}
+                    >
+                      Change your look
+                    </Button>
+                  </div>
+                  <div className="onboarding-story-name">
+                    {state.message && !state.success && (
+                      <FieldError>{state.message}</FieldError>
+                    )}
+                    <TextField
+                      label="Name"
+                      required
+                      name="name"
+                      placeholder="Display name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      disabled={isPending}
+                      maxLength={60}
+                      error={state.errors?.name?.join(', ')}
+                    />
+                  </div>
+                  <p className="onboarding-story-lede">{FINAL_LEDE}</p>
+                </>
+              )}
+            </div>
           </div>
-          <div className="altvatar-ft">
-            <Button variant="secondary" type="button" onClick={cancel}>
-              Cancel
-            </Button>
-            {/* Named rather than a bare "Continue": the face is the thing
-                being confirmed, and a generic label invites a click that
-                settles it without the viewer noticing they chose. */}
-            <Button type="submit" variant="primary" isLoading={isPending}>
-              {copy.submit}
-            </Button>
+          <div className="onboarding-story-nav">
+            <div className="onboarding-story-nav-row">
+              <span className="onboarding-story-nav-slot">
+                {beat > 1 && (
+                  <Button
+                    variant="on-dark"
+                    icon
+                    aria-label="Back"
+                    onClick={() => setBeat(beat - 1)}
+                  >
+                    <LuArrowLeft aria-hidden />
+                  </Button>
+                )}
+              </span>
+              {beat < 3 && (
+                <Button
+                  variant="white"
+                  className="onboarding-story-cta"
+                  ref={ctaRef}
+                  onClick={() => setBeat(beat + 1)}
+                >
+                  Next <LuArrowRight aria-hidden />
+                </Button>
+              )}
+              {beat === 3 && (
+                <Button
+                  variant="white"
+                  className="onboarding-story-cta"
+                  ref={ctaRef}
+                  onClick={() => setCustomizing(true)}
+                >
+                  Choose your look <LuArrowRight aria-hidden />
+                </Button>
+              )}
+              {/* Named rather than a bare "Continue": the look is the thing
+                  being confirmed, and a generic label invites a click that
+                  settles it without the viewer noticing they chose. */}
+              {beat === 4 && (
+                <Button
+                  type="submit"
+                  variant="white"
+                  className="onboarding-story-cta"
+                  ref={ctaRef}
+                  isLoading={isPending}
+                >
+                  {copy.submit} <LuCheck aria-hidden />
+                </Button>
+              )}
+              <span className="onboarding-story-nav-slot" />
+            </div>
+            <div className="onboarding-story-dots" aria-hidden>
+              {[1, 2, 3, 4].map((n) => (
+                <span key={n} data-active={n === beat || undefined} />
+              ))}
+            </div>
           </div>
         </form>
       </div>
 
-      {arm === 'signup' && (
-        <ConfirmDialog
-          isOpen={confirming}
-          onClose={() => setConfirming(false)}
-          onConfirm={() => void abandonAccount()}
-          title={COPY.signup.cancelPrompt}
-          message={COPY.signup.cancelMessage}
-          confirmText="Delete account"
+      {customizing && (
+        <AltvatarCustomizer
+          value={altvatar}
+          onConfirm={(draft) => {
+            setAltvatar(draft);
+            setChosen(true);
+            setCustomizing(false);
+            // Confirming a look is what earns the final beat: it opens on the
+            // confirmation screen, never on an unchosen one.
+            setBeat(4);
+          }}
+          onCancel={() => setCustomizing(false)}
         />
       )}
     </div>

@@ -4,6 +4,7 @@ export type ButtonVariant =
   | 'ghost'
   | 'danger'
   | 'on-dark'
+  | 'white'
   | 'link';
 
 export type ButtonSize = 'sm' | 'md';

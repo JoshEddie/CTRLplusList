@@ -90,14 +90,14 @@ export default function UserAvatarPopover({
           <div className="avatar-popover-divider" role="presentation" />
         )}
         <MenuLinkItem
-          href="/profiles"
+          href="/altvatar"
           icon={<LuIdCard size={18} />}
           onClick={close}
           aria-label={
-            profileCount > 1 ? `Profiles (${profileCount})` : undefined
+            profileCount > 1 ? `Altvatars (${profileCount})` : undefined
           }
         >
-          Profiles
+          Altvatars
           {profileCount > 1 && (
             <span className="menu-item-count">{profileCount}</span>
           )}

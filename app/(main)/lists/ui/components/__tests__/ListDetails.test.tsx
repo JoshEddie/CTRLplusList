@@ -228,7 +228,7 @@ describe('ListDetails', () => {
       const nameLink = within(byline).getByRole('link', {
         name: 'Olivia Owner',
       });
-      expect(nameLink).toHaveAttribute('href', '/user/owner-profile-1');
+      expect(nameLink).toHaveAttribute('href', '/altvatar/owner-profile-1');
       expectInOrder(byline, [
         '[data-testid="avatar-stub"]',
         '.list-hero-byline-link',
@@ -272,7 +272,7 @@ describe('ListDetails', () => {
       const link = container.querySelector(
         '.list-hero-byline-link'
       ) as HTMLElement;
-      expect(link).toHaveAttribute('href', '/user/owner-profile-1');
+      expect(link).toHaveAttribute('href', '/altvatar/owner-profile-1');
       expect(link).toHaveTextContent('');
     });
   });

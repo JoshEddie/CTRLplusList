@@ -1,7 +1,6 @@
 import { EXTRA_AXES } from '@/lib/altvatar/axes.extras';
 import { FACE_AXES } from '@/lib/altvatar/axes.face';
 import { HAIR_AXES } from '@/lib/altvatar/axes.hair';
-import { GLYPHS } from '@/lib/altvatar/styles/icons.glyphs';
 import type {
   AxisTab,
   CanonicalAxis,
@@ -22,10 +21,12 @@ export const ENUM_AXES: Record<
   ...HAIR_AXES,
   ...FACE_AXES,
   ...EXTRA_AXES,
-  glyph: {
-    label: 'Icon',
-    values: GLYPHS.map(({ value, label }) => ({ value, label })),
-  },
+  // The thing kind's icon. Its values are the OpenMoji catalog, imported
+  // rather than named here — the vocabulary rule exists so a value survives a
+  // style change, and this axis has no sibling style to carry to. Validation
+  // is by codepoint shape (see `sanitizeSelections`) and set membership at the
+  // write (see `safeOpenmojiCode`).
+  glyph: { label: 'Icon', values: [] as CanonicalValue[] },
 } as Record<EnumAxis, { label: string; values: CanonicalValue[] }>;
 
 export const COLOR_AXES: Record<ColorAxis, { label: string }> = {
@@ -94,7 +95,6 @@ export const AXIS_TABS: Record<CanonicalAxis, AxisTab> = {
 // of its own, which only appears where that style has something to put in it.
 export const TAB_ORDER: AxisTab[] = [
   'Basics',
-  'Icon',
   'Skin',
   'Hair',
   'Face',

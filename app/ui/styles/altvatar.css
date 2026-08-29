@@ -12,9 +12,8 @@
 }
 
 /* The card every surface wearing the mark is built on: the customizer's modal
-   shell and the onboarding gate alike, so the two read as one family. */
-.altvatar-shell,
-.onboarding-gate {
+   shell, and any future surface that joins the family. */
+.altvatar-shell {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -75,6 +74,19 @@
   background-color: var(--accent-ink);
   border-color: var(--accent-disc);
   color: var(--accent-disc);
+}
+
+/* The kind switch is the shell's door, not one of its controls: full width,
+   two equal halves, met before anything either surface owns. */
+.altvatar-kind-switch {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 12px 20px 0;
+}
+
+.altvatar-kind-switch > * {
+  flex: 1;
 }
 
 .altvatar-lede {
@@ -208,6 +220,33 @@
   text-align: center;
 }
 
+.altvatar-thing-empty {
+  grid-column: 1 / -1;
+  margin: 8px 0;
+  font-size: 13px;
+  color: var(--muted-text-color);
+}
+
+.altvatar-thing-pager {
+  display: flex;
+  gap: 8px;
+}
+
+.altvatar-thing-next {
+  margin-left: auto;
+}
+
+.altvatar-thing-credit {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  color: var(--muted-text-color);
+}
+
+.altvatar-thing-credit a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 .altvatar-tile-mark,
 .altvatar-chip-mark {
   display: flex;
@@ -313,12 +352,6 @@
   align-items: flex-start;
   gap: 8px;
   min-width: 0;
-}
-
-.altvatar-field-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--muted-text-color);
 }
 
 @media (max-width: 600px) {

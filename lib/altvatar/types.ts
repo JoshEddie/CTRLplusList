@@ -2,10 +2,15 @@ export const ALTVATAR_STYLE_IDS = [
   'avataaars',
   'personas',
   'toon-head',
-  'icons',
+  'openmoji',
 ] as const;
 
 export type AltvatarStyleId = (typeof ALTVATAR_STYLE_IDS)[number];
+
+// One level above style: a person wears a generated face built from parts, a
+// thing wears a picture picked from a set. The two kinds get different
+// surfaces, and the kind is derived from the style id rather than stored.
+export type AltvatarKind = 'person' | 'thing';
 
 export type EnumAxis =
   | 'hair'
@@ -111,7 +116,4 @@ export type AltvatarStyle = {
   label: string;
   enumAxes: Partial<Record<EnumAxis, EnumAxisBinding>>;
   colorAxes: Partial<Record<ColorAxis, ColorAxisBinding>>;
-  // A glyph style draws one flat shape, so the disc paints it from the accent's
-  // ink through a CSS mask rather than reading a colour baked into the art.
-  glyph?: true;
 };

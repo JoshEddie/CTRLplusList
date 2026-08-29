@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { ACCENT_PRESETS } from '../lib/accent';
 import { cssRgb } from '../test/helpers/contrast';
 
-// Flow: the Profiles arc as the seeded viewer — reach the page from the avatar
+// Flow: the Altvatars arc as the seeded viewer — reach the page from the avatar
 // popover, read the cards it lists, open a profile's space from a card, and
 // give birth to a managed profile. Pins the `profiles` / `profile_members`
 // cache-tag loop through the real `'use server'` boundary (createProfile,
@@ -38,9 +38,9 @@ test('Profiles_ViewerOpensFromAvatarPopover_ListsSelfThenOwnedCards', async ({
 }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'User menu' }).click();
-  await page.getByRole('menuitem', { name: 'Profiles' }).click();
+  await page.getByRole('menuitem', { name: 'Altvatars' }).click();
 
-  await expect(page).toHaveURL(/\/profiles$/);
+  await expect(page).toHaveURL(/\/altvatar$/);
 
   // Self first, then owned by name — the capability ordering the page fixes.
   const names = page.locator('.profile-card-name');
@@ -50,13 +50,13 @@ test('Profiles_ViewerOpensFromAvatarPopover_ListsSelfThenOwnedCards', async ({
   await expect(names.filter({ hasText: 'Managed Profile' })).toBeVisible();
 
   // The viewer's own card is always present, so no empty state is reachable.
-  await expect(page.getByText('No Profiles Found')).toHaveCount(0);
+  await expect(page.getByText('No Altvatars Found')).toHaveCount(0);
 });
 
 test('Profiles_ViewerOpensCardMenu_NavigatesToTheProfileSpace', async ({
   page,
 }) => {
-  await page.goto('/profiles');
+  await page.goto('/altvatar');
   const card = page
     .locator('.profile-card')
     .filter({ hasText: 'Owned Profile' })
@@ -66,19 +66,19 @@ test('Profiles_ViewerOpensCardMenu_NavigatesToTheProfileSpace', async ({
   // The card's ⋯ menu is what carries the management intent.
   await card.getByRole('button', { name: 'Owned Profile actions' }).click();
   await card.getByRole('menuitem', { name: 'Edit Owned Profile' }).click();
-  await expect(page).toHaveURL(/\/profiles\/dev-profile-owned$/);
+  await expect(page).toHaveURL(/\/altvatar\/dev-profile-owned$/);
 });
 
 test('ProfileSpace_OwnerSavesTagline_PersistsAcrossAFreshRead', async ({
   page,
 }) => {
-  await page.goto('/profiles/dev-profile-owned');
+  await page.goto('/altvatar/dev-profile-owned');
   await page.getByLabel('Tagline').fill('Loves dinosaurs');
   await page.getByRole('button', { name: 'Save Changes' }).click();
   await expect(page.getByText('Profile updated')).toBeVisible();
 
   // A fresh server read proves the write round-tripped past the cache tag.
-  await page.goto('/profiles');
+  await page.goto('/altvatar');
   await expect(
     page.locator('.profile-card').filter({ hasText: 'Owned Profile' })
   ).toContainText('Loves dinosaurs');
@@ -88,18 +88,18 @@ test('Profiles_ViewerCreatesManagedProfile_NavigatesToItsSpaceAndItListsAfterwar
   page,
 }) => {
   const name = sidekickName();
-  await page.goto('/profiles');
-  await page.getByRole('button', { name: 'New Profile' }).click();
+  await page.goto('/altvatar');
+  await page.getByRole('button', { name: 'New Altvatar' }).click();
 
   await page.getByLabel('Name').fill(name);
   await page.getByLabel('Tagline').fill('Born in a test');
-  await page.getByRole('button', { name: 'Create Profile' }).click();
+  await page.getByRole('button', { name: 'Create Altvatar' }).click();
 
   // Success navigates into the new profile's space and raises no toast.
-  await expect(page).toHaveURL(/\/profiles\/[^/]+$/);
+  await expect(page).toHaveURL(/\/altvatar\/[^/]+$/);
   await expect(page.getByRole('heading', { name })).toBeVisible();
 
-  await page.goto('/profiles');
+  await page.goto('/altvatar');
   const created = page.locator('.profile-card').filter({ hasText: name });
   await expect(created).toBeVisible();
   await expect(created.locator('.profile-card-role')).toHaveText('Owner');
@@ -113,7 +113,7 @@ test('Profiles_ViewerCreatesManagedProfile_NavigatesToItsSpaceAndItListsAfterwar
 test('ProfileSpace_OwnerPicksASwatch_RepaintsTheBandFromTheAccentVariable', async ({
   page,
 }) => {
-  await page.goto('/profiles/dev-profile-owned');
+  await page.goto('/altvatar/dev-profile-owned');
   const band = page.locator('.profile-space-band');
 
   // Owned Profile carries no accent row, so the space opens on a rolled suggestion —
@@ -144,9 +144,17 @@ test('ProfileSpace_OwnerPicksASwatch_RepaintsTheBandFromTheAccentVariable', asyn
   );
 });
 
-test('ProfileSpace_ViewerRequestsUnknownProfileId_RedirectsToProfiles', async ({
+// One address serves members and everyone else, so an id no profile carries
+// falls through to the public view — which stands the not-found page on the
+// requested URL rather than redirecting. The status stays 200: the lookup runs
+// inside the route's Suspense boundary, so the shell is already flushed by the
+// time `notFound()` throws.
+test('AltvatarSpace_ViewerRequestsUnknownProfileId_StandsTheNotFoundPage', async ({
   page,
 }) => {
-  await page.goto('/profiles/no-such-profile-id');
-  await expect(page).toHaveURL(/\/profiles$/);
+  await page.goto('/altvatar/no-such-profile-id');
+  await expect(
+    page.getByRole('heading', { name: 'Page Not Found' })
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/altvatar\/no-such-profile-id$/);
 });

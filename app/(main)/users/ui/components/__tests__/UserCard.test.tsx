@@ -18,7 +18,7 @@ const alice = makeProfile('u1', 'Alice');
 describe('UserCard', () => {
   it('Default_LinksToProfileRoute', () => {
     render(<UserCard profile={alice} />);
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/user/u1');
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/altvatar/u1');
   });
 
   it('Default_RendersNameAndAvatarDiscInBand', () => {

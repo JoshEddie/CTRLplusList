@@ -104,7 +104,7 @@ describe('ListCollectionsNav', () => {
     });
 
     it('PathnameNonPeer_NoTabActive', () => {
-      setPathname('/user/abc123');
+      setPathname('/altvatar/abc123');
       render(<ListCollectionsNav />);
       expectOnlyActive(null);
     });

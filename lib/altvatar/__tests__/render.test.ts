@@ -3,9 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { renderAltvatar } from '@/lib/altvatar/render';
 import { ALTVATAR_STYLE_IDS } from '@/lib/altvatar/types';
 
-const decode = (uri: string) =>
-  decodeURIComponent(uri.replace('data:image/svg+xml;utf8,', ''));
-
 describe('renderAltvatar', () => {
   const options = { seed: 'fixed-seed', selections: {} };
 
@@ -42,21 +39,20 @@ describe('renderAltvatar', () => {
     expect(bob).not.toBe(fro);
   });
 
-  it('CanonicalSelection_ReachesTheArtUnderTheLibrarysOwnName', async () => {
-    const art = decode(
-      await renderAltvatar('icons', {
+  it('ThingStyle_ResolvesToTheBundledArtRoute', async () => {
+    // The thing kind leaves the generation path entirely: its art is a
+    // bundled picture the route serves, keyed by the stored codepoint.
+    expect(
+      await renderAltvatar('openmoji', {
         ...options,
-        selections: { glyph: 'star' },
+        selections: { glyph: '1F415' },
       })
-    );
-    expect(art).toContain('<svg');
-    expect(art).not.toBe(
-      decode(
-        await renderAltvatar('icons', {
-          ...options,
-          selections: { glyph: 'heart' },
-        })
-      )
-    );
+    ).toBe('/api/openmoji/1F415');
+  });
+
+  it('ThingStyleWithNoPicture_FallsBackToTheDefaultGlyph', async () => {
+    expect(
+      await renderAltvatar('openmoji', { ...options, selections: {} })
+    ).toBe('/api/openmoji/2B50');
   });
 });

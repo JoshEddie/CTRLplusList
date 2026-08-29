@@ -64,7 +64,7 @@ describe('getAltvatarOptions', () => {
   });
 
   it('AnotherProfilesArt_IsNotReturned', async () => {
-    await seedAvatar(db, PROFILE, { style: 'icons' });
+    await seedAvatar(db, PROFILE, { style: 'toon-head' });
     expect(await avatar.getAltvatarOptions('some-other-profile')).toBeNull();
   });
 });
@@ -74,14 +74,14 @@ describe('avatarViewOf', () => {
     expect(
       avatar.avatarViewOf({
         name: 'Ada',
-        avatar: { art: '<svg />', style: 'icons' },
+        avatar: { art: '<svg />', style: 'toon-head' },
         preferences: [{ value: 'lagoon' }],
       })
     ).toEqual({
       name: 'Ada',
       accent: 'lagoon',
       art: '<svg />',
-      avatarStyle: 'icons',
+      avatarStyle: 'toon-head',
     });
   });
 

@@ -43,6 +43,7 @@ import {
 } from '../db/schema';
 import { seedUserEmail } from '../lib/auth';
 import { styleOf } from '../lib/altvatar/registry';
+import { openmojiDataUri } from '../lib/altvatar/openmoji.server';
 import { renderAltvatar } from '../lib/altvatar/render';
 import { offersOf } from '../lib/altvatar/resolve';
 import type {
@@ -149,15 +150,24 @@ const MANAGED_PROFILE_ID = 'dev-profile-managed';
 // without it, and it is not the viewer.
 const SEEDED_FACES: Record<
   string,
-  { accent: string; face?: AltvatarStyleId }
+  { accent: string; face?: AltvatarStyleId; glyph?: string }
 > = {
   [selfProfileOf(VIEWER_ID)]: { accent: 'midnight', face: 'avataaars' },
   [selfProfileOf(friendId('alice'))]: { accent: 'rose', face: 'personas' },
   [selfProfileOf(friendId('bob'))]: { accent: 'denim', face: 'avataaars' },
-  [selfProfileOf(friendId('carol'))]: { accent: 'lion', face: 'icons' },
+  // The thing kind's fixtures: a dog and a rocket, codepoints per OpenMoji.
+  [selfProfileOf(friendId('carol'))]: {
+    accent: 'lion',
+    face: 'openmoji',
+    glyph: '1F415',
+  },
   [selfProfileOf(friendId('dave'))]: { accent: 'juniper', face: 'avataaars' },
   [selfProfileOf(friendId('eve'))]: { accent: 'nebula', face: 'personas' },
-  [selfProfileOf(friendId('frank'))]: { accent: 'fathom', face: 'icons' },
+  [selfProfileOf(friendId('frank'))]: {
+    accent: 'fathom',
+    face: 'openmoji',
+    glyph: '1F680',
+  },
   [selfProfileOf(friendId('grace'))]: { accent: 'coral', face: 'avataaars' },
   [selfProfileOf(friendId('hank'))]: { accent: 'clover', face: 'toon-head' },
   // Accent, no art: the initials-on-an-accent-disc branch.
@@ -846,6 +856,17 @@ async function main() {
       .filter(([, f]) => f.face)
       .map(async ([profile_id, f]) => {
         const style = styleOf(f.face as string);
+        // The thing kind's art is a bundled picture read from disk, exactly as
+        // the production write path stores it (see profileAvatar.write.ts).
+        if (style.id === 'openmoji') {
+          const options = { seed: profile_id, selections: { glyph: f.glyph } };
+          return {
+            profile_id,
+            style: style.id,
+            options,
+            art: await openmojiDataUri(f.glyph),
+          };
+        }
         const options = {
           seed: profile_id,
           selections: seededSelections(style, profile_id),

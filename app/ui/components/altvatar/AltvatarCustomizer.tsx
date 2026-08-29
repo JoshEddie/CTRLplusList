@@ -4,15 +4,25 @@ import AccentPicker from '@/app/ui/components/altvatar/AccentPicker';
 import AltvatarControls from '@/app/ui/components/altvatar/AltvatarControls';
 import AltvatarMark from '@/app/ui/components/altvatar/AltvatarMark';
 import AltvatarPreview from '@/app/ui/components/altvatar/AltvatarPreview';
+import ThingPicker from '@/app/ui/components/altvatar/ThingPicker';
 import { Button, CloseButton } from '@/app/ui/components/button';
 import { useIsClient } from '@/app/ui/hooks/useIsClient';
 import '@/app/ui/styles/altvatar.css';
 import { accentVars, randomAccentName } from '@/lib/accent';
-import { ALTVATAR_STYLES, styleOf } from '@/lib/altvatar/registry';
+import {
+  ALTVATAR_STYLES,
+  DEFAULT_STYLE,
+  PERSON_STYLE_IDS,
+  kindOf,
+  styleOf,
+} from '@/lib/altvatar/registry';
 import { offersOf, resolveSelections } from '@/lib/altvatar/resolve';
 import { shuffleAltvatar, shuffleStyle } from '@/lib/altvatar/shuffle';
-import type { AltvatarOptions, AxisTab } from '@/lib/altvatar/types';
-import { ALTVATAR_STYLE_IDS } from '@/lib/altvatar/types';
+import type {
+  AltvatarKind,
+  AltvatarOptions,
+  AxisTab,
+} from '@/lib/altvatar/types';
 import { AXIS_TABS, TAB_ORDER } from '@/lib/altvatar/vocabulary';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -48,13 +58,21 @@ export default function AltvatarCustomizer({
   const [tab, setTab] = useState<AxisTab>('Basics');
   const panelRef = useRef<HTMLDivElement>(null);
   const style = styleOf(draft.style);
+  const kind = kindOf(draft.style);
+  // Which person style to return to after a visit to the thing kind, so
+  // toggling kinds is reversible rather than resetting to the default.
+  const personStyle = useRef(kind === 'person' ? style.id : DEFAULT_STYLE);
   const offers = offersOf(style, draft.options.selections);
 
-  // A tab with nothing in it is not offered: `icons` has one axis, and every
-  // other style has whatever its mapping table names.
-  const tabs = TAB_ORDER.filter(
-    (t) => t === 'Basics' || offers.some((o) => AXIS_TABS[o.axis] === t)
-  );
+  // A tab with nothing in it is not offered: each person style has whatever
+  // its mapping table names. The thing kind's pair is fixed — its icon is a
+  // search surface, not an offered axis.
+  const tabs: AxisTab[] =
+    kind === 'thing'
+      ? ['Basics', 'Icon']
+      : TAB_ORDER.filter(
+          (t) => t === 'Basics' || offers.some((o) => AXIS_TABS[o.axis] === t)
+        );
   const shown = offers.filter((o) => AXIS_TABS[o.axis] === tab);
 
   // One scrolling panel serves every tab, so without this a viewer who scrolled
@@ -66,6 +84,7 @@ export default function AltvatarCustomizer({
 
   const selectStyle = (id: string) => {
     const next = styleOf(id);
+    if (kindOf(next.id) === 'person') personStyle.current = next.id;
     setDraft((d) => ({
       ...d,
       style: next.id,
@@ -80,6 +99,14 @@ export default function AltvatarCustomizer({
     // Back to Basics rather than leaving `tab` on a panel the new style may not
     // have: this is what keeps every tab in `tabs` reachable and current.
     setTab('Basics');
+  };
+
+  // Kind is one level above style: switching it swaps the whole surface, and
+  // nothing stored is touched — a person's selections wait under a thing's
+  // picture exactly as they wait under any style that cannot draw them.
+  const selectKind = (next: AltvatarKind) => {
+    if (next === kind) return;
+    selectStyle(next === 'thing' ? 'openmoji' : personStyle.current);
   };
 
   // Re-rolls the style, every curated axis of it, the seed that governs the
@@ -127,6 +154,28 @@ export default function AltvatarCustomizer({
           <CloseButton onClick={onCancel} className="close-button--in-flow" />
         </div>
 
+        {/* One level above everything else in the shell: the two kinds are
+            different surfaces, not two option groups, so the switch sits at
+            the door rather than among the controls. */}
+        <div
+          className="altvatar-kind-switch"
+          role="radiogroup"
+          aria-label="Kind"
+        >
+          {(['person', 'thing'] as const).map((k) => (
+            <Button
+              key={k}
+              role="radio"
+              variant={k === kind ? 'primary' : 'ghost'}
+              aria-checked={k === kind}
+              pressed={k === kind}
+              onClick={() => selectKind(k)}
+            >
+              {k === 'person' ? 'Person' : 'Thing'}
+            </Button>
+          ))}
+        </div>
+
         <div className="altvatar-lede">
           <AltvatarPreview
             styleId={draft.style}
@@ -138,9 +187,13 @@ export default function AltvatarCustomizer({
             <span className="altvatar-lede-hint">
               Updates live as you pick options below.
             </span>
-            <Button variant="secondary" onClick={shuffle}>
-              <LuShuffle aria-hidden /> Surprise me
-            </Button>
+            {/* A thing is chosen, never rolled — shuffle is a person-kind
+                affordance, and the roll never crosses the kind boundary. */}
+            {kind === 'person' && (
+              <Button variant="secondary" onClick={shuffle}>
+                <LuShuffle aria-hidden /> Surprise me
+              </Button>
+            )}
           </div>
         </div>
 
@@ -164,48 +217,71 @@ export default function AltvatarCustomizer({
           ))}
         </div>
 
+        {/* Two surfaces, not one surface with branches: the person kind gets
+            the curated control stack across its tabs, the thing kind gets
+            Basics for the accent and a search-led Icon tab. */}
         <div className="altvatar-panel" ref={panelRef}>
-          {tab === 'Basics' && (
+          {kind === 'thing' ? (
             <>
-              <div className="altvatar-axis">
-                <div className="altvatar-axis-hd">
-                  <h2 className="altvatar-axis-title">Avatar style</h2>
-                </div>
-                <div
-                  className="altvatar-style-picker"
-                  role="radiogroup"
-                  aria-label="Avatar style"
-                >
-                  {ALTVATAR_STYLE_IDS.map((id) => (
-                    <Button
-                      key={id}
-                      role="radio"
-                      size="sm"
-                      variant={id === draft.style ? 'primary' : 'ghost'}
-                      aria-checked={id === draft.style}
-                      pressed={id === draft.style}
-                      onClick={() => selectStyle(id)}
+              {tab === 'Basics' && (
+                <AccentPicker
+                  value={draft.accent}
+                  onChange={(accent) => setDraft((d) => ({ ...d, accent }))}
+                />
+              )}
+              {tab === 'Icon' && (
+                <ThingPicker
+                  current={draft.options.selections.glyph}
+                  accent={draft.accent}
+                  onPick={(code) => setAxis('glyph', code)}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              {tab === 'Basics' && (
+                <>
+                  <div className="altvatar-axis">
+                    <div className="altvatar-axis-hd">
+                      <h2 className="altvatar-axis-title">Avatar style</h2>
+                    </div>
+                    <div
+                      className="altvatar-style-picker"
+                      role="radiogroup"
+                      aria-label="Avatar style"
                     >
-                      {ALTVATAR_STYLES[id].label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+                      {PERSON_STYLE_IDS.map((id) => (
+                        <Button
+                          key={id}
+                          role="radio"
+                          size="sm"
+                          variant={id === draft.style ? 'primary' : 'ghost'}
+                          aria-checked={id === draft.style}
+                          pressed={id === draft.style}
+                          onClick={() => selectStyle(id)}
+                        >
+                          {ALTVATAR_STYLES[id].label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
 
-              <AccentPicker
-                value={draft.accent}
-                onChange={(accent) => setDraft((d) => ({ ...d, accent }))}
+                  <AccentPicker
+                    value={draft.accent}
+                    onChange={(accent) => setDraft((d) => ({ ...d, accent }))}
+                  />
+                </>
+              )}
+
+              <AltvatarControls
+                styleId={draft.style}
+                options={draft.options}
+                offers={shown}
+                accent={draft.accent}
+                onChange={setAxis}
               />
             </>
           )}
-
-          <AltvatarControls
-            styleId={draft.style}
-            options={draft.options}
-            offers={shown}
-            accent={draft.accent}
-            onChange={setAxis}
-          />
         </div>
 
         <div className="altvatar-ft">

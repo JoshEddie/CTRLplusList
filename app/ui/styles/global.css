@@ -320,8 +320,6 @@ body {
 
 .empty-container {
   padding: 40px 20px;
-  border: 1px solid var(--primary-color);
-  background-color: var(--secondary-background-color);
   border-radius: 10px;
   display: flex;
   flex-direction: column;

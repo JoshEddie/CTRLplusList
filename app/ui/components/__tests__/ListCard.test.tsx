@@ -143,7 +143,7 @@ describe('ListCard', () => {
     });
   });
 
-  describe('AccentEdge', () => {
+  describe('AccentPill', () => {
     it('OwnerHasAccent_CardCarriesAccentVars', () => {
       render(
         <ListCard
@@ -152,23 +152,25 @@ describe('ListCard', () => {
           })}
         />
       );
-      // The leading edge is a ::before painted from --accent-bg, so the custom
-      // property on the root is what carries the owner's colour to it.
-      expect(
-        document
-          .querySelector<HTMLElement>('a.list-card')
-          ?.style.getPropertyValue('--accent-bg')
-      ).toBe('linear-gradient(120deg, #fbcfe8, #be123c)');
+      // The byline pill is painted from --accent-disc/--accent-ink, so the
+      // custom properties on the root are what carry the owner's colour to it.
+      const card = document.querySelector<HTMLElement>('a.list-card');
+      expect(card?.style.getPropertyValue('--accent-disc')).toBe(
+        ACCENT_PRESETS.rose.light
+      );
+      expect(card?.style.getPropertyValue('--accent-ink')).toBe(
+        ACCENT_PRESETS.rose.ink
+      );
     });
 
-    it('NoOwnerAccent_EdgeFallsBackToTheIrisPreset', () => {
+    it('NoOwnerAccent_PillFallsBackToTheIrisPreset', () => {
       render(<ListCard list={makeList({ profile: null })} />);
-      expect(
-        document
-          .querySelector<HTMLElement>('a.list-card')
-          ?.style.getPropertyValue('--accent-bg')
-      ).toBe(
-        `linear-gradient(120deg, ${ACCENT_PRESETS.iris.light}, ${ACCENT_PRESETS.iris.dark})`
+      const card = document.querySelector<HTMLElement>('a.list-card');
+      expect(card?.style.getPropertyValue('--accent-disc')).toBe(
+        ACCENT_PRESETS.iris.light
+      );
+      expect(card?.style.getPropertyValue('--accent-ink')).toBe(
+        ACCENT_PRESETS.iris.ink
       );
     });
   });

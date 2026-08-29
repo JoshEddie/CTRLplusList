@@ -71,8 +71,8 @@ describe('UserAvatarPopover', () => {
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
     expect(screen.getByText('ada@example.com')).toBeInTheDocument();
 
-    const profiles = screen.getByRole('menuitem', { name: /profiles/i });
-    expect(profiles).toHaveAttribute('href', '/profiles');
+    const profiles = screen.getByRole('menuitem', { name: /altvatars/i });
+    expect(profiles).toHaveAttribute('href', '/altvatar');
     const connections = screen.getByRole('menuitem', { name: /connections/i });
     expect(connections).toHaveAttribute('href', '/settings/connections');
     expect(
@@ -130,7 +130,7 @@ describe('UserAvatarPopover', () => {
 
     expect(
       screen.getAllByRole('menuitem').map((item) => item.textContent)
-    ).toEqual(['Profiles', 'Connections', 'Sign out']);
+    ).toEqual(['Altvatars', 'Connections', 'Sign out']);
   });
 
   it('ClickTrigger_GivesProfilesAndConnectionsDistinctIcons', async () => {
@@ -143,8 +143,8 @@ describe('UserAvatarPopover', () => {
       '';
     /* eslint-enable testing-library/no-node-access */
 
-    expect(iconPathOf(/profiles/i)).not.toBe('');
-    expect(iconPathOf(/profiles/i)).not.toBe(iconPathOf(/connections/i));
+    expect(iconPathOf(/altvatars/i)).not.toBe('');
+    expect(iconPathOf(/altvatars/i)).not.toBe(iconPathOf(/connections/i));
   });
 
   it('SparseUser_ShowsSignedInFallbackWithoutEmail', async () => {
@@ -163,7 +163,7 @@ describe('UserAvatarPopover', () => {
 
       expect(
         screen.getAllByRole('menuitem').map((item) => item.textContent)
-      ).toEqual(['Profiles', 'Connections', 'Sign out']);
+      ).toEqual(['Altvatars', 'Connections', 'Sign out']);
     });
 
     it('ThreeProfilesActingAsSelf_OffersTheOtherTwoAboveTheDestinations', async () => {
@@ -177,19 +177,19 @@ describe('UserAvatarPopover', () => {
       await userEvent.click(trigger());
 
       // Accessible names rather than textContent: a switch row's leading slot
-      // is aria-hidden, and the count on the Profiles row rides in its label.
+      // is aria-hidden, and the count on the Altvatars row rides in its label.
       const rows = screen.getAllByRole('menuitem');
       expect(rows).toHaveLength(5);
       for (const [index, name] of [
         'Kiddo',
         'Nana',
-        'Profiles (3)',
+        'Altvatars (3)',
         'Connections',
         'Sign out',
       ].entries()) {
         expect(rows[index]).toHaveAccessibleName(name);
       }
-      expect(rows[2]).toHaveAttribute('href', '/profiles');
+      expect(rows[2]).toHaveAttribute('href', '/altvatar');
       expect(screen.getByText('3')).toBeInTheDocument();
     });
 

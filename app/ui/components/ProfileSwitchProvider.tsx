@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 // A profile *space* is keyed to one profile's id, so it has to follow the
 // switch; a profile-*scoped* surface like `/lists` renders whichever profile
 // is active and must stay where it is.
-const PROFILE_SPACE = /^\/profiles\/[^/]+$/;
+const PROFILE_SPACE = /^\/altvatar\/[^/]+$/;
 
 // Read from the document rather than through `usePathname()`: this provider
 // wraps every `(main)/` route, and a layout-level client component reading
@@ -73,7 +73,7 @@ export function ProfileSwitchProvider({
       }
       toast.success(result.message);
       if (onProfileSpace()) {
-        router.replace(`/profiles/${profileId}`);
+        router.replace(`/altvatar/${profileId}`);
       }
     });
 

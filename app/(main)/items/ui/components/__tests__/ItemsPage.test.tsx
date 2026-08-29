@@ -145,14 +145,14 @@ describe('ItemsPage', () => {
         screen.getByRole('button', { name: /Create Item/ })
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('link', { name: 'Go to Profiles' })
-      ).toHaveAttribute('href', '/profiles');
+        screen.getByRole('link', { name: 'Go to Altvatars' })
+      ).toHaveAttribute('href', '/altvatar');
     });
 
     it('SingleProfileViewerEmpty_OffersNoSwitchRoute', () => {
       renderPage({ items: [] });
       expect(
-        screen.queryByRole('link', { name: 'Go to Profiles' })
+        screen.queryByRole('link', { name: 'Go to Altvatars' })
       ).not.toBeInTheDocument();
     });
 

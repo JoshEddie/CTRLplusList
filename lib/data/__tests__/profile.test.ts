@@ -119,7 +119,7 @@ describe('getProfileForViewer', () => {
       id: selfProfileOf('target'),
       name: 'Tara',
       art: '<svg id="t" />',
-      avatarStyle: 'icons',
+      avatarStyle: 'toon-head',
       publicListCount: 2,
       viewerIsFollowing: false,
       viewerIsBlocked: false,
@@ -185,7 +185,7 @@ describe('getFollowersOfProfile', () => {
       name: 'Alice',
       accent: null,
       art: '<svg id="a" />',
-      avatarStyle: 'icons',
+      avatarStyle: 'toon-head',
     });
   });
 
@@ -274,7 +274,7 @@ describe('getBlockedByProfile', () => {
       name: 'Xena',
       accent: null,
       art: '<svg id="x" />',
-      avatarStyle: 'icons',
+      avatarStyle: 'toon-head',
     });
   });
 });
