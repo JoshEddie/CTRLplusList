@@ -28,6 +28,12 @@ names, and act on it before writing. No matching row means no decision binds.
 | `app/(main)/layout.tsx` | [2026-08-26-onboarding-is-a-layout-short-circuit-not-a-guard](2026-08-26-onboarding-is-a-layout-short-circuit-not-a-guard.md) |
 | `E2E Test` | [2026-08-25-no-environment-override-for-the-acting-profile](2026-08-25-no-environment-override-for-the-acting-profile.md) |
 | `Local Dev` | [2026-08-25-no-environment-override-for-the-acting-profile](2026-08-25-no-environment-override-for-the-acting-profile.md) |
+| `DAL` | [2026-08-30-owners-run-the-profile-managers-run-its-content](2026-08-30-owners-run-the-profile-managers-run-its-content.md) |
+| `DATABASE.md` | [2026-08-30-a-cardinality-floor-is-a-guarded-single-statement](2026-08-30-a-cardinality-floor-is-a-guarded-single-statement.md) |
+| `DAL` | [2026-08-30-a-cardinality-floor-is-a-guarded-single-statement](2026-08-30-a-cardinality-floor-is-a-guarded-single-statement.md) |
+| `Role-Gated UI` | [2026-08-30-a-forbidden-affordance-renders-disabled](2026-08-30-a-forbidden-affordance-renders-disabled.md) |
+| `DB Schema` | [2026-08-30-an-invite-link-is-a-single-use-capability-grant](2026-08-30-an-invite-link-is-a-single-use-capability-grant.md) |
+| `DAL` | [2026-08-30-an-invite-link-is-a-single-use-capability-grant](2026-08-30-an-invite-link-is-a-single-use-capability-grant.md) |
 
 ## Term bank
 
@@ -46,3 +52,4 @@ names, and act on it before writing. No matching row means no decision binds.
 | `Skills & Agents` | `.claude/skills/`, `.claude/agents/` |
 | `Docs` | repo markdown |
 | `Reading a GitHub Issue` | picking up work from an issue |
+| `Role-Gated UI` | rendering a control the viewer's role forbids |

@@ -13,6 +13,9 @@ import {
   GUEST_BASE_URL,
   GUEST_PORT,
   GUEST_SESSION_USER,
+  RECIPIENT_BASE_URL,
+  RECIPIENT_PORT,
+  RECIPIENT_SESSION_USER,
   SIGNUP_BASE_URL,
   SIGNUP_PORT,
   SIGNUP_SESSION_USER,
@@ -89,9 +92,13 @@ export default defineConfig({
     },
   ],
 
-  // Four production servers sharing one Docker DB. authenticated → identity
+  // Five production servers sharing one Docker DB. authenticated → identity
   // selector unset ⇒ dev-test-viewer session; guest → BYPASS_SESSION_USER=guest
-  // ⇒ no session; the two onboarding modes → their un-onboarded seeded ids.
+  // ⇒ no session; the two onboarding modes → their un-onboarded seeded ids;
+  // recipient → the account an invite link admits, which cannot be the minting
+  // one. It carries no project of its own: the invite round trip starts as the
+  // viewer and reaches this server by absolute URL, because one flow spans both
+  // ends and a Playwright test belongs to a single project.
   webServer: [
     {
       command: `npx next start -p ${AUTH_PORT}`,
@@ -128,6 +135,15 @@ export default defineConfig({
       stdout: 'pipe',
       stderr: 'pipe',
       env: { ...baseServerEnv, BYPASS_SESSION_USER: EXISTING_SESSION_USER },
+    },
+    {
+      command: `npx next start -p ${RECIPIENT_PORT}`,
+      url: RECIPIENT_BASE_URL,
+      timeout: 120_000,
+      reuseExistingServer: !process.env.CI,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: { ...baseServerEnv, BYPASS_SESSION_USER: RECIPIENT_SESSION_USER },
     },
   ],
 });

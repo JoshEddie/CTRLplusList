@@ -7,6 +7,11 @@ import { db } from '@/db';
 import { profile_members, profiles } from '@/db/schema';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { UNAUTHORIZED_RESPONSE, authedIdentity } from '@/lib/data/user.session';
+import {
+  WRITE_ROLES,
+  meetsFloor,
+  type RoleFloor,
+} from '@/lib/data/profile.roles';
 import { type ActionResponse, type UserIdentity } from '@/lib/types';
 import { and, eq, inArray, isNull, lt, or } from 'drizzle-orm';
 
@@ -16,12 +21,6 @@ export const FORBIDDEN_RESPONSE: ActionResponse = {
   error: 'Forbidden',
 };
 
-// The roles that make a profile selectable, and so writable-as once selected.
-// Named rather than inferred from the row's existence: the column's CHECK
-// admits exactly these today, and a role added later must not walk through
-// this gate by default.
-export const WRITE_ROLES = ['self', 'owner', 'manager'] as const;
-
 // The single membership gate every profile-scoped write passes. Holding a
 // membership is what made the profile selectable; this confirms the account
 // still holds one on the profile it acts as, at the moment of the write. The
@@ -29,9 +28,9 @@ export const WRITE_ROLES = ['self', 'owner', 'manager'] as const;
 // revoked since the form rendered, which is the case the gate exists to
 // refuse. The ownership comparison each mutation makes is unchanged and
 // unaffected — another membership never widens the current request.
-export async function authedWriter(): Promise<
-  { identity: UserIdentity } | { error: ActionResponse }
-> {
+export async function authedWriter(
+  floor: RoleFloor
+): Promise<{ identity: UserIdentity } | { error: ActionResponse }> {
   const identity = await authedIdentity();
   if (!identity) return { error: UNAUTHORIZED_RESPONSE };
 
@@ -40,6 +39,7 @@ export async function authedWriter(): Promise<
     identity.activeProfile.id
   );
   if (!membership) return { error: FORBIDDEN_RESPONSE };
+  if (!meetsFloor(membership.role, floor)) return { error: FORBIDDEN_RESPONSE };
 
   await stampActedAs(
     identity.userId,
@@ -56,10 +56,15 @@ export async function authedWriter(): Promise<
 export async function writableMembership(
   userId: string,
   profileId: string
-): Promise<{ name: string; last_active_at: Date | null } | null> {
+): Promise<{
+  name: string;
+  role: string;
+  last_active_at: Date | null;
+} | null> {
   const [membership] = await db
     .select({
       name: profiles.name,
+      role: profile_members.role,
       last_active_at: profile_members.last_active_at,
     })
     .from(profile_members)
@@ -91,7 +96,7 @@ export async function ownsProfile(
         eq(profile_members.profile_id, profileId)
       )
     );
-  return membership?.role === 'self' || membership?.role === 'owner';
+  return membership ? meetsFloor(membership.role, 'owner') : false;
 }
 
 // An hour, so reordering twenty items writes the row once rather than twenty

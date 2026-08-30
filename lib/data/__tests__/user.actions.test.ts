@@ -97,9 +97,31 @@ beforeEach(async () => {
 });
 
 describe('signInUser', () => {
-  it('Invoked_DelegatesToSignInWithGoogleProvider', async () => {
+  it('NoDestination_DelegatesToSignInWithGoogleProviderAndNoRedirect', async () => {
     await signInUser();
-    expect(signIn).toHaveBeenCalledExactlyOnceWith('google');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
+  });
+
+  it('SameOriginPath_ThreadsItAsRedirectTo', async () => {
+    await signInUser('/invite/tok-123');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', {
+      redirectTo: '/invite/tok-123',
+    });
+  });
+
+  it('AbsoluteUrl_IsDiscardedRatherThanRedirectedTo', async () => {
+    await signInUser('https://evil.test/steal');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
+  });
+
+  it('ProtocolRelativeUrl_IsDiscardedRatherThanRedirectedTo', async () => {
+    await signInUser('//evil.test/steal');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
+  });
+
+  it('FormDataFromABareFormAction_IsNotTreatedAsADestination', async () => {
+    await signInUser(new FormData());
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
   });
 
   it('Invoked_DoesNotCallSignOutOrRedirect', async () => {

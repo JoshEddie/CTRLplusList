@@ -16,6 +16,7 @@ import {
   parseGuestClaims,
   pruneGuestClaim,
 } from '@/lib/data/purchase.cookie';
+import { writableMembership } from '@/lib/data/profile.gate';
 import { authedIdentity } from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
@@ -282,6 +283,12 @@ export async function removePurchase(
     }
 
     const actorIdentity = await authedIdentity();
+    const actorMembership = actorIdentity
+      ? await writableMembership(
+          actorIdentity.userId,
+          actorIdentity.activeProfile.id
+        )
+      : null;
 
     const row = await db.query.purchases.findFirst({
       where: eq(purchases.id, data.purchase_id),
@@ -316,7 +323,8 @@ export async function removePurchase(
         row,
         targetItem?.profile_id ?? null,
         actorIdentity,
-        new Set(guestClaims?.purchases)
+        new Set(guestClaims?.purchases),
+        actorMembership?.role ?? null
       )
     ) {
       return {

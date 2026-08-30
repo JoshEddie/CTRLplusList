@@ -397,3 +397,72 @@ describe('sanitizePurchases', () => {
     });
   });
 });
+
+describe('canRemovePurchase', () => {
+  const SELF = selfProfileOf('viewer');
+  const OWNED = 'kiddo';
+  const asProfile = (id: string) => ({
+    id,
+    name: id,
+    accent: null,
+    art: null,
+    avatarStyle: null,
+  });
+  const actor = {
+    userId: 'viewer',
+    selfProfile: asProfile(SELF),
+    activeProfile: asProfile(OWNED),
+  };
+  const foreignClaim = {
+    id: 'p1',
+    profile_id: selfProfileOf('someone-else'),
+    claimed_by_profile_id: selfProfileOf('someone-else'),
+  };
+  const noCookies = new Set<string>();
+
+  describe('MasterUnclaimLeg', () => {
+    it('RoleSelf_ReturnsTrue', () => {
+      expect(
+        dal.canRemovePurchase(foreignClaim, OWNED, actor, noCookies, 'self')
+      ).toBe(true);
+    });
+
+    it('RoleOwner_ReturnsTrue', () => {
+      expect(
+        dal.canRemovePurchase(foreignClaim, OWNED, actor, noCookies, 'owner')
+      ).toBe(true);
+    });
+
+    it('RoleManager_ReturnsFalse', () => {
+      expect(
+        dal.canRemovePurchase(foreignClaim, OWNED, actor, noCookies, 'manager')
+      ).toBe(false);
+    });
+  });
+
+  describe('SelfProfileLegs', () => {
+    it('ManagerIsTheAsserter_ReturnsTrue', () => {
+      expect(
+        dal.canRemovePurchase(
+          { id: 'p2', profile_id: null, claimed_by_profile_id: SELF },
+          OWNED,
+          actor,
+          noCookies,
+          'manager'
+        )
+      ).toBe(true);
+    });
+
+    it('ManagerIsThePurchaser_ReturnsTrue', () => {
+      expect(
+        dal.canRemovePurchase(
+          { id: 'p3', profile_id: SELF, claimed_by_profile_id: null },
+          OWNED,
+          actor,
+          noCookies,
+          'manager'
+        )
+      ).toBe(true);
+    });
+  });
+});

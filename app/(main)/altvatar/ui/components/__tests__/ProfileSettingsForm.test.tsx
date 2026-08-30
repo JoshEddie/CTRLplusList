@@ -62,13 +62,15 @@ const editAltvatar = () =>
 const renderForm = (
   profile: ProfileCardView = makeProfile(),
   draft: AltvatarDraft | null = makeDraft(),
-  readOnly = false
+  readOnly = false,
+  identityActions?: React.ReactNode
 ) =>
   renderWithProfileSwitch(
     <ProfileSettingsForm
       profile={profile}
       draft={draft}
       readOnly={readOnly}
+      identityActions={identityActions}
     />
   );
 
@@ -313,19 +315,37 @@ describe('ProfileSettingsForm', () => {
     const renderAsManager = () =>
       renderForm(makeProfile({ role: 'manager' }), null, true);
 
-    it('RoleManager_DisablesEveryFieldAndOffersNoAltvatarEdit', () => {
+    it('RoleManager_DisablesEveryFieldAndTheAltvatarEdit', () => {
       renderAsManager();
       expect(screen.getByLabelText(/name/i)).toBeDisabled();
       expect(screen.getByLabelText(/tagline/i)).toBeDisabled();
-      expect(editAltvatar()).toBeNull();
+      expect(editAltvatar()).toBeDisabled();
     });
 
-    it('RoleManager_RendersNoSubmitControlAtAll', () => {
+    it('RoleManager_RendersTheSubmitControlPresentAndDisabled', () => {
       renderAsManager();
-      // Not a disabled one — the control is absent, so there is nothing to
-      // click that could only fail.
-      expect(save()).toBeNull();
-      expect(screen.queryByRole('button', { name: /save/i })).toBeNull();
+      // Present, not absent: the surface states that saving exists and that
+      // this viewer does not hold it. The action is the enforcement.
+      expect(save()).toBeInTheDocument();
+      expect(save()).toBeDisabled();
+    });
+  });
+
+  describe('IdentityHeaderActions', () => {
+    it('SlotFilled_RendersItBesideTheProfilesName', () => {
+      renderForm(makeProfile(), makeDraft(), false, <button>Invite someone</button>);
+
+      expect(
+        screen.getByRole('button', { name: 'Invite someone' })
+      ).toBeInTheDocument();
+    });
+
+    it('SlotEmpty_RendersNothingBesideTheName', () => {
+      renderForm();
+
+      expect(
+        screen.queryByRole('button', { name: 'Invite someone' })
+      ).toBeNull();
     });
   });
 

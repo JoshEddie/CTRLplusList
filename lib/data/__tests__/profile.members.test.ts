@@ -1,0 +1,226 @@
+/**
+ * Pins `profile-permissions`'s reads: the Permissions roster (each member's own
+ * face, role and last-acted-as) and the pending invites that sit beside it,
+ * plus the resolution the invite page makes — where a spent, expired or unknown
+ * token must be indistinguishable from one that never existed.
+ */
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { profile_invites } from '@/db/schema';
+import { bootPglite, resetDb } from '@/test/helpers/db';
+import { mockNextCache } from '@/test/helpers/next-cache';
+import {
+  seedAccentCatalog,
+  seedAccentValue,
+  seedAvatar,
+  seedManagedProfile,
+  seedMembership,
+  seedUsers,
+  selfProfileOf,
+} from '@/test/helpers/seedFollowGraph';
+import { cacheTag } from 'next/cache';
+import { cacheTags } from '@/lib/cacheTags';
+
+mockNextCache();
+
+type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
+
+const holder = vi.hoisted(() => ({ db: undefined as unknown }));
+vi.mock('@/db', () => ({
+  get db() {
+    return holder.db;
+  },
+}));
+
+const OWNER = 'owner-account';
+const MANAGER = 'manager-account';
+const KIDDO = 'kiddo';
+
+let db: TestDb;
+let dal: typeof import('@/lib/data/profile.members');
+
+beforeAll(async () => {
+  const booted = await bootPglite();
+  db = booted.db;
+  holder.db = booted.db;
+  dal = await import('@/lib/data/profile.members');
+});
+
+beforeEach(async () => {
+  vi.restoreAllMocks();
+  vi.clearAllMocks();
+  await resetDb(db);
+  await seedAccentCatalog(db);
+  await seedUsers(db, [{ id: OWNER }, { id: MANAGER }]);
+  await seedManagedProfile(db, { id: KIDDO, name: 'Kiddo' });
+});
+
+async function seedInvite(overrides: {
+  role?: string;
+  expires_at?: Date;
+  redeemed_at?: Date | null;
+}): Promise<string> {
+  const [row] = await db
+    .insert(profile_invites)
+    .values({
+      profile_id: KIDDO,
+      created_by_user_id: OWNER,
+      role: overrides.role ?? 'manager',
+      expires_at:
+        overrides.expires_at ?? new Date(Date.now() + 24 * 60 * 60 * 1000),
+      redeemed_at: overrides.redeemed_at ?? null,
+    })
+    .returning({ token: profile_invites.token });
+  return row.token;
+}
+
+describe('getProfileMembers', () => {
+  it('MembersOfTheProfile_ReturnsEachWithTheirOwnFaceAndRole', async () => {
+    await seedMembership(db, {
+      user_id: OWNER,
+      profile_id: KIDDO,
+      role: 'owner',
+      last_active_at: new Date('2026-08-20T00:00:00Z'),
+    });
+    await seedMembership(db, {
+      user_id: MANAGER,
+      profile_id: KIDDO,
+      role: 'manager',
+    });
+    // The row wears the member's own self-profile face, not the administered
+    // profile's.
+    await seedAvatar(db, selfProfileOf(OWNER), { art: '<svg id="owner" />' });
+    await seedAccentValue(db, selfProfileOf(OWNER), 'rose');
+
+    const rows = await dal.getProfileMembers(KIDDO);
+
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          user_id: OWNER,
+          role: 'owner',
+          id: selfProfileOf(OWNER),
+          art: '<svg id="owner" />',
+          accent: 'rose',
+          last_active_at: new Date('2026-08-20T00:00:00Z'),
+        }),
+        expect.objectContaining({
+          user_id: MANAGER,
+          role: 'manager',
+          last_active_at: null,
+          art: null,
+          accent: null,
+        }),
+      ])
+    );
+    expect(rows).toHaveLength(2);
+  });
+
+  it('AnotherProfilesMembers_AreNotReturned', async () => {
+    await seedManagedProfile(db, { id: 'nana', name: 'Nana' });
+    await seedMembership(db, { user_id: OWNER, profile_id: 'nana' });
+
+    expect(await dal.getProfileMembers(KIDDO)).toEqual([]);
+  });
+
+  it('EveryMember_TagsTheirOwnAccount', async () => {
+    await seedMembership(db, { user_id: MANAGER, profile_id: KIDDO });
+
+    await dal.getProfileMembers(KIDDO);
+
+    // The read is keyed on the profile but its rows belong to accounts, so a
+    // membership write on either side has a tag to fire.
+    expect(cacheTag).toHaveBeenCalledWith(cacheTags.profilesOfUser(MANAGER));
+  });
+
+  it('QueryThrows_RejectsWithFailedToFetchProfileMembers', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(db, 'select').mockImplementation(() => {
+      throw new Error('boom');
+    });
+
+    await expect(dal.getProfileMembers(KIDDO)).rejects.toThrow(
+      'Failed to fetch profile members'
+    );
+  });
+});
+
+describe('getPendingInvites', () => {
+  it('LiveInvites_ReturnedOldestFirstWithTheirToken', async () => {
+    const first = await seedInvite({ role: 'manager' });
+    const second = await seedInvite({ role: 'owner' });
+
+    const rows = await dal.getPendingInvites(KIDDO);
+
+    expect(rows.map((r) => r.token)).toEqual([first, second]);
+    expect(rows.map((r) => r.role)).toEqual(['manager', 'owner']);
+    expect(cacheTag).toHaveBeenCalledWith(
+      cacheTags.profileInvites,
+      cacheTags.invitesOfProfile(KIDDO)
+    );
+  });
+
+  it('SpentInvite_IsNotPending', async () => {
+    await seedInvite({ redeemed_at: new Date() });
+
+    expect(await dal.getPendingInvites(KIDDO)).toEqual([]);
+  });
+
+  it('ExpiredInvite_IsNotPending', async () => {
+    await seedInvite({ expires_at: new Date(Date.now() - 1000) });
+
+    expect(await dal.getPendingInvites(KIDDO)).toEqual([]);
+  });
+
+  it('QueryThrows_RejectsWithFailedToFetchPendingInvites', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(db, 'select').mockImplementation(() => {
+      throw new Error('boom');
+    });
+
+    await expect(dal.getPendingInvites(KIDDO)).rejects.toThrow(
+      'Failed to fetch pending invites'
+    );
+  });
+});
+
+describe('getLiveInvite', () => {
+  it('LiveToken_ReturnsTheProfileItAdmitsToAndTheRoleItGrants', async () => {
+    await seedAvatar(db, KIDDO, { art: '<svg id="kiddo" />' });
+    const token = await seedInvite({ role: 'owner' });
+
+    expect(await dal.getLiveInvite(token)).toMatchObject({
+      id: KIDDO,
+      name: 'Kiddo',
+      role: 'owner',
+      art: '<svg id="kiddo" />',
+    });
+  });
+
+  // The three refusals are indistinguishable by design: resolving any of them
+  // to a profile would confirm to a stranger that a guessed token existed.
+  it('SpentToken_ReturnsNull', async () => {
+    expect(await dal.getLiveInvite(await seedInvite({ redeemed_at: new Date() })))
+      .toBeNull();
+  });
+
+  it('ExpiredToken_ReturnsNull', async () => {
+    const token = await seedInvite({ expires_at: new Date(Date.now() - 1000) });
+
+    expect(await dal.getLiveInvite(token)).toBeNull();
+  });
+
+  it('UnknownToken_ReturnsNull', async () => {
+    expect(await dal.getLiveInvite('no-such-token')).toBeNull();
+  });
+
+  it('QueryThrows_RejectsWithFailedToFetchInvite', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(db, 'select').mockImplementation(() => {
+      throw new Error('boom');
+    });
+
+    await expect(dal.getLiveInvite('tok')).rejects.toThrow(
+      'Failed to fetch invite'
+    );
+  });
+});

@@ -1,6 +1,7 @@
 import { db } from '@/db';
 import { purchases, user_blocks, user_follows } from '@/db/schema';
 import { accountsOfProfiles } from '@/lib/data/profile';
+import { meetsFloor } from '@/lib/data/profile.roles';
 import { primaryStore } from '@/lib/storeValidity';
 import { avatarViewOf, withProfileAvatar } from '@/lib/data/profileAvatar';
 import { ActionResponse, PurchaseView, UserIdentity } from '@/lib/types';
@@ -172,6 +173,8 @@ export function claimConflictResponse(
 // two ask whether this claim is the human's, so they compare the self-profile;
 // the third is an ownership comparison and compares the profile the request
 // acts as. The identity arrives whole so neither can be reached by default.
+// Only the third carries the `owner` floor — master unclaim is an ownership
+// act, while a manager's own claim stays theirs to drop.
 export function canRemovePurchase(
   row: {
     id: string;
@@ -180,13 +183,15 @@ export function canRemovePurchase(
   },
   itemOwnerProfileId: string | null,
   actor: UserIdentity | null,
-  cookiePurchaseIds: ReadonlySet<string>
+  cookiePurchaseIds: ReadonlySet<string>,
+  actorRole: string | null
 ): boolean {
   if (actor) {
     return (
       row.claimed_by_profile_id === actor.selfProfile.id ||
       row.profile_id === actor.selfProfile.id ||
-      itemOwnerProfileId === actor.activeProfile.id
+      (itemOwnerProfileId === actor.activeProfile.id &&
+        meetsFloor(actorRole, 'owner'))
     );
   }
   if (row.claimed_by_profile_id !== null || row.profile_id !== null)

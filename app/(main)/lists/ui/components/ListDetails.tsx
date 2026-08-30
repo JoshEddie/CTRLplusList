@@ -53,6 +53,7 @@ export default async function ListDetails({
   showSpoilers,
   previewMode,
   itemCount,
+  viewerIsManager,
 }: {
   isOwner: boolean;
   list: ListWithVisibility;
@@ -62,6 +63,9 @@ export default async function ListDetails({
   showSpoilers?: boolean;
   previewMode?: boolean;
   itemCount: number;
+  /** The viewer holds `manager` on the owning profile, so the owner-floor
+      affordances in the hero render disabled rather than absent. */
+  viewerIsManager?: boolean;
 }) {
   const visibility = resolveListVisibility(list);
   const { previewHref, exitPreviewHref, spoilerHref } = navHrefs(
@@ -115,7 +119,11 @@ export default async function ListDetails({
   if (showOwnerControls) {
     ownerControls = (
       <div className="list-hero-share-wrapper">
-        <VisibilityPicker listId={list.id} initialVisibility={visibility} />
+        <VisibilityPicker
+          listId={list.id}
+          initialVisibility={visibility}
+          disabled={viewerIsManager}
+        />
         {visibility !== VISIBILITY.OWNER && <ShareButton list={list} />}
       </div>
     );

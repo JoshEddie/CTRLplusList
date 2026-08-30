@@ -40,7 +40,7 @@ export async function updateItemStores(
   itemId: string
 ): Promise<void> {
   try {
-    const actor = await authedWriter();
+    const actor = await authedWriter('member');
     if ('error' in actor) {
       throw new Error(actor.error.error);
     }
@@ -168,7 +168,7 @@ export async function updateItemLists(
   itemId: string
 ): Promise<void> {
   try {
-    const actor = await authedWriter();
+    const actor = await authedWriter('member');
     if ('error' in actor) {
       throw new Error(actor.error.error);
     }

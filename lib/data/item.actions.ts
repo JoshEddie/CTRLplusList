@@ -19,7 +19,7 @@ import { nanoid } from 'nanoid';
 
 export async function createItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter();
+    const actor = await authedWriter('member');
     if ('error' in actor) {
       return actor.error;
     }
@@ -84,7 +84,7 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
 
 export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter();
+    const actor = await authedWriter('member');
     if ('error' in actor) {
       return actor.error;
     }
@@ -173,7 +173,7 @@ export async function archiveItem(
   archived: boolean
 ): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter();
+    const actor = await authedWriter('member');
     if ('error' in actor) {
       return actor.error;
     }
@@ -217,7 +217,7 @@ export async function archiveItem(
 
 export async function deleteItem(id: string) {
   try {
-    const actor = await authedWriter();
+    const actor = await authedWriter('owner');
     if ('error' in actor) {
       throw new Error(actor.error.error);
     }

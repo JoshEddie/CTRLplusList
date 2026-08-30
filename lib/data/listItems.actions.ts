@@ -42,7 +42,7 @@ export async function setListItems(
     // a revoked membership both fall to the ownership comparison a null actor
     // can never pass, and all three keep the endpoint's own 'Forbidden' code
     // per server-endpoint-authorization's exemption.
-    const actor = await authedWriter();
+    const actor = await authedWriter('member');
     if (
       'error' in actor ||
       actor.identity.activeProfile.id !== list.profile_id
@@ -160,7 +160,7 @@ export async function removeListItem(
   item_id: string
 ): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter();
+    const actor = await authedWriter('member');
     if ('error' in actor) {
       return actor.error;
     }
@@ -221,7 +221,7 @@ export async function updatePriority(
   listId: string
 ): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter();
+    const actor = await authedWriter('member');
     if ('error' in actor) {
       return actor.error;
     }

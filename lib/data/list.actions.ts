@@ -40,7 +40,7 @@ export type ListData = z.infer<typeof ListSchema>;
 
 export async function createList(data: ListData): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter();
+    const actor = await authedWriter('member');
     if ('error' in actor) {
       return actor.error;
     }
@@ -89,7 +89,7 @@ export async function updateList(
   data: Partial<ListData>
 ): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter();
+    const actor = await authedWriter('member');
     if ('error' in actor) {
       return actor.error;
     }
@@ -196,7 +196,7 @@ export async function updateList(
 
 export async function deleteList(id: string): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter();
+    const actor = await authedWriter('owner');
     if ('error' in actor) {
       return actor.error;
     }
@@ -242,7 +242,7 @@ export async function setListVisibility(
   visibility: ListVisibility
 ): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter();
+    const actor = await authedWriter('owner');
     if ('error' in actor) {
       return actor.error;
     }

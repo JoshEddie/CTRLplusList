@@ -12,9 +12,13 @@ import { VISIBILITY_ROWS, rowFor } from './visibility-rows';
 export default function VisibilityPicker({
   listId,
   initialVisibility,
+  disabled,
 }: {
   listId: string;
   initialVisibility: ListVisibility;
+  /** A manager on the owning profile holds no reach change. The pill stays,
+      disabled, rather than being omitted. */
+  disabled?: boolean;
 }) {
   const router = useRouter();
   const [current, setCurrent] = useState<ListVisibility>(initialVisibility);
@@ -49,6 +53,7 @@ export default function VisibilityPicker({
         icon={currentRow.icon}
         label={currentRow.label}
         active={open}
+        disabled={disabled}
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}

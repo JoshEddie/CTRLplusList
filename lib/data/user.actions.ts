@@ -53,8 +53,18 @@ export async function getClaimPickerForItem(
   }
 }
 
-export async function signInUser() {
-  await signIn('google');
+// The destination is threaded to `redirectTo` so a sign-in started from an
+// invite link lands back on it. Only a same-origin path is honoured: this is
+// also used bare as a form action, whose first argument is FormData, and an
+// absolute URL here would be an open redirect.
+export async function signInUser(destination?: string | FormData) {
+  const redirectTo =
+    typeof destination === 'string' &&
+    destination.startsWith('/') &&
+    !destination.startsWith('//')
+      ? destination
+      : undefined;
+  await signIn('google', redirectTo ? { redirectTo } : undefined);
 }
 
 export async function signOutUser() {

@@ -15,13 +15,21 @@ export default function ProfileSpaceIdentity({
   profile,
   altvatar,
   onEdit,
+  editDisabled,
+  actions,
 }: {
   profile: ProfileCardView;
   /** The form's live values, where the viewer has any. Null falls back to what
       the profile actually holds — a viewer who cannot save is shown the stored
       identity rather than a suggestion. */
   altvatar: AltvatarDraft | null;
-  onEdit?: () => void;
+  onEdit: () => void;
+  /** A manager holds no identity edit. The affordance stays, disabled, so the
+      surface states the capability exists and that they do not hold it. */
+  editDisabled?: boolean;
+  /** Right-aligned header slot, sharing the public profile header's layout so
+      a profile reads the same whether it is being administered or visited. */
+  actions?: React.ReactNode;
 }) {
   const accent = altvatar?.accent ?? profile.accent;
   const disc = altvatar ? (
@@ -37,30 +45,30 @@ export default function ProfileSpaceIdentity({
   return (
     <>
       <div className="profile-space-band" style={accentVars(accent)}>
-        {onEdit ? (
-          <button
-            type="button"
-            className="profile-space-avatar profile-space-avatar-edit"
-            onClick={onEdit}
-            aria-label="Edit Altvatar"
-          >
-            {disc}
-            {/* The disc alone says nothing about being editable — a hover state
-                is invisible on a touch screen and on first look. The badge is
-                the callout; the whole disc stays the target. */}
-            <span className="profile-space-avatar-badge" aria-hidden>
-              <LuPencil />
-            </span>
-          </button>
-        ) : (
-          <span className="profile-space-avatar">{disc}</span>
-        )}
+        <button
+          type="button"
+          className="profile-space-avatar profile-space-avatar-edit"
+          onClick={onEdit}
+          disabled={editDisabled}
+          aria-label="Edit Altvatar"
+        >
+          {disc}
+          {/* The disc alone says nothing about being editable — a hover state
+              is invisible on a touch screen and on first look. The badge is
+              the callout; the whole disc stays the target. */}
+          <span className="profile-space-avatar-badge" aria-hidden>
+            <LuPencil />
+          </span>
+        </button>
       </div>
-      <div className="profile-space-identity">
-        <h1 className="profile-space-name">{profile.name}</h1>
-        {profile.tagline && (
-          <p className="profile-space-tagline">{profile.tagline}</p>
-        )}
+      <div className="profile-space-identity profile-header">
+        <div className="profile-meta">
+          <h1 className="profile-space-name">{profile.name}</h1>
+          {profile.tagline && (
+            <p className="profile-space-tagline">{profile.tagline}</p>
+          )}
+        </div>
+        {actions && <div className="profile-actions">{actions}</div>}
       </div>
     </>
   );

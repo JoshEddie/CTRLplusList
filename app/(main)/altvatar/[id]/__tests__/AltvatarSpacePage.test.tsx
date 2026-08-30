@@ -17,13 +17,30 @@ import {
   type AltvatarStyleId,
 } from '@/lib/altvatar/types';
 import type { ProfileCardView } from '@/lib/types';
-import { authedUserId } from '@/lib/data/user.session';
+import { authedIdentity } from '@/lib/data/user.session';
+import { makeIdentity, makeProfile } from '@/test/helpers/profile';
 import AltvatarSpacePage from '../AltvatarSpacePage';
 
 vi.mock('@/lib/data/profile', () => ({ getProfileMembership: vi.fn() }));
 vi.mock('@/lib/data/profileAvatar', () => ({ getAltvatarOptions: vi.fn() }));
 vi.mock('@/lib/data/profileAvatar.write', () => ({ writeAltvatar: vi.fn() }));
-vi.mock('@/lib/data/user.session', () => ({ authedUserId: vi.fn() }));
+vi.mock('@/lib/data/user.session', () => ({ authedIdentity: vi.fn() }));
+// The Permissions section and the invite control are imported by this page, and
+// both reach `@/db` — the section through its roster read, the control through
+// the actions module a client component pulls in. Mocked at those seams so the
+// page's module graph stays free of a database binding this suite never sets.
+vi.mock('@/lib/data/profile.members', () => ({
+  getProfileMembers: vi.fn(async () => []),
+  getPendingInvites: vi.fn(async () => []),
+}));
+vi.mock('@/lib/data/list', () => ({ getListsByProfile: vi.fn(async () => []) }));
+vi.mock('@/lib/data/profile.members.actions', () => ({
+  mintInvite: vi.fn(),
+  setMemberRole: vi.fn(),
+  removeMember: vi.fn(),
+  revokeInvite: vi.fn(),
+  setInviteRole: vi.fn(),
+}));
 vi.mock('../../ui/components/ProfileSettingsForm', () => ({
   default: ({
     readOnly,
@@ -75,7 +92,9 @@ const draftOf = () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(authedUserId).mockResolvedValue('viewer');
+  vi.mocked(authedIdentity).mockResolvedValue(
+    makeIdentity('viewer', makeProfile('self-viewer', 'Test Viewer'))
+  );
   vi.mocked(getAltvatarOptions).mockResolvedValue(null);
   vi.mocked(getProfileMembership).mockResolvedValue(card());
 });
@@ -83,7 +102,7 @@ beforeEach(() => {
 describe('AltvatarSpacePage', () => {
   describe('Audience', () => {
     it('NoSession_RendersPublicViewWithoutAskingForMembership', async () => {
-      vi.mocked(authedUserId).mockResolvedValue(null);
+      vi.mocked(authedIdentity).mockResolvedValue(null);
       await renderSpace();
       expect(screen.getByTestId('public-view')).toBeInTheDocument();
       expect(getProfileMembership).not.toHaveBeenCalled();

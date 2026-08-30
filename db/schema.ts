@@ -262,6 +262,36 @@ export const profile_members = pgTable(
   ]
 );
 
+// A single-use capability grant: whoever holds the token may redeem it once,
+// and `redeemed_at` is the marker that says it is spent. No index beyond the
+// primary key — every read of this table is by token.
+export const profile_invites = pgTable(
+  'profile_invites',
+  {
+    token: text('token')
+      .primaryKey()
+      .$defaultFn(() => nanoid(32)),
+    profile_id: text('profile_id')
+      .references(() => profiles.id, { onDelete: 'cascade' })
+      .notNull(),
+    created_by_user_id: text('created_by_user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    role: text('role').notNull(),
+    created_at: timestamp('created_at').defaultNow().notNull(),
+    expires_at: timestamp('expires_at').notNull(),
+    redeemed_at: timestamp('redeemed_at'),
+  },
+  (table) => [
+    // `self` is never grantable: a link admits a member, and a self-profile's
+    // membership is minted by onboarding alone.
+    check(
+      'profile_invites_role_valid',
+      sql`${table.role} IN ('owner', 'manager')`
+    ),
+  ]
+);
+
 // The catalog row 0013 inserts. Named so writers and reads agree on the key
 // rather than each spelling the literal.
 export const ACCENT_PREFERENCE_ID = 'accent';

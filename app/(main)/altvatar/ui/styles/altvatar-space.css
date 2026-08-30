@@ -213,8 +213,8 @@
   margin: 4px 0 0;
 }
 
-.profile-settings-form {
-  max-width: 480px;
+.form-shell-body.profile-settings-form {
+  padding: 0;
 }
 
 .profile-settings-heading {
@@ -223,10 +223,6 @@
   font-size: 22px;
   color: var(--heading-text-color);
   margin: 0 0 12px;
-}
-
-.profile-settings-actions {
-  margin-top: 20px;
 }
 
 .avatar_new-profile {
@@ -240,4 +236,125 @@
   font-size: 15px;
   line-height: 1.5;
   color: var(--muted-text-color);
+}
+
+.profile-space-tabs {
+  display: flex;
+  gap: 12px;
+  border-bottom: 1px solid var(--divider-color);
+  margin: 16px 0;
+  overflow-x: auto;
+}
+
+.profile-space-tab {
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--meta-text-color);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 4px 10px;
+  margin: 0 8px -1px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.profile-space-tab.is-active {
+  color: var(--heading-text-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--card-border-color);
+}
+
+.member-row-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.member-row-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--neutral-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.member-row-you {
+  font-weight: 400;
+  color: var(--muted-text-color);
+}
+
+.member-row-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--meta-text-color);
+}
+
+.member-role-tag {
+  font-family: var(--font-roboto-condensed);
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.member-role-tag--owner {
+  background: var(--card-accent-background-color);
+  color: var(--primary-color);
+}
+
+.member-role-tag--manager {
+  background: var(--divider-color);
+  color: var(--neutral-text-color);
+}
+
+/* The menu popover is absolutely positioned against its nearest positioned
+   ancestor, so the row's control needs to be one. */
+.member-row-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* A seat nobody has taken yet: the row is dimmed so the roster reads as
+   members first, offers second, without a second layout. */
+.member-row--pending {
+  color: var(--meta-text-color);
+}
+
+.member-row-pending-disc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px dashed var(--card-border-color);
+  color: var(--meta-text-color);
+}
+
+.member-row-avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
 }

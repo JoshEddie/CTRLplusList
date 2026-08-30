@@ -3,6 +3,7 @@ import ListPrivate from '@/app/(main)/lists/ui/components/ListPrivate';
 import { db } from '@/db';
 import { list_visits } from '@/db/schema';
 import { getList } from '@/lib/data/list';
+import { getMembershipsForUser } from '@/lib/data/profile.active';
 import { authedIdentity } from '@/lib/data/user.session';
 import { guardListViewable } from '@/lib/listAccess';
 import { VISIBILITY } from '@/lib/visibility';
@@ -27,6 +28,15 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
   const list = await guardListViewable(await getList(id), identity);
 
   const isOwner = identity?.activeProfile.id === list.profile_id;
+  // Off the cached memberships this request already resolved its identity
+  // from, not a second read: this decides what renders, and the action is what
+  // enforces.
+  const viewerIsManager =
+    !!identity &&
+    isOwner &&
+    (await getMembershipsForUser(identity.userId)).find(
+      (m) => m.id === list.profile_id
+    )?.role === 'manager';
   const previewMode = isOwner && sp.preview === 'viewer';
   const showSpoilers = isOwner && sp.spoilers === '1';
 
@@ -80,6 +90,7 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
         showSpoilers={showSpoilers}
         previewMode={previewMode}
         itemCount={list.item_count}
+        viewerIsManager={viewerIsManager}
       />
     </>
   );

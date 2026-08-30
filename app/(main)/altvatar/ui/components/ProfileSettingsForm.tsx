@@ -15,6 +15,8 @@ import { useActionState, useState } from 'react';
 import toast from 'react-hot-toast';
 import ProfileFields from './ProfileFields';
 import ProfileSpaceIdentity from './ProfileSpaceIdentity';
+import ProfileSpaceTabs from '@/app/(main)/altvatar/[id]/ProfileSpaceTabs';
+import '@/app/ui/styles/form-shell.css';
 
 const initialState: ActionResponse = { success: false, message: '' };
 
@@ -22,6 +24,9 @@ export default function ProfileSettingsForm({
   profile,
   draft,
   readOnly,
+  permissionsPanel,
+  listsPanel,
+  identityActions,
 }: {
   profile: ProfileCardView;
   /** The profile's stored face and colour, or a roll where it carries none.
@@ -29,6 +34,14 @@ export default function ProfileSettingsForm({
       could not save it. */
   draft: AltvatarDraft | null;
   readOnly: boolean;
+  /** The Permissions tab's already-rendered panel, for a managed profile. The
+      strip renders here rather than around this component because the identity
+      header sits above the tabs and shares this component's Altvatar state. */
+  permissionsPanel?: React.ReactNode;
+  /** The profile's own lists, already rendered. */
+  listsPanel?: React.ReactNode;
+  /** Header-right slot — the invite control for a managed profile. */
+  identityActions?: React.ReactNode;
 }) {
   const [name, setName] = useState(profile.name);
   const [tagline, setTagline] = useState(profile.tagline ?? '');
@@ -82,48 +95,63 @@ export default function ProfileSettingsForm({
     } else toast.error(result.message);
   };
 
+  const settingsForm = (
+    <form action={formAction} className="form-shell-body profile-settings-form">
+      {state.message && !state.success && (
+        <FieldError>{state.message}</FieldError>
+      )}
+      <ProfileFields
+        name={name}
+        onNameChange={setName}
+        tagline={tagline}
+        onTaglineChange={setTagline}
+        disabled={readOnly || isPending}
+        errors={state.errors}
+      />
+      {/* Present and disabled for a manager rather than absent: the surface
+          states that saving exists and that this viewer does not hold it.
+          Disabled on an unchanged form for everyone else, since the fields are
+          the only thing this control still commits. */}
+      <div className="form-shell-ft-right">
+        <Button
+          type="submit"
+          variant="primary"
+          isLoading={isPending}
+          disabled={readOnly || !fieldsDirty}
+        >
+          Save Changes
+        </Button>
+      </div>
+    </form>
+  );
+
   return (
     <>
       <ProfileSpaceIdentity
         profile={profile}
         altvatar={altvatar}
-        // A manager sees the disc with no way in: the action rejects them
-        // regardless, so an affordance could only ever lead to a refusal.
-        onEdit={readOnly ? undefined : () => setCustomizing(true)}
+        onEdit={() => setCustomizing(true)}
+        editDisabled={readOnly}
+        actions={identityActions}
       />
-      <form action={formAction} className="profile-settings-form">
-        <h2 className="profile-settings-heading">Settings</h2>
-        {state.message && !state.success && (
-          <FieldError>{state.message}</FieldError>
-        )}
-        <ProfileFields
-          name={name}
-          onNameChange={setName}
-          tagline={tagline}
-          onTaglineChange={setTagline}
-          disabled={readOnly || isPending}
-          errors={state.errors}
-        />
-        {/* A manager gets no submit control at all rather than a disabled one:
-          the action rejects them regardless, and a greyed button invites a
-          click that can only fail. */}
-        {!readOnly && (
-          <div className="profile-settings-actions">
-            {/* Disabled on an unchanged form rather than saving nothing: the
-                fields are the only thing this control still commits, so with
-                none of them edited a press could only write what is already
-                stored. */}
-            <Button
-              type="submit"
-              variant="primary"
-              isLoading={isPending}
-              disabled={!fieldsDirty}
-            >
-              Save Changes
-            </Button>
-          </div>
-        )}
-      </form>
+      <ProfileSpaceTabs
+        // Settings first, per `profiles-surface`: the Permissions section
+        // renders *after* the Settings form, and the strip is where that
+        // ordering now lives.
+        panels={[
+          { id: 'settings', label: 'Settings', content: settingsForm },
+          ...(permissionsPanel
+            ? [
+                {
+                  id: 'permissions',
+                  label: 'Permissions',
+                  content: permissionsPanel,
+                },
+              ]
+            : []),
+          { id: 'lists', label: 'Lists', content: listsPanel },
+        ]}
+      />
       {/* Both conditions are the same one: the customizer opens from an
           affordance that only a viewer holding a draft is given. */}
       {customizing && altvatar && (

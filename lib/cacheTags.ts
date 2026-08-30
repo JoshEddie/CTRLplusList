@@ -26,6 +26,10 @@ export const cacheTags = {
   profileMembers: 'profile_members',
   profilesOfUser: (userId: string) => `profile_members:user:${userId}`,
 
+  profileInvites: 'profile_invites',
+  invitesOfProfile: (profileId: string) =>
+    `profile_invites:profile:${profileId}`,
+
   profilePreferences: 'profile_preferences',
   preferencesOfProfile: (profileId: string) =>
     `profile_preferences:profile:${profileId}`,

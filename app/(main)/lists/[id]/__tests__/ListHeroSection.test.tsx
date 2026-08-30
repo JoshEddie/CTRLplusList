@@ -5,6 +5,7 @@ import { list_visits } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { getList } from '@/lib/data/list';
 import { getUserIdentity } from '@/lib/data/profile';
+import { getMembershipsForUser } from '@/lib/data/profile.active';
 import { getUserIdByEmail } from '@/lib/data/user';
 import { updateTag } from 'next/cache';
 import ListHeroSection from '../ListHeroSection';
@@ -52,6 +53,12 @@ vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
 }));
 vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
+// Mocked at the seam rather than through `next/cache`: the section reads the
+// viewer's role off the memberships the request already resolved, and that
+// read is `'use cache'`.
+vi.mock('@/lib/data/profile.active', () => ({
+  getMembershipsForUser: vi.fn(async () => []),
+}));
 vi.mock('@/lib/listAccess', () => ({
   guardListViewable: vi.fn(async (list: unknown) => list),
 }));
@@ -63,6 +70,7 @@ vi.mock('@/app/(main)/lists/ui/components/ListDetails', () => ({
     itemCount: number;
     viewer_user_id?: string;
     viewer_self_profile_id?: string;
+    viewerIsManager?: boolean;
     owner: { name: string };
   }) => (
     <div
@@ -73,6 +81,7 @@ vi.mock('@/app/(main)/lists/ui/components/ListDetails', () => ({
       data-item-count={String(p.itemCount)}
       data-viewer-user-id={p.viewer_user_id ?? ''}
       data-viewer-self-profile-id={p.viewer_self_profile_id ?? ''}
+      data-viewer-is-manager={String(!!p.viewerIsManager)}
       data-owner-name={p.owner.name}
     />
   ),
@@ -127,6 +136,28 @@ describe('ListHeroSection', () => {
       expect(d).toHaveAttribute('data-item-count', '3');
       expect(d).toHaveAttribute('data-viewer-user-id', 'u-viewer');
       expect(d).toHaveAttribute('data-viewer-self-profile-id', 'self-u-viewer');
+      expect(d).toHaveAttribute('data-viewer-is-manager', 'false');
+    });
+
+    it('OwnerHoldingManagerOnTheOwningProfile_MarksTheViewerAManager', async () => {
+      vi.mocked(getList).mockResolvedValue({
+        id: 'l1',
+        profile_id: 'self-u-viewer',
+        visibility: 'public',
+        item_count: 3,
+        profile: { id: 'self-u-viewer', name: 'Owner' },
+      } as never);
+      vi.mocked(getMembershipsForUser).mockResolvedValue([
+        { id: 'self-u-viewer', role: 'manager' },
+      ] as never);
+
+      render(await ListHeroSection(props('l1')));
+
+      // The ownership comparison passes and the role is what narrows the
+      // owner-floor affordances the hero renders.
+      const d = screen.getByTestId('list-details');
+      expect(d).toHaveAttribute('data-is-owner', 'true');
+      expect(d).toHaveAttribute('data-viewer-is-manager', 'true');
     });
 
     it('NonOwnerPublicList_RendersListDetailsAsNonOwner', async () => {

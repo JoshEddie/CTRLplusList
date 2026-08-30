@@ -92,7 +92,7 @@ describe('authedWriter', () => {
       await seedMembership(db, { user_id: VIEWER, profile_id: 'kiddo' });
       vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
 
-      const actor = await gate.authedWriter();
+      const actor = await gate.authedWriter('member');
 
       expect(actor).toEqual({ identity: actingAs('kiddo') });
     });
@@ -102,7 +102,7 @@ describe('authedWriter', () => {
       // exactly the case an at-write-time check exists to refuse.
       vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
 
-      const actor = await gate.authedWriter();
+      const actor = await gate.authedWriter('member');
 
       expect(actor).toEqual({ error: gate.FORBIDDEN_RESPONSE });
       expect(gate.FORBIDDEN_RESPONSE.error).toBe('Forbidden');
@@ -117,7 +117,7 @@ describe('authedWriter', () => {
       // it holds no membership on.
       vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
 
-      expect(await gate.authedWriter()).toEqual({
+      expect(await gate.authedWriter('member')).toEqual({
         error: gate.FORBIDDEN_RESPONSE,
       });
     });
@@ -125,10 +125,84 @@ describe('authedWriter', () => {
     it('UnresolvableActor_RejectsUnauthorized', async () => {
       vi.mocked(authedIdentity).mockResolvedValue(null);
 
-      const actor = await gate.authedWriter();
+      const actor = await gate.authedWriter('member');
 
       expect(actor).toMatchObject({ error: { error: 'Unauthorized' } });
       expect(updateTag).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('RoleFloor', () => {
+    it('ManagerOnOwnerFloor_RejectsForbiddenAndStampsNothing', async () => {
+      await seedMembership(db, {
+        user_id: VIEWER,
+        profile_id: 'kiddo',
+        role: 'manager',
+      });
+      vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
+
+      const actor = await gate.authedWriter('owner');
+
+      expect(actor).toEqual({ error: gate.FORBIDDEN_RESPONSE });
+      // The refusal lands before `stampActedAs`, so a refused write leaves no
+      // trace of having been attempted.
+      expect(await lastActiveAt('kiddo')).toBeNull();
+    });
+
+    it('ManagerOnMemberFloor_ReturnsTheIdentity', async () => {
+      await seedMembership(db, {
+        user_id: VIEWER,
+        profile_id: 'kiddo',
+        role: 'manager',
+      });
+      vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
+
+      expect(await gate.authedWriter('member')).toEqual({
+        identity: actingAs('kiddo'),
+      });
+    });
+
+    it.each([['Member', 'member'], ['Owner', 'owner']] as const)(
+      'OwnerOnFloor%s_ReturnsTheIdentity',
+      async (_label, floor) => {
+        await seedMembership(db, {
+          user_id: VIEWER,
+          profile_id: 'kiddo',
+          role: 'owner',
+        });
+        vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
+
+        expect(await gate.authedWriter(floor)).toEqual({
+          identity: actingAs('kiddo'),
+        });
+      }
+    );
+
+    it.each([['Member', 'member'], ['Owner', 'owner']] as const)(
+      'SelfOnFloor%s_ReturnsTheIdentity',
+      async (_label, floor) => {
+        vi.mocked(authedIdentity).mockResolvedValue(actingAs(SELF));
+
+        expect(await gate.authedWriter(floor)).toEqual({
+          identity: actingAs(SELF),
+        });
+      }
+    );
+
+    it('OwnerOfAnotherProfileOnOwnerFloor_RejectsBeforeTheFloorIsConsulted', async () => {
+      await seedManagedProfile(db, { id: 'nana', name: 'Nana' });
+      await seedMembership(db, {
+        user_id: VIEWER,
+        profile_id: 'nana',
+        role: 'owner',
+      });
+      // The role would clear the floor — on Nana. The acting-profile comparison
+      // is what refuses, and it runs first.
+      vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
+
+      expect(await gate.authedWriter('owner')).toEqual({
+        error: gate.FORBIDDEN_RESPONSE,
+      });
     });
   });
 
@@ -140,7 +214,7 @@ describe('authedWriter', () => {
     it('NeverActedAs_StampsTheMembership', async () => {
       await seedMembership(db, { user_id: VIEWER, profile_id: 'kiddo' });
 
-      await gate.authedWriter();
+      await gate.authedWriter('member');
 
       expect(await lastActiveAt('kiddo')).not.toBeNull();
       expect(updateTag).toHaveBeenCalledWith(cacheTags.profilesOfUser(VIEWER));
@@ -154,7 +228,7 @@ describe('authedWriter', () => {
         last_active_at: stale,
       });
 
-      await gate.authedWriter();
+      await gate.authedWriter('member');
 
       expect((await lastActiveAt('kiddo'))!.getTime()).toBeGreaterThan(
         stale.getTime()
@@ -170,7 +244,7 @@ describe('authedWriter', () => {
         last_active_at: recent,
       });
 
-      await gate.authedWriter();
+      await gate.authedWriter('member');
 
       expect((await lastActiveAt('kiddo'))!.getTime()).toBe(recent.getTime());
       expect(updateTag).not.toHaveBeenCalledWith(
@@ -187,7 +261,7 @@ describe('authedWriter', () => {
 
       // The gate itself still passes: the recording is incidental to the write
       // that triggered it, so its failure cannot fail that write.
-      const actor = await gate.authedWriter();
+      const actor = await gate.authedWriter('member');
 
       expect(actor).toHaveProperty('identity');
       expect(errorSpy).toHaveBeenCalledWith(
@@ -202,12 +276,12 @@ describe('authedWriter', () => {
     it('BurstOfWrites_StampsOnceAcrossThem', async () => {
       await seedMembership(db, { user_id: VIEWER, profile_id: 'kiddo' });
 
-      await gate.authedWriter();
+      await gate.authedWriter('member');
       const first = await lastActiveAt('kiddo');
       vi.mocked(updateTag).mockClear();
 
-      await gate.authedWriter();
-      await gate.authedWriter();
+      await gate.authedWriter('member');
+      await gate.authedWriter('member');
 
       expect((await lastActiveAt('kiddo'))!.getTime()).toBe(first!.getTime());
       expect(updateTag).not.toHaveBeenCalled();

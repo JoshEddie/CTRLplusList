@@ -59,7 +59,7 @@ unset ⇒ `dev-test-viewer`; the literal `guest` ⇒ `null` (logged out); any ot
 seeded id ⇒ that user. The bypass is scoped to a localhost DB by the boot guard
 in `db/index.ts`, so it can never activate against a hosted database.
 
-### Four projects, four servers, one DB
+### Four projects, five servers, one DB
 
 The bypass is process-wide (no per-request seam), so each identity a spec needs
 to be needs its **own server process**:
@@ -70,6 +70,12 @@ to be needs its **own server process**:
 | `guest`                | 3101 | `guest`                     | none                        | `*.guest.spec.ts`     |
 | `onboarding-signup`    | 3102 | `dev-unonboarded-signup`    | account holding no profile  | `*.signup.spec.ts`    |
 | `onboarding-existing`  | 3103 | `dev-unonboarded-existing`  | self-profile with no art    | `*.existing.spec.ts`  |
+| _(no project)_         | 3104 | `dev-friend-bob`            | the invite recipient        | reached by absolute URL |
+
+The fifth server carries no project of its own. Admission spans two accounts by
+definition — one mints, another redeems — and a Playwright test belongs to a
+single project, so `invite-roundtrip.auth.spec.ts` runs as the viewer and
+reaches the recipient's server by absolute URL.
 
 The two onboarding modes meet `onboarding-gate` instead of the application. The
 latch is one-shot per seeded database — art, once written, cannot be unwritten
