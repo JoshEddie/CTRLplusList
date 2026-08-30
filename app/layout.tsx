@@ -1,6 +1,6 @@
 import AppViewport from '@/app/ui/components/AppViewport';
-import '@/app/ui/styles/button.css';
 import { ServiceWorkerRegistration } from '@/app/ui/components/ServiceWorkerRegistration';
+import '@/app/ui/styles/button.css';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import type { Metadata, Viewport } from 'next';

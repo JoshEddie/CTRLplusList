@@ -1,18 +1,16 @@
 /* App frame — gradient nav + white-card surface. See openspec/changes/redesign-home-and-tokens. */
 
 :root {
-  --app-nav-height: calc(60px + env(safe-area-inset-top));
-  --app-surface-bleed-top: 7px;
+  --app-nav-height: calc(65px + env(safe-area-inset-top));
   /* Shared with full-bleed children, which have to round their own top
      corners to the surface's — the surface does not clip them. */
   --app-surface-radius: 14px;
-  --app-sticky-top: calc(var(--app-nav-height) + var(--app-surface-bleed-top));
+  --app-sticky-top: calc(var(--app-nav-height));
 }
 
 @media (max-width: 800px) {
   :root {
-    --app-nav-height: calc(54px + env(safe-area-inset-top));
-    --app-surface-bleed-top: 5px;
+    --app-nav-height: calc(59px + env(safe-area-inset-top));
     --app-surface-radius: 12px;
   }
 }
@@ -22,7 +20,11 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  min-height: var(--app-viewport-fill);
+  /* 100vh, not --app-viewport-fill or 100dvh: fill flaps by the keyboard
+     height on every visualViewport event, and dvh jumps when the Safari
+     toolbar collapses on input focus — both reflow the document mid-keyboard
+     animation (visible flash). vh is the stable large viewport on iOS. */
+  min-height: 100vh;
   /* The fixed nav is out of flow; reserve its height so content starts
      below it. */
   padding-top: var(--app-nav-height);
@@ -43,14 +45,52 @@
   z-index: 10;
   width: 100%;
   display: flex;
-  height: calc(60px + env(safe-area-inset-top));
-  padding: env(safe-area-inset-top) 20px 0;
+  height: var(--app-nav-height);
+  padding: env(safe-area-inset-top) 20px 5px;
   background-color: var(--secondary-color-dark);
   flex-shrink: 0;
-  /* The bleed between the nav and the surface's top edge. It belongs to the
-     fixed nav because it is the one strip that has to paint over page
-     content: content scrolls up to the surface's edge and disappears here. */
-  box-shadow: 0 var(--app-surface-bleed-top) 0 var(--secondary-color-dark);
+}
+
+/* Fake pinned corner rounding: the surface scrolls, so its own border-radius
+   would scroll away with it. Instead the fixed nav hangs two canvas-colored
+   notches over the surface's top corners — radial gradients that carve a
+   rounded corner out of whatever scrolls beneath, so the rounding reads as
+   fixed in place under the nav. Inset must match .app-surface-bleed's side
+   padding and .app-surface's centered max-width. */
+.app-nav::before,
+.app-nav::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  width: var(--app-surface-radius);
+  height: var(--app-surface-radius);
+}
+
+.app-nav::before {
+  left: max(20px, calc((100% - 1700px) / 2));
+  background: radial-gradient(
+    circle at 100% 100%,
+    transparent calc(var(--app-surface-radius) - 0.5px),
+    var(--secondary-color-dark) var(--app-surface-radius)
+  );
+}
+
+.app-nav::after {
+  right: max(20px, calc((100% - 1700px) / 2));
+  background: radial-gradient(
+    circle at 0 100%,
+    transparent calc(var(--app-surface-radius) - 0.5px),
+    var(--secondary-color-dark) var(--app-surface-radius)
+  );
+}
+
+@media (max-width: 800px) {
+  .app-nav::before {
+    left: 12px;
+  }
+  .app-nav::after {
+    right: 12px;
+  }
 }
 
 .app-nav-inner {
@@ -65,8 +105,7 @@
 
 @media (max-width: 800px) {
   .app-nav {
-    height: calc(54px + env(safe-area-inset-top));
-    padding: env(safe-area-inset-top) 12px 0;
+    padding: env(safe-area-inset-top) 12px 5px;
   }
 }
 
@@ -273,36 +312,13 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  padding: 7px 20px 0;
+  padding: 0 20px 0;
 }
 
 @media (max-width: 800px) {
   .app-surface-bleed {
-    padding: 5px 12px 0;
+    padding: 0 12px 0;
   }
-}
-
-/* The white card, pinned. The surface element itself paints nothing: its box
-   scrolls away, and the card's top edge has to stay under the nav's bleed.
-   So the card is this layer instead — a viewport-tall sticky background that
-   parks its rounded top below the bleed and hands its height straight back as
-   negative margin. Behind the content (z-index -1), so content runs right up
-   to the edge and vanishes under the nav's bleed rather than under a strip of
-   card. Outside its own radius it paints nothing, so the corner notches show
-   the canvas, which is what makes the corners read as rounded at every scroll
-   position. Full-bleed children reaching the card's edge round their own top
-   corners to match (--app-surface-radius) for the same reason. */
-.app-surface::before {
-  content: '';
-  display: block;
-  position: sticky;
-  top: var(--app-sticky-top);
-  z-index: -1;
-  height: calc(var(--app-viewport-fill) - var(--app-sticky-top));
-  margin-bottom: calc(-1 * (var(--app-viewport-fill) - var(--app-sticky-top)));
-  background-color: var(--light-color);
-  border-radius: var(--app-surface-radius) var(--app-surface-radius) 0 0;
-  box-shadow: var(--surface-shadow);
 }
 
 .app-surface {
@@ -310,4 +326,7 @@
   max-width: 1700px;
   width: 100%;
   margin: 0 auto;
+  background-color: var(--light-color);
+  border-radius: var(--app-surface-radius);
+  margin-bottom: 10px;
 }

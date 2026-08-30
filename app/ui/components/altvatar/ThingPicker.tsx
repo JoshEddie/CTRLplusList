@@ -11,11 +11,9 @@ import { LuArrowLeft, LuArrowRight, LuCheck } from 'react-icons/lu';
 
 const PAGE = 60;
 
-// The thing kind's surface: search-led, because the catalog is thousands of
-// pictures deep — a browse grid is not a control at that size. Results render
-// on the same disc every other surface fills, so a tile shows what the avatar
-// will actually look like. Paged rather than appended: one page of tiles in
-// the DOM at a time, because an ever-growing grid made the panel's scroll lag.
+// Search-led rather than a browse grid: the catalog is too deep to scan.
+// Paged rather than appended — an ever-growing grid made the panel's scroll
+// lag, so only one page of tiles is ever in the DOM.
 export default function ThingPicker({
   current,
   accent,
@@ -36,10 +34,8 @@ export default function ThingPicker({
     setPage(0);
   };
 
-  // Turning a page from its bottom would otherwise leave the viewer staring
-  // at the new page's last row. Scrolls the customizer's own panel rather
-  // than `scrollIntoView`, which on iOS also scrolls the page behind the
-  // fixed shell and breaks its layout.
+  // Scrolls the customizer's own panel rather than `scrollIntoView`, which on
+  // iOS also scrolls the page behind the fixed shell and breaks its layout.
   const turnTo = (next: number) => {
     setPage(next);
     gridTop.current?.closest('.altvatar-panel')?.scrollTo({ top: 0 });

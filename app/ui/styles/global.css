@@ -123,8 +123,13 @@ body {
 /* While a fixed overlay sheet owns the screen, the document behind it must
    not scroll. On <html> rather than <body> so the scroll position survives
    (the position:fixed body trick loses it). */
-html.has-open-sheet {
+html.has-open-sheet,
+html:has(.modal-overlay-scrim) {
   overflow: hidden;
+  /* overflow: hidden stops scrolling but not the iOS rubber-band, and the
+     bounce carries position:fixed chrome with it (the nav-jump on input
+     focus); this kills the bounce too. */
+  overscroll-behavior: none;
 }
 
 html {
@@ -289,16 +294,18 @@ body {
    with each surface. */
 .modal-overlay-scrim {
   position: fixed;
-  top: var(--app-viewport-top);
-  left: 0;
-  right: 0;
-  height: var(--app-viewport-height);
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Covers the whole layout viewport, not the visualViewport band: band-sized
+     boxes leave a strip of raw page when iOS misreports the band around
+     keyboard/toolbar transitions. The soft keyboard deliberately overlays the
+     shell instead of shrinking it — iOS pans the focused field into view. */
   padding: 24px 16px;
   z-index: 60;
   overflow-y: auto;
+  overscroll-behavior: none;
   background: rgba(42, 32, 96, 0.45);
   backdrop-filter: blur(3px);
 }

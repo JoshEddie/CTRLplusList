@@ -513,17 +513,20 @@
   max-width: 100%;
   gap: 6px;
   margin: 2px 0;
-  padding: 3px 10px 3px 3px;
+  padding-right: 10px;
   border-radius: 999px;
-  background-color: var(--accent-disc);
+  background-color: var(--accent-ink);
+  /* background-color: color-mix(in srgb, var(--accent-disc) 40%, transparent); */
   font-family: var(--font-roboto-condensed);
   font-size: 12px;
   font-weight: 600;
   color: var(--accent-ink);
+  color: var(--light-color);
   min-width: 0;
   /* The disc is taller than the text line, so the row must not be squeezed by
      a height-constrained card — a shrunk row clips the disc flat. */
   flex-shrink: 0;
+  height: 30px;
 }
 /* Truncation lives on the name, not the row: an `overflow: hidden` row clips
    the disc's top and bottom. */
@@ -534,8 +537,8 @@
   text-overflow: ellipsis;
 }
 .list-card-byline-avatar {
-  width: 22px;
-  height: 22px;
+  width: 30px;
+  height: 30px;
 }
 .list-card-meta {
   display: flex;
@@ -679,27 +682,6 @@
 .container--list-collections .my-lists-empty,
 .container--list-collections .profile-empty {
   padding-top: 16px;
-}
-
-/* One-time migration toast on home */
-.bookmark-migration-toast {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  background-color: var(--third-background-color);
-  border-radius: 6px;
-  margin: 8px 0;
-  font-size: 0.9rem;
-}
-.bookmark-migration-toast-dismiss {
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
-  color: inherit;
-  padding: 0 6px;
 }
 
 /* Following page */

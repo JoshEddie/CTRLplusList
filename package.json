@@ -6,6 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "postinstall": "node scripts/build-openmoji.mjs",
     "dev": "next dev",
     "dev:local": "bash scripts/dev-local.sh",
     "build": "next build --webpack",

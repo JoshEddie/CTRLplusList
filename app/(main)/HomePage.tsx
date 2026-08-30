@@ -1,8 +1,7 @@
+import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { authedIdentity } from '@/lib/data/user.session';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
-import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
-import BookmarkMigrationToast from './lists/ui/components/BookmarkMigrationToast';
 import CollapsibleRail from './lists/ui/components/CollapsibleRail';
 import BookmarksRail from './lists/ui/components/rails/BookmarksRail';
 import FollowingRail from './lists/ui/components/rails/FollowingRail';
@@ -15,8 +14,6 @@ export default async function HomePage() {
 
   return (
     <div className="home-digest">
-      <BookmarkMigrationToast />
-
       <CollapsibleRail name="my-lists" title="My Lists" seeAllHref="/lists">
         <Suspense fallback={<LoadingIndicator size="rail" />}>
           <MyListsRail profileId={identity.activeProfile.id} />

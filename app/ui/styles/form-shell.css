@@ -11,7 +11,11 @@
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.22),
     0 4px 18px rgba(0, 0, 0, 0.1);
-  max-height: calc(var(--app-viewport-height) - var(--app-sticky-top, 60px) - 48px);
+  /* 100vh, not --app-viewport-height or 100dvh: the band-tracking var
+     collapses the shell under the soft keyboard, and dvh resizes it when the
+     Safari toolbar collapses on focus (reflow flash). vh is the stable large
+     viewport on iOS; the keyboard overlays the shell instead. */
+  max-height: calc(100vh - var(--app-sticky-top, 60px) - 48px);
   z-index: 1;
 }
 

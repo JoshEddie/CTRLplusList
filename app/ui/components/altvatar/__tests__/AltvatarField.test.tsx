@@ -46,9 +46,8 @@ beforeEach(() => {
 });
 
 describe('Closed', () => {
-  it('Rendered_LabelsItselfAltvatar-WearsTheHostsAccent', () => {
+  it('Rendered_WearsTheHostsAccent', () => {
     const { container } = renderField();
-    expect(screen.getByText('Altvatar')).toBeInTheDocument();
     expect(fieldAccentDisc(container)).toBe(
       ACCENT_PRESETS[ACCENT_NAMES[0]].light
     );

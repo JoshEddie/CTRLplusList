@@ -47,12 +47,12 @@ describe('renderAltvatar', () => {
         ...options,
         selections: { glyph: '1F415' },
       })
-    ).toBe('/api/openmoji/1F415');
+    ).toBe('/openmoji/1F415.svg');
   });
 
   it('ThingStyleWithNoPicture_FallsBackToTheDefaultGlyph', async () => {
     expect(
       await renderAltvatar('openmoji', { ...options, selections: {} })
-    ).toBe('/api/openmoji/2B50');
+    ).toBe('/openmoji/2B50.svg');
   });
 });

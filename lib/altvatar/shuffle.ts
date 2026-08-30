@@ -13,10 +13,9 @@ function pick<T>(values: readonly T[]): T {
   return values[Math.floor(Math.random() * values.length)];
 }
 
-// Rarity within an axis: a value listed here is that many times as likely as one
-// that is not, and anything unlisted weighs 1. For a rate rather than a
-// relationship, use `TARGET_SHARES` — a weight here moves with the size of
-// whatever share its axis lands in.
+// Rarity relative to the other values on the axis; unlisted weighs 1. For a
+// rate rather than a relationship use `TARGET_SHARES` — a weight here moves
+// with the size of whatever share its axis lands in.
 const ROLL_WEIGHTS: Partial<Record<CanonicalAxis, Record<string, number>>> = {
   glasses: { eyepatch: 0.03 },
   body: { small: 0.01 }
@@ -28,28 +27,23 @@ const DYES = ['3b6fd4', '2aa198', '3eac2c', '7b3fb5', 'e0459b', 'f59797'];
 // Only `personas` maps these, so they cluster on one style unless held down.
 const SHORN = ['bald', 'balding', 'buzzcut', 'fade'];
 
-// Shaded lenses, which are a look rather than eyesight — unlike the clear
-// frames they share an axis with.
+// A look rather than eyesight, unlike the clear frames they share an axis with.
 const SHADED = ['kurt', 'sunglasses', 'wayfarers'];
 
-// What share of faces a group of values should account for, written as the
-// probability itself rather than as a weight. Solved against whatever the style
-// actually offers, so a style carrying fewer options still lands on the share —
-// a flat weight cannot, because it is only ever relative to the size of the
-// pool it competes in, and that pool differs per style. A group a style does not
-// offer does not apply, and the values outside the group keep their relative
-// weights to each other.
+// The probability itself rather than a weight, solved against whatever the
+// style offers: a weight is only ever relative to the pool it competes in, and
+// that pool differs per style, so the same weight lands on a different share
+// for each. Values outside a group keep their relative weights to each other.
 const TARGET_SHARES: {
   axis: CanonicalAxis;
   values: readonly string[];
   share: number;
 }[] = [
   { axis: 'hat', values: [NONE], share: 0.75 },
-  // Religious headwear is not a costume option, so it sits near the share of
-  // people who actually wear one rather than competing with the beanies. A
-  // share and not a weight for exactly that reason: as a weight it moved with
-  // the hat rate, so retuning hats silently retuned this too. Choosing either
-  // from the control stays as easy as choosing any other hat.
+  // Religious headwear is not a costume option, so it gets its own rate rather
+  // than competing with the beanies — as a weight it moved with the hat rate,
+  // so retuning hats silently retuned this too. Choosing either from the
+  // control stays as easy as choosing any other hat.
   { axis: 'hat', values: ['hijab'], share: 0.05 },
   { axis: 'hat', values: ['turban'], share: 0.05 },
   { axis: 'facialHair', values: [NONE], share: 0.70 },
@@ -67,11 +61,9 @@ function weightsFor(
   const base = ROLL_WEIGHTS[axis] ?? {};
   const weights = new Map(values.map((v) => [v.value, base[v.value] ?? 1]));
 
-  // Every group the style actually offers takes its share outright; whatever
-  // share is left over is split across the ungrouped values in proportion to
-  // the weights above. Solving the groups together rather than one after
-  // another is what lets an axis carry more than one of them — a sequential
-  // solve moves the total each time, so each group drifts the ones before it.
+  // Solved together rather than one after another, which is what lets an axis
+  // carry more than one group: a sequential solve moves the total each time, so
+  // each group would drift the ones before it.
   const groups = TARGET_SHARES.filter((t) => t.axis === axis)
     .map((t) => ({ ...t, values: t.values.filter((v) => weights.has(v)) }))
     .filter((t) => t.values.length > 0);
@@ -117,9 +109,8 @@ function pickWeighted(
   return chosen.value;
 }
 
-// A roll never crosses the kind boundary: a thing answers a different
-// question — a household or a trip, not a face — so landing on one is a
-// category jump rather than a different face. Things are chosen, never rolled.
+// A roll never crosses the kind boundary: landing on a thing is a category
+// jump rather than a different face. Things are chosen, never rolled.
 export function shuffleStyle(): AltvatarStyle {
   return ALTVATAR_STYLES[pick(PERSON_STYLE_IDS)];
 }

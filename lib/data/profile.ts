@@ -22,6 +22,7 @@ import { cacheTags, profileIdentityTags } from '@/lib/cacheTags';
 import { isViewersOwnProfile } from '@/lib/activeProfile';
 import { and, count, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
+import { unstable_rethrow } from 'next/navigation';
 import { cache } from 'react';
 
 // Request-scoped React cache(), not 'use cache': identity resolution reads the
@@ -34,6 +35,10 @@ export const getUserIdentity: (userId: string) => Promise<UserIdentity | null> =
       const selection = await readActiveProfileSelection();
       return resolveIdentity(userId, memberships, selection);
     } catch (error) {
+      // Prerender abort signals (hanging `cookies()` / "use cache" rejections)
+      // are framework control flow, not query failures — swallowing them logs
+      // noise on every build and lets the render finish as a signed-out shell.
+      unstable_rethrow(error);
       console.error('Error resolving user identity:', error);
       return null;
     }

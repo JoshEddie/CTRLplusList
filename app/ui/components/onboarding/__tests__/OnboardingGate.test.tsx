@@ -5,7 +5,6 @@
  * and retreating, and the look being confirmed before submit exists.
  */
 import {
-  fireEvent,
   render,
   screen,
   waitFor,
@@ -151,44 +150,7 @@ describe('Story', () => {
     expect(screen.queryByRole('button', { name: /next/i })).toBeNull();
   });
 
-  it('SwipeLeft_AdvancesABeat-StopsAtTheThirdBeat', () => {
-    renderGate();
-    const dialog = screen.getByRole('dialog');
-    const swipeLeft = () => {
-      fireEvent.touchStart(dialog, { touches: [{ clientX: 300, clientY: 100 }] });
-      fireEvent.touchEnd(dialog, {
-        changedTouches: [{ clientX: 100, clientY: 100 }],
-      });
-    };
-    swipeLeft();
-    expect(
-      screen.getByRole('heading', { name: 'One look, everywhere you show up' })
-    ).toBeInTheDocument();
-    swipeLeft();
-    swipeLeft();
-    // Still the third beat: only confirming a look reaches the final one.
-    expect(
-      screen.getByRole('heading', { name: 'Run more than one' })
-    ).toBeInTheDocument();
-  });
 
-  it('ShortOrVerticalSwipe_MovesNoBeat', () => {
-    renderGate();
-    const dialog = screen.getByRole('dialog');
-    // Too short to be a swipe at all.
-    fireEvent.touchStart(dialog, { touches: [{ clientX: 100, clientY: 100 }] });
-    fireEvent.touchEnd(dialog, {
-      changedTouches: [{ clientX: 130, clientY: 100 }],
-    });
-    // Long enough, but the vertical travel dominates: that is a scroll.
-    fireEvent.touchStart(dialog, { touches: [{ clientX: 300, clientY: 100 }] });
-    fireEvent.touchEnd(dialog, {
-      changedTouches: [{ clientX: 200, clientY: 300 }],
-    });
-    expect(
-      screen.getByRole('heading', { name: 'Meet Altvatars' })
-    ).toBeInTheDocument();
-  });
 
   it('LookConfirmedThenSteppingBack_DressesTheVignettesInIt', async () => {
     // Before a look is chosen the vignettes wear sample identities; after,
@@ -211,18 +173,6 @@ describe('Story', () => {
     expect(screen.queryByText('Marisol')).toBeNull();
   });
 
-  it('SwipeRight_ReturnsToThePreviousBeat', async () => {
-    renderGate();
-    await next();
-    const dialog = screen.getByRole('dialog');
-    fireEvent.touchStart(dialog, { touches: [{ clientX: 100, clientY: 100 }] });
-    fireEvent.touchEnd(dialog, {
-      changedTouches: [{ clientX: 300, clientY: 100 }],
-    });
-    expect(
-      screen.getByRole('heading', { name: 'Meet Altvatars' })
-    ).toBeInTheDocument();
-  });
 
   it('Back_ReturnsToThePreviousBeat', async () => {
     renderGate();

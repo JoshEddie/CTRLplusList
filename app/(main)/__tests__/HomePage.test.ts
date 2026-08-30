@@ -1,10 +1,10 @@
-import { Suspense } from 'react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearTestCookies,
   mockNextHeaders,
   setTestCookie,
 } from '@/test/helpers/next-headers';
+import { Suspense } from 'react';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { auth } from '@/lib/auth';
 import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
@@ -16,7 +16,6 @@ import {
   seedUsers,
   selfProfileOf,
 } from '@/test/helpers/seedFollowGraph';
-import BookmarkMigrationToast from '../lists/ui/components/BookmarkMigrationToast';
 import CollapsibleRail from '../lists/ui/components/CollapsibleRail';
 import BookmarksRail from '../lists/ui/components/rails/BookmarksRail';
 import FollowingRail from '../lists/ui/components/rails/FollowingRail';
@@ -90,20 +89,6 @@ describe('HomePage', () => {
     } as never);
     await expect(HomePage()).rejects.toThrow('REDIRECT:/sign-in');
     expect(redirectMock).toHaveBeenCalledWith('/sign-in');
-  });
-
-  it('ViewerResolved_RendersToastThenFourRailsInOrder', async () => {
-    const tree = await renderWithViewer();
-    const children = childrenOf(tree);
-    expect(children[0].type).toBe(BookmarkMigrationToast);
-
-    const railNames = rails(tree).map((c) => c.props.name);
-    expect(railNames).toEqual([
-      'my-lists',
-      'following',
-      'bookmarks',
-      'recently-visited',
-    ]);
   });
 
   it('EachRail_HasExpectedNameTitleSeeAllHref', async () => {

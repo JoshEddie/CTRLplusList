@@ -86,24 +86,6 @@ export default function OnboardingGate({
   const [chosen, setChosen] = useState(false);
   const [customizing, setCustomizing] = useState(false);
   const ctaRef = useRef<HTMLButtonElement>(null);
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-
-  // Swiping mirrors the buttons, never exceeds them: forward stops at the
-  // third beat because confirming a look in the customizer is the only way
-  // into the final one. Horizontal dominance keeps vertical scrolls scrolling.
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const start = touchStart.current;
-    touchStart.current = null;
-    if (!start) return;
-    const dx = e.changedTouches[0].clientX - start.x;
-    const dy = e.changedTouches[0].clientY - start.y;
-    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx < 0 && beat < 3) setBeat(beat + 1);
-    if (dx > 0 && beat > 1) setBeat(beat - 1);
-  };
 
   // Focus lands on the beat's primary control, on mount and on every beat
   // change: the gate replaces the page that was requested, so the caret
@@ -150,8 +132,6 @@ export default function OnboardingGate({
         // the vignettes is the reward for picking, so the suggestion must not
         // leak in early.
         style={accentVars(chosen ? altvatar.accent : 'iris')}
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
       >
         <div className="onboarding-story-glow" aria-hidden />
         <form action={formAction}>

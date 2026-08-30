@@ -28,7 +28,6 @@ export default function AltvatarField({
 
   return (
     <div className="form_field_group">
-      <span className="form_field_label">Altvatar</span>
       <div className="altvatar-field" style={accentVars(value.accent)}>
         <AltvatarPreview
           styleId={value.style}
