@@ -122,9 +122,7 @@ describe('writeAltvatar', () => {
       expect(rows[0].style).toBe('openmoji');
     });
 
-    it('ThingStyle_StoresTheBundledArtAsADataUriWithTheCodepoint', async () => {
-      // The stored corpus stays one shape whatever drew it: a data URI, never
-      // the route URL the display path uses for unconfirmed drafts.
+    it('ThingStyle_StoresTheBundledArtRouteForTheCodepoint', async () => {
       await writeAltvatar(PROFILE, {
         style: 'openmoji',
         options: { seed: 'fixed-seed', selections: { glyph: '1F415' } },
@@ -135,8 +133,7 @@ describe('writeAltvatar', () => {
         seed: 'fixed-seed',
         selections: { glyph: '1F415' },
       });
-      expect(row.art).toMatch(/^data:image\/svg\+xml;utf8,/);
-      expect(decodeURIComponent(row.art)).toContain('<svg');
+      expect(row.art).toBe('/openmoji/1F415.svg');
     });
 
     it('ThingStyleWithACodeOutsideTheCatalog_StoresTheDefaultGlyph', async () => {
@@ -152,6 +149,7 @@ describe('writeAltvatar', () => {
         seed: 'fixed-seed',
         selections: { glyph: '2B50' },
       });
+      expect(row.art).toBe('/openmoji/2B50.svg');
     });
   });
 

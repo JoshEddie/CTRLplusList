@@ -43,7 +43,7 @@ import {
 } from '../db/schema';
 import { seedUserEmail } from '../lib/auth';
 import { styleOf } from '../lib/altvatar/registry';
-import { openmojiDataUri } from '../lib/altvatar/openmoji.server';
+import { openmojiArtUrl } from '../lib/altvatar/styles/openmoji';
 import { renderAltvatar } from '../lib/altvatar/render';
 import { offersOf } from '../lib/altvatar/resolve';
 import type {
@@ -856,15 +856,16 @@ async function main() {
       .filter(([, f]) => f.face)
       .map(async ([profile_id, f]) => {
         const style = styleOf(f.face as string);
-        // The thing kind's art is a bundled picture read from disk, exactly as
-        // the production write path stores it (see profileAvatar.write.ts).
+        // The thing kind's art is the route its bundled picture is served
+        // from, exactly as the production write path stores it (see
+        // profileAvatar.write.ts).
         if (style.id === 'openmoji') {
           const options = { seed: profile_id, selections: { glyph: f.glyph } };
           return {
             profile_id,
             style: style.id,
             options,
-            art: await openmojiDataUri(f.glyph),
+            art: openmojiArtUrl(f.glyph),
           };
         }
         const options = {

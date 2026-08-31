@@ -43,9 +43,7 @@ export async function renderAltvatar(
   const style = styleOf(styleId);
 
   // The thing kind leaves the DiceBear path entirely: its art is a bundled
-  // picture the route serves, not a generation. This is the display path only
-  // — the save path derives the stored data URI through its own server read
-  // (openmoji.server.ts), because the filesystem is not reachable here.
+  // picture the route serves, not a generation.
   if (style.id === 'openmoji') return openmojiArtUrl(options.selections.glyph);
 
   const native = toNativeOptions(style, options.selections);

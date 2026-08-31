@@ -1,7 +1,7 @@
 import { db } from '@/db';
 import { profile_avatars } from '@/db/schema';
 import { safeOpenmojiCode } from '@/lib/altvatar/openmoji.catalog';
-import { openmojiDataUri } from '@/lib/altvatar/openmoji.server';
+import { openmojiArtUrl } from '@/lib/altvatar/styles/openmoji';
 import { renderAltvatar } from '@/lib/altvatar/render';
 import { sanitizeSelections } from '@/lib/altvatar/resolve';
 import { isAltvatarStyleId } from '@/lib/altvatar/registry';
@@ -49,15 +49,15 @@ export async function writeAltvatar(
       seed: parsed.data.options.seed,
       selections: sanitizeSelections(parsed.data.options.selections),
     };
-    // The thing kind's art is a bundled picture, not a generation, so it is
-    // read here rather than derived through the DiceBear chain — and the code
-    // is pinned to the catalog first, so the stored selection and the stored
-    // art can never disagree.
+    // The thing kind's art is a bundled picture, not a generation, so the
+    // stored art is the route the picture is served from — the same string the
+    // display path already renders — and the code is pinned to the catalog
+    // first, so the stored selection and the stored art can never disagree.
     if (style === 'openmoji')
       options.selections = { glyph: safeOpenmojiCode(options.selections.glyph) };
     const art =
       style === 'openmoji'
-        ? await openmojiDataUri(options.selections.glyph)
+        ? openmojiArtUrl(options.selections.glyph)
         : await renderAltvatar(style, options);
 
     await db
