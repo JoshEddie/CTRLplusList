@@ -3,7 +3,9 @@
 ## Purpose
 
 TBD - created by archiving change add-following-and-history. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Lists SHALL have a three-state visibility model
 
 Every list SHALL have a `visibility` value of exactly one of `'private'`, `'unlisted'`, or `'public'`, persisted in `lists.visibility`. A `private` list is visible only to its **owning profile** — the viewer sees it when the list's owning profile equals the profile their request acts as, a comparison of profile ids rather than of account ids. An `unlisted` list is visible to anyone with the URL but does NOT appear in any feed. A `public` list is visible to anyone with the URL AND appears in the feeds of users who follow the owning profile.
@@ -54,11 +56,13 @@ Every list SHALL have a `visibility` value of exactly one of `'private'`, `'unli
 
 ### Requirement: List owners SHALL set visibility via a three-item radio menu
 
-The list visibility UI SHALL present a popover triggered by a single visibility pill containing exactly three radio-style menu items, one per enum value. The UI labels SHALL be **Hidden** (→ `'private'`), **Private** (→ `'unlisted'`), and **Shared** (→ `'public'`). Each menu row SHALL render an icon, the label, and a one-line description; the currently-selected row SHALL render a trailing `✓` indicator and SHALL have `aria-checked="true"`. Selecting a row invokes `setListVisibility(id, visibility)` with the value the row maps to. Only the account whose profile owns the list SHALL be authorized to change visibility, established by comparing the list's owning profile against the profile the request acts as.
+The list visibility UI SHALL present a popover triggered by a single visibility pill containing exactly three radio-style menu items, one per enum value. The UI labels SHALL be **Hidden** (→ `'private'`), **Private** (→ `'unlisted'`), and **Shared** (→ `'public'`). Each menu row SHALL render an icon, the label, and a one-line description; the currently-selected row SHALL render a trailing `✓` indicator and SHALL have `aria-checked="true"`. Selecting a row invokes `setListVisibility(id, visibility)` with the value the row maps to.
+
+Authorization SHALL require both that the list's owning profile equals the profile the request acts as, **and** that the acting account's role on that profile is `self` or `owner`. A `manager` acting as the owning profile SHALL be refused. Changing a list's reach is an ownership act even though the list itself is content a manager may otherwise edit: flipping a managed profile's list to Shared exposes it to followers and the feed, and while the flag flips back, the exposure does not. `profile-permissions` owns the floor this applies; this requirement fixes that visibility takes the owner one.
 
 The row descriptions SHALL be: **Hidden** — "Only you can see this list"; **Private** — "Only people with the link can view"; **Shared** — "Anyone with the link — plus your followers see it in their feed". The Shared description SHALL frame follower visibility as an addition to link access, not a restriction, so it cannot be read as followers-only.
 
-The trigger pill SHALL display the currently-selected row's label verbatim (no qualifier suffix) alongside an icon (`🔒` for `'private'`, `🔗` for `'unlisted'`, `👥` for `'public'`). The pill's `aria-label` SHALL include the row's description for assistive-technology disambiguation.
+The trigger pill SHALL display the currently-selected row's label verbatim (no qualifier suffix) alongside an icon (`🔒` for `'private'`, `🔗` for `'unlisted'`, `👥` for `'public'`). The pill's `aria-label` SHALL include the row's description for assistive-technology disambiguation. For a viewer whose role on the owning profile is `manager`, the pill SHALL render disabled rather than be omitted, per `profiles-surface`'s treatment of a forbidden affordance. The same holds for the collapsed hero's kebab, which offers the identical three rows against the identical call: both shapes of the control SHALL be disabled together, per `profile-permissions`.
 
 #### Scenario: Owner sees three radio menu items
 
@@ -99,6 +103,21 @@ The trigger pill SHALL display the currently-selected row's label verbatim (no q
 
 - **WHEN** a `setListVisibility` request is made by an account whose profile is not the list's owning profile
 - **THEN** the action returns an unauthorized response and `lists.visibility` is unchanged
+
+#### Scenario: A manager acting as the owning profile is rejected
+
+- **WHEN** a viewer holding `manager`, acting as the list's owning profile, invokes `setListVisibility`
+- **THEN** the action returns an unauthorized response and `lists.visibility` is unchanged
+
+#### Scenario: A manager sees the pill disabled
+
+- **WHEN** a viewer holding `manager` on the owning profile opens a list of that profile
+- **THEN** the visibility pill renders in a disabled state rather than being omitted
+
+#### Scenario: A manager sees the collapsed hero's rows disabled too
+
+- **WHEN** a viewer holding `manager` on the owning profile opens the collapsed hero's kebab
+- **THEN** each of the three visibility rows renders disabled and activating one issues no write
 
 ### Requirement: Migration SHALL preserve existing share state without retroactive broadcast
 

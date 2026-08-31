@@ -34,6 +34,7 @@ names, and act on it before writing. No matching row means no decision binds.
 | `Role-Gated UI` | [2026-08-30-a-forbidden-affordance-renders-disabled](2026-08-30-a-forbidden-affordance-renders-disabled.md) |
 | `DB Schema` | [2026-08-30-an-invite-link-is-a-single-use-capability-grant](2026-08-30-an-invite-link-is-a-single-use-capability-grant.md) |
 | `DAL` | [2026-08-30-an-invite-link-is-a-single-use-capability-grant](2026-08-30-an-invite-link-is-a-single-use-capability-grant.md) |
+| `DAL` | [2026-08-31-a-role-carries-its-own-rights](2026-08-31-a-role-carries-its-own-rights.md) |
 
 ## Term bank
 
