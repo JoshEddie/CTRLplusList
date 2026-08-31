@@ -311,7 +311,7 @@
 .app-surface-bleed {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  min-height: calc(100vh - var(--app-nav-height));
   padding: 0 20px 0;
 }
 
