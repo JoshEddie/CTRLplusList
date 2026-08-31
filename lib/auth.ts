@@ -46,7 +46,7 @@ const nextAuth = NextAuth({
     usersTable: users,
     accountsTable: accounts,
   }),
-  providers: [Google],
+  providers: [Google({ authorization: { params: { prompt: 'select_account' } } })],
   session: { strategy: 'jwt' },
   trustHost: true, // Trust the host in development
   callbacks: {
