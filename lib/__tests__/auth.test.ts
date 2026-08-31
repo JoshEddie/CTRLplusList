@@ -19,7 +19,7 @@ vi.mock('next-auth', () => ({
     };
   },
 }));
-vi.mock('next-auth/providers/google', () => ({ default: {} }));
+vi.mock('next-auth/providers/google', () => ({ default: () => ({}) }));
 vi.mock('@auth/drizzle-adapter', () => ({ DrizzleAdapter: () => ({}) }));
 vi.mock('@/db', () => ({ db: {} }));
 
