@@ -154,6 +154,31 @@ describe('UserAvatarPopover', () => {
     expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
   });
 
+  it('NoActiveProfile_RendersAccountNameInitialsWithFallbackAccent', () => {
+    renderWithProfileSwitch(<UserAvatarPopover user={fullUser} />);
+    expect(trigger()).toHaveTextContent('AL');
+    /* eslint-disable testing-library/no-node-access -- accent variables sit on the disc, which is aria-hidden */
+    const style =
+      trigger().querySelector('.altvatar-disc')?.getAttribute('style') ?? '';
+    /* eslint-enable testing-library/no-node-access */
+    const { light } = ACCENT_PRESETS.iris;
+    expect(style).toContain(`--accent-disc: ${light}`);
+  });
+
+  it('NoActiveProfile_MenuShowsNameEmailSignOutAndNoSwitchRows', async () => {
+    renderWithProfileSwitch(<UserAvatarPopover user={fullUser} />);
+    await userEvent.click(trigger());
+
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: /sign out/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('menuitem').map((item) => item.textContent)
+    ).toEqual(['Altvatars', 'Connections', 'Sign out']);
+  });
+
   describe('Switcher', () => {
     it('SingleProfileViewer_OffersNoSwitchRowsAndNoCount', async () => {
       renderWithProfileSwitch(

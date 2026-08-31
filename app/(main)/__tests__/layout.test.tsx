@@ -29,7 +29,7 @@ vi.mock('@/app/ui/components/AppFrame', () => ({
 }));
 vi.mock('@/app/ui/components/ProfileSwitchProvider', () => ({
   ProfileSwitchProvider: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
+    <div data-testid="profile-switch-provider">{children}</div>
   ),
 }));
 vi.mock('@/lib/data/profile.active', () => ({
@@ -63,7 +63,7 @@ beforeEach(() => {
 });
 
 describe('MainLayout', () => {
-  it('UnOnboardedAccount_RendersTheGateInsteadOfTheRequestedPage', async () => {
+  it('UnOnboardedAccount_RendersTheGateInsideTheFrameInsteadOfTheRequestedPage', async () => {
     mockedResolve.mockResolvedValue({
       onboarded: false,
       userId: 'u1',
@@ -75,10 +75,26 @@ describe('MainLayout', () => {
 
     expect(screen.getByTestId('gate')).toHaveAttribute('data-arm', 'signup');
     expect(screen.queryByText('the requested page')).toBeNull();
-    // Not inside the frame: the gate renders on the sign-in gradient with no
-    // nav, so neither the frame nor the modal slot comes with it.
-    expect(screen.queryByTestId('frame')).toBeNull();
+    expect(screen.getByTestId('frame')).toBeInTheDocument();
     expect(screen.queryByTestId('modal-slot')).toBeNull();
+  });
+
+  it('UnOnboardedAccount_RendersInsideProfileSwitchProvider', async () => {
+    mockedResolve.mockResolvedValue({
+      onboarded: false,
+      userId: 'u1',
+      arm: 'existing',
+      name: 'Grace',
+    });
+
+    await renderLayout();
+
+    expect(screen.getByTestId('profile-switch-provider')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('profile-switch-provider').contains(
+        screen.getByTestId('gate')
+      )
+    ).toBe(true);
   });
 
   it('UnOnboardedAccount_IssuesNoPageLevelQuery', async () => {

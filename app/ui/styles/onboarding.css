@@ -1,14 +1,17 @@
 /* The gate as a four-beat story on the sign-in page's own full-screen
    treatment, for both populations alike, so arriving at it reads as a
    continuation of signing in rather than as a dialog over the app. It is not
-   an overlay over content: nothing is behind it, because the layout renders it
-   instead of the page. */
+   an overlay over content: the frame is behind it but the page is not, because
+   the layout renders the gate instead of the page while the frame stands. */
 .onboarding-gate-page {
   position: fixed;
-  inset: 0;
-  z-index: 150;
+  inset: var(--app-nav-height) 0 0;
+  z-index: 5;
   background-color: var(--dark-color);
   background-image: var(--page-frame-gradient);
+  /* The gradient paints from the viewport origin so the gate's background is
+     continuous with the nav's — no visible seam at the docking edge. */
+  background-attachment: fixed;
 }
 
 .onboarding-story {

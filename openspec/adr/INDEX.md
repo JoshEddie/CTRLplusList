@@ -26,6 +26,8 @@ names, and act on it before writing. No matching row means no decision binds.
 | `Generated Art` | [2026-08-26-customizable-art-stores-its-inputs-and-its-rendering](2026-08-26-customizable-art-stores-its-inputs-and-its-rendering.md) |
 | `Generated Art` | [2026-08-27-patched-library-markup-is-re-verified-by-rendering](2026-08-27-patched-library-markup-is-re-verified-by-rendering.md) |
 | `app/(main)/layout.tsx` | [2026-08-26-onboarding-is-a-layout-short-circuit-not-a-guard](2026-08-26-onboarding-is-a-layout-short-circuit-not-a-guard.md) |
+| `app/(main)/layout.tsx` | [2026-08-31-a-profile-less-account-still-gets-the-frame](2026-08-31-a-profile-less-account-still-gets-the-frame.md) |
+| `DAL` | [2026-08-31-a-profile-less-account-still-gets-the-frame](2026-08-31-a-profile-less-account-still-gets-the-frame.md) |
 | `E2E Test` | [2026-08-25-no-environment-override-for-the-acting-profile](2026-08-25-no-environment-override-for-the-acting-profile.md) |
 | `Local Dev` | [2026-08-25-no-environment-override-for-the-acting-profile](2026-08-25-no-environment-override-for-the-acting-profile.md) |
 | `DAL` | [2026-08-30-owners-run-the-profile-managers-run-its-content](2026-08-30-owners-run-the-profile-managers-run-its-content.md) |

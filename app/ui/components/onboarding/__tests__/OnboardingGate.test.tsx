@@ -89,7 +89,7 @@ describe('SignupArm', () => {
     ).toBeInTheDocument();
     await toFinalBeat();
     expect(
-      screen.getByRole('button', { name: 'Create my Altvatar and jump in' })
+      screen.getByRole('button', { name: 'Save and jump in' })
     ).toBeInTheDocument();
   });
 });
@@ -212,7 +212,7 @@ describe('Inputs', () => {
     // Not the name field: it is usually already right, and focusing it on a
     // phone raises the keyboard over the controls that matter.
     expect(
-      screen.getByRole('button', { name: /create my altvatar/i })
+      screen.getByRole('button', { name: /save and jump in/i })
     ).toHaveFocus();
   });
 });
@@ -245,7 +245,7 @@ describe('Submit', () => {
     await toFinalBeat();
     await userEvent.clear(nameField());
     await userEvent.type(nameField(), 'Grace Hopper');
-    await submit(/create my altvatar/i);
+    await submit(/save and jump in/i);
 
     expect(completeOnboarding).toHaveBeenCalledExactlyOnceWith({
       name: 'Grace Hopper',
@@ -265,7 +265,7 @@ describe('Submit', () => {
     await userEvent.click(
       screen.getByRole('button', { name: /use this altvatar/i })
     );
-    await submit(/create my altvatar/i);
+    await submit(/save and jump in/i);
 
     expect(completeOnboarding).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ accent: ACCENT_NAMES[2] })
@@ -310,7 +310,7 @@ describe('Submit', () => {
     });
     renderGate();
     await toFinalBeat();
-    await submit(/create my altvatar/i);
+    await submit(/save and jump in/i);
 
     await waitFor(() =>
       expect(toastError).toHaveBeenCalledExactlyOnceWith(
@@ -332,7 +332,7 @@ describe('Submit', () => {
     });
     renderGate();
     await toFinalBeat();
-    await submit(/create my altvatar/i);
+    await submit(/save and jump in/i);
 
     expect(await screen.findByText('Name is required')).toBeInTheDocument();
   });

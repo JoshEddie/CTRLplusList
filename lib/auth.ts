@@ -94,20 +94,28 @@ function bypassEnabled(): boolean {
 // source. Bypass sessions never actually expire.
 const BYPASS_EXPIRES = '2099-01-01T00:00:00.000Z';
 
-// Every identity carries the email actor resolution reads, not only the
-// default: an identity synthesized without it resolves to no actor at all,
-// which reads as logged out rather than as a different seeded user. The
-// default additionally carries the display name the preview UI expects; other
-// identities leave display fields to the flow that introduces them.
+// Every identity carries the email and a display name. In production OAuth
+// always provides both; the bypass must too, because surfaces that render for
+// a profile-less account (the onboarding gate's frame chrome) read
+// `session.user.name` to show the account's initials.
 function synthesizeSession(userId: string) {
   return {
     user: {
       id: userId,
       email: seedUserEmail(userId),
-      ...(userId === BYPASS_USER_ID ? { name: 'Test Viewer' } : {}),
+      name: bypassDisplayName(userId),
     },
     expires: BYPASS_EXPIRES,
   };
+}
+
+function bypassDisplayName(userId: string): string {
+  if (userId === BYPASS_USER_ID) return 'Test Viewer';
+  return userId
+    .replace(/^dev-(friend-)?/, '')
+    .split('-')
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(' ');
 }
 
 export const auth: typeof nextAuth.auth = ((...args: unknown[]) => {

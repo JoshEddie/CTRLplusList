@@ -39,6 +39,26 @@ test('Onboarding_SharedListLinkOwnedBySomeoneElse_IsGatedLikeEveryOtherPage', as
   ).toHaveCount(0);
 });
 
+test('Onboarding_SignupArm_NavAvatarShowsInitialsAndMenuShowsEmail', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByRole('dialog', { name: GATE.name })).toBeVisible();
+
+  // The avatar shows account name initials (no profile exists yet).
+  const trigger = page.getByRole('button', { name: 'User menu' });
+  await expect(trigger).toBeVisible();
+  await expect(trigger.locator('.altvatar-disc')).toContainText('US');
+
+  await trigger.click();
+  const menu = page.getByRole('menu', { name: 'User menu' });
+  await expect(menu.getByText('unonboarded-signup@dev.local')).toBeVisible();
+
+  // No switch rows, no profile count — no profile has been created.
+  const items = menu.getByRole('menuitem');
+  await expect(items).toHaveCount(3); // Altvatars, Connections, Sign out
+});
+
 test('Onboarding_ReloadBackdropAndEscape_LeaveTheGateStanding', async ({
   page,
 }) => {

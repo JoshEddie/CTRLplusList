@@ -84,6 +84,14 @@
   );
 }
 
+/* The notches carve corners into the white surface below the nav. When the
+   gate is showing there is no surface — the notches paint over the gate's
+   gradient background instead. */
+.app-frame[data-gated] .app-nav::before,
+.app-frame[data-gated] .app-nav::after {
+  display: none;
+}
+
 @media (max-width: 800px) {
   .app-nav::before {
     left: 12px;

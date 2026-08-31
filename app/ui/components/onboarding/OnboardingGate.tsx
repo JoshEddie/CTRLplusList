@@ -13,8 +13,8 @@ import type { AltvatarValue } from '@/lib/altvatar/types';
 import { completeOnboarding } from '@/lib/data/onboarding.actions';
 import type { ActionResponse } from '@/lib/types';
 import { useActionState, useEffect, useRef, useState } from 'react';
-import { LuArrowLeft, LuArrowRight, LuCheck } from 'react-icons/lu';
 import toast from 'react-hot-toast';
+import { LuArrowLeft, LuArrowRight, LuCheck } from 'react-icons/lu';
 import {
   EverywhereBeat,
   IntroBeat,
@@ -40,7 +40,7 @@ const COPY = {
       'Ctrl+List runs on Altvatars. Your alter ego, each with its own look, lists, and items, with more planned. They can be co-owned or managed. The next two pages show how it works, and setting yours up is the last step of signing up.',
     profilesLede:
       "Altvatars don't stop at what you set up today. From the Altvatars page you can create as many as you like: one for the pets, the kids, a special event, anything you can think of! And best of all, an Altvatar can be managed together with someone else: one set of lists and items, kept by both of you.",
-    submit: 'Create my Altvatar and jump in',
+    submit: 'Save and jump in',
   },
   existing: {
     title: 'Pick your Altvatar',

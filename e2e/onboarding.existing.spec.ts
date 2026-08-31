@@ -40,6 +40,38 @@ test('Onboarding_ExistingArm_DoesNotAddressTheViewerAsSigningUp', async ({
   await expect(gate).not.toContainText('signing up');
 });
 
+test('Onboarding_ExistingArm_AccountMenuShowsEmailAndNoSwitchRows', async ({
+  page,
+}) => {
+  await page.goto('/lists');
+  await expect(page.getByRole('dialog', { name: GATE.name })).toBeVisible();
+
+  await page.getByRole('button', { name: 'User menu' }).click();
+  const menu = page.getByRole('menu', { name: 'User menu' });
+  await expect(menu).toBeVisible();
+
+  await expect(menu.getByText('unonboarded-existing@dev.local')).toBeVisible();
+  await expect(
+    menu.getByRole('menuitem', { name: /sign out/i })
+  ).toBeVisible();
+
+  // No switch rows: the account holds one profile and app-frame offers a
+  // single-profile viewer no switching.
+  const items = menu.getByRole('menuitem');
+  await expect(items).toHaveCount(3); // Altvatars, Connections, Sign out
+});
+
+test('Onboarding_ExistingArm_NavPillChangesAddressAndGateStands', async ({
+  page,
+}) => {
+  await page.goto('/lists');
+  await expect(page.getByRole('dialog', { name: GATE.name })).toBeVisible();
+
+  await page.getByRole('link', { name: 'Items' }).click();
+  await expect(page).toHaveURL(/\/items$/);
+  await expect(page.getByRole('dialog', { name: GATE.name })).toBeVisible();
+});
+
 test('Onboarding_ReloadBackdropAndEscape_LeaveTheGateStanding', async ({
   page,
 }) => {
