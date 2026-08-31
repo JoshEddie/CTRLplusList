@@ -13,7 +13,7 @@ vi.mock('next-auth', () => ({
     auth: realAuth,
   }),
 }));
-vi.mock('next-auth/providers/google', () => ({ default: {} }));
+vi.mock('next-auth/providers/google', () => ({ default: () => ({}) }));
 vi.mock('@auth/drizzle-adapter', () => ({ DrizzleAdapter: () => ({}) }));
 vi.mock('@/db', () => ({ db: {} }));
 
