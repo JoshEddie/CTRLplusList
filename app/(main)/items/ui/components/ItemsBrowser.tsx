@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
-import { ItemDisplay, SortKey } from '@/lib/types';
+import { ProfileMembershipView, ItemDisplay, SortKey } from '@/lib/types';
 import {
   HERO_SLOT_READY_EVENT,
   HERO_TOOLBAR_SLOT_ID,
@@ -21,7 +21,7 @@ interface ItemsBrowserProps {
   items: ItemDisplay[];
   mode: BrowserMode;
   initialPageSize?: number;
-  profile_id?: string;
+  actor?: ProfileMembershipView;
   user_name?: string | null;
   showArchiveAction?: boolean;
   archivedView?: boolean;
@@ -59,7 +59,7 @@ export default function ItemsBrowser({
   items,
   mode,
   initialPageSize,
-  profile_id,
+  actor,
   user_name,
   showArchiveAction,
   archivedView,
@@ -214,7 +214,7 @@ export default function ItemsBrowser({
         <>
           <Items
             items={visible}
-            profile_id={profile_id}
+            actor={actor}
             user_name={user_name}
             view={view}
             showSpoilers={showSpoilers}

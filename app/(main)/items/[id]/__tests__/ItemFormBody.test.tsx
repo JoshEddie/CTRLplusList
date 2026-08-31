@@ -1,26 +1,19 @@
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { auth } from '@/lib/auth';
 import { getItemById } from '@/lib/data/item';
 import { getListsByProfile } from '@/lib/data/list';
-import { getUserIdentity } from '@/lib/data/profile';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { authedIdentity } from '@/lib/data/user.session';
 import ItemFormBody from '../ItemFormBody';
-import { makeProfile } from '@/test/helpers/profile';
+import { makeIdentity, makeProfile } from '@/test/helpers/profile';
 
-vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/item', () => ({
   getItemById: vi.fn(),
 }));
 vi.mock('@/lib/data/list', () => ({
   getListsByProfile: vi.fn(),
 }));
-vi.mock('@/lib/data/profile', () => ({
-  getUserIdentity: vi.fn(),
-}));
-vi.mock('@/lib/data/user', () => ({
-  getUserIdByEmail: vi.fn(),
-}));
+vi.mock('@/lib/data/user.session', () => ({ authedIdentity: vi.fn() }));
 
 const redirectMock = vi.hoisted(() =>
   vi.fn((url: string) => {
@@ -34,12 +27,14 @@ vi.mock('@/app/(main)/items/ui/components/itemform/ItemFormContainer', () => ({
     item: { id: string };
     lists: unknown[];
     returnTo?: string;
+    deleteDisabled?: boolean;
   }) => (
     <div
       data-testid="item-form"
       data-item-id={p.item.id}
       data-lists-count={String(p.lists.length)}
       data-return-to={p.returnTo ?? ''}
+      data-delete-disabled={String(!!p.deleteDisabled)}
     />
   ),
 }));
@@ -53,18 +48,9 @@ function props(id = 'i1', sp: { returnTo?: string } = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(auth).mockResolvedValue({
-    user: { email: 'owner@test.local' },
-  } as never);
-  vi.mocked(getUserIdByEmail).mockResolvedValue({
-    id: 'u1',
-    name: 'Owner',
-  } as never);
-  vi.mocked(getUserIdentity).mockResolvedValue({
-    userId: 'u1',
-    selfProfile: makeProfile('p1', 'Owner'),
-    activeProfile: makeProfile('p1', 'Owner'),
-  });
+  vi.mocked(authedIdentity).mockResolvedValue(
+    makeIdentity('u1', makeProfile('p1', 'Owner'))
+  );
   vi.mocked(getItemById).mockResolvedValue({ id: 'i1', name: 'Gift' } as never);
   vi.mocked(getListsByProfile).mockResolvedValue([
     { id: 'l1' },
@@ -75,17 +61,7 @@ beforeEach(() => {
 describe('ItemFormBody', () => {
   describe('Guards', () => {
     it('Unauthenticated_RedirectsToRoot', async () => {
-      vi.mocked(auth).mockResolvedValue({ user: {} } as never);
-      await expect(ItemFormBody(props())).rejects.toThrow('REDIRECT:/');
-    });
-
-    it('NoUser_RedirectsToRoot', async () => {
-      vi.mocked(getUserIdByEmail).mockResolvedValue(null as never);
-      await expect(ItemFormBody(props())).rejects.toThrow('REDIRECT:/');
-    });
-
-    it('NoProfile_RedirectsToRoot', async () => {
-      vi.mocked(getUserIdentity).mockResolvedValue(null);
+      vi.mocked(authedIdentity).mockResolvedValue(null);
       await expect(ItemFormBody(props())).rejects.toThrow('REDIRECT:/');
       expect(getItemById).not.toHaveBeenCalled();
     });
@@ -122,6 +98,32 @@ describe('ItemFormBody', () => {
       expect(form).toHaveAttribute('data-item-id', 'i1');
       expect(form).toHaveAttribute('data-lists-count', '2');
       expect(form).toHaveAttribute('data-return-to', '/lists/l1');
+    });
+
+    it('Owner_DeleteNotDisabled', async () => {
+      render(await ItemFormBody(props()));
+      expect(screen.getByTestId('item-form')).toHaveAttribute(
+        'data-delete-disabled',
+        'false'
+      );
+    });
+  });
+
+  describe('Manager', () => {
+    beforeEach(() => {
+      vi.mocked(authedIdentity).mockResolvedValue(
+        makeIdentity(
+          'mgr-1',
+          makeProfile('mgr-self'),
+          makeProfile('p1', 'Owner', ROLES.manager)
+        )
+      );
+    });
+
+    it('Manager_DeleteDisabledPassedToForm', async () => {
+      render(await ItemFormBody(props()));
+      const form = screen.getByTestId('item-form');
+      expect(form).toHaveAttribute('data-delete-disabled', 'true');
     });
   });
 });

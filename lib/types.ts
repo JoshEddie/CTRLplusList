@@ -6,6 +6,16 @@ export type ActionResponse = {
   id?: string;
 };
 
+// `isSelf` is why grantability carries no field of its own: a link admits a
+// member, and the identity relation is not a membership anyone can hand out.
+// The records live in `lib/data/profile.roles`.
+export type RoleShape = {
+  value: string;
+  label: string;
+  isSelf: boolean;
+  admin: boolean;
+};
+
 // What the one avatar disc needs, and nothing more: the art where the profile
 // has any, the style that art was drawn in (a glyph style is painted from the
 // accent's ink rather than shown), the name its initials fall back to, and the
@@ -23,16 +33,19 @@ export type ActorProfile = ProfileAvatarView & {
 
 export type ProfileMembershipView = ActorProfile & {
   tagline: string | null;
-  role: 'self' | 'owner' | 'manager';
+  role: RoleShape;
   last_active_at: Date | null;
 };
 
 // The two profiles a request names, never one. Ownership columns and creation
 // take the active profile; anything naming the human takes the self-profile.
+// The active one is the membership `resolveIdentity` selected, role included,
+// so every affordance measured against that role reads it off the identity
+// rather than re-resolving it.
 export type UserIdentity = {
   userId: string;
   selfProfile: ActorProfile;
-  activeProfile: ActorProfile;
+  activeProfile: ProfileMembershipView;
 };
 
 export type ListTable = {
@@ -70,7 +83,7 @@ export type ItemTable = {
 export type ProfileCardView = ProfileAvatarView & {
   id: string;
   tagline: string | null;
-  role: 'self' | 'owner' | 'manager';
+  role: RoleShape;
   listCount: number;
   itemCount: number;
 };

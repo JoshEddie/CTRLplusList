@@ -1,6 +1,7 @@
 import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import FollowContainer from '@/app/(main)/users/ui/components/FollowContainer';
 import { LinkButton } from '@/app/ui/components/button';
+import { authedIdentity } from '@/lib/data/user.session';
 import { timeAgo } from '@/lib/timeAgo';
 import { ListTable, type ProfileAvatarView } from '@/lib/types';
 import {
@@ -53,7 +54,6 @@ export default async function ListDetails({
   showSpoilers,
   previewMode,
   itemCount,
-  viewerIsManager,
 }: {
   isOwner: boolean;
   list: ListWithVisibility;
@@ -63,10 +63,11 @@ export default async function ListDetails({
   showSpoilers?: boolean;
   previewMode?: boolean;
   itemCount: number;
-  /** The viewer holds `manager` on the owning profile, so the owner-floor
-      affordances in the hero render disabled rather than absent. */
-  viewerIsManager?: boolean;
 }) {
+  const identity = await authedIdentity();
+  const ownerFloorDisabled =
+    !!identity && !identity.activeProfile.role.admin;
+
   const visibility = resolveListVisibility(list);
   const { previewHref, exitPreviewHref, spoilerHref } = navHrefs(
     list.id,
@@ -88,7 +89,11 @@ export default async function ListDetails({
   let collapsedPrepended: React.ReactNode = null;
   if (showOwnerControls) {
     collapsedPrepended = (
-      <HeroCollapsedOwnerItems list={list} visibility={visibility} />
+      <HeroCollapsedOwnerItems
+        list={list}
+        visibility={visibility}
+        disabled={ownerFloorDisabled}
+      />
     );
   } else if (showViewerControls) {
     collapsedPrepended = (
@@ -112,6 +117,7 @@ export default async function ListDetails({
       exitPreviewHref={exitPreviewHref}
       isOwner={isOwner}
       prependedItems={collapsedPrepended}
+      disabled={ownerFloorDisabled}
     />
   );
 
@@ -122,7 +128,7 @@ export default async function ListDetails({
         <VisibilityPicker
           listId={list.id}
           initialVisibility={visibility}
-          disabled={viewerIsManager}
+          disabled={ownerFloorDisabled}
         />
         {visibility !== VISIBILITY.OWNER && <ShareButton list={list} />}
       </div>
@@ -168,7 +174,10 @@ export default async function ListDetails({
             {showOwnerControls && (
               <>
                 <div className="list-hero-action-row">
-                  <EditListAction list={list} />
+                  <EditListAction
+                    list={list}
+                    deleteDisabled={ownerFloorDisabled}
+                  />
                   <ListActionsMenu
                     list={list}
                     showSpoilers={!!showSpoilers}
@@ -176,6 +185,7 @@ export default async function ListDetails({
                     spoilerHref={spoilerHref}
                     previewHref={previewHref}
                     exitPreviewHref={exitPreviewHref}
+                    disabled={ownerFloorDisabled}
                   />
                 </div>
                 <LinkButton
@@ -233,6 +243,7 @@ export default async function ListDetails({
                   spoilerHref={spoilerHref}
                   previewHref={previewHref}
                   exitPreviewHref={exitPreviewHref}
+                  disabled={ownerFloorDisabled}
                 />
               </div>
             )}

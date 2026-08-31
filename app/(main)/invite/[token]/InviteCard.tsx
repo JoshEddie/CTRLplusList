@@ -3,7 +3,7 @@
 import { FormShell, FormShellFooter } from '@/app/ui/components/FormShell';
 import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import { accentVars } from '@/lib/accent';
-import type { ProfileAvatarView } from '@/lib/types';
+import type { ProfileAvatarView, RoleShape } from '@/lib/types';
 import { redeemInvite } from '@/lib/data/profile.members.actions';
 import { signInUser } from '@/lib/data/user.actions';
 import { useRouter } from 'next/navigation';
@@ -11,17 +11,17 @@ import { useTransition } from 'react';
 import toast from 'react-hot-toast';
 import '../invite.css';
 
-const ROLE_BLURB: Record<string, string> = {
-  owner:
-    'as an owner — you’ll be able to change its lists, its items, and who else runs it.',
-  manager:
-    'as a manager — you’ll be able to look after its lists and items.',
-};
+// Branches on the right rather than the role, because administering the profile
+// itself is exactly what separates the two roles a link may carry.
+const roleBlurb = (role: RoleShape) =>
+  role.admin
+    ? 'as an owner — you’ll be able to change its lists, its items, and who else runs it.'
+    : 'as a manager — you’ll be able to look after its lists and items.';
 
 export type InviteView = ProfileAvatarView & {
   id: string;
   tagline: string | null;
-  role: string;
+  role: RoleShape;
 };
 
 // The link's whole job is to say who is asking, so the profile wears its own
@@ -58,9 +58,7 @@ export default function InviteCard({
       <p className="invite-kicker">You’ve been invited to help run</p>
       <h1 className="invite-name">{invite.name}</h1>
       {invite.tagline && <p className="invite-tagline">{invite.tagline}</p>}
-      <p className="invite-blurb">
-        {ROLE_BLURB[invite.role] ?? `as ${invite.role}.`}
-      </p>
+      <p className="invite-blurb">{roleBlurb(invite.role)}</p>
     </div>
   );
 

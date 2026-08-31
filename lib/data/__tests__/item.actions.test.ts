@@ -94,9 +94,9 @@ const MANAGED = 'kiddo';
 // The owner acting as a profile that is not their own. Every other case in
 // this file leaves the selection unset, which collapses the active profile
 // onto the self-profile and makes the two interchangeable.
-async function ownerActsAsManaged() {
+async function ownerActsAsManaged(role: 'owner' | 'manager' = 'owner') {
   await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
-  await seedMembership(db, { user_id: OWNER.id, profile_id: MANAGED });
+  await seedMembership(db, { user_id: OWNER.id, profile_id: MANAGED, role });
   setTestCookie(ACTIVE_PROFILE_COOKIE, MANAGED);
 }
 const listItemRows = (listId: string) =>
@@ -938,6 +938,31 @@ describe('ImageCandidates', () => {
       expect(res.success).toBe(true);
       expect(await imageRows('I')).toHaveLength(0);
     });
+  });
+});
+
+// Which literal each call site passes: deleting takes the owner floor, and
+// every other item write takes the member floor.
+describe('RoleFloorAtTheCallSite', () => {
+  beforeEach(async () => {
+    await ownerActsAsManaged('manager');
+    await seedItem(db, { id: 'I', user_id: OWNER.id, profile_id: MANAGED });
+  });
+
+  it('ManagerDeletesAnItem_ReturnsFailedToDeleteItem-RowPersists', async () => {
+    // The endpoint collapses the gate's refusal into its own thrown error, so
+    // the row surviving is what distinguishes a refusal from a delete.
+    expect(await actions.deleteItem('I')).toMatchObject({
+      error: 'Failed to delete item',
+    });
+    expect(await itemRows()).toHaveLength(1);
+  });
+
+  it('ManagerArchivesAnItem_Succeeds-StampsArchivedAt', async () => {
+    expect((await actions.archiveItem('I', true)).success).toBe(true);
+    expect(
+      (await itemRows()).find((i) => i.id === 'I')?.archived_at
+    ).not.toBeNull();
   });
 });
 

@@ -11,7 +11,11 @@ import {
 import { touchLists } from '@/lib/data/list.touch';
 import { ItemSchema } from '@/lib/data/item.schema';
 import { validateStore } from '@/lib/data/item.store';
-import { authedWriter } from '@/lib/data/profile.gate';
+import {
+  ADMIN_REQUIRED,
+  ADMIN_OPTIONAL,
+  authedWriter,
+} from '@/lib/data/profile.gate';
 import { type ActionResponse, ItemDetails } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { eq } from 'drizzle-orm';
@@ -19,7 +23,7 @@ import { nanoid } from 'nanoid';
 
 export async function createItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter('member');
+    const actor = await authedWriter(ADMIN_OPTIONAL);
     if ('error' in actor) {
       return actor.error;
     }
@@ -84,7 +88,7 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
 
 export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter('member');
+    const actor = await authedWriter(ADMIN_OPTIONAL);
     if ('error' in actor) {
       return actor.error;
     }
@@ -173,7 +177,7 @@ export async function archiveItem(
   archived: boolean
 ): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter('member');
+    const actor = await authedWriter(ADMIN_OPTIONAL);
     if ('error' in actor) {
       return actor.error;
     }
@@ -217,7 +221,7 @@ export async function archiveItem(
 
 export async function deleteItem(id: string) {
   try {
-    const actor = await authedWriter('owner');
+    const actor = await authedWriter(ADMIN_REQUIRED);
     if ('error' in actor) {
       throw new Error(actor.error.error);
     }

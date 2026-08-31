@@ -1,8 +1,8 @@
 /**
- * Pins the roster's role label: the two grantable roles read as words, and a
- * role the label table does not know renders its stored value rather than
- * blanking the cell.
+ * Pins the roster's role label: every role the column admits reads as a word,
+ * including the one no link grants.
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
@@ -10,22 +10,22 @@ import { RoleTag } from '../RoleTag';
 
 describe('RoleTag', () => {
   it('RoleOwner_RendersOwnerWithItsOwnModifier', () => {
-    render(<RoleTag role="owner" />);
+    render(<RoleTag role={ROLES.owner} />);
 
     expect(screen.getByText('Owner')).toHaveClass('member-role-tag--owner');
   });
 
   it('RoleManager_RendersManager', () => {
-    render(<RoleTag role="manager" />);
+    render(<RoleTag role={ROLES.manager} />);
 
     expect(screen.getByText('Manager')).toBeInTheDocument();
   });
 
-  it('UnlabelledRole_RendersTheStoredValue', () => {
-    // `self` never reaches this roster, but the column admits it and a role
-    // added later would arrive here before its label does.
-    render(<RoleTag role="self" />);
+  it('RoleSelf_RendersYou', () => {
+    // `self` never reaches this roster, but the profile card labels the same
+    // vocabulary and the label rides on the record it shares with it.
+    render(<RoleTag role={ROLES.self} />);
 
-    expect(screen.getByText('self')).toBeInTheDocument();
+    expect(screen.getByText('You')).toBeInTheDocument();
   });
 });

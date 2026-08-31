@@ -24,7 +24,7 @@
 ### Flow: An owner mints an invite link without switching profiles
 
 - **Given** the viewer holds `owner` on a managed profile and is acting as their own self-profile
-- **When** the viewer opens `/profiles`
+- **When** the viewer opens `/altvatar`
 - **And** opens the management menu on the managed profile's card
 - **And** activates its `Edit <name>` row
 - **And** clicks `Invite someone`
@@ -32,7 +32,7 @@
 - **Then** the Permissions section lists a row for the new link stating it grants `Manager`
 - **And** that row offers the link to copy
 - **And** no membership row has been added, because nobody has been admitted yet
-- **And** the active-profile mark on `/profiles` still rests on the viewer's own self-profile
+- **And** the active-profile mark on `/altvatar` still rests on the viewer's own self-profile
 
 ### Flow: Opening an invite link does not spend it
 
@@ -56,7 +56,7 @@
 ### Flow: An owner mints a link that grants ownership
 
 - **Given** the viewer holds `owner` on a managed profile
-- **When** the viewer opens that profile's space at `/profiles/[id]`
+- **When** the viewer opens that profile's space at `/altvatar/[id]`
 - **And** clicks `Invite someone`
 - **And** chooses the `owner` role
 - **And** confirms the mint
@@ -73,7 +73,7 @@
 ### Flow: An owner revokes a link before anyone uses it
 
 - **Given** the viewer holds `owner` on a managed profile carrying an outstanding invite
-- **When** the viewer opens that profile's space at `/profiles/[id]`
+- **When** the viewer opens that profile's space at `/altvatar/[id]`
 - **And** activates `Revoke this invite link` on the invite's row
 - **And** confirms the revocation
 - **Then** the invite's row is gone from the Permissions section
@@ -82,7 +82,7 @@
 ### Flow: An owner narrows what a sent link grants
 
 - **Given** the viewer holds `owner` on a managed profile carrying an outstanding invite granting `Owner`
-- **When** the viewer opens that profile's space at `/profiles/[id]`
+- **When** the viewer opens that profile's space at `/altvatar/[id]`
 - **And** activates `Change role` on the invite's row and chooses `Manager`
 - **Then** the invite's row states it grants `Manager`
 - **And** a recipient redeeming that same link holds a `Manager` membership
@@ -98,7 +98,7 @@
 ### Flow: A manager is shown the roster without the tokens
 
 - **Given** the viewer holds `manager` on a managed profile carrying an outstanding invite
-- **When** the viewer opens that profile's space at `/profiles/[id]`
+- **When** the viewer opens that profile's space at `/altvatar/[id]`
 - **Then** the Permissions section lists every membership
 - **And** no invite row renders, in any state
 
@@ -159,7 +159,7 @@
 
 - **Given** an account has just redeemed an invite link granting `manager` on a managed profile
 - **And** that account has not reloaded any page since
-- **When** that account opens `/profiles`
+- **When** that account opens `/altvatar`
 - **Then** a card for the managed profile renders among the profiles they run
 - **And** its role label reads `Manager`
 
@@ -169,7 +169,7 @@
 - **When** the viewer clicks `Change role`
 - **And** chooses the `owner` role for that member
 - **Then** the Permissions section lists that member with the role `Owner`
-- **And** the promoted account's own card on `/profiles` reads `Owner`
+- **And** the promoted account's own card on `/altvatar` reads `Owner`
 
 ### Flow: An owner demotes another owner and no guard is consulted
 
@@ -198,7 +198,7 @@
 - **When** the viewer activates removal on the manager's row
 - **And** confirms in the dialog
 - **Then** the Permissions section no longer lists that account
-- **And** that account's `/profiles` page no longer carries a card for the profile
+- **And** that account's `/altvatar` page no longer carries a card for the profile
 - **And** that account's profile switcher no longer offers the profile
 
 ### Flow: A manager leaves a profile they run
@@ -206,22 +206,22 @@
 - **Given** the viewer holds `manager` on a managed profile
 - **When** the viewer activates removal on their own row
 - **And** confirms in the dialog
-- **Then** the profile is absent from the viewer's `/profiles` page
+- **Then** the profile is absent from the viewer's `/altvatar` page
 
 ### Flow: The last owner cannot leave the profile ownerless
 
 - **Given** the viewer is the only `owner` of a managed profile that also carries a manager
-- **When** the viewer activates removal on their own row
-- **And** confirms in the dialog
-- **Then** the action refuses
-- **And** a reload of the Permissions section still lists the viewer as `Owner`
+- **When** the viewer opens the Permissions section
+- **Then** their own `Leave` control renders disabled rather than absent, stating that another owner must be named first
+- **And** the control cannot be activated, so no confirmation dialog opens
+- **And** the Permissions section still lists the viewer as `Owner`
 
 ### Flow: An owner may leave while another owner remains
 
 - **Given** the viewer is one of two `owner` members of a managed profile
 - **When** the viewer activates removal on their own row
 - **And** confirms in the dialog
-- **Then** the profile is absent from the viewer's `/profiles` page
+- **Then** the profile is absent from the viewer's `/altvatar` page
 - **And** the remaining owner's Permissions section still lists them as `Owner`
 
 ### Flow: Removing the profile's only manager is not blocked
@@ -258,7 +258,7 @@
 ### Flow: A manager sees a restricted profile space rather than a featureless one
 
 - **Given** the viewer holds `manager` on a managed profile
-- **When** the viewer opens that profile's space at `/profiles/[id]`
+- **When** the viewer opens that profile's space at `/altvatar/[id]`
 - **Then** every field of the Settings form renders disabled
 - **And** the Settings form's submit control is present and disabled
 - **And** the identity header's avatar edit affordance is present and disabled
@@ -327,7 +327,7 @@
 ### Flow: The roster reports acting, not looking
 
 - **Given** the viewer holds `owner` on a managed profile carrying one member who has acted as it and one who never has
-- **When** the viewer opens that profile's space at `/profiles/[id]`
+- **When** the viewer opens that profile's space at `/altvatar/[id]`
 - **Then** the member who has acted renders a relative, coarse age rather than a timestamp
 - **And** the member who never has renders as never
 - **And** the never-acted member sorts after the one carrying a value
@@ -341,7 +341,7 @@
 ### Flow: A self-profile's space carries no Permissions section
 
 - **Given** the viewer is acting as their own self-profile
-- **When** the viewer opens their self-profile's space at `/profiles/[id]`
+- **When** the viewer opens their self-profile's space at `/altvatar/[id]`
 - **Then** the Settings form renders with editable fields
 - **And** no Permissions section renders
 

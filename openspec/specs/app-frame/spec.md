@@ -224,7 +224,7 @@ The avatar's dropdown SHALL offer the viewer's other profiles as switch rows, pl
 
 The rows SHALL exclude the profile currently being acted as, so no row is inert. Each row SHALL read the profile's name and nothing more — including the viewer's own row, which appears only while they are acting as another profile. It carries no return-flavoured prefix: a prefix plus a long profile name is what overflows a menu row first, and the name alone already says where the row leads. A viewer who runs only their self-profile SHALL be offered no switch rows at all, leaving the dropdown as it is without them.
 
-The rows SHALL be capped at five, ordered most-recently-acted-as first per `active-profile`. The cap is the surface's limit, not the viewer's: the Profiles page lists every profile the viewer runs and switches from there, so a viewer past the cap reaches the rest through the dropdown's existing `Profiles` destination. That destination SHALL carry the count of profiles the viewer runs whenever it is more than one, so the capped group does not read as the whole set.
+The rows SHALL be capped at five, ordered most-recently-acted-as first per `active-profile`. The cap is the surface's limit, not the viewer's: the Altvatars page lists every profile the viewer runs and switches from there, so a viewer past the cap reaches the rest through the dropdown's existing `Altvatars` destination. That destination SHALL carry the count of profiles the viewer runs whenever it is more than one, so the capped group does not read as the whole set.
 
 #### Scenario: The dropdown offers the viewer's other profiles
 
@@ -251,4 +251,4 @@ The rows SHALL be capped at five, ordered most-recently-acted-as first per `acti
 
 - **WHEN** a viewer who runs twelve profiles opens the dropdown
 - **THEN** at most five switch rows are offered, ordered most-recently-acted-as first
-- **AND** the `Profiles` destination carries the count of all twelve
+- **AND** the `Altvatars` destination carries the count of all twelve

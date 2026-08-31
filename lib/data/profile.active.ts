@@ -7,6 +7,7 @@ import {
   profiles,
 } from '@/db/schema';
 import { cacheTags, profileIdentityTags } from '@/lib/cacheTags';
+import { roleOf } from '@/lib/data/profile.roles';
 import type {
   ActorProfile,
   ProfileMembershipView,
@@ -59,10 +60,7 @@ export async function getMembershipsForUser(
       asc(profiles.name)
     );
   cacheTag(...profileIdentityTags(rows.map((row) => row.id)));
-  return rows.map((row) => ({
-    ...row,
-    role: row.role as ProfileMembershipView['role'],
-  }));
+  return rows.map((row) => ({ ...row, role: roleOf(row.role) }));
 }
 
 // Membership re-verification is the match itself: a selection naming a profile
@@ -75,7 +73,7 @@ export function resolveIdentity(
   memberships: ProfileMembershipView[],
   selection: string | null
 ): UserIdentity | null {
-  const selfProfile = memberships.find((m) => m.role === 'self');
+  const selfProfile = memberships.find((m) => m.role.isSelf);
   if (!selfProfile) return null;
   const selected = memberships.find((m) => m.id === selection);
   return { userId, selfProfile, activeProfile: selected ?? selfProfile };

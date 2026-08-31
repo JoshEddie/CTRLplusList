@@ -3,7 +3,7 @@
 See proposal.md — Why. The constraints that shape the approach, all verified against the tree:
 
 - `authedWriter` (`lib/data/profile.gate.ts`) is reached by **13** call sites: `list.actions.ts` ×4, `item.actions.ts` ×4, `listItems.actions.ts` ×3, `item.associations.ts` ×2. `removePurchase` is not among them, and neither is the profile-update action.
-- The profile-update action authorizes against the acting account's membership on the **target** profile, not the acting profile — `profiles-surface` fixes that, and `/profiles/[id]` renders for any member without a switch.
+- The profile-update action authorizes against the acting account's membership on the **target** profile, not the acting profile — `profiles-surface` fixes that, and `/altvatar/[id]` renders for any member without a switch.
 - `writableMembership`, the gate's uncached read, already selects from `profile_members` but projects only `name` and `last_active_at`.
 - `getMembershipsForUser` (`lib/data/profile.active.ts:24`) already reads `role` and returns it on `ProfileMembershipView`, but `resolveIdentity` narrows the active profile to `ActorProfile`, which drops it. That read is `'use cache'`.
 - `profile.actions.ts` is 447 lines.
@@ -30,15 +30,15 @@ See proposal.md — Why. The constraints that shape the approach, all verified a
 
 ## Decisions
 
-### The floor is read where the gate already reads, not carried on the identity
+### The gate reads the floor uncached
 
 `writableMembership` gains `role` in its projection and `authedWriter(floor)` compares against it. **Zero extra round trips**: the row is already being fetched, and the column is on it.
 
-The tempting alternative — widening `UserIdentity.activeProfile` to carry the role, since `getMembershipsForUser` already has it — is **rejected**. That read is `'use cache'`, and the gate's existing comment states why its own read is not: a cached membership can still show a role revoked since the form rendered, which is precisely the case the gate exists to refuse. Authorization must not be decided on a cached membership. Keeping the role off `UserIdentity` also keeps it un-reachable by accident from the ~38 call sites that resolve an identity for non-authorization reasons.
+`UserIdentity.activeProfile` carries the acting role too, but only for rendering. `getMembershipsForUser` is `'use cache'`, and a cached membership can still show a role revoked since the form rendered — precisely the case the gate exists to refuse. `authedWriter` and `writableMembership` stay the only write path, and read uncached.
 
 ### Membership administration authorizes on the named profile, not the acting one
 
-The Permissions section lives at `/profiles/[id]`, which renders for any member of that profile whatever they are currently acting as. Its four actions therefore take the target profile id from the request and check the `owner` floor against the actor's membership on **that** profile — the same shape the profile-update action already uses, and one uncached read of the same row.
+The Permissions section lives at `/altvatar/[id]`, which renders for any member of that profile whatever they are currently acting as. Its four actions therefore take the target profile id from the request and check the `owner` floor against the actor's membership on **that** profile — the same shape the profile-update action already uses, and one uncached read of the same row.
 
 Routing them through `authedWriter` was **rejected**: the gate's whole contract is the acting-profile equality check, so an owner viewing their profile's space while acting as their self-profile would be refused every control the page renders as operable. Forcing a switch before administering a profile is a worse surface and would make the Profiles page's `Edit <name>` row a lie.
 
@@ -86,6 +86,70 @@ Demotion carries no such guard, for the reason the spec records — the actor is
 
 `Button` already accepts `disabled`. Menu rows take `aria-disabled="true"` — `menu-system` fixes that as the convention, its arrow-key navigation and open-focus selector both already skip it, and `MenuItem` spreads the attribute through. Consumers guard their own `onClick`, since `aria-disabled` is advisory. So the disabled-not-hidden ruling is a consumer change only.
 
+### `--meta-text-color` is retuned corpus-wide rather than scoped to the new surfaces
+
+The invite page and the profile space both lean on `--meta-text-color`, and at its stored `#bbbbbb` it rendered at roughly 1.9:1 against white — a WCAG failure, not a taste call. It is retuned to `#5f6470` (≈5.5:1, passing AA) in `app/ui/styles/global.css` rather than shadowed by a new token scoped to the two new stylesheets.
+
+The retune ripples to seven call sites this change does not otherwise touch, across `following-and-history.css`, `button.css` and `onboarding.css`. That ripple is the point: those call sites were failing the same ratio for the same reason, and a parallel token would have left them failing while declaring the problem solved on the new surfaces alone — which is exactly the parallel-shorthand system CLAUDE.md's "Reuse existing CSS variables" rules out. The token's role is unchanged; only its value moves.
+
+### A role is a record, not a string
+
+`lib/data/profile.roles.ts` holds one record per role, carrying its stored value, its label, and the two rights that distinguish it:
+
+```ts
+type RoleShape = { value: string; label: string; isSelf: boolean; admin: boolean };
+
+const SELF: RoleShape    = { value: 'self',    label: 'You',     isSelf: true,  admin: true  };
+const OWNER: RoleShape   = { value: 'owner',   label: 'Owner',   isSelf: false, admin: true  };
+const MANAGER: RoleShape = { value: 'manager', label: 'Manager', isSelf: false, admin: false };
+
+export const ROLES = [SELF, OWNER, MANAGER] as const;
+```
+
+`admin` is the owner floor and `!isSelf` is grantability, so `WRITE_ROLES`, `FLOOR_ROLES`, `meetsFloor`, `belowOwnerFloor`, `GRANTABLE_ROLES`, `MemberRole`, `isGrantableRole` and `ROLE_LABELS` all collapse into the record. Both hand-written unions in `lib/types.ts` go with them — `ProfileMembershipView.role` and `ProfileCardView.role` carry the record.
+
+Grantability is not its own field. `self` is ungrantable *because* it is the identity relation rather than a membership anyone can hand out, so it is one fact and one field.
+
+Two seams remain and only two: the column is `text`, so a read maps it back (`ROLES.find((r) => r.value === row.role)`) and a SQL predicate sends `SELF.value`; the invite and role-change dropdowns iterate `ROLES.filter((r) => !r.isSelf)`.
+
+`authedWriter` keeps its required floor argument — the forcing function 1.3 exists for — but implements it as `!membership.role.admin`. `member` consults nothing, because `writableMembership` returning a row *is* the member floor: its SQL already filtered to the roles that floor admits, so testing them again was a guard re-deciding what the read decided.
+
+**A role is never compared by reference.** RSC serialization rebuilds the object crossing into a client component, so `role === OWNER` holds on the server and fails on the client. The flags are what keep this out of reach: every comparison reads `admin` or `isSelf`, and none needs identity.
+
+### The acting role rides on the identity
+
+`resolveIdentity` already selects the acting membership — role included — then discards the role by returning it as `ActorProfile`. So `activeProfile` narrows less instead: `ActorProfile & { role: Role }`. `selfProfile` and the switcher rows keep `ActorProfile`; neither is being acted as. `getUserIdentity` is request-scoped `cache()`, so the role costs no round trip, needs no helper, and has no nullable case — an identity that resolved has a membership by construction.
+
+Each affordance takes its `disabled` state from the server component that renders it. Where the leaf sits under a client parent — the claim modal, below `Item.tsx`'s `'use client'` — that tree already threads the acting profile for ownership comparisons, so the existing prop widens to carry the profile whole rather than a second prop appearing beside it.
+
+Two shapes are rejected and stay rejected. A `viewerIsManager` prop threaded through the list and item trees is the shape that produced the round-1 defect: it reached `ListDetails`, stopped at the expanded hero, and nothing about a missing prop is loud. A provider resolved in `(main)/layout.tsx` publishes from the segment Next re-renders least, and defaults an affordance rendered outside it to operable.
+
+Freshness follows from the identity read: page segments re-render on navigation and it carries the tags every membership write fires, so the answer is as current as the page.
+
+### The pending-invite roster is uncached
+
+`getPendingInvites` filters `expires_at > now`, which makes its result a statement about a clock rather than about rows. Cached, that clock freezes into the entry, and no tag thaws it: expiry is elapsed time, not a write. An expired link would sit in the roster reading "expires in 1 day" until some unrelated write on the profile happened to evict it, refusing on every press.
+
+So the read is uncached, for the reason `getLiveInvite` already was. The consequence is that `profile_invites` needs no cache tags at all — nothing cached reads the table — and the mint, revoke, re-role and redeem paths fire none. The tags added earlier in this change are removed rather than left firing into nothing.
+
+### e2e gets its own manager seat
+
+The manager e2e flow writes lists and items it cannot clean up: deleting either is the owner-floor act the flow exists to prove a manager is refused. It had been pinned to `dev-profile-managed`, which simultaneously serves as the never-acted-as ordering fixture and the empty-lists fixture two other specs read — so the suite passed only because single-worker filename order happened to run the readers first.
+
+A third seeded profile, `dev-profile-workshop`, carries the residue instead. It is one profile row and two membership rows, against a whole class of order-dependence: with it, no assertion anywhere depends on which file ran first, and `dev-profile-managed` keeps both fixtures intact. Its membership is stamped with a `last_active_at`, so the NULL ordering branch stays a fixture of exactly one row.
+
+### Sharing is not an owner-floor act
+
+Round 1 read the promote-then-share flow as a floor-gated write and disabled both share affordances below the floor; round 2 found the two shapes disagreeing about which condition disables them, and the collapsed shape refusing lists no floor governs. Neither reconcile direction was taken.
+
+Sharing hands out a URL. What the recipient can then see is the list's own visibility, not the sharer's role, so no share shape is an owner-floor affordance and the floor gates none of them. The promote-then-share flow the two shapes wrap predates this change and is left as it was; the floor read and the disabled state this change added are removed, and `profile-permissions` states the exclusion so a later sweep does not re-add them.
+
+### One home for the same-origin rule
+
+This change hardened `signInUser`'s destination guard against the characters URL parsing removes, and left the repo's other guard on the same class of input — `sanitizeReturnTo`, reached by a plain query string — on the old string-shape checks. Two copies of one rule, and the drift was the defect.
+
+`lib/sameOriginPath.ts` is now the single guard both boundaries call, carrying the union: the control characters stripped as a parser strips them, then the leading-slash test, then `list-item-management`'s standing refusal of `://` and backslashes. The union rather than either alone, because that spec is canonical and its rule is a superset that costs nothing to keep. `sanitizeReturnTo` and its test file are deleted.
+
 ### `setListItems` keeps its own rejection shape
 
 `setListItems` (`lib/data/listItems.actions.ts:18`) calls `auth()` first and then folds the gate's rejection into its own ownership comparison, under `server-endpoint-authorization`'s stated exemption for endpoints keeping a local error code. Adding the floor must preserve that collapse rather than introduce a second, differently-worded refusal on the same endpoint.
@@ -98,6 +162,7 @@ Demotion carries no such guard, for the reason the spec records — the actor is
 - **A leaked link is a working grant** → bounded rather than closed. The token names no recipient, so whoever holds it is who joins; one redemption, seven days, a role the owner may narrow while it is outstanding, and a revoke are the mitigation. Binding the link to an identity would mean knowing the recipient's account before sending it, which is the constraint the link exists to escape.
 - **The roster row carries the token in the page** → so it renders for an owner only. A manager sees the memberships and not the outstanding invites: every other forbidden control renders disabled beside them, but a bearer token is not a control, and a disabled one would still be readable.
 - **The two-floor vocabulary cannot express a third tier** → if #335's publication axis lands and splits reach from publish, a third value is needed. Named in the ADR's consequences so the cost is argued with rather than worked around.
+- **Content already rendered outlives a revocation** → resolving the floor with the identity the request already read makes it as fresh as the page, but a browser sitting on a page it loaded before the revocation keeps showing it until it navigates. Writes are unaffected: `authedWriter` re-reads `writableMembership` uncached and refuses. Accepted; bounding it by time rather than by navigation needs an invalidation signal reaching the session, which this change does not build.
 
 ## Migration Plan
 

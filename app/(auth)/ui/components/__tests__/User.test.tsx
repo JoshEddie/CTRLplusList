@@ -1,3 +1,4 @@
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
@@ -60,7 +61,7 @@ beforeEach(() => {
     makeIdentity('u1', makeProfile('p-self', 'Ada Lovelace'))
   );
   vi.mocked(getMembershipsForUser).mockResolvedValue([
-    membership('p-self', 'Ada Lovelace', 'self'),
+    membership('p-self', 'Ada Lovelace', ROLES.self),
   ]);
 });
 
@@ -83,9 +84,9 @@ describe('User', () => {
   it('ThreeMemberships_ForwardsTheTwoNotBeingActedAsAndTheFullCount', async () => {
     vi.mocked(auth).mockResolvedValue(makeSession() as never);
     vi.mocked(getMembershipsForUser).mockResolvedValue([
-      membership('p-kiddo', 'Kiddo', 'owner'),
-      membership('p-self', 'Ada Lovelace', 'self'),
-      membership('p-nana', 'Nana', 'manager'),
+      membership('p-kiddo', 'Kiddo', ROLES.owner),
+      membership('p-self', 'Ada Lovelace', ROLES.self),
+      membership('p-nana', 'Nana', ROLES.manager),
     ]);
 
     render(await User());

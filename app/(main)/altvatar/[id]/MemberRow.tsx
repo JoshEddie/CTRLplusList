@@ -2,20 +2,22 @@
 
 import { Button } from '@/app/ui/components/button';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
-import { Menu, MenuItem, MenuItemRadio } from '@/app/ui/components/menu';
+import { Menu, MenuItem } from '@/app/ui/components/menu';
 import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import TooltipWrapper from '@/app/ui/components/TooltipWrapper';
 import type { ProfileMemberRow } from '@/lib/data/profile.members';
+import type { RoleShape } from '@/lib/types';
 import {
   removeMember,
   setMemberRole,
 } from '@/lib/data/profile.members.actions';
 import { timeAgo } from '@/lib/timeAgo';
-import { useRouter } from 'next/navigation';
-import { useRef, useState, useTransition } from 'react';
-import toast from 'react-hot-toast';
+import { useRef, useState } from 'react';
 import { MdMoreHoriz, MdPersonRemove } from 'react-icons/md';
-import { ROLE_LABELS, RoleTag } from './RoleTag';
+import { RoleChoices } from './RoleChoices';
+import { RoleTag } from './RoleTag';
+import RoleMenuControl from './RoleMenuControl';
+import { useRowAction } from './utils';
 
 // A manager sees every owner-floor control disabled rather than absent, so the
 // surface states that the capability exists and that they do not hold it. Their
@@ -37,23 +39,20 @@ export default function MemberRow({
       the surface from offering a press that can only fail. */
   soleOwner: boolean;
 }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, run] = useRowAction();
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
 
   const isSelf = member.user_id === viewerUserId;
   const forbidden = !viewerIsOwner;
+  const removalBlocked = isSelf ? soleOwner : forbidden;
+  const removeLabel = isSelf ? 'Leave' : `Remove ${member.name}`;
+  const soleOwnerReason =
+    "You're the only owner, so you can't leave yet — make someone else an owner first.";
 
-  const run = (action: () => Promise<{ success: boolean; message: string }>) =>
-    startTransition(async () => {
-      const result = await action();
-      if (result.success) {
-        toast.success(result.message);
-        router.refresh();
-      } else toast.error(result.message);
-    });
+  const changeRole = (role: RoleShape) => () =>
+    setMemberRole(profileId, member.user_id, role.value);
 
   return (
     <li className="member-row">
@@ -65,10 +64,38 @@ export default function MemberRow({
         </span>
         <span className="member-row-meta">
           <RoleTag role={member.role} />
-          active: {member.last_active_at
+          active:{' '}
+          {member.last_active_at
             ? `${timeAgo(member.last_active_at)}`
             : 'never'}
         </span>
+      </div>
+
+      {/* Two shapes of the same three acts. Below 600px they collapse into the
+          row's kebab, where a roster row has no width to spend on labelled
+          controls; from 600px up they stand on the row as discrete ones. */}
+      <div className="member-row-controls">
+        {!isSelf && (
+          <RoleMenuControl
+            current={member.role}
+            disabled={forbidden}
+            ariaLabel={`${member.name} role`}
+            onChangeRole={changeRole}
+            run={run}
+          />
+        )}
+        <TooltipWrapper showTooltip={soleOwner} tooltip={soleOwnerReason}>
+          <Button
+            variant="ghost"
+            size="sm"
+            isLoading={isPending}
+            disabled={removalBlocked}
+            aria-label={removeLabel}
+            onClick={() => setConfirming(true)}
+          >
+            {isSelf ? 'Leave' : 'Remove'}
+          </Button>
+        </TooltipWrapper>
       </div>
 
       <div className="member-row-menu">
@@ -91,31 +118,23 @@ export default function MemberRow({
           anchorRef={menuTriggerRef}
           aria-label={`${member.name} actions`}
         >
-          {!isSelf &&
-            (['owner', 'manager'] as const).map((role) => (
-              <MenuItemRadio
-                key={role}
-                checked={member.role === role}
-                aria-disabled={forbidden || undefined}
-                onSelect={() => {
-                  if (forbidden) return;
-                  setMenuOpen(false);
-                  run(() => setMemberRole(profileId, member.user_id, role));
-                }}
-              >
-                {ROLE_LABELS[role]}
-              </MenuItemRadio>
-            ))}
-          <TooltipWrapper
-            showTooltip={soleOwner}
-            tooltip="You're the only owner, so you can't leave yet — make someone else an owner first."
-          >
+          {!isSelf && (
+            <RoleChoices
+              current={member.role}
+              disabled={forbidden}
+              onPick={(role) => {
+                setMenuOpen(false);
+                run(changeRole(role));
+              }}
+            />
+          )}
+          <TooltipWrapper showTooltip={soleOwner} tooltip={soleOwnerReason}>
             <MenuItem
               tone="danger"
               icon={<MdPersonRemove size={18} />}
-              aria-disabled={(isSelf ? soleOwner : forbidden) || undefined}
+              aria-disabled={removalBlocked || undefined}
               onClick={() => {
-                if (isSelf ? soleOwner : forbidden) return;
+                if (removalBlocked) return;
                 setMenuOpen(false);
                 setConfirming(true);
               }}

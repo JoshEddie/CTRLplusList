@@ -3,6 +3,7 @@
  * viewer runs" and "The Altvatars page SHALL state what selecting a profile
  * does".
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -35,7 +36,7 @@ function card(id: string, name: string): ProfileCardView {
     id,
     name,
     tagline: null,
-    role: 'owner',
+    role: ROLES.owner,
     listCount: 0,
     itemCount: 0,
     accent: null,

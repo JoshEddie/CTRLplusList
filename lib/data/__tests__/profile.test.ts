@@ -1,3 +1,4 @@
+import { ROLES } from '@/lib/data/profile.roles';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockNextHeaders } from '@/test/helpers/next-headers';
 
@@ -494,11 +495,11 @@ describe('getProfileCardsForUser', () => {
       'Cal',
     ]);
     expect(cards.map((c) => c.role)).toEqual([
-      'self',
-      'owner',
-      'owner',
-      'manager',
-      'manager',
+      ROLES.self,
+      ROLES.owner,
+      ROLES.owner,
+      ROLES.manager,
+      ROLES.manager,
     ]);
   });
 
@@ -589,7 +590,7 @@ describe('getProfileMembership', () => {
     expect(await dal.getProfileMembership(VIEWER.id, MANAGED)).toMatchObject({
       id: MANAGED,
       name: 'Kiddo',
-      role: 'owner',
+      role: ROLES.owner,
     });
   });
 

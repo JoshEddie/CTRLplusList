@@ -87,14 +87,17 @@ const actingAs = (userId: string) => {
   );
 };
 
-async function roleOf(userId: string): Promise<string | null> {
+async function roleOf(
+  userId: string,
+  profileId: string = KIDDO
+): Promise<string | null> {
   const [row] = await db
     .select({ role: profile_members.role })
     .from(profile_members)
     .where(
       and(
         eq(profile_members.user_id, userId),
-        eq(profile_members.profile_id, KIDDO)
+        eq(profile_members.profile_id, profileId)
       )
     );
   return row?.role ?? null;
@@ -137,6 +140,17 @@ describe('setMemberRole', () => {
     expect(updateTag).toHaveBeenCalledWith(cacheTags.profilesOfUser(MANAGER));
   });
 
+  it('OwnerPromotesAManager_FiresTheNarrowTagsAndNotTheCoarseTableTag', async () => {
+    actingAs(OWNER);
+
+    await actions.setMemberRole(KIDDO, MANAGER, 'owner');
+
+    expect(updateTag).toHaveBeenCalledWith(cacheTags.membersOfProfile(KIDDO));
+    // The coarse table tag would invalidate every account's memberships for
+    // one profile's change, so its absence is half of what the rule states.
+    expect(updateTag).not.toHaveBeenCalledWith(cacheTags.profileMembers);
+  });
+
   it('OwnerDemotesAnotherOwner_WritesManager', async () => {
     await seedMembership(db, {
       user_id: OWNER2,
@@ -176,6 +190,57 @@ describe('setMemberRole', () => {
       error: 'Forbidden',
     });
     expect(await roleOf(OWNER)).toBe('owner');
+  });
+
+  describe('SelfRowAndNoRow', () => {
+    it('TargetHoldsTheSelfRow_RefusesAndLeavesItSelf', async () => {
+      // The reachable shape: a self-profile someone else co-owns, so a `self`
+      // row and an `owner` row sit on one profile. The statement, not the
+      // caller that happens to produce the target, keeps `self` out of reach.
+      const coOwned = selfProfileOf(STRANGER);
+      await seedMembership(db, {
+        user_id: OWNER,
+        profile_id: coOwned,
+        role: 'owner',
+      });
+      actingAs(OWNER);
+
+      expect(
+        await actions.setMemberRole(coOwned, STRANGER, 'manager')
+      ).toMatchObject({ success: false });
+      expect(await roleOf(STRANGER, coOwned)).toBe('self');
+    });
+
+    it('TargetHoldsNoMembership_RefusesRatherThanReportingSuccess', async () => {
+      actingAs(OWNER);
+
+      expect(await actions.setMemberRole(KIDDO, STRANGER, 'owner')).toMatchObject(
+        { success: false }
+      );
+      expect(await roleOf(STRANGER)).toBeNull();
+    });
+  });
+
+  describe('UngrantableRole', () => {
+    // `MemberRole` is erased at runtime, so the endpoint is what stands between
+    // a caller-supplied string and the column.
+    it('RoleSelf_RefusesForbiddenAndLeavesTheStoredRole', async () => {
+      actingAs(OWNER);
+
+      expect(
+        await actions.setMemberRole(KIDDO, MANAGER, 'self' as 'manager')
+      ).toMatchObject({ error: 'Forbidden' });
+      expect(await roleOf(MANAGER)).toBe('manager');
+    });
+
+    it('RoleUnmodelled_RefusesForbiddenAndLeavesTheStoredRole', async () => {
+      actingAs(OWNER);
+
+      expect(
+        await actions.setMemberRole(KIDDO, MANAGER, 'admin' as 'manager')
+      ).toMatchObject({ error: 'Forbidden' });
+      expect(await roleOf(MANAGER)).toBe('manager');
+    });
   });
 });
 
@@ -249,6 +314,18 @@ describe('mintInvite', () => {
       .where(eq(profile_invites.profile_id, profileId));
   }
 
+  it('SelfProfileNamed_RefusesForbiddenAndMintsNothing', async () => {
+    actingAs(OWNER);
+
+    // `self` clears the owner floor, so the floor alone would let an account
+    // mint an owner link onto the profile that *is* them — and the redeemer
+    // would then satisfy the survivor clause and evict them from it.
+    expect(await actions.mintInvite(selfProfileOf(OWNER))).toMatchObject({
+      error: 'Forbidden',
+    });
+    expect(await invitesOn(selfProfileOf(OWNER))).toEqual([]);
+  });
+
   it('NoRoleGiven_MintsAManagerToken', async () => {
     actingAs(OWNER);
 
@@ -289,15 +366,14 @@ describe('mintInvite', () => {
     expect(await invitesOn(KIDDO)).toEqual([]);
   });
 
-  it('AnyMint_RefreshesTheRosterWithoutTouchingMemberships', async () => {
+  it('AnyMint_FiresNoTagBecauseNoCachedReadListsInvites', async () => {
     actingAs(OWNER);
 
     await actions.mintInvite(KIDDO);
 
-    // The pending row is a cached read keyed on the profile; no membership
-    // changed, so no account's own profile surfaces are touched.
-    expect(updateTag).toHaveBeenCalledWith(cacheTags.invitesOfProfile(KIDDO));
-    expect(updateTag).not.toHaveBeenCalledWith(cacheTags.profileMembers);
+    // The pending roster is read uncached, and minting admits nobody, so
+    // there is no cached result for this write to invalidate.
+    expect(updateTag).not.toHaveBeenCalled();
   });
 });
 
@@ -356,14 +432,41 @@ describe('redeemInvite', () => {
     expect(await redeemedAt(token)).not.toBeNull();
   });
 
-  it('BlockEdgeWithTheMinter_RefusesAndLeavesTheTokenRedeemable', async () => {
-    const token = await mintFor('manager');
-    await seedBlock(db, STRANGER, OWNER);
-    actingAs(STRANGER);
+  // The join is an `or` of two `and` clauses, so each direction needs its own
+  // test — one alone leaves the other clause deletable with the suite green.
+  describe('BlockEdge', () => {
+    it('RedeemerBlocksTheMinter_RefusesAndLeavesTheTokenRedeemable', async () => {
+      const token = await mintFor('manager');
+      await seedBlock(db, STRANGER, OWNER);
+      actingAs(STRANGER);
 
-    expect((await actions.redeemInvite(token)).success).toBe(false);
-    expect(await roleOf(STRANGER)).toBeNull();
-    expect(await redeemedAt(token)).toBeNull();
+      expect((await actions.redeemInvite(token)).success).toBe(false);
+      expect(await roleOf(STRANGER)).toBeNull();
+      expect(await redeemedAt(token)).toBeNull();
+    });
+
+    it('MinterBlocksTheRedeemer_RefusesAndLeavesTheTokenRedeemable', async () => {
+      const token = await mintFor('manager');
+      await seedBlock(db, OWNER, STRANGER);
+      actingAs(STRANGER);
+
+      expect((await actions.redeemInvite(token)).success).toBe(false);
+      expect(await roleOf(STRANGER)).toBeNull();
+      expect(await redeemedAt(token)).toBeNull();
+    });
+  });
+
+  it('SpentTokenAndCallerAlreadySits_RefusesRatherThanReadingAsSuccess', async () => {
+    const token = await mintFor('manager', { redeemed_at: new Date() });
+    actingAs(OWNER);
+
+    // The membership row is untouched either way, so a sitting caller is the
+    // one case where a dead token could be mistaken for a redemption.
+    expect(await actions.redeemInvite(token)).toMatchObject({
+      success: false,
+      error: 'Invalid invite',
+    });
+    expect(await roleOf(OWNER)).toBe('owner');
   });
 
   it('UnauthenticatedCaller_RejectsUnauthorized', async () => {
@@ -383,7 +486,6 @@ describe('revokeInvite', () => {
     actingAs(OWNER);
 
     expect((await actions.revokeInvite(KIDDO, token)).success).toBe(true);
-    expect(updateTag).toHaveBeenCalledWith(cacheTags.invitesOfProfile(KIDDO));
 
     actingAs(STRANGER);
     expect((await actions.redeemInvite(token)).success).toBe(false);
@@ -468,6 +570,31 @@ describe('setInviteRole', () => {
       error: 'Forbidden',
     });
     expect(await roleOfInvite(token)).toBe('manager');
+  });
+
+  describe('UngrantableRole', () => {
+    // The endpoint is what stands between a caller-supplied string and the
+    // column: reaching the CHECK would surface as a generic write failure
+    // rather than the refusal the requirement names.
+    it('RoleSelf_RefusesForbiddenAndLeavesTheRole', async () => {
+      const token = await mintFor('manager');
+      actingAs(OWNER);
+
+      expect(
+        await actions.setInviteRole(KIDDO, token, 'self' as 'manager')
+      ).toMatchObject({ error: 'Forbidden' });
+      expect(await roleOfInvite(token)).toBe('manager');
+    });
+
+    it('RoleUnmodelled_RefusesForbiddenAndLeavesTheRole', async () => {
+      const token = await mintFor('manager');
+      actingAs(OWNER);
+
+      expect(
+        await actions.setInviteRole(KIDDO, token, 'admin' as 'manager')
+      ).toMatchObject({ error: 'Forbidden' });
+      expect(await roleOfInvite(token)).toBe('manager');
+    });
   });
 });
 

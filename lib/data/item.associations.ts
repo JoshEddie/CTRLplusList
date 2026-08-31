@@ -7,7 +7,7 @@ import {
   lists,
 } from '@/db/schema';
 import { touchLists } from '@/lib/data/list.touch';
-import { authedWriter } from '@/lib/data/profile.gate';
+import { ADMIN_OPTIONAL, authedWriter } from '@/lib/data/profile.gate';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
@@ -40,7 +40,7 @@ export async function updateItemStores(
   itemId: string
 ): Promise<void> {
   try {
-    const actor = await authedWriter('member');
+    const actor = await authedWriter(ADMIN_OPTIONAL);
     if ('error' in actor) {
       throw new Error(actor.error.error);
     }
@@ -168,7 +168,7 @@ export async function updateItemLists(
   itemId: string
 ): Promise<void> {
   try {
-    const actor = await authedWriter('member');
+    const actor = await authedWriter(ADMIN_OPTIONAL);
     if ('error' in actor) {
       throw new Error(actor.error.error);
     }

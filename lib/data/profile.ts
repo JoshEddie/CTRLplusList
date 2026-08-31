@@ -16,7 +16,7 @@ import { readActiveProfileSelection } from '@/lib/data/profile.cookie';
 import { selfMemberships } from '@/lib/data/profile.identity';
 import { accentPreferences, avatarColumns } from '@/lib/data/profileAvatar';
 import { isFollowing } from '@/lib/data/user';
-import type { ProfileCardView, UserIdentity } from '@/lib/types';
+import type { ProfileCardView, RoleShape, UserIdentity } from '@/lib/types';
 import { VISIBILITY, visibilityDbValues } from '@/lib/visibility';
 import { cacheTags, profileIdentityTags } from '@/lib/cacheTags';
 import { isViewersOwnProfile } from '@/lib/activeProfile';
@@ -408,7 +408,8 @@ export async function getProfileCardsForUser(
     // Owner-only editing makes owned-vs-managed a capability boundary, so the
     // runs sort separately rather than one A-Z pass across both — a different
     // order from the recency one the switching surfaces take.
-    const roleRank = { self: 0, owner: 1, manager: 2 };
+    const roleRank = (role: RoleShape) =>
+      role.isSelf ? 0 : role.admin ? 1 : 2;
     return memberships
       .map((m) => ({
         id: m.id,
@@ -423,7 +424,8 @@ export async function getProfileCardsForUser(
       }))
       .sort(
         (a, b) =>
-          roleRank[a.role] - roleRank[b.role] || a.name.localeCompare(b.name)
+          roleRank(a.role) - roleRank(b.role) ||
+          a.name.localeCompare(b.name)
       );
   } catch (error) {
     console.error('Error fetching profile cards:', error);

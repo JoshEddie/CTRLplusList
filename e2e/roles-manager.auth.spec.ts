@@ -16,24 +16,17 @@ import { pinActingProfile } from './helpers/activeProfile';
 // own `onDragEnd` in `SortItems.test.tsx`, so the manager seat loses no role
 // coverage by leaving the gesture out.
 //
-// Seed baseline: `dev-test-viewer` holds `manager` on `dev-profile-managed`
-// ("Managed Profile") and `owner` on `dev-profile-owned` ("Owned Profile"), so
-// both seats exist without new seed rows.
+// Seed baseline: `dev-test-viewer` holds `manager` on `dev-profile-workshop`
+// ("Workshop Profile") and `owner` on `dev-profile-owned` ("Owned Profile").
 //
-// RESIDUE (contained, documented for future spec authors): the permitted half
-// creates a list and two items on "Managed Profile" and cannot clean them up —
-// list deletion and item deletion are both owner-floor, which is precisely
-// what this spec proves a manager is refused. Two consequences:
-//   * `profile-switch.auth.spec.ts` asserts "Managed Profile" has NO lists.
-//     The suite runs single-worker in filename order, and `roles-manager`
-//     sorts after `profile-switch`, so that assertion still meets an empty
-//     profile. A rename that reorders the two breaks it.
-//   * A write as "Managed Profile" stamps that membership's last-acted-as,
-//     consuming the NULL ordering fixture `profile-switch.auth.spec.ts`
-//     documents. `npm run test:e2e` wipes and reseeds before every run, so the
-//     fixture is restored each time; a bare `npx playwright test` re-run
-//     against the same database is what would see it consumed.
-const MANAGED_PROFILE = 'dev-profile-managed';
+// The manager seat is the Workshop profile rather than "Managed Profile"
+// because this spec writes on it and cannot clean up after itself — list and
+// item deletion are both owner-floor, which is exactly what it proves a manager
+// is refused. "Managed Profile" is simultaneously the never-acted-as ordering
+// fixture and the empty-lists fixture `profile-switch.auth.spec.ts` reads, and
+// a single write as it consumes both. The Workshop seat exists to carry that
+// residue, so no assertion anywhere depends on which file ran first.
+const MANAGER_PROFILE = 'dev-profile-workshop';
 const OWNED_PROFILE = 'dev-profile-owned';
 
 // The item library's only entry door is the URL-entry step, whose manual
@@ -70,7 +63,7 @@ async function createItem(page: Page, name: string): Promise<void> {
   // Acting as a managed profile the deck names the profile on its submit, so
   // the plain "Create Item" toolbar button is not the one to press.
   await page
-    .getByRole('button', { name: 'Create item for Managed Profile' })
+    .getByRole('button', { name: 'Create item for Workshop Profile' })
     .click();
   await expect(page.getByText('Item created successfully')).toBeVisible();
 }
@@ -80,7 +73,7 @@ test('RolesManager_ManagerCreatesItemsAttachesAndArchives_EachStepReflected', as
   context,
   baseURL,
 }) => {
-  await pinActingProfile(context, MANAGED_PROFILE, baseURL!);
+  await pinActingProfile(context, MANAGER_PROFILE, baseURL!);
   await page.route('**/api/product-fetch', (route) =>
     route.fulfill({ json: { ok: false, error: 'fetch_failed' } })
   );
@@ -147,16 +140,22 @@ test('RolesManager_ManagerOpensAListTheyManage_VisibilityPillDisabledAndUnchange
   context,
   baseURL,
 }) => {
-  await pinActingProfile(context, MANAGED_PROFILE, baseURL!);
+  await pinActingProfile(context, MANAGER_PROFILE, baseURL!);
 
-  // The list the permitted half left behind — this spec's own residue is the
-  // fixture, so no seed row is owed for an owner-floor target.
+  // Its own fixture rather than the previous test's residue: creating a list is
+  // a `member`-floor write this seat holds, and a test that reads another
+  // test's leftovers cannot be run or retried alone.
+  const listName = `E2E Visibility List ${Date.now()}`;
   await page.goto('/lists');
-  const listLink = page
-    .getByRole('link', { name: /E2E Manager List/ })
-    .first();
-  await expect(listLink).toBeVisible();
-  await listLink.click();
+  await page.getByRole('button', { name: 'New List' }).first().click();
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill(listName);
+  await page
+    .getByRole('textbox', { name: 'Date', exact: true })
+    .fill('2030-06-01');
+  await page.getByRole('button', { name: 'Create List' }).click();
+  await expect(page).toHaveURL(/\/lists\/[^/]+\/choose-items\?new=1$/);
+  const listId = page.url().match(/\/lists\/([^/]+)\/choose-items/)?.[1];
+  await page.goto(`/lists/${listId}`);
 
   const pill = page.getByRole('button', { name: /Visibility:/ });
   // Disabled, not omitted: the surface states the capability exists.
@@ -182,7 +181,7 @@ test('RolesManager_ManagerOpensTheProfileSpace_SettingsRenderPresentAndDisabled'
 }) => {
   // No pin: a profile's space authorizes on the profile the request *names*,
   // so the manager's view of it is reached without switching to it.
-  await page.goto(`/altvatar/${MANAGED_PROFILE}`);
+  await page.goto(`/altvatar/${MANAGER_PROFILE}`);
 
   // The invite control lives in the identity header, above the tab strip.
   await expect(
@@ -220,9 +219,15 @@ test('RolesOwner_OwnerOpensTheEquivalentSurface_AffordancesOperable', async ({
 
   // The roster's own controls are operable for an owner. Alice holds `manager`
   // on this profile per the seed, so a row other than the viewer's own is there
-  // to carry one.
+  // to carry one. At this viewport they are the row's discrete controls.
   await page.getByRole('tab', { name: 'Permissions' }).click();
-  await page.getByRole('button', { name: 'Alice Example actions' }).click();
+  const aliceRow = page
+    .locator('.member-row')
+    .filter({ hasText: 'Alice Example' });
+  await expect(
+    aliceRow.getByRole('button', { name: 'Remove Alice Example' })
+  ).toBeEnabled();
+  await aliceRow.getByRole('button', { name: 'Change role' }).click();
   await expect(
     page.getByRole('menuitemradio', { name: 'Owner' })
   ).not.toHaveAttribute('aria-disabled', 'true');

@@ -5,7 +5,7 @@ import Empty from '@/app/ui/components/Empty';
 import { SWITCH_PROFILE_ACTION } from '@/lib/activeProfile';
 import Header from '@/app/ui/components/Header';
 import { HERO_TOOLBAR_SLOT_ID } from '@/app/(main)/lists/ui/components/ListHeroSurface';
-import { ItemDisplay, ListTable } from '@/lib/types';
+import { ProfileMembershipView, ItemDisplay, ListTable } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { FaPlus } from 'react-icons/fa';
@@ -15,7 +15,7 @@ import ItemsBrowser from './ItemsBrowser';
 interface ItemsPageProps {
   items: ItemDisplay[];
   archivedItems?: ItemDisplay[];
-  profile_id?: string;
+  actor?: ProfileMembershipView;
   user_name?: string | null;
   lists?: ListTable[];
   initialPageSize?: number;
@@ -30,7 +30,7 @@ type Tab = 'active' | 'archived';
 export default function ItemsPage({
   items,
   archivedItems = [],
-  profile_id,
+  actor,
   user_name,
   lists,
   initialPageSize,
@@ -115,7 +115,7 @@ export default function ItemsPage({
           items={source}
           mode="items"
           initialPageSize={initialPageSize}
-          profile_id={profile_id}
+          actor={actor}
           user_name={user_name}
           showArchiveAction
           archivedView={tab === 'archived'}

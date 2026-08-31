@@ -4,27 +4,37 @@
  * elements that carry no ARIA role; container.querySelector is the only way to
  * assert them. Interactive affordances are still queried by role / accessible
  * name. */
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { authedIdentity } from '@/lib/data/user.session';
+import { makeIdentity, makeProfile } from '@/test/helpers/profile';
 import ListDetails from '../ListDetails';
 import { makeList, type TestList } from './test-helpers';
 
 // Out-of-carve-out collaborators stubbed to inert nodes (§3.1). ShareButton
 // and EditListAction are real (in carve-out, §3.2).
 vi.mock('../VisibilityPicker', () => ({
-  default: () => <div data-testid="visibility-picker-stub" />,
+  default: (props: { disabled?: boolean }) => (
+    <div
+      data-testid="visibility-picker-stub"
+      data-disabled={props.disabled || undefined}
+    />
+  ),
 }));
 vi.mock('../ListActionsMenu', () => ({
   default: (props: {
     spoilerHref?: string;
     previewHref?: string;
     exitPreviewHref?: string;
+    disabled?: boolean;
   }) => (
     <div
       data-testid="actions-menu-stub"
       data-spoiler-href={props.spoilerHref}
       data-preview-href={props.previewHref}
       data-exit-href={props.exitPreviewHref}
+      data-disabled={props.disabled || undefined}
     />
   ),
 }));
@@ -67,6 +77,17 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 vi.mock('@/lib/data/list.actions', () => ({ setListVisibility: vi.fn() }));
+vi.mock('@/lib/data/user.session', () => ({ authedIdentity: vi.fn() }));
+
+beforeEach(() => {
+  vi.mocked(authedIdentity).mockResolvedValue(
+    makeIdentity(
+      'owner-1',
+      makeProfile('owner-profile-1'),
+      makeProfile('owner-profile-1', 'Olivia Owner', ROLES.owner)
+    )
+  );
+});
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -503,6 +524,50 @@ describe('ListDetails', () => {
           ).toBe(`4 items · updated ${expected}`);
         }
       );
+    });
+  });
+
+  describe('Manager', () => {
+    beforeEach(() => {
+      vi.mocked(authedIdentity).mockResolvedValue(
+        makeIdentity(
+          'mgr-1',
+          makeProfile('mgr-self'),
+          makeProfile('owner-profile-1', 'Olivia Owner', ROLES.manager)
+        )
+      );
+    });
+
+    it('Manager_VisibilityPickerRendersDisabled', async () => {
+      const { identity } = await renderHero({ list: sharedOwnerList() });
+      const picker = identity.querySelector(
+        '[data-testid="visibility-picker-stub"]'
+      ) as HTMLElement;
+      expect(picker).toHaveAttribute('data-disabled', 'true');
+    });
+
+    it('Manager_EditListDeleteDisabled', async () => {
+      const { controls } = await renderHero({ list: sharedOwnerList() });
+      const editBtn = within(controls).getByRole('button', {
+        name: 'Edit list',
+      });
+      expect(editBtn).toBeInTheDocument();
+    });
+
+    it('Manager_ActionsMenuDisabled', async () => {
+      const { controls } = await renderHero({ list: sharedOwnerList() });
+      const menu = controls.querySelector(
+        '[data-testid="actions-menu-stub"]'
+      ) as HTMLElement;
+      expect(menu).toHaveAttribute('data-disabled', 'true');
+    });
+
+    it('Manager_CollapsedKebabDisabled', async () => {
+      const { container } = await renderHero({ list: sharedOwnerList() });
+      const kebab = container.querySelector(
+        '[data-testid="collapsed-kebab"] [data-testid="actions-menu-stub"]'
+      ) as HTMLElement;
+      expect(kebab).toHaveAttribute('data-disabled', 'true');
     });
   });
 });

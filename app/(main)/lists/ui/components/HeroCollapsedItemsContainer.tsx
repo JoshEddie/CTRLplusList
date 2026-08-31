@@ -18,14 +18,20 @@ import {
 export async function HeroCollapsedOwnerItems({
   list,
   visibility,
+  disabled,
 }: {
   list: ListTable;
   visibility: ListVisibility;
+  disabled: boolean;
 }) {
   return (
     <>
       <ShareMenuItem list={list} />
-      <VisibilityMenuItems listId={list.id} initialVisibility={visibility} />
+      <VisibilityMenuItems
+        listId={list.id}
+        initialVisibility={visibility}
+        disabled={disabled}
+      />
     </>
   );
 }

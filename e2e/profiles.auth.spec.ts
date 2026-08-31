@@ -11,8 +11,10 @@ import { cssRgb } from '../test/helpers/contrast';
 //
 // Seed baseline: `dev-test-viewer` holds `self` on `self-dev-test-viewer`
 // ("Test Viewer"), `owner` on `dev-profile-owned` ("Owned Profile"), and
-// `manager` on `dev-profile-managed` ("Managed Profile") — all three roles, and
-// the switchable set the profile-switch flow drives.
+// `manager` on both `dev-profile-managed` ("Managed Profile") and
+// `dev-profile-workshop` ("Workshop Profile") — all three roles across four
+// memberships, so four cards render here and the profile-switch flow drives
+// the same switchable set.
 //
 // RESIDUE (documented for future spec authors): the creation test inserts a
 // managed profile plus its owner membership and accent row, the edit test

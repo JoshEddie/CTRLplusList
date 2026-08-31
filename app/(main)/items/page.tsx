@@ -41,12 +41,14 @@ export default async function Home({
 
   const firstLastInitial = viewerDisplayName(identity.selfProfile.name);
 
+  const actor = identity.activeProfile;
+
   return (
     <main className="container container--items-library">
       <ItemsPage
         items={activeItems as ItemDisplay[]}
         archivedItems={archivedItems as ItemDisplay[]}
-        profile_id={identity.activeProfile.id}
+        actor={actor}
         user_name={firstLastInitial}
         lists={lists}
         initialPageSize={initialPageSize}

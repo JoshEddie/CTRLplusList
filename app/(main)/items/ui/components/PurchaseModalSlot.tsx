@@ -1,4 +1,4 @@
-import { ItemDisplay, PurchaseView } from '@/lib/types';
+import { ProfileMembershipView, ItemDisplay, PurchaseView } from '@/lib/types';
 import ClaimsList from './purchasemodal/ClaimsList';
 import Modal from './purchasemodal/Modal';
 import ModalStoreRow from './purchasemodal/ModalStoreRow';
@@ -11,7 +11,7 @@ export default function PurchaseModalSlot({
   view,
   claims,
   viewerIsPurchaser,
-  profile_id,
+  actor,
   isOwner,
   showSpoilers,
   ownerCanClaim,
@@ -27,7 +27,7 @@ export default function PurchaseModalSlot({
   /** Every sanitized claim on the item — the manage view lists them all, removal gated per row. */
   claims: PurchaseView[];
   viewerIsPurchaser: boolean;
-  profile_id?: string;
+  actor?: ProfileMembershipView;
   isOwner: boolean;
   showSpoilers: boolean;
   ownerCanClaim: boolean;
@@ -45,6 +45,8 @@ export default function PurchaseModalSlot({
         <div className="claim-modal">
           <PurchaseModalHeader item={item} />
           <ModalStoreRow store={item.store} />
+          {/* The viewer's own claims and the ones they asserted — removing
+              either compares the self-profile and takes no floor. */}
           <ClaimsList
             claims={claims}
             canRemove={(claim) => claim.by === 'self' || claim.claimedByViewer}
@@ -57,7 +59,7 @@ export default function PurchaseModalSlot({
   return (
     <Modal onClose={onClose}>
       <PurchaseFlowContainer
-        profile_id={profile_id}
+        actor={actor}
         isOwner={isOwner}
         showSpoilers={showSpoilers}
         ownerCanClaim={ownerCanClaim}

@@ -1,11 +1,21 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mockNextHeaders } from '@/test/helpers/next-headers';
+import {
+  clearTestCookies,
+  mockNextHeaders,
+  setTestCookie,
+} from '@/test/helpers/next-headers';
 
-import { lists } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { list_items, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedManagedProfile,
+  seedMembership,
+  seedUsers,
+} from '@/test/helpers/seedFollowGraph';
+import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
 
 import {
   contentTagCalls,
@@ -71,6 +81,7 @@ beforeEach(async () => {
   vi.restoreAllMocks();
   await resetDb(db);
   await seedUsers(db, [OWNER, OTHER]);
+  clearTestCookies();
   updateTag.mockClear();
   asOwner();
 });
@@ -169,6 +180,27 @@ describe('updateItemLists', () => {
         'Failed to update item lists.'
       );
     });
+  });
+
+  it('ManagerChangesAnItemsLists_Succeeds-MembershipWritten', async () => {
+    // Association writes take the member floor, like every other content
+    // write: pinned so narrowing this call site to `owner` cannot pass.
+    const MANAGED = 'kiddo';
+    await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
+    await seedMembership(db, {
+      user_id: OWNER.id,
+      profile_id: MANAGED,
+      role: 'manager',
+    });
+    setTestCookie(ACTIVE_PROFILE_COOKIE, MANAGED);
+    await seedItem(db, { id: 'I', user_id: OWNER.id, profile_id: MANAGED });
+    await seedList(db, { id: 'A', user_id: OWNER.id, profile_id: MANAGED });
+
+    await associations.updateItemLists(['A'], 'I');
+
+    expect(
+      await db.select().from(list_items).where(eq(list_items.list_id, 'A'))
+    ).toHaveLength(1);
   });
 
   describe('UpdateRecency', () => {

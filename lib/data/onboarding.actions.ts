@@ -49,7 +49,7 @@ export async function completeOnboarding(
     const { name, accent, altvatar } = parsed.data;
 
     const memberships = await getMembershipsForUser(userId);
-    const existing = memberships.find((m) => m.role === 'self');
+    const existing = memberships.find((m) => m.role.isSelf);
 
     // An account that already holds a self-profile is renamed rather than
     // given a second one — the sentinel a backfill left is retired here, one
@@ -69,7 +69,7 @@ export async function completeOnboarding(
       if (!minted) {
         updateTags(cacheTags.profilesOfUser(userId));
         const raced = (await getMembershipsForUser(userId)).find(
-          (m) => m.role === 'self'
+          (m) => m.role.isSelf
         );
         if (!raced) return UNAUTHORIZED_RESPONSE;
         profileId = raced.id;

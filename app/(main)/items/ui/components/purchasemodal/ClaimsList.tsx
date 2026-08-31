@@ -34,10 +34,16 @@ function rowMeta(claim: PurchaseView): string | null {
 export default function ClaimsList({
   claims,
   canRemove,
+  removalDisabled = false,
   onRemoveClaim,
 }: {
   claims: PurchaseView[];
   canRemove: (claim: PurchaseView) => boolean;
+  // Which removal a row offers depends on who is listed: the owner's list is
+  // master unclaim and takes the owner floor, the manage view is the viewer's
+  // own claims and takes none. The caller knows which it opened, so the floor
+  // arrives decided rather than being read here.
+  removalDisabled?: boolean;
   onRemoveClaim: (claim: PurchaseView) => void;
 }) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
@@ -71,6 +77,7 @@ export default function ClaimsList({
               <Button
                 variant="danger"
                 size="sm"
+                disabled={removalDisabled}
                 onClick={() => onRemoveClaim(claim)}
                 aria-label={
                   claim.by === 'self'

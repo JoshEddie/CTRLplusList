@@ -40,9 +40,9 @@ export default async function AltvatarSpacePage({
   // Only for a viewer who can act on it. A `manager`'s submit control is
   // disabled, so rolling for them would paint the header with an identity
   // nobody chose and nobody can save; they see what the profile actually holds.
-  const isOwner = profile.role !== 'manager';
+  const isOwner = profile.role.admin;
   const readOnly = !isOwner;
-  const managed = profile.role !== 'self';
+  const managed = !profile.role.isSelf;
   const draft = readOnly
     ? null
     : {

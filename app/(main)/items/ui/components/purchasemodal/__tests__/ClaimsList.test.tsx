@@ -86,4 +86,37 @@ describe('ClaimsList', () => {
     expect(screen.getAllByTestId('altvatar-art')).toHaveLength(1);
     expect(screen.getByText('A')).toBeInTheDocument();
   });
+
+  /**
+   * Pins the disabled-not-absent half of `profile-permissions` — whichever
+   * floor the caller applied, a refused removal renders present and inert
+   * rather than being dropped from the row.
+   */
+  describe('RemovalDisabled', () => {
+    const renderRemovable = (removalDisabled: boolean) =>
+      render(
+        <ClaimsList
+          claims={[claim({ firstName: 'Grace' })]}
+          canRemove={() => true}
+          removalDisabled={removalDisabled}
+          onRemoveClaim={vi.fn()}
+        />
+      );
+
+    it('Set_RendersTheRemovalControlPresentAndDisabled', () => {
+      renderRemovable(true);
+
+      expect(
+        screen.getByRole('button', { name: "Remove Grace's claim" })
+      ).toBeDisabled();
+    });
+
+    it('Unset_RendersTheRemovalControlOperable', () => {
+      renderRemovable(false);
+
+      expect(
+        screen.getByRole('button', { name: "Remove Grace's claim" })
+      ).toBeEnabled();
+    });
+  });
 });

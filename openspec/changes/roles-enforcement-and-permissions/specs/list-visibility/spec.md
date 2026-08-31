@@ -8,7 +8,7 @@ Authorization SHALL require both that the list's owning profile equals the profi
 
 The row descriptions SHALL be: **Hidden** — "Only you can see this list"; **Private** — "Only people with the link can view"; **Shared** — "Anyone with the link — plus your followers see it in their feed". The Shared description SHALL frame follower visibility as an addition to link access, not a restriction, so it cannot be read as followers-only.
 
-The trigger pill SHALL display the currently-selected row's label verbatim (no qualifier suffix) alongside an icon (`🔒` for `'private'`, `🔗` for `'unlisted'`, `👥` for `'public'`). The pill's `aria-label` SHALL include the row's description for assistive-technology disambiguation. For a viewer whose role on the owning profile is `manager`, the pill SHALL render disabled rather than be omitted, per `profiles-surface`'s treatment of a forbidden affordance.
+The trigger pill SHALL display the currently-selected row's label verbatim (no qualifier suffix) alongside an icon (`🔒` for `'private'`, `🔗` for `'unlisted'`, `👥` for `'public'`). The pill's `aria-label` SHALL include the row's description for assistive-technology disambiguation. For a viewer whose role on the owning profile is `manager`, the pill SHALL render disabled rather than be omitted, per `profiles-surface`'s treatment of a forbidden affordance. The same holds for the collapsed hero's kebab, which offers the identical three rows against the identical call: both shapes of the control SHALL be disabled together, per `profile-permissions`.
 
 #### Scenario: Owner sees three radio menu items
 
@@ -59,3 +59,8 @@ The trigger pill SHALL display the currently-selected row's label verbatim (no q
 
 - **WHEN** a viewer holding `manager` on the owning profile opens a list of that profile
 - **THEN** the visibility pill renders in a disabled state rather than being omitted
+
+#### Scenario: A manager sees the collapsed hero's rows disabled too
+
+- **WHEN** a viewer holding `manager` on the owning profile opens the collapsed hero's kebab
+- **THEN** each of the three visibility rows renders disabled and activating one issues no write

@@ -35,12 +35,16 @@ const ItemFormContainer = ({
   item,
   returnTo,
   actingAs,
+  deleteDisabled = false,
   onClose,
   onSuccess,
 }: {
   lists: ListTable[];
   item?: EditItem;
   returnTo?: string;
+  // Deleting the item takes the owner floor. Only the editing shape offers
+  // the control, so the creating call sites pass nothing.
+  deleteDisabled?: boolean;
   // The active profile's name, supplied only for a viewer who runs more than
   // one. The new item is owned by whichever profile the request acts as, so
   // the shell's heading and the submit control both say which.
@@ -249,6 +253,7 @@ const ItemFormContainer = ({
                   returnTo={returnTo}
                   onDeleted={onClose}
                   archived={item.archived_at != null}
+                  disabled={deleteDisabled}
                 />
               ) : undefined
             }

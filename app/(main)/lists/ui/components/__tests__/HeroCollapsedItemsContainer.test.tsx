@@ -113,7 +113,11 @@ const radioLabels = () =>
 describe('HeroCollapsedOwnerItems', () => {
   it('Default_RendersShareThenVisibilitySeededFromProp-NoBookmarkOrFollow', async () => {
     render(
-      await HeroCollapsedOwnerItems({ list, visibility: VISIBILITY.LINK })
+      await HeroCollapsedOwnerItems({
+        list,
+        visibility: VISIBILITY.LINK,
+        disabled: false,
+      })
     );
     expect(
       screen.getByRole('menuitem', { name: 'Share List' })
@@ -131,7 +135,11 @@ describe('HeroCollapsedOwnerItems', () => {
   });
 
   it('Default_PerformsNoDalReads', async () => {
-    await HeroCollapsedOwnerItems({ list, visibility: VISIBILITY.OWNER });
+    await HeroCollapsedOwnerItems({
+      list,
+      visibility: VISIBILITY.OWNER,
+      disabled: false,
+    });
     expect(getBookmarkStatus).not.toHaveBeenCalled();
     expect(isFollowing).not.toHaveBeenCalled();
     expect(hasBlocked).not.toHaveBeenCalled();

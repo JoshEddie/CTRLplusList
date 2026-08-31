@@ -2,7 +2,7 @@
 
 import { updatePriority } from '@/lib/data/listItems.actions';
 import { LinkButton } from '@/app/ui/components/button';
-import { ItemDisplay } from '@/lib/types';
+import { ProfileMembershipView, ItemDisplay } from '@/lib/types';
 import { MdChecklist } from 'react-icons/md';
 import {
   closestCenter,
@@ -32,7 +32,7 @@ import Item from './Item';
 interface ItemsProps {
   items: ItemDisplay[];
   listId: string;
-  profile_id?: string;
+  actor?: ProfileMembershipView;
   showSpoilers?: boolean;
 }
 
@@ -52,7 +52,7 @@ function EmptyListCTA({ listId }: { listId: string }) {
 export default function SortItems({
   items,
   listId,
-  profile_id,
+  actor,
   showSpoilers,
 }: ItemsProps) {
   const router = useRouter();
@@ -163,7 +163,7 @@ export default function SortItems({
                 id={item.id}
                 item={item}
                 listId={listId}
-                profile_id={profile_id}
+                actor={actor}
                 showSpoilers={showSpoilers}
                 isAnyDragging={isDragging}
               />
@@ -177,7 +177,7 @@ export default function SortItems({
           <Item
             item={itemsState[activeIndex]}
             className="item-drag-overlay"
-            profile_id={profile_id}
+            actor={actor}
           />
         ) : null}
       </DragOverlay>
@@ -190,7 +190,7 @@ export function SortableItem({
   item,
   className,
   listId,
-  profile_id,
+  actor,
   showSpoilers,
   isAnyDragging = false,
 }: {
@@ -198,7 +198,7 @@ export function SortableItem({
   item: ItemDisplay;
   className?: string;
   listId?: string;
-  profile_id?: string;
+  actor?: ProfileMembershipView;
   showSpoilers?: boolean;
   isAnyDragging?: boolean;
 }) {
@@ -244,7 +244,7 @@ export function SortableItem({
       <Item
         item={item}
         listId={listId}
-        profile_id={profile_id}
+        actor={actor}
         showSpoilers={showSpoilers}
       />
     </div>

@@ -10,6 +10,7 @@ import {
   user_follows,
   users,
 } from '../../db/schema';
+import { ROLES } from '@/lib/data/profile.roles';
 import type { bootPglite } from './db';
 import { selfProfileOf } from './profile';
 
@@ -49,7 +50,7 @@ export async function seedUsers(db: TestDb, ids: SeedUser[]): Promise<void> {
     ids.map((u) => ({
       user_id: u.id,
       profile_id: selfProfileOf(u.id),
-      role: 'self',
+      role: ROLES.self.value,
     }))
   );
 }
@@ -71,14 +72,14 @@ export async function seedMembership(
   membership: {
     user_id: string;
     profile_id: string;
-    role?: 'self' | 'owner' | 'manager';
+    role?: string;
     last_active_at?: Date | null;
   }
 ): Promise<void> {
   await db.insert(profile_members).values({
     user_id: membership.user_id,
     profile_id: membership.profile_id,
-    role: membership.role ?? 'owner',
+    role: membership.role ?? ROLES.owner.value,
     last_active_at: membership.last_active_at ?? null,
   });
 }

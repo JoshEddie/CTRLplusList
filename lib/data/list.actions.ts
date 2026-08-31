@@ -2,7 +2,11 @@
 
 import { db } from '@/db';
 import { lists } from '@/db/schema';
-import { authedWriter } from '@/lib/data/profile.gate';
+import {
+  ADMIN_REQUIRED,
+  ADMIN_OPTIONAL,
+  authedWriter,
+} from '@/lib/data/profile.gate';
 import { type ActionResponse } from '@/lib/types';
 import {
   VISIBILITY,
@@ -40,7 +44,7 @@ export type ListData = z.infer<typeof ListSchema>;
 
 export async function createList(data: ListData): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter('member');
+    const actor = await authedWriter(ADMIN_OPTIONAL);
     if ('error' in actor) {
       return actor.error;
     }
@@ -89,7 +93,7 @@ export async function updateList(
   data: Partial<ListData>
 ): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter('member');
+    const actor = await authedWriter(ADMIN_OPTIONAL);
     if ('error' in actor) {
       return actor.error;
     }
@@ -196,7 +200,7 @@ export async function updateList(
 
 export async function deleteList(id: string): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter('owner');
+    const actor = await authedWriter(ADMIN_REQUIRED);
     if ('error' in actor) {
       return actor.error;
     }
@@ -242,7 +246,7 @@ export async function setListVisibility(
   visibility: ListVisibility
 ): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter('owner');
+    const actor = await authedWriter(ADMIN_REQUIRED);
     if ('error' in actor) {
       return actor.error;
     }

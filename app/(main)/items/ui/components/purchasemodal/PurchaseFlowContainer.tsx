@@ -7,7 +7,7 @@ import {
   signInUser,
   type ClaimPicker,
 } from '@/lib/data/user.actions';
-import { ItemDisplay, PurchaseView } from '@/lib/types';
+import { ProfileMembershipView, ItemDisplay, PurchaseView } from '@/lib/types';
 import { useCallback, useEffect, useState } from 'react';
 import { firstToken } from '../utils';
 import ClaimDisclosure, {
@@ -60,6 +60,7 @@ function AuthedClaimSection({
   isOwner,
   ownerCanClaim,
   ownerClaims,
+  masterUnclaimDisabled,
   viewerIsPurchaser,
   circleLabel,
   pickerStatus,
@@ -73,6 +74,7 @@ function AuthedClaimSection({
   isOwner: boolean;
   ownerCanClaim: boolean;
   ownerClaims: PurchaseView[];
+  masterUnclaimDisabled: boolean;
   viewerIsPurchaser?: boolean;
   circleLabel: string;
   pickerStatus: PickerStatus;
@@ -89,6 +91,7 @@ function AuthedClaimSection({
         <ClaimsList
           claims={ownerClaims}
           canRemove={() => true}
+          removalDisabled={masterUnclaimDisabled}
           onRemoveClaim={onRemoveClaim}
         />
       )}
@@ -121,7 +124,7 @@ function AuthedClaimSection({
 }
 
 export default function PurchaseFlowContainer({
-  profile_id,
+  actor,
   isOwner,
   showSpoilers,
   ownerCanClaim,
@@ -133,7 +136,7 @@ export default function PurchaseFlowContainer({
   onGuestClaim,
   onRemoveClaim,
 }: {
-  profile_id?: string | null;
+  actor?: ProfileMembershipView;
   isOwner: boolean;
   showSpoilers: boolean;
   ownerCanClaim: boolean;
@@ -152,7 +155,7 @@ export default function PurchaseFlowContainer({
   const [fetchAttempt, setFetchAttempt] = useState(0);
 
   // Spoilers-off owners get no claim UI and consume no claim data.
-  const showClaimSection = !!profile_id && (!isOwner || showSpoilers);
+  const showClaimSection = !!actor && (!isOwner || showSpoilers);
   const itemId = item.id;
 
   // Each (item, attempt) pair is a fresh fetch; reset to loading at render
@@ -193,7 +196,7 @@ export default function PurchaseFlowContainer({
       <PurchaseModalHeader item={item} />
       <ModalStoreRow store={item.store} />
 
-      {!profile_id ? (
+      {!actor ? (
         <GuestClaimSection onGuestClaim={onGuestClaim} />
       ) : !showClaimSection ? (
         <p className="owner-list-label">Your list</p>
@@ -202,6 +205,7 @@ export default function PurchaseFlowContainer({
           isOwner={isOwner}
           ownerCanClaim={ownerCanClaim}
           ownerClaims={ownerClaims}
+          masterUnclaimDisabled={!actor.role.admin}
           viewerIsPurchaser={viewerIsPurchaser}
           circleLabel={circleLabel}
           pickerStatus={pickerStatus}

@@ -15,6 +15,14 @@ import { nanoid } from 'nanoid';
 import type { AdapterAccountType } from 'next-auth/adapters';
 
 import type { AltvatarOptions } from '@/lib/altvatar/types';
+import { ROLES, isGrantable } from '@/lib/data/profile.roles';
+import type { RoleShape } from '@/lib/types';
+
+// The role vocabulary reaches DDL as literal text: a bound parameter in a CHECK
+// or a partial index would be rendered as a placeholder by the generator rather
+// than baked into the constraint.
+const quoted = (role: RoleShape) => `'${role.value}'`;
+const roleList = (roles: readonly RoleShape[]) => roles.map(quoted).join(', ');
 
 export const users = pgTable('user', {
   id: text('id')
@@ -248,23 +256,28 @@ export const profile_members = pgTable(
     primaryKey({ columns: [table.user_id, table.profile_id] }),
     check(
       'profile_members_role_valid',
-      sql`${table.role} IN ('self', 'owner', 'manager')`
+      sql`${table.role} IN (${sql.raw(roleList(Object.values(ROLES)))})`
     ),
     // Both directions are load-bearing: the account side is "one self-profile
     // per account", the profile side is what makes a claim asserter resolve
     // back to exactly one human.
     uniqueIndex(SELF_MEMBERSHIP_PER_USER_IDX)
       .on(table.user_id)
-      .where(sql`${table.role} = 'self'`),
+      .where(sql`${table.role} = ${sql.raw(quoted(ROLES.self))}`),
     uniqueIndex(SELF_MEMBERSHIP_PER_PROFILE_IDX)
       .on(table.profile_id)
-      .where(sql`${table.role} = 'self'`),
+      .where(sql`${table.role} = ${sql.raw(quoted(ROLES.self))}`),
   ]
 );
 
 // A single-use capability grant: whoever holds the token may redeem it once,
 // and `redeemed_at` is the marker that says it is spent. No index beyond the
-// primary key — every read of this table is by token.
+// primary key: redemption reads by token, and the roster's `profile_id`
+// predicate scans the whole table — every profile's invites, spent ones
+// included, since redemption stamps rather than deletes. The scan is accepted
+// at this table's size, not argued away; an index on `profile_id` is the
+// remedy when the roster read starts costing, and it is a migration rather
+// than a change of shape.
 export const profile_invites = pgTable(
   'profile_invites',
   {
@@ -287,7 +300,9 @@ export const profile_invites = pgTable(
     // membership is minted by onboarding alone.
     check(
       'profile_invites_role_valid',
-      sql`${table.role} IN ('owner', 'manager')`
+      sql`${table.role} IN (${sql.raw(
+        roleList(Object.values(ROLES).filter(isGrantable))
+      )})`
     ),
   ]
 );

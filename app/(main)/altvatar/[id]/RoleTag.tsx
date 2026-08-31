@@ -1,14 +1,9 @@
-import type { MemberRole } from '@/lib/data/profile.members.actions';
+import type { RoleShape } from '@/lib/types';
 
-export const ROLE_LABELS: Record<MemberRole, string> = {
-  owner: 'Owner',
-  manager: 'Manager',
-};
-
-export function RoleTag({ role }: { role: string }) {
+export function RoleTag({ role }: { role: RoleShape }) {
   return (
-    <span className={`member-role-tag member-role-tag--${role}`}>
-      {ROLE_LABELS[role as MemberRole] ?? role}
+    <span className={`member-role-tag member-role-tag--${role.value}`}>
+      {role.label}
     </span>
   );
 }

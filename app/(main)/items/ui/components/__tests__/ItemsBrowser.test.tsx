@@ -84,7 +84,7 @@ function renderBrowser(
       items={items}
       mode={overrides.mode ?? 'list'}
       initialPageSize={overrides.initialPageSize}
-      profile_id={overrides.profile_id}
+      actor={overrides.actor}
     />
   );
 }

@@ -123,11 +123,11 @@ The sibling-distinctness rule does not reach the switch group, and SHALL NOT be 
 - **WHEN** `ListActionsMenu.tsx` is rendered
 - **THEN** its dropdown is a `<Menu>` containing `<MenuLinkItem>` (Choose items, Show/Hide spoilers, Preview/Exit preview) and `<MenuItem>` (Edit list, Delete list — with `tone="danger"` on Delete)
 
-#### Scenario: UserAvatarPopover enumerates Profiles, Connections, then Sign out
+#### Scenario: UserAvatarPopover enumerates Altvatars, Connections, then Sign out
 
 - **WHEN** `UserAvatarPopover.tsx` is rendered
-- **THEN** its popover is a `<Menu>` containing the signed-in user header (page-scoped, not a MenuItem), then a `<MenuItem>` per offered switch row (the group governed by `app-frame`, absent for a viewer who runs only their self-profile), then `<MenuLinkItem>` (Profiles, then Connections — in that order) and `<MenuItem>` (Sign out — wired to the existing sign-out server action)
-- **AND** the Profiles row links to `/profiles`, carries an icon distinct from the Connections row's, and carries the viewer's profile count per `app-frame` whenever it is more than one
+- **THEN** its popover is a `<Menu>` containing the signed-in user header (page-scoped, not a MenuItem), then a `<MenuItem>` per offered switch row (the group governed by `app-frame`, absent for a viewer who runs only their self-profile), then `<MenuLinkItem>` (Altvatars, then Connections — in that order) and `<MenuItem>` (Sign out — wired to the existing sign-out server action)
+- **AND** the Altvatars row links to `/altvatar`, carries an icon distinct from the Connections row's, and carries the viewer's profile count per `app-frame` whenever it is more than one
 
 #### Scenario: A switch row is led by the profile's avatar, not an icon
 

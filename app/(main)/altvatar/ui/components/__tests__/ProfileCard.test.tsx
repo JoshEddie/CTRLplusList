@@ -10,6 +10,7 @@
  * card SHALL mark the active profile" and "An absent tagline SHALL reserve
  * its line".
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -41,7 +42,7 @@ function makeCard(overrides: Partial<ProfileCardView> = {}): ProfileCardView {
     id: 'p1',
     name: 'Ada Lovelace',
     tagline: null,
-    role: 'owner',
+    role: ROLES.owner,
     listCount: 3,
     itemCount: 3,
     accent: ACCENT,
@@ -75,17 +76,13 @@ describe('ProfileCard', () => {
   });
 
   describe('RoleLabel', () => {
-    it.each([
-      ['self', 'You'],
-      ['owner', 'Owner'],
-      ['manager', 'Manager'],
-    ] as const)('Role%s_RendersLabel%s', (role, label) => {
+    it.each(Object.values(ROLES))('AnyRole_RendersItsLabel', (role) => {
       renderCard({ role });
-      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(screen.getByText(role.label)).toBeInTheDocument();
     });
 
     it('RoleOwner_RendersLabelAsNonInteractiveText', () => {
-      renderCard({ role: 'owner' });
+      renderCard({ role: ROLES.owner });
       const label = screen.getByText('Owner');
       expect(label.tagName).toBe('SPAN');
       expect(label).not.toHaveAttribute('href');
@@ -201,8 +198,8 @@ describe('ProfileCard', () => {
       expect(container.querySelector('.profile-card')).toHaveClass('is-active');
     });
 
-    it.each(['self', 'owner', 'manager'] as const)(
-      'Role%sButNotActive_LeavesTheCardUnmarked',
+    it.each(Object.values(ROLES))(
+      'AnyRoleButNotActive_LeavesTheCardUnmarked',
       (role) => {
         const { container } = renderCard({ role });
         expect(screen.queryByText('Active Altvatar')).not.toBeInTheDocument();

@@ -4,6 +4,7 @@
  * Altvatar suggestion) — and `active-profile` — "A switch that would discard
  * unsaved edits SHALL be confirmed first", from the form's side of that wiring.
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -34,7 +35,7 @@ function makeProfile(
     id: 'p1',
     name: 'Kiddo',
     tagline: null,
-    role: 'owner',
+    role: ROLES.owner,
     listCount: 0,
     itemCount: 0,
     accent: null,
@@ -237,7 +238,7 @@ describe('ProfileSettingsForm', () => {
 
   describe('Owner', () => {
     it('RoleOwner_RendersEditableFieldsAndSubmitControl', () => {
-      renderForm(makeProfile({ role: 'owner' }));
+      renderForm(makeProfile({ role: ROLES.owner }));
       expect(screen.getByLabelText(/name/i)).toBeEnabled();
       expect(screen.getByLabelText(/tagline/i)).toBeEnabled();
       expect(editAltvatar()).toBeEnabled();
@@ -245,7 +246,7 @@ describe('ProfileSettingsForm', () => {
     });
 
     it('ClosedForm_CarriesNoAccentFieldAmongItsInputs', () => {
-      renderForm(makeProfile({ role: 'owner' }));
+      renderForm(makeProfile({ role: ROLES.owner }));
       // Accent and face are one identity edited in one place. The picker
       // exists, but only inside the customizer — never as a field of the form.
       expect(screen.queryByRole('group', { name: /accent/i })).toBeNull();
@@ -253,18 +254,18 @@ describe('ProfileSettingsForm', () => {
     });
 
     it('UneditedFields_DisablesTheSubmitControl', () => {
-      renderForm(makeProfile({ role: 'owner' }));
+      renderForm(makeProfile({ role: ROLES.owner }));
       expect(save()).toBeDisabled();
     });
 
     it('EditedField_EnablesTheSubmitControl', async () => {
-      renderForm(makeProfile({ role: 'owner' }));
+      renderForm(makeProfile({ role: ROLES.owner }));
       await userEvent.type(screen.getByLabelText(/tagline/i), 'Edited');
       expect(save()).toBeEnabled();
     });
 
     it('FieldEditReverted_DisablesTheSubmitControlAgain', async () => {
-      renderForm(makeProfile({ role: 'owner', name: 'Kiddo' }));
+      renderForm(makeProfile({ role: ROLES.owner, name: 'Kiddo' }));
       const name = screen.getByLabelText(/name/i);
       await userEvent.type(name, '!');
       expect(save()).toBeEnabled();
@@ -275,7 +276,7 @@ describe('ProfileSettingsForm', () => {
 
     it('AltvatarConfirmedWithNoFieldEdit_LeavesTheSubmitControlDisabled', async () => {
       const [, second] = ACCENT_NAMES;
-      renderForm(makeProfile({ role: 'owner' }));
+      renderForm(makeProfile({ role: ROLES.owner }));
       await userEvent.click(editAltvatar()!);
       await userEvent.click(
         screen.getByRole('radio', { name: new RegExp(second, 'i') })
@@ -292,7 +293,7 @@ describe('ProfileSettingsForm', () => {
     });
 
     it('SubmitEditedFields_SendsNameAndTaglineAlone', async () => {
-      renderForm(makeProfile({ role: 'owner' }));
+      renderForm(makeProfile({ role: ROLES.owner }));
       await userEvent.clear(screen.getByLabelText(/name/i));
       await userEvent.type(screen.getByLabelText(/name/i), 'Renamed');
       await userEvent.type(
@@ -313,7 +314,7 @@ describe('ProfileSettingsForm', () => {
   describe('Manager', () => {
     // A viewer who cannot save is shown what the profile holds, not a roll.
     const renderAsManager = () =>
-      renderForm(makeProfile({ role: 'manager' }), null, true);
+      renderForm(makeProfile({ role: ROLES.manager }), null, true);
 
     it('RoleManager_DisablesEveryFieldAndTheAltvatarEdit', () => {
       renderAsManager();
@@ -355,7 +356,7 @@ describe('ProfileSettingsForm', () => {
         success: false,
         message: 'Name is required',
       });
-      renderForm(makeProfile({ role: 'owner' }));
+      renderForm(makeProfile({ role: ROLES.owner }));
       await userEvent.type(screen.getByLabelText(/tagline/i), 'Edited');
       await userEvent.click(save()!);
 
@@ -369,7 +370,7 @@ describe('ProfileSettingsForm', () => {
         message: 'Validation failed',
         errors: { tagline: ['Tagline must be 40 characters or less'] },
       });
-      renderForm(makeProfile({ role: 'owner' }));
+      renderForm(makeProfile({ role: ROLES.owner }));
       await userEvent.type(screen.getByLabelText(/tagline/i), 'Edited');
       await userEvent.click(save()!);
 
@@ -433,6 +434,53 @@ describe('ProfileSettingsForm', () => {
 
       expect(prompt()).not.toBeInTheDocument();
       expect(switchActiveProfile).toHaveBeenCalledWith('p2');
+    });
+  });
+
+  /**
+   * Pins `profiles-surface` — the strip's composition: Settings first, a
+   * Permissions tab only where its panel is supplied, Lists last. The panels
+   * are handed in already rendered, so the ordering is this component's.
+   */
+  describe('TabStrip', () => {
+    const renderTabs = (permissionsPanel?: React.ReactNode) =>
+      renderWithProfileSwitch(
+        <ProfileSettingsForm
+          profile={makeProfile()}
+          draft={makeDraft()}
+          readOnly={false}
+          permissionsPanel={permissionsPanel}
+          listsPanel={<div>lists panel</div>}
+        />
+      );
+
+    const tabLabels = () =>
+      screen.getAllByRole('tab').map((tab) => tab.textContent);
+
+    it('PermissionsPanelSupplied_OrdersSettingsThenPermissionsThenLists', () => {
+      renderTabs(<div>permissions panel</div>);
+
+      expect(tabLabels()).toEqual(['Settings', 'Permissions', 'Lists']);
+    });
+
+    it('NoPermissionsPanel_CarriesSettingsThenListsAndNoPermissionsTab', () => {
+      renderTabs();
+
+      expect(tabLabels()).toEqual(['Settings', 'Lists']);
+    });
+
+    it('Default_SelectsSettingsAndHidesTheListsPanelUntilItsTabIsChosen', async () => {
+      renderTabs(<div>permissions panel</div>);
+
+      expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(screen.getByText('lists panel')).not.toBeVisible();
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Lists' }));
+
+      expect(screen.getByText('lists panel')).toBeVisible();
     });
   });
 });

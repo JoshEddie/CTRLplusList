@@ -119,6 +119,19 @@ describe('signInUser', () => {
     expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
   });
 
+  // URL parsing folds a leading backslash to a slash and strips tab, LF and CR
+  // before it parses, so both of these begin an authority once resolved —
+  // `new URL('/\\evil.test', origin).href` is `https://evil.test/`.
+  it('BackslashAuthority_IsDiscardedRatherThanRedirectedTo', async () => {
+    await signInUser('/\\evil.test/steal');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
+  });
+
+  it('TabHiddenProtocolRelativeUrl_IsDiscardedRatherThanRedirectedTo', async () => {
+    await signInUser('/\t/evil.test/steal');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
+  });
+
   it('FormDataFromABareFormAction_IsNotTreatedAsADestination', async () => {
     await signInUser(new FormData());
     expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);

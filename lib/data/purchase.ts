@@ -1,10 +1,14 @@
 import { db } from '@/db';
 import { purchases, user_blocks, user_follows } from '@/db/schema';
 import { accountsOfProfiles } from '@/lib/data/profile';
-import { meetsFloor } from '@/lib/data/profile.roles';
 import { primaryStore } from '@/lib/storeValidity';
 import { avatarViewOf, withProfileAvatar } from '@/lib/data/profileAvatar';
-import { ActionResponse, PurchaseView, UserIdentity } from '@/lib/types';
+import {
+  ActionResponse,
+  PurchaseView,
+  RoleShape,
+  UserIdentity,
+} from '@/lib/types';
 import { cacheTags, itemRowTags } from '@/lib/cacheTags';
 import { and, eq, or } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
@@ -184,14 +188,15 @@ export function canRemovePurchase(
   itemOwnerProfileId: string | null,
   actor: UserIdentity | null,
   cookiePurchaseIds: ReadonlySet<string>,
-  actorRole: string | null
+  actorRole: RoleShape | null
 ): boolean {
   if (actor) {
     return (
       row.claimed_by_profile_id === actor.selfProfile.id ||
       row.profile_id === actor.selfProfile.id ||
       (itemOwnerProfileId === actor.activeProfile.id &&
-        meetsFloor(actorRole, 'owner'))
+        actorRole !== null &&
+        actorRole.admin)
     );
   }
   if (row.claimed_by_profile_id !== null || row.profile_id !== null)

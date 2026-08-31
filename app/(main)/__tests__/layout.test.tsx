@@ -32,6 +32,10 @@ vi.mock('@/app/ui/components/ProfileSwitchProvider', () => ({
     <>{children}</>
   ),
 }));
+vi.mock('@/lib/data/profile.active', () => ({
+  getMembershipsForUser: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('@/lib/data/user.session', () => ({ authedIdentity: vi.fn() }));
 
 const redirect = vi.hoisted(() => vi.fn());
 vi.mock('next/navigation', () => ({ redirect }));

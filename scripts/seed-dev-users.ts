@@ -42,6 +42,7 @@ import {
   users,
 } from '../db/schema';
 import { seedUserEmail } from '../lib/auth';
+import { ROLES } from '../lib/data/profile.roles';
 import { styleOf } from '../lib/altvatar/registry';
 import { openmojiArtUrl } from '../lib/altvatar/styles/openmoji';
 import { renderAltvatar } from '../lib/altvatar/render';
@@ -137,6 +138,13 @@ const profiledUsers = seedUsers.filter((u) => u.id !== SIGNUP_FIXTURE_ID);
 const OWNED_PROFILE_ID = 'dev-profile-owned';
 const MANAGED_PROFILE_ID = 'dev-profile-managed';
 
+// A third seat, also `manager`, existing only so that e2e has a managed profile
+// it may write on. MANAGED_PROFILE_ID cannot serve: it is simultaneously the
+// never-acted-as ordering fixture and the empty-lists fixture, and both are
+// consumed by the first flow that acts as it — a manager may create lists and
+// items but may delete neither, so nothing it writes can be cleaned up.
+const WORKSHOP_PROFILE_ID = 'dev-profile-workshop';
+
 // Accents and Altvatars for a slice of the roster, so every branch of the
 // avatar disc is on screen at once: art on an accent, initials on an accent,
 // and the unset fallback. `kim` and MANAGED_PROFILE_ID carry neither on
@@ -206,6 +214,8 @@ function seededSelections(style: AltvatarStyle, key: string): Selections {
 const LAST_ACTIVE_AT: Record<string, Date> = {
   [selfProfileOf(VIEWER_ID)]: new Date('2026-08-20T12:00:00Z'),
   [OWNED_PROFILE_ID]: new Date('2026-02-14T09:00:00Z'),
+  // Stamped, so the NULL ordering branch stays a fixture of exactly one row.
+  [WORKSHOP_PROFILE_ID]: new Date('2026-03-01T09:00:00Z'),
 };
 
 type SeedList = {
@@ -621,6 +631,20 @@ const seedLists: SeedList[] = [
     visibility: VISIBILITY.FOLLOWERS,
     itemNames: itemsForList('dev-list-owned-wishlist'),
   },
+  // The manager seat's pre-existing content, owned by the profile's owner: what
+  // makes an owner-floor refusal testable against rows the manager did not
+  // create and cannot delete. Appended last so no earlier list's index-derived
+  // fixtures (quantity rotation, imageless items) shift.
+  {
+    id: 'dev-list-workshop-wishlist',
+    name: 'Workshop Profile Wishlist',
+    subtitle: 'Seeded by the owner',
+    occasion: 'Birthday',
+    user_id: friendId('bob'),
+    profile_id: WORKSHOP_PROFILE_ID,
+    visibility: VISIBILITY.FOLLOWERS,
+    itemNames: itemsForList('dev-list-workshop-wishlist'),
+  },
 ];
 
 type SeedVisit = {
@@ -829,6 +853,7 @@ async function main() {
       })),
       { id: OWNED_PROFILE_ID, name: 'Owned Profile' },
       { id: MANAGED_PROFILE_ID, name: 'Managed Profile' },
+      { id: WORKSHOP_PROFILE_ID, name: 'Workshop Profile' },
     ])
     .onConflictDoNothing();
 
@@ -901,19 +926,19 @@ async function main() {
       ...profiledUsers.map((u) => ({
         user_id: u.id,
         profile_id: selfProfileOf(u.id),
-        role: 'self',
+        role: ROLES.self.value,
         last_active_at: LAST_ACTIVE_AT[selfProfileOf(u.id)] ?? null,
       })),
       {
         user_id: VIEWER_ID,
         profile_id: OWNED_PROFILE_ID,
-        role: 'owner',
+        role: ROLES.owner.value,
         last_active_at: LAST_ACTIVE_AT[OWNED_PROFILE_ID] ?? null,
       },
       {
         user_id: friendId('alice'),
         profile_id: OWNED_PROFILE_ID,
-        role: 'manager',
+        role: ROLES.manager.value,
         last_active_at: null,
       },
       // The viewer as `manager`, never acted as: the third role, and the NULL
@@ -921,19 +946,33 @@ async function main() {
       {
         user_id: VIEWER_ID,
         profile_id: MANAGED_PROFILE_ID,
-        role: 'manager',
+        role: ROLES.manager.value,
         last_active_at: null,
       },
       {
         user_id: friendId('bob'),
         profile_id: MANAGED_PROFILE_ID,
-        role: 'owner',
+        role: ROLES.owner.value,
+        last_active_at: null,
+      },
+      // The manager seat e2e writes on, kept apart from the two fixtures
+      // MANAGED_PROFILE_ID carries.
+      {
+        user_id: VIEWER_ID,
+        profile_id: WORKSHOP_PROFILE_ID,
+        role: ROLES.manager.value,
+        last_active_at: LAST_ACTIVE_AT[WORKSHOP_PROFILE_ID] ?? null,
+      },
+      {
+        user_id: friendId('bob'),
+        profile_id: WORKSHOP_PROFILE_ID,
+        role: ROLES.owner.value,
         last_active_at: null,
       },
     ])
     .onConflictDoNothing();
   console.log(
-    `  preferences: 1 catalog row inserted-if-absent\n  profiles: ${profiledUsers.length} self + 2 managed inserted-if-absent, profile_members: ${profiledUsers.length + 4} inserted-if-absent (existing rows keep their current values)`
+    `  preferences: 1 catalog row inserted-if-absent\n  profiles: ${profiledUsers.length} self + 3 managed inserted-if-absent, profile_members: ${profiledUsers.length + 6} inserted-if-absent (existing rows keep their current values)`
   );
 
   const now = Date.now();

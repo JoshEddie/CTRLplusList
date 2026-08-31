@@ -28,6 +28,7 @@ export default function ListActionsMenu({
   exitPreviewHref,
   isOwner = true,
   prependedItems,
+  disabled,
 }: {
   list: ListTable;
   showSpoilers: boolean;
@@ -37,6 +38,7 @@ export default function ListActionsMenu({
   exitPreviewHref: string;
   isOwner?: boolean;
   prependedItems?: ReactNode;
+  disabled: boolean;
 }) {
   const listId = list.id;
   const router = useRouter();
@@ -140,7 +142,9 @@ export default function ListActionsMenu({
             <MenuItem
               icon={<MdDeleteForever size={18} />}
               tone="danger"
+              aria-disabled={disabled || undefined}
               onClick={() => {
+                if (disabled) return;
                 close();
                 setShowConfirm(true);
               }}
@@ -154,6 +158,7 @@ export default function ListActionsMenu({
         <ListFormContainer
           list={list}
           isEditing
+          deleteDisabled={disabled}
           onClose={() => setEditOpen(false)}
         />
       )}

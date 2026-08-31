@@ -30,7 +30,7 @@ const list: ListTable = {
 
 type MenuOverrides = Partial<React.ComponentProps<typeof ListActionsMenu>>;
 
-function renderMenu(overrides: MenuOverrides = {}) {
+function renderMenu(overrides: MenuOverrides = {}, meetsOwnerFloor = true) {
   return render(
     <ListActionsMenu
       list={list}
@@ -41,6 +41,7 @@ function renderMenu(overrides: MenuOverrides = {}) {
       exitPreviewHref="/lists/list-1"
       isOwner={overrides.isOwner}
       prependedItems={overrides.prependedItems as ReactNode}
+      disabled={!meetsOwnerFloor}
     />
   );
 }
@@ -211,6 +212,17 @@ describe('ListActionsMenu', () => {
       await openMenu(user);
       await user.click(screen.getByRole('menuitem', { name: 'Delete list' }));
     };
+
+    it('BelowTheOwnerFloor_RendersDeleteDisabledAndOpensNoDialog', async () => {
+      const user = userEvent.setup();
+      renderMenu({}, false);
+      await openMenu(user);
+
+      const item = screen.getByRole('menuitem', { name: 'Delete list' });
+      expect(item).toHaveAttribute('aria-disabled', 'true');
+      await user.click(item);
+      expect(screen.queryByText('Confirm Delete')).not.toBeInTheDocument();
+    });
 
     it('ActivateDelete_OpensConfirmDialog', async () => {
       const user = userEvent.setup();

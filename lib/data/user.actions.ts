@@ -10,6 +10,7 @@ import {
   authedIdentity,
 } from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
+import { sameOriginPath } from '@/lib/sameOriginPath';
 import { type ActionResponse, type ProfileAvatarView } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq } from 'drizzle-orm';
@@ -59,11 +60,7 @@ export async function getClaimPickerForItem(
 // absolute URL here would be an open redirect.
 export async function signInUser(destination?: string | FormData) {
   const redirectTo =
-    typeof destination === 'string' &&
-    destination.startsWith('/') &&
-    !destination.startsWith('//')
-      ? destination
-      : undefined;
+    typeof destination === 'string' ? sameOriginPath(destination) : undefined;
   await signIn('google', redirectTo ? { redirectTo } : undefined);
 }
 

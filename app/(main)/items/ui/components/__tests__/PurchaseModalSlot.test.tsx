@@ -1,9 +1,11 @@
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getClaimPickerForItem } from '@/lib/data/user.actions';
 import { PurchaseView } from '@/lib/types';
 import PurchaseModalSlot from '../PurchaseModalSlot';
+import { makeProfile } from '@/test/helpers/profile';
 
 // user.actions is a 'use server' module whose import chain reaches the DB
 // driver; PurchaseFlowContainer only consumes the picker read.
@@ -40,6 +42,8 @@ const ITEM = {
   store: { name: 'Amazon', link: 'https://a.example', price: '35.50' },
 } as never;
 
+const VIEWER = makeProfile('viewer', 'viewer', ROLES.owner);
+
 function renderSlot(
   overrides: Partial<React.ComponentProps<typeof PurchaseModalSlot>> = {}
 ) {
@@ -47,7 +51,7 @@ function renderSlot(
     view: 'claim',
     claims: [],
     viewerIsPurchaser: false,
-    profile_id: undefined,
+    actor: undefined,
     isOwner: false,
     showSpoilers: false,
     ownerCanClaim: false,
@@ -197,6 +201,24 @@ describe('PurchaseModalSlot', () => {
       ).not.toBeInTheDocument();
     });
 
+    /**
+     * The manage view lists the viewer's own claims, and removing one compares
+     * the self-profile with no floor — so a `manager` keeps it operable. The
+     * owner floor governs master unclaim, which is the owner's spoiler list in
+     * `PurchaseFlowContainer`, not this one.
+     */
+    it('ManagerActor_KeepsTheViewersOwnRemovalOperable', () => {
+      renderSlot({
+        view: 'manage',
+        actor: makeProfile('viewer', 'viewer', ROLES.manager),
+        claims: [selfClaim],
+      });
+
+      expect(
+        screen.getByRole('button', { name: 'Remove your claim' })
+      ).toBeEnabled();
+    });
+
     it('ManageView_StoreRowStillRendersLiveStoreLink', () => {
       renderSlot({ view: 'manage', claims: [selfClaim] });
       const link = screen.getByRole('link', { name: /Amazon/ });
@@ -216,7 +238,7 @@ describe('PurchaseModalSlot', () => {
   describe('ClaimView', () => {
     it('ViewerIsPurchaser_HidesSelfClaimCta-KeepsDisclosureCollapsed', async () => {
       renderSlot({
-        profile_id: 'viewer',
+        actor: VIEWER,
         claims: [selfClaim],
         viewerIsPurchaser: true,
       });
@@ -230,7 +252,7 @@ describe('PurchaseModalSlot', () => {
 
     it('ViewerClaimerOnly_KeepsSelfClaimCta', async () => {
       renderSlot({
-        profile_id: 'viewer',
+        actor: VIEWER,
         claims: [attributedClaim],
         viewerIsPurchaser: false,
       });
@@ -249,7 +271,7 @@ describe('PurchaseModalSlot', () => {
   });
 
   it('NoClaimAuthenticated_RendersClaimFlowWithItemHeader', async () => {
-    renderSlot({ profile_id: 'viewer' });
+    renderSlot({ actor: VIEWER });
     expect(
       screen.getByRole('heading', { name: 'Fancy Mug' })
     ).toBeInTheDocument();

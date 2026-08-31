@@ -4,16 +4,34 @@ Fixes which of a profile's members may perform which class of profile-scoped wri
 
 ## ADDED Requirements
 
+### Requirement: A role SHALL carry its own rights
+
+A membership role SHALL be represented as one record carrying its stored value, its display label, and the rights that distinguish it. A surface or endpoint asking what a role may do SHALL read that record, and SHALL NOT compare the role's stored value — no rule SHALL be expressed as a comparison against a role's name.
+
+Exactly two rights distinguish the roles: whether the role acts on the profile itself as well as its content, and whether it marks the account the profile *is*. The second is also what makes a role ungrantable — a link admits a member, and the identity relation is not a membership anyone can hand out — so grantability SHALL NOT be modelled separately.
+
+A role's stored value SHALL have one home. Outside the boundary that maps a stored value back to its record, SQL predicates, and migration history, no surface SHALL spell it — so renaming what the database stores is one edit and its migration.
+
+#### Scenario: A rule is read off the role, not its name
+
+- **WHEN** a surface or an endpoint decides what an acting membership may do
+- **THEN** it reads the right from the role record, and no comparison against a stored role value appears
+
+#### Scenario: The stored value has one home
+
+- **WHEN** the codebase is searched for a role's stored value
+- **THEN** it appears once outside the mapping boundary, SQL predicates and migration history
+
 ### Requirement: A profile-scoped write SHALL declare one of exactly two role floors
 
-Every profile-scoped write SHALL name the minimum role its actor must hold on the profile the write is addressed to. There SHALL be exactly two floors and no default:
+Every profile-scoped write SHALL name the minimum role its actor must hold on the profile the write is addressed to. There SHALL be exactly two floors and no default, expressed as the `adminRequired` argument to `authedWriter`:
 
-- **`member`** — passed by `self`, `owner` and `manager`.
-- **`owner`** — passed by `self` and `owner`, and refused for `manager`.
+- **`ADMIN_OPTIONAL`** (`adminRequired: false`) — passed by `self`, `owner` and `manager`.
+- **`ADMIN_REQUIRED`** (`adminRequired: true`) — passed by `self` and `owner`, and refused for `manager`.
 
 The governing rule is that **owners run the profile and managers run its content**: an owner alone administers membership, edits the profile's identity, changes a list's reach, and performs anything irreversible; a manager does everything else that changes what the profile's lists and items contain.
 
-The `member` floor SHALL admit list creation, list metadata editing, item creation, item editing, item store links, item archiving, setting a list's items, removing an item from a list, changing which lists an item is on, and item ordering. The `owner` floor SHALL admit list deletion, item deletion, changing a list's visibility, master unclaim of a purchase, editing the profile's name, tagline, accent and art, and administering membership — which includes minting an invite link, changing a member's role, and removing another member.
+The **member floor** (`ADMIN_OPTIONAL`) SHALL admit list creation, list metadata editing, item creation, item editing, item store links, item archiving, setting a list's items, removing an item from a list, changing which lists an item is on, and item ordering. The **owner floor** (`ADMIN_REQUIRED`) SHALL admit list deletion, item deletion, changing a list's visibility, master unclaim of a purchase, editing the profile's name, tagline, accent and art, and administering membership — which includes minting an invite link, changing a member's role, and removing another member.
 
 Which profile a write is addressed to depends on how the request names it, and the two shapes SHALL NOT be conflated:
 
@@ -80,6 +98,19 @@ A viewer holding `manager` SHALL see the section in full, with every control the
 
 Self-removal is not among them. Every member holds it whatever their role, so a manager's own removal control SHALL render operable rather than disabled — disabling it would state that they lack a right they hold.
 
+Each row's acts SHALL be offered in two shapes at one breakpoint: from 600px up as discrete controls standing on the row — `Change role`, and `Remove` or `Leave` — and below it collapsed into the row's kebab per `menu-system`, where the row has no width to spend on labels. 600px is the app's standing breakpoint for this collapse. `Change role` SHALL be absent from the viewer's own row in both shapes: self-demotion is not offered.
+
+#### Scenario: A row's acts are discrete controls on a wide viewport
+
+- **WHEN** an owner views the Permissions section at 600px or wider
+- **THEN** each other member's row carries a `Change role` control and a removal control labelled for that member
+- **AND** the row's kebab is not rendered
+
+#### Scenario: A row's acts collapse into the kebab on a narrow viewport
+
+- **WHEN** an owner views the Permissions section below 600px
+- **THEN** each row's acts are reached through its kebab and no discrete control renders
+
 #### Scenario: A minted link takes a seat in the roster
 
 - **WHEN** an owner mints an invite link
@@ -123,6 +154,64 @@ Self-removal is not among them. Every member holds it whatever their role, so a 
 
 - **WHEN** a viewer holding `manager` invokes a mint, a role-change, or a removal targeting a member other than themselves, by any means
 - **THEN** the action refuses and no membership row is written
+
+### Requirement: Every owner-floor affordance SHALL render disabled below the floor
+
+The disabled-not-absent rule is not local to the Permissions section. Wherever the application offers a write the acting membership's role forbids — deleting a list, deleting an item, changing a list's reach, and dropping another claimer's claim on the profile's own item (master unclaim) — the control SHALL render present and disabled rather than operable, in **every** shape it takes. A control that appears in both an expanded and a collapsed surface SHALL be disabled in both; one of the two left operable is a control that can only be refused.
+
+Sharing is not one of them. It hands out a URL rather than writing anything, and the reach the URL resolves against is the list's own visibility — so the floor SHALL NOT gate a share control in any shape.
+
+The answer SHALL be resolved from the acting membership the request already read, and every affordance's disabled state SHALL derive from that role rather than from a second source. A control below the client boundary SHALL receive its state already decided, or derive it deterministically from the server-serialized role record. One definition, so no surface carries a second source the first can fall out of step with.
+
+This governs rendering only. The refusal is the action's, always.
+
+#### Scenario: A collapsed surface disables what its expanded twin disables
+
+- **WHEN** a viewer holding `manager` on the owning profile reaches a list's visibility control through the collapsed hero rather than the expanded one
+- **THEN** the control renders disabled, as it does in the expanded hero, and no visibility write is issued
+
+#### Scenario: Delete affordances are disabled wherever they appear
+
+- **WHEN** a viewer holding `manager` on the owning profile meets a list-delete or item-delete control, in a menu or as a discrete button
+- **THEN** the control renders disabled and activating it opens no confirmation
+
+#### Scenario: Master unclaim is disabled below the floor
+
+- **WHEN** a viewer holding `manager` on the owning profile opens the claim modal on that profile's own item and meets the removal control on another claimer's row
+- **THEN** the control renders disabled and no removal is issued
+
+#### Scenario: A refused removal is reported as a refusal
+
+- **WHEN** a claim removal answers with a refusal rather than throwing
+- **THEN** the viewer is told the removal failed and the claim stays in the list
+
+### Requirement: Every endpoint taking a role SHALL narrow it before writing
+
+`owner` and `manager` are the only grantable roles. Every endpoint that accepts a role from its caller — setting a member's role, minting a link, changing what an outstanding link grants — SHALL narrow the value against that pair and refuse anything else, rather than relying on the column's CHECK. The type is erased at runtime, and a CHECK violation surfaces as a generic write failure rather than a refusal.
+
+`self` is refused by the same rule. It marks the account a profile *is*, and admitting it through a role change would clear the marker that resolves a profile back to a human, with no path back. The refusal SHALL be carried by the writing statement — a role change SHALL NOT match a `self` row — rather than by whichever caller happens to produce the target today. A role change matching no row SHALL report a refusal, not the success of a write that touched nothing.
+
+For the same reason a self-profile SHALL admit no invite link. `self` clears the owner floor, so the floor alone would let an account mint a link onto the profile that is itself; the redeemer would then satisfy the surviving-owner clause and evict that account from its own identity. The refusal SHALL live at the endpoint, not in the withholding of the control.
+
+#### Scenario: An ungrantable role is refused rather than written
+
+- **WHEN** a role change names any value other than `owner` or `manager`
+- **THEN** the action refuses and the stored role is unchanged
+
+#### Scenario: A role change cannot reach a self membership
+
+- **WHEN** an owner's role change names an account whose membership on that profile is the `self` row
+- **THEN** the action refuses, and that row still carries `self`
+
+#### Scenario: A role change matching no membership refuses
+
+- **WHEN** a role change names an account holding no membership on the profile
+- **THEN** the action refuses rather than reporting a role it did not write
+
+#### Scenario: A self-profile admits no link
+
+- **WHEN** an account mints an invite link naming its own self-profile
+- **THEN** the action refuses and no invite is created
 
 ### Requirement: A profile SHALL admit a member only by single-use invite link
 
@@ -188,6 +277,12 @@ Redemption SHALL be refused where a block edge stands in either direction betwee
 
 - **WHEN** a redemption fails after the invite would have been marked spent
 - **THEN** the invite remains redeemable, because the invite is consumed and the membership written in the same statement
+
+#### Scenario: A dead token is refused even when the caller already sits
+
+- **WHEN** an account already holding a membership follows an unknown, expired or already-spent link
+- **THEN** the redemption refuses with the shared refusal rather than reporting success
+- **AND** their standing role is unchanged
 
 #### Scenario: Redeeming as an existing member changes nothing
 
@@ -275,11 +370,19 @@ A removal that would leave a profile with no `self` or `owner` member SHALL be r
 
 The invariant applies to removal alone. A role change cannot reach it, per the role-change requirement above.
 
+Where the viewer is the profile's sole owner, their own removal control SHALL render **disabled**, stating that another owner must be named first, rather than opening a confirmation the statement could only refuse. This is the same disabled-not-absent rule the section applies elsewhere, and the guarded delete stays the enforcement: a sole owner reaching the action by other means is refused by the statement.
+
 Under truly concurrent removals the guard MAY admit both, leaving the profile with no owner. This residual is accepted rather than closed: the driver offers no interactive transaction, no unique index can express a lower bound on a set, and an ownerless profile is a state the application already reaches and tolerates when a sole owner deletes their account.
+
+#### Scenario: The last owner is not offered a removal that could only fail
+
+- **WHEN** the only `owner` of a profile opens the Permissions section
+- **THEN** their own removal control renders disabled rather than absent, naming the remedy
+- **AND** activating it opens no confirmation
 
 #### Scenario: The last owner cannot remove themselves
 
-- **WHEN** the only `owner` of a profile removes their own membership
+- **WHEN** the only `owner` of a profile removes their own membership by any means
 - **THEN** the action refuses and the membership row is unchanged
 
 #### Scenario: An owner may leave while another remains
@@ -319,6 +422,17 @@ Reading a profile's pages SHALL NOT stamp the value. The column reports that a m
 - **WHEN** a member opens the profile's space and its lists without performing any write or switch
 - **THEN** their membership's last-acted-as value is unchanged
 
+### Requirement: The outstanding-invite read SHALL be uncached
+
+The read backing the roster's invite rows filters on `expires_at` against the current time, so its result is a statement about a clock. It SHALL NOT be cached: a cached entry freezes the clock it was computed against, and no tag can thaw it, because expiry is elapsed time rather than a write. An expired link would otherwise sit in the roster claiming to be live until some unrelated write on the profile happened to evict it.
+
+It follows that no write which mints, re-roles, revokes or spends an invite owes the roster an invalidation.
+
+#### Scenario: An expired link leaves the roster with no write in between
+
+- **WHEN** an outstanding invite passes its expiry and the owner reopens the Permissions section, with no invite or membership write on the profile in between
+- **THEN** the invite is absent from the roster
+
 ### Requirement: An outstanding invite SHALL be revocable and re-rolable by an owner
 
 For as long as an invite is neither redeemed nor expired, an owner SHALL be able to change the role it grants and to revoke it outright. Both SHALL take the `owner` floor against the actor's membership on the named profile.
@@ -350,6 +464,8 @@ Every write that mints, re-roles, revokes or redeems an invite SHALL invalidate 
 - **THEN** the action refuses and the invite is unchanged
 
 ### Requirement: A membership write SHALL refresh the affected account's own profile surfaces
+
+A membership write SHALL fire narrow tags only — the affected account's own memberships, and the written profile's roster and identity. It SHALL NOT fire the coarse `profile_members` table tag, which would invalidate every account's memberships for one profile's change; the roster read carries a tag keyed on its own profile so the narrow fire suffices.
 
 Redeeming an invite, removing a member, and changing a role SHALL each invalidate the cached reads of **the account whose membership changed**, not only those of the acting owner. The affected account's own Profiles page and profile switcher read the set of profiles they run, so a membership write that refreshes only the actor leaves the other party's surfaces stating a membership that no longer holds.
 

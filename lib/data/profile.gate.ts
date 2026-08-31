@@ -7,13 +7,17 @@ import { db } from '@/db';
 import { profile_members, profiles } from '@/db/schema';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { UNAUTHORIZED_RESPONSE, authedIdentity } from '@/lib/data/user.session';
+import { roleOf } from '@/lib/data/profile.roles';
 import {
-  WRITE_ROLES,
-  meetsFloor,
-  type RoleFloor,
-} from '@/lib/data/profile.roles';
-import { type ActionResponse, type UserIdentity } from '@/lib/types';
-import { and, eq, inArray, isNull, lt, or } from 'drizzle-orm';
+  type ActionResponse,
+  type RoleShape,
+  type UserIdentity,
+} from '@/lib/types';
+import { and, eq, isNull, lt, or } from 'drizzle-orm';
+
+// The two floors, named so a call site says which one it takes.
+export const ADMIN_REQUIRED = true;
+export const ADMIN_OPTIONAL = false;
 
 export const FORBIDDEN_RESPONSE: ActionResponse = {
   success: false,
@@ -29,7 +33,7 @@ export const FORBIDDEN_RESPONSE: ActionResponse = {
 // refuse. The ownership comparison each mutation makes is unchanged and
 // unaffected — another membership never widens the current request.
 export async function authedWriter(
-  floor: RoleFloor
+  adminRequired: boolean
 ): Promise<{ identity: UserIdentity } | { error: ActionResponse }> {
   const identity = await authedIdentity();
   if (!identity) return { error: UNAUTHORIZED_RESPONSE };
@@ -39,7 +43,11 @@ export async function authedWriter(
     identity.activeProfile.id
   );
   if (!membership) return { error: FORBIDDEN_RESPONSE };
-  if (!meetsFloor(membership.role, floor)) return { error: FORBIDDEN_RESPONSE };
+  // `false` consults nothing: `writableMembership` returning a row is itself
+  // the lower floor, so re-testing the role would be a guard re-deciding what
+  // the read decided.
+  if (adminRequired && !membership.role.admin)
+    return { error: FORBIDDEN_RESPONSE };
 
   await stampActedAs(
     identity.userId,
@@ -58,7 +66,7 @@ export async function writableMembership(
   profileId: string
 ): Promise<{
   name: string;
-  role: string;
+  role: RoleShape;
   last_active_at: Date | null;
 } | null> {
   const [membership] = await db
@@ -72,11 +80,10 @@ export async function writableMembership(
     .where(
       and(
         eq(profile_members.user_id, userId),
-        eq(profile_members.profile_id, profileId),
-        inArray(profile_members.role, [...WRITE_ROLES])
+        eq(profile_members.profile_id, profileId)
       )
     );
-  return membership ?? null;
+  return membership ? { ...membership, role: roleOf(membership.role) } : null;
 }
 
 // Editing a profile is an ownership act, so it is a strictly narrower rule than
@@ -96,7 +103,7 @@ export async function ownsProfile(
         eq(profile_members.profile_id, profileId)
       )
     );
-  return membership ? meetsFloor(membership.role, 'owner') : false;
+  return membership ? roleOf(membership.role).admin : false;
 }
 
 // An hour, so reordering twenty items writes the row once rather than twenty

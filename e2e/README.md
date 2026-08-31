@@ -50,6 +50,15 @@ spec renders the application rather than the gate;
 `dev-unonboarded-signup` and `dev-unonboarded-existing` are the two accounts
 deliberately left un-onboarded, one per arm of the gate's latch.
 
+**The two manager seats are not interchangeable.** `dev-profile-workshop`
+("Workshop Profile") is the seat a manager flow writes on — it exists for that,
+because a manager may create lists and items and delete neither, so nothing the
+flow writes can be cleaned up. `dev-profile-managed` ("Managed Profile") carries
+two fixtures a single write destroys — the NULL `last_active_at` that is the
+never-acted-as ordering branch, and its empty list set — so **no spec may write
+on it or switch to it**. The full seeded profile set is in
+[LOCALDEV.md](../LOCALDEV.md).
+
 ### Auth bypass
 
 The bypass is governed by **`USE_PG_DRIVER=1`** (the same flag that points the

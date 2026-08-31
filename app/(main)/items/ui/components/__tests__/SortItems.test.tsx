@@ -1,3 +1,4 @@
+import { ROLES } from '@/lib/data/profile.roles';
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { updatePriority } from '@/lib/data/listItems.actions';
@@ -12,6 +13,7 @@ vi.mock('react-hot-toast', () => ({
   default: { error: vi.fn(), success: vi.fn() },
 }));
 import toast from 'react-hot-toast';
+import { makeProfile } from '@/test/helpers/profile';
 
 // Decision 5: drive the drag lifecycle by capturing DndContext's handlers and
 // invoking them with synthetic { active, over } payloads — jsdom has no layout
@@ -85,6 +87,8 @@ vi.mock('../Item', () => ({
   ),
 }));
 
+const ACTOR = makeProfile('p1', 'p1', ROLES.owner);
+
 const ITEMS = [
   {
     id: 'A',
@@ -116,7 +120,7 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('SortItems', () => {
   it('EmptyItems_RendersChooseItemsCTA', () => {
-    render(<SortItems items={[]} listId="l1" profile_id="p1" />);
+    render(<SortItems items={[]} listId="l1" actor={ACTOR} />);
     expect(screen.getByText('No items on this list yet')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Choose items/ })).toHaveAttribute(
       'href',
@@ -125,7 +129,7 @@ describe('SortItems', () => {
   });
 
   it('Items_RenderDragHandlesAndCards', () => {
-    render(<SortItems items={ITEMS} listId="l1" profile_id="p1" />);
+    render(<SortItems items={ITEMS} listId="l1" actor={ACTOR} />);
     expect(
       screen.getAllByRole('button', { name: 'Drag to reorder item' })
     ).toHaveLength(3);
@@ -133,7 +137,7 @@ describe('SortItems', () => {
   });
 
   it('ShowSpoilersProp_ReachesEachGridItem', () => {
-    render(<SortItems items={ITEMS} listId="l1" profile_id="p1" showSpoilers />);
+    render(<SortItems items={ITEMS} listId="l1" actor={ACTOR} showSpoilers />);
     const flags = screen
       .getAllByTestId('item')
       .map((e) => e.getAttribute('data-show-spoilers'));
@@ -141,7 +145,7 @@ describe('SortItems', () => {
   });
 
   it('DropOnDifferentRow_ReordersOptimistically-CallsUpdatePriority-Refreshes', async () => {
-    render(<SortItems items={ITEMS} listId="l1" profile_id="p1" />);
+    render(<SortItems items={ITEMS} listId="l1" actor={ACTOR} />);
     await act(async () => {
       await captured.handlers!.onDragEnd({
         active: { id: 'A' },
@@ -154,7 +158,7 @@ describe('SortItems', () => {
   });
 
   it('DropOnSamePosition_NoCall-OrderUnchanged', async () => {
-    render(<SortItems items={ITEMS} listId="l1" profile_id="p1" />);
+    render(<SortItems items={ITEMS} listId="l1" actor={ACTOR} />);
     await act(async () => {
       await captured.handlers!.onDragEnd({
         active: { id: 'A' },
@@ -166,7 +170,7 @@ describe('SortItems', () => {
   });
 
   it('DropWithNoTarget_NoCall', async () => {
-    render(<SortItems items={ITEMS} listId="l1" profile_id="p1" />);
+    render(<SortItems items={ITEMS} listId="l1" actor={ACTOR} />);
     await act(async () => {
       await captured.handlers!.onDragEnd({ active: { id: 'A' }, over: null });
     });
@@ -179,7 +183,7 @@ describe('SortItems', () => {
       success: false,
       message: 'Conflict',
     } as never);
-    render(<SortItems items={ITEMS} listId="l1" profile_id="p1" />);
+    render(<SortItems items={ITEMS} listId="l1" actor={ACTOR} />);
     await act(async () => {
       await captured.handlers!.onDragEnd({
         active: { id: 'A' },
@@ -192,7 +196,7 @@ describe('SortItems', () => {
   });
 
   it('DragStart_RendersActiveItemInOverlay', () => {
-    render(<SortItems items={ITEMS} listId="l1" profile_id="p1" />);
+    render(<SortItems items={ITEMS} listId="l1" actor={ACTOR} />);
     act(() => captured.handlers!.onDragStart({ active: { id: 'B' } }));
     const overlay = screen.getByTestId('overlay');
     // eslint-disable-next-line testing-library/no-node-access
@@ -200,7 +204,7 @@ describe('SortItems', () => {
   });
 
   it('DragCancel_ClearsOverlay', () => {
-    render(<SortItems items={ITEMS} listId="l1" profile_id="p1" />);
+    render(<SortItems items={ITEMS} listId="l1" actor={ACTOR} />);
     act(() => captured.handlers!.onDragStart({ active: { id: 'B' } }));
     act(() => captured.handlers!.onDragCancel());
     const overlay = screen.getByTestId('overlay');
@@ -210,14 +214,14 @@ describe('SortItems', () => {
 
   it('ItemsPropChange_ResyncsState', () => {
     const { rerender } = render(
-      <SortItems items={ITEMS} listId="l1" profile_id="p1" />
+      <SortItems items={ITEMS} listId="l1" actor={ACTOR} />
     );
     // `Z` has no `purchases` field — exercises the `?? []` fallback in itemsKey.
     rerender(
       <SortItems
         items={[{ id: 'Z', name: 'Zed' }] as never}
         listId="l1"
-        profile_id="p1"
+        actor={ACTOR}
       />
     );
     expect(gridOrder()).toEqual(['Z']);
@@ -230,14 +234,14 @@ describe('SortItems', () => {
       <SortItems
         items={[{ id: 'A', name: 'Apple', image_url: 'old.jpg', purchases: [] }] as never}
         listId="l1"
-        profile_id="p1"
+        actor={ACTOR}
       />
     );
     rerender(
       <SortItems
         items={[{ id: 'A', name: 'Apple', image_url: 'new.jpg', purchases: [] }] as never}
         listId="l1"
-        profile_id="p1"
+        actor={ACTOR}
       />
     );
     expect(screen.getByTestId('item')).toHaveAttribute('data-image', 'new.jpg');
@@ -259,7 +263,7 @@ describe('SortItems', () => {
           ] as never
         }
         listId="l1"
-        profile_id="p1"
+        actor={ACTOR}
       />
     );
     rerender(
@@ -275,7 +279,7 @@ describe('SortItems', () => {
           ] as never
         }
         listId="l1"
-        profile_id="p1"
+        actor={ACTOR}
       />
     );
     expect(screen.getByTestId('item')).toHaveAttribute(

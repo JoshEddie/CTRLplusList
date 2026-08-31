@@ -3,6 +3,7 @@
  * and a Settings form", and the branch that hands every other viewer the
  * public view instead.
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -41,20 +42,44 @@ vi.mock('@/lib/data/profile.members.actions', () => ({
   revokeInvite: vi.fn(),
   setInviteRole: vi.fn(),
 }));
+// The panels are rendered rather than described by an attribute: whether they
+// exist at all is the page's `managed` branch, and a stub that dropped them
+// would keep the suite green with that branch pinned either way.
 vi.mock('../../ui/components/ProfileSettingsForm', () => ({
   default: ({
     readOnly,
     draft,
+    listsPanel,
+    identityActions,
+    permissionsPanel,
   }: {
     readOnly: boolean;
     draft: AltvatarDraft | null;
+    listsPanel: React.ReactNode;
+    identityActions: React.ReactNode;
+    permissionsPanel: React.ReactNode;
   }) => (
     <div
       data-testid="settings-form"
       data-readonly={String(readOnly)}
       data-draft={draft ? JSON.stringify(draft) : ''}
-    />
+    >
+      <div data-testid="lists-panel-slot">{listsPanel}</div>
+      <div data-testid="identity-actions-slot">{identityActions}</div>
+      <div data-testid="permissions-panel-slot">{permissionsPanel}</div>
+    </div>
   ),
+}));
+vi.mock('../PermissionsSection', () => ({
+  default: ({ viewerIsOwner }: { viewerIsOwner: boolean }) => (
+    <div data-testid="permissions-section" data-viewer-is-owner={String(viewerIsOwner)} />
+  ),
+}));
+vi.mock('../InviteFlow', () => ({
+  default: () => <div data-testid="invite-flow" />,
+}));
+vi.mock('../ProfileSpaceListsPanel', () => ({
+  default: () => <div data-testid="lists-panel" />,
 }));
 
 vi.mock('../ProfilePage', () => ({
@@ -66,7 +91,7 @@ function card(overrides: Partial<ProfileCardView> = {}): ProfileCardView {
     id: 'p1',
     name: 'Kiddo',
     tagline: null,
-    role: 'owner',
+    role: ROLES.owner,
     listCount: 0,
     itemCount: 0,
     accent: null,
@@ -122,16 +147,51 @@ describe('AltvatarSpacePage', () => {
     });
   });
 
+  describe('Panels', () => {
+    it('RoleSelf_RendersNoPermissionsSectionAndNoInviteControl', async () => {
+      vi.mocked(getProfileMembership).mockResolvedValue(card({ role: ROLES.self }));
+      await renderSpace();
+
+      expect(screen.queryByTestId('permissions-section')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('invite-flow')).not.toBeInTheDocument();
+      // The Lists panel is not gated on the profile being managed.
+      expect(screen.getByTestId('lists-panel')).toBeInTheDocument();
+    });
+
+    it.each([ROLES.owner, ROLES.manager])(
+      'Role%s_RendersThePermissionsSectionAndTheInviteControl',
+      async (role) => {
+        vi.mocked(getProfileMembership).mockResolvedValue(card({ role }));
+        await renderSpace();
+
+        expect(screen.getByTestId('permissions-section')).toBeInTheDocument();
+        expect(screen.getByTestId('invite-flow')).toBeInTheDocument();
+      }
+    );
+
+    it('RoleManager_PassesViewerIsOwnerFalseToThePermissionsSection', async () => {
+      vi.mocked(getProfileMembership).mockResolvedValue(
+        card({ role: ROLES.manager })
+      );
+      await renderSpace();
+
+      expect(screen.getByTestId('permissions-section')).toHaveAttribute(
+        'data-viewer-is-owner',
+        'false'
+      );
+    });
+  });
+
   describe('SettingsForm', () => {
     it('RoleManager_PassesReadOnly', async () => {
       vi.mocked(getProfileMembership).mockResolvedValue(
-        card({ role: 'manager' })
+        card({ role: ROLES.manager })
       );
       await renderSpace();
       expect(form()).toHaveAttribute('data-readonly', 'true');
     });
 
-    it.each(['self', 'owner'] as const)(
+    it.each([ROLES.self, ROLES.owner])(
       'Role%s_PassesEditable',
       async (role) => {
         vi.mocked(getProfileMembership).mockResolvedValue(card({ role }));
@@ -142,7 +202,7 @@ describe('AltvatarSpacePage', () => {
 
     it('RoleManager_PassesNoDraft', async () => {
       vi.mocked(getProfileMembership).mockResolvedValue(
-        card({ role: 'manager' })
+        card({ role: ROLES.manager })
       );
       await renderSpace();
       expect(draftOf()).toBeNull();

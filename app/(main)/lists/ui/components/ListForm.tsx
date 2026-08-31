@@ -21,6 +21,10 @@ interface ListFormProps {
   // as, so the form says which — a viewer with a single profile is shown no
   // statement that could only name themselves.
   actingAs?: string;
+  // Deleting the list takes the owner floor, which the form itself never
+  // reads: it renders the control and the surface that opened it says whether
+  // the acting role clears the floor.
+  deleteDisabled?: boolean;
   onClose?: () => void;
   onSuccess?: () => void;
 }
@@ -44,6 +48,7 @@ export default function ListForm({
   list,
   isEditing = false,
   actingAs,
+  deleteDisabled = false,
   onClose,
   onSuccess,
 }: ListFormProps) {
@@ -205,7 +210,9 @@ export default function ListForm({
           submitLabel={isEditing ? 'Update List' : `Create List${forProfile}`}
           isPending={isPending}
           deleteSlot={
-            isEditing && list ? <DeleteListButton id={list.id} /> : undefined
+            isEditing && list ? (
+              <DeleteListButton id={list.id} disabled={deleteDisabled} />
+            ) : undefined
           }
         />
       </form>

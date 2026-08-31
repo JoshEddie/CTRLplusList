@@ -32,11 +32,12 @@ describe('ProfileSpaceListsPanel', () => {
     expect(screen.getByTestId('grid')).toHaveAttribute('data-ids', 'l1,l2');
   });
 
-  it('ProfileWithNoLists_HandsTheGridAnEmptySet', async () => {
+  it('ProfileWithNoLists_StatesItHoldsNoListsRatherThanNoSharedOnes', async () => {
     vi.mocked(getListsByProfile).mockResolvedValue([]);
 
     render(await ProfileSpaceListsPanel({ profileId: 'kiddo' }));
 
-    expect(screen.getByTestId('grid')).toHaveAttribute('data-ids', '');
+    expect(screen.getByText('No lists yet.')).toBeInTheDocument();
+    expect(screen.queryByTestId('grid')).not.toBeInTheDocument();
   });
 });

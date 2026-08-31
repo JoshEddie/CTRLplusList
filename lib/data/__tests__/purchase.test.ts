@@ -1,7 +1,9 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ROLES } from '@/lib/data/profile.roles';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
+import { makeIdentity, makeProfile } from '@/test/helpers/profile';
 import {
   seedBlock,
   seedFollow,
@@ -401,18 +403,7 @@ describe('sanitizePurchases', () => {
 describe('canRemovePurchase', () => {
   const SELF = selfProfileOf('viewer');
   const OWNED = 'kiddo';
-  const asProfile = (id: string) => ({
-    id,
-    name: id,
-    accent: null,
-    art: null,
-    avatarStyle: null,
-  });
-  const actor = {
-    userId: 'viewer',
-    selfProfile: asProfile(SELF),
-    activeProfile: asProfile(OWNED),
-  };
+  const actor = makeIdentity('viewer', makeProfile(SELF), makeProfile(OWNED));
   const foreignClaim = {
     id: 'p1',
     profile_id: selfProfileOf('someone-else'),
@@ -423,19 +414,19 @@ describe('canRemovePurchase', () => {
   describe('MasterUnclaimLeg', () => {
     it('RoleSelf_ReturnsTrue', () => {
       expect(
-        dal.canRemovePurchase(foreignClaim, OWNED, actor, noCookies, 'self')
+        dal.canRemovePurchase(foreignClaim, OWNED, actor, noCookies, ROLES.self)
       ).toBe(true);
     });
 
     it('RoleOwner_ReturnsTrue', () => {
       expect(
-        dal.canRemovePurchase(foreignClaim, OWNED, actor, noCookies, 'owner')
+        dal.canRemovePurchase(foreignClaim, OWNED, actor, noCookies, ROLES.owner)
       ).toBe(true);
     });
 
     it('RoleManager_ReturnsFalse', () => {
       expect(
-        dal.canRemovePurchase(foreignClaim, OWNED, actor, noCookies, 'manager')
+        dal.canRemovePurchase(foreignClaim, OWNED, actor, noCookies, ROLES.manager)
       ).toBe(false);
     });
   });
@@ -448,7 +439,7 @@ describe('canRemovePurchase', () => {
           OWNED,
           actor,
           noCookies,
-          'manager'
+          ROLES.manager
         )
       ).toBe(true);
     });
@@ -460,7 +451,7 @@ describe('canRemovePurchase', () => {
           OWNED,
           actor,
           noCookies,
-          'manager'
+          ROLES.manager
         )
       ).toBe(true);
     });

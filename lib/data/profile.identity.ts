@@ -1,4 +1,5 @@
 import { profile_members } from '@/db/schema';
+import { ROLES } from '@/lib/data/profile.roles';
 import { eq } from 'drizzle-orm';
 import { QueryBuilder } from 'drizzle-orm/pg-core';
 
@@ -17,5 +18,5 @@ export const selfMemberships = new QueryBuilder()
     profile_id: profile_members.profile_id,
   })
   .from(profile_members)
-  .where(eq(profile_members.role, 'self'))
+  .where(eq(profile_members.role, ROLES.self.value))
   .as('self_memberships');

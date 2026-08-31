@@ -54,6 +54,7 @@ export default async function ItemsContainer({
   }
 
   const firstLastInitial = viewerDisplayName(identity?.selfProfile.name);
+  const actor = identity?.activeProfile;
 
   if (listId) {
     const initialPageSize = await readItemsPageSize();
@@ -63,7 +64,7 @@ export default async function ItemsContainer({
           items={items}
           mode="list"
           initialPageSize={initialPageSize}
-          profile_id={identity?.activeProfile.id}
+          actor={actor}
           user_name={firstLastInitial}
         />
       </Suspense>
@@ -74,7 +75,7 @@ export default async function ItemsContainer({
     <Suspense fallback={<LoadingIndicator size="page" />}>
       <Items
         items={items}
-        profile_id={identity?.activeProfile.id}
+        actor={actor}
         user_name={firstLastInitial}
       />
     </Suspense>

@@ -4,6 +4,7 @@
  * and redeems nothing on load, and a spent, expired or unknown token is
  * indistinguishable from one that never existed.
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -73,7 +74,7 @@ describe('InvitePage', () => {
   it('SignedInMember_RedirectsToTheProfileWithoutRenderingAnything', async () => {
     vi.mocked(writableMembership).mockResolvedValue({
       name: 'Kiddo',
-      role: 'owner',
+      role: ROLES.owner,
       last_active_at: null,
     });
 

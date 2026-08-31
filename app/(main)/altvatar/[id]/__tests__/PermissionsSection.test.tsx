@@ -4,8 +4,10 @@
  * the sole-owner tooltip, and that a pending invite row is an owner's alone,
  * because the row carries the token and a token is the grant itself.
  */
+import { ROLES } from '@/lib/data/profile.roles';
+import type { RoleShape } from '@/lib/types';
 import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   getPendingInvites,
@@ -33,14 +35,24 @@ vi.mock('../MemberRow', () => ({
   ),
 }));
 vi.mock('../InviteRow', () => ({
-  default: ({ invite }: { invite: { token: string } }) => (
-    <li data-testid="invite-row" data-token={invite.token} />
+  default: ({
+    invite,
+    daysLeft,
+  }: {
+    invite: { token: string };
+    daysLeft: number;
+  }) => (
+    <li
+      data-testid="invite-row"
+      data-token={invite.token}
+      data-days-left={String(daysLeft)}
+    />
   ),
 }));
 
 const member = (
   user_id: string,
-  role: string,
+  role: RoleShape,
   last_active_at: Date | null = null
 ) => ({
   user_id,
@@ -72,13 +84,17 @@ beforeEach(() => {
   vi.mocked(getPendingInvites).mockResolvedValue([]);
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe('PermissionsSection', () => {
   describe('Ordering', () => {
     it('MixedActivity_SortsRecentFirstWithNeverActedLast', async () => {
       vi.mocked(getProfileMembers).mockResolvedValue([
-        member('never', 'manager', null),
-        member('old', 'manager', new Date('2026-01-01')),
-        member('recent', 'owner', new Date('2026-08-01')),
+        member('never', ROLES.manager, null),
+        member('old', ROLES.manager, new Date('2026-01-01')),
+        member('recent', ROLES.owner, new Date('2026-08-01')),
       ]);
 
       await renderSection();
@@ -88,8 +104,8 @@ describe('PermissionsSection', () => {
 
     it('NeverActedArrivesAfterAnActedOne_StaysLast', async () => {
       vi.mocked(getProfileMembers).mockResolvedValue([
-        member('acted', 'owner', new Date('2026-08-01')),
-        member('never', 'manager', null),
+        member('acted', ROLES.owner, new Date('2026-08-01')),
+        member('never', ROLES.manager, null),
       ]);
 
       await renderSection();
@@ -99,8 +115,8 @@ describe('PermissionsSection', () => {
 
     it('EveryMembershipNeverActed_KeepsThemAllWithoutReordering', async () => {
       vi.mocked(getProfileMembers).mockResolvedValue([
-        member('a', 'owner', null),
-        member('b', 'manager', null),
+        member('a', ROLES.owner, null),
+        member('b', ROLES.manager, null),
       ]);
 
       await renderSection();
@@ -112,8 +128,8 @@ describe('PermissionsSection', () => {
   describe('SoleOwner', () => {
     it('ViewerIsTheOnlyOwner_MarksTheirOwnRowOnly', async () => {
       vi.mocked(getProfileMembers).mockResolvedValue([
-        member('viewer', 'owner'),
-        member('other', 'manager'),
+        member('viewer', ROLES.owner),
+        member('other', ROLES.manager),
       ]);
 
       await renderSection();
@@ -125,8 +141,8 @@ describe('PermissionsSection', () => {
 
     it('SecondOwnerPresent_MarksNoRow', async () => {
       vi.mocked(getProfileMembers).mockResolvedValue([
-        member('viewer', 'owner'),
-        member('other', 'owner'),
+        member('viewer', ROLES.owner),
+        member('other', ROLES.owner),
       ]);
 
       await renderSection();
@@ -138,8 +154,8 @@ describe('PermissionsSection', () => {
 
     it('ManagerViewer_MarksNoRowEvenWithOneOwner', async () => {
       vi.mocked(getProfileMembers).mockResolvedValue([
-        member('viewer', 'manager'),
-        member('other', 'owner'),
+        member('viewer', ROLES.manager),
+        member('other', ROLES.owner),
       ]);
 
       await renderSection(false);
@@ -152,11 +168,11 @@ describe('PermissionsSection', () => {
 
   describe('PendingInvites', () => {
     beforeEach(() => {
-      vi.mocked(getProfileMembers).mockResolvedValue([member('viewer', 'owner')]);
+      vi.mocked(getProfileMembers).mockResolvedValue([member('viewer', ROLES.owner)]);
       vi.mocked(getPendingInvites).mockResolvedValue([
         {
           token: 'tok-1',
-          role: 'manager',
+          role: ROLES.manager,
           created_at: new Date('2026-08-28'),
           expires_at: new Date('2026-09-04'),
         },
@@ -169,6 +185,31 @@ describe('PermissionsSection', () => {
       expect(screen.getByTestId('invite-row')).toHaveAttribute(
         'data-token',
         'tok-1'
+      );
+    });
+
+    it('ExpiryFiveAndAHalfDaysOut_CountsSixWholeDays', async () => {
+      vi.useFakeTimers().setSystemTime(new Date('2026-08-29T12:00:00Z'));
+
+      await renderSection(true);
+
+      // Rounded up, so a link with any life left never reads as expiring today.
+      expect(screen.getByTestId('invite-row')).toHaveAttribute(
+        'data-days-left',
+        '6'
+      );
+    });
+
+    it('ExpiryAlreadyPassed_FloorsTheCountAtOneDay', async () => {
+      vi.useFakeTimers().setSystemTime(new Date('2026-09-05T00:00:00Z'));
+
+      await renderSection(true);
+
+      // The read filters expired invites out, so a non-positive count can only
+      // come of expiring between that read and this render.
+      expect(screen.getByTestId('invite-row')).toHaveAttribute(
+        'data-days-left',
+        '1'
       );
     });
 

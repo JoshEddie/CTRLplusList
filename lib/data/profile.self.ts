@@ -3,6 +3,7 @@ import {
   profiles,
   SELF_MEMBERSHIP_PER_USER_IDX,
 } from '@/db/schema';
+import { ROLES } from '@/lib/data/profile.roles';
 import { constraintOf, sqlstateOf } from '@/lib/sqlstate';
 import { sql } from 'drizzle-orm';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
@@ -53,7 +54,7 @@ export async function createSelfProfile(
           .select({
             user_id: sql<string>`${userId}`.as('user_id'),
             profile_id: created.id,
-            role: sql<string>`'self'`.as('role'),
+            role: sql<string>`${ROLES.self.value}`.as('role'),
             ride_along: sql<boolean>`false`.as('ride_along'),
             last_active_at: sql<Date | null>`NULL`.as('last_active_at'),
             created_at: sql<Date>`now()`.as('created_at'),

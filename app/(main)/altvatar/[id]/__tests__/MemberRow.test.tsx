@@ -2,8 +2,12 @@
  * Pins `profile-permissions` — "The profile's space SHALL render a Permissions
  * section for a managed profile", specifically the manager's view: every
  * owner-floor control renders disabled rather than absent, while their own
- * removal stays operable because every member holds it.
+ * removal stays operable because every member holds it. The row carries the
+ * same three acts in two shapes — discrete controls from 600px up, the kebab
+ * below it — and both are pinned here; jsdom reports no viewport width, so
+ * both are in the tree and each is addressed by its own accessible name.
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -33,7 +37,7 @@ const VIEWER = 'viewer-account';
 function member(overrides: Partial<ProfileMemberRow> = {}): ProfileMemberRow {
   return {
     user_id: 'other-account',
-    role: 'manager',
+    role: ROLES.manager,
     last_active_at: null,
     id: 'self-other-account',
     name: 'Alex',
@@ -68,6 +72,104 @@ beforeEach(() => {
 });
 
 describe('MemberRow', () => {
+  describe('DiscreteControls', () => {
+    it('OwnerViewer_OffersChangeRoleAndRemoveOnTheRow', async () => {
+      renderRow({ viewerIsOwner: true });
+
+      expect(
+        screen.getByRole('button', { name: 'Change role' })
+      ).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Remove Alex' })).toBeEnabled();
+    });
+
+    it('ChangeRoleThenOwner_CallsSetMemberRoleWithOwner', async () => {
+      setMemberRole.mockResolvedValue({ success: true, message: 'Role updated' });
+      renderRow({ viewerIsOwner: true });
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Change role' })
+      );
+      await userEvent.click(
+        screen.getByRole('menuitemradio', { name: 'Owner' })
+      );
+
+      expect(setMemberRole).toHaveBeenCalledWith(
+        'kiddo',
+        'other-account',
+        'owner'
+      );
+    });
+
+    it('EscapeWithTheRoleMenuOpen_ClosesItWithoutChangingTheRole', async () => {
+      renderRow({ viewerIsOwner: true });
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Change role' })
+      );
+      expect(
+        screen.getByRole('menu', { name: 'Alex role' })
+      ).toBeInTheDocument();
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(screen.queryByRole('menu', { name: 'Alex role' })).toBeNull();
+      expect(setMemberRole).not.toHaveBeenCalled();
+    });
+
+    it('RemoveThenConfirm_CallsRemoveMember-ToastSuccess-RouterRefresh', async () => {
+      removeMember.mockResolvedValue({
+        success: true,
+        message: 'Member removed',
+      });
+      renderRow({ viewerIsOwner: true });
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Remove Alex' })
+      );
+      expect(screen.getByText('Remove Alex?')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
+
+      expect(removeMember).toHaveBeenCalledWith('kiddo', 'other-account');
+      expect(toastSuccess).toHaveBeenCalledWith('Member removed');
+      expect(refresh).toHaveBeenCalled();
+    });
+
+    it('ManagerViewer_RendersBothDiscreteControlsDisabled', async () => {
+      renderRow({ viewerIsOwner: false });
+
+      expect(
+        screen.getByRole('button', { name: 'Change role' })
+      ).toBeDisabled();
+      expect(
+        screen.getByRole('button', { name: 'Remove Alex' })
+      ).toBeDisabled();
+    });
+
+    it('OwnRow_OffersLeaveAndNoRoleChange', async () => {
+      renderRow({
+        member: member({ user_id: VIEWER, name: 'You', role: ROLES.owner }),
+        viewerIsOwner: true,
+      });
+
+      expect(screen.getByRole('button', { name: 'Leave' })).toBeEnabled();
+      // Self-demotion is not offered, in either shape.
+      expect(screen.queryByRole('button', { name: 'Change role' })).toBeNull();
+    });
+
+    it('SoleOwnersOwnRow_RendersLeaveDisabledAndOpensNoDialog', async () => {
+      renderRow({
+        member: member({ user_id: VIEWER, name: 'You', role: ROLES.owner }),
+        viewerIsOwner: true,
+        soleOwner: true,
+      });
+
+      const leave = screen.getByRole('button', { name: 'Leave' });
+      expect(leave).toBeDisabled();
+      await userEvent.click(leave);
+      expect(screen.queryByText('Leave this profile?')).toBeNull();
+      expect(removeMember).not.toHaveBeenCalled();
+    });
+  });
+
   it('EscapeWithTheMenuOpen_ClosesItWithoutActing', async () => {
     renderRow({ viewerIsOwner: true });
     await openMenu();
@@ -86,7 +188,7 @@ describe('MemberRow', () => {
       });
 
       expect(screen.getByRole('listitem')).toHaveTextContent(
-        /Manageractive: yesterday$/
+        /Manageractive: yesterday/
       );
     });
 
@@ -94,7 +196,7 @@ describe('MemberRow', () => {
       renderRow({ viewerIsOwner: true });
 
       expect(screen.getByRole('listitem')).toHaveTextContent(
-        /active: never$/
+        /active: never/
       );
     });
 
@@ -152,7 +254,7 @@ describe('MemberRow', () => {
   describe('SoleOwnerViewer', () => {
     it('OwnLeaveRow_RendersDisabled-OpensNoDialogOnClick', async () => {
       renderRow({
-        member: member({ user_id: VIEWER, name: 'You', role: 'owner' }),
+        member: member({ user_id: VIEWER, name: 'You', role: ROLES.owner }),
         viewerIsOwner: true,
         soleOwner: true,
       });

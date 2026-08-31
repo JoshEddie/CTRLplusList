@@ -3,19 +3,19 @@
 import { FormShell, FormShellFooter } from '@/app/ui/components/FormShell';
 import { Button } from '@/app/ui/components/button';
 import { SelectField } from '@/app/ui/components/field';
-import {
-  mintInvite,
-  type MemberRole,
-} from '@/lib/data/profile.members.actions';
+import { mintInvite } from '@/lib/data/profile.members.actions';
+import { ROLES, isGrantable } from '@/lib/data/profile.roles';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
 import { MdPersonAdd } from 'react-icons/md';
 
-const ROLE_OPTIONS = [
-  { value: 'manager', label: 'Manager' },
-  { value: 'owner', label: 'Owner' },
-];
+const ROLE_OPTIONS = Object.values(ROLES)
+  .filter(isGrantable)
+  .map((role) => ({
+    value: role.value,
+    label: role.label,
+  }));
 
 // Admission is the link and nothing else, so there is no candidate pool and no
 // empty state — there is nobody to list. The minted link is not shown here: it
@@ -32,12 +32,14 @@ export default function InviteFlow({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [role, setRole] = useState<MemberRole>('manager');
+  // The stored value rather than the record: the field carries it and the
+  // endpoint resolves it, so nothing here decides anything from it.
+  const [role, setRole] = useState<string>(ROLES.manager.value);
   const [isPending, startTransition] = useTransition();
 
   const close = () => {
     setOpen(false);
-    setRole('manager');
+    setRole(ROLES.manager.value);
   };
 
   const submit = (event: React.FormEvent) => {
@@ -80,7 +82,7 @@ export default function InviteFlow({
                 label="Role"
                 description={`What this link grants on ${profileName}.`}
                 value={role}
-                onChange={(e) => setRole(e.target.value as MemberRole)}
+                onChange={(e) => setRole(e.target.value)}
                 options={ROLE_OPTIONS}
               />
             </div>

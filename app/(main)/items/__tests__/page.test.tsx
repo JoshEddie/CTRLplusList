@@ -47,7 +47,7 @@ vi.mock('../ui/components/ItemsPage', () => ({
   default: (props: {
     items: unknown[];
     archivedItems?: unknown[];
-    profile_id?: string;
+    actor?: { id: string };
     user_name?: string | null;
     lists?: unknown[];
     initialPageSize?: number;
@@ -57,7 +57,7 @@ vi.mock('../ui/components/ItemsPage', () => ({
       data-active-count={props.items.length}
       data-archived-count={props.archivedItems?.length ?? 0}
       data-initial-page-size={String(props.initialPageSize)}
-      data-profile-id={props.profile_id ?? ''}
+      data-profile-id={props.actor?.id ?? ''}
       data-user-name={props.user_name ?? ''}
       data-lists-count={props.lists?.length ?? 0}
     />

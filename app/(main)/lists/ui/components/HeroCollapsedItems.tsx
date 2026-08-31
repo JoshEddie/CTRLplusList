@@ -5,7 +5,7 @@ import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
 import { followUser, unfollowUser } from '@/lib/data/profile.actions';
 import { MenuItem, MenuItemRadio } from '@/app/ui/components/menu';
 import { ListTable } from '@/lib/types';
-import { VISIBILITY, fromDb, type ListVisibility } from '@/lib/visibility';
+import { type ListVisibility } from '@/lib/visibility';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { FaBookmark, FaCheck, FaPlus, FaRegBookmark } from 'react-icons/fa';
@@ -20,17 +20,9 @@ import { VISIBILITY_ROWS } from './visibility-rows';
 // ever reach the shared URL — the canonical-URL requirement is structurally
 // satisfied without a normalization step here.
 export function ShareMenuItem({ list }: { list: ListTable }) {
-  const router = useRouter();
   const listUrl = `https://www.ctrlpluslist.com/lists/${list.id}`;
-  const rawVisibility = (list as { visibility?: string }).visibility;
-  const visibility = rawVisibility
-    ? fromDb(rawVisibility)
-    : list.shared
-      ? VISIBILITY.LINK
-      : VISIBILITY.OWNER;
-  const isPrivate = visibility === VISIBILITY.OWNER;
 
-  const performShare = async () => {
+  const handleClick = async () => {
     if (navigator.share) {
       try {
         await navigator.share({ title: list.name, url: listUrl });
@@ -52,21 +44,6 @@ export function ShareMenuItem({ list }: { list: ListTable }) {
     }
   };
 
-  const handleClick = async () => {
-    if (isPrivate) {
-      // Promote to link-only then share, matching ShareButton's flow.
-      void setListVisibility(list.id, VISIBILITY.LINK).then((result) => {
-        if (result.success) {
-          toast.success('Sharing enabled');
-          router.refresh();
-        } else {
-          toast.error('Failed to enable sharing');
-        }
-      });
-    }
-    await performShare();
-  };
-
   return (
     <MenuItem icon={<MdOutlineIosShare size={18} />} onClick={handleClick}>
       Share List
@@ -82,16 +59,18 @@ export function ShareMenuItem({ list }: { list: ListTable }) {
 export function VisibilityMenuItems({
   listId,
   initialVisibility,
+  disabled,
 }: {
   listId: string;
   initialVisibility: ListVisibility;
+  disabled: boolean;
 }) {
   const router = useRouter();
   const [current, setCurrent] = useState<ListVisibility>(initialVisibility);
   const [isPending, startTransition] = useTransition();
 
   const apply = (next: ListVisibility) => {
-    if (next === current || isPending) return;
+    if (next === current || isPending || disabled) return;
     const prev = current;
     setCurrent(next);
     startTransition(async () => {
@@ -115,7 +94,7 @@ export function VisibilityMenuItems({
           icon={row.icon}
           description={row.description}
           checked={row.value === current}
-          disabled={isPending}
+          aria-disabled={isPending || disabled || undefined}
           onSelect={() => apply(row.value)}
         >
           {row.label}

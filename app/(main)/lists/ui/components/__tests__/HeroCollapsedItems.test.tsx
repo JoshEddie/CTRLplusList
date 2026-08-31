@@ -154,49 +154,15 @@ describe('ShareMenuItem', () => {
     expect(toast.promise).toHaveBeenCalled();
   });
 
-  it('NoVisibilityFieldShared_TreatsAsNonPrivate-SharesWithoutPromotion', async () => {
+  it('PrivateList_SharesWithoutVisibilityPromotion', async () => {
     const user = userEvent.setup();
-    // No `visibility` field → falls back to `shared` (true ⇒ link/non-private).
-    renderInMenu(<ShareMenuItem list={baseList} />);
+    renderInMenu(<ShareMenuItem list={privateList} />);
     await user.click(shareItem());
     expect(setListVisibility).not.toHaveBeenCalled();
-    expect(navigator.share).toHaveBeenCalled();
-  });
-
-  it('NoVisibilityFieldUnshared_TreatsAsPrivate-PromotesToLink', async () => {
-    vi.mocked(setListVisibility).mockResolvedValue({
-      success: true,
-      message: '',
+    expect(navigator.share).toHaveBeenCalledWith({
+      title: 'Birthday',
+      url: CANONICAL_URL,
     });
-    const user = userEvent.setup();
-    renderInMenu(<ShareMenuItem list={{ ...baseList, shared: false }} />);
-    await user.click(shareItem());
-    expect(setListVisibility).toHaveBeenCalledWith('list-1', VISIBILITY.LINK);
-  });
-
-  it('PrivateList_PromotesToLinkBeforeShare', async () => {
-    vi.mocked(setListVisibility).mockResolvedValue({
-      success: true,
-      message: '',
-    });
-    const user = userEvent.setup();
-    renderInMenu(<ShareMenuItem list={privateList} />);
-    await user.click(shareItem());
-    expect(setListVisibility).toHaveBeenCalledWith('list-1', VISIBILITY.LINK);
-    await waitFor(() => expect(navigator.share).toHaveBeenCalled());
-  });
-
-  it('PrivatePromoteFailure_ToastsEnableSharingError', async () => {
-    vi.mocked(setListVisibility).mockResolvedValue({
-      success: false,
-      message: 'denied',
-    });
-    const user = userEvent.setup();
-    renderInMenu(<ShareMenuItem list={privateList} />);
-    await user.click(shareItem());
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('Failed to enable sharing')
-    );
   });
 
   it('ClipboardReject_SwallowsErrorWithoutThrowing', async () => {
@@ -252,11 +218,29 @@ describe('VisibilityMenuItems', () => {
   const row = (label: string) =>
     screen.getByRole('menuitemradio', { name: new RegExp(`^${label}`) });
 
+  it('BelowTheOwnerFloor_RendersEveryRowDisabledAndWritesNothing', async () => {
+    const user = userEvent.setup();
+    renderInMenu(
+      <VisibilityMenuItems
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled
+      />
+    );
+
+    for (const el of screen.getAllByRole('menuitemradio')) {
+      expect(el).toHaveAttribute('aria-disabled', 'true');
+    }
+    await user.click(row('Shared'));
+    expect(setListVisibility).not.toHaveBeenCalled();
+  });
+
   it('Default_RendersThreeRadioRowsInSourceOrder', () => {
     renderInMenu(
       <VisibilityMenuItems
         listId="list-1"
         initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
       />
     );
     const labels = screen
@@ -270,6 +254,7 @@ describe('VisibilityMenuItems', () => {
       <VisibilityMenuItems
         listId="list-1"
         initialVisibility={VISIBILITY.LINK}
+        disabled={false}
       />
     );
     expect(row('Private')).toHaveAttribute('aria-checked', 'true');
@@ -287,6 +272,7 @@ describe('VisibilityMenuItems', () => {
       <VisibilityMenuItems
         listId="list-1"
         initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
       />
     );
     await user.click(row('Private'));
@@ -309,6 +295,7 @@ describe('VisibilityMenuItems', () => {
       <VisibilityMenuItems
         listId="list-1"
         initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
       />
     );
     await user.click(row('Private'));
@@ -324,6 +311,7 @@ describe('VisibilityMenuItems', () => {
       <VisibilityMenuItems
         listId="list-1"
         initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
       />
     );
     await user.click(row('Hidden'));
@@ -342,12 +330,15 @@ describe('VisibilityMenuItems', () => {
       <VisibilityMenuItems
         listId="list-1"
         initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
       />
     );
     await user.click(row('Private'));
-    await waitFor(() => expect(row('Hidden')).toBeDisabled());
-    expect(row('Private')).toBeDisabled();
-    expect(row('Shared')).toBeDisabled();
+    await waitFor(() =>
+      expect(row('Hidden')).toHaveAttribute('aria-disabled', 'true')
+    );
+    expect(row('Private')).toHaveAttribute('aria-disabled', 'true');
+    expect(row('Shared')).toHaveAttribute('aria-disabled', 'true');
     resolve({ success: true, message: '' });
   });
 });

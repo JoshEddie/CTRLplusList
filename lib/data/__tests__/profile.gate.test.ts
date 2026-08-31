@@ -92,7 +92,7 @@ describe('authedWriter', () => {
       await seedMembership(db, { user_id: VIEWER, profile_id: 'kiddo' });
       vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
 
-      const actor = await gate.authedWriter('member');
+      const actor = await gate.authedWriter(gate.ADMIN_OPTIONAL);
 
       expect(actor).toEqual({ identity: actingAs('kiddo') });
     });
@@ -102,7 +102,7 @@ describe('authedWriter', () => {
       // exactly the case an at-write-time check exists to refuse.
       vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
 
-      const actor = await gate.authedWriter('member');
+      const actor = await gate.authedWriter(gate.ADMIN_OPTIONAL);
 
       expect(actor).toEqual({ error: gate.FORBIDDEN_RESPONSE });
       expect(gate.FORBIDDEN_RESPONSE.error).toBe('Forbidden');
@@ -117,7 +117,7 @@ describe('authedWriter', () => {
       // it holds no membership on.
       vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
 
-      expect(await gate.authedWriter('member')).toEqual({
+      expect(await gate.authedWriter(gate.ADMIN_OPTIONAL)).toEqual({
         error: gate.FORBIDDEN_RESPONSE,
       });
     });
@@ -125,7 +125,7 @@ describe('authedWriter', () => {
     it('UnresolvableActor_RejectsUnauthorized', async () => {
       vi.mocked(authedIdentity).mockResolvedValue(null);
 
-      const actor = await gate.authedWriter('member');
+      const actor = await gate.authedWriter(gate.ADMIN_OPTIONAL);
 
       expect(actor).toMatchObject({ error: { error: 'Unauthorized' } });
       expect(updateTag).not.toHaveBeenCalled();
@@ -141,7 +141,7 @@ describe('authedWriter', () => {
       });
       vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
 
-      const actor = await gate.authedWriter('owner');
+      const actor = await gate.authedWriter(gate.ADMIN_REQUIRED);
 
       expect(actor).toEqual({ error: gate.FORBIDDEN_RESPONSE });
       // The refusal lands before `stampActedAs`, so a refused write leaves no
@@ -157,14 +157,15 @@ describe('authedWriter', () => {
       });
       vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
 
-      expect(await gate.authedWriter('member')).toEqual({
+      expect(await gate.authedWriter(gate.ADMIN_OPTIONAL)).toEqual({
         identity: actingAs('kiddo'),
       });
     });
 
-    it.each([['Member', 'member'], ['Owner', 'owner']] as const)(
-      'OwnerOnFloor%s_ReturnsTheIdentity',
-      async (_label, floor) => {
+    it.each(['AdminOptional', 'AdminRequired'] as const)(
+      'OwnerOn%s_ReturnsTheIdentity',
+      async (floor) => {
+        const adminRequired = floor === 'AdminRequired';
         await seedMembership(db, {
           user_id: VIEWER,
           profile_id: 'kiddo',
@@ -172,18 +173,19 @@ describe('authedWriter', () => {
         });
         vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
 
-        expect(await gate.authedWriter(floor)).toEqual({
+        expect(await gate.authedWriter(adminRequired)).toEqual({
           identity: actingAs('kiddo'),
         });
       }
     );
 
-    it.each([['Member', 'member'], ['Owner', 'owner']] as const)(
-      'SelfOnFloor%s_ReturnsTheIdentity',
-      async (_label, floor) => {
+    it.each(['AdminOptional', 'AdminRequired'] as const)(
+      'SelfOn%s_ReturnsTheIdentity',
+      async (floor) => {
+        const adminRequired = floor === 'AdminRequired';
         vi.mocked(authedIdentity).mockResolvedValue(actingAs(SELF));
 
-        expect(await gate.authedWriter(floor)).toEqual({
+        expect(await gate.authedWriter(adminRequired)).toEqual({
           identity: actingAs(SELF),
         });
       }
@@ -200,7 +202,7 @@ describe('authedWriter', () => {
       // is what refuses, and it runs first.
       vi.mocked(authedIdentity).mockResolvedValue(actingAs('kiddo'));
 
-      expect(await gate.authedWriter('owner')).toEqual({
+      expect(await gate.authedWriter(gate.ADMIN_REQUIRED)).toEqual({
         error: gate.FORBIDDEN_RESPONSE,
       });
     });
@@ -214,7 +216,7 @@ describe('authedWriter', () => {
     it('NeverActedAs_StampsTheMembership', async () => {
       await seedMembership(db, { user_id: VIEWER, profile_id: 'kiddo' });
 
-      await gate.authedWriter('member');
+      await gate.authedWriter(gate.ADMIN_OPTIONAL);
 
       expect(await lastActiveAt('kiddo')).not.toBeNull();
       expect(updateTag).toHaveBeenCalledWith(cacheTags.profilesOfUser(VIEWER));
@@ -228,7 +230,7 @@ describe('authedWriter', () => {
         last_active_at: stale,
       });
 
-      await gate.authedWriter('member');
+      await gate.authedWriter(gate.ADMIN_OPTIONAL);
 
       expect((await lastActiveAt('kiddo'))!.getTime()).toBeGreaterThan(
         stale.getTime()
@@ -244,7 +246,7 @@ describe('authedWriter', () => {
         last_active_at: recent,
       });
 
-      await gate.authedWriter('member');
+      await gate.authedWriter(gate.ADMIN_OPTIONAL);
 
       expect((await lastActiveAt('kiddo'))!.getTime()).toBe(recent.getTime());
       expect(updateTag).not.toHaveBeenCalledWith(
@@ -261,7 +263,7 @@ describe('authedWriter', () => {
 
       // The gate itself still passes: the recording is incidental to the write
       // that triggered it, so its failure cannot fail that write.
-      const actor = await gate.authedWriter('member');
+      const actor = await gate.authedWriter(gate.ADMIN_OPTIONAL);
 
       expect(actor).toHaveProperty('identity');
       expect(errorSpy).toHaveBeenCalledWith(
@@ -276,12 +278,12 @@ describe('authedWriter', () => {
     it('BurstOfWrites_StampsOnceAcrossThem', async () => {
       await seedMembership(db, { user_id: VIEWER, profile_id: 'kiddo' });
 
-      await gate.authedWriter('member');
+      await gate.authedWriter(gate.ADMIN_OPTIONAL);
       const first = await lastActiveAt('kiddo');
       vi.mocked(updateTag).mockClear();
 
-      await gate.authedWriter('member');
-      await gate.authedWriter('member');
+      await gate.authedWriter(gate.ADMIN_OPTIONAL);
+      await gate.authedWriter(gate.ADMIN_OPTIONAL);
 
       expect((await lastActiveAt('kiddo'))!.getTime()).toBe(first!.getTime());
       expect(updateTag).not.toHaveBeenCalled();

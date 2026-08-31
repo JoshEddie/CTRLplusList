@@ -6,6 +6,7 @@
  * `app-frame`'s "The avatar dropdown SHALL carry the profile switcher" cap,
  * ordering and count.
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   mockNextHeaders,
@@ -68,7 +69,7 @@ function membership(
     id,
     name: id,
     tagline: null,
-    role: 'owner',
+    role: ROLES.owner,
     accent: null,
     art: null,
     avatarStyle: null,
@@ -112,7 +113,7 @@ describe('getMembershipsForUser', () => {
     const rows = await mod.getMembershipsForUser(VIEWER);
     expect(rows.find((row) => row.id === 'fresh')).toMatchObject({
       name: 'Fresh',
-      role: 'manager',
+      role: ROLES.manager,
       last_active_at: new Date('2026-06-01T00:00:00Z'),
     });
     expect(rows.find((row) => row.id === 'never')?.last_active_at).toBeNull();
@@ -126,7 +127,7 @@ describe('getMembershipsForUser', () => {
 });
 
 describe('resolveIdentity', () => {
-  const self = membership(SELF, { role: 'self' });
+  const self = membership(SELF, { role: ROLES.self });
   const held = membership('kiddo');
 
   it('SelectionNamesAHeldMembership_ResolvesItAsActive', () => {
@@ -193,7 +194,7 @@ describe('getUserIdentity', () => {
 });
 
 describe('switcherView', () => {
-  const self = membership(SELF, { role: 'self', name: 'Test Viewer' });
+  const self = membership(SELF, { role: ROLES.self, name: 'Test Viewer' });
   const kiddo = membership('kiddo', { name: 'Kiddo' });
   const nana = membership('nana', { name: 'Nana' });
 

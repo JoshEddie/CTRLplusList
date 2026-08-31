@@ -22,11 +22,15 @@ vi.mock('@/lib/data/user', () => ({
 }));
 
 vi.mock('../SortItems', () => ({
-  default: (p: { items: unknown[]; profile_id?: string; listId: string }) => (
+  default: (p: {
+    items: unknown[];
+    actor?: { id: string };
+    listId: string;
+  }) => (
     <div
       data-testid="sort-items"
       data-item-count={String(p.items.length)}
-      data-profile-id={p.profile_id ?? ''}
+      data-profile-id={p.actor?.id ?? ''}
       data-list-id={p.listId}
     />
   ),

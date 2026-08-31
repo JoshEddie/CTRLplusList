@@ -2,17 +2,20 @@
 
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { Button } from '@/app/ui/components/button';
-import { Menu, MenuItem, MenuItemRadio } from '@/app/ui/components/menu';
+import { Menu, MenuItem } from '@/app/ui/components/menu';
 import {
   revokeInvite,
   setInviteRole,
 } from '@/lib/data/profile.members.actions';
 import type { PendingInvite } from '@/lib/data/profile.members';
-import { useRouter } from 'next/navigation';
-import { useRef, useState, useTransition } from 'react';
+import type { RoleShape } from '@/lib/types';
+import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MdLink, MdMoreHoriz, MdPersonRemove } from 'react-icons/md';
-import { ROLE_LABELS, RoleTag } from './RoleTag';
+import { RoleChoices } from './RoleChoices';
+import { RoleTag } from './RoleTag';
+import RoleMenuControl from './RoleMenuControl';
+import { useRowAction } from './utils';
 
 // A seat somebody has been offered but not yet taken. It sits in the roster
 // beside the memberships because that is what it becomes: redeeming the link
@@ -30,20 +33,10 @@ export default function InviteRow({
       actually makes. */
   daysLeft: number;
 }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, run] = useRowAction();
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
-
-  const run = (action: () => Promise<{ success: boolean; message: string }>) =>
-    startTransition(async () => {
-      const result = await action();
-      if (result.success) {
-        toast.success(result.message);
-        router.refresh();
-      } else toast.error(result.message);
-    });
 
   const copy = () =>
     toast.promise(
@@ -57,6 +50,9 @@ export default function InviteRow({
       }
     );
 
+  const changeRole = (role: RoleShape) => () =>
+    setInviteRole(profileId, invite.token, role.value);
+
   return (
     <li className="member-row member-row--pending">
       <span className="member-row-avatar member-row-pending-disc" aria-hidden>
@@ -68,6 +64,29 @@ export default function InviteRow({
           <RoleTag role={invite.role} />
           expires in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}
         </span>
+      </div>
+
+      {/* The member row's two shapes, for the same reason: labelled controls
+          from 600px up, the kebab below it. */}
+      <div className="member-row-controls">
+        <Button variant="secondary" size="sm" onClick={copy}>
+          Copy link
+        </Button>
+        <RoleMenuControl
+          current={invite.role}
+          ariaLabel="Invite link role"
+          onChangeRole={changeRole}
+          run={run}
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          isLoading={isPending}
+          aria-label="Revoke this invite link"
+          onClick={() => setConfirming(true)}
+        >
+          Revoke
+        </Button>
       </div>
 
       <div className="member-row-menu">
@@ -99,18 +118,13 @@ export default function InviteRow({
           >
             Copy link
           </MenuItem>
-          {(['owner', 'manager'] as const).map((role) => (
-            <MenuItemRadio
-              key={role}
-              checked={invite.role === role}
-              onSelect={() => {
-                setMenuOpen(false);
-                run(() => setInviteRole(profileId, invite.token, role));
-              }}
-            >
-              {ROLE_LABELS[role]}
-            </MenuItemRadio>
-          ))}
+          <RoleChoices
+            current={invite.role}
+            onPick={(role) => {
+              setMenuOpen(false);
+              run(changeRole(role));
+            }}
+          />
           <MenuItem
             tone="danger"
             icon={<MdPersonRemove size={18} />}

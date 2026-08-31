@@ -1,9 +1,11 @@
+import { ROLES } from '@/lib/data/profile.roles';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getClaimPickerForItem } from '@/lib/data/user.actions';
 import { PurchaseView } from '@/lib/types';
 import PurchaseFlowContainer from '../PurchaseFlowContainer';
+import { makeProfile } from '@/test/helpers/profile';
 
 // user.actions is a 'use server' module whose import chain reaches the DB
 // driver; the picker read and the sign-in action are the only contracts the
@@ -30,11 +32,21 @@ const ITEM = {
   store: { name: 'Amazon', link: 'https://a.example', price: '35.50' },
 } as never;
 
+const VIEWER = makeProfile('viewer', 'viewer', ROLES.owner);
+
+const OTHERS_CLAIM: PurchaseView = {
+  id: 'pc1',
+  by: 'other',
+  firstName: 'Bob',
+  claimerFirstName: 'Alice',
+  claimedByViewer: false,
+};
+
 function renderContainer(
   overrides: Partial<React.ComponentProps<typeof PurchaseFlowContainer>> = {}
 ) {
   const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
-    profile_id: 'viewer',
+    actor: VIEWER,
     isOwner: false,
     showSpoilers: false,
     ownerCanClaim: false,
@@ -75,7 +87,7 @@ describe('PurchaseFlowContainer', () => {
     });
 
     it('Guest_StoreRowRendersWithoutSignIn', () => {
-      renderContainer({ profile_id: undefined });
+      renderContainer({ actor: undefined });
       expect(screen.getByRole('link', { name: /Amazon/ })).toBeInTheDocument();
     });
 
@@ -97,7 +109,7 @@ describe('PurchaseFlowContainer', () => {
 
   describe('Guest', () => {
     it('NoProfileId_RendersGuestFieldAndFooterSignIn-NoPickerFetch', () => {
-      renderContainer({ profile_id: undefined });
+      renderContainer({ actor: undefined });
       expect(screen.getByLabelText('Your name')).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: 'Claim as Guest' })
@@ -111,7 +123,7 @@ describe('PurchaseFlowContainer', () => {
 
     it('EmptyGuestName_ClaimAsGuestDisabled-NoCallback', async () => {
       const user = userEvent.setup();
-      const { onGuestClaim } = renderContainer({ profile_id: undefined });
+      const { onGuestClaim } = renderContainer({ actor: undefined });
       const guestBtn = screen.getByRole('button', { name: 'Claim as Guest' });
       expect(guestBtn).toBeDisabled();
       await user.click(guestBtn);
@@ -120,7 +132,7 @@ describe('PurchaseFlowContainer', () => {
 
     it('PaddedGuestName_CallsOnGuestClaimTrimmed', async () => {
       const user = userEvent.setup();
-      const { onGuestClaim } = renderContainer({ profile_id: undefined });
+      const { onGuestClaim } = renderContainer({ actor: undefined });
       await user.type(screen.getByLabelText('Your name'), '  Bob  ');
       await user.click(screen.getByRole('button', { name: 'Claim as Guest' }));
       expect(onGuestClaim).toHaveBeenCalledWith('Bob');
@@ -313,7 +325,7 @@ describe('PurchaseFlowContainer', () => {
         });
       const user = userEvent.setup();
       const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
-        profile_id: 'viewer',
+        actor: VIEWER,
         isOwner: false,
         showSpoilers: false,
         ownerCanClaim: false,
@@ -354,7 +366,7 @@ describe('PurchaseFlowContainer', () => {
         .mockResolvedValueOnce(PICKER);
       const user = userEvent.setup();
       const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
-        profile_id: 'viewer',
+        actor: VIEWER,
         isOwner: false,
         showSpoilers: false,
         ownerCanClaim: false,
@@ -448,6 +460,40 @@ describe('PurchaseFlowContainer', () => {
         screen.getByRole('button', { name: "Remove Bob's claim" })
       );
       expect(onRemoveClaim).toHaveBeenCalledWith(claim);
+    });
+
+    /**
+     * Pins `profile-permissions` — "Master unclaim is disabled below the
+     * floor". This list is the master-unclaim surface, and the floor is read
+     * off the acting role rather than the item, so a manager meets the row
+     * present and inert.
+     */
+    it('BelowTheOwnerFloor_RendersMasterUnclaimPresentAndDisabled', () => {
+      renderContainer({
+        actor: makeProfile('viewer', 'viewer', ROLES.manager),
+        isOwner: true,
+        showSpoilers: true,
+        ownerCanClaim: true,
+        ownerClaims: [OTHERS_CLAIM],
+      });
+
+      expect(
+        screen.getByRole('button', { name: "Remove Bob's claim" })
+      ).toBeDisabled();
+    });
+
+    it('AtTheOwnerFloor_RendersMasterUnclaimOperable', () => {
+      renderContainer({
+        actor: makeProfile('viewer', 'viewer', ROLES.owner),
+        isOwner: true,
+        showSpoilers: true,
+        ownerCanClaim: true,
+        ownerClaims: [OTHERS_CLAIM],
+      });
+
+      expect(
+        screen.getByRole('button', { name: "Remove Bob's claim" })
+      ).toBeEnabled();
     });
   });
 });

@@ -1,11 +1,11 @@
 'use client';
 
-import { ItemDisplay } from '@/lib/types';
+import { ProfileMembershipView, ItemDisplay } from '@/lib/types';
 import Item from './Item';
 
 interface ItemsProps {
   items: ItemDisplay[];
-  profile_id?: string;
+  actor?: ProfileMembershipView;
   user_name?: string | null;
   view?: 'grid' | 'list';
   showSpoilers?: boolean;
@@ -15,7 +15,7 @@ interface ItemsProps {
 
 export default function Items({
   items,
-  profile_id,
+  actor,
   user_name,
   view = 'grid',
   showSpoilers,
@@ -30,7 +30,7 @@ export default function Items({
             <Item
               key={item.id}
               item={item}
-              profile_id={profile_id}
+              actor={actor}
               user_name={user_name}
               showSpoilers={showSpoilers}
               showArchiveAction={showArchiveAction}

@@ -1,8 +1,10 @@
+import { ROLES } from '@/lib/data/profile.roles';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ItemDisplay, ListTable } from '@/lib/types';
 import ItemsPage from '../ItemsPage';
+import { makeProfile } from '@/test/helpers/profile';
 
 const nav = vi.hoisted(() => ({
   replace: vi.fn(),
@@ -65,7 +67,7 @@ function renderPage(
     <ItemsPage
       items={ACTIVE}
       archivedItems={ARCHIVED}
-      profile_id="viewer-profile"
+      actor={makeProfile('viewer-profile', 'viewer-profile', ROLES.owner)}
       user_name="Test V"
       lists={LISTS}
       initialPageSize={24}
@@ -220,7 +222,7 @@ describe('ItemsPage', () => {
     });
 
     it('MissingLists_FormDefaultsToEmptyListCount', () => {
-      renderPage({ lists: undefined, profile_id: undefined });
+      renderPage({ lists: undefined, actor: undefined });
       fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
       const form = screen.getByTestId('item-form');
       expect(form).toHaveAttribute('data-lists-count', '0');

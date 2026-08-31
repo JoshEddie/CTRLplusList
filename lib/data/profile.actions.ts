@@ -8,6 +8,7 @@ import {
   user_follows,
 } from '@/db/schema';
 import { selfMemberships } from '@/lib/data/profile.identity';
+import { ROLES } from '@/lib/data/profile.roles';
 import {
   ProfileFieldsSchema,
   ProfileIdentitySchema,
@@ -277,7 +278,7 @@ export async function createProfile(
           .select({
             user_id: sql<string>`${userId}`.as('user_id'),
             profile_id: created.id,
-            role: sql<string>`'owner'`.as('role'),
+            role: sql<string>`${ROLES.owner.value}`.as('role'),
             ride_along: sql<boolean>`false`.as('ride_along'),
             last_active_at: sql<Date | null>`NULL`.as('last_active_at'),
             created_at: sql<Date>`now()`.as('created_at'),

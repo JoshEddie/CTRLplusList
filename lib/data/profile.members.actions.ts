@@ -3,39 +3,48 @@
 import { db } from '@/db';
 import { profile_invites, profile_members, user_blocks } from '@/db/schema';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
-import { FORBIDDEN_RESPONSE, ownsProfile } from '@/lib/data/profile.gate';
+import {
+  FORBIDDEN_RESPONSE,
+  ownsProfile,
+  writableMembership,
+} from '@/lib/data/profile.gate';
+import { ROLES, grantableRole } from '@/lib/data/profile.roles';
 import { selfMemberships } from '@/lib/data/profile.identity';
 import {
   UNAUTHORIZED_RESPONSE,
   authedIdentity,
   authedUserId,
 } from '@/lib/data/user.session';
-import { type ActionResponse } from '@/lib/types';
-import { and, eq, exists, gt, isNull, ne, or, sql } from 'drizzle-orm';
+import { type ActionResponse, type RoleShape } from '@/lib/types';
+import { and, eq, exists, gt, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-
-export type MemberRole = 'owner' | 'manager';
 
 // Membership administration is addressed to the profile the request *names*,
 // not the one it acts as: the Permissions section is reached without switching
 // to the profile it administers, so the shared write gate's acting-profile
 // comparison would refuse every control the page renders as operable.
+// The actor's own role rides back out because minting turns on it: `self`
+// clears the owner floor, and a self-profile is the one profile no link may
+// admit anyone to.
 async function administeringOwner(
   profileId: string
-): Promise<{ userId: string } | { error: ActionResponse }> {
+): Promise<{ userId: string; role: RoleShape } | { error: ActionResponse }> {
   const userId = await authedUserId();
   if (!userId) return { error: UNAUTHORIZED_RESPONSE };
-  if (!(await ownsProfile(userId, profileId)))
+  const membership = await writableMembership(userId, profileId);
+  if (!membership || !membership.role.admin)
     return { error: FORBIDDEN_RESPONSE };
-  return { userId };
+  return { userId, role: membership.role };
 }
 
 // Both the acting owner's and the affected account's tags: a write that
 // refreshes only the actor leaves the other party's Profiles page and profile
-// switcher stating a membership that no longer holds.
+// switcher stating a membership that no longer holds. Narrow tags only — the
+// coarse table tag would invalidate every account's memberships for one
+// profile's role change.
 function invalidateMembership(profileId: string, affectedUserId: string): void {
   updateTags(
-    cacheTags.profileMembers,
+    cacheTags.membersOfProfile(profileId),
     cacheTags.profilesOfUser(affectedUserId),
     cacheTags.profile(profileId)
   );
@@ -44,22 +53,37 @@ function invalidateMembership(profileId: string, affectedUserId: string): void {
 export async function setMemberRole(
   profileId: string,
   userId: string,
-  role: MemberRole
+  role: string
 ): Promise<ActionResponse> {
   try {
     const actor = await administeringOwner(profileId);
     if ('error' in actor) return actor.error;
     if (actor.userId === userId) return FORBIDDEN_RESPONSE;
+    const granted = grantableRole(role);
+    if (!granted) return FORBIDDEN_RESPONSE;
 
-    await db
+    // `self` is excluded in the statement, not by the caller that happens to
+    // produce the target today: rewriting the row that marks the account a
+    // profile *is* would leave it with no self membership and no path back.
+    const updated = await db
       .update(profile_members)
-      .set({ role })
+      .set({ role: granted.value })
       .where(
         and(
           eq(profile_members.user_id, userId),
-          eq(profile_members.profile_id, profileId)
+          eq(profile_members.profile_id, profileId),
+          ne(profile_members.role, ROLES.self.value)
         )
-      );
+      )
+      .returning({ user_id: profile_members.user_id });
+
+    if (updated.length === 0) {
+      return {
+        success: false,
+        message: 'That membership can no longer be changed',
+        error: 'No membership',
+      };
+    }
 
     invalidateMembership(profileId, userId);
     return { success: true, message: 'Role updated' };
@@ -102,7 +126,12 @@ export async function removeMember(
                 and(
                   eq(survivor.profile_id, profileId),
                   ne(survivor.user_id, userId),
-                  or(eq(survivor.role, 'self'), eq(survivor.role, 'owner'))
+                  inArray(
+                    survivor.role,
+                    Object.values(ROLES)
+                      .filter((role) => role.admin)
+                      .map((role) => role.value)
+                  )
                 )
               )
           )
@@ -132,12 +161,6 @@ export async function removeMember(
 
 const INVITE_DAYS = 7;
 
-// The roster's pending rows are a cached read keyed on the profile, so every
-// write that mints, re-roles, revokes or spends an invite refreshes it.
-function invalidateInvites(profileId: string): void {
-  updateTags(cacheTags.invitesOfProfile(profileId));
-}
-
 // One refusal for an unknown token, an expired one and an already-spent one:
 // distinguishing them would confirm to a stranger holding a guessed token that
 // a token existed.
@@ -152,12 +175,19 @@ const INVALID_INVITE_RESPONSE: ActionResponse = {
 // and its single use are the only bounds it has.
 export async function mintInvite(
   profileId: string,
-  role: MemberRole = 'manager'
+  role: string = ROLES.manager.value
 ): Promise<ActionResponse> {
   try {
     const actor = await administeringOwner(profileId);
     if ('error' in actor) return actor.error;
-    if (role !== 'owner' && role !== 'manager') return FORBIDDEN_RESPONSE;
+    const granted = grantableRole(role);
+    if (!granted) return FORBIDDEN_RESPONSE;
+    // A self-profile admits nobody. Enforced here rather than by withholding
+    // the control: `self` clears the owner floor, so without this an account
+    // could mint an owner link onto the profile that *is* them, and the
+    // redeemer would then satisfy `removeMember`'s survivor clause and evict
+    // that account from its own identity.
+    if (actor.role.isSelf) return FORBIDDEN_RESPONSE;
 
     const expires = new Date(Date.now() + INVITE_DAYS * 24 * 60 * 60 * 1000);
     const [invite] = await db
@@ -165,12 +195,11 @@ export async function mintInvite(
       .values({
         profile_id: profileId,
         created_by_user_id: actor.userId,
-        role,
+        role: granted.value,
         expires_at: expires,
       })
       .returning({ token: profile_invites.token });
 
-    invalidateInvites(profileId);
     return { success: true, message: 'Invite link ready', id: invite.token };
   } catch (error) {
     console.error('Error minting invite:', error);
@@ -196,10 +225,15 @@ export async function redeemInvite(token: string): Promise<ActionResponse> {
     // A plain read ahead of the write rather than a fourth clause inside it: a
     // block edge landing mid-redemption harms nobody, and the minter's own
     // profile has to be resolved through their `self` membership anyway.
+    // The standing membership rides along on the same read: it decides only
+    // what the success message says, never whether the token was live — that
+    // stays the redeeming statement's own answer.
+    const sitting = alias(profile_members, 'sitting_membership');
     const [invite] = await db
       .select({
         profile_id: profile_invites.profile_id,
         blocked: user_blocks.blocker_profile_id,
+        sitting_role: sitting.role,
       })
       .from(profile_invites)
       .innerJoin(
@@ -217,6 +251,13 @@ export async function redeemInvite(token: string): Promise<ActionResponse> {
             eq(user_blocks.blocker_profile_id, selfProfile.id),
             eq(user_blocks.blocked_profile_id, selfMemberships.profile_id)
           )
+        )
+      )
+      .leftJoin(
+        sitting,
+        and(
+          eq(sitting.profile_id, profile_invites.profile_id),
+          eq(sitting.user_id, userId)
         )
       )
       .where(eq(profile_invites.token, token));
@@ -256,31 +297,25 @@ export async function redeemInvite(token: string): Promise<ActionResponse> {
           })
           .from(spent)
       )
-      .onConflictDoNothing()
+      // A link admits and nothing more, so a redeemer who already sits keeps
+      // the role they hold. Written as a no-op update rather than DO NOTHING so
+      // the statement still returns their row: with DO NOTHING, zero rows would
+      // mean either the guard refused the token or the conflict swallowed it,
+      // and resolving that ambiguity in favour of success reports a dead token
+      // as a redemption.
+      .onConflictDoUpdate({
+        target: [profile_members.user_id, profile_members.profile_id],
+        set: { role: sql`${profile_members.role}` },
+      })
       .returning({ profile_id: profile_members.profile_id });
 
-    // Zero rows is ambiguous between a token the guard refused and a redeemer
-    // who already sits on the profile — the conflict swallows the row either
-    // way. A link admits and nothing more, so a sitting member's standing role
-    // is left as it is and the redemption still reads as a success.
-    if (admitted.length === 0) {
-      const [sitting] = await db
-        .select({ role: profile_members.role })
-        .from(profile_members)
-        .where(
-          and(
-            eq(profile_members.user_id, userId),
-            eq(profile_members.profile_id, invite.profile_id)
-          )
-        );
-      if (!sitting) return INVALID_INVITE_RESPONSE;
-      invalidateInvites(invite.profile_id);
-      return { success: true, message: 'You already run this profile' };
-    }
+    // Zero rows now means one thing: the UPDATE's guard refused the token.
+    if (admitted.length === 0) return INVALID_INVITE_RESPONSE;
 
     invalidateMembership(invite.profile_id, userId);
-    invalidateInvites(invite.profile_id);
-    return { success: true, message: 'You now run this profile' };
+    return invite.sitting_role
+      ? { success: true, message: 'You already run this profile' }
+      : { success: true, message: 'You now run this profile' };
   } catch (error) {
     console.error('Error redeeming invite:', error);
     return {
@@ -314,7 +349,6 @@ export async function revokeInvite(
       )
       .returning({ token: profile_invites.token });
 
-    invalidateInvites(profileId);
     if (deleted.length === 0) return INVALID_INVITE_RESPONSE;
     return { success: true, message: 'Invite link revoked' };
   } catch (error) {
@@ -334,16 +368,17 @@ export async function revokeInvite(
 export async function setInviteRole(
   profileId: string,
   token: string,
-  role: MemberRole
+  role: string
 ): Promise<ActionResponse> {
   try {
     const actor = await administeringOwner(profileId);
     if ('error' in actor) return actor.error;
-    if (role !== 'owner' && role !== 'manager') return FORBIDDEN_RESPONSE;
+    const granted = grantableRole(role);
+    if (!granted) return FORBIDDEN_RESPONSE;
 
     const updated = await db
       .update(profile_invites)
-      .set({ role })
+      .set({ role: granted.value })
       .where(
         and(
           eq(profile_invites.token, token),
@@ -353,7 +388,6 @@ export async function setInviteRole(
       )
       .returning({ token: profile_invites.token });
 
-    invalidateInvites(profileId);
     if (updated.length === 0) return INVALID_INVITE_RESPONSE;
     return { success: true, message: 'Invite role updated' };
   } catch (error) {

@@ -55,7 +55,7 @@ export default async function ChooseItemsBody({ params, searchParams }: Props) {
       items={displayItems}
       initialSelectedIds={Array.from(currentListItemIds)}
       isNew={isNew}
-      profile_id={identity.activeProfile.id}
+      actor={identity.activeProfile}
       lists={userLists}
       actingAs={await actingAsName(identity)}
     />

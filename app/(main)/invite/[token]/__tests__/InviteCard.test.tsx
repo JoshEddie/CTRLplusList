@@ -3,6 +3,7 @@
  * to and the role it grants, and redemption is an explicit act rather than a
  * side effect of the page being open.
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,8 +14,16 @@ import InviteCard, { type InviteView } from '../InviteCard';
 vi.mock('@/lib/data/profile.members.actions', () => ({
   redeemInvite: vi.fn(),
 }));
+// `bind` records its arguments rather than throwing them away: the destination
+// threaded into the form action is the whole point of the signed-out door, and
+// a mock that swallowed it would ship a wrong path green.
+const signInBind = vi.hoisted(() =>
+  vi.fn((...args: unknown[]) => vi.fn(() => args))
+);
 vi.mock('@/lib/data/user.actions', () => ({
-  signInUser: Object.assign(vi.fn(), { bind: () => vi.fn() }),
+  signInUser: Object.assign(vi.fn(), {
+    bind: (...args: unknown[]) => signInBind(...args),
+  }),
 }));
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
@@ -31,7 +40,7 @@ const invite: InviteView = {
   id: 'kiddo',
   name: 'Kiddo',
   tagline: null,
-  role: 'manager',
+  role: ROLES.manager,
   accent: null,
   art: null,
   avatarStyle: null,
@@ -68,15 +77,9 @@ describe('InviteCard', () => {
     });
 
     it('OwnerToken_StatesItGrantsOwnership', () => {
-      renderCard({ role: 'owner' });
+      renderCard({ role: ROLES.owner });
 
       expect(screen.getByText(/^as an owner —/)).toBeInTheDocument();
-    });
-
-    it('UnlabelledRole_FallsBackToTheStoredValue', () => {
-      renderCard({ role: 'curator' });
-
-      expect(screen.getByText('as curator.')).toBeInTheDocument();
     });
 
     it('ProfileWithATagline_ShowsItUnderTheName', () => {
@@ -141,6 +144,12 @@ describe('InviteCard', () => {
       expect(
         screen.queryByRole('button', { name: 'Accept invite' })
       ).toBeNull();
+    });
+
+    it('Render_BindsThisInvitesPathAsTheSignInDestination', () => {
+      renderCard({}, false);
+
+      expect(signInBind).toHaveBeenCalledWith(null, '/invite/tok-1');
     });
   });
 });

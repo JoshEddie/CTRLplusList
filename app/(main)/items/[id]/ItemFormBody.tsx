@@ -1,9 +1,9 @@
 import { getItemById } from '@/lib/data/item';
 import { getListsByProfile } from '@/lib/data/list';
 import { authedIdentity } from '@/lib/data/user.session';
+import { sameOriginPath } from '@/lib/sameOriginPath';
 import { redirect } from 'next/navigation';
 import ItemFormContainer from '../ui/components/itemform/ItemFormContainer';
-import { sanitizeReturnTo } from '../ui/components/returnTo';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -13,20 +13,31 @@ type Props = {
 export default async function ItemFormBody({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const returnTo = sanitizeReturnTo(sp.returnTo);
+  const returnTo = sameOriginPath(sp.returnTo);
 
   const identity = await authedIdentity();
   if (!identity) {
     redirect('/');
   }
 
-  const item = await getItemById(id, identity.activeProfile.id);
+  const activeProfile = identity.activeProfile;
+
+  const item = await getItemById(id, activeProfile.id);
 
   if (!item) {
     redirect(returnTo ?? '/items');
   }
 
-  const lists = await getListsByProfile(identity.activeProfile.id);
+  const lists = await getListsByProfile(activeProfile.id);
 
-  return <ItemFormContainer item={item} lists={lists} returnTo={returnTo} />;
+  const deleteDisabled = !activeProfile.role.admin;
+
+  return (
+    <ItemFormContainer
+      item={item}
+      lists={lists}
+      returnTo={returnTo}
+      deleteDisabled={deleteDisabled}
+    />
+  );
 }

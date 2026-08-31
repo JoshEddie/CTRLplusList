@@ -1,29 +1,50 @@
 // The role vocabulary every profile-scoped write is measured against. Its own
-// module rather than `profile.gate.ts`: the gate reaches NextAuth through
-// `user.session`, and read modules that only need to answer "does this role
-// clear the floor" must not drag an auth runtime into their module graph.
-// Nothing here imports anything.
+// module rather than `profile.gate.ts`, which reaches NextAuth: a module asking
+// only what a role may do must not drag an auth runtime into its module graph.
+// Nothing here imports anything that survives compilation.
+import type { RoleShape } from '@/lib/types';
 
-// The roles that make a profile selectable, and so writable-as once selected.
-// Named rather than inferred from the row's existence: the column's CHECK
-// admits exactly these today, and a role added later must not walk through
-// the gate by default.
-export const WRITE_ROLES = ['self', 'owner', 'manager'] as const;
-
-// The two role floors a profile-scoped write may name. Spelled out rather than
-// derived from `WRITE_ROLES`: that set answers "may this account act as the
-// profile at all", and a role added there later must not clear a floor by
-// default any more than it walks through the gate by default.
-export type RoleFloor = 'member' | 'owner';
-
-const FLOOR_ROLES: Record<RoleFloor, readonly string[]> = {
-  member: ['self', 'owner', 'manager'],
-  owner: ['self', 'owner'],
+const SELF: RoleShape = {
+  value: 'self',
+  label: 'You',
+  isSelf: true,
+  admin: true,
 };
 
-// Nullable because a caller that reached the row without a membership — the
-// unclaim path's item-owner leg — asks the same question and must get `false`
-// rather than branch around the floor.
-export function meetsFloor(role: string | null, floor: RoleFloor): boolean {
-  return role !== null && FLOOR_ROLES[floor].includes(role);
+const OWNER: RoleShape = {
+  value: 'owner',
+  label: 'Owner',
+  isSelf: false,
+  admin: true,
+};
+
+const MANAGER: RoleShape = {
+  value: 'manager',
+  label: 'Manager',
+  isSelf: false,
+  admin: false,
+};
+
+// The only way to reach a role: nothing outside this module holds one of the
+// records directly, so the vocabulary cannot grow a second home.
+export const ROLES = { self: SELF, owner: OWNER, manager: MANAGER };
+
+// The one place a stored value becomes a role. Every value the column holds is
+// one of these — the CHECK constraint is what says so — so a miss can only
+// follow a schema change, and it lands on the narrowest rights rather than
+// failing the read that found it.
+export function roleOf(stored: string): RoleShape {
+  return Object.values(ROLES).find((role) => role.value === stored) ?? MANAGER;
+}
+
+// A link admits a member, and the identity relation is not a membership anyone
+// can hand out: onboarding alone mints that one.
+export const isGrantable = (role: RoleShape) => !role.isSelf;
+
+// Strict where `roleOf` is lenient, because this value arrives from a client
+// rather than from the column, so nothing vouches for it.
+export function grantableRole(stored: string): RoleShape | undefined {
+  return Object.values(ROLES).find(
+    (role) => role.value === stored && isGrantable(role)
+  );
 }

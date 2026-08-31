@@ -45,7 +45,7 @@ export default async function PermissionsSection({
   // enforced inside the delete, which also counts a `self` row this section can
   // never meet — the section renders for managed profiles, and those carry none.
   const soleOwner =
-    viewerIsOwner && members.filter((m) => m.role === 'owner').length === 1;
+    viewerIsOwner && members.filter((m) => m.role.admin).length === 1;
 
   return (
     <section className="permissions-section">

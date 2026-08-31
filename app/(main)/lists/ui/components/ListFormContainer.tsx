@@ -5,12 +5,14 @@ export default function ListFormContainer({
   list,
   isEditing,
   actingAs,
+  deleteDisabled,
   onClose,
   onSuccess,
 }: {
   list?: ListTable;
   isEditing?: boolean;
   actingAs?: string;
+  deleteDisabled?: boolean;
   onClose: () => void;
   onSuccess?: () => void;
 }) {
@@ -19,6 +21,7 @@ export default function ListFormContainer({
       list={list}
       isEditing={isEditing}
       actingAs={actingAs}
+      deleteDisabled={deleteDisabled}
       onClose={onClose}
       onSuccess={onSuccess}
     />

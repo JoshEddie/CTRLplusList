@@ -1,8 +1,10 @@
 /**
  * Pins the Permissions roster's pending-invite row: a seat that has been
  * offered but not taken, carrying the link to copy, the role it grants, and
- * the withdrawal of both.
+ * the withdrawal of both — in the row's two shapes, discrete controls from
+ * 600px up and the kebab below it.
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -31,7 +33,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh }) }));
 
 const invite: PendingInvite = {
   token: 'tok-123',
-  role: 'manager',
+  role: ROLES.manager,
   created_at: new Date(),
   expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
 };
@@ -52,6 +54,52 @@ beforeEach(() => {
 });
 
 describe('InviteRow', () => {
+  describe('DiscreteControls', () => {
+    it('ChangeRoleThenOwner_CallsSetInviteRoleWithOwner', async () => {
+      setInviteRole.mockResolvedValue({ success: true, message: 'ok' });
+      renderRow();
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Change role' })
+      );
+      await userEvent.click(
+        screen.getByRole('menuitemradio', { name: 'Owner' })
+      );
+
+      expect(setInviteRole).toHaveBeenCalledWith('kiddo', 'tok-123', 'owner');
+    });
+
+    it('EscapeWithTheRoleMenuOpen_ClosesItWithoutChangingTheRole', async () => {
+      renderRow();
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Change role' })
+      );
+      expect(
+        screen.getByRole('menu', { name: 'Invite link role' })
+      ).toBeInTheDocument();
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(
+        screen.queryByRole('menu', { name: 'Invite link role' })
+      ).toBeNull();
+      expect(setInviteRole).not.toHaveBeenCalled();
+    });
+
+    it('Revoke_OpensTheConfirmationRatherThanRevokingOutright', async () => {
+      renderRow();
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Revoke this invite link' })
+      );
+
+      expect(
+        screen.getByText('Revoke this invite link?')
+      ).toBeInTheDocument();
+      expect(revokeInvite).not.toHaveBeenCalled();
+    });
+  });
+
   it('EscapeWithTheMenuOpen_ClosesItWithoutActing', async () => {
     renderRow();
     await openMenu();
@@ -70,14 +118,14 @@ describe('InviteRow', () => {
     // The expiry is stated forward, not as an age: the row exists only while
     // the link is still live.
     expect(screen.getByRole('listitem')).toHaveTextContent(
-      /Managerexpires in 7 days$/
+      /Managerexpires in 7 days/
     );
   });
 
   it('OneDayLeft_SaysDayInTheSingular', () => {
     renderRow(1);
 
-    expect(screen.getByRole('listitem')).toHaveTextContent(/expires in 1 day$/);
+    expect(screen.getByRole('listitem')).toHaveTextContent(/expires in 1 day/);
   });
 
   it('CopyLink_WritesTheInviteUrlToTheClipboard', async () => {

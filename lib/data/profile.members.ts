@@ -8,6 +8,7 @@ import {
 import { selfMemberships } from '@/lib/data/profile.identity';
 import { accentPreferences, avatarColumns } from '@/lib/data/profileAvatar';
 import { cacheTags } from '@/lib/cacheTags';
+import { roleOf } from '@/lib/data/profile.roles';
 import { and, asc, eq, gt, isNull } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
@@ -17,6 +18,7 @@ export async function getProfileMembers(profileId: string) {
   'use cache';
   cacheTag(
     cacheTags.profileMembers,
+    cacheTags.membersOfProfile(profileId),
     cacheTags.profiles,
     cacheTags.profileAvatars,
     cacheTags.profilePreferences
@@ -41,7 +43,7 @@ export async function getProfileMembers(profileId: string) {
       .leftJoin(accentPreferences, eq(accentPreferences.profile_id, profiles.id))
       .where(eq(profile_members.profile_id, profileId));
     cacheTag(...rows.map((row) => cacheTags.profilesOfUser(row.user_id)));
-    return rows;
+    return rows.map((row) => ({ ...row, role: roleOf(row.role) }));
   } catch (error) {
     console.error('Error fetching profile members:', error);
     throw new Error('Failed to fetch profile members');
@@ -79,7 +81,8 @@ export async function getLiveInvite(token: string) {
       );
     // `.at` rather than an index: it types the miss, so the page's own
     // not-found branch narrows instead of being dead to the compiler.
-    return rows.at(0) ?? null;
+    const invite = rows.at(0);
+    return invite ? { ...invite, role: roleOf(invite.role) } : null;
   } catch (error) {
     console.error('Error fetching invite:', error);
     throw new Error('Failed to fetch invite');
@@ -91,11 +94,15 @@ export async function getLiveInvite(token: string) {
 // the link back to the owner who minted it — which is why only an owner is
 // shown these rows: a bearer token is the grant itself, so rendering one to a
 // manager would let them admit a member by forwarding it.
+//
+// Uncached, for the reason `getLiveInvite` is: the `expires_at > now` filter is
+// a predicate on the clock, and a cached result freezes the clock it was
+// computed against. No tag can restore it — expiry is the passage of time, not
+// a write — so an expired link would sit in the roster claiming to be live
+// until some unrelated write on the profile happened to evict it.
 export async function getPendingInvites(profileId: string) {
-  'use cache';
-  cacheTag(cacheTags.profileInvites, cacheTags.invitesOfProfile(profileId));
   try {
-    return await db
+    const rows = await db
       .select({
         token: profile_invites.token,
         role: profile_invites.role,
@@ -111,6 +118,7 @@ export async function getPendingInvites(profileId: string) {
         )
       )
       .orderBy(asc(profile_invites.created_at));
+    return rows.map((row) => ({ ...row, role: roleOf(row.role) }));
   } catch (error) {
     console.error('Error fetching pending invites:', error);
     throw new Error('Failed to fetch pending invites');

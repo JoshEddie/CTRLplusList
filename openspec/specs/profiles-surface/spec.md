@@ -8,7 +8,7 @@ The user-facing surface for profiles: the page listing every profile an account 
 
 ### Requirement: The Profiles page SHALL list every profile the viewer runs
 
-`/profiles` SHALL render one card per profile the viewer holds any membership on. Membership containment is the whole query — the profiles table carries no account reference, so a membership row is the only handle onto a profile.
+`/altvatar` SHALL render one card per profile the viewer holds any membership on. Membership containment is the whole query — the profiles table carries no account reference, so a membership row is the only handle onto a profile.
 
 Cards SHALL be ordered: the viewer's own self-profile first, then the profiles they own sorted by name ascending, then the profiles they manage sorted by name ascending. The two runs are ordered by capability, not by convention: after this change a viewer may edit the profiles they own and may not edit the ones they manage, so sorting across the boundary would scatter the actionable cards among the inert ones.
 
@@ -18,13 +18,13 @@ The page SHALL state, above the cards, what selecting a profile does. It SHALL N
 
 #### Scenario: A viewer with no managed profiles still sees their own card
 
-- **WHEN** an authenticated viewer who holds only a `self` membership opens `/profiles`
+- **WHEN** an authenticated viewer who holds only a `self` membership opens `/altvatar`
 - **THEN** exactly one card renders, for their own profile
 - **AND** no empty state is rendered
 
 #### Scenario: The page states what selecting a profile does
 
-- **WHEN** an authenticated viewer opens `/profiles`
+- **WHEN** an authenticated viewer opens `/altvatar`
 - **THEN** copy above the cards states that selecting a profile makes it active and that what the viewer creates belongs to it
 
 #### Scenario: Owned profiles precede managed profiles, each alphabetical
@@ -225,9 +225,9 @@ In exchange the fallback preset stays selectable, and a profile storing it is in
 
 ### Requirement: A profile's space SHALL be reachable only by that profile's members
 
-`/profiles/[id]` SHALL render for an authenticated viewer holding any membership on the profile — `self`, `owner`, or `manager`.
+`/altvatar/[id]` SHALL render for an authenticated viewer holding any membership on the profile — `self`, `owner`, or `manager`.
 
-An authenticated viewer holding no membership on it SHALL be redirected to `/profiles`, the page listing the profiles they do run. A request for a profile id that does not exist SHALL produce the identical response, so the surface discloses no profile's existence to a viewer with no claim on it. An unauthenticated request to `/profiles` or `/profiles/[id]` SHALL redirect to `/`.
+An authenticated viewer holding no membership on it SHALL be redirected to `/altvatar`, the page listing the profiles they do run. A request for a profile id that does not exist SHALL produce the identical response, so the surface discloses no profile's existence to a viewer with no claim on it. An unauthenticated request to `/altvatar` or `/altvatar/[id]` SHALL redirect to `/`.
 
 #### Scenario: A member reaches the space
 
@@ -237,7 +237,7 @@ An authenticated viewer holding no membership on it SHALL be redirected to `/pro
 #### Scenario: A non-member is redirected to their own Profiles page
 
 - **WHEN** an authenticated viewer holding no membership on a profile requests its space
-- **THEN** the request redirects to `/profiles`
+- **THEN** the request redirects to `/altvatar`
 
 #### Scenario: An unknown profile id is indistinguishable from a forbidden one
 
@@ -246,7 +246,7 @@ An authenticated viewer holding no membership on it SHALL be redirected to `/pro
 
 #### Scenario: Unauthenticated request is redirected
 
-- **WHEN** an unauthenticated request reaches `/profiles` or `/profiles/[id]`
+- **WHEN** an unauthenticated request reaches `/altvatar` or `/altvatar/[id]`
 - **THEN** it redirects to `/`
 
 ### Requirement: A profile's space SHALL render an identity header and a Settings form

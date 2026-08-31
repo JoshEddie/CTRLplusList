@@ -13,7 +13,9 @@ import { pinActingProfile } from './helpers/activeProfile';
 // Seed baseline: `dev-test-viewer` holds `self` on `self-dev-test-viewer`
 // ("Test Viewer", which owns "Test Viewer's Birthday"), `owner` on
 // `dev-profile-owned` ("Owned Profile", which owns "Owned Profile Wishlist"),
-// and `manager` on `dev-profile-managed` ("Managed Profile").
+// and `manager` on both `dev-profile-managed` ("Managed Profile") and
+// `dev-profile-workshop` ("Workshop Profile", the seat the manager flow
+// writes on) — four memberships, and so four rows in the switcher.
 //
 // RESIDUE (contained, documented for future spec authors): a switch stamps the
 // target membership's last-acted-as timestamp, and no affordance in the

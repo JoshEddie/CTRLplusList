@@ -1,7 +1,7 @@
 'use client';
 
 import { createPurchase, removePurchase } from '@/lib/data/purchase.actions';
-import { ItemDisplay, PurchaseView } from '@/lib/types';
+import { ProfileMembershipView, ItemDisplay, PurchaseView } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -18,7 +18,7 @@ import { containerClasses, firstToken, resolveModalView } from './utils';
 export default function Item({
   item,
   className,
-  profile_id,
+  actor,
   user_name,
   showSpoilers,
   showArchiveAction,
@@ -28,7 +28,8 @@ export default function Item({
 }: {
   item: ItemDisplay;
   className?: string;
-  profile_id?: string;
+  /** The profile the request acts as, absent for a signed-out visitor. */
+  actor?: ProfileMembershipView;
   user_name?: string | null;
   /** Owner's spoiler view is enabled — gates the owner claim/unclaim affordances. */
   showSpoilers?: boolean;
@@ -65,7 +66,7 @@ export default function Item({
     setLocalPurchases(propPurchases);
   }
 
-  const isOwner = profile_id === item.profile_id;
+  const isOwner = actor?.id === item.profile_id;
   const quantityLimit = item.quantity_limit;
   const claimCount = localPurchases.length;
   const isFullyClaimed =
@@ -94,7 +95,7 @@ export default function Item({
   // claims list; the card affordance is "Manage claims" once any claim exists.
   const showOwnerManageAction = isOwner && !!showSpoilers && hasAnyClaim;
   const showBuyClaim =
-    !!profile_id &&
+    !!actor &&
     !isOwner &&
     !isFullyClaimed &&
     !hasViewerClaim &&
@@ -145,7 +146,13 @@ export default function Item({
   const removeClaim = async (claim: PurchaseView) => {
     try {
       const result = await toast.promise(
-        removePurchase({ purchase_id: claim.id }),
+        // A refused removal answers `{ success: false }`, which resolves —
+        // rejecting it is what routes the refusal to the error toast rather
+        // than reporting the removal that did not happen.
+        removePurchase({ purchase_id: claim.id }).then((response) => {
+          if (!response?.success) throw new Error(response?.message);
+          return response;
+        }),
         {
           loading: 'Removing claim',
           success: 'Claim removed successfully',
@@ -223,7 +230,7 @@ export default function Item({
     recordClaim(
       { item_id: item.id || '', guest_name: null, purchased_by: target.id },
       {
-        by: target.id === profile_id ? 'self' : 'other',
+        by: target.id === actor?.id ? 'self' : 'other',
         firstName: firstToken(target.name || 'Someone'),
         claimedByViewer: true,
         purchasedAt: new Date(),
@@ -236,7 +243,7 @@ export default function Item({
       {
         // Signed-out guest: the cookie written by the action makes this the
         // viewer's own claim, matching the server overlay's by:'self' marking.
-        by: profile_id ? 'other' : 'self',
+        by: actor ? 'other' : 'self',
         firstName: firstToken(name),
         claimedByViewer: true,
         purchasedAt: new Date(),
@@ -267,7 +274,7 @@ export default function Item({
           showPurchased={showPurchased}
           showSpoilerInfo={showSpoilerInfo}
           viewerClaimed={!isOwner && hasViewerClaim}
-          guestViewer={!profile_id}
+          guestViewer={!actor}
           fullyClaimed={isFullyClaimed}
           showCounter={showCounter}
           counterText={counterText}
@@ -308,7 +315,7 @@ export default function Item({
           view={modalView}
           claims={localPurchases}
           viewerIsPurchaser={viewerIsPurchaser}
-          profile_id={profile_id}
+          actor={actor}
           isOwner={isOwner}
           showSpoilers={!!showSpoilers}
           ownerCanClaim={showOwnerClaimAction}

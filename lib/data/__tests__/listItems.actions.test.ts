@@ -1,12 +1,21 @@
 import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mockNextHeaders } from '@/test/helpers/next-headers';
+import {
+  clearTestCookies,
+  mockNextHeaders,
+  setTestCookie,
+} from '@/test/helpers/next-headers';
 
 import { items, list_items, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedManagedProfile,
+  seedMembership,
+  seedUsers,
+} from '@/test/helpers/seedFollowGraph';
+import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
 
 import {
   contentTagCalls,
@@ -59,6 +68,8 @@ function noSession() {
 const listItemRows = (listId: string) =>
   db.select().from(list_items).where(eq(list_items.list_id, listId));
 
+const MANAGED = 'kiddo';
+
 beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
@@ -75,6 +86,7 @@ beforeEach(async () => {
   vi.restoreAllMocks();
   await resetDb(db);
   await seedUsers(db, [OWNER, OTHER]);
+  clearTestCookies();
   updateTag.mockClear();
   asOwner();
 });
@@ -327,6 +339,30 @@ describe('updatePriority', () => {
     const rows = await listItemRows('L');
     return rows.find((r) => r.item_id === itemId)?.position;
   }
+
+  it('ManagerReorders_Succeeds-PositionWritten', async () => {
+    // Ordering takes the member floor, like every other content write: pinned
+    // here so narrowing this call site to `owner` cannot pass unnoticed.
+    await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
+    await seedMembership(db, {
+      user_id: OWNER.id,
+      profile_id: MANAGED,
+      role: 'manager',
+    });
+    setTestCookie(ACTIVE_PROFILE_COOKIE, MANAGED);
+    await seedList(db, { id: 'L', user_id: OWNER.id, profile_id: MANAGED });
+    for (const [itemId, position] of Object.entries({ A: 65536, B: 131072 })) {
+      await seedItem(db, {
+        id: itemId,
+        user_id: OWNER.id,
+        profile_id: MANAGED,
+      });
+      await seedListItem(db, { list_id: 'L', item_id: itemId, position });
+    }
+
+    expect((await actions.updatePriority('A', 'B', 'L')).success).toBe(true);
+    expect(await positionOf('A')).toBeGreaterThan(131072);
+  });
 
   describe('HappyPaths', () => {
     it('MoveDownToMidpoint_SetsFloorMidpointBetweenTargetAndLowerNeighbor', async () => {

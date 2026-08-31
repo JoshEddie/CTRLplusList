@@ -6,12 +6,6 @@ import type { ProfileCardView } from '@/lib/types';
 import { useProfileSwitch } from '@/app/ui/components/ProfileSwitchProvider';
 import ProfileCardMenu from './ProfileCardMenu';
 
-const ROLE_LABEL: Record<ProfileCardView['role'], string> = {
-  self: 'You',
-  owner: 'Owner',
-  manager: 'Manager',
-};
-
 function countsText({ listCount, itemCount }: ProfileCardView): string {
   const lists = `${listCount} ${listCount === 1 ? 'list' : 'lists'}`;
   const items = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
@@ -60,9 +54,9 @@ export default function ProfileCard({
         <div className="profile-card-heading">
           <span className="profile-card-name">{profile.name}</span>
           <span
-            className={`profile-card-role${profile.role === 'self' ? ' is-you' : ''}`}
+            className={`profile-card-role${profile.role.isSelf ? ' is-you' : ''}`}
           >
-            {ROLE_LABEL[profile.role]}
+            {profile.role.label}
           </span>
         </div>
         <div className="profile-card-tagline">{profile.tagline}</div>

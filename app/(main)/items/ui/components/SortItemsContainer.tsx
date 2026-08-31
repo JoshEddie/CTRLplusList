@@ -24,11 +24,13 @@ export default async function SortItemsContainer({
     showSpoilers: showSpoilers ?? false,
   });
 
+  const actor = identity?.activeProfile;
+
   return (
     <Suspense fallback={<LoadingIndicator size="page" />}>
       <SortItems
         items={items}
-        profile_id={identity?.activeProfile.id}
+        actor={actor}
         listId={listId}
         showSpoilers={showSpoilers}
       />

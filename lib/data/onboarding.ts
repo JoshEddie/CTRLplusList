@@ -28,7 +28,7 @@ export async function resolveOnboarding(): Promise<OnboardingState> {
   if (!userId) return { onboarded: true };
 
   const memberships = await getMembershipsForUser(userId);
-  const self = memberships.find((m) => m.role === 'self');
+  const self = memberships.find((m) => m.role.isSelf);
   if (!self) {
     // The name the account already carries, so the gate's field arrives filled
     // wherever the provider gave one. Read only on this arm, which an account

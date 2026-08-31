@@ -41,7 +41,7 @@ vi.mock('../ChooseItemsForm', () => ({
     items: { id: string }[];
     initialSelectedIds: string[];
     isNew: boolean;
-    profile_id: string;
+    actor: { id: string };
     lists: unknown[];
   }) => (
     <div
@@ -51,7 +51,7 @@ vi.mock('../ChooseItemsForm', () => ({
       data-item-ids={p.items.map((i) => i.id).join(',')}
       data-selected={p.initialSelectedIds.join(',')}
       data-is-new={String(p.isNew)}
-      data-profile-id={p.profile_id}
+      data-profile-id={p.actor.id}
       data-lists-count={String(p.lists.length)}
     />
   ),

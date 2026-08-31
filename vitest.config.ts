@@ -55,6 +55,7 @@ export default defineConfig({
           environment: 'node',
           include: ['**/*.test.ts'],
           exclude: testExclude,
+          hookTimeout: 60_000,
         },
       },
     ],

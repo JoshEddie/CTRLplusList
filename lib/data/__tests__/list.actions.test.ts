@@ -84,9 +84,9 @@ const MANAGED = 'kiddo';
 // The owner acting as a profile that is not their own. Every other case in
 // this file leaves the selection unset, which collapses the active profile
 // onto the self-profile and makes the two interchangeable.
-async function ownerActsAsManaged() {
+async function ownerActsAsManaged(role: 'owner' | 'manager' = 'owner') {
   await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
-  await seedMembership(db, { user_id: OWNER.id, profile_id: MANAGED });
+  await seedMembership(db, { user_id: OWNER.id, profile_id: MANAGED, role });
   setTestCookie(ACTIVE_PROFILE_COOKIE, MANAGED);
 }
 
@@ -431,6 +431,47 @@ describe('deleteList', () => {
     });
     const res = await actions.deleteList('L');
     expect(res.error).toBe('Failed to delete list');
+  });
+});
+
+// Which literal each call site passes, not merely that a floor exists: with
+// only the gate's own suite, widening `authedWriter('owner')` to `'member'` at
+// any of these sites leaves everything green.
+describe('RoleFloorAtTheCallSite', () => {
+  beforeEach(async () => {
+    await ownerActsAsManaged('manager');
+    await seedList(db, {
+      id: 'L',
+      user_id: OWNER.id,
+      profile_id: MANAGED,
+      visibility: 'private',
+    });
+  });
+
+  it('ManagerDeletesAList_ReturnsForbidden-RowPersists', async () => {
+    expect(await actions.deleteList('L')).toMatchObject({ error: 'Forbidden' });
+    expect(await listRows()).toHaveLength(1);
+  });
+
+  it('ManagerChangesVisibility_ReturnsForbidden-VisibilityUnchanged', async () => {
+    expect(await actions.setListVisibility('L', 'public')).toMatchObject({
+      error: 'Forbidden',
+    });
+    expect((await listRows()).find((l) => l.id === 'L')?.visibility).toBe(
+      'private'
+    );
+  });
+
+  it('ManagerUpdatesAList_Succeeds-NameWritten', async () => {
+    // The permitting direction: content writes take the member floor, so
+    // narrowing one of them to `owner` has to fail here.
+    expect(
+      (await actions.updateList('L', makeList({ name: 'Renamed list' })))
+        .success
+    ).toBe(true);
+    expect((await listRows()).find((l) => l.id === 'L')?.name).toBe(
+      'Renamed list'
+    );
   });
 });
 

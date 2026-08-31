@@ -4,6 +4,7 @@
  * plus the resolution the invite page makes — where a spent, expired or unknown
  * token must be indistinguishable from one that never existed.
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { profile_invites } from '@/db/schema';
 import { bootPglite, resetDb } from '@/test/helpers/db';
@@ -97,7 +98,7 @@ describe('getProfileMembers', () => {
       expect.arrayContaining([
         expect.objectContaining({
           user_id: OWNER,
-          role: 'owner',
+          role: ROLES.owner,
           id: selfProfileOf(OWNER),
           art: '<svg id="owner" />',
           accent: 'rose',
@@ -105,7 +106,7 @@ describe('getProfileMembers', () => {
         }),
         expect.objectContaining({
           user_id: MANAGER,
-          role: 'manager',
+          role: ROLES.manager,
           last_active_at: null,
           art: null,
           accent: null,
@@ -130,6 +131,11 @@ describe('getProfileMembers', () => {
     // The read is keyed on the profile but its rows belong to accounts, so a
     // membership write on either side has a tag to fire.
     expect(cacheTag).toHaveBeenCalledWith(cacheTags.profilesOfUser(MANAGER));
+    // The profile's own narrow tag, so a role change on one profile need not
+    // fire the coarse table tag and invalidate every account's memberships.
+    expect(vi.mocked(cacheTag).mock.calls.flat()).toContain(
+      cacheTags.membersOfProfile(KIDDO)
+    );
   });
 
   it('QueryThrows_RejectsWithFailedToFetchProfileMembers', async () => {
@@ -152,11 +158,17 @@ describe('getPendingInvites', () => {
     const rows = await dal.getPendingInvites(KIDDO);
 
     expect(rows.map((r) => r.token)).toEqual([first, second]);
-    expect(rows.map((r) => r.role)).toEqual(['manager', 'owner']);
-    expect(cacheTag).toHaveBeenCalledWith(
-      cacheTags.profileInvites,
-      cacheTags.invitesOfProfile(KIDDO)
-    );
+    expect(rows.map((r) => r.role)).toEqual([ROLES.manager, ROLES.owner]);
+  });
+
+  it('AnyRead_IsUncachedSoTheExpiryFilterIsNotFrozen', async () => {
+    await seedInvite({ role: 'manager' });
+
+    await dal.getPendingInvites(KIDDO);
+
+    // The WHERE filters `expires_at > now`, so a cached entry would hold a
+    // clock. No tag can restore it — expiry is elapsed time, not a write.
+    expect(cacheTag).not.toHaveBeenCalled();
   });
 
   it('SpentInvite_IsNotPending', async () => {
@@ -191,7 +203,7 @@ describe('getLiveInvite', () => {
     expect(await dal.getLiveInvite(token)).toMatchObject({
       id: KIDDO,
       name: 'Kiddo',
-      role: 'owner',
+      role: ROLES.owner,
       art: '<svg id="kiddo" />',
     });
   });

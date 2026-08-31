@@ -12,7 +12,13 @@ export default async function ProfileSpaceListsPanel({
   const lists = await getListsByProfile(profileId);
   return (
     <div className="profile-space-lists">
-      <PublicListsGrid lists={lists} />
+      {lists.length === 0 ? (
+        // Not the grid's own empty state: that one is written for the public
+        // view and would claim no *shared* lists on a profile with no lists.
+        <p className="profile-empty">No lists yet.</p>
+      ) : (
+        <PublicListsGrid lists={lists} />
+      )}
     </div>
   );
 }
