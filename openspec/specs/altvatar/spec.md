@@ -50,7 +50,7 @@ The thing kind's art SHALL be flat and full-colour, sourced from a bundled SVG s
 #### Scenario: A picture is stored as its codepoint
 
 - **WHEN** a viewer picks a picture and saves
-- **THEN** the stored selection is the set's codepoint for it, and the stored art is the server's own read of that codepoint's file
+- **THEN** the stored selection is the set's codepoint for it, and the stored art is the route that codepoint's bundled picture is served from, pinned to the set before it is stored
 
 #### Scenario: People, faces and flags are not offered
 
