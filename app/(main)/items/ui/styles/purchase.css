@@ -19,17 +19,18 @@
   min-width: 0;
 }
 
-/* Two-up pair (View · Add Claim), formed under either managing top action
-   (Manage claim/claims) or the Buy & Claim primary slot. `order` gives the
-   spec's reading order; focus order stays DOM order (Add → View) — accepted
-   in design D1. */
-.item-actions:has(:is(.item-actions-claim, .item-actions-buy)):has(.item-actions-add)
+/* Two-up pair (View · Add Claim), formed wherever both exist — under a
+   managing top action, under Buy & Claim, or as the whole set. Add Claim and
+   View are the only labels that survive a half-width slot: Manage claims does
+   not, so a Manage + View set stays stacked. `order` gives the spec's reading
+   order; focus order stays DOM order (Add -> View) — accepted in design D1. */
+.item-actions:has(.item-actions-add):has(.item-actions-view)
   > .item-actions-view {
   grid-column: 1;
   order: 1;
 }
 
-.item-actions:has(:is(.item-actions-claim, .item-actions-buy)):has(.item-actions-add)
+.item-actions:has(.item-actions-add):has(.item-actions-view)
   > .item-actions-add {
   grid-column: 2;
   order: 2;
@@ -37,7 +38,7 @@
 
 /* The half-width pair slot can't fit "View item" — the visible label drops
    to "View". The aria-label keeps the full phrase for AT. */
-.item-actions:has(:is(.item-actions-claim, .item-actions-buy)):has(.item-actions-add)
+.item-actions:has(.item-actions-add):has(.item-actions-view)
   > .item-actions-view
   .item-actions-view-label {
   display: none;

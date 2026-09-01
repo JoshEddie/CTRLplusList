@@ -33,7 +33,7 @@ function renderCard(
     showCounter: true,
     counterText: '0/3 claimed',
     hasAnyClaim: false,
-    tier: 'identity',
+    tier: 'claims',
     onPurchaseClick: vi.fn(),
     onAddClaimClick: vi.fn(),
     ...overrides,

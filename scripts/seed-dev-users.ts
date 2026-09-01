@@ -168,7 +168,7 @@ const MEMBER_SPOILER_TIERS: {
   user_id: string;
   tier: SpoilerTier;
 }[] = [
-  { profile_id: OWNED_PROFILE_ID, user_id: VIEWER_ID, tier: 'identity' },
+  { profile_id: OWNED_PROFILE_ID, user_id: VIEWER_ID, tier: 'claims' },
   {
     profile_id: OWNED_PROFILE_ID,
     user_id: friendId('alice'),

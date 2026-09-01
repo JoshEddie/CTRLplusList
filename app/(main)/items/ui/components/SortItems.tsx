@@ -63,7 +63,7 @@ export default function SortItems({
   const itemsKey = items
     .map((i) => {
       const pkey = (i.purchases ?? [])
-        .map((p) => `${p.id}:${p.firstName ?? ''}:${p.by}`)
+        .map((p) => `${p.id}:${p.name ?? ''}:${p.by}`)
         .join('|');
       const s = i.store;
       const skey = s ? `${s.name}:${s.price}:${s.link}` : '';

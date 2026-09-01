@@ -20,6 +20,7 @@ import {
   BookmarkMenuItem,
   FollowMenuItem,
   ShareMenuItem,
+  SpoilerMenuItems,
   VisibilityMenuItems,
 } from '../HeroCollapsedItems';
 
@@ -36,8 +37,19 @@ vi.mock('@/lib/data/profile.actions', () => ({
   unfollowUser: vi.fn(),
 }));
 
-const router = vi.hoisted(() => ({ refresh: vi.fn(), push: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => router }));
+const router = vi.hoisted(() => ({
+  refresh: vi.fn(),
+  push: vi.fn(),
+  replace: vi.fn(),
+}));
+const sp = vi.hoisted(() => ({
+  value: new URLSearchParams() as URLSearchParams | null,
+}));
+vi.mock('next/navigation', () => ({
+  useRouter: () => router,
+  usePathname: () => '/lists/list-1',
+  useSearchParams: () => sp.value,
+}));
 
 vi.mock('react-hot-toast', () => ({
   default: {
@@ -426,18 +438,11 @@ describe('FollowMenuItem', () => {
   };
 
   describe('NotFollowing', () => {
-    it('WithOwnerName_RendersFollowOwnerName-IconSvg', () => {
+    it('Default_RendersFollow-IconSvg', () => {
       renderInMenu(<FollowMenuItem {...props} />);
-      const item = screen.getByRole('menuitem', { name: 'Follow Bob' });
+      const item = screen.getByRole('menuitem', { name: 'Follow' });
       expect(item).toBeInTheDocument();
       expect(item.querySelector('svg')).not.toBeNull();
-    });
-
-    it('NullOwnerName_RendersFollow', () => {
-      renderInMenu(<FollowMenuItem {...props} ownerName={null} />);
-      expect(
-        screen.getByRole('menuitem', { name: 'Follow' })
-      ).toBeInTheDocument();
     });
 
     it('RequireDisclosure_ClickOpensDialog-NoImmediateFollow-ConfirmFollows', async () => {
@@ -446,7 +451,7 @@ describe('FollowMenuItem', () => {
       const { container } = renderInMenu(
         <FollowMenuItem {...props} requireDisclosure={true} />
       );
-      await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
       expect(
         (container.querySelector('dialog') as HTMLDialogElement).open
       ).toBe(true);
@@ -460,7 +465,7 @@ describe('FollowMenuItem', () => {
       const { container } = renderInMenu(
         <FollowMenuItem {...props} requireDisclosure={true} />
       );
-      await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(
         (container.querySelector('dialog') as HTMLDialogElement).open
@@ -472,7 +477,7 @@ describe('FollowMenuItem', () => {
       vi.mocked(followUser).mockResolvedValue({ success: true, message: '' });
       const user = userEvent.setup();
       renderInMenu(<FollowMenuItem {...props} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
       expect(
         screen.getByRole('menuitem', { name: 'Following' })
       ).toBeInTheDocument();
@@ -501,7 +506,7 @@ describe('FollowMenuItem', () => {
       );
       const user = userEvent.setup();
       renderInMenu(<FollowMenuItem {...props} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
       await user.click(screen.getByRole('menuitem', { name: 'Following' }));
       expect(followUser).toHaveBeenCalledTimes(1);
       resolve({ success: true, message: '' });
@@ -514,9 +519,9 @@ describe('FollowMenuItem', () => {
       });
       const user = userEvent.setup();
       renderInMenu(<FollowMenuItem {...props} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
+      await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
       expect(
-        await screen.findByRole('menuitem', { name: 'Follow Bob' })
+        await screen.findByRole('menuitem', { name: 'Follow' })
       ).toBeInTheDocument();
       expect(toast.error).toHaveBeenCalledWith('Cannot follow');
     });
@@ -554,5 +559,45 @@ describe('FollowMenuItem', () => {
       ).toBeInTheDocument();
       expect(toast.error).toHaveBeenCalledWith('Cannot unfollow');
     });
+  });
+});
+
+describe('SpoilerMenuItems', () => {
+  const row = (name: string) => screen.getByRole('menuitemradio', { name });
+
+  beforeEach(() => {
+    sp.value = new URLSearchParams();
+  });
+
+  it('Default_RendersThreeRowsWithCurrentTierChecked', () => {
+    renderInMenu(<SpoilerMenuItems tier="claims" baseline="surprise" />);
+    expect(screen.getAllByRole('menuitemradio')).toHaveLength(3);
+    expect(row("Show what's claimed")).toHaveAttribute('aria-checked', 'true');
+    expect(row('Keep it a surprise')).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('SelectOtherTier_ReplacesUrlKeepingExistingParams', async () => {
+    const user = userEvent.setup();
+    sp.value = new URLSearchParams('page=2');
+    renderInMenu(<SpoilerMenuItems tier="surprise" baseline="surprise" />);
+    await user.click(row("Show what's claimed"));
+    expect(router.replace).toHaveBeenCalledWith(
+      '/lists/list-1?page=2&spoiler=claims'
+    );
+  });
+
+  it('SelectCurrentTier_DoesNotNavigate', async () => {
+    const user = userEvent.setup();
+    renderInMenu(<SpoilerMenuItems tier="claims" baseline="surprise" />);
+    await user.click(row("Show what's claimed"));
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it('SelectBaselineWithNoSearchParams_ReplacesWithBarePath', async () => {
+    const user = userEvent.setup();
+    sp.value = null;
+    renderInMenu(<SpoilerMenuItems tier="claims" baseline="surprise" />);
+    await user.click(row('Keep it a surprise'));
+    expect(router.replace).toHaveBeenCalledWith('/lists/list-1');
   });
 });

@@ -26,7 +26,9 @@ test('Follow_ViewerFollowsThenUnfollowsDave_FollowingPageReflectsEachState', asy
   page,
 }) => {
   await page.goto('/altvatar/self-dev-friend-dave');
-  await page.getByRole('button', { name: 'Follow Dave Example' }).click();
+  await page
+    .getByRole('button', { name: 'Follow', exact: true })
+    .click();
   await expect(page.getByRole('button', { name: 'Following' })).toBeVisible();
   // The button flip above is optimistic; the success toast fires only after
   // the server action commits — wait for it before navigating, or /following
@@ -44,7 +46,7 @@ test('Follow_ViewerFollowsThenUnfollowsDave_FollowingPageReflectsEachState', asy
   await page.goto('/altvatar/self-dev-friend-dave');
   await page.getByRole('button', { name: 'Following' }).click();
   await expect(
-    page.getByRole('button', { name: 'Follow Dave Example' })
+    page.getByRole('button', { name: 'Follow', exact: true })
   ).toBeVisible();
   // Same optimistic-flip caveat: wait for the post-commit toast.
   await expect(page.getByText('Unfollowed')).toBeVisible();

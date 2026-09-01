@@ -7,32 +7,47 @@ import type { SpoilerTier } from '@/lib/types';
 
 // Ordered weakest to strongest: each tier admits everything below it.
 // surprise → nothing; progress → the list's claimed count; claims → per-item
-// badges and remaining capacity; identity → the claiming parties named.
+// badges and remaining capacity. Naming the claiming parties is no tier: it is
+// a per-act reveal the viewer confirms, which `ClaimProjection` carries.
 export const SPOILER_TIERS = [
   'surprise',
   'progress',
   'claims',
-  'identity',
 ] as const satisfies readonly SpoilerTier[];
+
+// What a projection of another party's claim may disclose. Every stored value
+// is a tier; `revealed` is reachable only by a viewer's explicit confirmation
+// in the claim modal, so it is never stored and never resolved from a URL.
+export type ClaimProjection = SpoilerTier | 'revealed';
 
 // The fully protected default: a membership with no stored tier resolves here,
 // and it is what every existing user experiences unchanged.
 export const PROTECTED_TIER: SpoilerTier = 'surprise';
 
 // What a viewer with no membership on the owning profile resolves to: nothing
-// is withheld, because there is no surprise of theirs to protect.
-export const MAXIMAL_TIER: SpoilerTier = 'identity';
+// a tier can withhold is withheld, because there is no surprise of theirs to
+// protect.
+export const MAXIMAL_TIER: SpoilerTier = 'claims';
 
 // The library omits `progress`: it spans every list the profile owns and has
 // no single-list claimed count to progress toward.
-export const LIBRARY_TIERS = ['surprise', 'claims', 'identity'] as const;
+export const LIBRARY_TIERS = ['surprise', 'claims'] as const;
 
 export function atLeast(tier: SpoilerTier, floor: SpoilerTier): boolean {
   return SPOILER_TIERS.indexOf(tier) >= SPOILER_TIERS.indexOf(floor);
 }
 
+// `identity` was a fourth tier that named the claiming parties; rows written
+// under it outlive it, and folding them to `surprise` would silently re-hide
+// what those members had chosen to see.
+const RETIRED_TIERS: Record<string, SpoilerTier> = { identity: 'claims' };
+
 export function spoilerTierOf(stored: string): SpoilerTier {
-  return SPOILER_TIERS.find((tier) => tier === stored) ?? PROTECTED_TIER;
+  return (
+    SPOILER_TIERS.find((tier) => tier === stored) ??
+    RETIRED_TIERS[stored] ??
+    PROTECTED_TIER
+  );
 }
 
 // One URL parameter carries the transient per-page tier.

@@ -148,32 +148,33 @@ export default async function ListDetails({
     previewMode: !!previewMode,
   });
 
+  // The kebab holds Choose/Edit/Preview/Delete — Edit is never a hero button,
+  // only a menu row. It closes the owner's action cluster; in preview it is
+  // the only control and stands alone.
+  const heroKebab = (
+    <div className="list-hero-kebab">
+      <ListActionsMenu
+        list={list}
+        previewMode={!!previewMode}
+        previewHref={previewHref}
+        exitPreviewHref={exitPreviewHref}
+        disabled={ownerFloorDisabled}
+      />
+    </div>
+  );
+
   const heroActions = (
     <HeroActions
       mode={heroMode}
       list={list}
       visibility={visibility}
       viewerUserId={viewer_user_id}
+      kebab={heroKebab}
     />
   );
 
-  // The kebab is its own corner element (top-right at every width), holding
-  // Choose/Edit/Preview/Delete — Edit is never a hero button, only a menu row.
-  const heroKebab =
-    heroMode === 'owner' || heroMode === 'preview' ? (
-      <div className="list-hero-kebab">
-        <ListActionsMenu
-          list={list}
-          previewMode={!!previewMode}
-          previewHref={previewHref}
-          exitPreviewHref={exitPreviewHref}
-          disabled={ownerFloorDisabled}
-        />
-      </div>
-    ) : null;
-
-  const heroTiles = (
-    <HeroRow2Left
+  const heroLead = (
+    <HeroLead
       mode={heroMode}
       list={list}
       owner={owner}
@@ -181,7 +182,6 @@ export default async function ListDetails({
       ownerFloorDisabled={ownerFloorDisabled}
       viewerUserId={viewer_user_id}
       viewerSelfProfileId={viewer_self_profile_id}
-      spoilerTile={spoilerTile}
     />
   );
 
@@ -200,28 +200,30 @@ export default async function ListDetails({
           </div>
         )}
 
-        {/* One grid over the gradient, per the 2026-09-01 mockup. Areas
-            reflow per breakpoint (see list.css): desktop pairs title/actions
-            then tiles/meta; mobile stacks title+kebab, meta, actions, tiles.
-            The kebab is its own top-right corner element at both widths. */}
+        {/* Two rows per the 2026-09-01 mockup: title | actions, then
+            lead | meta | spoilers. Desktop lays each row out with flex so
+            the rows share no columns; mobile flattens both rows into one
+            stack (see list.css). */}
         <div className="list-hero-main">
-          <div className="list-hero-titleblock">
-            <h1 className="list-hero-title">{list.name}</h1>
-            {list.subtitle ? (
-              <div className="list-hero-eyebrow-subtitle-wrapper">
-                {list.occasion ? (
-                  <span className="list-hero-eyebrow">{list.occasion}</span>
-                ) : null}{' '}
-                <p className="list-hero-subtitle">{list.subtitle}</p>
-              </div>
-            ) : null}
+          <div className="list-hero-row">
+            <div className="list-hero-titleblock">
+              <h1 className="list-hero-title">{list.name}</h1>
+              {list.subtitle ? (
+                <div className="list-hero-eyebrow-subtitle-wrapper">
+                  {list.occasion ? (
+                    <span className="list-hero-eyebrow">{list.occasion}</span>
+                  ) : null}{' '}
+                  <p className="list-hero-subtitle">{list.subtitle}</p>
+                </div>
+              ) : null}
+            </div>
+            {heroActions}
           </div>
-          {heroKebab}
-          {heroActions}
-          <div className="list-hero-tiles">{heroTiles}</div>
-          {/* The claimed count describes the list, not the visible item set.
-              At `surprise` the line carries item count and time alone. */}
-          <div className="list-hero-meta">
+          <div className="list-hero-row">
+            {heroLead}
+            {/* The claimed count describes the list, not the visible item
+                set. At `surprise` the line carries item count and time alone. */}
+            <div className="list-hero-meta">
               <span>
                 {itemsDisplay}
                 {updatedDisplay && <> · updated {updatedDisplay}</>}
@@ -230,6 +232,8 @@ export default async function ListDetails({
                 <ClaimProgress claimed={claimedCount} total={itemCount} />
               )}
             </div>
+            {spoilerTile}
+          </div>
         </div>
       </div>
       </ListHeroSurface>
@@ -274,11 +278,13 @@ function HeroActions({
   list,
   visibility,
   viewerUserId,
+  kebab,
 }: {
   mode: HeroMode;
   list: ListWithVisibility;
   visibility: ListVisibility;
   viewerUserId: string | undefined;
+  kebab: React.ReactNode;
 }) {
   if (mode === 'owner') {
     return (
@@ -288,9 +294,11 @@ function HeroActions({
           <MdChecklist />
           <span className="label">Choose items</span>
         </LinkButton>
+        {kebab}
       </div>
     );
   }
+  if (mode === 'preview') return kebab;
   if (mode === 'viewer') {
     return (
       <div className="list-hero-actions">
@@ -304,10 +312,9 @@ function HeroActions({
   return null;
 }
 
-// The hero's tiles/byline cluster (mockup row 2, left). Owner gets the
-// Visibility + Spoilers tiles; a viewer gets the owner byline (+ Follow), their
-// Spoilers tile where they hold a membership, and the inline switch offer.
-function HeroRow2Left({
+// Row 2's leading slot: the owner's Visibility tile, or the owner byline
+// (+ Follow) for a signed-in viewer.
+function HeroLead({
   mode,
   list,
   owner,
@@ -315,7 +322,6 @@ function HeroRow2Left({
   ownerFloorDisabled,
   viewerUserId,
   viewerSelfProfileId,
-  spoilerTile,
 }: {
   mode: HeroMode;
   list: ListWithVisibility;
@@ -324,44 +330,35 @@ function HeroRow2Left({
   ownerFloorDisabled: boolean;
   viewerUserId: string | undefined;
   viewerSelfProfileId: string | undefined;
-  spoilerTile: React.ReactNode;
 }) {
   if (mode === 'owner') {
     return (
-      <>
-        <VisibilityPicker
-          listId={list.id}
-          initialVisibility={visibility}
-          disabled={ownerFloorDisabled}
+      <VisibilityPicker
+        listId={list.id}
+        initialVisibility={visibility}
+        disabled={ownerFloorDisabled}
+      />
+    );
+  }
+  if (mode !== 'viewer' || !viewerUserId || !viewerSelfProfileId) return null;
+  return (
+    <div className="list-hero-byline-group">
+      <ProfileAvatar profile={owner} />
+      <div className="list-hero-byline-text">
+        <Link
+          href={`/altvatar/${list.profile_id}`}
+          className="list-hero-byline-link"
+        >
+          {owner.name}
+        </Link>
+        <FollowContainer
+          ownerProfileId={list.profile_id}
+          ownerName={owner.name}
+          viewerUserId={viewerUserId}
+          viewerSelfProfileId={viewerSelfProfileId}
+          variant="on-dark"
         />
-        {spoilerTile}
-      </>
-    );
-  }
-  if (mode === 'viewer' && viewerUserId && viewerSelfProfileId) {
-    return (
-      <>
-        <div className="list-hero-byline-group">
-          <ProfileAvatar profile={owner} />
-          <div className="list-hero-byline-text">
-            <Link
-              href={`/altvatar/${list.profile_id}`}
-              className="list-hero-byline-link"
-            >
-              {owner.name}
-            </Link>
-            <FollowContainer
-              ownerProfileId={list.profile_id}
-              ownerName={owner.name}
-              viewerUserId={viewerUserId}
-              viewerSelfProfileId={viewerSelfProfileId}
-              variant="on-dark"
-            />
-          </div>
-        </div>
-        {spoilerTile}
-      </>
-    );
-  }
-  return null;
+      </div>
+    </div>
+  );
 }

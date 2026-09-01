@@ -1057,8 +1057,52 @@ describe('removePurchase', () => {
 });
 
 /**
- * Pins `claim-attribution` — the endpoint the reveal confirmation reaches. It
- * is scoped to the item and re-resolves no spoiler state, so it is a pass-through
+ * Pins `claim-attribution` — the endpoint the owner's name reveal reaches. No
+ * tier gates it, so what stands in for one is the rule that decides whether the
+ * viewer may see the item at all.
+ */
+describe('revealedClaimsForItem', () => {
+  beforeEach(async () => {
+    await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: 2 });
+    await seedPurchase(db, { id: 'P', item_id: 'I', guest_name: 'Grandma' });
+  });
+
+  it('OwnerOfTheItem_NamesEveryClaim', async () => {
+    asOwner();
+
+    expect(await actions.revealedClaimsForItem('I')).toEqual([
+      {
+        id: 'P',
+        by: 'other',
+        name: 'Grandma',
+        claimedByViewer: false,
+        purchasedAt: expect.any(Date),
+      },
+    ]);
+  });
+
+  it('ViewerWhoCannotSeeTheItem_ReturnsEmptyRatherThanNaming', async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'owner' });
+    await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+    asOther();
+
+    expect(await actions.revealedClaimsForItem('I')).toEqual([]);
+  });
+
+  it('SignedOutVisitorOnAPublicList_NamesEveryClaim', async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
+    await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+    noSession();
+
+    expect(
+      (await actions.revealedClaimsForItem('I')).map((c) => c.name)
+    ).toEqual(['Grandma']);
+  });
+});
+
+/**
+ * Pins `claim-attribution` — the endpoint the claim affordance's reveal
+ * reaches. It is scoped to the item and names nobody, so it is a pass-through
  * to the read rather than a second projection.
  */
 describe('claimSummaryForItem', () => {

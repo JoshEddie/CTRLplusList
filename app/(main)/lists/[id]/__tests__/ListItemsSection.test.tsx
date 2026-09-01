@@ -111,7 +111,7 @@ describe('ListItemsSection', () => {
     vi.mocked(getSpoilerBaseline).mockResolvedValue(MAXIMAL_TIER);
     render(await ListItemsSection(props('l1')));
     const c = screen.getByTestId('sort-items-container');
-    expect(c).toHaveAttribute('data-tier', 'identity');
+    expect(c).toHaveAttribute('data-tier', 'claims');
     expect(screen.queryByTestId('items-container')).not.toBeInTheDocument();
   });
 

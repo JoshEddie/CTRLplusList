@@ -161,11 +161,11 @@ describe('ItemsContainer', () => {
       {
         id: 'i1',
         purchases: [
-          { id: 'p1', by: 'other', firstName: 'Gifty', claimedByViewer: false },
+          { id: 'p1', by: 'other', name: 'Gifty', claimedByViewer: false },
           {
             id: 'p2',
             by: 'other',
-            firstName: 'Someone',
+            name: 'Someone',
             claimedByViewer: false,
           },
         ],
@@ -189,8 +189,8 @@ describe('ItemsContainer', () => {
         screen.getByTestId('items-browser').getAttribute('data-items') as string
       );
       expect(items[0].purchases).toEqual([
-        { id: 'p1', by: 'self', firstName: 'Gifty', claimedByViewer: true },
-        { id: 'p2', by: 'other', firstName: 'Someone', claimedByViewer: false },
+        { id: 'p1', by: 'self', name: 'Gifty', claimedByViewer: true },
+        { id: 'p2', by: 'other', name: 'Someone', claimedByViewer: false },
       ]);
     });
 
@@ -214,11 +214,11 @@ describe('ItemsContainer', () => {
   });
 
   describe('ViewerDisplay', () => {
-    it('FirstLastInitial_ReachesChild', async () => {
+    it('SelfProfileName_ReachesTheChildInFull', async () => {
       render(await ItemsContainer({}));
       expect(screen.getByTestId('items')).toHaveAttribute(
         'data-user-name',
-        'Test V'
+        'Test Viewer'
       );
     });
   });

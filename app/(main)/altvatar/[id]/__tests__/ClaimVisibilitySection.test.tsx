@@ -98,9 +98,9 @@ describe('ClaimVisibilitySection', () => {
     it('ChangeTheTier_DispatchesSetMemberTierForTheViewer', async () => {
       const user = userEvent.setup();
       renderSection(false);
-      await user.selectOptions(tierControl(OWN), 'identity');
+      await user.selectOptions(tierControl(OWN), 'claims');
 
-      expect(setMemberTier).toHaveBeenCalledWith('kiddo', VIEWER, 'identity');
+      expect(setMemberTier).toHaveBeenCalledWith('kiddo', VIEWER, 'claims');
     });
 
     it('ViewerHoldsNoMembership_RendersNoOwnControl', () => {
@@ -173,9 +173,9 @@ describe('ClaimVisibilitySection', () => {
       const user = userEvent.setup();
       renderSection(true);
       await user.click(screen.getByRole('button', { name: /^Ollie/ }));
-      await user.selectOptions(tierControl(OTHERS), 'identity');
+      await user.selectOptions(tierControl(OTHERS), 'claims');
 
-      expect(setMemberTier).toHaveBeenCalledWith('kiddo', OTHER, 'identity');
+      expect(setMemberTier).toHaveBeenCalledWith('kiddo', OTHER, 'claims');
     });
 
     it('ChangeTheDefault_DispatchesSetProfileSpoilerDefault', async () => {
@@ -197,12 +197,12 @@ describe('ClaimVisibilitySection', () => {
     it('MemberAboveTheDefault_SummarisesTheirOwnStoredTier', () => {
       renderSection(true, [
         member(VIEWER, 'Vic'),
-        member(OTHER, 'Ollie', 'identity'),
+        member(OTHER, 'Ollie', 'claims'),
       ]);
 
       expect(
         screen.getByRole('button', { name: /^Ollie/ })
-      ).toHaveTextContent('Everything shown');
+      ).toHaveTextContent('Claims shown');
       expect(
         screen.getByRole('button', { name: new RegExp(DEFAULT) })
       ).toHaveTextContent('Surprise me');
@@ -219,7 +219,7 @@ describe('ClaimVisibilitySection', () => {
       const user = userEvent.setup();
       renderSection(true);
       await user.click(screen.getByRole('button', { name: /^Ollie/ }));
-      await user.selectOptions(tierControl(OTHERS), 'identity');
+      await user.selectOptions(tierControl(OTHERS), 'claims');
 
       expect(tierControl(OTHERS).value).toBe('surprise');
       expect(refresh).not.toHaveBeenCalled();

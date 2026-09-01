@@ -162,7 +162,7 @@ describe('Page', () => {
       expect(getListsByProfile).toHaveBeenCalledWith('kiddo');
       const page = screen.getByTestId('items-page');
       expect(page).toHaveAttribute('data-profile-id', 'kiddo');
-      expect(page).toHaveAttribute('data-user-name', 'Test V');
+      expect(page).toHaveAttribute('data-user-name', 'Test Viewer');
     });
   });
 
@@ -191,17 +191,17 @@ describe('Page', () => {
     });
 
     it('SpoilerParam_RaisesTheTierForThisRequestAlone', async () => {
-      await callPage({ spoiler: 'identity' });
+      await callPage({ spoiler: 'claims' });
       expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
         filter: 'active',
-        tier: 'identity',
+        tier: 'claims',
       });
     });
 
     it('SpoilerParam_ForwardsRaisedTierButUnchangedBaselineToItemsPage', async () => {
-      render(await callPage({ spoiler: 'identity' }));
+      render(await callPage({ spoiler: 'claims' }));
       const page = screen.getByTestId('items-page');
-      expect(page).toHaveAttribute('data-tier', 'identity');
+      expect(page).toHaveAttribute('data-tier', 'claims');
       expect(page).toHaveAttribute('data-baseline', PROTECTED_TIER);
     });
   });
@@ -252,37 +252,11 @@ describe('Page', () => {
   });
 
   describe('ViewerDisplay', () => {
-    it('TwoTokenName_DerivesFirstAndLastInitial', async () => {
+    it('SelfProfileName_ReachesTheChildInFull', async () => {
       render(await callPage());
       expect(screen.getByTestId('items-page')).toHaveAttribute(
         'data-user-name',
-        'Test V'
-      );
-    });
-
-    it('OneTokenName_UsesFirstToken', async () => {
-      vi.mocked(getUserIdentity).mockResolvedValue({
-        userId: 'viewer',
-        selfProfile: makeProfile('viewer-profile', 'Madonna'),
-        activeProfile: makeProfile('viewer-profile', 'Madonna'),
-      });
-      render(await callPage());
-      expect(screen.getByTestId('items-page')).toHaveAttribute(
-        'data-user-name',
-        'Madonna'
-      );
-    });
-
-    it('NoName_DerivesEmpty', async () => {
-      vi.mocked(getUserIdentity).mockResolvedValue({
-        userId: 'viewer',
-        selfProfile: makeProfile('viewer-profile', ''),
-        activeProfile: makeProfile('viewer-profile', ''),
-      });
-      render(await callPage());
-      expect(screen.getByTestId('items-page')).toHaveAttribute(
-        'data-user-name',
-        ''
+        'Test Viewer'
       );
     });
 

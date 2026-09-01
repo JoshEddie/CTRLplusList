@@ -120,9 +120,9 @@ test('ProtectedList_ConfirmTheReveal_DisclosesTheBadgeStateAndNamesNobody', asyn
   await page.getByRole('button', { name: 'Show me', exact: true }).click();
 
   await expect(page.locator('.claim-reveal-summary')).toBeVisible();
-  // Below `identity` the list renders only rows the viewer may remove, so every
-  // name present is their own; no other party is named, dated or attributed.
-  await expect(page.locator('.claim-modal')).not.toContainText('added by');
+  // Unrevealed, the list renders only the rows that carry a name, and every
+  // one of those is the viewer's own; no other party is named or attributed.
+  await expect(page.locator('.claim-modal')).not.toContainText('Added by');
   for (const name of await page
     .locator('.claim-modal .claim-row-name')
     .allTextContents()) {
@@ -141,22 +141,28 @@ test('ProtectedList_MasterUnclaimsAnothersClaim_RemovesItAfterReload', async ({
   await page.goto(OWN_LIST);
   await expect(page.locator('.item-container').first()).toBeVisible();
 
-  await raiseSpoilerTier(page, 'Show who claimed what');
-  await expect(page).toHaveURL(/spoiler=identity/);
+  await raiseSpoilerTier(page, "Show what's claimed");
+  await expect(page).toHaveURL(/spoiler=claims/);
 
-  // The one card whose seeded claim was recorded on another's behalf: "Bob —
-  // added by Alice". At `identity` the owner may manage it without a further
-  // confirmation, and the row carries a master-unclaim control.
-  const card = page.locator('.item-container', { hasText: 'added by Alice' });
-  await expect(card).toBeVisible();
+  // No tier names the claiming parties, so the card carries only a count and
+  // the owner's manage-claims reveal is what turns it into rows. Confirming it
+  // is what puts a master-unclaim control on another party's claim.
+  const card = page
+    .locator('.item-container', { hasText: 'claimed' })
+    .filter({ has: page.getByRole('button', { name: 'Manage claims' }) })
+    .first();
   await card.getByRole('button', { name: 'Manage claims' }).click();
+  await page.getByRole('button', { name: 'Show me', exact: true }).click();
 
   const modal = page.locator('.claim-modal');
-  await modal.getByRole('button', { name: /^Remove/ }).click();
+  await expect(modal).toContainText('Added by Alice');
+  await modal.getByRole('button', { name: /^Remove .*'s claim$/ }).click();
   await expect(page.getByText('Claim removed successfully')).toBeVisible();
 
-  // The removal survives a fresh server render: the attributed row is gone, so
-  // nothing on the list names Alice as its recorder any longer.
+  // The removal survives a fresh server render. The modal is carried by the
+  // URL, so the reload lands back in it already revealed — a deep link is the
+  // same confirmed act — and it no longer names Alice as anyone's recorder.
   await page.reload();
-  await expect(page.getByText('added by Alice')).toHaveCount(0);
+  await expect(modal).toBeVisible();
+  await expect(modal).not.toContainText('Added by Alice');
 });

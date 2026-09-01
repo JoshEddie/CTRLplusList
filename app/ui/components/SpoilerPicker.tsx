@@ -3,6 +3,7 @@
 import { Menu, MenuItemRadio } from '@/app/ui/components/menu';
 import {
   SPOILER_TIER_ROWS,
+  SpoilerRowIcon,
   type SpoilerTierRow,
   tierRowFor,
 } from '@/app/ui/components/spoiler-tier-rows';
@@ -10,7 +11,6 @@ import { withSpoilerParam } from '@/lib/spoilers';
 import type { SpoilerTier } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
-import { MdCardGiftcard } from 'react-icons/md';
 
 // The transient claim-visibility control — the hero's Spoilers tile and the
 // library's toggle both render it (2026-09-01 mockup): a two-line tile whose
@@ -60,7 +60,8 @@ export default function SpoilerPicker({
       >
         <span className="hero-tile-eyebrow">Spoilers</span>
         <span className="hero-tile-value">
-          <MdCardGiftcard aria-hidden /> {current.label}
+          <current.Icon aria-hidden />{' '}
+          <span className="hero-tile-label">{current.label}</span>
           <span className="hero-tile-caret" aria-hidden>
             ▾
           </span>
@@ -70,19 +71,13 @@ export default function SpoilerPicker({
         open={open}
         onClose={() => setOpen(false)}
         anchorRef={triggerRef}
-        aria-label="Claim visibility"
+        aria-label="Spoilers"
         className="spoiler-menu"
       >
         {rows.map((row) => (
           <MenuItemRadio
             key={row.value}
-            icon={
-              <span
-                className="spoiler-dot"
-                style={{ background: row.tint }}
-                aria-hidden
-              />
-            }
+            icon={<SpoilerRowIcon row={row} />}
             checked={row.value === tier}
             onSelect={() => apply(row.value)}
           >

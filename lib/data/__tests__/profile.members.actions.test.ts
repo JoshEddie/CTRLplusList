@@ -428,9 +428,9 @@ describe('redeemInvite', () => {
       const token = await mintFor('manager');
       actingAs(STRANGER);
 
-      await actions.redeemInvite(token, 'identity');
+      await actions.redeemInvite(token, 'claims');
 
-      expect(await tierRowOf(STRANGER)).toBe('identity');
+      expect(await tierRowOf(STRANGER)).toBe('claims');
     });
 
     it('LaterDefaultChange_MovesNoSeatedMember', async () => {
@@ -439,7 +439,7 @@ describe('redeemInvite', () => {
       await actions.redeemInvite(token, 'claims');
 
       // A profile-wide default change after redemption seeds nobody sitting.
-      await writes.writeSpoilerDefault(KIDDO, 'identity');
+      await writes.writeSpoilerDefault(KIDDO, 'claims');
 
       expect(await tierRowOf(STRANGER)).toBe('claims');
     });
@@ -454,10 +454,10 @@ describe('redeemInvite', () => {
       const token = await mintFor('owner');
       actingAs(STRANGER);
 
-      await actions.redeemInvite(token, 'identity');
+      await actions.redeemInvite(token, 'claims');
 
       expect(await roleOf(STRANGER)).toBe('manager');
-      // Offered 'identity' is neither re-seeded over their row nor a promotion.
+      // Offered 'claims' is neither re-seeded over their row nor a promotion.
       expect(await tierRowOf(STRANGER)).toBe('claims');
     });
 
@@ -470,7 +470,7 @@ describe('redeemInvite', () => {
       const token = await mintFor('owner');
       actingAs(STRANGER);
 
-      await actions.redeemInvite(token, 'identity');
+      await actions.redeemInvite(token, 'claims');
 
       expect(await tierRowOf(STRANGER)).toBeNull();
       expect(await reads.getSpoilerBaseline(STRANGER, KIDDO)).toBe('surprise');

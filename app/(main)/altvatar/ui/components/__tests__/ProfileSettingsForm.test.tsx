@@ -438,9 +438,10 @@ describe('ProfileSettingsForm', () => {
   });
 
   /**
-   * Pins `profiles-surface` — the strip's composition: Settings first, a
-   * Permissions tab only where its panel is supplied, Lists last. The panels
-   * are handed in already rendered, so the ordering is this component's.
+   * Pins `profiles-surface` — the strip's composition: Settings first,
+   * Spoilers ahead of the owner-only Permissions tab, which appears only where
+   * its panel is supplied, Lists last. The panels are handed in already
+   * rendered, so the ordering is this component's.
    */
   describe('TabStrip', () => {
     const renderTabs = (permissionsPanel?: React.ReactNode) =>
@@ -450,6 +451,7 @@ describe('ProfileSettingsForm', () => {
           draft={makeDraft()}
           readOnly={false}
           permissionsPanel={permissionsPanel}
+          claimVisibilityPanel={<div>spoilers panel</div>}
           listsPanel={<div>lists panel</div>}
         />
       );
@@ -457,16 +459,31 @@ describe('ProfileSettingsForm', () => {
     const tabLabels = () =>
       screen.getAllByRole('tab').map((tab) => tab.textContent);
 
-    it('PermissionsPanelSupplied_OrdersSettingsThenPermissionsThenLists', () => {
+    it('PermissionsPanelSupplied_OrdersSettingsThenSpoilersThenPermissionsThenLists', () => {
       renderTabs(<div>permissions panel</div>);
 
-      expect(tabLabels()).toEqual(['Settings', 'Permissions', 'Lists']);
+      expect(tabLabels()).toEqual([
+        'Settings',
+        'Spoilers',
+        'Permissions',
+        'Lists',
+      ]);
     });
 
-    it('NoPermissionsPanel_CarriesSettingsThenListsAndNoPermissionsTab', () => {
+    it('NoPermissionsPanel_CarriesSpoilersAndListsAndNoPermissionsTab', () => {
       renderTabs();
 
-      expect(tabLabels()).toEqual(['Settings', 'Lists']);
+      expect(tabLabels()).toEqual(['Settings', 'Spoilers', 'Lists']);
+    });
+
+    it('SpoilersTabChosen_RevealsItsPanel', async () => {
+      renderTabs(<div>permissions panel</div>);
+
+      expect(screen.getByText('spoilers panel')).not.toBeVisible();
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Spoilers' }));
+
+      expect(screen.getByText('spoilers panel')).toBeVisible();
     });
 
     it('Default_SelectsSettingsAndHidesTheListsPanelUntilItsTabIsChosen', async () => {

@@ -78,18 +78,27 @@ export function pruneGuestClaim(
   };
 }
 
+// The cached read cannot see the cookie, so a guest's own claim arrives
+// projected away with every other party's — nameless. The name they typed is
+// the one thing the cookie can hand back with it.
 export function overlayGuestClaims<T extends { purchases?: PurchaseView[] }>(
   items: T[],
-  cookiePurchaseIds: ReadonlySet<string>
+  claims: GuestClaims | null
 ): T[] {
-  if (cookiePurchaseIds.size === 0) return items;
+  const ids = new Set(claims?.purchases);
+  if (ids.size === 0) return items;
   return items.map((item) => {
-    if (!item.purchases?.some((p) => cookiePurchaseIds.has(p.id))) return item;
+    if (!item.purchases?.some((p) => ids.has(p.id))) return item;
     return {
       ...item,
       purchases: item.purchases.map((p) =>
-        cookiePurchaseIds.has(p.id)
-          ? { ...p, claimedByViewer: true, by: 'self' as const }
+        ids.has(p.id)
+          ? {
+              ...p,
+              claimedByViewer: true,
+              by: 'self' as const,
+              name: p.name ?? claims?.name,
+            }
           : p
       ),
     };

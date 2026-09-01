@@ -296,8 +296,7 @@
 .list-hero-byline-text {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  gap: 12px;
   min-width: 0;
   flex: 1 1 auto;
 }
@@ -561,7 +560,7 @@
 }
 
 .container--list-details .item-grid-container {
-  padding: 16px 28px 0;
+  padding: 16px 28px;
 }
 
 .container--list-details > .item-grid.sortable {
@@ -801,64 +800,48 @@
 }
 
 /* ══ 2026-09-01 hero composition ══════════════════════════════════════════
-   One grid over the gradient (mockup). Mobile-first: title + corner kebab,
-   then the item-count/progress meta, then the actions and tiles as full-width
-   two-up grids. The desktop override pairs title|actions and tiles|meta. Grid
-   rows size to content — no flex-basis leaking into a column height. */
+   Two rows (mockup): title | actions, then lead | meta | spoilers. The rows
+   share no columns, so desktop lays each out with flex. Mobile-first: the
+   rows dissolve (display: contents) into one two-column stack — everything
+   spans both columns except the two tiles, which pair up — and the kebab is
+   pinned to the top-right corner so an absent one reserves nothing. */
 .list-hero-main {
+  position: relative;
   display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-areas:
-    'title   kebab'
-    'meta    meta'
-    'actions actions'
-    'tiles   tiles';
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
   padding: 16px;
 }
 
+.list-hero-row {
+  display: contents;
+}
+
+.list-hero-titleblock,
+.list-hero-byline-group,
+.list-hero-meta,
+.list-hero-actions {
+  grid-column: 1 / -1;
+}
+
 .list-hero-titleblock {
-  grid-area: title;
+  order: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
 }
 
-.list-hero-kebab {
-  grid-area: kebab;
-  justify-self: end;
-  align-self: start;
+.list-hero-main:has(.list-hero-kebab) .list-hero-titleblock {
+  padding-right: 56px;
 }
 
-.list-hero-actions {
-  grid-area: actions;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.list-hero-actions > * {
-  width: 100%;
-}
-
-.list-hero-tiles {
-  grid-area: tiles;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  min-width: 0;
-}
-
-.list-hero-tiles > *,
-.list-hero-tiles .visibility-picker,
-.list-hero-tiles .spoiler-picker,
-.list-hero-tiles .hero-tile {
-  width: 100%;
+.list-hero-byline-group {
+  order: 1;
 }
 
 .list-hero-meta {
-  grid-area: meta;
+  order: 2;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -867,45 +850,92 @@
   color: var(--light-color);
 }
 
-/* Desktop: title | actions | kebab across the top; tiles | meta below. */
+.list-hero-actions {
+  order: 3;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.list-hero-actions > .btn {
+  width: 100%;
+}
+
+.list-hero-kebab {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.list-hero-row > .visibility-picker,
+.list-hero-row > .spoiler-picker {
+  order: 4;
+  min-width: 0;
+}
+
+.list-hero-row .hero-tile {
+  width: 100%;
+}
+
 @media (min-width: 801px) {
   .list-hero-main {
-    grid-template-columns: 1fr auto auto;
-    grid-template-areas:
-      'title actions kebab'
-      'tiles meta    meta';
-    column-gap: 24px;
-    row-gap: 14px;
+    display: flex;
+    flex-direction: column;
     padding: 22px 24px 18px;
-    align-items: start;
+  }
+  /* Row 1 hangs from the top (actions level with the title); row 2 sits on
+     the bottom (byline / bar / tile bottoms flush), as the grid's per-area
+     align-self did before. */
+  .list-hero-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .list-hero-row:last-child {
+    align-items: flex-end;
+  }
+  .list-hero-row > *,
+  .list-hero-row > .visibility-picker,
+  .list-hero-row > .spoiler-picker {
+    order: 0;
+  }
+  .list-hero-row > .visibility-picker {
+    width: auto;
+  }
+  .list-hero-main:has(.list-hero-kebab) .list-hero-titleblock {
+    padding-right: 0;
+  }
+  .list-hero-titleblock {
+    flex: 1 1 auto;
+  }
+  .list-hero-actions,
+  .list-hero-row > .list-hero-kebab {
+    margin-left: auto;
   }
   .list-hero-actions {
-    justify-self: end;
-    align-self: start;
     display: flex;
     flex-wrap: wrap;
   }
-  .list-hero-actions > * {
+  .list-hero-actions > .btn {
     width: auto;
   }
-  .list-hero-tiles {
-    justify-self: start;
-    align-self: end;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
+  .list-hero-kebab {
+    position: static;
   }
-  .list-hero-tiles > *,
-  .list-hero-tiles .visibility-picker,
-  .list-hero-tiles .spoiler-picker,
-  .list-hero-tiles .hero-tile {
-    width: auto;
-  }
+  /* Row 2 at the 801px floor is ~713px: byline (~276) + tile (~148) + gaps
+     leaves ~265, so the meta floors at 200 (label + a usable bar) and takes
+     the remainder up to the mockup's bar width; the auto margin absorbs the
+     rest on wide screens. */
   .list-hero-meta {
-    justify-self: end;
-    align-self: end;
+    flex: 1 1 auto;
+    margin-left: auto;
     align-items: flex-end;
-    min-width: 280px;
+    min-width: 200px;
+    max-width: 360px;
+  }
+  .list-hero-row .hero-tile {
+    width: auto;
   }
 }
 
@@ -967,8 +997,7 @@
   color: var(--primary-color-dark);
 }
 
-/* Anchor for each picker's popover menu. Width is governed by the tiles grid
-   (full-width on mobile, content-sized on desktop) above. */
+/* Anchor for each picker's popover menu. */
 .visibility-picker,
 .spoiler-picker {
   position: relative;
@@ -980,13 +1009,33 @@
   min-width: min(280px, 90vw);
 }
 
-/* The tier dot leading each Spoilers menu row (fill set inline). */
+/* The hero's Spoilers tile sits in the right cell on mobile (beside
+   Visibility) and at the row's end on desktop, so its menu hangs left from
+   the tile's right edge. The items toolbar keeps the left anchor above. */
+.list-hero-row > .visibility-picker ~ .spoiler-picker .spoiler-menu {
+  left: auto;
+  right: 0;
+}
+
+@media (min-width: 801px) {
+  .list-hero-row > .spoiler-picker .spoiler-menu {
+    left: auto;
+    right: 0;
+  }
+}
+
+/* The tinted tier chip leading each Spoilers menu row (fill set inline),
+   carrying that tier's glyph. */
 .spoiler-dot {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   border: 1px solid rgb(42 32 96 / 0.3);
+  color: var(--primary-color-dark);
+  font-size: 14px;
   flex: none;
 }
 

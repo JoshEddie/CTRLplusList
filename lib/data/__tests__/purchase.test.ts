@@ -99,7 +99,7 @@ describe('getItemsByPurchased', () => {
     expect(rows[0].store?.name).toBe('cheap');
   });
 
-  it('NonOwnerView_TagsViewersOwnPurchaseSelf-OthersOther', async () => {
+  it('NonOwnerView_NamesTheViewersOwnPurchase-CountsTheOthers', async () => {
     await seedUsers(db, [
       { id: 'buyer', name: 'Bea' },
       { id: 'owner' },
@@ -122,18 +122,17 @@ describe('getItemsByPurchased', () => {
     expect(byId.mine).toEqual({
       id: 'mine',
       by: 'self',
-      firstName: 'Bea',
+      name: 'Bea',
       claimedByViewer: false,
       purchasedAt: expect.any(Date),
       avatar: { name: 'Bea', accent: null, art: null, avatarStyle: null },
     });
+    // A sibling claim on the same item is another party's; the history page
+    // names nobody the viewer did not claim for.
     expect(byId.theirs).toEqual({
       id: 'theirs',
       by: 'other',
-      firstName: 'Otto',
       claimedByViewer: false,
-      purchasedAt: expect.any(Date),
-      avatar: { name: 'Otto', accent: null, art: null, avatarStyle: null },
     });
   });
 
@@ -210,9 +209,9 @@ describe('sanitizePurchases', () => {
     claimerProfile: { name: 'Carl Claimer' },
   };
 
-  describe('IdentityTier', () => {
+  describe('RevealedProjection', () => {
     it('ViewerIsPurchaser_MarkedSelf-NamedFirstName-RecorderNamed', () => {
-      const [view] = dal.sanitizePurchases([attributedRow], 'bea', 'identity');
+      const [view] = dal.sanitizePurchases([attributedRow], 'bea', 'revealed');
       expect(view).toEqual({
         id: 'p1',
         purchasedAt: CLAIMED_AT,
@@ -223,14 +222,14 @@ describe('sanitizePurchases', () => {
           avatarStyle: 'toon-head',
         },
         by: 'self',
-        firstName: 'Bea',
+        name: 'Bea Buyer',
         claimedByViewer: false,
-        claimerFirstName: 'Carl',
+        claimerName: 'Carl Claimer',
       });
     });
 
     it('ViewerIsRecorder_MarkedOther-ClaimedByViewerTrue', () => {
-      const [view] = dal.sanitizePurchases([attributedRow], 'carl', 'identity');
+      const [view] = dal.sanitizePurchases([attributedRow], 'carl', 'revealed');
       expect(view).toEqual({
         id: 'p1',
         purchasedAt: CLAIMED_AT,
@@ -241,14 +240,14 @@ describe('sanitizePurchases', () => {
           avatarStyle: 'toon-head',
         },
         by: 'other',
-        firstName: 'Bea',
+        name: 'Bea Buyer',
         claimedByViewer: true,
-        claimerFirstName: 'Carl',
+        claimerName: 'Carl Claimer',
       });
     });
 
-    it('UnrelatedViewer_MarkedOther-NamedFirstName-RecorderNamed', () => {
-      const [view] = dal.sanitizePurchases([attributedRow], 'someone', 'identity');
+    it('UnrelatedViewer_MarkedOther-NamedInFull-RecorderNamed', () => {
+      const [view] = dal.sanitizePurchases([attributedRow], 'someone', 'revealed');
       expect(view).toEqual({
         id: 'p1',
         purchasedAt: CLAIMED_AT,
@@ -259,13 +258,13 @@ describe('sanitizePurchases', () => {
           avatarStyle: 'toon-head',
         },
         by: 'other',
-        firstName: 'Bea',
+        name: 'Bea Buyer',
         claimedByViewer: false,
-        claimerFirstName: 'Carl',
+        claimerName: 'Carl Claimer',
       });
     });
 
-    it('RecorderMatchesPurchaser_OmitsClaimerFirstName', () => {
+    it('RecorderMatchesPurchaser_OmitsClaimerName', () => {
       const [view] = dal.sanitizePurchases(
         [
           {
@@ -279,7 +278,7 @@ describe('sanitizePurchases', () => {
           },
         ],
         'own',
-        'identity'
+        'revealed'
       );
       expect(view).toEqual({
         id: 'p3',
@@ -291,7 +290,7 @@ describe('sanitizePurchases', () => {
           avatarStyle: null,
         },
         by: 'self',
-        firstName: 'Olive',
+        name: 'Olive Owner',
         claimedByViewer: true,
       });
     });
@@ -310,15 +309,15 @@ describe('sanitizePurchases', () => {
           },
         ],
         'own',
-        'identity'
+        'revealed'
       );
       expect(view).toEqual({
         id: 'p2',
         purchasedAt: CLAIMED_AT,
         by: 'other',
-        firstName: 'Mom',
+        name: 'Mom',
         claimedByViewer: false,
-        claimerFirstName: 'Carl',
+        claimerName: 'Carl Claimer',
       });
     });
 
@@ -336,42 +335,17 @@ describe('sanitizePurchases', () => {
           },
         ],
         'viewer',
-        'identity'
+        'revealed'
       );
       expect(view).toEqual({
         id: 'p4',
         purchasedAt: CLAIMED_AT,
         by: 'other',
-        firstName: 'Grandma',
+        name: 'Grandma',
         claimedByViewer: false,
       });
     });
 
-    it('NoNamesAnywhere_FallsBackToSomeone', () => {
-      const [view] = dal.sanitizePurchases(
-        [
-          {
-            id: 'p5',
-            purchased_at: CLAIMED_AT,
-            profile_id: 'ghost',
-            claimed_by_profile_id: 'ghost',
-            guest_name: null,
-            purchaserProfile: { name: '' },
-            claimerProfile: { name: null },
-          },
-        ],
-        'viewer',
-        'identity'
-      );
-      expect(view).toEqual({
-        id: 'p5',
-        purchasedAt: CLAIMED_AT,
-        avatar: { name: '', accent: null, art: null, avatarStyle: null },
-        by: 'other',
-        firstName: 'Someone',
-        claimedByViewer: false,
-      });
-    });
   });
 
   describe('ClaimsTier', () => {
@@ -398,7 +372,7 @@ describe('sanitizePurchases', () => {
         'claims'
       );
       expect(views).toEqual([
-        expect.objectContaining({ id: 'p1', by: 'self', firstName: 'Bea' }),
+        expect.objectContaining({ id: 'p1', by: 'self', name: 'Bea Buyer' }),
         { id: 'p9', by: 'other', claimedByViewer: false },
       ]);
     });
@@ -416,7 +390,7 @@ describe('sanitizePurchases', () => {
       expect(view).toMatchObject({
         id: 'p1',
         by: 'self',
-        firstName: 'Bea',
+        name: 'Bea Buyer',
         claimedByViewer: false,
       });
     });
@@ -426,7 +400,7 @@ describe('sanitizePurchases', () => {
       expect(view).toMatchObject({
         id: 'p1',
         by: 'other',
-        firstName: 'Bea',
+        name: 'Bea Buyer',
         claimedByViewer: true,
       });
     });
@@ -454,7 +428,7 @@ describe('sanitizePurchases', () => {
       expect(view).toMatchObject({
         id: 'p1',
         by: 'self',
-        firstName: 'Bea',
+        name: 'Bea Buyer',
         claimedByViewer: false,
       });
     });
@@ -467,28 +441,27 @@ describe('sanitizePurchases', () => {
     const ALLOWED_KEYS = [
       'id',
       'by',
-      'firstName',
+      'name',
       'claimedByViewer',
-      'claimerFirstName',
+      'claimerName',
       'purchasedAt',
       'avatar',
     ];
 
-    it.each(['surprise', 'progress', 'claims', 'identity'] as const)(
-      'Tier%s_ExposesOnlyPurchaseViewKeysAndNeverAFullName',
-      (tier) => {
+    it.each(['surprise', 'progress', 'claims', 'revealed'] as const)(
+      'Projection%s_ExposesOnlyPurchaseViewKeys',
+      (projection) => {
         const ownRow = {
           ...attributedRow,
           profile_id: 'bea',
           claimed_by_profile_id: 'bea',
         };
-        const views = dal.sanitizePurchases([ownRow], 'bea', tier);
+        const views = dal.sanitizePurchases([ownRow], 'bea', projection);
         expect(views).toHaveLength(1);
         for (const key of Object.keys(views[0])) {
           expect(ALLOWED_KEYS).toContain(key);
         }
-        // First token only — the persisted 'Bea Buyer' never reaches the view.
-        expect(views[0].firstName).toBe('Bea');
+        expect(views[0].name).toBe('Bea Buyer');
       }
     );
   });
@@ -643,6 +616,65 @@ describe('getItemClaimSummary', () => {
       'claimCount',
       'remaining',
     ]);
+  });
+});
+
+/**
+ * Pins `claim-attribution`'s name reveal: the owner confirmed it, so every
+ * claim on the item comes back named — the `claims` projection's bare-count
+ * entries are exactly what it exists to replace.
+ */
+describe('getRevealedItemClaims', () => {
+  beforeEach(async () => {
+    await seedUsers(db, [
+      { id: 'owner' },
+      { id: 'cara', name: 'Cara Lee' },
+      { id: 'dan', name: 'Dan Ash' },
+    ]);
+    await seedItem(db, { id: 'i1', user_id: 'owner', quantity_limit: 3 });
+  });
+
+  it('OtherPartiesClaims_ComeBackNamedRatherThanAsBareCounts', async () => {
+    await seedPurchase(db, {
+      id: 'p1',
+      item_id: 'i1',
+      profile_id: selfProfileOf('cara'),
+    });
+    await seedPurchase(db, { id: 'p2', item_id: 'i1', guest_name: 'Grandma' });
+
+    const views = await dal.getRevealedItemClaims('i1', selfProfileOf('dan'));
+
+    expect(views.map((view) => view.name).sort()).toEqual([
+      'Cara Lee',
+      'Grandma',
+    ]);
+  });
+
+  it('ViewersOwnClaim_StaysMarkedSelf', async () => {
+    await seedPurchase(db, {
+      id: 'p1',
+      item_id: 'i1',
+      profile_id: selfProfileOf('cara'),
+    });
+
+    const [view] = await dal.getRevealedItemClaims('i1', selfProfileOf('cara'));
+
+    expect(view.by).toBe('self');
+  });
+
+  it('ItemWithNoClaims_ReturnsEmpty', async () => {
+    expect(await dal.getRevealedItemClaims('i1', undefined)).toEqual([]);
+  });
+
+  it('QueryThrows_RejectsWithFailedToFetchRevealedItemClaims', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(db.query.purchases, 'findMany').mockImplementation(() => {
+      throw new Error('boom');
+    });
+
+    await expect(dal.getRevealedItemClaims('i1', undefined)).rejects.toThrow(
+      'Failed to fetch revealed item claims'
+    );
   });
 });
 

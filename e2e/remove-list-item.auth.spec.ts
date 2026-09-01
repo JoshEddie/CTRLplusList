@@ -48,6 +48,8 @@ test('ListPage_OwnerRemovesItemViaKebab_ItemOffListButInLibrary', async ({
 
   // Still in the library: the unlink deleted the list_items row only.
   await page.goto('/items');
+  // 200+ seeded items: search rather than trust the default page's slice.
+  await page.getByRole('searchbox', { name: 'Search items' }).fill(chosenItemName);
   await expect(
     page.locator('.item-container', { hasText: chosenItemName }).first()
   ).toBeVisible();

@@ -152,9 +152,7 @@ export default function ItemsToolbar({
   const filterCount = countActiveFilters(filterState);
 
   return (
-    <div
-      className={`items-toolbar ${!showGridToggle ? 'hide-grid-toggle' : ''}`}
-    >
+    <div className="items-toolbar">
       <div className="items-toolbar-row">
         {/* The library's compact claim-visibility toggle, left of search — a
             display control, not a filter facet (`items-library-shell`). Only

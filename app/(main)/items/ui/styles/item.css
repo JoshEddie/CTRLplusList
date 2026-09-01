@@ -211,30 +211,6 @@
   margin-right: 2px;
 }
 
-.spoiler-claims {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-}
-
-.spoiler-claim-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.spoiler-claim-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-weight: 500;
-}
-
 /* ── ITEMS TOOLBAR ── */
 .items-toolbar {
   display: flex;
@@ -288,55 +264,47 @@
   }
 }
 
+/* One line while it fits — [spoilers] [search] [filters] [view] — wrapping
+   from the end as it doesn't. Flex rather than a track map because every cell
+   but search is conditional (the spoilers tile is the library's only, the view
+   toggle and each filter control come and go), and an absent flex item costs
+   no width and no gap. */
 .items-toolbar-row {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  justify-content: center;
-  /* Large >900px: single row. `spoilers` leads (the library's claim toggle,
-     left of search); it is empty on a list, where the control is the hero tile. */
-  grid-template-columns: min-content 1fr repeat(6, min-content);
-  grid-template-areas: 'spoilers search sort purchases stores price claims view';
 }
 
-.hide-grid-toggle .items-toolbar-row {
-  grid-template-columns: min-content 1fr repeat(5, min-content);
-  grid-template-areas: 'spoilers search sort purchases stores price claims';
-}
-
-.items-toolbar-cell--spoilers {
-  grid-area: spoilers;
-}
+/* Search is the cell that gives: it takes the leftover space, and its basis
+   is the width below which it stops sharing a line and wraps instead. */
 .items-toolbar-cell--search {
-  grid-area: search;
-}
-.items-toolbar-cell--sort {
-  grid-area: sort;
-}
-.items-toolbar-cell--purchases {
-  grid-area: purchases;
-}
-.items-toolbar-cell--stores {
-  grid-area: stores;
-}
-.items-toolbar-cell--price {
-  grid-area: price;
-}
-.items-toolbar-cell--claims {
-  grid-area: claims;
-}
-.items-toolbar-cell--view {
-  grid-area: view;
-}
-.items-toolbar-cell--filters {
-  grid-area: filters;
+  flex: 1 1 180px;
 }
 
-/* Desktop/tablet: the filters-group is a layout-neutral wrapper so the
-   four filter cells participate in the parent grid via their own
-   grid-area declarations. The mobile filter sheet chrome is hidden. */
+/* Stretching the cell lets the tile match the search field's height. */
+.items-toolbar-cell--spoilers {
+  align-self: stretch;
+}
+
+/* Without this the value line wraps and the tile outgrows the search field. */
+.items-toolbar-cell--spoilers .hero-tile {
+  height: 100%;
+  padding: 6px 10px;
+}
+
+.items-toolbar-cell--spoilers .hero-tile-value {
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+/* Desktop/tablet: the filter controls sit side by side as one toolbar cell,
+   so they wrap as a unit rather than one at a time. The sheet chrome, which
+   only the mobile bottom sheet uses, is hidden. */
 .items-toolbar-filters-group {
-  display: contents;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .items-toolbar-filters-group > .items-toolbar-filters-sheet-header,
@@ -354,7 +322,7 @@
 
 /* Mobile filters trigger (PopoverTrigger primitive in the .--filters cell)
    is hidden on desktop/tablet — the filter controls themselves render
-   inline in their own grid cells at this breakpoint. The compound
+   inline in the toolbar row at this breakpoint. The compound
    `.popover-trigger.items-toolbar-cell--filters` selector keeps a higher
    specificity than the primitive's own `.popover-trigger { display: inline-flex }`
    regardless of CSS import order. */
@@ -373,20 +341,18 @@
   min-width: 0;
 }
 
-/* Medium 600–900px: 8-col grid so the 4 filters are equal width */
-@media (max-width: 900px) {
-  .items-toolbar-row {
-    grid-template-columns: min-content repeat(11, 1fr);
-    grid-template-areas:
-      'spoilers search search search search search search search search search view view'
-      'spoilers sort sort sort purchases purchases purchases stores stores price price claims';
+/* Medium 600–900px: the filter controls take a line of their own beneath
+   search and split it evenly. Ordered last so the view toggle, which follows
+   them in the DOM, stays up on the first line. */
+@media (min-width: 600px) and (max-width: 900px) {
+  .items-toolbar-filters-group {
+    order: 1;
+    flex-basis: 100%;
   }
 
-  .hide-grid-toggle .items-toolbar-row {
-    grid-template-columns: min-content repeat(11, 1fr);
-    grid-template-areas:
-      'spoilers search search search search search search search search search search search'
-      'spoilers sort sort sort purchases purchases purchases stores stores price price claims';
+  .items-toolbar-filters-group > * {
+    flex: 1;
+    min-width: 0;
   }
 }
 
@@ -401,14 +367,24 @@
    a bottom sheet that the icon trigger opens. Active non-default
    filters render as chips in a sub-row beneath the toolbar. */
 @media (max-width: 599px) {
-  .items-toolbar-row {
-    grid-template-columns: min-content 1fr auto;
-    grid-template-areas: 'spoilers search filters';
+  /* A phone's row can't hold the labelled tile, search and the filters
+     trigger, so the tile drops to its tier icon — same size and shape as the
+     trigger at the other end of the row. The tint still reads as the tier and
+     the button's aria-label still names it; the menu carries the words. */
+  .items-toolbar-cell--spoilers .hero-tile-eyebrow,
+  .items-toolbar-cell--spoilers .hero-tile-label,
+  .items-toolbar-cell--spoilers .hero-tile-caret {
+    display: none;
   }
 
-  .hide-grid-toggle .items-toolbar-row {
-    grid-template-columns: min-content 1fr auto;
-    grid-template-areas: 'spoilers search filters';
+  .items-toolbar-cell--spoilers .hero-tile-value {
+    font-size: 20px;
+  }
+
+  /* Zero basis: search contributes nothing to the line's width, so it can
+     only shrink to fit beside the two icons rather than wrap below them. */
+  .items-toolbar-cell--search {
+    flex-basis: 0;
   }
 
   /* Hide the SegmentedControl-bearing view-toggle cell on mobile. The
@@ -461,7 +437,6 @@
     max-height: calc(var(--app-viewport-height) - 24px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    justify-self: center;
     width: calc(100% - 32px);
   }
 
@@ -533,14 +508,12 @@
   .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--sort,
   .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--purchases,
   .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--stores,
-  .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--price,
-  .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--claims {
+  .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--price {
     display: none;
   }
 
   /* The sheet's own affordance for each facet, in place of the popover. */
-  .items-toolbar-filters-group .store-filter-popover,
-  .items-toolbar-filters-group .claims-filter-popover {
+  .items-toolbar-filters-group .store-filter-popover {
     display: none;
   }
 
@@ -559,14 +532,11 @@
     transform: rotate(-90deg);
   }
 
-  /* Inside the sheet, each filter cell stacks full-width. Reset the
-     grid-areas so they participate in the flex column. */
-  .items-toolbar-filters-group .items-toolbar-cell--sort,
-  .items-toolbar-filters-group .items-toolbar-cell--purchases,
-  .items-toolbar-filters-group .items-toolbar-cell--stores,
-  .items-toolbar-filters-group .items-toolbar-cell--price,
-  .items-toolbar-filters-group .items-toolbar-cell--claims {
-    grid-area: auto;
+  /* Inside the sheet, each filter cell stacks full-width. */
+  .items-toolbar-filters-group > .items-toolbar-cell--sort,
+  .items-toolbar-filters-group > .items-toolbar-cell--purchases,
+  .items-toolbar-filters-group > .items-toolbar-cell--stores,
+  .items-toolbar-filters-group > .items-toolbar-cell--price {
     width: 100%;
   }
 
@@ -632,27 +602,10 @@
    primitive (.popover-trigger in app/ui/components/popover-trigger/). Only
    the popover panel + body remains page-scoped. */
 
-.store-filter-popover,
-.claims-filter-popover {
+.store-filter-popover {
   position: relative;
   display: inline-block;
   width: 100%;
-}
-
-.claims-filter-panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 20;
-  width: min(300px, 90vw);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  background-color: var(--light-color);
-  border: 1px solid var(--card-border-color);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
 .store-filter-panel {
@@ -939,21 +892,44 @@
   line-height: 1;
 }
 
-/* ItemActions block spans both content rows in col 4. The buttons inside
-   stay at design-system dimensions — page-scoped CSS handles placement,
-   not dimensions/typography (button-system contract). */
+/* ItemActions block spans both content rows in col 4, with the whole action
+   set on ONE line: the card grid's stacked full-width rows would make a row's
+   height depend on which actions the item happens to offer (View alone,
+   View + Add, Manage + View, Buy + View + Add), which is what breaks the
+   uniform row rhythm. Card surfaces keep the stack — there the full-width
+   button IS the design. The buttons stay at design-system dimensions —
+   page-scoped CSS handles placement, not dimensions/typography
+   (button-system contract). */
 .item-list .item-actions,
 .sortable-item .item-actions {
   grid-column: 4;
   grid-row: 1 / 3;
   align-self: center;
+  display: flex;
   width: auto;
   min-width: 165px;
 }
 
-/* Owner-actions kebab keeps its own final-column cell at all viewports.
-   Stay the popover's positioning ancestor (relative, not static) so the
-   menu opens under the kebab, not under the whole card. */
+/* The card grid gives every action `width: 100%`; as flex items that
+   over-subscribes the line, so each one shrinks below its label and the
+   text wraps, growing the button past its design height. On the row line
+   they size to their own content and the name column yields instead. */
+.item-list .item-actions > *,
+.sortable-item .item-actions > * {
+  width: auto;
+  flex: none;
+}
+
+/* View item is the subordinate action, so it leads from the left in every
+   row-view set — matching the two-up pair's reading order. */
+.item-list .item-actions > .item-actions-view,
+.sortable-item .item-actions > .item-actions-view {
+  order: -1;
+}
+
+/* Owner-actions kebab keeps its own final column on the row. Stay the
+   popover's positioning ancestor (relative, not static) so the menu opens
+   under the kebab, not under the whole card. */
 .item-list .item-owner-actions-mobile,
 .sortable-item .item-owner-actions-mobile {
   grid-column: 5;
@@ -978,8 +954,7 @@
 .sortable-item .purchased-banner--spoiler {
   grid-column: 3;
   grid-row: 1 / 3;
-  align-self: stretch;
-  min-height: 52px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -999,45 +974,35 @@
   margin-top: 0;
 }
 
-/* M1 (<600px) — horizontal-card layout.
+/* M1 (<=900px) — horizontal-card layout for the ROW views
+   (.item-list, .sortable-item). Grid view is excluded: its cards are
+   ~248px wide at any viewport, so it keeps the desktop photo card down to
+   600px and takes this treatment only below 600 (block below).
+
    The earlier attempt to compress the 5-column desktop grid horizontally
    produced unreadable cramming at 380px (name column squeezed to ~80px,
-   2-char name truncation, price clipping). The horizontal-card pattern
-   stacks vertically instead: image upper-left spans rows 1-2; title on
-   row 1 and price on row 2 (no leader), each spanning cols 2/-1 to the
-   card edge; description full-width row 3; action row on row 4 —
-   owner: the ItemActions block/spoiler banner span cols 1/3 with the
-   kebab alone in col 3; non-owner: the ItemActions block stretches the
-   full row.
+   2-char name truncation, price clipping). The same cramming reaches all
+   the way up to ~735px: at min-content the owner row spends 34 (drag
+   handle) + 28 (padding) + 32 (gaps) + 52 (image) + ~108 (spoiler pill)
+   + ~203 (two-button action line) + 44 (kebab) before the name gets a
+   pixel, so the boundary sits at 900 (with the toolbar's), not 600.
+
+   The horizontal-card pattern stacks vertically instead: image upper-left
+   spans rows 1-2; title on row 1 beside the kebab, price on row 2 (no
+   leader) spanning to the card edge; description full-width row 3;
+   spoiler banner row 4; action row 5. Every one of those five gets its
+   own row — the earlier four-row version placed the actions and the
+   spoiler banner in the same cell, and they overlapped.
 
    Per user direction "if we're breaking up the row, lean into the card
-   feel" — each row at mobile gets a full border, rounded corners, and
-   margin separation instead of the 1px row-divider. */
-@media (max-width: 599px) {
-  /* === Grid view behaves as list view at this breakpoint ===
-     The `?view=grid` URL parameter has no effect on mobile — item cards
-     always render as full-width single-column rows regardless. Achieved by
-     reshaping `.item-grid` to flex-column (overriding the auto-fill grid
-     above), flattening its descendant DOM the same way `.item-list`
-     does, and expanding every mobile-list selector below to also match
-     `.item-grid` parents. */
-  .item-grid {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .item-grid .item,
-  .item-grid .item-info,
-  .item-grid .item-name-description {
-    display: contents;
-  }
-
+   feel" — each row gets a full border, rounded corners, and margin
+   separation instead of the 1px row-divider. */
+@media (max-width: 900px) {
   .item-list .item-container,
-  .item-grid .item-container,
   .sortable-item .item-container {
     display: grid;
     grid-template-columns: 64px 1fr auto;
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: repeat(5, auto);
     column-gap: 12px;
     row-gap: 6px;
     padding: 14px;
@@ -1053,20 +1018,17 @@
 
   /* Row hover/divider treatment doesn't apply when rows are cards. */
   .item-list .item-container:hover,
-  .item-grid .item-container:hover,
   .sortable-item .item-container:hover {
     background: var(--light-color);
     border-color: var(--card-border-hover-color);
   }
 
-  .item-list .item-container:last-child,
-  .item-grid .item-container:last-child {
+  .item-list .item-container:last-child {
     margin-bottom: 0;
   }
 
   /* Image upper-left, spans top two rows (title + price). */
   .item-list .item-image-container,
-  .item-grid .item-image-container,
   .sortable-item .item-image-container {
     width: 64px;
     height: 64px;
@@ -1074,19 +1036,15 @@
     grid-row: 1 / 3;
   }
 
-  /* Title row 1, price row 2 — stacked next to image, spanning to the
-     card edge. Col 3 holds nothing on rows 1-2 (actions all live on
-     row 4), so spanning across it stops the row-4 button's track width
-     from squeezing the title and price. */
+  /* Title row 1 beside the kebab, price row 2 spanning to the card edge
+     (col 3 is free below row 1). */
   .item-list .item-name-description .itemName,
-  .item-grid .item-name-description .itemName,
   .sortable-item .item-name-description .itemName {
-    grid-column: 2 / -1;
+    grid-column: 2;
     grid-row: 1;
   }
 
   .item-list .item-price-row,
-  .item-grid .item-price-row,
   .sortable-item .item-price-row {
     grid-column: 2 / -1;
     grid-row: 2;
@@ -1095,7 +1053,6 @@
 
   /* No leader at mobile — there's no horizontal room. */
   .item-list .item-price-row::after,
-  .item-grid .item-price-row::after,
   .sortable-item .item-price-row::after {
     display: none;
   }
@@ -1103,53 +1060,146 @@
   /* Description full-width on row 3 (below image+title+price stack),
      rendered in full — no clamp (item-decision-deck). */
   .item-list .item-name-description .itemDescription,
-  .item-grid .item-name-description .itemDescription,
   .sortable-item .item-name-description .itemDescription {
     grid-column: 1 / -1;
     grid-row: 3;
     padding-top: 4px;
   }
 
-  /* Action row (row 4): the ItemActions block stretches the full row for
-     a non-owner (full labels, big tap targets); owner rows stop at col 3
-     so the kebab keeps its own cell. */
+  /* Action row (row 5) — the full card width, full labels, big tap
+     targets, for owner and non-owner alike. Sharing a row with the
+     kebab or the spoiler pill is what made them collide. */
   .item-list .item-actions,
-  .item-grid .item-actions,
   .sortable-item .item-actions {
+    /* Back to the stacked card grid — the row-view single line above only
+       applies above this breakpoint, and these are cards. */
+    display: grid;
     grid-column: 1 / -1;
-    grid-row: 4;
+    grid-row: 5;
     align-self: center;
     justify-self: stretch;
     min-width: 0;
   }
 
-  .item-list .item-container.owner .item-actions,
-  .item-grid .item-container.owner .item-actions,
-  .sortable-item .item-container.owner .item-actions {
-    grid-column: 1 / 3;
-  }
-
-  /* Kebab on action row, justified right in col 3 — never overlapped by
-     the ItemActions block or the spoiler pill. */
+  /* Kebab top-right, on the title row — the only row with a spare column.
+     It is the card's chrome, not one of its actions. */
   .item-list .item-owner-actions-mobile,
-  .item-grid .item-owner-actions-mobile,
   .sortable-item .item-owner-actions-mobile {
     grid-column: 3;
-    grid-row: 4;
-    align-self: center;
+    grid-row: 1;
+    align-self: start;
     justify-self: end;
   }
 
-  /* Grid-as-list at mobile pulls the overlay kebab into the action row;
+  /* Fully-claimed pill rides inside the ItemActions block; only its
+     height compacts at mobile. */
+  .item-list .claimed-state,
+  .sortable-item .claimed-state {
+    min-height: 36px;
+  }
+
+  /* Spoiler banner gets its own full-width row above the actions. */
+  .item-list .purchased-banner--spoiler,
+  .sortable-item .purchased-banner--spoiler {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    min-height: 36px;
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .item-list .claim-counter,
+  .sortable-item .claim-counter {
+    display: none;
+  }
+}
+
+/* Grid view keeps the desktop photo-card grid down to 600px — its cards are
+   ~248px wide at any viewport, so they never hit the row's width problem.
+   Below 600 it adopts the same horizontal-card treatment as M1 above
+   ("if we're breaking up the row, lean into the card feel"). */
+@media (max-width: 599px) {
+  .item-grid {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .item-grid .item,
+  .item-grid .item-info,
+  .item-grid .item-name-description {
+    display: contents;
+  }
+
+  .item-grid .item-container {
+    display: grid;
+    grid-template-columns: 64px 1fr auto;
+    grid-template-rows: repeat(5, auto);
+    column-gap: 12px;
+    row-gap: 6px;
+    padding: 14px;
+    background: var(--light-color);
+    border: 1px solid var(--card-border-color);
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+
+  .item-grid .item-container:hover {
+    background: var(--light-color);
+    border-color: var(--card-border-hover-color);
+  }
+
+  .item-grid .item-container:last-child {
+    margin-bottom: 0;
+  }
+
+  .item-grid .item-image-container {
+    width: 64px;
+    height: 64px;
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+
+  .item-grid .item-name-description .itemName {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .item-grid .item-price-row {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    align-self: center;
+  }
+
+  .item-grid .item-price-row::after {
+    display: none;
+  }
+
+  .item-grid .item-name-description .itemDescription {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    padding-top: 4px;
+  }
+
+  .item-grid .item-actions {
+    grid-column: 1 / -1;
+    grid-row: 5;
+    align-self: center;
+    justify-self: stretch;
+    min-width: 0;
+  }
+
+  /* Grid-as-list pulls the overlay kebab into the card's title row;
      relative (not static) keeps it the popover's positioning ancestor. */
   .item-grid .item-owner-actions-mobile {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: start;
+    justify-self: end;
     position: relative;
     top: auto;
     right: auto;
   }
 
-  /* Grid-as-list at mobile mirrors the row-view banner policy: footers
-     hide, the spoiler banner stays for its master-unclaim affordances. */
   .item-grid .purchased-banner {
     display: none;
   }
@@ -1160,22 +1210,6 @@
     gap: 8px;
     border: 1.5px solid var(--success-border);
     border-radius: 10px;
-  }
-
-  /* Fully-claimed pill rides inside the ItemActions block; only its
-     height compacts at mobile. */
-  .item-list .claimed-state,
-  .item-grid .claimed-state,
-  .sortable-item .claimed-state {
-    min-height: 36px;
-  }
-
-  /* Spoiler banner on the action row at mobile. Owner rows stop at
-     col 3 so the kebab stays visible and operable — the banner must
-     never slide under it. */
-  .item-list .purchased-banner--spoiler,
-  .item-grid .purchased-banner--spoiler,
-  .sortable-item .purchased-banner--spoiler {
     grid-column: 1 / -1;
     grid-row: 4;
     min-height: 36px;
@@ -1183,15 +1217,11 @@
     padding: 6px 10px;
   }
 
-  .item-list .item-container.owner .purchased-banner--spoiler,
-  .item-grid .item-container.owner .purchased-banner--spoiler,
-  .sortable-item .item-container.owner .purchased-banner--spoiler {
-    grid-column: 1 / 3;
+  .item-grid .claimed-state {
+    min-height: 36px;
   }
 
-  .item-list .claim-counter,
-  .item-grid .claim-counter,
-  .sortable-item .claim-counter {
+  .item-grid .claim-counter {
     display: none;
   }
 }
@@ -1252,8 +1282,8 @@ body:has(.item-drag-overlay) {
 /* Sortable rows inherit the .item-list row layout above; the
    .sortable-item wrapper just adds the drag handle on the left. */
 
-/* Claims collapsed below the identity level: a count, carrying no avatar,
-   name, date, attribution line or removal action. */
+/* A claim the projection withheld: a count, carrying no avatar, name, date,
+   attribution line or removal action. */
 .claims-withheld,
 .claim-reveal-summary {
   margin: 0;

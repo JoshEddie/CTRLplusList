@@ -7,9 +7,7 @@ import { db } from '../db';
 type Callbacks = NonNullable<NextAuthConfig['callbacks']>;
 
 // Store the full name (first + last) when Google provides both — used for
-// disambiguation on the connections page. Other surfaces extract the first
-// name via firstNameOf() in lib/data/purchase.ts to preserve the casual tone
-// in purchase attribution and similar contexts.
+// disambiguation on the connections page.
 export const signInCallback: NonNullable<Callbacks['signIn']> = async ({
   user,
   profile,

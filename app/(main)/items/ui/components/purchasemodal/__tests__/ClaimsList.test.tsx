@@ -15,7 +15,7 @@ const ART = 'data:image/svg+xml;utf8,%3Csvg%2F%3E';
 const claim = (over: Partial<PurchaseView>): PurchaseView => ({
   id: 'p1',
   by: 'other',
-  firstName: 'Grace',
+  name: 'Grace',
   claimedByViewer: false,
   ...over,
 });
@@ -47,7 +47,7 @@ describe('ClaimsList', () => {
     renderList([
       claim({
         id: 'p2',
-        firstName: 'Managed Profile',
+        name: 'Managed Profile',
         avatar: {
           name: 'Managed Profile',
           accent: 'denim',
@@ -62,7 +62,7 @@ describe('ClaimsList', () => {
 
   it('FreeTextPurchaser_RendersInitialsFromTheNameThatWasTyped', () => {
     // No profile, so no face — the typed name is all there is to draw from.
-    renderList([claim({ id: 'p3', firstName: 'Ada', avatar: undefined })]);
+    renderList([claim({ id: 'p3', name: 'Ada', avatar: undefined })]);
 
     expect(screen.getByText('A')).toBeInTheDocument();
     expect(screen.queryByTestId('altvatar-art')).toBeNull();
@@ -72,7 +72,7 @@ describe('ClaimsList', () => {
     renderList([
       claim({
         id: 'p1',
-        firstName: 'Grace',
+        name: 'Grace',
         avatar: {
           name: 'Grace Hopper',
           accent: 'rose',
@@ -80,7 +80,7 @@ describe('ClaimsList', () => {
           avatarStyle: 'avataaars',
         },
       }),
-      claim({ id: 'p2', firstName: 'Ada', avatar: undefined }),
+      claim({ id: 'p2', name: 'Ada', avatar: undefined }),
     ]);
 
     expect(screen.getAllByTestId('altvatar-art')).toHaveLength(1);
@@ -96,7 +96,7 @@ describe('ClaimsList', () => {
     const renderRemovable = (removalDisabled: boolean) =>
       render(
         <ClaimsList
-          claims={[claim({ firstName: 'Grace' })]}
+          claims={[claim({ name: 'Grace' })]}
           canRemove={() => true}
           removalDisabled={removalDisabled}
           onRemoveClaim={vi.fn()}
@@ -122,35 +122,37 @@ describe('ClaimsList', () => {
 });
 
 /**
- * Pins `claim-attribution` — "Where the viewer's resolved item level is below
- * `identity`, the claims list SHALL render the viewer's own removable rows in
- * full and SHALL collapse every other party's claims into a count."
+ * Pins `claim-attribution` — a claim the projection stripped of its name is not
+ * a row: the list renders the named rows in full and collapses the rest into a
+ * count. Removal rights are not the tell — the owner may remove every claim on
+ * their item, so a nameless row would still offer a Remove button.
  */
-describe('BelowIdentity', () => {
+describe('WithheldClaims', () => {
   const own = claim({
     id: 'mine',
     by: 'self',
-    firstName: 'Vic',
+    name: 'Vic',
     claimedByViewer: true,
     purchasedAt: new Date('2026-08-01T00:00:00Z'),
   });
+  // What the `claims` projection leaves of another party's claim: an id and
+  // nothing else.
   const others = [
-    claim({ id: 'o1', firstName: 'Grace', claimerFirstName: 'Ida' }),
-    claim({ id: 'o2', firstName: 'Sam' }),
+    claim({ id: 'o1', name: undefined }),
+    claim({ id: 'o2', name: undefined }),
   ];
 
-  const renderBelowIdentity = () =>
+  const renderWithheld = () =>
     render(
       <ClaimsList
         claims={[own, ...others]}
         canRemove={(c) => c.by === 'self' || c.claimedByViewer}
-        tier="claims"
         onRemoveClaim={vi.fn()}
       />
     );
 
   it('ViewerOwnClaim_RendersInFullWithItsRemovalAction', () => {
-    renderBelowIdentity();
+    renderWithheld();
 
     expect(screen.getByText('Vic (you)')).toBeInTheDocument();
     expect(
@@ -159,15 +161,11 @@ describe('BelowIdentity', () => {
   });
 
   it('OtherPartiesClaims_CollapseIntoACountCarryingNoIdentity', () => {
-    renderBelowIdentity();
+    renderWithheld();
 
     expect(screen.getByText('2 other claims')).toBeInTheDocument();
-    expect(screen.queryByText('Grace')).not.toBeInTheDocument();
-    expect(screen.queryByText('Sam')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Added by Ida/)).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /Remove Grace/ })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Someone')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Added by/)).not.toBeInTheDocument();
     expect(screen.getAllByRole('listitem')).toHaveLength(1);
   });
 
@@ -176,7 +174,6 @@ describe('BelowIdentity', () => {
       <ClaimsList
         claims={[own, others[0]]}
         canRemove={(c) => c.by === 'self'}
-        tier="claims"
         onRemoveClaim={vi.fn()}
       />
     );
@@ -184,12 +181,31 @@ describe('BelowIdentity', () => {
     expect(screen.getByText('1 other claim')).toBeInTheDocument();
   });
 
-  it('LevelIdentity_RendersEveryRowInFullWithNoCount', () => {
+  // The owner's list passes `canRemove: () => true`, so removal rights cannot
+  // stand in for disclosure: a nameless claim stays a count either way.
+  it('NamelessClaimTheViewerMayRemove_StaysACountRatherThanASomeoneRow', () => {
     render(
       <ClaimsList
         claims={[own, ...others]}
+        canRemove={() => true}
+        onRemoveClaim={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('2 other claims')).toBeInTheDocument();
+    expect(screen.queryByText('Someone')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+  });
+
+  it('EveryClaimNamed_RendersEveryRowInFullWithNoCount', () => {
+    render(
+      <ClaimsList
+        claims={[
+          own,
+          claim({ id: 'o1', name: 'Grace', claimerName: 'Ida' }),
+          claim({ id: 'o2', name: 'Sam' }),
+        ]}
         canRemove={(c) => c.by === 'self'}
-        tier="identity"
         onRemoveClaim={vi.fn()}
       />
     );

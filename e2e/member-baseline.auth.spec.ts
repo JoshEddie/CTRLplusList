@@ -33,7 +33,7 @@ import { RECIPIENT_BASE_URL } from './helpers/constants';
 //
 // RESIDUE (contained): both baselines are restored to the fully protected
 // state before the flow ends, so a bare re-run finds the seeded fixture intact.
-const SETTINGS = `${RECIPIENT_BASE_URL}/altvatar/dev-profile-visibility`;
+const PROFILE_SPACE = `${RECIPIENT_BASE_URL}/altvatar/dev-profile-visibility`;
 const LIST = `${RECIPIENT_BASE_URL}/lists/dev-list-visibility-wishlist`;
 
 // A member the viewer merely administers sits behind a collapsed row, so the
@@ -43,11 +43,18 @@ const OWN_CONTROL = 'What you see on this profile';
 const levelControl = (page: import('@playwright/test').Page, label: string) =>
   page.getByRole('combobox', { name: label });
 
+// The controls carry their own tab, and every other panel is `hidden`, so the
+// tab is part of reaching them.
+async function openSpoilers(page: import('@playwright/test').Page) {
+  await page.goto(PROFILE_SPACE);
+  await page.getByRole('tab', { name: 'Spoilers' }).click();
+}
+
 async function openAdministeredRow(
   page: import('@playwright/test').Page,
   member: string
 ) {
-  await page.goto(SETTINGS);
+  await openSpoilers(page);
   await page.getByRole('button', { name: new RegExp(`^${member}`) }).click();
 }
 
@@ -65,7 +72,7 @@ async function setOwnLevel(
   page: import('@playwright/test').Page,
   level: string
 ) {
-  await page.goto(SETTINGS);
+  await openSpoilers(page);
   await levelControl(page, OWN_CONTROL).selectOption(level);
   await expect(page.getByText('Claim visibility updated')).toBeVisible();
 }
@@ -73,23 +80,23 @@ async function setOwnLevel(
 test('MemberBaseline_OwnerWritesAnothersRow_ReflectedOnReNavigation', async ({
   page,
 }) => {
-  await setAdministeredLevel(page, 'Test Viewer', 'identity');
+  await setAdministeredLevel(page, 'Test Viewer', 'claims');
 
   // Re-navigation shows the row holding the written value, not the optimistic
   // one the select carried — and the collapsed row summarises it with the
   // tier's own label.
-  await page.goto(SETTINGS);
+  await openSpoilers(page);
   await expect(
     page.getByRole('button', { name: /^Test Viewer/ })
-  ).toContainText('Everything shown');
+  ).toContainText('Claims shown');
   await openAdministeredRow(page, 'Test Viewer');
   await expect(
     levelControl(page, 'Claim visibility for Test Viewer')
-  ).toHaveValue('identity');
+  ).toHaveValue('claims');
 
   // Restore the fixture.
   await setAdministeredLevel(page, 'Test Viewer', 'surprise');
-  await page.goto(SETTINGS);
+  await openSpoilers(page);
   await expect(
     page.getByRole('button', { name: /^Test Viewer/ })
   ).toContainText('Surprise me');
@@ -104,13 +111,14 @@ test('MemberBaseline_OwnerRaisesTheirOwn_ReachesTheirRenderedList', async ({
   await expect(page.locator('.item-container').first()).toBeVisible();
   await expect(page.getByText('Fully claimed')).toHaveCount(0);
 
-  await setOwnLevel(page, 'identity');
+  await setOwnLevel(page, 'claims');
 
-  // Raised, the same card discloses that it is claimed and by whom — with no
-  // per-page control touched, so the baseline is what the read resolved.
+  // Raised, the same card discloses that it is claimed — with no per-page
+  // control touched, so the baseline is what the read resolved. It names
+  // nobody: that is the owner's manage-claims reveal, not a tier.
   await page.goto(LIST);
   await expect(page.getByText('Fully claimed').first()).toBeVisible();
-  await expect(page.getByText('Claimed by Alice').first()).toBeVisible();
+  await expect(page.getByText('Claimed by 1 person').first()).toBeVisible();
 
   // Restore the fixture.
   await setOwnLevel(page, 'surprise');

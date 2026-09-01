@@ -8,6 +8,7 @@ import {
   claimConflictResponse,
   duplicateClaimResponse,
   getItemClaimSummary,
+  getRevealedItemClaims,
   isEligiblePurchaser,
 } from '@/lib/data/purchase';
 import {
@@ -21,7 +22,11 @@ import { writableMembership } from '@/lib/data/profile.gate';
 import { authedIdentity } from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
-import { type ActionResponse, type UserIdentity } from '@/lib/types';
+import {
+  type ActionResponse,
+  type PurchaseView,
+  type UserIdentity,
+} from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -362,9 +367,19 @@ export async function removePurchase(
   }
 }
 
-// The endpoint the reveal confirmation reaches, the way the attributed-purchaser
-// picker is already reached from the same modal. The read behind it is scoped
-// to the item and carries no identity, so it re-resolves no spoiler state.
+// What the claim affordance's reveal reaches: whether the item is spoken for
+// and what capacity remains, naming nobody.
 export async function claimSummaryForItem(itemId: string) {
   return getItemClaimSummary(itemId);
+}
+
+// What the owner's manage-claims reveal reaches. Naming the claiming parties is
+// no tier, so the stored baseline does not gate it — what gates it is the same
+// rule that decides whether the viewer may see the item at all.
+export async function revealedClaimsForItem(
+  itemId: string
+): Promise<PurchaseView[]> {
+  const viewer = await authedIdentity();
+  if (!(await isItemViewable(itemId, viewer))) return [];
+  return getRevealedItemClaims(itemId, viewer?.selfProfile.id);
 }

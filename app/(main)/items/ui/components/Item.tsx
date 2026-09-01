@@ -1,6 +1,10 @@
 'use client';
 
-import { createPurchase, removePurchase } from '@/lib/data/purchase.actions';
+import {
+  createPurchase,
+  removePurchase,
+  revealedClaimsForItem,
+} from '@/lib/data/purchase.actions';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import {
   ProfileMembershipView,
@@ -10,7 +14,7 @@ import {
 } from '@/lib/types';
 import { atLeast } from '@/lib/spoilers';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import '../styles/item.css';
 import ClaimBanners from './ClaimBanners';
@@ -23,7 +27,6 @@ import { storeComplete } from '@/lib/storeValidity';
 import {
   claimSummaryOf,
   containerClasses,
-  firstToken,
   resolveModalView,
   showsSpoilerBanner,
 } from './utils';
@@ -33,7 +36,7 @@ export default function Item({
   className,
   actor,
   user_name,
-  tier = 'identity',
+  tier = 'claims',
   showArchiveAction,
   archivedView,
   preview,
@@ -69,7 +72,7 @@ export default function Item({
 
   const propPurchases = item.purchases ?? [];
   const propPurchasesKey = propPurchases
-    .map((p) => `${p.id}:${p.firstName ?? ''}:${p.by}:${p.claimedByViewer}`)
+    .map((p) => `${p.id}:${p.name ?? ''}:${p.by}:${p.claimedByViewer}`)
     .join('|');
   const [localPurchases, setLocalPurchases] =
     useState<PurchaseView[]>(propPurchases);
@@ -112,6 +115,9 @@ export default function Item({
     !hasViewerClaim &&
     storeComplete(item.store);
 
+  // The owner's two routes resolve to the same modal view, so the affordance
+  // that opened it is the parameter itself.
+  const claimRoute = searchParams?.get('purchaseView') === 'claim';
   const modalView = resolveModalView({
     isOwner,
     purchaseView: searchParams?.get('purchaseView'),
@@ -119,22 +125,46 @@ export default function Item({
   });
 
   const claimSummary = useMemo(
-    () => claimSummaryOf(localPurchases, tier),
-    [localPurchases, tier]
+    () => claimSummaryOf(localPurchases),
+    [localPurchases]
   );
 
   // Per activation, never persisted: it presents again on the next item, alters
-  // nothing behind it, and changes the resolved tier for nothing else. A
-  // viewer at `claims` or `identity` is never asked — the modal would disclose
-  // nothing they are not already shown.
+  // nothing behind it, and changes the resolved tier for nothing else.
   const [pendingReveal, setPendingReveal] = useState<'manage' | 'claim' | null>(
     null
   );
-  const needsReveal = !atLeast(tier, 'claims');
+  const [revealedClaims, setRevealedClaims] = useState<PurchaseView[] | null>(
+    null
+  );
+  // The claim affordance's reveal is the count and the remaining capacity, which
+  // only a tier below `claims` withholds. The owner's manage-claims list is the
+  // one view that names the claiming parties, so it is also the one that has to
+  // ask when the payload kept them as nameless stubs.
+  const countWithheld = !atLeast(tier, 'claims');
+  const namesWithheld =
+    isOwner &&
+    (countWithheld ||
+      localPurchases.some((claim) => claim.name === undefined));
+
+  // Keyed on the open modal rather than on the confirmation, so a direct link
+  // to `?purchaseItem=` lands on the same disclosed set the dialog leads to.
+  // The claim route is never that modal: its reveal promises the count and no
+  // names, so it reads the page's payload however nameless it arrives.
+  useEffect(() => {
+    if (!showModal || !namesWithheld || claimRoute || !item.id) return;
+    let cancelled = false;
+    revealedClaimsForItem(item.id).then((claims) => {
+      if (!cancelled) setRevealedClaims(claims);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showModal, namesWithheld, claimRoute, item.id]);
 
   const handleModalOpen = (view?: 'claim') => {
     const params = new URLSearchParams(searchParams?.toString() || '');
-    params.set('purchaseItem', item.id || '');
+    params.set('purchaseItem', item.id);
     if (view === 'claim') params.set('purchaseView', 'claim');
     router.push(`${pathname}?${params.toString()}`);
   };
@@ -151,21 +181,21 @@ export default function Item({
     if (!item.id) return;
     /* v8 ignore next -- defensive: the claim affordance is disabled when fully claimed without a personal claim, so this early-return is unreachable from the UI. */
     if (!isOwner && isFullyClaimed && !hasViewerClaim) return;
-    if (needsReveal) return setPendingReveal('manage');
+    if (countWithheld || namesWithheld) return setPendingReveal('manage');
     handleModalOpen();
   };
 
   const handleAddClaimClick = () => {
     /* v8 ignore next -- defensive: item.id is always present for a persisted item. */
     if (!item.id) return;
-    if (needsReveal) return setPendingReveal('claim');
+    if (countWithheld) return setPendingReveal('claim');
     handleModalOpen('claim');
   };
 
   // One home for claim removal: dispatch, toast copy, and local-state filter.
   const removeClaim = async (claim: PurchaseView) => {
     try {
-      const result = await toast.promise(
+      await toast.promise(
         // A refused removal answers `{ success: false }`, which resolves —
         // rejecting it is what routes the refusal to the error toast rather
         // than reporting the removal that did not happen.
@@ -179,11 +209,9 @@ export default function Item({
           error: 'Failed to remove claim',
         }
       );
-      if (result?.success) {
-        setLocalPurchases((prev) => prev.filter((p) => p.id !== claim.id));
-        return true;
-      }
-      return false;
+      setLocalPurchases((prev) => prev.filter((p) => p.id !== claim.id));
+      setRevealedClaims((prev) => prev?.filter((p) => p.id !== claim.id) ?? null);
+      return true;
     } catch (error) {
       console.error('Failed to remove purchase:', error);
       return false;
@@ -232,7 +260,7 @@ export default function Item({
       { item_id: item.id || '', guest_name: null },
       {
         by: 'self',
-        firstName: firstToken(user_name || 'You'),
+        name: user_name || 'You',
         claimedByViewer: true,
         purchasedAt: new Date(),
       },
@@ -251,7 +279,7 @@ export default function Item({
       { item_id: item.id || '', guest_name: null, purchased_by: target.id },
       {
         by: target.id === actor?.id ? 'self' : 'other',
-        firstName: firstToken(target.name || 'Someone'),
+        name: target.name,
         claimedByViewer: true,
         purchasedAt: new Date(),
       }
@@ -264,7 +292,7 @@ export default function Item({
         // Signed-out guest: the cookie written by the action makes this the
         // viewer's own claim, matching the server overlay's by:'self' marking.
         by: actor ? 'other' : 'self',
-        firstName: firstToken(name),
+        name,
         claimedByViewer: true,
         purchasedAt: new Date(),
       }
@@ -337,7 +365,7 @@ export default function Item({
       {!preview && showModal && (
         <PurchaseModalSlot
           view={modalView}
-          claims={localPurchases}
+          claims={(!claimRoute && revealedClaims) || localPurchases}
           viewerIsPurchaser={viewerIsPurchaser}
           actor={actor}
           isOwner={isOwner}
@@ -359,7 +387,11 @@ export default function Item({
             handleModalOpen(pendingReveal === 'claim' ? 'claim' : undefined)
           }
           title="This could spoil a surprise"
-          message="You'll see whether this item is already claimed — no names, just the count."
+          message={
+            namesWithheld && pendingReveal === 'manage'
+              ? "You'll see exactly who has claimed this item, by name."
+              : "You'll see whether this item is already claimed — no names, just the count."
+          }
           confirmText="Show me"
         />
       )}

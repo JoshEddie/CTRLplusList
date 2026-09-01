@@ -1,19 +1,18 @@
 'use client';
 
-import { deleteList } from '@/lib/data/list.actions';
 import { Button } from '@/app/ui/components/button';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
+import { deleteList } from '@/lib/data/list.actions';
 import { ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { ReactNode, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  MdChecklist,
   MdDeleteForever,
   MdModeEdit,
   MdMoreVert,
-  MdPreview,
+  MdPreview
 } from 'react-icons/md';
 import ListFormContainer from './ListFormContainer';
 
@@ -54,7 +53,6 @@ export default function ListActionsMenu({
   const close = () => setOpen(false);
   const showPreviewToggle = isOwner;
   const showOwnerEdit = isOwner && !previewMode;
-  const showOwnerChoose = isOwner && !previewMode;
   const showOwnerDelete = isOwner && !previewMode;
 
   return (
@@ -78,15 +76,6 @@ export default function ListActionsMenu({
           aria-label="List actions"
         >
           {prependedItems}
-          {showOwnerChoose && (
-            <MenuLinkItem
-              href={`/lists/${listId}/choose-items`}
-              icon={<MdChecklist size={18} />}
-              onClick={close}
-            >
-              Choose items
-            </MenuLinkItem>
-          )}
           {showOwnerEdit && (
             <MenuItem
               icon={<MdModeEdit size={18} />}

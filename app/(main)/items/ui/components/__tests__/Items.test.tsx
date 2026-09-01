@@ -94,7 +94,7 @@ describe('Items', () => {
           items={[makeItem('a')]}
           actor={makeProfile('viewer', 'viewer', ROLES.manager)}
           user_name="Vicky"
-          tier="identity"
+          tier="claims"
           showArchiveAction
           archivedView
         />
@@ -103,7 +103,7 @@ describe('Items', () => {
       expect(stub).toHaveAttribute('data-actor-id', 'viewer');
       expect(stub).toHaveAttribute('data-actor-role', ROLES.manager.value);
       expect(stub).toHaveAttribute('data-user-name', 'Vicky');
-      expect(stub).toHaveAttribute('data-tier', 'identity');
+      expect(stub).toHaveAttribute('data-tier', 'claims');
       expect(stub).toHaveAttribute('data-show-archive', 'true');
       expect(stub).toHaveAttribute('data-archived-view', 'true');
     });

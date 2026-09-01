@@ -1,7 +1,7 @@
 import ProfileAvatar, { facelessView } from '@/app/ui/components/ProfileAvatar';
 import { Button } from '@/app/ui/components/button';
 import { timeAgo } from '@/lib/timeAgo';
-import { PurchaseView, SpoilerTier } from '@/lib/types';
+import { PurchaseView } from '@/lib/types';
 import { useState } from 'react';
 
 // Bounded render: an unlimited-quantity item can carry
@@ -9,10 +9,12 @@ import { useState } from 'react';
 const INITIAL_VISIBLE = 10;
 const SEE_MORE_STEP = 10;
 
-// Long-form label is scoped to this list: the card and spoiler
-// banners keep the short "You" via claimLabel.
-function rowLabel(claim: PurchaseView): string {
-  const name = claim.firstName ?? 'Someone';
+type NamedClaim = PurchaseView & { name: string };
+
+// Long-form label is scoped to this list: the card and spoiler banners carry a
+// bare count instead.
+function rowLabel(claim: NamedClaim): string {
+  const name = claim.name;
   if (claim.by !== 'self') return name;
   return name === 'You' ? 'You' : `${name} (you)`;
 }
@@ -25,8 +27,8 @@ function rowMeta(claim: PurchaseView): string | null {
   const attribution =
     claim.by !== 'self' && claim.claimedByViewer
       ? 'Added by you'
-      : claim.claimerFirstName
-        ? `Added by ${claim.claimerFirstName}`
+      : claim.claimerName
+        ? `Added by ${claim.claimerName}`
         : null;
   if (attribution) return when ? `${attribution} · ${when}` : attribution;
   return when ? `claimed ${when}` : null;
@@ -36,13 +38,10 @@ export default function ClaimsList({
   claims,
   canRemove,
   removalDisabled = false,
-  tier = 'identity',
   onRemoveClaim,
 }: {
   claims: PurchaseView[];
   canRemove: (claim: PurchaseView) => boolean;
-  /** Below `identity` every claim that is not the viewer's own collapses to a bare count. */
-  tier?: SpoilerTier;
   // Which removal a row offers depends on who is listed: the owner's list is
   // master unclaim and takes the owner floor, the manage view is the viewer's
   // own claims and takes none. The caller knows which it opened, so the floor
@@ -56,10 +55,13 @@ export default function ClaimsList({
     ...claims.filter((claim) => canRemove(claim)),
     ...claims.filter((claim) => !canRemove(claim)),
   ];
-  // Below `identity` the other parties' rows carry nothing that may be shown —
-  // no avatar, name, date, attribution line or removal — so they are not rows
-  // at all, only a count.
-  const named = tier === 'identity' ? sorted : sorted.filter(canRemove);
+  // A projected-away claim carries nothing that may be shown — no avatar, name,
+  // date, attribution line or removal — so it is not a row at all, only a
+  // count. The missing name is the tell, not the viewer's removal rights: the
+  // owner may remove every claim on their item, named or not.
+  const named = sorted.filter(
+    (claim): claim is NamedClaim => claim.name !== undefined
+  );
   const withheld = sorted.length - named.length;
   const visible = named.slice(0, visibleCount);
   const remaining = named.length - visible.length;
@@ -74,7 +76,7 @@ export default function ClaimsList({
                 linkage governs nothing here — a managed profile carries art on
                 the same terms as anyone else. */}
             <ProfileAvatar
-              profile={claim.avatar ?? facelessView(claim.firstName)}
+              profile={claim.avatar ?? facelessView(claim.name)}
             />
             <div className="claim-row-info">
               <span className="claim-row-name">{rowLabel(claim)}</span>
@@ -91,7 +93,7 @@ export default function ClaimsList({
                 aria-label={
                   claim.by === 'self'
                     ? 'Remove your claim'
-                    : `Remove ${claim.firstName ?? 'this'}'s claim`
+                    : `Remove ${claim.name}'s claim`
                 }
               >
                 Remove

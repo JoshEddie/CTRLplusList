@@ -1,19 +1,22 @@
 'use client';
 
-import { setListVisibility } from '@/lib/data/list.actions';
-import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
-import { followUser, unfollowUser } from '@/lib/data/profile.actions';
+import FollowDisclosureDialog from '@/app/(main)/users/ui/components/FollowDisclosureDialog';
 import { MenuItem, MenuItemRadio } from '@/app/ui/components/menu';
-import { SPOILER_TIER_ROWS } from '@/app/ui/components/spoiler-tier-rows';
+import {
+  SPOILER_TIER_ROWS,
+  SpoilerRowIcon,
+} from '@/app/ui/components/spoiler-tier-rows';
+import { setListVisibility } from '@/lib/data/list.actions';
+import { followUser, unfollowUser } from '@/lib/data/profile.actions';
+import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
 import { withSpoilerParam } from '@/lib/spoilers';
 import { ListTable, type SpoilerTier } from '@/lib/types';
 import { type ListVisibility } from '@/lib/visibility';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import toast from 'react-hot-toast';
 import { FaBookmark, FaCheck, FaPlus, FaRegBookmark } from 'react-icons/fa';
 import { MdOutlineIosShare } from 'react-icons/md';
-import toast from 'react-hot-toast';
-import FollowDisclosureDialog from '@/app/(main)/users/ui/components/FollowDisclosureDialog';
 import { VISIBILITY_ROWS } from './visibility-rows';
 
 // ── Share ────────────────────────────────────────────────────────────────
@@ -133,13 +136,7 @@ export function SpoilerMenuItems({
       {SPOILER_TIER_ROWS.map((row) => (
         <MenuItemRadio
           key={row.value}
-          icon={
-            <span
-              className="spoiler-dot"
-              style={{ background: row.tint }}
-              aria-hidden
-            />
-          }
+          icon={<SpoilerRowIcon row={row} />}
           checked={row.value === tier}
           onSelect={() => apply(row.value)}
         >
@@ -251,9 +248,7 @@ export function FollowMenuItem({
 
   const label = following
     ? 'Following'
-    : ownerName
-      ? `Follow ${ownerName}`
-      : 'Follow';
+    : 'Follow';
 
   return (
     <>

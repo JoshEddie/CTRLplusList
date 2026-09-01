@@ -43,8 +43,8 @@ const VIEWER = makeProfile('viewer', 'viewer', ROLES.owner);
 const OTHERS_CLAIM: PurchaseView = {
   id: 'pc1',
   by: 'other',
-  firstName: 'Bob',
-  claimerFirstName: 'Alice',
+  name: 'Bob',
+  claimerName: 'Alice',
   claimedByViewer: false,
 };
 
@@ -54,7 +54,7 @@ function renderContainer(
   const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
     actor: VIEWER,
     isOwner: false,
-    tier: 'identity',
+    tier: 'claims',
     claims: [],
     item: ITEM,
     onSelfClaim: vi.fn(),
@@ -336,7 +336,7 @@ describe('PurchaseFlowContainer', () => {
       const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
         actor: VIEWER,
         isOwner: false,
-        tier: 'identity',
+        tier: 'claims',
         claims: [],
         item: ITEM,
         onSelfClaim: vi.fn(),
@@ -376,7 +376,7 @@ describe('PurchaseFlowContainer', () => {
       const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
         actor: VIEWER,
         isOwner: false,
-        tier: 'identity',
+        tier: 'claims',
         claims: [],
         item: ITEM,
         onSelfClaim: vi.fn(),
@@ -498,8 +498,8 @@ describe('PurchaseFlowContainer', () => {
       const claim: PurchaseView = {
         id: 'pc1',
         by: 'other',
-        firstName: 'Bob',
-        claimerFirstName: 'Alice',
+        name: 'Bob',
+        claimerName: 'Alice',
         claimedByViewer: false,
       };
       const { onRemoveClaim } = renderContainer({

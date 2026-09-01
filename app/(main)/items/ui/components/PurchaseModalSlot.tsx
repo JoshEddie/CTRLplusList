@@ -51,7 +51,6 @@ export default function PurchaseModalSlot({
           <ClaimsList
             claims={claims}
             canRemove={(claim) => claim.by === 'self' || claim.claimedByViewer}
-            tier={tier}
             onRemoveClaim={onRemoveClaim}
           />
         </div>

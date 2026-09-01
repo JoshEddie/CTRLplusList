@@ -283,7 +283,7 @@ describe('getSpoilerBaseline', () => {
   it('MembershipWithNoRowDespiteAProfileDefault_ResolvesToSurpriseNotTheDefault', async () => {
     // The profile-wide default seeds new memberships; a sitting member with no
     // row resolves to `surprise` without ever consulting it.
-    await seedSpoilerDefault(db, KIDDO, 'identity');
+    await seedSpoilerDefault(db, KIDDO, 'claims');
     await seedMembership(db, { user_id: MANAGER, profile_id: KIDDO });
 
     expect(await dal.getSpoilerBaseline(MANAGER, KIDDO)).toBe('surprise');
@@ -315,13 +315,24 @@ describe('viewerIsProfileMember', () => {
   it('SignedOutViewer_ReturnsFalse', async () => {
     expect(await dal.viewerIsProfileMember(undefined, KIDDO)).toBe(false);
   });
+
+  it('SelectThrows_RaisesFailedToCheckMembership', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(db, 'select').mockImplementation(() => {
+      throw new Error('boom');
+    });
+
+    await expect(dal.viewerIsProfileMember(MANAGER, KIDDO)).rejects.toThrow(
+      'Failed to check membership'
+    );
+  });
 });
 
 describe('getSpoilerDefault', () => {
   it('StoredRow_ReturnsTheStoredTier', async () => {
-    await seedSpoilerDefault(db, KIDDO, 'identity');
+    await seedSpoilerDefault(db, KIDDO, 'claims');
 
-    expect(await dal.getSpoilerDefault(KIDDO)).toBe('identity');
+    expect(await dal.getSpoilerDefault(KIDDO)).toBe('claims');
   });
 
   it('NoStoredRow_ReturnsSurprise', async () => {

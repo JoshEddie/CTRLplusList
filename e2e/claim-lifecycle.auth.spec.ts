@@ -88,16 +88,13 @@ test('AddClaimWhileClaimed_RoutesToClaimFlow_ManageListRemovesPerClaim', async (
     claimed.getByText(`You claimed this, and for ${purchaser}`).first()
   ).toBeVisible();
 
-  // Manage claim lists every claim on the item — the viewer's rows carry
-  // removal actions, other claimants' rows render without one — and removing
-  // the additional claim keeps the self-claim (and the modal) intact.
+  // Manage claim lists the viewer's own claims as rows carrying removal
+  // actions; no tier names another claimant, so theirs are a bare count.
+  // Removing the additional claim keeps the self-claim (and the modal) intact.
   await claimed.getByRole('button', { name: 'Manage claim' }).click();
   await expect(page).not.toHaveURL(/purchaseView=claim/);
-  await expect(page.getByText('Test (you)')).toBeVisible();
-  const nonRemovableRows = page
-    .locator('.claim-row')
-    .filter({ hasNot: page.getByRole('button', { name: /^Remove/ }) });
-  await expect(nonRemovableRows.first()).toBeVisible();
+  await expect(page.getByText('Test Viewer (you)')).toBeVisible();
+  await expect(page.locator('.claims-withheld')).toBeVisible();
   await page
     .getByRole('button', { name: `Remove ${purchaser}'s claim`, exact: true })
     .click();

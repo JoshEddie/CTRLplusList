@@ -25,20 +25,20 @@ describe('resolveSpoilerTier', () => {
 
     it('RepeatedParam_FallsThroughRatherThanReadingAnArray', () => {
       expect(
-        resolveSpoilerTier('surprise', { [SPOILER_PARAM]: ['identity', 'claims'] })
+        resolveSpoilerTier('surprise', { [SPOILER_PARAM]: ['progress', 'claims'] })
       ).toBe('surprise');
     });
   });
 
   describe('PresentParam', () => {
     it('ParamAboveBaseline_OverridesUpward', () => {
-      expect(resolveSpoilerTier('surprise', { [SPOILER_PARAM]: 'identity' })).toBe(
-        'identity'
+      expect(resolveSpoilerTier('surprise', { [SPOILER_PARAM]: 'claims' })).toBe(
+        'claims'
       );
     });
 
     it('ParamBelowBaseline_OverridesDownward', () => {
-      expect(resolveSpoilerTier('identity', { [SPOILER_PARAM]: 'surprise' })).toBe(
+      expect(resolveSpoilerTier('claims', { [SPOILER_PARAM]: 'surprise' })).toBe(
         'surprise'
       );
     });
@@ -46,12 +46,12 @@ describe('resolveSpoilerTier', () => {
 });
 
 describe('atLeast', () => {
-  it('IdentityAgainstClaims_ReturnsTrue', () => {
-    expect(atLeast('identity', 'claims')).toBe(true);
+  it('ClaimsAgainstProgress_ReturnsTrue', () => {
+    expect(atLeast('claims', 'progress')).toBe(true);
   });
 
-  it('SurpriseAgainstIdentity_ReturnsFalse', () => {
-    expect(atLeast('surprise', 'identity')).toBe(false);
+  it('SurpriseAgainstClaims_ReturnsFalse', () => {
+    expect(atLeast('surprise', 'claims')).toBe(false);
   });
 
   it('TierAgainstItself_ReturnsTrue', () => {
@@ -60,8 +60,14 @@ describe('atLeast', () => {
 });
 
 describe('spoilerTierOf', () => {
-  it('StoredIdentity_ReturnsIdentity', () => {
-    expect(spoilerTierOf('identity')).toBe('identity');
+  it('StoredClaims_ReturnsClaims', () => {
+    expect(spoilerTierOf('claims')).toBe('claims');
+  });
+
+  // `identity` named the claiming parties before that stopped being a tier;
+  // rows written under it must not silently re-hide what they disclosed.
+  it('StoredRetiredIdentityTier_ReturnsClaims', () => {
+    expect(spoilerTierOf('identity')).toBe('claims');
   });
 
   it('ValueOutsideTheVocabulary_ReturnsSurprise', () => {
@@ -73,14 +79,14 @@ describe('spoilerTierOf', () => {
 // own baseline, set it otherwise.
 describe('withSpoilerParam', () => {
   it('NextEqualsBaseline_OmitsTheParamKeepingOtherQuery', () => {
-    expect(withSpoilerParam('spoiler=identity&sort=name', 'progress', 'progress')).toBe(
+    expect(withSpoilerParam('spoiler=claims&sort=name', 'progress', 'progress')).toBe(
       'sort=name'
     );
   });
 
   it('NextDiffersFromBaseline_SetsTheParamAlongsideOtherQuery', () => {
-    expect(withSpoilerParam('sort=name', 'identity', 'surprise')).toBe(
-      'sort=name&spoiler=identity'
+    expect(withSpoilerParam('sort=name', 'claims', 'surprise')).toBe(
+      'sort=name&spoiler=claims'
     );
   });
 

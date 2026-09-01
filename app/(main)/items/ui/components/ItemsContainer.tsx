@@ -12,7 +12,7 @@ import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import ItemsBrowser from './ItemsBrowser';
 import Items from './Items';
-import { readItemsPageSize, viewerDisplayName } from '../../utils';
+import { readItemsPageSize } from '../../utils';
 
 interface ItemsContainerProps {
   listId?: string;
@@ -42,7 +42,7 @@ export default async function ItemsContainer({
       // 'use cache' read above, so guests keep sharing one cached variant.
       const store = await cookies();
       const claims = parseGuestClaims(store.get(GUEST_CLAIMS_COOKIE)?.value);
-      items = overlayGuestClaims(items, new Set(claims?.purchases));
+      items = overlayGuestClaims(items, claims);
     }
   } else if (identity) {
     items = await getItemsByProfile(identity.activeProfile.id);
@@ -50,7 +50,6 @@ export default async function ItemsContainer({
     redirect('/');
   }
 
-  const firstLastInitial = viewerDisplayName(identity?.selfProfile.name);
   const actor = identity?.activeProfile;
 
   if (listId) {
@@ -63,7 +62,7 @@ export default async function ItemsContainer({
           initialPageSize={initialPageSize}
           tier={tier}
           actor={actor}
-          user_name={firstLastInitial}
+          user_name={identity?.selfProfile.name}
         />
       </Suspense>
     );
@@ -74,7 +73,7 @@ export default async function ItemsContainer({
       <Items
         items={items}
         actor={actor}
-        user_name={firstLastInitial}
+        user_name={identity?.selfProfile.name}
       />
     </Suspense>
   );

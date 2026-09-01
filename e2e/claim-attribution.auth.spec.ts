@@ -37,16 +37,16 @@ test('AttributedClaim_PickMutualFromPicker_PersistsBobAsPurchaser', async ({
     .click();
 
   // The viewer asserted the claim for Bob; the banner names the attributed
-  // user (linked-account first name, not a typed guest label) and the
+  // user by their self-profile name (not a typed guest label) and the
   // attribution survives a fresh server render.
   const claimed = page.locator('.item-container', { hasText: itemName });
   await expect(
-    claimed.getByText('You claimed this for Bob').first()
+    claimed.getByText('You claimed this for Bob Example').first()
   ).toBeVisible();
 
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
   await expect(
-    claimedAfter.getByText('You claimed this for Bob').first()
+    claimedAfter.getByText('You claimed this for Bob Example').first()
   ).toBeVisible();
 });

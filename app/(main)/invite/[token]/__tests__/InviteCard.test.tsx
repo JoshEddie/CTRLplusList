@@ -120,13 +120,13 @@ describe('InviteCard', () => {
 
       await userEvent.selectOptions(
         screen.getByRole('combobox', { name: CLAIM_VISIBILITY_LABEL }),
-        'identity'
+        'claims'
       );
       await userEvent.click(
         screen.getByRole('button', { name: 'Accept invite' })
       );
 
-      expect(redeemInvite).toHaveBeenCalledWith('tok-1', 'identity');
+      expect(redeemInvite).toHaveBeenCalledWith('tok-1', 'claims');
     });
 
     it('Refused_ToastsTheRefusalAndStaysPut', async () => {

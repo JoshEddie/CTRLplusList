@@ -115,9 +115,9 @@ describe('setMemberTier', () => {
       actingAs(MANAGER);
 
       expect(
-        (await actions.setMemberTier(KIDDO, MANAGER, 'identity')).success
+        (await actions.setMemberTier(KIDDO, MANAGER, 'claims')).success
       ).toBe(true);
-      expect(await memberTierRow(MANAGER)).toBe('identity');
+      expect(await memberTierRow(MANAGER)).toBe('claims');
     });
   });
 
@@ -134,7 +134,7 @@ describe('setMemberTier', () => {
     it('ManagerWritingAnothers_RefusesAndWritesNothing', async () => {
       actingAs(MANAGER);
 
-      expect(await actions.setMemberTier(KIDDO, OWNER, 'identity')).toEqual({
+      expect(await actions.setMemberTier(KIDDO, OWNER, 'claims')).toEqual({
         success: false,
         message: 'Forbidden',
         error: 'Forbidden',
@@ -145,7 +145,7 @@ describe('setMemberTier', () => {
     it('SignedOut_RefusesAsUnauthorized', async () => {
       actingAs(null);
 
-      expect(await actions.setMemberTier(KIDDO, MANAGER, 'identity')).toEqual({
+      expect(await actions.setMemberTier(KIDDO, MANAGER, 'claims')).toEqual({
         success: false,
         message: 'Unauthorized',
         error: 'Unauthorized',
@@ -159,9 +159,9 @@ describe('setMemberTier', () => {
       actingAs(OWNER);
       await actions.setMemberTier(KIDDO, MANAGER, 'claims');
       actingAs(MANAGER);
-      await actions.setMemberTier(KIDDO, MANAGER, 'identity');
+      await actions.setMemberTier(KIDDO, MANAGER, 'claims');
 
-      expect(await memberTierRow(MANAGER)).toBe('identity');
+      expect(await memberTierRow(MANAGER)).toBe('claims');
     });
   });
 
@@ -169,7 +169,7 @@ describe('setMemberTier', () => {
     it('NonMemberTarget_ReportsNoMembershipAndWritesNothing', async () => {
       actingAs(OWNER);
 
-      expect(await actions.setMemberTier(KIDDO, STRANGER, 'identity')).toEqual({
+      expect(await actions.setMemberTier(KIDDO, STRANGER, 'claims')).toEqual({
         success: false,
         message: 'That membership can no longer be changed',
         error: 'No membership',
@@ -184,16 +184,16 @@ describe('setProfileSpoilerDefault', () => {
     actingAs(OWNER);
 
     expect(
-      (await actions.setProfileSpoilerDefault(KIDDO, 'identity')).success
+      (await actions.setProfileSpoilerDefault(KIDDO, 'claims')).success
     ).toBe(true);
-    expect(await defaultRow()).toBe('identity');
+    expect(await defaultRow()).toBe('claims');
     expect(await memberTierRow(OWNER)).toBeNull();
     expect(await memberTierRow(MANAGER)).toBeNull();
   });
 
   it('Rewritten_ReplacesTheStoredSeedRatherThanAccumulating', async () => {
     actingAs(OWNER);
-    await actions.setProfileSpoilerDefault(KIDDO, 'identity');
+    await actions.setProfileSpoilerDefault(KIDDO, 'claims');
     await actions.setProfileSpoilerDefault(KIDDO, 'claims');
 
     expect(await defaultRow()).toBe('claims');
@@ -202,7 +202,7 @@ describe('setProfileSpoilerDefault', () => {
   it('Manager_RefusesAndWritesNothing', async () => {
     actingAs(MANAGER);
 
-    expect(await actions.setProfileSpoilerDefault(KIDDO, 'identity')).toEqual({
+    expect(await actions.setProfileSpoilerDefault(KIDDO, 'claims')).toEqual({
       success: false,
       message: 'Forbidden',
       error: 'Forbidden',
@@ -213,7 +213,7 @@ describe('setProfileSpoilerDefault', () => {
   it('SignedOut_RefusesAsUnauthorized', async () => {
     actingAs(null);
 
-    expect(await actions.setProfileSpoilerDefault(KIDDO, 'identity')).toEqual({
+    expect(await actions.setProfileSpoilerDefault(KIDDO, 'claims')).toEqual({
       success: false,
       message: 'Unauthorized',
       error: 'Unauthorized',
@@ -225,7 +225,7 @@ describe('setProfileSpoilerDefault', () => {
 // revocation clears it explicitly (`profiles-data-model`).
 describe('deleteMemberPreferences', () => {
   it('MemberWithATierRow_ClearsThatAccountRowButLeavesTheDefault', async () => {
-    await seedSpoilerDefault(db, KIDDO, 'identity');
+    await seedSpoilerDefault(db, KIDDO, 'claims');
     await writes.writeMemberTier(KIDDO, MANAGER, 'claims');
     expect(await memberTierRow(MANAGER)).toBe('claims');
 
@@ -233,7 +233,7 @@ describe('deleteMemberPreferences', () => {
 
     expect(await memberTierRow(MANAGER)).toBeNull();
     // The null-account, profile-wide seed is untouched.
-    expect(await defaultRow()).toBe('identity');
+    expect(await defaultRow()).toBe('claims');
   });
 });
 
@@ -248,7 +248,7 @@ describe('WriteFailures', () => {
       throw new Error('boom');
     });
 
-    expect(await actions.setMemberTier(KIDDO, MANAGER, 'identity')).toEqual({
+    expect(await actions.setMemberTier(KIDDO, MANAGER, 'claims')).toEqual({
       success: false,
       message: 'An error occurred while updating claim visibility',
       error: 'Failed to update claim visibility',
@@ -263,7 +263,20 @@ describe('WriteFailures', () => {
       throw new Error('boom');
     });
 
-    expect(await actions.setProfileSpoilerDefault(KIDDO, 'identity')).toEqual({
+    expect(await actions.setProfileSpoilerDefault(KIDDO, 'claims')).toEqual({
+      success: false,
+      message: 'An error occurred while updating claim visibility',
+      error: 'Failed to update claim visibility',
+    });
+  });
+
+  it('MembershipLookupThrows_ReportsFailureRatherThanSuccess', async () => {
+    actingAs(MANAGER);
+    vi.spyOn(db, 'select').mockImplementation(() => {
+      throw new Error('boom');
+    });
+
+    expect(await actions.setMemberTier(KIDDO, MANAGER, 'claims')).toEqual({
       success: false,
       message: 'An error occurred while updating claim visibility',
       error: 'Failed to update claim visibility',
@@ -274,7 +287,7 @@ describe('WriteFailures', () => {
     vi.mocked(session.authedUserId).mockRejectedValue(new Error('boom'));
 
     expect(
-      (await actions.setProfileSpoilerDefault(KIDDO, 'identity')).success
+      (await actions.setProfileSpoilerDefault(KIDDO, 'claims')).success
     ).toBe(false);
   });
 });

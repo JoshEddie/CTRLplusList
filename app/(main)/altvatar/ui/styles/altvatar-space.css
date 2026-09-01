@@ -4,7 +4,7 @@
 
 .profiles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 14px;
 }
 
@@ -372,19 +372,13 @@
   flex-shrink: 0;
 }
 
-/* Claim visibility — a setting rather than a permission, so it sits in the
-   Settings panel below the name-and-tagline form. Gated per control: the
+/* Claim visibility — its own tab, because it writes account-keyed preference
+   rows where the rest of the space writes the profile. Gated per control: the
    viewer's own row stays live while the rest disable. */
 .claim-visibility {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 16px;
-}
-
-.claim-visibility-heading {
-  margin: 0;
-  font-size: 1.05rem;
 }
 
 /* The viewer's own baseline: open, and the only control here their role never

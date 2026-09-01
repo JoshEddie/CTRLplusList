@@ -162,9 +162,9 @@ function heroOf(container: HTMLElement) {
   ) as HTMLElement;
   const kebab = hero.querySelector('.list-hero-kebab') as HTMLElement;
   const actions = hero.querySelector('.list-hero-actions') as HTMLElement;
-  const tiles = hero.querySelector('.list-hero-tiles') as HTMLElement;
+  const row2 = hero.querySelectorAll('.list-hero-row')[1] as HTMLElement;
   const meta = hero.querySelector('.list-hero-meta') as HTMLElement;
-  return { hero, titleblock, kebab, actions, tiles, meta };
+  return { hero, titleblock, kebab, actions, row2, meta };
 }
 
 function expectInOrder(scope: Element, selectors: string[]) {
@@ -184,28 +184,14 @@ const sharedOwnerList = (overrides: Partial<TestList> = {}) =>
 
 describe('ListDetails', () => {
   describe('Owner', () => {
-    it('Owner_RendersTitleKebabActionsTilesMetaInOrder', async () => {
+    it('Owner_Row1HoldsTitleAndActions-Row2HoldsPickerMetaSpoilers', async () => {
       const { container } = await renderHero({ list: sharedOwnerList() });
-      const main = container.querySelector('.list-hero-main') as HTMLElement;
-      expectInOrder(main, [
-        '.list-hero-titleblock',
-        '.list-hero-kebab',
-        '.list-hero-actions',
-        '.list-hero-tiles',
-        '.list-hero-meta',
-      ]);
-    });
-
-    it('OwnerShared_TilesHavePickerThenSpoilerTile', async () => {
-      const { tiles } = await renderHero({ list: sharedOwnerList() });
-      expect(
-        tiles.querySelector('[data-testid="visibility-picker-stub"]')
-      ).toBeInTheDocument();
-      expect(
-        tiles.querySelector('[data-testid="spoiler-tile"]')
-      ).toBeInTheDocument();
-      expectInOrder(tiles, [
+      const rows = container.querySelectorAll('.list-hero-main > .list-hero-row');
+      expect(rows).toHaveLength(2);
+      expectInOrder(rows[0], ['.list-hero-titleblock', '.list-hero-actions']);
+      expectInOrder(rows[1], [
         '[data-testid="visibility-picker-stub"]',
+        '.list-hero-meta',
         '[data-testid="spoiler-tile"]',
       ]);
     });
@@ -217,19 +203,19 @@ describe('ListDetails', () => {
       ).toBeInTheDocument();
     });
 
-    it('OwnerPrivate_TilesHavePicker-ActionsHaveNoShareButton', async () => {
-      const { tiles, actions } = await renderHero({
+    it('OwnerPrivate_Row2HasPicker-ActionsHaveNoShareButton', async () => {
+      const { row2, actions } = await renderHero({
         list: makeList({ shared: false }),
       });
       expect(
-        tiles.querySelector('[data-testid="visibility-picker-stub"]')
+        row2.querySelector('[data-testid="visibility-picker-stub"]')
       ).toBeInTheDocument();
       expect(
         within(actions).queryByRole('button', { name: 'Share list' })
       ).not.toBeInTheDocument();
     });
 
-    it('Owner_ActionsHaveChooseItems-KebabIsCorner-NoEditButton', async () => {
+    it('Owner_ActionsHaveChooseItemsThenKebab-NoEditButton', async () => {
       const { actions, kebab } = await renderHero({
         list: sharedOwnerList({ id: 'list-7' }),
       });
@@ -237,14 +223,12 @@ describe('ListDetails', () => {
         name: 'Choose items',
       });
       expect(chooseItems).toHaveAttribute('href', '/lists/list-7/choose-items');
-      // Edit is never a hero button; it lives in the corner kebab menu, which
-      // sits outside the actions cluster.
+      // Edit is never a hero button; it lives in the kebab menu, which closes
+      // the actions cluster.
       expect(
         within(actions).queryByRole('button', { name: 'Edit list' })
       ).not.toBeInTheDocument();
-      expect(
-        actions.querySelector('[data-testid="actions-menu-stub"]')
-      ).not.toBeInTheDocument();
+      expect(actions.lastElementChild).toBe(kebab);
       expect(
         kebab.querySelector('[data-testid="actions-menu-stub"]')
       ).toBeInTheDocument();
@@ -267,11 +251,12 @@ describe('ListDetails', () => {
       list: makeList({ shared: true, profile_id: 'owner-profile-1' }),
     };
 
-    it('Viewer_TilesHoldByline-ActionsHoldShareAndBookmark', async () => {
-      const { tiles, actions } = await renderHero(viewerProps);
+    it('Viewer_Row2LeadsWithByline-ActionsHoldShareAndBookmark', async () => {
+      const { row2, actions } = await renderHero(viewerProps);
+      expectInOrder(row2, ['.list-hero-byline-group', '.list-hero-meta']);
       expect(
-        tiles.querySelector('.list-hero-byline-group')
-      ).toBeInTheDocument();
+        row2.querySelector('[data-testid="visibility-picker-stub"]')
+      ).toBeNull();
       expect(
         within(actions).getByRole('button', { name: 'Share list' })
       ).toBeInTheDocument();
@@ -311,6 +296,22 @@ describe('ListDetails', () => {
       expect(
         hero.querySelector('[data-testid="visibility-picker-stub"]')
       ).toBeNull();
+    });
+
+    it('SignedOutViewer_NoActionsClusterAndNoKebabPrepends', async () => {
+      const { container } = await renderHero({
+        ...viewerProps,
+        viewer_user_id: undefined,
+        viewer_self_profile_id: undefined,
+      });
+      const kebab = screen.getByTestId('collapsed-kebab');
+      expect(
+        kebab.querySelector('[data-testid="collapsed-viewer-items"]')
+      ).toBeNull();
+      expect(
+        kebab.querySelector('[data-testid="collapsed-owner-items"]')
+      ).toBeNull();
+      expect(container.querySelector('.list-hero-actions')).toBeNull();
     });
 
     it('UnnamedOwner_BylineLinkRendersWithEmptyName', async () => {
@@ -388,15 +389,16 @@ describe('ListDetails', () => {
       ).toBeNull();
     });
 
-    it('Preview_KebabInCorner-NoActions-TilesEmpty-NoByline', async () => {
-      const { hero, kebab, tiles } = await renderHero(previewProps);
+    it('Preview_KebabInRow1-NoActions-Row2HoldsMetaAlone', async () => {
+      const { hero, kebab, row2 } = await renderHero(previewProps);
       // The kebab (its Exit-preview) is the only control; no actions cluster.
       expect(
         kebab.querySelector('[data-testid="actions-menu-stub"]')
       ).toBeInTheDocument();
+      expect(kebab.parentElement).toHaveClass('list-hero-row');
       expect(hero.querySelector('.list-hero-actions')).toBeNull();
-      expect(tiles).toBeEmptyDOMElement();
-      expect(tiles.querySelector('.list-hero-byline-group')).toBeNull();
+      expect(row2.children).toHaveLength(1);
+      expect(row2.firstElementChild).toHaveClass('list-hero-meta');
     });
   });
 
@@ -538,8 +540,8 @@ describe('ListDetails', () => {
     });
 
     it('Manager_VisibilityPickerRendersDisabled', async () => {
-      const { tiles } = await renderHero({ list: sharedOwnerList() });
-      const picker = tiles.querySelector(
+      const { row2 } = await renderHero({ list: sharedOwnerList() });
+      const picker = row2.querySelector(
         '[data-testid="visibility-picker-stub"]'
       ) as HTMLElement;
       expect(picker).toHaveAttribute('data-disabled', 'true');
@@ -627,22 +629,19 @@ describe('ListDetails', () => {
    * strip-kebab twin hoists in lockstep.
    */
   describe('SpoilersTile', () => {
-    it('OwnerMember_RendersTileBesideTheVisibilityPickerInTiles', async () => {
-      const { tiles } = await renderHero({ list: sharedOwnerList() });
-      const tile = tiles.querySelector(
+    it('OwnerMember_RendersTileAtRow2End', async () => {
+      const { row2 } = await renderHero({ list: sharedOwnerList() });
+      const tile = row2.querySelector(
         '[data-testid="spoiler-tile"]'
       ) as HTMLElement;
       expect(tile).toBeInTheDocument();
       expect(tile).toHaveAttribute('data-tier', 'surprise');
       expect(tile).toHaveAttribute('data-baseline', 'surprise');
-      expectInOrder(tiles, [
-        '[data-testid="visibility-picker-stub"]',
-        '[data-testid="spoiler-tile"]',
-      ]);
+      expect(row2.lastElementChild).toContainElement(tile);
     });
 
-    it('ViewerMember_RendersTileInTilesAfterByline', async () => {
-      const { tiles } = await renderHero({
+    it('ViewerMember_RendersTileAtRow2EndAfterByline', async () => {
+      const { row2 } = await renderHero({
         isOwner: false,
         viewer_user_id: 'viewer-9',
         viewer_self_profile_id: 'viewer-profile-9',
@@ -651,13 +650,14 @@ describe('ListDetails', () => {
         baseline: 'surprise',
         list: makeList({ shared: true, profile_id: 'owner-profile-1' }),
       });
-      const tile = tiles.querySelector(
+      const tile = row2.querySelector(
         '[data-testid="spoiler-tile"]'
       ) as HTMLElement;
       expect(tile).toBeInTheDocument();
       expect(tile).toHaveAttribute('data-tier', 'claims');
-      expectInOrder(tiles, [
+      expectInOrder(row2, [
         '.list-hero-byline-group',
+        '.list-hero-meta',
         '[data-testid="spoiler-tile"]',
       ]);
     });
@@ -766,7 +766,7 @@ describe('ListDetails', () => {
       });
       await renderHero({
         ...asViewerOfSharedList,
-        tier: 'identity',
+        tier: 'claims',
       });
 
       expect(screen.getByTestId('switch-offer-stub')).toBeInTheDocument();

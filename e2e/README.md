@@ -67,11 +67,11 @@ viewer's Workshop baseline would race `roles-manager.auth.spec` for the window
 it is raised.
 
 **One seat carries a raised claim-visibility tier.** The baseline is a single
-tier (`surprise` → `progress` → `claims` → `identity`) stored as an
+tier (`surprise` → `progress` → `claims`) stored as an
 account-keyed `profile_preferences` row `(profile_id, user_id, spoiler_tier)`.
 An absent row resolves to `surprise` (`PROTECTED_TIER`), so every seat resolves
 to the fully protected state by default — the only seeded tier rows are on
-`dev-profile-owned`: the viewer at `identity`, and `dev-friend-alice` pinned
+`dev-profile-owned`: the viewer at `claims`, and `dev-friend-alice` pinned
 explicitly at `surprise`. A spec that needs a claim disclosed without first
 operating the Claims control switches to Owned Profile; a spec that needs the
 protected view uses any other seat. `dev-list-owned-wishlist` carries one claim

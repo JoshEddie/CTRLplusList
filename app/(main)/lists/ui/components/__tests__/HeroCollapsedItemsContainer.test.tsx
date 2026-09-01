@@ -159,7 +159,7 @@ describe('HeroCollapsedViewerItems', () => {
       screen.getByRole('menuitem', { name: 'Bookmarked' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('menuitem', { name: 'Follow Bob' })
+      screen.getByRole('menuitem', { name: 'Follow' })
     ).toBeInTheDocument();
   });
 
@@ -197,7 +197,7 @@ describe('HeroCollapsedViewerItems', () => {
     vi.mocked(viewerHasAnyFollows).mockResolvedValue(false);
     const user = userEvent.setup();
     const { container } = render(await HeroCollapsedViewerItems(viewerProps));
-    await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
     expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
       true
     );
@@ -209,7 +209,7 @@ describe('HeroCollapsedViewerItems', () => {
     vi.mocked(followUser).mockResolvedValue({ success: true, message: '' });
     const user = userEvent.setup();
     const { container } = render(await HeroCollapsedViewerItems(viewerProps));
-    await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
     expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
       false
     );

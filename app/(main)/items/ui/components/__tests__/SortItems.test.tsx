@@ -93,7 +93,7 @@ const ITEMS = [
   {
     id: 'A',
     name: 'Apple',
-    purchases: [{ id: 'p1', firstName: 'X', by: 'other' }],
+    purchases: [{ id: 'p1', name: 'X', by: 'other' }],
   },
   { id: 'B', name: 'Banana', purchases: [] },
   { id: 'C', name: 'Cherry', purchases: [] },

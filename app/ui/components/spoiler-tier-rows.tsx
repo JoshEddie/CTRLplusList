@@ -1,5 +1,7 @@
 import { LIBRARY_TIERS, SPOILER_TIERS } from '@/lib/spoilers';
 import type { SpoilerTier } from '@/lib/types';
+import type { IconType } from 'react-icons';
+import { FaBarsProgress, FaGift, FaTag } from 'react-icons/fa6';
 
 // Single source of truth for the claim-visibility tier copy and colour,
 // mirroring `VISIBILITY_ROWS`: the hero Spoilers tile/menu, its sticky-strip
@@ -9,12 +11,14 @@ import type { SpoilerTier } from '@/lib/types';
 //
 // `label` is the short tile/select face ("Surprise me"); `title` is the menu
 // row's fuller line ("Keep it a surprise"); `tint` is the CSS custom property
-// that colours the tile fill and the menu dot for that tier.
+// that colours the tile fill and the menu dot for that tier; `Icon` is the
+// glyph shown inside that dot and on the tile face.
 export type SpoilerTierRow = {
   value: SpoilerTier;
   label: string;
   title: string;
   tint: string;
+  Icon: IconType;
 };
 
 const ROWS: Record<SpoilerTier, Omit<SpoilerTierRow, 'value'>> = {
@@ -22,21 +26,19 @@ const ROWS: Record<SpoilerTier, Omit<SpoilerTierRow, 'value'>> = {
     label: 'Surprise me',
     title: 'Keep it a surprise',
     tint: 'var(--spoiler-tint-surprise)',
+    Icon: FaGift,
   },
   progress: {
     label: 'Progress only',
     title: 'Show overall progress',
     tint: 'var(--spoiler-tint-progress)',
+    Icon: FaBarsProgress,
   },
   claims: {
     label: 'Claims shown',
     title: "Show what's claimed",
     tint: 'var(--spoiler-tint-claims)',
-  },
-  identity: {
-    label: 'Everything shown',
-    title: 'Show who claimed what',
-    tint: 'var(--spoiler-tint-claims)',
+    Icon: FaTag,
   },
 };
 
@@ -52,4 +54,12 @@ export const LIBRARY_TIER_ROWS: readonly SpoilerTierRow[] = LIBRARY_TIERS.map(
 
 export function tierRowFor(tier: SpoilerTier): SpoilerTierRow {
   return SPOILER_TIER_ROWS.find((row) => row.value === tier) ?? SPOILER_TIER_ROWS[0];
+}
+
+export function SpoilerRowIcon({ row }: { row: SpoilerTierRow }) {
+  return (
+    <span className="spoiler-dot" style={{ background: row.tint }} aria-hidden>
+      <row.Icon />
+    </span>
+  );
 }

@@ -341,8 +341,8 @@ describe('ItemsBrowser', () => {
       screen.getByTestId('item-stub').getAttribute('data-tier');
 
     it('ResolvedTier_ReachesEachItem', () => {
-      renderBrowser([makeItem('a')], { tier: 'identity' });
-      expect(tierOf()).toBe('identity');
+      renderBrowser([makeItem('a')], { tier: 'claims' });
+      expect(tierOf()).toBe('claims');
     });
 
     it('AbsentTier_ReachesItemAsUndefined', () => {

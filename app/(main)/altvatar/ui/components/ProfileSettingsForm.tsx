@@ -27,7 +27,7 @@ export default function ProfileSettingsForm({
   permissionsPanel,
   listsPanel,
   identityActions,
-  claimVisibility,
+  claimVisibilityPanel,
 }: {
   profile: ProfileCardView;
   /** The profile's stored face and colour, or a roll where it carries none.
@@ -43,8 +43,10 @@ export default function ProfileSettingsForm({
   listsPanel?: React.ReactNode;
   /** Header-right slot — the invite control for a managed profile. */
   identityActions?: React.ReactNode;
-  /** The Settings panel's claim-visibility controls, already rendered. Gated per control, so it sits outside the name-and-tagline form's own `readOnly`. */
-  claimVisibility?: React.ReactNode;
+  /** The Spoilers tab's already-rendered panel. Its own tab rather than a
+      Settings section: every other panel here writes the profile, and this one
+      writes rows keyed to an account. */
+  claimVisibilityPanel?: React.ReactNode;
 }) {
   const [name, setName] = useState(profile.name);
   const [tagline, setTagline] = useState(profile.tagline ?? '');
@@ -128,13 +130,6 @@ export default function ProfileSettingsForm({
     </form>
   );
 
-  const settingsPanel = (
-    <>
-      {settingsForm}
-      {claimVisibility}
-    </>
-  );
-
   return (
     <>
       <ProfileSpaceIdentity
@@ -145,11 +140,16 @@ export default function ProfileSettingsForm({
         actions={identityActions}
       />
       <ProfileSpaceTabs
-        // Settings first, per `profiles-surface`: the Permissions section
-        // renders *after* the Settings form, and the strip is where that
-        // ordering now lives.
+        // Settings first, per `profiles-surface`, then Spoilers ahead of
+        // Permissions: a member's own baseline is the one control here their
+        // role never forbids, and Permissions is owner-only.
         panels={[
-          { id: 'settings', label: 'Settings', content: settingsPanel },
+          { id: 'settings', label: 'Settings', content: settingsForm },
+          {
+            id: 'spoilers',
+            label: 'Spoilers',
+            content: claimVisibilityPanel,
+          },
           ...(permissionsPanel
             ? [
                 {

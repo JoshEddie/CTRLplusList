@@ -99,7 +99,7 @@ describe('overlayGuestClaims', () => {
   const view = (id: string): PurchaseView => ({
     id,
     by: 'other',
-    firstName: 'Someone',
+    name: 'Someone',
     claimedByViewer: false,
   });
 
@@ -108,7 +108,10 @@ describe('overlayGuestClaims', () => {
       { purchases: [view('p1'), view('p2')] },
       { purchases: [view('p3')] },
     ];
-    const result = overlayGuestClaims(items, new Set(['p1']));
+    const result = overlayGuestClaims(items, {
+      ...valid,
+      purchases: ['p1'],
+    });
     expect(result[0].purchases).toEqual([
       { ...view('p1'), claimedByViewer: true, by: 'self' },
       view('p2'),
@@ -116,8 +119,23 @@ describe('overlayGuestClaims', () => {
     expect(result[1]).toBe(items[1]);
   });
 
-  it('EmptyCookieSet_ReturnsItemsUntouched', () => {
+  // The projection strips the name off every claim that is not the viewer's
+  // own, and a guest has no viewer identity for it to recognise.
+  it('WithheldOwnClaim_TakesItsNameFromTheCookie', () => {
+    const withheld: PurchaseView = {
+      id: 'p1',
+      by: 'other',
+      claimedByViewer: false,
+    };
+    const [item] = overlayGuestClaims([{ purchases: [withheld] }], {
+      ...valid,
+      purchases: ['p1'],
+    });
+    expect(item.purchases[0].name).toBe(valid.name);
+  });
+
+  it('NoCookie_ReturnsItemsUntouched', () => {
     const items = [{ purchases: [view('p1')] }];
-    expect(overlayGuestClaims(items, new Set())).toBe(items);
+    expect(overlayGuestClaims(items, null)).toBe(items);
   });
 });

@@ -7,7 +7,7 @@ import { authedIdentity } from '@/lib/data/user.session';
 import { ItemDisplay } from '@/lib/types';
 import { redirect } from 'next/navigation';
 import ItemsPage from './ui/components/ItemsPage';
-import { readItemsPageSize, viewerDisplayName } from './utils';
+import { readItemsPageSize } from './utils';
 
 export default async function Home({
   searchParams,
@@ -46,8 +46,6 @@ export default async function Home({
 
   const actingAs = await actingAsName(identity);
 
-  const firstLastInitial = viewerDisplayName(identity.selfProfile.name);
-
   const actor = identity.activeProfile;
 
   return (
@@ -56,7 +54,7 @@ export default async function Home({
         items={activeItems as ItemDisplay[]}
         archivedItems={archivedItems as ItemDisplay[]}
         actor={actor}
-        user_name={firstLastInitial}
+        user_name={identity.selfProfile.name}
         lists={lists}
         initialPageSize={initialPageSize}
         actingAs={actingAs}

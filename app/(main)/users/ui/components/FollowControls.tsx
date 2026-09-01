@@ -1,7 +1,7 @@
 'use client';
 
-import { followUser, unfollowUser } from '@/lib/data/profile.actions';
 import type { ButtonVariant } from '@/app/ui/components/button';
+import { followUser, unfollowUser } from '@/lib/data/profile.actions';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
@@ -71,7 +71,6 @@ export default function FollowControls({
     <>
       <FollowButton
         following={following}
-        userName={userName}
         pending={isPending}
         variant={variant}
         onClick={handleClick}

@@ -17,7 +17,7 @@ function renderActions(
     fullyClaimed: false,
     viewerClaimed: false,
     hasAnyClaim: false,
-    tier: 'identity',
+    tier: 'claims',
     store: STORE,
     onPurchaseClick: vi.fn(),
     onAddClaimClick: vi.fn(),
@@ -267,7 +267,7 @@ describe('ItemActions', () => {
             fullyClaimed={false}
             viewerClaimed={false}
             hasAnyClaim={false}
-            tier="identity"
+            tier="claims"
             store={STORE}
           />
         </div>
@@ -298,7 +298,7 @@ describe('ItemActions', () => {
             fullyClaimed={false}
             viewerClaimed={false}
             hasAnyClaim={false}
-            tier="identity"
+            tier="claims"
             showBuyClaim
             store={STORE}
             onBuyClaimClick={onBuyClaimClick}

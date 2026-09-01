@@ -21,20 +21,20 @@ vi.mock('@/lib/data/user.actions', () => ({
 const selfClaim: PurchaseView = {
   id: 'pm',
   by: 'self',
-  firstName: 'Vicky',
+  name: 'Vicky',
   claimedByViewer: true,
   purchasedAt: new Date(Date.now() - 2 * 86400000),
 };
 const attributedClaim: PurchaseView = {
   id: 'pa',
   by: 'other',
-  firstName: 'Grandma',
+  name: 'Grandma',
   claimedByViewer: true,
 };
 const othersClaim: PurchaseView = {
   id: 'po',
   by: 'other',
-  firstName: 'Frank',
+  name: 'Frank',
   claimedByViewer: false,
 };
 
@@ -57,7 +57,7 @@ function renderSlot(
     viewerIsPurchaser: false,
     actor: undefined,
     isOwner: false,
-    tier: 'identity',
+    tier: 'claims',
     item: ITEM,
     onClose: vi.fn(),
     onSelfClaim: vi.fn(),
@@ -126,7 +126,7 @@ describe('PurchaseModalSlot', () => {
     it('SelfFallbackNameYou_RendersPlainYouNotYouYou', () => {
       renderSlot({
         view: 'manage',
-        claims: [{ ...selfClaim, firstName: 'You', purchasedAt: undefined }],
+        claims: [{ ...selfClaim, name: 'You', purchasedAt: undefined }],
       });
       expect(screen.getByText('You')).toBeInTheDocument();
       expect(screen.queryByText('You (you)')).not.toBeInTheDocument();
@@ -148,7 +148,7 @@ describe('PurchaseModalSlot', () => {
       const many = Array.from({ length: 12 }, (_, i) => ({
         ...othersClaim,
         id: `pn${i}`,
-        firstName: `Buyer${i}`,
+        name: `Buyer${i}`,
       }));
       renderSlot({ view: 'manage', claims: [selfClaim, ...many] });
       expect(screen.getAllByRole('listitem')).toHaveLength(10);
@@ -162,7 +162,7 @@ describe('PurchaseModalSlot', () => {
       const many = Array.from({ length: 12 }, (_, i) => ({
         ...othersClaim,
         id: `pn${i}`,
-        firstName: `Buyer${i}`,
+        name: `Buyer${i}`,
       }));
       renderSlot({ view: 'manage', claims: [selfClaim, ...many] });
       await user.click(screen.getByRole('button', { name: 'See more (3)' }));

@@ -7,7 +7,7 @@ import { type ClaimPicker } from '@/lib/data/user.actions';
 import { useMemo, useState } from 'react';
 import { MdCheck, MdExpandLess, MdExpandMore } from 'react-icons/md';
 
-export type AttributedTarget = { id: string; name: string | null };
+export type AttributedTarget = { id: string; name: string };
 
 export type PickerStatus = 'loading' | 'error' | 'ready';
 

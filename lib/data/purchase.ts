@@ -9,12 +9,11 @@ import {
 import { accountsOfProfiles } from '@/lib/data/profile';
 import { primaryStore } from '@/lib/storeValidity';
 import { avatarViewOf, withProfileAvatar } from '@/lib/data/profileAvatar';
-import { MAXIMAL_TIER } from '@/lib/spoilers';
+import { MAXIMAL_TIER, type ClaimProjection } from '@/lib/spoilers';
 import {
   ActionResponse,
   PurchaseView,
   RoleShape,
-  SpoilerTier,
   UserIdentity,
 } from '@/lib/types';
 import { cacheTags, itemRowTags } from '@/lib/cacheTags';
@@ -32,15 +31,8 @@ type RawPurchase = {
     avatar?: { art: string; style: string } | null;
     preferences?: { value: string }[];
   } | null;
-  claimerProfile: { name: string | null } | null;
+  claimerProfile: { name: string } | null;
 };
-
-function firstNameOf(name: string | null | undefined): string {
-  if (!name) return 'Someone';
-  const trimmed = name.trim();
-  if (!trimmed) return 'Someone';
-  return trimmed.split(/\s+/)[0];
-}
 
 // The viewer is named by their SELF-profile, not the profile they act as: a
 // claim is a human act, so a viewer's own claims stay recognisable as theirs —
@@ -51,7 +43,7 @@ function firstNameOf(name: string | null | undefined): string {
 export function sanitizePurchases(
   raw: RawPurchase[],
   viewerSelfProfileId: string | undefined,
-  tier: SpoilerTier
+  projection: ClaimProjection
 ): PurchaseView[] {
   return raw.reduce<PurchaseView[]>((views, p) => {
     const isSelf =
@@ -64,8 +56,9 @@ export function sanitizePurchases(
 
     // `surprise` and `progress` both conceal per-item claim state; `progress`
     // discloses only the list-level count, which the aggregate read derives.
-    if (!held && (tier === 'surprise' || tier === 'progress')) return views;
-    if (!held && tier === 'claims') {
+    if (!held && (projection === 'surprise' || projection === 'progress'))
+      return views;
+    if (!held && projection === 'claims') {
       // The entry survives so the count and the remaining capacity stay
       // derivable; everything identifying is gone with it.
       views.push({ id: p.id, by: 'other', claimedByViewer: false });
@@ -75,17 +68,13 @@ export function sanitizePurchases(
     const view: PurchaseView = {
       id: p.id,
       by: isSelf ? ('self' as const) : ('other' as const),
-      firstName: firstNameOf(p.purchaserProfile?.name ?? p.guest_name),
+      name: p.purchaserProfile?.name ?? p.guest_name ?? undefined,
       claimedByViewer,
       purchasedAt: p.purchased_at,
     };
     if (p.purchaserProfile) view.avatar = avatarViewOf(p.purchaserProfile);
-    if (
-      tier === 'identity' &&
-      p.claimed_by_profile_id &&
-      p.claimed_by_profile_id !== p.profile_id
-    ) {
-      view.claimerFirstName = firstNameOf(p.claimerProfile?.name);
+    if (p.claimerProfile && p.claimed_by_profile_id !== p.profile_id) {
+      view.claimerName = p.claimerProfile.name;
     }
     views.push(view);
     return views;
@@ -264,9 +253,11 @@ export async function getItemsByPurchased(profileId?: string) {
     return result.map(({ item: { stores, ...item } }) => ({
       ...item,
       store: primaryStore(stores),
-      // A constant, not a resolved tier: every row here is one the viewer
-      // purchased, so there is no surprise to protect and the input cannot go
-      // stale — which is why this read keeps sanitizing inside its cache.
+      // A constant, not a resolved tier: the rows this read selects are ones
+      // the viewer purchased, so there is no surprise of theirs to protect and
+      // the input cannot go stale — which is why this read keeps sanitizing
+      // inside its cache. A sibling claim on the same item is still another
+      // party's, and the maximal tier names nobody.
       purchases: sanitizePurchases(item.purchases, profileId, MAXIMAL_TIER),
     }));
   } catch (error) {
@@ -302,11 +293,36 @@ export async function getListClaimedCount(listId: string) {
   }
 }
 
-// One item's badge-level state, for the reveal confirmation to fetch after the
-// viewer agrees to it. Scoped to the item: it re-resolves no spoiler state and
-// changes nothing the page's own payload carries. Uncached, like the claim
-// picker it sits beside — it is fetched in response to an act, and a stale
-// capacity would send the viewer into a claim that cannot land.
+// The `revealed` projection of one item's claims, for the owner's claim list to
+// fetch once they have confirmed the reveal. Scoped to the item: it re-resolves
+// no spoiler state and changes nothing the page's own payload carries.
+// Uncached, like the claim picker it sits beside — it is fetched in response to
+// an act, and a stale set would name a claim that has since been removed.
+export async function getRevealedItemClaims(
+  itemId: string,
+  viewerSelfProfileId: string | undefined
+): Promise<PurchaseView[]> {
+  try {
+    const rows = await db.query.purchases.findMany({
+      where: eq(purchases.item_id, itemId),
+      with: {
+        purchaserProfile: {
+          columns: { name: true },
+          with: withProfileAvatar,
+        },
+        claimerProfile: { columns: { name: true } },
+      },
+    });
+    return sanitizePurchases(rows, viewerSelfProfileId, 'revealed');
+  } catch (error) {
+    console.error('Error fetching revealed item claims:', error);
+    throw new Error('Failed to fetch revealed item claims');
+  }
+}
+
+// One item's badge-level state, for the count-only reveal the claim affordance
+// leads to. It names nobody: a viewer deciding whether to claim needs to know
+// that the item is spoken for and what capacity remains, and no more.
 export async function getItemClaimSummary(itemId: string) {
   try {
     const [item] = await db

@@ -4,7 +4,7 @@
  * accessibility tree, so classed `container.querySelector('dialog')` is the
  * only path.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { followUser, unfollowUser } from '@/lib/data/profile.actions';
@@ -66,7 +66,7 @@ function renderControls(
   );
 }
 
-const mainFollow = () => screen.getByRole('button', { name: 'Follow Bob' });
+const mainFollow = () => screen.getByRole('button', { name: 'Follow' });
 const mainFollowing = () => screen.getByRole('button', { name: 'Following' });
 
 describe('FollowControls', () => {
@@ -161,10 +161,11 @@ describe('FollowControls', () => {
     });
     const { container } = renderControls({ requireDisclosure: true });
     await user.click(mainFollow());
-    await user.click(screen.getByRole('button', { name: 'Follow' }));
-    expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
-      false
-    );
+    // The control and the dialog's confirm now read the same; the dialog is
+    // what disambiguates them.
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    await user.click(within(dialog).getByRole('button', { name: 'Follow' }));
+    expect(dialog.open).toBe(false);
     await waitFor(() => expect(followUser).toHaveBeenCalledWith(PROFILE_ID));
   });
 

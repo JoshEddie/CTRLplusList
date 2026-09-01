@@ -70,14 +70,14 @@ describe('ListActionsMenu', () => {
   });
 
   describe('Prepended', () => {
-    it('Owner_RendersPrependedItemsBeforeChooseItems', async () => {
+    it('Owner_RendersPrependedItemsBeforeTheBaseMenu', async () => {
       const user = userEvent.setup();
       renderMenu({ prependedItems: <div data-testid="prepended" /> });
       await openMenu(user);
       const prepended = screen.getByTestId('prepended');
-      const choose = screen.getByRole('menuitem', { name: 'Choose items' });
+      const edit = screen.getByRole('menuitem', { name: 'Edit list' });
       expect(
-        prepended.compareDocumentPosition(choose) &
+        prepended.compareDocumentPosition(edit) &
           Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy();
     });
@@ -89,12 +89,7 @@ describe('ListActionsMenu', () => {
       renderMenu({ previewMode: false });
       await openMenu(user);
       const items = screen.getAllByRole('menuitem').map((el) => el.textContent);
-      expect(items).toEqual([
-        'Choose items',
-        'Edit list',
-        'Preview as viewer',
-        'Delete list',
-      ]);
+      expect(items).toEqual(['Edit list', 'Preview as viewer', 'Delete list']);
     });
 
     // Claim visibility is adjusted from the items toolbar and from the
@@ -117,7 +112,7 @@ describe('ListActionsMenu', () => {
       ).toBeInTheDocument();
     });
 
-    it('PreviewModeTrue_RendersExitPreview-SuppressesChooseEditDelete', async () => {
+    it('PreviewModeTrue_RendersExitPreview-SuppressesEditAndDelete', async () => {
       const user = userEvent.setup();
       renderMenu({ previewMode: true });
       await openMenu(user);
@@ -126,9 +121,6 @@ describe('ListActionsMenu', () => {
       ).toBeInTheDocument();
       expect(
         screen.queryByRole('menuitem', { name: /spoilers/i })
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('menuitem', { name: 'Choose items' })
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole('menuitem', { name: 'Edit list' })
@@ -140,15 +132,6 @@ describe('ListActionsMenu', () => {
   });
 
   describe('Viewer', () => {
-    it('Default_SuppressesChooseItems', async () => {
-      const user = userEvent.setup();
-      renderMenu({ isOwner: false });
-      await openMenu(user);
-      expect(
-        screen.queryByRole('menuitem', { name: 'Choose items' })
-      ).not.toBeInTheDocument();
-    });
-
     it('Default_SuppressesEditList', async () => {
       const user = userEvent.setup();
       renderMenu({ isOwner: false });

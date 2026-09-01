@@ -55,9 +55,9 @@ export default async function AltvatarSpacePage({
         accent: profile.accent ?? randomAccentName(),
       };
 
-  // Claim visibility is a setting, not a permission, so it renders here rather
-  // than beside the roster — and on a self-profile too, which carries no
-  // Permissions tab at all.
+  // Claim visibility carries its own tab: it writes account-keyed preference
+  // rows rather than the profile, and it renders on a self-profile too, which
+  // carries no Permissions tab at all.
   const [members, profileDefault] = await Promise.all([
     getProfileMembers(id),
     getSpoilerDefault(id),
@@ -70,7 +70,7 @@ export default async function AltvatarSpacePage({
           profile={profile}
           draft={draft}
           readOnly={readOnly}
-          claimVisibility={
+          claimVisibilityPanel={
             <ClaimVisibilitySection
               profileId={id}
               members={members}

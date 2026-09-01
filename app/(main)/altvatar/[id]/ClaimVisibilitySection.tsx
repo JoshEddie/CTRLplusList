@@ -136,8 +136,6 @@ export default function ClaimVisibilitySection({
 
   return (
     <section className="claim-visibility">
-      <h3 className="claim-visibility-heading">Claim visibility</h3>
-
       {own && (
         <OwnBaseline
           initial={own.baseline}

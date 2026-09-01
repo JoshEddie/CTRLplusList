@@ -163,28 +163,6 @@ describe('getItemsByProfile', () => {
       ]);
       expect(rows[0].hasPurchases).toBe(true);
     });
-
-    it('Identity_ReturnsFirstNameOtherRows-HasPurchasesTrue', async () => {
-      const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
-        tier: 'identity',
-      });
-      expect(rows[0].purchases).toEqual([
-        {
-          id: 'p1',
-          by: 'other',
-          firstName: 'Cara',
-          claimedByViewer: false,
-          purchasedAt: expect.any(Date),
-          avatar: {
-            name: 'Cara Lee',
-            accent: null,
-            art: '<svg id="cara" />',
-            avatarStyle: 'toon-head',
-          },
-        },
-      ]);
-      expect(rows[0].hasPurchases).toBe(true);
-    });
   });
 
   it('QueryThrows_RejectsWithRawError', async () => {
@@ -358,17 +336,10 @@ describe('getItemsByListId', () => {
       await seedClaimedItem();
       const rows = await dal.getItemsByListId('l1', { tier: 'claims' });
       expect(rows[0].purchases).toHaveLength(2);
-      expect(rows[0].purchases.map((p) => p.firstName)).toEqual([
+      expect(rows[0].purchases.map((p) => p.name)).toEqual([
         undefined,
         undefined,
       ]);
-    });
-
-    it('Identity_ReturnsFirstNameOtherRows', async () => {
-      await seedClaimedItem();
-      const rows = await dal.getItemsByListId('l1', { tier: 'identity' });
-      const tags = rows[0].purchases.map((p) => p.by);
-      expect(tags).toEqual(['other', 'other']);
     });
 
     // The cached raw read is entered once for the list; each viewer's rows are
@@ -382,10 +353,10 @@ describe('getItemsByListId', () => {
       });
       const otherRows = await dal.getItemsByListId('l1', {
         viewerSelfProfileId: selfProfileOf('other'),
-        tier: 'identity',
+        tier: 'claims',
       });
       // 'viewer' at surprise keeps only their own held claim; 'other' at
-      // identity sees both, their own as self and the viewer's as other.
+      // claims sees both, their own as self and the viewer's as a bare count.
       expect(viewerRows[0].purchases.map((p) => p.by)).toEqual(['self']);
       expect(otherRows[0].purchases.map((p) => p.by)).toEqual([
         'other',
@@ -399,7 +370,7 @@ describe('getItemsByListId', () => {
       ).toEqual([]);
     });
 
-    it('NonOwnerWithViewerId_TagsSelfAndOther', async () => {
+    it('NonOwnerWithViewerId_NamesTheirOwn-CountsTheOther', async () => {
       await seedClaimedItem();
       const rows = await dal.getItemsByListId('l1', {
         viewerSelfProfileId: selfProfileOf('viewer'),
@@ -408,7 +379,7 @@ describe('getItemsByListId', () => {
       expect(byId.pv).toEqual({
         id: 'pv',
         by: 'self',
-        firstName: 'Vic',
+        name: 'Vic',
         claimedByViewer: false,
         purchasedAt: expect.any(Date),
         avatar: { name: 'Vic', accent: null, art: null, avatarStyle: null },
@@ -416,10 +387,7 @@ describe('getItemsByListId', () => {
       expect(byId.po).toEqual({
         id: 'po',
         by: 'other',
-        firstName: 'Otto',
         claimedByViewer: false,
-        purchasedAt: expect.any(Date),
-        avatar: { name: 'Otto', accent: null, art: null, avatarStyle: null },
       });
     });
 
@@ -429,9 +397,9 @@ describe('getItemsByListId', () => {
       expect(rows[0].purchases.map((p) => p.by)).toEqual(['other', 'other']);
     });
 
-    it('NonOwnerGuestClaim_ProjectsGuestFirstName', async () => {
-      // Guest claim (profile_id null) drives the non-owner branch's
-      // `p.purchaserProfile?.name ?? p.guest_name` fallback to the guest name.
+    it('NonOwnerGuestClaim_CollapsesToABareCount', async () => {
+      // A guest claim is another party's like any other: the maximal tier
+      // keeps the entry so capacity stays derivable and drops the name.
       await seedUsers(db, [{ id: 'owner' }, { id: 'viewer' }]);
       await seedList(db, { id: 'l1', user_id: 'owner' });
       await seedItem(db, { id: 'i1', user_id: 'owner', quantity_limit: 2 });
@@ -446,13 +414,7 @@ describe('getItemsByListId', () => {
         viewerSelfProfileId: selfProfileOf('viewer'),
       });
       expect(rows[0].purchases).toEqual([
-        {
-          id: 'pg',
-          by: 'other',
-          firstName: 'Gabby',
-          claimedByViewer: false,
-          purchasedAt: expect.any(Date),
-        },
+        { id: 'pg', by: 'other', claimedByViewer: false },
       ]);
     });
   });
@@ -464,60 +426,5 @@ describe('getItemsByListId', () => {
     await expect(dal.getItemsByListId('l1')).rejects.toThrow(
       'Failed to fetch items'
     );
-  });
-});
-
-// Drives the private firstNameOf projection through getItemsByProfile
-// owner + identity tier (every claim maps to {by:'other', firstName}); covers
-// the falsy/whitespace/multi-word name branches and both sides of
-// `p.purchaserProfile?.name ?? p.guest_name`.
-describe('firstNameOf', () => {
-  it('VariedClaimerNames_ProjectsFirstTokenElseSomeone', async () => {
-    // seedUsers coalesces a null name to the id, so the null-name branch is
-    // reached via a guest purchase with no guest_name (user null, guest null).
-    await seedUsers(db, [
-      { id: 'owner' },
-      { id: 'full', name: 'Alice Smith' },
-      { id: 'empty', name: '' },
-      { id: 'spaces', name: '   ' },
-    ]);
-    const userClaimers: Record<string, string> = {
-      iFull: 'full',
-      iEmpty: 'empty',
-      iSpaces: 'spaces',
-    };
-    for (const [itemId, userId] of Object.entries(userClaimers)) {
-      await seedItem(db, { id: itemId, user_id: 'owner' });
-      await seedPurchase(db, {
-        id: `p-${itemId}`,
-        item_id: itemId,
-        profile_id: selfProfileOf(userId),
-      });
-    }
-    // Guest claim with a name: exercises the `?? p.guest_name` fallback (right side).
-    await seedItem(db, { id: 'iGuest', user_id: 'owner' });
-    await seedPurchase(db, {
-      id: 'p-iGuest',
-      item_id: 'iGuest',
-      guest_name: 'Charlie Brown',
-    });
-    // Guest claim with no name at all: purchaser profile and guest_name both
-    // null → 'Someone'.
-    await seedItem(db, { id: 'iNull', user_id: 'owner' });
-    await seedPurchase(db, { id: 'p-iNull', item_id: 'iNull' });
-
-    const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
-      tier: 'identity',
-    });
-    const firstNameByItem = Object.fromEntries(
-      rows.map((r) => [r.id, r.purchases[0]?.firstName])
-    );
-    expect(firstNameByItem).toEqual({
-      iFull: 'Alice',
-      iEmpty: 'Someone',
-      iSpaces: 'Someone',
-      iGuest: 'Charlie',
-      iNull: 'Someone',
-    });
   });
 });

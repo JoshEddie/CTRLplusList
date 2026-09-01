@@ -63,9 +63,9 @@ function GuestClaimSection({
   );
 }
 
-// What a confirmed reveal discloses, and no more: that the item carries claims
-// and what capacity remains. Fetched rather than carried by the page, whose
-// payload withholds both at this level.
+// What a confirmed claim-affordance reveal discloses, and no more: that the
+// item carries claims and what capacity remains. Fetched rather than carried by
+// the page, whose payload withholds both at this level.
 function RevealSummary({
   summary,
 }: {
@@ -77,9 +77,7 @@ function RevealSummary({
       {summary.claimCount === 0
         ? 'No claims on this item yet.'
         : `${summary.claimCount} claimed${
-            summary.remaining === null
-              ? ''
-              : ` · ${summary.remaining} left`
+            summary.remaining === null ? '' : ` · ${summary.remaining} left`
           }`}
     </p>
   );
@@ -89,7 +87,6 @@ function AuthedClaimSection({
   isOwner,
   canClaim,
   claims,
-  tier,
   masterUnclaimDisabled,
   viewerIsPurchaser,
   circleLabel,
@@ -104,7 +101,6 @@ function AuthedClaimSection({
   isOwner: boolean;
   canClaim: boolean;
   claims: PurchaseView[];
-  tier: SpoilerTier;
   masterUnclaimDisabled: boolean;
   viewerIsPurchaser?: boolean;
   circleLabel: string;
@@ -123,7 +119,6 @@ function AuthedClaimSection({
           claims={claims}
           canRemove={() => true}
           removalDisabled={masterUnclaimDisabled}
-          tier={tier}
           onRemoveClaim={onRemoveClaim}
         />
       )}
@@ -259,7 +254,6 @@ export default function PurchaseFlowContainer({
           isOwner={isOwner}
           canClaim={canClaim}
           claims={claims}
-          tier={tier}
           masterUnclaimDisabled={!actor.role.admin}
           viewerIsPurchaser={viewerIsPurchaser}
           circleLabel={circleLabel}

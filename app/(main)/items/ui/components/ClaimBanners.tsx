@@ -1,5 +1,5 @@
 import { PurchaseView, SpoilerTier } from '@/lib/types';
-import { claimLabel, showsSpoilerBanner } from './utils';
+import { showsSpoilerBanner } from './utils';
 
 function BannerCheck() {
   return (
@@ -21,7 +21,7 @@ function BannerCheck() {
 function myClaimsLabel(myClaims: PurchaseView[]): string {
   const attributed = myClaims
     .filter((claim) => claim.by !== 'self')
-    .map((claim) => claim.firstName ?? 'Someone');
+    .map((claim) => claim.name ?? 'Someone');
   const hasSelf = myClaims.some((claim) => claim.by === 'self');
   if (attributed.length === 0) return 'You claimed this';
   const names = attributed.join(', ');
@@ -68,22 +68,9 @@ export default function ClaimBanners({
           role="status"
         >
           <BannerCheck />
-          <div className="spoiler-claims">
-            <span>
-              <strong>Spoilers:</strong> {counterText}
-            </span>
-            {/* The count and the remaining capacity are what `claims` grants;
-                who holds each claim rides the `identity` tier alone. */}
-            {tier === 'identity' && (
-              <ul className="spoiler-claim-list">
-                {claims.map((claim) => (
-                  <li key={claim.id} className="spoiler-claim-row">
-                    <span>{claimLabel(claim)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          {/* The count and the remaining capacity are all `claims` grants; who
+              holds each claim is the modal's confirmed reveal alone. */}
+          <span>{counterText}</span>
         </div>
       )}
     </>

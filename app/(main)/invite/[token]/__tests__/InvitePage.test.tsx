@@ -76,12 +76,12 @@ describe('InvitePage', () => {
   });
 
   it('LiveToken_OffersTheProfilesSpoilerDefaultReadAtOpen', async () => {
-    vi.mocked(getSpoilerDefault).mockResolvedValue('identity');
+    vi.mocked(getSpoilerDefault).mockResolvedValue('claims');
 
     await renderPage();
 
     expect(getSpoilerDefault).toHaveBeenCalledWith('kiddo');
-    expect(screen.getByTestId('card')).toHaveAttribute('data-offered', 'identity');
+    expect(screen.getByTestId('card')).toHaveAttribute('data-offered', 'claims');
   });
 
   it('NoLiveInvite_RefusesWithoutSayingWhichConditionApplied', async () => {

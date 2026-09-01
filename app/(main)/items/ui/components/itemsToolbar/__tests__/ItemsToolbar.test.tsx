@@ -596,7 +596,7 @@ describe('ItemsToolbar', () => {
     it('ModeItemsWithTier_TogglePresenceLeavesNoChipRowOrCountBadge', () => {
       const { container } = renderToolbar({
         mode: 'items',
-        tier: 'identity',
+        tier: 'claims',
         baseline: 'surprise',
       });
       expect(spoilerTrigger()).toBeInTheDocument();

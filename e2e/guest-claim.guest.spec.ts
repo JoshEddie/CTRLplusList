@@ -27,9 +27,9 @@ test('GuestClaim_PublicList_RecordsGuestPurchase', async ({ page }) => {
   // guest" branch. A per-run-unique name makes the recorded claim
   // unambiguous on reload.
   const guestName = `GuestE2E${Date.now()}`;
-  await firstClaimableSingleItem(page)
-    .getByRole('button', { name: 'Add Claim' })
-    .click();
+  const item = firstClaimableSingleItem(page);
+  const itemName = (await item.locator('.itemName').innerText()).trim();
+  await item.getByRole('button', { name: 'Add Claim' }).click();
   await page.getByLabel('Your name').fill(guestName);
   await page.getByRole('button', { name: 'Claim as Guest' }).click();
 
@@ -45,10 +45,14 @@ test('GuestClaim_PublicList_RecordsGuestPurchase', async ({ page }) => {
   ).toBeVisible();
 
   // A browser without the guest_claims cookie sees the claim as someone
-  // else's, named after the entered guest name.
+  // else's — a bare count, since no tier names a claiming party.
   await page.context().clearCookies();
   await page.reload();
-  await expect(page.getByText(`Claimed by ${guestName}`)).toBeVisible();
+  await expect(
+    page
+      .locator('.item-container', { hasText: itemName })
+      .getByText('Claimed by 1 person')
+  ).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Manage claim' })
   ).not.toBeVisible();
@@ -99,12 +103,12 @@ test('GuestManageClaim_RemoveOwnRow_ReturnsCardToAddClaim', async ({
   await expect(card.getByText('You claimed this')).toHaveCount(0);
 
   // A fresh server render agrees: the claim is gone for the guest and for
-  // anyone else (no residual "Claimed by" line under the entered name).
+  // anyone else (no residual "Claimed by" line on the card at all).
   await page.reload();
   const cardAfter = page.locator('.item-container', { hasText: itemName });
   await expect(
     cardAfter.getByRole('button', { name: 'Add Claim' })
   ).toBeVisible();
-  await expect(page.getByText(`Claimed by ${guestName}`)).toHaveCount(0);
+  await expect(cardAfter.getByText('Claimed by')).toHaveCount(0);
   await expect(cardAfter.getByText('You claimed this')).toHaveCount(0);
 });
