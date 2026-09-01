@@ -32,8 +32,8 @@ function renderCard(
     fullyClaimed: false,
     showCounter: true,
     counterText: '0/3 claimed',
-    showOwnerClaimAction: false,
-    showOwnerManageAction: false,
+    hasAnyClaim: false,
+    tier: 'identity',
     onPurchaseClick: vi.fn(),
     onAddClaimClick: vi.fn(),
     ...overrides,
@@ -177,16 +177,17 @@ describe('ItemCard', () => {
     });
   });
 
-  describe('OwnerClaimGate', () => {
-    it('ShowOwnerClaimActionFalse_OmitsClaimButton', () => {
-      renderCard({ isOwner: true, showOwnerClaimAction: false });
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  describe('OwnerClaimAffordance', () => {
+    it('HasClaimsAtClaims_RendersManageClaimsButton', () => {
+      renderCard({ isOwner: true, tier: 'claims', hasAnyClaim: true });
+      expect(
+        screen.getByRole('button', { name: 'Manage claims' })
+      ).toBeInTheDocument();
     });
 
-    it('ShowOwnerClaimActionTrue_RendersAddClaimButton', () => {
+    it('ClaimableAtIdentity_RendersAddClaimButton', () => {
       const { container } = renderCard({
         isOwner: true,
-        showOwnerClaimAction: true,
         item: { id: 'i1', name: 'Gift', store: STORE } as never,
       });
       expect(

@@ -52,7 +52,6 @@ function renderSheet(overrides: Partial<SheetProps> = {}) {
     sort: overrides.sort ?? 'created_desc',
     defaultSort: overrides.defaultSort ?? 'created_desc',
     sortOptions: overrides.sortOptions ?? SORT_OPTIONS,
-    purchases: overrides.purchases ?? 'hide',
     show: overrides.show ?? 'all',
     storeOptions: overrides.storeOptions ?? ['Amazon'],
     selectedStores: overrides.selectedStores ?? [],
@@ -262,39 +261,26 @@ describe('FiltersSheet', () => {
     });
   });
 
-  describe('PurchasesAndShow', () => {
-    it('NonChooseMode_RendersPurchasesSelectWiredToUpdateParams', () => {
-      const updateParams = vi.fn();
-      renderSheet({ mode: 'items', updateParams });
-      fireEvent.change(
-        screen.getByRole('combobox', { name: 'Purchases filter' }),
-        { target: { value: 'only' } }
-      );
-      expect(updateParams).toHaveBeenCalledWith({
-        purchases: 'only',
-        page: null,
-      });
+  describe('ShowFacet', () => {
+    it('NonChooseMode_RendersNoShowSelect', () => {
+      renderSheet({ mode: 'items' });
+      expect(
+        screen.queryByRole('combobox', {
+          name: 'Show items by list membership',
+        })
+      ).not.toBeInTheDocument();
     });
 
-    it('PurchasesHideChosen_RemovesPurchasesParam', () => {
-      const updateParams = vi.fn();
-      renderSheet({ mode: 'items', purchases: 'only', updateParams });
-      fireEvent.change(
-        screen.getByRole('combobox', { name: 'Purchases filter' }),
-        { target: { value: 'hide' } }
-      );
-      expect(updateParams).toHaveBeenCalledWith({
-        purchases: null,
-        page: null,
-      });
-    });
-
-    it('ChooseMode_RendersShowSelectNotPurchases', () => {
-      const updateParams = vi.fn();
-      renderSheet({ mode: 'choose', updateParams });
+    it('NonChooseMode_RendersNoPurchasesFacet', () => {
+      renderSheet({ mode: 'items' });
       expect(
         screen.queryByRole('combobox', { name: 'Purchases filter' })
       ).not.toBeInTheDocument();
+    });
+
+    it('ChooseMode_RendersShowSelectWiredToUpdateParams', () => {
+      const updateParams = vi.fn();
+      renderSheet({ mode: 'choose', updateParams });
       fireEvent.change(
         screen.getByRole('combobox', {
           name: 'Show items by list membership',

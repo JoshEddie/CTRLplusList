@@ -3,17 +3,38 @@ import { items, list_items, lists } from '@/db/schema';
 import { sanitizePurchases } from '@/lib/data/purchase';
 import { primaryStore } from '@/lib/storeValidity';
 import { withProfileAvatar } from '@/lib/data/profileAvatar';
-import { ListTable } from '@/lib/types';
+import { MAXIMAL_TIER } from '@/lib/spoilers';
+import { ListTable, SpoilerTier } from '@/lib/types';
 import { cacheTags, itemRowTags } from '@/lib/cacheTags';
 import { and, eq, exists, isNotNull, isNull, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
+// Uncached wrapper over a private cached raw read. The projection is
+// viewer-scoped and database-backed, so sanitizing inside the cache would key
+// it on an input that goes stale without this read's own tags firing
+// (`list-item-management`). The boundary the projection must precede is the
+// data-layer one, which the exported name still satisfies.
 export async function getItemsByProfile(
   profileId: string,
   opts: {
     filter?: 'active' | 'archived' | 'all';
-    showSpoilers?: boolean;
+    tier?: SpoilerTier;
   } = {}
+) {
+  const rows = await rawItemsByProfile(profileId, opts.filter ?? 'active');
+  const tier = opts.tier ?? MAXIMAL_TIER;
+  return rows.map((item) => {
+    // `hasPurchases` reflects only what the resolved tier discloses: there is
+    // no claim-state filter left to consume a pre-sanitization truth, so a
+    // `hasPurchases` set from unprojected rows would be a passive leak.
+    const purchases = sanitizePurchases(item.purchases, profileId, tier);
+    return { ...item, hasPurchases: purchases.length > 0, purchases };
+  });
+}
+
+async function rawItemsByProfile(
+  profileId: string,
+  filter: 'active' | 'archived' | 'all'
 ) {
   'use cache';
   cacheTag(
@@ -24,8 +45,6 @@ export async function getItemsByProfile(
     cacheTags.itemsOfProfile(profileId)
   );
   try {
-    const filter = opts.filter ?? 'active';
-    const showSpoilers = opts.showSpoilers ?? false;
     const where =
       filter === 'active'
         ? and(eq(items.profile_id, profileId), isNull(items.archived_at))
@@ -66,13 +85,6 @@ export async function getItemsByProfile(
       ...item,
       image_url: images[0]?.url ?? null,
       store: primaryStore(stores),
-      hasPurchases: item.purchases.length > 0,
-      purchases: sanitizePurchases(
-        item.purchases,
-        profileId,
-        true,
-        showSpoilers
-      ),
     }));
   } catch (error) {
     console.error('Error fetching items:', error);
@@ -146,14 +158,27 @@ export async function getItemById(id: string, profileId: string) {
   }
 }
 
+// Split for the reason `getItemsByProfile` is; see its wrapper.
 export async function getItemsByListId(
   listId: string,
   opts: {
     viewerSelfProfileId?: string;
-    isOwner?: boolean;
-    showSpoilers?: boolean;
+    tier?: SpoilerTier;
   } = {}
 ) {
+  const rows = await rawItemsByListId(listId);
+  const tier = opts.tier ?? MAXIMAL_TIER;
+  return rows.map((item) => {
+    const purchases = sanitizePurchases(
+      item.purchases,
+      opts.viewerSelfProfileId,
+      tier
+    );
+    return { ...item, hasPurchases: purchases.length > 0, purchases };
+  });
+}
+
+async function rawItemsByListId(listId: string) {
   'use cache';
   cacheTag(
     cacheTags.items,
@@ -217,12 +242,6 @@ export async function getItemsByListId(
       ...item,
       image_url: images[0]?.url ?? null,
       store: primaryStore(stores),
-      purchases: sanitizePurchases(
-        item.purchases,
-        opts.viewerSelfProfileId,
-        opts.isOwner ?? false,
-        opts.showSpoilers ?? false
-      ),
     }));
   } catch (error) {
     console.error('Error fetching items:', error);

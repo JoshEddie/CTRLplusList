@@ -1,4 +1,9 @@
-import { ProfileMembershipView, ItemDisplay, PurchaseView } from '@/lib/types';
+import {
+  ProfileMembershipView,
+  ItemDisplay,
+  PurchaseView,
+  SpoilerTier,
+} from '@/lib/types';
 import ClaimsList from './purchasemodal/ClaimsList';
 import Modal from './purchasemodal/Modal';
 import ModalStoreRow from './purchasemodal/ModalStoreRow';
@@ -13,9 +18,7 @@ export default function PurchaseModalSlot({
   viewerIsPurchaser,
   actor,
   isOwner,
-  showSpoilers,
-  ownerCanClaim,
-  ownerClaims,
+  tier,
   item,
   onClose,
   onSelfClaim,
@@ -29,9 +32,7 @@ export default function PurchaseModalSlot({
   viewerIsPurchaser: boolean;
   actor?: ProfileMembershipView;
   isOwner: boolean;
-  showSpoilers: boolean;
-  ownerCanClaim: boolean;
-  ownerClaims: PurchaseView[];
+  tier: SpoilerTier;
   item: ItemDisplay;
   onClose: () => void;
   onSelfClaim: () => void;
@@ -50,6 +51,7 @@ export default function PurchaseModalSlot({
           <ClaimsList
             claims={claims}
             canRemove={(claim) => claim.by === 'self' || claim.claimedByViewer}
+            tier={tier}
             onRemoveClaim={onRemoveClaim}
           />
         </div>
@@ -61,9 +63,8 @@ export default function PurchaseModalSlot({
       <PurchaseFlowContainer
         actor={actor}
         isOwner={isOwner}
-        showSpoilers={showSpoilers}
-        ownerCanClaim={ownerCanClaim}
-        ownerClaims={ownerClaims}
+        tier={tier}
+        claims={claims}
         viewerIsPurchaser={viewerIsPurchaser}
         item={item}
         onSelfClaim={onSelfClaim}

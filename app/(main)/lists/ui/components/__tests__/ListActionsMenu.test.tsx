@@ -34,9 +34,7 @@ function renderMenu(overrides: MenuOverrides = {}, meetsOwnerFloor = true) {
   return render(
     <ListActionsMenu
       list={list}
-      showSpoilers={overrides.showSpoilers ?? false}
       previewMode={overrides.previewMode ?? false}
-      spoilerHref="/lists/list-1?spoilers=1"
       previewHref="/lists/list-1?preview=1"
       exitPreviewHref="/lists/list-1"
       isOwner={overrides.isOwner}
@@ -88,34 +86,26 @@ describe('ListActionsMenu', () => {
   describe('Owner', () => {
     it('NonPreview_RendersFullBaseMenuInOrder', async () => {
       const user = userEvent.setup();
-      renderMenu({ showSpoilers: false, previewMode: false });
+      renderMenu({ previewMode: false });
       await openMenu(user);
       const items = screen.getAllByRole('menuitem').map((el) => el.textContent);
       expect(items).toEqual([
         'Choose items',
         'Edit list',
-        'Show spoilers',
         'Preview as viewer',
         'Delete list',
       ]);
     });
 
-    it('ShowSpoilersTrue_RendersHideSpoilers', async () => {
+    // Claim visibility is adjusted from the items toolbar and from the
+    // viewer's baseline; a menu row would be a second, divergent entry point.
+    it('NonPreview_CarriesNoSpoilerRow', async () => {
       const user = userEvent.setup();
-      renderMenu({ showSpoilers: true });
+      renderMenu({ previewMode: false });
       await openMenu(user);
       expect(
-        screen.getByRole('menuitem', { name: 'Hide spoilers' })
-      ).toBeInTheDocument();
-    });
-
-    it('ShowSpoilersFalse_RendersShowSpoilers', async () => {
-      const user = userEvent.setup();
-      renderMenu({ showSpoilers: false });
-      await openMenu(user);
-      expect(
-        screen.getByRole('menuitem', { name: 'Show spoilers' })
-      ).toBeInTheDocument();
+        screen.queryByRole('menuitem', { name: /spoilers/i })
+      ).not.toBeInTheDocument();
     });
 
     it('PreviewModeFalse_RendersPreviewAsViewer', async () => {
@@ -135,8 +125,8 @@ describe('ListActionsMenu', () => {
         screen.getByRole('menuitem', { name: 'Exit preview' })
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('menuitem', { name: /spoilers/ })
-      ).toBeInTheDocument();
+        screen.queryByRole('menuitem', { name: /spoilers/i })
+      ).not.toBeInTheDocument();
       expect(
         screen.queryByRole('menuitem', { name: 'Choose items' })
       ).not.toBeInTheDocument();
@@ -165,15 +155,6 @@ describe('ListActionsMenu', () => {
       await openMenu(user);
       expect(
         screen.queryByRole('menuitem', { name: 'Edit list' })
-      ).not.toBeInTheDocument();
-    });
-
-    it('Default_SuppressesSpoilerToggle', async () => {
-      const user = userEvent.setup();
-      renderMenu({ isOwner: false, showSpoilers: false });
-      await openMenu(user);
-      expect(
-        screen.queryByRole('menuitem', { name: /spoilers/ })
       ).not.toBeInTheDocument();
     });
 

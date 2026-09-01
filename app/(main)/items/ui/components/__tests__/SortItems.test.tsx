@@ -74,7 +74,7 @@ vi.mock('../Item', () => ({
       image_url?: string | null;
       store?: { name: string; price?: string; link?: string } | null;
     };
-    showSpoilers?: boolean;
+    tier?: string;
   }) => (
     <div
       data-testid="item"
@@ -82,7 +82,7 @@ vi.mock('../Item', () => ({
       data-name={p.item?.name}
       data-image={p.item?.image_url ?? ''}
       data-store={p.item?.store?.name ?? ''}
-      data-show-spoilers={String(p.showSpoilers)}
+      data-tier={String(p.tier)}
     />
   ),
 }));
@@ -136,12 +136,32 @@ describe('SortItems', () => {
     expect(gridOrder()).toEqual(['A', 'B', 'C']);
   });
 
-  it('ShowSpoilersProp_ReachesEachGridItem', () => {
-    render(<SortItems items={ITEMS} listId="l1" actor={ACTOR} showSpoilers />);
-    const flags = screen
+  // A claims-tier projection strips the name from another party's claim, so
+  // the re-sync key has to tolerate its absence rather than read `undefined`.
+  it('NamelessClaim_KeysTheGridWithoutReadingUndefined', () => {
+    const claimed = [
+      {
+        id: 'A',
+        name: 'Apple',
+        purchases: [{ id: 'p1', by: 'other', claimedByViewer: false }],
+      },
+      ...ITEMS.slice(1),
+    ] as never[];
+    render(
+      <SortItems items={claimed} listId="l1" actor={ACTOR} tier="claims" />
+    );
+
+    expect(screen.getAllByTestId('item')).toHaveLength(3);
+  });
+
+  it('TierProp_ReachesEachGridItem', () => {
+    render(
+      <SortItems items={ITEMS} listId="l1" actor={ACTOR} tier="claims" />
+    );
+    const tiers = screen
       .getAllByTestId('item')
-      .map((e) => e.getAttribute('data-show-spoilers'));
-    expect(flags).toEqual(['true', 'true', 'true']);
+      .map((e) => e.getAttribute('data-tier'));
+    expect(tiers).toEqual(['claims', 'claims', 'claims']);
   });
 
   it('DropOnDifferentRow_ReordersOptimistically-CallsUpdatePriority-Refreshes', async () => {

@@ -1,5 +1,5 @@
-import { PurchaseView } from '@/lib/types';
-import { claimLabel } from './utils';
+import { PurchaseView, SpoilerTier } from '@/lib/types';
+import { claimLabel, showsSpoilerBanner } from './utils';
 
 function BannerCheck() {
   return (
@@ -21,7 +21,7 @@ function BannerCheck() {
 function myClaimsLabel(myClaims: PurchaseView[]): string {
   const attributed = myClaims
     .filter((claim) => claim.by !== 'self')
-    .map((claim) => claim.firstName);
+    .map((claim) => claim.firstName ?? 'Someone');
   const hasSelf = myClaims.some((claim) => claim.by === 'self');
   if (attributed.length === 0) return 'You claimed this';
   const names = attributed.join(', ');
@@ -34,7 +34,7 @@ export default function ClaimBanners({
   showPurchased,
   myClaims,
   isOwner,
-  showSpoilerInfo,
+  tier,
   claims,
   claimSummary,
   counterText,
@@ -42,11 +42,12 @@ export default function ClaimBanners({
   showPurchased: boolean;
   myClaims: PurchaseView[];
   isOwner: boolean;
-  showSpoilerInfo: boolean;
+  tier: SpoilerTier;
   claims: PurchaseView[];
   claimSummary: string;
   counterText: string;
 }) {
+  const showSpoilerInfo = showsSpoilerBanner(isOwner, tier, claims.length > 0);
   return (
     <>
       {showPurchased && myClaims.length === 0 && (
@@ -71,13 +72,17 @@ export default function ClaimBanners({
             <span>
               <strong>Spoilers:</strong> {counterText}
             </span>
-            <ul className="spoiler-claim-list">
-              {claims.map((claim) => (
-                <li key={claim.id} className="spoiler-claim-row">
-                  <span>{claimLabel(claim)}</span>
-                </li>
-              ))}
-            </ul>
+            {/* The count and the remaining capacity are what `claims` grants;
+                who holds each claim rides the `identity` tier alone. */}
+            {tier === 'identity' && (
+              <ul className="spoiler-claim-list">
+                {claims.map((claim) => (
+                  <li key={claim.id} className="spoiler-claim-row">
+                    <span>{claimLabel(claim)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       )}

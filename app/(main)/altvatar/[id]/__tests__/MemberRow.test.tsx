@@ -7,6 +7,7 @@
  * below it — and both are pinned here; jsdom reports no viewport width, so
  * both are in the tree and each is addressed by its own accessible name.
  */
+import { PROTECTED_TIER } from '@/lib/spoilers';
 import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -39,6 +40,7 @@ function member(overrides: Partial<ProfileMemberRow> = {}): ProfileMemberRow {
     user_id: 'other-account',
     role: ROLES.manager,
     last_active_at: null,
+    baseline: PROTECTED_TIER,
     id: 'self-other-account',
     name: 'Alex',
     accent: null,

@@ -1,7 +1,14 @@
 'use client';
 
 import { createPurchase, removePurchase } from '@/lib/data/purchase.actions';
-import { ProfileMembershipView, ItemDisplay, PurchaseView } from '@/lib/types';
+import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
+import {
+  ProfileMembershipView,
+  ItemDisplay,
+  PurchaseView,
+  SpoilerTier,
+} from '@/lib/types';
+import { atLeast } from '@/lib/spoilers';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -13,14 +20,20 @@ import OwnerActions from './OwnerActions';
 import PurchaseModalSlot from './PurchaseModalSlot';
 import { AttributedTarget } from './purchasemodal/PurchaseFlowContainer';
 import { storeComplete } from '@/lib/storeValidity';
-import { containerClasses, firstToken, resolveModalView } from './utils';
+import {
+  claimSummaryOf,
+  containerClasses,
+  firstToken,
+  resolveModalView,
+  showsSpoilerBanner,
+} from './utils';
 
 export default function Item({
   item,
   className,
   actor,
   user_name,
-  showSpoilers,
+  tier = 'identity',
   showArchiveAction,
   archivedView,
   preview,
@@ -31,8 +44,8 @@ export default function Item({
   /** The profile the request acts as, absent for a signed-out visitor. */
   actor?: ProfileMembershipView;
   user_name?: string | null;
-  /** Owner's spoiler view is enabled — gates the owner claim/unclaim affordances. */
-  showSpoilers?: boolean;
+  /** The viewer's resolved tier (`spoiler-visibility`). Defaults to the maximal projection, which is what a non-member resolves to. */
+  tier?: SpoilerTier;
   showArchiveAction?: boolean;
   archivedView?: boolean;
   /** Render as a live preview inside the item form: no modal, no interactions. */
@@ -56,7 +69,7 @@ export default function Item({
 
   const propPurchases = item.purchases ?? [];
   const propPurchasesKey = propPurchases
-    .map((p) => `${p.id}:${p.firstName}:${p.by}:${p.claimedByViewer}`)
+    .map((p) => `${p.id}:${p.firstName ?? ''}:${p.by}:${p.claimedByViewer}`)
     .join('|');
   const [localPurchases, setLocalPurchases] =
     useState<PurchaseView[]>(propPurchases);
@@ -88,12 +101,10 @@ export default function Item({
   // and unlimited items still accept buyers, so stores + claim button stay
   // live and price stays unstruck.
   const showPurchased = isFullyClaimed && !isOwner;
-  // Owner only sees purchase state when spoilers are on (DAL returns empty otherwise)
-  const showSpoilerInfo = hasAnyClaim && isOwner;
-  const showOwnerClaimAction = isOwner && !!showSpoilers && !isFullyClaimed;
-  // Owner claim management (master unclaim) lives in the purchase modal's
-  // claims list; the card affordance is "Manage claims" once any claim exists.
-  const showOwnerManageAction = isOwner && !!showSpoilers && hasAnyClaim;
+  // The owner-side claim pill. Keyed on the resolved tier rather than on a
+  // spoiler parameter: never below `claims`, and from `claims` upward whenever
+  // claims exist (`item-store-links`).
+  const showSpoilerInfo = showsSpoilerBanner(isOwner, tier, hasAnyClaim);
   const showBuyClaim =
     !!actor &&
     !isOwner &&
@@ -107,12 +118,19 @@ export default function Item({
     hasViewerClaim,
   });
 
-  const claimSummary = useMemo(() => {
-    if (!hasAnyClaim) return '';
-    return localPurchases
-      .map((p) => (p.by === 'self' ? 'You' : p.firstName))
-      .join(', ');
-  }, [localPurchases, hasAnyClaim]);
+  const claimSummary = useMemo(
+    () => claimSummaryOf(localPurchases, tier),
+    [localPurchases, tier]
+  );
+
+  // Per activation, never persisted: it presents again on the next item, alters
+  // nothing behind it, and changes the resolved tier for nothing else. A
+  // viewer at `claims` or `identity` is never asked — the modal would disclose
+  // nothing they are not already shown.
+  const [pendingReveal, setPendingReveal] = useState<'manage' | 'claim' | null>(
+    null
+  );
+  const needsReveal = !atLeast(tier, 'claims');
 
   const handleModalOpen = (view?: 'claim') => {
     const params = new URLSearchParams(searchParams?.toString() || '');
@@ -133,12 +151,14 @@ export default function Item({
     if (!item.id) return;
     /* v8 ignore next -- defensive: the claim affordance is disabled when fully claimed without a personal claim, so this early-return is unreachable from the UI. */
     if (!isOwner && isFullyClaimed && !hasViewerClaim) return;
+    if (needsReveal) return setPendingReveal('manage');
     handleModalOpen();
   };
 
   const handleAddClaimClick = () => {
     /* v8 ignore next -- defensive: item.id is always present for a persisted item. */
     if (!item.id) return;
+    if (needsReveal) return setPendingReveal('claim');
     handleModalOpen('claim');
   };
 
@@ -250,7 +270,9 @@ export default function Item({
       }
     );
 
-  const showCounter = quantityLimit !== 1;
+  // Below `claims` the projection withheld other parties' claims, so a counter
+  // computed from the payload would state a false zero rather than hide.
+  const showCounter = quantityLimit !== 1 && atLeast(tier, 'claims');
   const counterText =
     quantityLimit == null
       ? `${claimCount}/∞ claimed`
@@ -273,13 +295,15 @@ export default function Item({
           isOwner={isOwner}
           showPurchased={showPurchased}
           showSpoilerInfo={showSpoilerInfo}
-          viewerClaimed={!isOwner && hasViewerClaim}
+          // The owner is included: a claim the viewer holds is disclosed at
+          // every level, so it must reach the action matrix on their own list.
+          viewerClaimed={hasViewerClaim}
           guestViewer={!actor}
           fullyClaimed={isFullyClaimed}
           showCounter={showCounter}
           counterText={counterText}
-          showOwnerClaimAction={showOwnerClaimAction}
-          showOwnerManageAction={showOwnerManageAction}
+          hasAnyClaim={hasAnyClaim}
+          tier={tier}
           showBuyClaim={showBuyClaim}
           viewOnly={preview}
           onPurchaseClick={preview ? undefined : handlePurchaseClick}
@@ -291,7 +315,7 @@ export default function Item({
           showPurchased={showPurchased}
           myClaims={viewerClaims}
           isOwner={isOwner}
-          showSpoilerInfo={showSpoilerInfo}
+          tier={tier}
           claims={localPurchases}
           claimSummary={claimSummary}
           counterText={counterText}
@@ -317,15 +341,26 @@ export default function Item({
           viewerIsPurchaser={viewerIsPurchaser}
           actor={actor}
           isOwner={isOwner}
-          showSpoilers={!!showSpoilers}
-          ownerCanClaim={showOwnerClaimAction}
-          ownerClaims={isOwner && showSpoilers ? localPurchases : []}
+          tier={tier}
           item={item}
           onClose={handleModalClose}
           onSelfClaim={handleSelfClaim}
           onAttributedClaim={handleAttributedClaim}
           onGuestClaim={handleGuestClaim}
           onRemoveClaim={isOwner ? removeClaim : handleManageRemove}
+        />
+      )}
+
+      {!preview && pendingReveal && (
+        <ConfirmDialog
+          isOpen
+          onClose={() => setPendingReveal(null)}
+          onConfirm={() =>
+            handleModalOpen(pendingReveal === 'claim' ? 'claim' : undefined)
+          }
+          title="This could spoil a surprise"
+          message="You'll see whether this item is already claimed — no names, just the count."
+          confirmText="Show me"
         />
       )}
 

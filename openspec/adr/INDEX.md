@@ -37,6 +37,16 @@ names, and act on it before writing. No matching row means no decision binds.
 | `DB Schema` | [2026-08-30-an-invite-link-is-a-single-use-capability-grant](2026-08-30-an-invite-link-is-a-single-use-capability-grant.md) |
 | `DAL` | [2026-08-30-an-invite-link-is-a-single-use-capability-grant](2026-08-30-an-invite-link-is-a-single-use-capability-grant.md) |
 | `DAL` | [2026-08-31-a-role-carries-its-own-rights](2026-08-31-a-role-carries-its-own-rights.md) |
+| `DAL` | [2026-08-31-protection-follows-the-human-not-the-acting-profile](2026-08-31-protection-follows-the-human-not-the-acting-profile.md) |
+| `DB Queries` | [2026-08-31-protection-follows-the-human-not-the-acting-profile](2026-08-31-protection-follows-the-human-not-the-acting-profile.md) |
+| `openspec/specs/spoiler-visibility/spec.md` | [2026-08-31-passive-surfaces-protect-operated-surfaces-expose](2026-08-31-passive-surfaces-protect-operated-surfaces-expose.md) |
+| `DAL` | [2026-08-31-a-viewer-scoped-projection-lives-outside-the-cache](2026-08-31-a-viewer-scoped-projection-lives-outside-the-cache.md) |
+| `DB Queries` | [2026-08-31-a-viewer-scoped-projection-lives-outside-the-cache](2026-08-31-a-viewer-scoped-projection-lives-outside-the-cache.md) |
+| `DB Schema` | [2026-08-31-a-per-membership-setting-is-seeded-not-inherited](2026-08-31-a-per-membership-setting-is-seeded-not-inherited.md) |
+| `DAL` | [2026-08-31-a-per-membership-setting-is-seeded-not-inherited](2026-08-31-a-per-membership-setting-is-seeded-not-inherited.md) |
+| `DB Schema` | [2026-09-01-a-per-member-preference-is-an-account-keyed-preference-row](2026-09-01-a-per-member-preference-is-an-account-keyed-preference-row.md) |
+| `DAL` | [2026-09-01-a-per-member-preference-is-an-account-keyed-preference-row](2026-09-01-a-per-member-preference-is-an-account-keyed-preference-row.md) |
+| `openspec/specs/profiles-surface/spec.md` | [2026-08-31-a-member-preference-is-a-setting-not-a-permission](2026-08-31-a-member-preference-is-a-setting-not-a-permission.md) |
 
 ## Term bank
 

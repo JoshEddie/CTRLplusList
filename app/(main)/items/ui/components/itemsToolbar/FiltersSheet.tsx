@@ -14,7 +14,6 @@ import {
 import PriceFilterPopover from '../PriceFilterPopover';
 import { StoreFilterPanel } from '../StoreFilterPanel';
 import StoreFilterPopover from '../StoreFilterPopover';
-import { PurchasesSelect } from './PurchasesSelect';
 import { BrowserMode, ParamPatch } from './types';
 
 type Facet = 'stores' | 'price';
@@ -31,7 +30,6 @@ interface FiltersSheetProps {
   sort: SortKey;
   defaultSort: SortKey;
   sortOptions: Array<{ value: SortKey; label: string }>;
-  purchases: string;
   show: string;
   storeOptions: string[];
   selectedStores: string[];
@@ -54,7 +52,6 @@ export function FiltersSheet({
   sort,
   defaultSort,
   sortOptions,
-  purchases,
   show,
   storeOptions,
   selectedStores,
@@ -173,19 +170,6 @@ export function FiltersSheet({
           options={sortOptions.map((o) => ({ value: o.value, label: o.label }))}
         />
       </div>
-
-      {mode !== 'choose' && (
-        <PurchasesSelect
-          mode={mode}
-          purchases={purchases}
-          onChange={(value) =>
-            updateParams({
-              purchases: value === 'hide' ? null : value,
-              page: null,
-            })
-          }
-        />
-      )}
 
       {mode === 'choose' && (
         <div className="items-toolbar-cell--purchases">

@@ -1,7 +1,7 @@
 import ProfileAvatar, { facelessView } from '@/app/ui/components/ProfileAvatar';
 import { Button } from '@/app/ui/components/button';
 import { timeAgo } from '@/lib/timeAgo';
-import { PurchaseView } from '@/lib/types';
+import { PurchaseView, SpoilerTier } from '@/lib/types';
 import { useState } from 'react';
 
 // Bounded render: an unlimited-quantity item can carry
@@ -12,8 +12,9 @@ const SEE_MORE_STEP = 10;
 // Long-form label is scoped to this list: the card and spoiler
 // banners keep the short "You" via claimLabel.
 function rowLabel(claim: PurchaseView): string {
-  if (claim.by !== 'self') return claim.firstName;
-  return claim.firstName === 'You' ? 'You' : `${claim.firstName} (you)`;
+  const name = claim.firstName ?? 'Someone';
+  if (claim.by !== 'self') return name;
+  return name === 'You' ? 'You' : `${name} (you)`;
 }
 
 // One meta line under the name: "Added by you · 3 hours ago" for attributed
@@ -35,10 +36,13 @@ export default function ClaimsList({
   claims,
   canRemove,
   removalDisabled = false,
+  tier = 'identity',
   onRemoveClaim,
 }: {
   claims: PurchaseView[];
   canRemove: (claim: PurchaseView) => boolean;
+  /** Below `identity` every claim that is not the viewer's own collapses to a bare count. */
+  tier?: SpoilerTier;
   // Which removal a row offers depends on who is listed: the owner's list is
   // master unclaim and takes the owner floor, the manage view is the viewer's
   // own claims and takes none. The caller knows which it opened, so the floor
@@ -52,8 +56,13 @@ export default function ClaimsList({
     ...claims.filter((claim) => canRemove(claim)),
     ...claims.filter((claim) => !canRemove(claim)),
   ];
-  const visible = sorted.slice(0, visibleCount);
-  const remaining = sorted.length - visible.length;
+  // Below `identity` the other parties' rows carry nothing that may be shown —
+  // no avatar, name, date, attribution line or removal — so they are not rows
+  // at all, only a count.
+  const named = tier === 'identity' ? sorted : sorted.filter(canRemove);
+  const withheld = sorted.length - named.length;
+  const visible = named.slice(0, visibleCount);
+  const remaining = named.length - visible.length;
   return (
     <div className="claims-section">
       <p className="claims-section-label">Claimed by</p>
@@ -82,7 +91,7 @@ export default function ClaimsList({
                 aria-label={
                   claim.by === 'self'
                     ? 'Remove your claim'
-                    : `Remove ${claim.firstName}'s claim`
+                    : `Remove ${claim.firstName ?? 'this'}'s claim`
                 }
               >
                 Remove
@@ -91,6 +100,11 @@ export default function ClaimsList({
           </li>
         ))}
       </ul>
+      {withheld > 0 && (
+        <p className="claims-withheld" role="status">
+          {withheld === 1 ? '1 other claim' : `${withheld} other claims`}
+        </p>
+      )}
       {remaining > 0 && (
         <Button
           variant="secondary"

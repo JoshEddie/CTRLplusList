@@ -18,11 +18,15 @@ import type { AltvatarOptions } from '@/lib/altvatar/types';
 import { ROLES, isGrantable } from '@/lib/data/profile.roles';
 import type { RoleShape } from '@/lib/types';
 
-// The role vocabulary reaches DDL as literal text: a bound parameter in a CHECK
-// or a partial index would be rendered as a placeholder by the generator rather
-// than baked into the constraint.
-const quoted = (role: RoleShape) => `'${role.value}'`;
-const roleList = (roles: readonly RoleShape[]) => roles.map(quoted).join(', ');
+// A vocabulary reaches DDL as literal text: a bound parameter in a CHECK or a
+// partial index would be rendered as a placeholder by the generator rather than
+// baked into the constraint.
+const literal = (value: string) => `'${value}'`;
+const literalList = (values: readonly string[]) =>
+  values.map(literal).join(', ');
+const quoted = (role: RoleShape) => literal(role.value);
+const roleList = (roles: readonly RoleShape[]) =>
+  literalList(roles.map((role) => role.value));
 
 export const users = pgTable('user', {
   id: text('id')
@@ -311,11 +315,27 @@ export const profile_invites = pgTable(
 // rather than each spelling the literal.
 export const ACCENT_PREFERENCE_ID = 'accent';
 
+// The spoiler tier. A profile-wide row (null account) is the default that
+// seeds new memberships; a per-member row (account set) is that member's own
+// baseline. One catalog row, since the tier is a single ordinal value.
+export const SPOILER_TIER_PREFERENCE_ID = 'spoiler_tier';
+
+export const SPOILER_PREFERENCE_ROWS = [
+  {
+    id: SPOILER_TIER_PREFERENCE_ID,
+    name: 'Claim visibility tier',
+    type: 'text',
+  },
+] as const;
+
 export const preferences = pgTable('preferences', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   type: text('type').notNull(),
 });
+
+export const PROFILE_PREFERENCE_DEFAULT_IDX = 'profile_preferences_default_idx';
+export const PROFILE_PREFERENCE_MEMBER_IDX = 'profile_preferences_member_idx';
 
 export const profile_preferences = pgTable(
   'profile_preferences',
@@ -323,12 +343,28 @@ export const profile_preferences = pgTable(
     profile_id: text('profile_id')
       .references(() => profiles.id, { onDelete: 'cascade' })
       .notNull(),
+    // Nullable account key: a null row is the profile-wide value, a set row is
+    // that account's own value (meaningful only for a member). It does NOT
+    // cascade with the membership row — revocation deletes the account's rows
+    // explicitly — but it does cascade when the account itself is deleted.
+    user_id: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
     preference_id: text('preference_id')
       .references(() => preferences.id, { onDelete: 'cascade' })
       .notNull(),
     value: text('value').notNull(),
   },
-  (table) => [primaryKey({ columns: [table.profile_id, table.preference_id] })]
+  (table) => [
+    // A nullable column cannot sit in a primary key, and a plain unique index
+    // treats NULLs as distinct. Uniqueness is therefore two partial indexes:
+    // one profile-wide row per (profile, preference), one per member per
+    // (profile, account, preference). ON CONFLICT targets whichever applies.
+    uniqueIndex(PROFILE_PREFERENCE_DEFAULT_IDX)
+      .on(table.profile_id, table.preference_id)
+      .where(sql`${table.user_id} IS NULL`),
+    uniqueIndex(PROFILE_PREFERENCE_MEMBER_IDX)
+      .on(table.profile_id, table.user_id, table.preference_id)
+      .where(sql`${table.user_id} IS NOT NULL`),
+  ]
 );
 
 // The primary key is the one-row-per-profile rule. No default and no backfill:

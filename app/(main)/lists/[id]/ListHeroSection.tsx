@@ -3,8 +3,14 @@ import ListPrivate from '@/app/(main)/lists/ui/components/ListPrivate';
 import { db } from '@/db';
 import { list_visits } from '@/db/schema';
 import { getList } from '@/lib/data/list';
+import {
+  getSpoilerBaseline,
+  viewerIsProfileMember,
+} from '@/lib/data/profile.members';
+import { getListClaimedCount } from '@/lib/data/purchase';
 import { authedIdentity } from '@/lib/data/user.session';
 import { guardListViewable } from '@/lib/listAccess';
+import { atLeast, resolveSpoilerTier } from '@/lib/spoilers';
 import { VISIBILITY } from '@/lib/visibility';
 import { sql } from 'drizzle-orm';
 import { after } from 'next/server';
@@ -28,7 +34,16 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
 
   const isOwner = identity?.activeProfile.id === list.profile_id;
   const previewMode = isOwner && sp.preview === 'viewer';
-  const showSpoilers = isOwner && sp.spoilers === '1';
+
+  // Preview renders claim information at the OWNER's own resolved tier, not a
+  // non-member's: a preview honest about claim data would show every claim with
+  // names and spoil the person who opened it.
+  const baseline = await getSpoilerBaseline(identity?.userId, list.profile_id);
+  const tier = resolveSpoilerTier(baseline, sp);
+  const viewerIsMember = await viewerIsProfileMember(
+    identity?.userId,
+    list.profile_id
+  );
 
   if (list.visibility === VISIBILITY.OWNER && !isOwner) {
     return <ListPrivate loggedIn={!!identity} />;
@@ -77,7 +92,14 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
         owner={list.profile}
         viewer_user_id={identity?.userId || undefined}
         viewer_self_profile_id={identity?.selfProfile.id || undefined}
-        showSpoilers={showSpoilers}
+        tier={tier}
+        viewerIsMember={viewerIsMember}
+        baseline={baseline}
+        claimedCount={
+          atLeast(tier, 'progress')
+            ? (await getListClaimedCount(id)).claimedItemCount
+            : undefined
+        }
         previewMode={previewMode}
         itemCount={list.item_count}
       />

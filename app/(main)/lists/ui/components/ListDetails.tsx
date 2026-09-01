@@ -1,9 +1,12 @@
 import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import FollowContainer from '@/app/(main)/users/ui/components/FollowContainer';
 import { LinkButton } from '@/app/ui/components/button';
+import SpoilerPicker from '@/app/ui/components/SpoilerPicker';
+import { writableMembership } from '@/lib/data/profile.gate';
+import { atLeast } from '@/lib/spoilers';
 import { authedIdentity } from '@/lib/data/user.session';
 import { timeAgo } from '@/lib/timeAgo';
-import { ListTable, type ProfileAvatarView } from '@/lib/types';
+import { ListTable, type ProfileAvatarView, type SpoilerTier } from '@/lib/types';
 import {
   VISIBILITY,
   resolveListVisibility,
@@ -12,38 +15,21 @@ import {
 import Link from 'next/link';
 import { MdChecklist, MdVisibility } from 'react-icons/md';
 import BookmarkContainer from './BookmarkContainer';
-import EditListAction from './EditListAction';
+import ClaimProgress from './ClaimProgress';
 import {
   HeroCollapsedOwnerItems,
   HeroCollapsedViewerItems,
 } from './HeroCollapsedItemsContainer';
+import { SpoilerMenuItems } from './HeroCollapsedItems';
 import ListActionsMenu from './ListActionsMenu';
 import ListHeroSurface from './ListHeroSurface';
 import ShareButton from './ShareButton';
+import SwitchProfileOffer from './SwitchProfileOffer';
 import VisibilityPicker from './VisibilityPicker';
 
 type ListWithVisibility = ListTable & {
   visibility?: ListVisibility;
 };
-
-// The spoiler-toggle, enter-preview, and exit-preview links all depend on the
-// same (showSpoilers, previewMode) pair; derive them together so ListDetails
-// itself stays flat.
-function navHrefs(
-  listId: string,
-  showSpoilers: boolean | undefined,
-  previewMode: boolean | undefined
-) {
-  return {
-    previewHref: `/lists/${listId}?preview=viewer${
-      showSpoilers ? '&spoilers=1' : ''
-    }`,
-    exitPreviewHref: `/lists/${listId}${showSpoilers ? '?spoilers=1' : ''}`,
-    spoilerHref: showSpoilers
-      ? `/lists/${listId}${previewMode ? '?preview=viewer' : ''}`
-      : `/lists/${listId}?${previewMode ? 'preview=viewer&' : ''}spoilers=1`,
-  };
-}
 
 export default async function ListDetails({
   isOwner,
@@ -51,7 +37,10 @@ export default async function ListDetails({
   owner,
   viewer_user_id,
   viewer_self_profile_id,
-  showSpoilers,
+  tier,
+  viewerIsMember,
+  baseline,
+  claimedCount,
   previewMode,
   itemCount,
 }: {
@@ -60,7 +49,13 @@ export default async function ListDetails({
   owner: ProfileAvatarView;
   viewer_user_id: string | undefined;
   viewer_self_profile_id: string | undefined;
-  showSpoilers?: boolean;
+  /** The viewer's resolved tier, and the baseline the Spoilers tile writes deltas against. */
+  tier: SpoilerTier;
+  /** The viewer holds a membership on the owning profile — gates the Spoilers tile. */
+  viewerIsMember: boolean;
+  baseline: SpoilerTier;
+  /** Present only where the resolved tier is `progress` or above — `surprise` costs no query. */
+  claimedCount?: number;
   previewMode?: boolean;
   itemCount: number;
 }) {
@@ -69,11 +64,16 @@ export default async function ListDetails({
     !!identity && !identity.activeProfile.role.admin;
 
   const visibility = resolveListVisibility(list);
-  const { previewHref, exitPreviewHref, spoilerHref } = navHrefs(
-    list.id,
-    showSpoilers,
-    previewMode
-  );
+  const previewHref = `/lists/${list.id}?preview=viewer`;
+  const exitPreviewHref = `/lists/${list.id}`;
+
+  // Membership on the OWNING profile while acting as another. Independent of
+  // the resolved spoiler state: it reports what the viewer may act as, not
+  // what they may see.
+  const otherProfileMembership =
+    identity && identity.activeProfile.id !== list.profile_id
+      ? await writableMembership(identity.userId, list.profile_id)
+      : null;
 
   const updatedDisplay = timeAgo(list.updated_at);
   const itemsDisplay = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
@@ -81,38 +81,55 @@ export default async function ListDetails({
   const showViewerControls =
     !isOwner && viewer_user_id && viewer_self_profile_id && !previewMode;
 
+  // The Spoilers tile: offered to any viewer resolving a membership on the
+  // owning profile — a non-member has no baseline to adjust — and hidden in
+  // preview, where the owner is pinned to their own resolved tier.
+  const showSpoilerTile = viewerIsMember && !previewMode;
+  const spoilerTile = showSpoilerTile ? (
+    <SpoilerPicker tier={tier} baseline={baseline} />
+  ) : null;
+
   // Compose the prepended kebab items shown on the sticky strip while the
   // full hero is scrolled away. Owner-preview gets the owner items
   // (Share/Choose/Edit/Visibility are still owner affordances in preview
   // mode — visibility just shows current state). Pure viewers get the
   // viewer items.
-  let collapsedPrepended: React.ReactNode = null;
-  if (showOwnerControls) {
-    collapsedPrepended = (
-      <HeroCollapsedOwnerItems
-        list={list}
-        visibility={visibility}
-        disabled={ownerFloorDisabled}
-      />
-    );
-  } else if (showViewerControls) {
-    collapsedPrepended = (
-      <HeroCollapsedViewerItems
-        list={list}
-        ownerProfileId={list.profile_id}
-        ownerName={owner.name}
-        viewerUserId={viewer_user_id}
-        viewerSelfProfileId={viewer_self_profile_id}
-      />
-    );
-  }
+  // The Spoilers menu hoists into the sticky-strip kebab as its own rows for a
+  // member viewer, in lockstep with the hero tile (`list-hero-collapse`).
+  const collapsedSpoilerItems = showSpoilerTile ? (
+    <SpoilerMenuItems tier={tier} baseline={baseline} />
+  ) : null;
+
+  // The three prepends are independent and combine in one fragment: the
+  // Spoilers rows for any member viewer, then the owner OR viewer kebab set
+  // (mutually exclusive). A pure non-member gets none, leaving this null.
+  const collapsedPrepended: React.ReactNode =
+    showSpoilerTile || showOwnerControls || showViewerControls ? (
+      <>
+        {collapsedSpoilerItems}
+        {showOwnerControls && (
+          <HeroCollapsedOwnerItems
+            list={list}
+            visibility={visibility}
+            disabled={ownerFloorDisabled}
+          />
+        )}
+        {showViewerControls && (
+          <HeroCollapsedViewerItems
+            list={list}
+            ownerProfileId={list.profile_id}
+            ownerName={owner.name}
+            viewerUserId={viewer_user_id}
+            viewerSelfProfileId={viewer_self_profile_id}
+          />
+        )}
+      </>
+    ) : null;
 
   const collapsedKebab = (
     <ListActionsMenu
       list={list}
-      showSpoilers={!!showSpoilers}
       previewMode={!!previewMode}
-      spoilerHref={spoilerHref}
       previewHref={previewHref}
       exitPreviewHref={exitPreviewHref}
       isOwner={isOwner}
@@ -121,21 +138,56 @@ export default async function ListDetails({
     />
   );
 
-  let ownerControls: React.ReactNode = null;
-  if (showOwnerControls) {
-    ownerControls = (
-      <div className="list-hero-share-wrapper">
-        <VisibilityPicker
-          listId={list.id}
-          initialVisibility={visibility}
+  // One role for the hero's two role-keyed regions (actions row, tiles/byline
+  // row). Extracted into subcomponents below so this component stays lean and
+  // its branching does not compound.
+  const heroMode = heroModeOf({
+    showOwnerControls,
+    showViewerControls,
+    isOwner,
+    previewMode: !!previewMode,
+  });
+
+  const heroActions = (
+    <HeroActions
+      mode={heroMode}
+      list={list}
+      visibility={visibility}
+      viewerUserId={viewer_user_id}
+    />
+  );
+
+  // The kebab is its own corner element (top-right at every width), holding
+  // Choose/Edit/Preview/Delete — Edit is never a hero button, only a menu row.
+  const heroKebab =
+    heroMode === 'owner' || heroMode === 'preview' ? (
+      <div className="list-hero-kebab">
+        <ListActionsMenu
+          list={list}
+          previewMode={!!previewMode}
+          previewHref={previewHref}
+          exitPreviewHref={exitPreviewHref}
           disabled={ownerFloorDisabled}
         />
-        {visibility !== VISIBILITY.OWNER && <ShareButton list={list} />}
       </div>
-    );
-  }
+    ) : null;
+
+  const heroTiles = (
+    <HeroRow2Left
+      mode={heroMode}
+      list={list}
+      owner={owner}
+      visibility={visibility}
+      ownerFloorDisabled={ownerFloorDisabled}
+      viewerUserId={viewer_user_id}
+      viewerSelfProfileId={viewer_self_profile_id}
+      spoilerTile={spoilerTile}
+    />
+  );
 
   return (
+    <>
+
     <ListHeroSurface title={list.name} kebab={collapsedKebab}>
       <div className="list-hero">
         {previewMode && (
@@ -148,108 +200,168 @@ export default async function ListDetails({
           </div>
         )}
 
-        <div className="list-hero-grid">
-          <div className="list-hero-card list-hero-card-identity">
-            <div className="list-hero-identity-top">
-              {ownerControls}
-              <h1 className="list-hero-title">{list.name}</h1>
-              {list.subtitle ? (
-                <div className="list-hero-eyebrow-subtitle-wrapper">
-                  {list.occasion ? (
-                    <span className="list-hero-eyebrow">{list.occasion}</span>
-                  ) : null}{' '}
-                  <p className="list-hero-subtitle">{list.subtitle}</p>
-                </div>
-              ) : null}
-            </div>
-            <div className="list-hero-identity-foot">
-              {itemsDisplay}
-              {updatedDisplay && <> · updated {updatedDisplay}</>}
-            </div>
-          </div>
-
-          <div className="list-hero-card list-hero-card-controls">
-            {/* Owner non-preview: Share primary, divider, secondary actions.
-                Visibility status pill lives in the identity zone, not here. */}
-            {showOwnerControls && (
-              <>
-                <div className="list-hero-action-row">
-                  <EditListAction
-                    list={list}
-                    deleteDisabled={ownerFloorDisabled}
-                  />
-                  <ListActionsMenu
-                    list={list}
-                    showSpoilers={!!showSpoilers}
-                    previewMode={!!previewMode}
-                    spoilerHref={spoilerHref}
-                    previewHref={previewHref}
-                    exitPreviewHref={exitPreviewHref}
-                    disabled={ownerFloorDisabled}
-                  />
-                </div>
-                <LinkButton
-                  href={`/lists/${list.id}/choose-items`}
-                  variant="on-dark"
-                >
-                  <MdChecklist />
-                  <span className="label">Choose items</span>
-                </LinkButton>
-              </>
-            )}
-
-            {/* Viewer non-preview: byline group + divider + Share/Bookmark pair */}
-            {showViewerControls && (
-              <>
-                <div className="list-hero-byline-group">
-                  <ProfileAvatar profile={owner} />
-                  <div className="list-hero-byline-text">
-                    <Link
-                      href={`/altvatar/${list.profile_id}`}
-                      className="list-hero-byline-link"
-                    >
-                      {owner.name}
-                    </Link>
-                    <FollowContainer
-                      ownerProfileId={list.profile_id}
-                      ownerName={owner.name}
-                      viewerUserId={viewer_user_id}
-                      viewerSelfProfileId={viewer_self_profile_id}
-                      variant="on-dark"
-                    />
-                  </div>
-                </div>
-                <div className="list-hero-divider" />
-                <div className="list-hero-action-row">
-                  <ShareButton list={list} />
-                  {viewer_user_id && (
-                    <BookmarkContainer
-                      list_id={list.id}
-                      user_id={viewer_user_id}
-                    />
-                  )}
-                </div>
-              </>
-            )}
-
-            {/* Owner preview: spoiler/preview controls only (everything else
-                gated on !previewMode). The kebab still hosts Exit-preview. */}
-            {isOwner && previewMode && (
-              <div className="list-hero-action-row">
-                <ListActionsMenu
-                  list={list}
-                  showSpoilers={!!showSpoilers}
-                  previewMode={!!previewMode}
-                  spoilerHref={spoilerHref}
-                  previewHref={previewHref}
-                  exitPreviewHref={exitPreviewHref}
-                  disabled={ownerFloorDisabled}
-                />
+        {/* One grid over the gradient, per the 2026-09-01 mockup. Areas
+            reflow per breakpoint (see list.css): desktop pairs title/actions
+            then tiles/meta; mobile stacks title+kebab, meta, actions, tiles.
+            The kebab is its own top-right corner element at both widths. */}
+        <div className="list-hero-main">
+          <div className="list-hero-titleblock">
+            <h1 className="list-hero-title">{list.name}</h1>
+            {list.subtitle ? (
+              <div className="list-hero-eyebrow-subtitle-wrapper">
+                {list.occasion ? (
+                  <span className="list-hero-eyebrow">{list.occasion}</span>
+                ) : null}{' '}
+                <p className="list-hero-subtitle">{list.subtitle}</p>
               </div>
-            )}
+            ) : null}
           </div>
+          {heroKebab}
+          {heroActions}
+          <div className="list-hero-tiles">{heroTiles}</div>
+          {/* The claimed count describes the list, not the visible item set.
+              At `surprise` the line carries item count and time alone. */}
+          <div className="list-hero-meta">
+              <span>
+                {itemsDisplay}
+                {updatedDisplay && <> · updated {updatedDisplay}</>}
+              </span>
+              {atLeast(tier, 'progress') && claimedCount !== undefined && (
+                <ClaimProgress claimed={claimedCount} total={itemCount} />
+              )}
+            </div>
         </div>
       </div>
-    </ListHeroSurface>
+      </ListHeroSurface>
+      {/* Floating, dismissible — sits over the list panel rather than in the
+          hero, per the mockup. Fixed positioning, so its DOM home here does not
+          affect layout. */}
+      {otherProfileMembership && (
+        <SwitchProfileOffer
+          profileId={list.profile_id}
+          profileName={otherProfileMembership.name}
+        />
+      )}
+    </>
   );
+}
+
+type HeroMode = 'owner' | 'viewer' | 'preview' | null;
+
+function heroModeOf({
+  showOwnerControls,
+  showViewerControls,
+  isOwner,
+  previewMode,
+}: {
+  showOwnerControls: boolean;
+  showViewerControls: boolean | '' | undefined;
+  isOwner: boolean;
+  previewMode: boolean;
+}): HeroMode {
+  if (showOwnerControls) return 'owner';
+  if (showViewerControls) return 'viewer';
+  if (isOwner && previewMode) return 'preview';
+  return null;
+}
+
+// The hero's primary-action cluster (mockup: Share / Choose). Owner gets
+// Share + Choose items; a signed-in viewer gets Share + Bookmark. Edit, Preview
+// and Delete are never hero buttons — they live in the corner kebab. Preview
+// mode renders none (the kebab's Exit-preview is the only control).
+function HeroActions({
+  mode,
+  list,
+  visibility,
+  viewerUserId,
+}: {
+  mode: HeroMode;
+  list: ListWithVisibility;
+  visibility: ListVisibility;
+  viewerUserId: string | undefined;
+}) {
+  if (mode === 'owner') {
+    return (
+      <div className="list-hero-actions">
+        {visibility !== VISIBILITY.OWNER && <ShareButton list={list} />}
+        <LinkButton href={`/lists/${list.id}/choose-items`} variant="on-dark">
+          <MdChecklist />
+          <span className="label">Choose items</span>
+        </LinkButton>
+      </div>
+    );
+  }
+  if (mode === 'viewer') {
+    return (
+      <div className="list-hero-actions">
+        <ShareButton list={list} />
+        {viewerUserId && (
+          <BookmarkContainer list_id={list.id} user_id={viewerUserId} />
+        )}
+      </div>
+    );
+  }
+  return null;
+}
+
+// The hero's tiles/byline cluster (mockup row 2, left). Owner gets the
+// Visibility + Spoilers tiles; a viewer gets the owner byline (+ Follow), their
+// Spoilers tile where they hold a membership, and the inline switch offer.
+function HeroRow2Left({
+  mode,
+  list,
+  owner,
+  visibility,
+  ownerFloorDisabled,
+  viewerUserId,
+  viewerSelfProfileId,
+  spoilerTile,
+}: {
+  mode: HeroMode;
+  list: ListWithVisibility;
+  owner: ProfileAvatarView;
+  visibility: ListVisibility;
+  ownerFloorDisabled: boolean;
+  viewerUserId: string | undefined;
+  viewerSelfProfileId: string | undefined;
+  spoilerTile: React.ReactNode;
+}) {
+  if (mode === 'owner') {
+    return (
+      <>
+        <VisibilityPicker
+          listId={list.id}
+          initialVisibility={visibility}
+          disabled={ownerFloorDisabled}
+        />
+        {spoilerTile}
+      </>
+    );
+  }
+  if (mode === 'viewer' && viewerUserId && viewerSelfProfileId) {
+    return (
+      <>
+        <div className="list-hero-byline-group">
+          <ProfileAvatar profile={owner} />
+          <div className="list-hero-byline-text">
+            <Link
+              href={`/altvatar/${list.profile_id}`}
+              className="list-hero-byline-link"
+            >
+              {owner.name}
+            </Link>
+            <FollowContainer
+              ownerProfileId={list.profile_id}
+              ownerName={owner.name}
+              viewerUserId={viewerUserId}
+              viewerSelfProfileId={viewerSelfProfileId}
+              variant="on-dark"
+            />
+          </div>
+        </div>
+        {spoilerTile}
+      </>
+    );
+  }
+  return null;
 }

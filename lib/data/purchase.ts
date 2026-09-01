@@ -1,12 +1,20 @@
 import { db } from '@/db';
-import { purchases, user_blocks, user_follows } from '@/db/schema';
+import {
+  items,
+  list_items,
+  purchases,
+  user_blocks,
+  user_follows,
+} from '@/db/schema';
 import { accountsOfProfiles } from '@/lib/data/profile';
 import { primaryStore } from '@/lib/storeValidity';
 import { avatarViewOf, withProfileAvatar } from '@/lib/data/profileAvatar';
+import { MAXIMAL_TIER } from '@/lib/spoilers';
 import {
   ActionResponse,
   PurchaseView,
   RoleShape,
+  SpoilerTier,
   UserIdentity,
 } from '@/lib/types';
 import { cacheTags, itemRowTags } from '@/lib/cacheTags';
@@ -37,40 +45,51 @@ function firstNameOf(name: string | null | undefined): string {
 // The viewer is named by their SELF-profile, not the profile they act as: a
 // claim is a human act, so a viewer's own claims stay recognisable as theirs —
 // and keep their unclaim affordance — while they act as another profile.
-// `isOwner` is the caller's own ownership comparison and takes the active
-// profile, which is why it arrives as a separate argument.
+// Ownership is not an input: what a viewer may see resolves from their
+// membership on the owning profile (`spoiler-visibility`), which the caller
+// has already resolved into the state arriving here.
 export function sanitizePurchases(
   raw: RawPurchase[],
   viewerSelfProfileId: string | undefined,
-  isOwner: boolean,
-  showSpoilers: boolean = false
+  tier: SpoilerTier
 ): PurchaseView[] {
-  if (isOwner && !showSpoilers) return [];
-  // First names only; 'self' keys off the purchaser (profile_id), so an
-  // attributed profile sees the claim as their own. claimedByViewer keys off
-  // claimed_by_profile_id and drives the asserter's unclaim affordance.
-  return raw.map((p) => {
+  return raw.reduce<PurchaseView[]>((views, p) => {
     const isSelf =
       !!viewerSelfProfileId && p.profile_id === viewerSelfProfileId;
+    const claimedByViewer =
+      !!viewerSelfProfileId && p.claimed_by_profile_id === viewerSelfProfileId;
+    // A claim the viewer made is not a surprise to them, so the tiers govern
+    // other parties' claims alone.
+    const held = isSelf || claimedByViewer;
+
+    // `surprise` and `progress` both conceal per-item claim state; `progress`
+    // discloses only the list-level count, which the aggregate read derives.
+    if (!held && (tier === 'surprise' || tier === 'progress')) return views;
+    if (!held && tier === 'claims') {
+      // The entry survives so the count and the remaining capacity stay
+      // derivable; everything identifying is gone with it.
+      views.push({ id: p.id, by: 'other', claimedByViewer: false });
+      return views;
+    }
+
     const view: PurchaseView = {
       id: p.id,
       by: isSelf ? ('self' as const) : ('other' as const),
       firstName: firstNameOf(p.purchaserProfile?.name ?? p.guest_name),
-      claimedByViewer:
-        !!viewerSelfProfileId &&
-        p.claimed_by_profile_id === viewerSelfProfileId,
+      claimedByViewer,
       purchasedAt: p.purchased_at,
     };
     if (p.purchaserProfile) view.avatar = avatarViewOf(p.purchaserProfile);
     if (
-      isOwner &&
+      tier === 'identity' &&
       p.claimed_by_profile_id &&
       p.claimed_by_profile_id !== p.profile_id
     ) {
       view.claimerFirstName = firstNameOf(p.claimerProfile?.name);
     }
-    return view;
-  });
+    views.push(view);
+    return views;
+  }, []);
 }
 
 // Not cached: authorizes a write (createPurchase attribution), so it must see
@@ -245,10 +264,69 @@ export async function getItemsByPurchased(profileId?: string) {
     return result.map(({ item: { stores, ...item } }) => ({
       ...item,
       store: primaryStore(stores),
-      purchases: sanitizePurchases(item.purchases, profileId, false),
+      // A constant, not a resolved tier: every row here is one the viewer
+      // purchased, so there is no surprise to protect and the input cannot go
+      // stale — which is why this read keeps sanitizing inside its cache.
+      purchases: sanitizePurchases(item.purchases, profileId, MAXIMAL_TIER),
     }));
   } catch (error) {
     console.error('Error fetching items:', error);
     throw error;
+  }
+}
+
+// The `progress` tier's aggregate, derived from unprojected rows: at
+// `surprise`/`progress` the projected set no longer carries the claims it
+// counts. Viewer-independent — it counts claims rather than projecting them —
+// so it stays cached under the item read's own tags. Callers invoke it only
+// where the resolved tier is `progress` or above, so `surprise` costs no query.
+// There is no shopper-names aggregate: that disclosure is dropped.
+export async function getListClaimedCount(listId: string) {
+  'use cache';
+  cacheTag(
+    cacheTags.items,
+    cacheTags.itemsOfList(listId),
+    cacheTags.list(listId)
+  );
+  try {
+    const rows = await db
+      .select({ item_id: purchases.item_id })
+      .from(purchases)
+      .innerJoin(list_items, eq(list_items.item_id, purchases.item_id))
+      .where(eq(list_items.list_id, listId));
+
+    return { claimedItemCount: new Set(rows.map((row) => row.item_id)).size };
+  } catch (error) {
+    console.error('Error fetching list claimed count:', error);
+    throw new Error('Failed to fetch list claimed count');
+  }
+}
+
+// One item's badge-level state, for the reveal confirmation to fetch after the
+// viewer agrees to it. Scoped to the item: it re-resolves no spoiler state and
+// changes nothing the page's own payload carries. Uncached, like the claim
+// picker it sits beside — it is fetched in response to an act, and a stale
+// capacity would send the viewer into a claim that cannot land.
+export async function getItemClaimSummary(itemId: string) {
+  try {
+    const [item] = await db
+      .select({ quantity_limit: items.quantity_limit })
+      .from(items)
+      .where(eq(items.id, itemId));
+    if (!item) return null;
+    const claims = await db
+      .select({ id: purchases.id })
+      .from(purchases)
+      .where(eq(purchases.item_id, itemId));
+    return {
+      claimCount: claims.length,
+      remaining:
+        item.quantity_limit === null
+          ? null
+          : Math.max(0, item.quantity_limit - claims.length),
+    };
+  } catch (error) {
+    console.error('Error fetching item claim summary:', error);
+    throw new Error('Failed to fetch item claim summary');
   }
 }

@@ -8,7 +8,6 @@ export interface FilterState {
   mode: BrowserMode;
   sort: SortKey;
   defaultSort: SortKey;
-  purchases: string;
   show: string;
   selectedStores: string[];
   priceMin: string;

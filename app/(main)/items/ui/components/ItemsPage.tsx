@@ -5,7 +5,12 @@ import Empty from '@/app/ui/components/Empty';
 import { SWITCH_PROFILE_ACTION } from '@/lib/activeProfile';
 import Header from '@/app/ui/components/Header';
 import { HERO_TOOLBAR_SLOT_ID } from '@/app/(main)/lists/ui/components/ListHeroSurface';
-import { ProfileMembershipView, ItemDisplay, ListTable } from '@/lib/types';
+import {
+  ProfileMembershipView,
+  ItemDisplay,
+  ListTable,
+  SpoilerTier,
+} from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { FaPlus } from 'react-icons/fa';
@@ -23,6 +28,8 @@ interface ItemsPageProps {
   // one. It names the profile on the creation surface, and its presence is
   // what offers the empty state a route to the Profiles page.
   actingAs?: string;
+  tier?: SpoilerTier;
+  baseline?: SpoilerTier;
 }
 
 type Tab = 'active' | 'archived';
@@ -35,6 +42,8 @@ export default function ItemsPage({
   lists,
   initialPageSize,
   actingAs,
+  tier,
+  baseline,
 }: ItemsPageProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -119,6 +128,8 @@ export default function ItemsPage({
           user_name={user_name}
           showArchiveAction
           archivedView={tab === 'archived'}
+          tier={tier}
+          baseline={baseline}
         />
       )}
       {showNewItem && (

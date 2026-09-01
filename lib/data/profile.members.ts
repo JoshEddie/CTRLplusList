@@ -1,14 +1,18 @@
 import { db } from '@/db';
 import {
+  SPOILER_TIER_PREFERENCE_ID,
   profile_avatars,
   profile_invites,
   profile_members,
+  profile_preferences,
   profiles,
 } from '@/db/schema';
 import { selfMemberships } from '@/lib/data/profile.identity';
 import { accentPreferences, avatarColumns } from '@/lib/data/profileAvatar';
 import { cacheTags } from '@/lib/cacheTags';
 import { roleOf } from '@/lib/data/profile.roles';
+import { MAXIMAL_TIER, spoilerTierOf } from '@/lib/spoilers';
+import type { SpoilerTier } from '@/lib/types';
 import { and, asc, eq, gt, isNull } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
@@ -29,6 +33,7 @@ export async function getProfileMembers(profileId: string) {
         user_id: profile_members.user_id,
         role: profile_members.role,
         last_active_at: profile_members.last_active_at,
+        tier: profile_preferences.value,
         id: profiles.id,
         name: profiles.name,
         ...avatarColumns,
@@ -41,9 +46,27 @@ export async function getProfileMembers(profileId: string) {
       .innerJoin(profiles, eq(profiles.id, selfMemberships.profile_id))
       .leftJoin(profile_avatars, eq(profile_avatars.profile_id, profiles.id))
       .leftJoin(accentPreferences, eq(accentPreferences.profile_id, profiles.id))
+      // The member's own spoiler-tier row (account key set). A member with no
+      // row resolves to the protected default, so the leftJoin's absence maps
+      // to `surprise` below.
+      .leftJoin(
+        profile_preferences,
+        and(
+          eq(profile_preferences.profile_id, profile_members.profile_id),
+          eq(profile_preferences.user_id, profile_members.user_id),
+          eq(profile_preferences.preference_id, SPOILER_TIER_PREFERENCE_ID)
+        )
+      )
       .where(eq(profile_members.profile_id, profileId));
     cacheTag(...rows.map((row) => cacheTags.profilesOfUser(row.user_id)));
-    return rows.map((row) => ({ ...row, role: roleOf(row.role) }));
+    // The baseline tier rides the roster rather than being read per member: it
+    // is the same row the roster already joins, and the Settings panel renders
+    // one control per member.
+    return rows.map(({ tier, ...row }) => ({
+      ...row,
+      role: roleOf(row.role),
+      baseline: spoilerTierOf(tier ?? '') satisfies SpoilerTier,
+    }));
   } catch (error) {
     console.error('Error fetching profile members:', error);
     throw new Error('Failed to fetch profile members');
@@ -128,3 +151,128 @@ export async function getPendingInvites(profileId: string) {
 export type PendingInvite = Awaited<
   ReturnType<typeof getPendingInvites>
 >[number];
+
+// The spoiler baseline the viewer's ACCOUNT holds on the profile owning the
+// content — never an ownership comparison, and never the profile the request
+// acts as: protection is a property of the human and travels with them across
+// every switch (`spoiler-visibility`). A viewer holding no membership, signed
+// out included, is owed no protection, so they resolve to the maximal
+// projection rather than to the default.
+export async function getSpoilerBaseline(
+  userId: string | undefined,
+  profileId: string
+): Promise<SpoilerTier> {
+  return userId ? memberBaseline(userId, profileId) : MAXIMAL_TIER;
+}
+
+async function memberBaseline(
+  userId: string,
+  profileId: string
+): Promise<SpoilerTier> {
+  'use cache';
+  cacheTag(
+    cacheTags.profileMembers,
+    cacheTags.membersOfProfile(profileId),
+    cacheTags.profilesOfUser(userId),
+    cacheTags.profilePreferences,
+    cacheTags.preferencesOfProfile(profileId)
+  );
+  try {
+    // One query: the membership proves the viewer is a member (its absence
+    // means non-member → maximal), and the leftJoined tier row carries their
+    // baseline. An absent tier row on a present membership resolves to the
+    // protected default, never to the profile-wide row.
+    const [row] = await db
+      .select({
+        memberUserId: profile_members.user_id,
+        tier: profile_preferences.value,
+      })
+      .from(profile_members)
+      .leftJoin(
+        profile_preferences,
+        and(
+          eq(profile_preferences.profile_id, profile_members.profile_id),
+          eq(profile_preferences.user_id, profile_members.user_id),
+          eq(profile_preferences.preference_id, SPOILER_TIER_PREFERENCE_ID)
+        )
+      )
+      .where(
+        and(
+          eq(profile_members.user_id, userId),
+          eq(profile_members.profile_id, profileId)
+        )
+      );
+    return row ? spoilerTierOf(row.tier ?? '') : MAXIMAL_TIER;
+  } catch (error) {
+    console.error('Error fetching spoiler baseline:', error);
+    throw new Error('Failed to fetch spoiler baseline');
+  }
+}
+
+// Whether the account holds a membership on the profile — any role. Gates the
+// hero's Spoilers control, which is offered only to a viewer whose protection
+// is real: a non-member resolves to the maximal projection and has no baseline
+// to adjust. Cached under the membership tags it reads.
+export async function viewerIsProfileMember(
+  userId: string | undefined,
+  profileId: string
+): Promise<boolean> {
+  if (!userId) return false;
+  return hasMembership(userId, profileId);
+}
+
+async function hasMembership(
+  userId: string,
+  profileId: string
+): Promise<boolean> {
+  'use cache';
+  cacheTag(
+    cacheTags.profileMembers,
+    cacheTags.membersOfProfile(profileId),
+    cacheTags.profilesOfUser(userId)
+  );
+  try {
+    const [row] = await db
+      .select({ user_id: profile_members.user_id })
+      .from(profile_members)
+      .where(
+        and(
+          eq(profile_members.user_id, userId),
+          eq(profile_members.profile_id, profileId)
+        )
+      );
+    return !!row;
+  } catch (error) {
+    console.error('Error checking membership:', error);
+    throw new Error('Failed to check membership');
+  }
+}
+
+// The profile-level seed a new membership is pre-filled from — the null-account
+// row. A seed only: nothing reads it to resolve a sitting member, so a profile
+// that has never chosen one resolves to full protection here and moves nobody.
+export async function getSpoilerDefault(
+  profileId: string
+): Promise<SpoilerTier> {
+  'use cache';
+  cacheTag(
+    cacheTags.profilePreferences,
+    cacheTags.preferencesOfProfile(profileId)
+  );
+  try {
+    const [row] = await db
+      .select({ value: profile_preferences.value })
+      .from(profile_preferences)
+      .where(
+        and(
+          eq(profile_preferences.profile_id, profileId),
+          isNull(profile_preferences.user_id),
+          eq(profile_preferences.preference_id, SPOILER_TIER_PREFERENCE_ID)
+        )
+      );
+    return spoilerTierOf(row?.value ?? '');
+  } catch (error) {
+    console.error('Error fetching spoiler default:', error);
+    throw new Error('Failed to fetch spoiler default');
+  }
+}

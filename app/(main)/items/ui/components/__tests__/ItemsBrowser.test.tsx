@@ -25,18 +25,8 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('../Item', () => ({
-  default: ({
-    item,
-    showSpoilers,
-  }: {
-    item: ItemDisplay;
-    showSpoilers?: boolean;
-  }) => (
-    <div
-      data-testid="item-stub"
-      data-item-id={item.id}
-      data-show-spoilers={String(showSpoilers)}
-    />
+  default: ({ item, tier }: { item: ItemDisplay; tier?: string }) => (
+    <div data-testid="item-stub" data-item-id={item.id} data-tier={String(tier)} />
   ),
 }));
 vi.mock('../PriceFilterPopover', () => ({ default: () => <div /> }));
@@ -85,6 +75,8 @@ function renderBrowser(
       mode={overrides.mode ?? 'list'}
       initialPageSize={overrides.initialPageSize}
       actor={overrides.actor}
+      tier={overrides.tier}
+      baseline={overrides.baseline}
     />
   );
 }
@@ -117,27 +109,14 @@ describe('ItemsBrowser', () => {
       expect(visibleIds().sort()).toEqual(['a', 'b']);
     });
 
-    it('StoreFilter_OrWithinAndAcrossOtherFilters', () => {
-      nav.search = 'store=Amazon&store=Etsy&purchases=only';
+    it('MultiStore_KeepsItemsMatchingAnySelectedStore', () => {
+      nav.search = 'store=Amazon&store=Etsy';
       renderBrowser([
-        makeItem('amazonBought', {
-          store: store('Amazon', '20'),
-          hasPurchases: true,
-        }),
-        makeItem('etsyBought', {
-          store: store('Etsy', '20'),
-          hasPurchases: true,
-        }),
-        makeItem('amazonUnbought', {
-          store: store('Amazon', '20'),
-          hasPurchases: false,
-        }),
-        makeItem('otherBought', {
-          store: store('Other', '20'),
-          hasPurchases: true,
-        }),
+        makeItem('amazon', { store: store('Amazon', '20') }),
+        makeItem('etsy', { store: store('Etsy', '20') }),
+        makeItem('other', { store: store('Other', '20') }),
       ]);
-      expect(visibleIds().sort()).toEqual(['amazonBought', 'etsyBought']);
+      expect(visibleIds().sort()).toEqual(['amazon', 'etsy']);
     });
 
     it('DormantLegacyStoreName_NeitherMatchesNorAppearsAsOption', () => {
@@ -148,24 +127,6 @@ describe('ItemsBrowser', () => {
       expect(visibleIds()).toEqual([]);
       const stubs = screen.getAllByTestId('store-filter-stub');
       expect(stubs[0]).toHaveAttribute('data-options', 'Amazon');
-    });
-
-    it('PurchasesOnly_KeepsHasPurchases', () => {
-      nav.search = 'purchases=only';
-      renderBrowser([
-        makeItem('p', { hasPurchases: true }),
-        makeItem('q', { hasPurchases: false }),
-      ]);
-      expect(visibleIds()).toEqual(['p']);
-    });
-
-    it('PurchasesNone_KeepsNotHasPurchases', () => {
-      nav.search = 'purchases=none';
-      renderBrowser([
-        makeItem('p', { hasPurchases: true }),
-        makeItem('q', { hasPurchases: false }),
-      ]);
-      expect(visibleIds()).toEqual(['q']);
     });
 
     it('PriceRange_InclusiveExcludesNonFinitePrice', () => {
@@ -220,33 +181,23 @@ describe('ItemsBrowser', () => {
     });
 
     it('MultipleFilters_ComposeConjunctively', () => {
-      nav.search =
-        'q=gift&store=Amazon&purchases=only&price_min=10&price_max=50';
+      nav.search = 'q=gift&store=Amazon&price_min=10&price_max=50';
       renderBrowser([
         makeItem('match', {
           name: 'Gift',
           store: store('Amazon', '20'),
-          hasPurchases: true,
         }),
         makeItem('failStore', {
           name: 'Gift',
           store: store('Other', '20'),
-          hasPurchases: true,
-        }),
-        makeItem('failPurch', {
-          name: 'Gift',
-          store: store('Amazon', '20'),
-          hasPurchases: false,
         }),
         makeItem('failPrice', {
           name: 'Gift',
           store: store('Amazon', '200'),
-          hasPurchases: true,
         }),
         makeItem('failName', {
           name: 'Toy',
           store: store('Amazon', '20'),
-          hasPurchases: true,
         }),
       ]);
       expect(visibleIds()).toEqual(['match']);
@@ -370,9 +321,8 @@ describe('ItemsBrowser', () => {
       ).toBeInTheDocument();
     });
 
-    it('ClearFilters_RemovesQStorePurchasesPricePageParams', () => {
-      nav.search =
-        'q=zzz&store=A&purchases=only&price_min=1&price_max=2&page=3';
+    it('ClearFilters_RemovesQStorePricePageParams', () => {
+      nav.search = 'q=zzz&store=A&price_min=1&price_max=2&page=3';
       renderBrowser([makeItem('a', { name: 'Gift' })]);
       fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
       expect(nav.replace).toHaveBeenCalledWith('/items');
@@ -386,31 +336,18 @@ describe('ItemsBrowser', () => {
     });
   });
 
-  describe('Spoilers', () => {
-    const spoilerFlag = () =>
-      screen.getByTestId('item-stub').getAttribute('data-show-spoilers');
+  describe('Tier', () => {
+    const tierOf = () =>
+      screen.getByTestId('item-stub').getAttribute('data-tier');
 
-    it('ModeItemsPurchasesReveal_PassesShowSpoilersTrue', () => {
-      nav.search = 'purchases=reveal';
-      renderBrowser([makeItem('a')], { mode: 'items' });
-      expect(spoilerFlag()).toBe('true');
+    it('ResolvedTier_ReachesEachItem', () => {
+      renderBrowser([makeItem('a')], { tier: 'identity' });
+      expect(tierOf()).toBe('identity');
     });
 
-    it('ModeItemsPurchasesOnly_PassesShowSpoilersTrue', () => {
-      nav.search = 'purchases=only';
-      renderBrowser([makeItem('a', { hasPurchases: true })], { mode: 'items' });
-      expect(spoilerFlag()).toBe('true');
-    });
-
-    it('ModeListPurchasesReveal_PassesShowSpoilersFalse', () => {
-      nav.search = 'purchases=reveal';
-      renderBrowser([makeItem('a')], { mode: 'list' });
-      expect(spoilerFlag()).toBe('false');
-    });
-
-    it('ModeItemsNoPurchasesParam_PassesShowSpoilersFalse', () => {
-      renderBrowser([makeItem('a')], { mode: 'items' });
-      expect(spoilerFlag()).toBe('false');
+    it('AbsentTier_ReachesItemAsUndefined', () => {
+      renderBrowser([makeItem('a')]);
+      expect(tierOf()).toBe('undefined');
     });
   });
 

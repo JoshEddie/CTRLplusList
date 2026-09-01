@@ -1055,3 +1055,24 @@ describe('removePurchase', () => {
     });
   });
 });
+
+/**
+ * Pins `claim-attribution` — the endpoint the reveal confirmation reaches. It
+ * is scoped to the item and re-resolves no spoiler state, so it is a pass-through
+ * to the read rather than a second projection.
+ */
+describe('claimSummaryForItem', () => {
+  it('ClaimedLimitedItem_ReportsTheCountAndTheRemainder', async () => {
+    await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: 2 });
+    await seedPurchase(db, { id: 'P', item_id: 'I', guest_name: 'Grandma' });
+
+    expect(await actions.claimSummaryForItem('I')).toEqual({
+      claimCount: 1,
+      remaining: 1,
+    });
+  });
+
+  it('UnknownItem_ReturnsNull', async () => {
+    expect(await actions.claimSummaryForItem('no-such-item')).toBeNull();
+  });
+});

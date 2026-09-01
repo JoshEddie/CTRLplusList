@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { Suspense } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MAXIMAL_TIER } from '@/lib/spoilers';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { auth } from '@/lib/auth';
 import { getItemsByListId, getItemsByProfile } from '@/lib/data/item';
@@ -114,20 +115,18 @@ describe('ItemsContainer', () => {
   });
 
   describe('ListBranch', () => {
-    it('ListIdWithViewerOwnerSpoiler_ReadsListScopedWithThoseFlags', async () => {
+    it('ListIdWithViewerAndTier_ReadsListScopedWithBoth', async () => {
       cookieHolder.store.set('items_page_size', '48');
       render(
         await ItemsContainer({
           listId: 'list1',
-          isListOwner: true,
           viewerSelfProfileId: 'v2',
-          showSpoilers: true,
+          tier: MAXIMAL_TIER,
         })
       );
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
         viewerSelfProfileId: 'v2',
-        isOwner: true,
-        showSpoilers: true,
+        tier: MAXIMAL_TIER,
       });
       const browser = screen.getByTestId('items-browser');
       expect(browser).toHaveAttribute('data-mode', 'list');
@@ -135,12 +134,11 @@ describe('ItemsContainer', () => {
       expect(browser).toHaveAttribute('data-initial-page-size', '48');
     });
 
-    it('ListIdNoFlags_DefaultsViewerToProfileOwnerFalseSpoilerFalse', async () => {
+    it('ListIdNoTier_DefaultsViewerToTheSelfProfile', async () => {
       render(await ItemsContainer({ listId: 'list1' }));
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
         viewerSelfProfileId: 'self-viewer',
-        isOwner: false,
-        showSpoilers: false,
+        tier: undefined,
       });
       expect(getItemsByProfile).not.toHaveBeenCalled();
     });
@@ -153,8 +151,7 @@ describe('ItemsContainer', () => {
       expect(redirectMock).not.toHaveBeenCalled();
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
         viewerSelfProfileId: undefined,
-        isOwner: false,
-        showSpoilers: false,
+        tier: undefined,
       });
     });
   });

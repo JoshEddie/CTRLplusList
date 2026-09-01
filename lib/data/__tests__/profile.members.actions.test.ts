@@ -8,7 +8,12 @@
  * shared gate that the gate suite covers.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { profile_invites, profile_members } from '@/db/schema';
+import {
+  SPOILER_TIER_PREFERENCE_ID,
+  profile_invites,
+  profile_members,
+  profile_preferences,
+} from '@/db/schema';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
 import { makeIdentity, makeProfile } from '@/test/helpers/profile';
@@ -16,6 +21,7 @@ import {
   seedBlock,
   seedManagedProfile,
   seedMembership,
+  seedSpoilerCatalog,
   seedUsers,
   selfProfileOf,
 } from '@/test/helpers/seedFollowGraph';
@@ -51,6 +57,8 @@ const KIDDO = 'kiddo';
 
 let db: TestDb;
 let actions: typeof import('@/lib/data/profile.members.actions');
+let reads: typeof import('@/lib/data/profile.members');
+let writes: typeof import('@/lib/data/profilePreference.write');
 let session: typeof import('@/lib/data/user.session');
 
 beforeAll(async () => {
@@ -58,6 +66,8 @@ beforeAll(async () => {
   db = booted.db;
   holder.db = booted.db;
   actions = await import('@/lib/data/profile.members.actions');
+  reads = await import('@/lib/data/profile.members');
+  writes = await import('@/lib/data/profilePreference.write');
   session = await import('@/lib/data/user.session');
 });
 
@@ -65,6 +75,9 @@ beforeEach(async () => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
   await resetDb(db);
+  // Redemption seeds an accepted tier via `writeMemberTier`, whose value row
+  // FKs the catalog row the migration inserts.
+  await seedSpoilerCatalog(db);
   await seedUsers(db, [
     { id: OWNER },
     { id: OWNER2 },
@@ -72,7 +85,11 @@ beforeEach(async () => {
     { id: STRANGER },
   ]);
   await seedManagedProfile(db, { id: KIDDO, name: 'Kiddo' });
-  await seedMembership(db, { user_id: OWNER, profile_id: KIDDO, role: 'owner' });
+  await seedMembership(db, {
+    user_id: OWNER,
+    profile_id: KIDDO,
+    role: 'owner',
+  });
   await seedMembership(db, {
     user_id: MANAGER,
     profile_id: KIDDO,
@@ -101,6 +118,23 @@ async function roleOf(
       )
     );
   return row?.role ?? null;
+}
+
+async function tierRowOf(
+  userId: string,
+  profileId: string = KIDDO
+): Promise<string | null> {
+  const [row] = await db
+    .select({ value: profile_preferences.value })
+    .from(profile_preferences)
+    .where(
+      and(
+        eq(profile_preferences.profile_id, profileId),
+        eq(profile_preferences.user_id, userId),
+        eq(profile_preferences.preference_id, SPOILER_TIER_PREFERENCE_ID)
+      )
+    );
+  return row?.value ?? null;
 }
 
 async function mintFor(
@@ -214,9 +248,9 @@ describe('setMemberRole', () => {
     it('TargetHoldsNoMembership_RefusesRatherThanReportingSuccess', async () => {
       actingAs(OWNER);
 
-      expect(await actions.setMemberRole(KIDDO, STRANGER, 'owner')).toMatchObject(
-        { success: false }
-      );
+      expect(
+        await actions.setMemberRole(KIDDO, STRANGER, 'owner')
+      ).toMatchObject({ success: false });
       expect(await roleOf(STRANGER)).toBeNull();
     });
   });
@@ -378,11 +412,78 @@ describe('mintInvite', () => {
 });
 
 describe('redeemInvite', () => {
+  // The accepted tier is written explicitly rather than left to a default: a
+  // default would silently substitute full protection for what was offered.
+  describe('AcceptedTier', () => {
+    it('OfferedTierUntouched_WritesItAsTheAccountRow', async () => {
+      const token = await mintFor('manager');
+      actingAs(STRANGER);
+
+      await actions.redeemInvite(token, 'surprise');
+
+      expect(await tierRowOf(STRANGER)).toBe('surprise');
+    });
+
+    it('AdjustedTier_WritesTheAdjustedValueInstead', async () => {
+      const token = await mintFor('manager');
+      actingAs(STRANGER);
+
+      await actions.redeemInvite(token, 'identity');
+
+      expect(await tierRowOf(STRANGER)).toBe('identity');
+    });
+
+    it('LaterDefaultChange_MovesNoSeatedMember', async () => {
+      const token = await mintFor('manager');
+      actingAs(STRANGER);
+      await actions.redeemInvite(token, 'claims');
+
+      // A profile-wide default change after redemption seeds nobody sitting.
+      await writes.writeSpoilerDefault(KIDDO, 'identity');
+
+      expect(await tierRowOf(STRANGER)).toBe('claims');
+    });
+
+    it('SittingMemberWithATierRow_KeepsTheirRoleAndTierUnchanged', async () => {
+      await seedMembership(db, {
+        user_id: STRANGER,
+        profile_id: KIDDO,
+        role: 'manager',
+        baseline: 'claims',
+      });
+      const token = await mintFor('owner');
+      actingAs(STRANGER);
+
+      await actions.redeemInvite(token, 'identity');
+
+      expect(await roleOf(STRANGER)).toBe('manager');
+      // Offered 'identity' is neither re-seeded over their row nor a promotion.
+      expect(await tierRowOf(STRANGER)).toBe('claims');
+    });
+
+    it('SittingMemberWithNoTierRow_StaysUnseededAndResolvesToSurprise', async () => {
+      await seedMembership(db, {
+        user_id: STRANGER,
+        profile_id: KIDDO,
+        role: 'manager',
+      });
+      const token = await mintFor('owner');
+      actingAs(STRANGER);
+
+      await actions.redeemInvite(token, 'identity');
+
+      expect(await tierRowOf(STRANGER)).toBeNull();
+      expect(await reads.getSpoilerBaseline(STRANGER, KIDDO)).toBe('surprise');
+    });
+  });
+
   it('LiveToken_WritesTheMembershipAtTheTokensRole', async () => {
     const token = await mintFor('owner');
     actingAs(STRANGER);
 
-    expect((await actions.redeemInvite(token)).success).toBe(true);
+    expect((await actions.redeemInvite(token, 'surprise')).success).toBe(
+      true
+    );
     expect(await roleOf(STRANGER)).toBe('owner');
     expect(await redeemedAt(token)).not.toBeNull();
     expect(updateTag).toHaveBeenCalledWith(cacheTags.profilesOfUser(STRANGER));
@@ -399,7 +500,9 @@ describe('redeemInvite', () => {
       const token = await mintFor('manager', { redeemed_at: new Date() });
       actingAs(STRANGER);
 
-      expect(await actions.redeemInvite(token)).toEqual(refusal);
+      expect(await actions.redeemInvite(token, 'surprise')).toEqual(
+        refusal
+      );
       expect(await roleOf(STRANGER)).toBeNull();
     });
 
@@ -409,14 +512,18 @@ describe('redeemInvite', () => {
       });
       actingAs(STRANGER);
 
-      expect(await actions.redeemInvite(token)).toEqual(refusal);
+      expect(await actions.redeemInvite(token, 'surprise')).toEqual(
+        refusal
+      );
       expect(await roleOf(STRANGER)).toBeNull();
     });
 
     it('UnknownToken_RefusesAndWritesNothing', async () => {
       actingAs(STRANGER);
 
-      expect(await actions.redeemInvite('no-such-token')).toEqual(refusal);
+      expect(
+        await actions.redeemInvite('no-such-token', 'surprise')
+      ).toEqual(refusal);
       expect(await roleOf(STRANGER)).toBeNull();
     });
   });
@@ -425,7 +532,7 @@ describe('redeemInvite', () => {
     const token = await mintFor('manager');
     actingAs(OWNER);
 
-    const result = await actions.redeemInvite(token);
+    const result = await actions.redeemInvite(token, 'surprise');
 
     expect(result.success).toBe(true);
     expect(await roleOf(OWNER)).toBe('owner');
@@ -440,7 +547,9 @@ describe('redeemInvite', () => {
       await seedBlock(db, STRANGER, OWNER);
       actingAs(STRANGER);
 
-      expect((await actions.redeemInvite(token)).success).toBe(false);
+      expect((await actions.redeemInvite(token, 'surprise')).success).toBe(
+        false
+      );
       expect(await roleOf(STRANGER)).toBeNull();
       expect(await redeemedAt(token)).toBeNull();
     });
@@ -450,7 +559,9 @@ describe('redeemInvite', () => {
       await seedBlock(db, OWNER, STRANGER);
       actingAs(STRANGER);
 
-      expect((await actions.redeemInvite(token)).success).toBe(false);
+      expect((await actions.redeemInvite(token, 'surprise')).success).toBe(
+        false
+      );
       expect(await roleOf(STRANGER)).toBeNull();
       expect(await redeemedAt(token)).toBeNull();
     });
@@ -462,7 +573,7 @@ describe('redeemInvite', () => {
 
     // The membership row is untouched either way, so a sitting caller is the
     // one case where a dead token could be mistaken for a redemption.
-    expect(await actions.redeemInvite(token)).toMatchObject({
+    expect(await actions.redeemInvite(token, 'surprise')).toMatchObject({
       success: false,
       error: 'Invalid invite',
     });
@@ -473,7 +584,7 @@ describe('redeemInvite', () => {
     const token = await mintFor('manager');
     vi.mocked(session.authedIdentity).mockResolvedValue(null);
 
-    expect(await actions.redeemInvite(token)).toMatchObject({
+    expect(await actions.redeemInvite(token, 'surprise')).toMatchObject({
       error: 'Unauthorized',
     });
     expect(await redeemedAt(token)).toBeNull();
@@ -488,14 +599,16 @@ describe('revokeInvite', () => {
     expect((await actions.revokeInvite(KIDDO, token)).success).toBe(true);
 
     actingAs(STRANGER);
-    expect((await actions.redeemInvite(token)).success).toBe(false);
+    expect((await actions.redeemInvite(token, 'surprise')).success).toBe(
+      false
+    );
     expect(await roleOf(STRANGER)).toBeNull();
   });
 
   it('SpentToken_RefusesAndLeavesTheMembershipItGranted', async () => {
     const token = await mintFor('manager');
     actingAs(STRANGER);
-    await actions.redeemInvite(token);
+    await actions.redeemInvite(token, 'surprise');
     actingAs(OWNER);
 
     // A revoke that raced a redemption cannot take back the seat.
@@ -518,7 +631,9 @@ describe('revokeInvite', () => {
     expect(await redeemedAt(token)).toBeNull();
 
     actingAs(STRANGER);
-    expect((await actions.redeemInvite(token)).success).toBe(true);
+    expect((await actions.redeemInvite(token, 'surprise')).success).toBe(
+      true
+    );
   });
 });
 
@@ -543,14 +658,14 @@ describe('setInviteRole', () => {
     // The token is unchanged, so a link already sent grants what it says at the
     // moment it is redeemed.
     actingAs(STRANGER);
-    await actions.redeemInvite(token);
+    await actions.redeemInvite(token, 'surprise');
     expect(await roleOf(STRANGER)).toBe('owner');
   });
 
   it('SpentToken_RefusesAndLeavesTheSittingRole', async () => {
     const token = await mintFor('manager');
     actingAs(STRANGER);
-    await actions.redeemInvite(token);
+    await actions.redeemInvite(token, 'surprise');
     actingAs(OWNER);
 
     expect(await actions.setInviteRole(KIDDO, token, 'owner')).toMatchObject({
@@ -623,7 +738,7 @@ describe('DriverFailures', () => {
     actingAs(STRANGER);
     throwOn('select');
 
-    expect(await actions.redeemInvite(token)).toMatchObject({
+    expect(await actions.redeemInvite(token, 'surprise')).toMatchObject({
       success: false,
       error: 'Failed to redeem invite',
     });

@@ -28,17 +28,6 @@ export const SORT_KEYS_BY_MODE: Record<BrowserMode, SortKey[]> = {
   choose: ['created_desc', 'created_asc', ...SHARED_SORT_KEYS],
 };
 
-export const PURCHASES_LABELS_ITEMS: Record<string, string> = {
-  reveal: 'Purchases: Reveal',
-  only: 'Only purchased',
-  none: 'Only not purchased',
-};
-
-export const PURCHASES_LABELS_LIST: Record<string, string> = {
-  only: 'Only purchased',
-  none: 'Only not purchased',
-};
-
 export const SHOW_LABELS: Record<string, string> = {
   on: 'On the list',
   off: 'Not on the list',

@@ -5,7 +5,7 @@ import {
 } from '@/lib/data/purchase.cookie';
 import { getItemsByListId, getItemsByProfile } from '@/lib/data/item';
 import { authedIdentity } from '@/lib/data/user.session';
-import { ItemDisplay } from '@/lib/types';
+import { ItemDisplay, SpoilerTier } from '@/lib/types';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -16,16 +16,15 @@ import { readItemsPageSize, viewerDisplayName } from '../../utils';
 
 interface ItemsContainerProps {
   listId?: string;
-  isListOwner?: boolean;
   viewerSelfProfileId?: string;
-  showSpoilers?: boolean;
+  /** The viewer's resolved tier, forwarded rather than resolved here: it is database-backed, so resolving it beneath the cache boundary would key the cache on an input that can go stale. A signed-out list viewer forwards the maximal projection. */
+  tier?: SpoilerTier;
 }
 
 export default async function ItemsContainer({
   listId,
-  isListOwner,
   viewerSelfProfileId,
-  showSpoilers,
+  tier,
 }: ItemsContainerProps) {
   let items: ItemDisplay[];
 
@@ -34,11 +33,9 @@ export default async function ItemsContainer({
   if (listId) {
     items = await getItemsByListId(listId, {
       // Claims are the human's, so the viewer they are attributed against is
-      // the self-profile whatever profile the request acts as; `isListOwner`
-      // is the caller's own ownership comparison and arrives separately.
+      // the self-profile whatever profile the request acts as.
       viewerSelfProfileId: viewerSelfProfileId ?? identity?.selfProfile.id,
-      isOwner: isListOwner ?? false,
-      showSpoilers: showSpoilers ?? false,
+      tier,
     });
     if (!identity) {
       // Post-cache, request-scope only: the cookie must never reach the
@@ -64,6 +61,7 @@ export default async function ItemsContainer({
           items={items}
           mode="list"
           initialPageSize={initialPageSize}
+          tier={tier}
           actor={actor}
           user_name={firstLastInitial}
         />

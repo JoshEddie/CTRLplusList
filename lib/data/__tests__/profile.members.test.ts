@@ -5,6 +5,7 @@
  * token must be indistinguishable from one that never existed.
  */
 import { ROLES } from '@/lib/data/profile.roles';
+import { MAXIMAL_TIER } from '@/lib/spoilers';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { profile_invites } from '@/db/schema';
 import { bootPglite, resetDb } from '@/test/helpers/db';
@@ -15,6 +16,7 @@ import {
   seedAvatar,
   seedManagedProfile,
   seedMembership,
+  seedSpoilerDefault,
   seedUsers,
   selfProfileOf,
 } from '@/test/helpers/seedFollowGraph';
@@ -81,7 +83,10 @@ describe('getProfileMembers', () => {
       profile_id: KIDDO,
       role: 'owner',
       last_active_at: new Date('2026-08-20T00:00:00Z'),
+      baseline: 'claims',
     });
+    // No baseline row for the manager — the roster resolves that absence to the
+    // protected `surprise`, never the profile default.
     await seedMembership(db, {
       user_id: MANAGER,
       profile_id: KIDDO,
@@ -103,6 +108,7 @@ describe('getProfileMembers', () => {
           art: '<svg id="owner" />',
           accent: 'rose',
           last_active_at: new Date('2026-08-20T00:00:00Z'),
+          baseline: 'claims',
         }),
         expect.objectContaining({
           user_id: MANAGER,
@@ -110,6 +116,7 @@ describe('getProfileMembers', () => {
           last_active_at: null,
           art: null,
           accent: null,
+          baseline: 'surprise',
         }),
       ])
     );
@@ -233,6 +240,102 @@ describe('getLiveInvite', () => {
 
     await expect(dal.getLiveInvite('tok')).rejects.toThrow(
       'Failed to fetch invite'
+    );
+  });
+});
+
+/**
+ * Pins `spoiler-visibility`'s resolution: protection follows the human's
+ * membership on the profile owning the content, never the ownership comparison
+ * the request already holds.
+ */
+describe('getSpoilerBaseline', () => {
+  beforeEach(async () => {
+    await seedUsers(db, [{ id: 'stranger' }]);
+    await seedMembership(db, {
+      user_id: OWNER,
+      profile_id: KIDDO,
+      baseline: 'claims',
+    });
+  });
+
+  it('MemberActingAsAnotherProfile_ResolvesFromTheMembershipOnTheOwner', async () => {
+    // The acting profile is never an input: the account id and the OWNING
+    // profile are, so a switch cannot un-protect the human, and ownership
+    // contributes nothing to the resolution.
+    expect(await dal.getSpoilerBaseline(OWNER, KIDDO)).toBe('claims');
+  });
+
+  it('NonMember_ResolvesToTheMaximalTier', async () => {
+    expect(await dal.getSpoilerBaseline('stranger', KIDDO)).toBe(MAXIMAL_TIER);
+  });
+
+  it('SignedOutViewer_ResolvesToTheMaximalTier', async () => {
+    expect(await dal.getSpoilerBaseline(undefined, KIDDO)).toBe(MAXIMAL_TIER);
+  });
+
+  it('MembershipCarryingNoTierRow_ResolvesToSurprise', async () => {
+    await seedMembership(db, { user_id: MANAGER, profile_id: KIDDO });
+
+    expect(await dal.getSpoilerBaseline(MANAGER, KIDDO)).toBe('surprise');
+  });
+
+  it('MembershipWithNoRowDespiteAProfileDefault_ResolvesToSurpriseNotTheDefault', async () => {
+    // The profile-wide default seeds new memberships; a sitting member with no
+    // row resolves to `surprise` without ever consulting it.
+    await seedSpoilerDefault(db, KIDDO, 'identity');
+    await seedMembership(db, { user_id: MANAGER, profile_id: KIDDO });
+
+    expect(await dal.getSpoilerBaseline(MANAGER, KIDDO)).toBe('surprise');
+  });
+
+  it('QueryThrows_RejectsWithFailedToFetchSpoilerBaseline', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(db, 'select').mockImplementation(() => {
+      throw new Error('boom');
+    });
+
+    await expect(dal.getSpoilerBaseline(OWNER, KIDDO)).rejects.toThrow(
+      'Failed to fetch spoiler baseline'
+    );
+  });
+});
+
+describe('viewerIsProfileMember', () => {
+  it('AccountHoldingAMembership_ReturnsTrue', async () => {
+    await seedMembership(db, { user_id: MANAGER, profile_id: KIDDO });
+
+    expect(await dal.viewerIsProfileMember(MANAGER, KIDDO)).toBe(true);
+  });
+
+  it('AccountWithNoMembership_ReturnsFalse', async () => {
+    expect(await dal.viewerIsProfileMember(MANAGER, KIDDO)).toBe(false);
+  });
+
+  it('SignedOutViewer_ReturnsFalse', async () => {
+    expect(await dal.viewerIsProfileMember(undefined, KIDDO)).toBe(false);
+  });
+});
+
+describe('getSpoilerDefault', () => {
+  it('StoredRow_ReturnsTheStoredTier', async () => {
+    await seedSpoilerDefault(db, KIDDO, 'identity');
+
+    expect(await dal.getSpoilerDefault(KIDDO)).toBe('identity');
+  });
+
+  it('NoStoredRow_ReturnsSurprise', async () => {
+    expect(await dal.getSpoilerDefault(KIDDO)).toBe('surprise');
+  });
+
+  it('QueryThrows_RejectsWithFailedToFetchSpoilerDefault', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(db, 'select').mockImplementation(() => {
+      throw new Error('boom');
+    });
+
+    await expect(dal.getSpoilerDefault(KIDDO)).rejects.toThrow(
+      'Failed to fetch spoiler default'
     );
   });
 });

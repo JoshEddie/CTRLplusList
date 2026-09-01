@@ -4,6 +4,7 @@
  * the sole-owner tooltip, and that a pending invite row is an owner's alone,
  * because the row carries the token and a token is the grant itself.
  */
+import { PROTECTED_TIER } from '@/lib/spoilers';
 import { ROLES } from '@/lib/data/profile.roles';
 import type { RoleShape } from '@/lib/types';
 import { render, screen } from '@testing-library/react';
@@ -58,6 +59,7 @@ const member = (
   user_id,
   role,
   last_active_at,
+  baseline: PROTECTED_TIER,
   id: `self-${user_id}`,
   name: user_id,
   accent: null,

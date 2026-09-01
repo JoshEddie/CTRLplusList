@@ -15,6 +15,13 @@ mockNextHeaders();
 // Capture the deferred `after()` callback instead of discarding it,
 // so the real visit-recording block can be invoked and asserted.
 const afterCbs = vi.hoisted(() => [] as Array<() => unknown>);
+import {
+  getSpoilerBaseline,
+  viewerIsProfileMember,
+} from '@/lib/data/profile.members';
+import { getListClaimedCount } from '@/lib/data/purchase';
+import { PROTECTED_TIER } from '@/lib/spoilers';
+
 vi.mock('next/server', () => ({
   after: (cb: () => unknown) => {
     afterCbs.push(cb);
@@ -52,13 +59,23 @@ vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
 }));
 vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
+vi.mock('@/lib/data/profile.members', () => ({
+  getSpoilerBaseline: vi.fn(),
+  viewerIsProfileMember: vi.fn(),
+}));
+vi.mock('@/lib/data/purchase', () => ({
+  getListClaimedCount: vi.fn(),
+}));
 vi.mock('@/lib/listAccess', () => ({
   guardListViewable: vi.fn(async (list: unknown) => list),
 }));
 vi.mock('@/app/(main)/lists/ui/components/ListDetails', () => ({
   default: (p: {
     isOwner: boolean;
-    showSpoilers: boolean;
+    tier: string;
+    baseline: string;
+    viewerIsMember: boolean;
+    claimedCount?: number;
     previewMode: boolean;
     itemCount: number;
     viewer_user_id?: string;
@@ -68,7 +85,10 @@ vi.mock('@/app/(main)/lists/ui/components/ListDetails', () => ({
     <div
       data-testid="list-details"
       data-is-owner={String(p.isOwner)}
-      data-show-spoilers={String(p.showSpoilers)}
+      data-tier={String(p.tier)}
+      data-baseline={String(p.baseline)}
+      data-viewer-is-member={String(p.viewerIsMember)}
+      data-claimed-count={p.claimedCount === undefined ? '' : String(p.claimedCount)}
       data-preview-mode={String(p.previewMode)}
       data-item-count={String(p.itemCount)}
       data-viewer-user-id={p.viewer_user_id ?? ''}
@@ -92,6 +112,9 @@ beforeEach(() => {
     user: { email: 'viewer@test.local' },
   } as never);
   vi.mocked(getUserIdByEmail).mockResolvedValue({ id: 'u-viewer' } as never);
+  vi.mocked(getSpoilerBaseline).mockResolvedValue(PROTECTED_TIER);
+  vi.mocked(viewerIsProfileMember).mockResolvedValue(false);
+  vi.mocked(getListClaimedCount).mockResolvedValue({ claimedItemCount: 4 });
   vi.mocked(getUserIdentity).mockImplementation(async (userId: string) => ({
     userId,
     selfProfile: makeProfile(`self-${userId}`, userId),
@@ -109,7 +132,7 @@ beforeEach(() => {
 
 describe('ListHeroSection', () => {
   describe('Projection', () => {
-    it('OwnerSpoilersPreview_RendersListDetailsWithDerivedProps', async () => {
+    it('OwnerPreview_RendersListDetailsWithDerivedProps', async () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
         profile_id: 'self-u-viewer',
@@ -117,12 +140,11 @@ describe('ListHeroSection', () => {
         item_count: 3,
         profile: { id: 'self-u-viewer', name: 'Owner' },
       } as never);
-      render(
-        await ListHeroSection(props('l1', { spoilers: '1', preview: 'viewer' }))
-      );
+      render(await ListHeroSection(props('l1', { preview: 'viewer' })));
       const d = screen.getByTestId('list-details');
       expect(d).toHaveAttribute('data-is-owner', 'true');
-      expect(d).toHaveAttribute('data-show-spoilers', 'true');
+      // Preview renders claim information at the OWNER's own resolved tier.
+      expect(d).toHaveAttribute('data-tier', 'surprise');
       expect(d).toHaveAttribute('data-preview-mode', 'true');
       expect(d).toHaveAttribute('data-item-count', '3');
       expect(d).toHaveAttribute('data-viewer-user-id', 'u-viewer');
@@ -133,7 +155,7 @@ describe('ListHeroSection', () => {
       render(await ListHeroSection(props('l1')));
       const d = screen.getByTestId('list-details');
       expect(d).toHaveAttribute('data-is-owner', 'false');
-      expect(d).toHaveAttribute('data-show-spoilers', 'false');
+      expect(d).toHaveAttribute('data-tier', 'surprise');
       expect(d).toHaveAttribute('data-preview-mode', 'false');
       expect(d).toHaveAttribute('data-item-count', '2');
       expect(d).toHaveAttribute('data-viewer-user-id', 'u-viewer');
@@ -184,6 +206,59 @@ describe('ListHeroSection', () => {
       } as never);
       render(await ListHeroSection(props('l1')));
       expect(screen.getByText(/please login to view it/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('SpoilerProjection', () => {
+    it('SurpriseTier_OmitsClaimedCountAndSkipsTheAggregateQuery', async () => {
+      render(await ListHeroSection(props('l1')));
+      expect(screen.getByTestId('list-details')).toHaveAttribute(
+        'data-claimed-count',
+        ''
+      );
+      expect(getListClaimedCount).not.toHaveBeenCalled();
+    });
+
+    it('ProgressTier_FetchesAndPassesTheClaimedCount', async () => {
+      vi.mocked(getSpoilerBaseline).mockResolvedValue('progress');
+      vi.mocked(getListClaimedCount).mockResolvedValue({ claimedItemCount: 7 });
+      render(await ListHeroSection(props('l1')));
+      expect(getListClaimedCount).toHaveBeenCalledWith('l1');
+      expect(screen.getByTestId('list-details')).toHaveAttribute(
+        'data-claimed-count',
+        '7'
+      );
+    });
+
+    it('Member_PassesViewerIsMemberTrue', async () => {
+      vi.mocked(viewerIsProfileMember).mockResolvedValue(true);
+      render(await ListHeroSection(props('l1')));
+      expect(screen.getByTestId('list-details')).toHaveAttribute(
+        'data-viewer-is-member',
+        'true'
+      );
+    });
+
+    it('NonMember_PassesViewerIsMemberFalse', async () => {
+      render(await ListHeroSection(props('l1')));
+      expect(screen.getByTestId('list-details')).toHaveAttribute(
+        'data-viewer-is-member',
+        'false'
+      );
+    });
+
+    // The `spoiler` param is a delta from the viewer's own baseline, so it
+    // raises the resolved tier above the stored surprise default.
+    it('SpoilerParamAboveBaseline_ResolvesToTheParamTier', async () => {
+      render(await ListHeroSection(props('l1', { spoiler: 'claims' })));
+      expect(screen.getByTestId('list-details')).toHaveAttribute(
+        'data-tier',
+        'claims'
+      );
+      expect(screen.getByTestId('list-details')).toHaveAttribute(
+        'data-baseline',
+        'surprise'
+      );
     });
   });
 

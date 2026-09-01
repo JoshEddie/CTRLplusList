@@ -35,7 +35,7 @@ function renderBanners(
     showPurchased: false,
     myClaims: [],
     isOwner: false,
-    showSpoilerInfo: false,
+    tier: 'identity',
     claims: [],
     claimSummary: '',
     counterText: '1/3 claimed',
@@ -98,37 +98,67 @@ describe('ClaimBanners', () => {
     expect(screen.queryByText('You claimed this')).not.toBeInTheDocument();
   });
 
+  // The owner spoiler banner is computed internally: it shows only when the
+  // viewer is the owner, the item carries claims, and the tier is `claims` or
+  // above. The claiming parties are named only at `identity`.
   describe('Spoiler', () => {
-    it('TwoClaims_RendersInformationalRowPerClaim-NoRemoveAffordance', () => {
+    describe('AtIdentity', () => {
+      const ownerAtIdentity = { isOwner: true, tier: 'identity' as const };
+
+      it('TwoClaims_RendersInformationalRowPerClaim-NoRemoveAffordance', () => {
+        renderBanners({ ...ownerAtIdentity, claims: [samClaim, joClaim] });
+        expect(screen.getByText('Sam')).toBeInTheDocument();
+        expect(screen.getByText('Jo')).toBeInTheDocument();
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+      });
+
+      it('AttributedClaim_RendersAddedByClaimerFirstName', () => {
+        renderBanners({
+          ...ownerAtIdentity,
+          claims: [{ ...grandmaClaim, claimerFirstName: 'Vicky' }],
+        });
+        expect(
+          screen.getByText('Grandma — added by Vicky')
+        ).toBeInTheDocument();
+      });
+
+      it('SelfClaim_LabelsRowYou', () => {
+        renderBanners({ ...ownerAtIdentity, claims: [selfClaim] });
+        expect(screen.getByText('You')).toBeInTheDocument();
+      });
+
+      it('CounterText_RendersSpoilersPrefix', () => {
+        renderBanners({ ...ownerAtIdentity, claims: [samClaim] });
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'Spoilers: 1/3 claimed'
+        );
+      });
+    });
+
+    it('OwnerAtClaims_RendersCounterWithoutNamingParties', () => {
       renderBanners({
-        showSpoilerInfo: true,
+        isOwner: true,
+        tier: 'claims',
         claims: [samClaim, joClaim],
       });
-      expect(screen.getByText('Sam')).toBeInTheDocument();
-      expect(screen.getByText('Jo')).toBeInTheDocument();
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    });
-
-    it('AttributedClaim_RendersAddedByClaimerFirstName', () => {
-      renderBanners({
-        showSpoilerInfo: true,
-        claims: [{ ...grandmaClaim, claimerFirstName: 'Vicky' }],
-      });
-      expect(
-        screen.getByText('Grandma — added by Vicky')
-      ).toBeInTheDocument();
-    });
-
-    it('SelfClaim_LabelsRowYou', () => {
-      renderBanners({ showSpoilerInfo: true, claims: [selfClaim] });
-      expect(screen.getByText('You')).toBeInTheDocument();
-    });
-
-    it('CounterText_RendersSpoilersPrefix', () => {
-      renderBanners({ showSpoilerInfo: true, claims: [samClaim] });
       expect(screen.getByRole('status')).toHaveTextContent(
         'Spoilers: 1/3 claimed'
       );
+      expect(screen.queryByText('Sam')).not.toBeInTheDocument();
+      expect(screen.queryByText('Jo')).not.toBeInTheDocument();
+    });
+
+    it.each(['surprise', 'progress'] as const)(
+      'OwnerBelowClaimsAt%s_RendersNoSpoilerBanner',
+      (tier) => {
+        renderBanners({ isOwner: true, tier, claims: [samClaim, joClaim] });
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      }
+    );
+
+    it('NonOwnerAtIdentity_RendersNoSpoilerBanner', () => {
+      renderBanners({ isOwner: false, tier: 'identity', claims: [samClaim] });
+      expect(screen.queryByText(/Spoilers:/)).not.toBeInTheDocument();
     });
   });
 
@@ -136,4 +166,19 @@ describe('ClaimBanners', () => {
     renderBanners();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
+});
+
+// A claim the viewer holds is disclosed in full at every level, so it always
+// carries a name — except on an optimistic row assembled before the server
+// answers, where the fallback keeps the label total.
+it('AttributedOwnClaimWithoutAName_LabelsItSomeone', () => {
+  renderBanners({
+    myClaims: [
+      { id: 'p9', by: 'other', claimedByViewer: true },
+    ],
+  });
+
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'You claimed this for Someone'
+  );
 });

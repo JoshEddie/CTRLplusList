@@ -1,11 +1,40 @@
 import { priceAmount } from '@/lib/storeValidity';
-import { PurchaseView } from '@/lib/types';
+import { atLeast } from '@/lib/spoilers';
+import { PurchaseView, SpoilerTier } from '@/lib/types';
 
+// A claim carrying no name is one the viewer's tier withholds the identity of;
+// the card never renders such a row, but the fallback keeps the label total.
 export function claimLabel(claim: PurchaseView): string {
-  const name = claim.by === 'self' ? 'You' : claim.firstName;
+  const name = claim.by === 'self' ? 'You' : (claim.firstName ?? 'Someone');
   return claim.claimerFirstName
     ? `${name} — added by ${claim.claimerFirstName}`
     : name;
+}
+
+// The owner-side claim pill: never below `claims`, and from `claims` up whenever
+// the item carries claims. One home so the card's `purchased` styling and the
+// banner itself agree on when it shows.
+export function showsSpoilerBanner(
+  isOwner: boolean,
+  tier: SpoilerTier,
+  hasAnyClaim: boolean
+): boolean {
+  return isOwner && hasAnyClaim && atLeast(tier, 'claims');
+}
+
+// The card's "Claimed by …" line. Below `identity` no other party's claim
+// carries a name, so the line reports how many rather than who.
+export function claimSummaryOf(
+  claims: PurchaseView[],
+  tier: SpoilerTier
+): string {
+  if (claims.length === 0) return '';
+  if (tier !== 'identity') {
+    return claims.length === 1 ? '1 person' : `${claims.length} people`;
+  }
+  return claims
+    .map((claim) => (claim.by === 'self' ? 'You' : (claim.firstName ?? 'Someone')))
+    .join(', ');
 }
 
 export function firstToken(name: string): string {

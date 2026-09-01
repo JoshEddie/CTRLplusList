@@ -2,7 +2,6 @@
 
 import { setListVisibility } from '@/lib/data/list.actions';
 import { Menu, MenuItemRadio } from '@/app/ui/components/menu';
-import { PopoverTrigger } from '@/app/ui/components/popover-trigger';
 import { type ListVisibility } from '@/lib/visibility';
 import { useRouter } from 'next/navigation';
 import { useRef, useState, useTransition } from 'react';
@@ -47,18 +46,24 @@ export default function VisibilityPicker({
 
   return (
     <div className="visibility-picker">
-      <PopoverTrigger
+      <button
         ref={triggerRef}
-        tone="on-dark"
-        icon={currentRow.icon}
-        label={currentRow.label}
-        active={open}
+        type="button"
+        className="hero-tile visibility-tile"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Visibility: ${currentRow.label} — ${currentRow.description}. Click to change.`}
-      />
+      >
+        <span className="hero-tile-eyebrow">Visibility</span>
+        <span className="hero-tile-value">
+          {currentRow.icon} {currentRow.label}
+          <span className="hero-tile-caret" aria-hidden>
+            ▾
+          </span>
+        </span>
+      </button>
       <Menu
         open={open}
         onClose={() => setOpen(false)}

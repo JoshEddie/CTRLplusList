@@ -1,5 +1,5 @@
 import { writableMembership } from '@/lib/data/profile.gate';
-import { getLiveInvite } from '@/lib/data/profile.members';
+import { getLiveInvite, getSpoilerDefault } from '@/lib/data/profile.members';
 import { authedUserId } from '@/lib/data/user.session';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -37,5 +37,16 @@ export default async function InvitePage({
   if (userId && (await writableMembership(userId, invite.id)))
     redirect(`/altvatar/${invite.id}`);
 
-  return <InviteCard token={token} invite={invite} signedIn={!!userId} />;
+  // Read at open, not at mint: an owner who changes the default after sending
+  // the link offers the changed values to whoever opens it afterwards.
+  const offered = await getSpoilerDefault(invite.id);
+
+  return (
+    <InviteCard
+      token={token}
+      invite={invite}
+      signedIn={!!userId}
+      offeredBaseline={offered}
+    />
+  );
 }

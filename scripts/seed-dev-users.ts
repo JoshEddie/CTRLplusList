@@ -22,10 +22,12 @@
  * --------------------------------------------------------------------------
  */
 import 'dotenv/config';
-import { inArray, sql } from 'drizzle-orm';
+import { inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { db } from '../db';
 import {
   ACCENT_PREFERENCE_ID,
+  SPOILER_PREFERENCE_ROWS,
+  SPOILER_TIER_PREFERENCE_ID,
   item_images,
   item_stores,
   items,
@@ -52,6 +54,7 @@ import type {
   AltvatarStyleId,
   Selections,
 } from '../lib/altvatar/types';
+import type { SpoilerTier } from '../lib/types';
 import { VISIBILITY, type ListVisibility } from '../lib/visibility';
 
 if (process.env.NODE_ENV === 'production') {
@@ -144,6 +147,34 @@ const MANAGED_PROFILE_ID = 'dev-profile-managed';
 // consumed by the first flow that acts as it — a manager may create lists and
 // items but may delete neither, so nothing it writes can be cleaned up.
 const WORKSHOP_PROFILE_ID = 'dev-profile-workshop';
+
+// A fourth seat, whose only fixture is a claim-visibility baseline an owner
+// writes. Workshop cannot serve: `roles-manager.auth.spec` reads its list in a
+// parallel worker and depends on the viewer's baseline staying at `nothing` —
+// the reorder layout is one of the two things the item level decides — so a
+// flow that raises it there races that spec for the window it is raised.
+const VISIBILITY_PROFILE_ID = 'dev-profile-visibility';
+
+// Member baseline tiers, now account-keyed `profile_preferences` rows rather
+// than columns on the membership. Only seats that must differ from the resolved
+// default carry a row: an absent row resolves to `surprise` (PROTECTED_TIER), so
+// every self membership and every fully-protected fixture needs none. The owned
+// profile is the identity seat — the viewer sits at `identity` so the
+// namable-recorder rendering is reachable in local mode by switching to it, and
+// a second member is pinned explicitly to `surprise` so the set-to-protected row
+// (distinct from an absent one) is itself a fixture.
+const MEMBER_SPOILER_TIERS: {
+  profile_id: string;
+  user_id: string;
+  tier: SpoilerTier;
+}[] = [
+  { profile_id: OWNED_PROFILE_ID, user_id: VIEWER_ID, tier: 'identity' },
+  {
+    profile_id: OWNED_PROFILE_ID,
+    user_id: friendId('alice'),
+    tier: 'surprise',
+  },
+];
 
 // Accents and Altvatars for a slice of the roster, so every branch of the
 // avatar disc is on screen at once: art on an accent, initials on an accent,
@@ -645,6 +676,18 @@ const seedLists: SeedList[] = [
     visibility: VISIBILITY.FOLLOWERS,
     itemNames: itemsForList('dev-list-workshop-wishlist'),
   },
+  // The claim-visibility seat's content, so a baseline written by its owner has
+  // something whose disclosure observably flips.
+  {
+    id: 'dev-list-visibility-wishlist',
+    name: 'Visibility Profile Wishlist',
+    subtitle: 'Seeded by the owner',
+    occasion: 'Birthday',
+    user_id: friendId('bob'),
+    profile_id: VISIBILITY_PROFILE_ID,
+    visibility: VISIBILITY.FOLLOWERS,
+    itemNames: itemsForList('dev-list-visibility-wishlist'),
+  },
 ];
 
 type SeedVisit = {
@@ -829,17 +872,17 @@ async function main() {
     });
   console.log(`  users: ${seedUsers.length} upserted`);
 
-  // The preferences catalog. Migration 0013 inserts this row, but the local and
+  // The preferences catalog. Migrations insert these rows, but the local and
   // e2e databases are provisioned by `drizzle-kit push` straight from
   // db/schema.ts, which creates tables and replays no migration data — so
-  // without this the accent write fails its foreign key everywhere but Neon.
+  // without them the accent and spoiler-tier writes fail their foreign key
+  // everywhere but Neon.
   await db
     .insert(preferences)
-    .values({
-      id: ACCENT_PREFERENCE_ID,
-      name: 'Accent color',
-      type: 'text',
-    })
+    .values([
+      { id: ACCENT_PREFERENCE_ID, name: 'Accent color', type: 'text' },
+      ...SPOILER_PREFERENCE_ROWS,
+    ])
     .onConflictDoNothing();
 
   // Profiles: one self-profile per seeded user (the invariant the migration
@@ -854,6 +897,7 @@ async function main() {
       { id: OWNED_PROFILE_ID, name: 'Owned Profile' },
       { id: MANAGED_PROFILE_ID, name: 'Managed Profile' },
       { id: WORKSHOP_PROFILE_ID, name: 'Workshop Profile' },
+      { id: VISIBILITY_PROFILE_ID, name: 'Visibility Profile' },
     ])
     .onConflictDoNothing();
 
@@ -870,10 +914,14 @@ async function main() {
       }))
     )
     .onConflictDoUpdate({
+      // The accent is the profile-wide (null-account) row, so its arbiter is
+      // the partial unique index over (profile, preference) WHERE user_id IS
+      // NULL — the predicate must be restated for Postgres to infer it.
       target: [
         profile_preferences.profile_id,
         profile_preferences.preference_id,
       ],
+      targetWhere: isNull(profile_preferences.user_id),
       set: { value: sql`excluded.value` },
     });
   const avatarRows = await Promise.all(
@@ -923,12 +971,18 @@ async function main() {
   await db
     .insert(profile_members)
     .values([
+      // Every self membership at the fully protected default — an absent tier
+      // row resolves to `surprise`, the state every existing account resolves
+      // to and the one the viewer's own lists render at in local mode.
       ...profiledUsers.map((u) => ({
         user_id: u.id,
         profile_id: selfProfileOf(u.id),
         role: ROLES.self.value,
         last_active_at: LAST_ACTIVE_AT[selfProfileOf(u.id)] ?? null,
       })),
+      // The one seat carrying a raised baseline (written below as a
+      // `profile_preferences` tier row), so both projections are reachable in
+      // local mode by switching profiles rather than by writing.
       {
         user_id: VIEWER_ID,
         profile_id: OWNED_PROFILE_ID,
@@ -969,10 +1023,51 @@ async function main() {
         role: ROLES.owner.value,
         last_active_at: null,
       },
+      // The claim-visibility seat: the viewer is the member whose baseline an
+      // owner writes. No tier row is seeded, so both members resolve to the
+      // fully protected `surprise` — where the flow's first assertion starts.
+      {
+        user_id: VIEWER_ID,
+        profile_id: VISIBILITY_PROFILE_ID,
+        role: ROLES.manager.value,
+        last_active_at: null,
+      },
+      {
+        user_id: friendId('bob'),
+        profile_id: VISIBILITY_PROFILE_ID,
+        role: ROLES.owner.value,
+        last_active_at: null,
+      },
     ])
     .onConflictDoNothing();
   console.log(
-    `  preferences: 1 catalog row inserted-if-absent\n  profiles: ${profiledUsers.length} self + 3 managed inserted-if-absent, profile_members: ${profiledUsers.length + 6} inserted-if-absent (existing rows keep their current values)`
+    `  preferences: 2 catalog rows inserted-if-absent\n  profiles: ${profiledUsers.length} self + 4 managed inserted-if-absent, profile_members: ${profiledUsers.length + 8} inserted-if-absent (existing rows keep their current values)`
+  );
+
+  // Member baseline tiers: account-keyed rows on the identity seat. Upserted so
+  // a re-run after editing MEMBER_SPOILER_TIERS repaints the value. Targets the
+  // partial member index (WHERE user_id IS NOT NULL), matching writeMemberTier.
+  await db
+    .insert(profile_preferences)
+    .values(
+      MEMBER_SPOILER_TIERS.map((m) => ({
+        profile_id: m.profile_id,
+        user_id: m.user_id,
+        preference_id: SPOILER_TIER_PREFERENCE_ID,
+        value: m.tier,
+      }))
+    )
+    .onConflictDoUpdate({
+      target: [
+        profile_preferences.profile_id,
+        profile_preferences.user_id,
+        profile_preferences.preference_id,
+      ],
+      targetWhere: isNotNull(profile_preferences.user_id),
+      set: { value: sql`excluded.value` },
+    });
+  console.log(
+    `  profile_preferences: ${MEMBER_SPOILER_TIERS.length} member spoiler tiers upserted`
   );
 
   const now = Date.now();
@@ -1046,6 +1141,13 @@ async function main() {
       if (idx === 0) quantity_limit = rotation[0];
       else if (idx === 1) quantity_limit = rotation[1];
       else if (idx === lastIdx) quantity_limit = rotation[2];
+      // The claim-visibility seat's first item is pinned to a single claim so
+      // its seeded claim fills it: what a raised baseline discloses on a
+      // non-owner's card is the fully-claimed treatment, and the rotation
+      // would otherwise decide that per run position.
+      if (list.id === 'dev-list-visibility-wishlist' && idx === 0) {
+        quantity_limit = 1;
+      }
       // Every third item on every fourth list seeds imageless so the lazy
       // placeholder-mint path (empty container -> generated art on first view)
       // is reachable straight from the seed.
@@ -1288,6 +1390,46 @@ async function main() {
       item_id: 'dev-list-viewer-birthday-item-2',
       profile_id: selfProfileOf(VIEWER_ID),
       claimed_by_profile_id: selfProfileOf(VIEWER_ID),
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    // The owned profile's list is the seat whose baseline is `identity`, so it
+    // carries one claim of each shape the levels render differently: another
+    // party's, the viewer's own, and one recorded on someone's behalf.
+    {
+      id: 'dev-purchase-owned-other',
+      item_id: 'dev-list-owned-wishlist-item-1',
+      profile_id: selfProfileOf(friendId('alice')),
+      claimed_by_profile_id: selfProfileOf(friendId('alice')),
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    {
+      id: 'dev-purchase-owned-mine',
+      item_id: 'dev-list-owned-wishlist-item-2',
+      profile_id: selfProfileOf(VIEWER_ID),
+      claimed_by_profile_id: selfProfileOf(VIEWER_ID),
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    {
+      // Proxy-recorded, so the recorder is namable at `identity` and at no
+      // level below it.
+      id: 'dev-purchase-owned-proxy',
+      item_id: 'dev-list-owned-wishlist-item-3',
+      profile_id: selfProfileOf(friendId('bob')),
+      claimed_by_profile_id: selfProfileOf(friendId('alice')),
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    {
+      // Visibility Profile's list carries one deterministic claim so the
+      // owner-sets-a-member's-baseline e2e flow has something whose disclosure
+      // flips with the baseline, rather than depending on the fan-out.
+      id: 'dev-purchase-visibility-other',
+      item_id: 'dev-list-visibility-wishlist-item-1',
+      profile_id: selfProfileOf(friendId('alice')),
+      claimed_by_profile_id: selfProfileOf(friendId('alice')),
       guest_name: null,
       purchased_at: ATTRIBUTION_EPOCH,
     },

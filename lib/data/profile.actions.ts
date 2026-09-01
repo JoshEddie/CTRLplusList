@@ -34,7 +34,11 @@ import {
 } from '@/lib/data/user.session';
 import { type ActionResponse } from '@/lib/types';
 import { writeAltvatar } from '@/lib/data/profileAvatar.write';
-import { writeAccent } from '@/lib/data/profilePreference.write';
+import {
+  writeAccent,
+  writeMemberTier,
+} from '@/lib/data/profilePreference.write';
+import { PROTECTED_TIER } from '@/lib/spoilers';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -287,9 +291,12 @@ export async function createProfile(
       );
 
     // Reports ignored on purpose: the profile exists, and each of these
-    // failing leaves it rendering the fallback its own capability defines.
+    // failing leaves it rendering the fallback its own capability defines. The
+    // creator's tier is written seeded from full protection — a profile being
+    // born carries no default yet — and its absence would resolve there anyway.
     await writeAccent(id, accent);
     await writeAltvatar(id, altvatar);
+    await writeMemberTier(id, userId, PROTECTED_TIER);
 
     updateTags(cacheTags.profilesOfUser(userId));
 

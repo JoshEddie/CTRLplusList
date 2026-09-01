@@ -120,3 +120,82 @@ describe('ClaimsList', () => {
     });
   });
 });
+
+/**
+ * Pins `claim-attribution` — "Where the viewer's resolved item level is below
+ * `identity`, the claims list SHALL render the viewer's own removable rows in
+ * full and SHALL collapse every other party's claims into a count."
+ */
+describe('BelowIdentity', () => {
+  const own = claim({
+    id: 'mine',
+    by: 'self',
+    firstName: 'Vic',
+    claimedByViewer: true,
+    purchasedAt: new Date('2026-08-01T00:00:00Z'),
+  });
+  const others = [
+    claim({ id: 'o1', firstName: 'Grace', claimerFirstName: 'Ida' }),
+    claim({ id: 'o2', firstName: 'Sam' }),
+  ];
+
+  const renderBelowIdentity = () =>
+    render(
+      <ClaimsList
+        claims={[own, ...others]}
+        canRemove={(c) => c.by === 'self' || c.claimedByViewer}
+        tier="claims"
+        onRemoveClaim={vi.fn()}
+      />
+    );
+
+  it('ViewerOwnClaim_RendersInFullWithItsRemovalAction', () => {
+    renderBelowIdentity();
+
+    expect(screen.getByText('Vic (you)')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Remove your claim' })
+    ).toBeInTheDocument();
+  });
+
+  it('OtherPartiesClaims_CollapseIntoACountCarryingNoIdentity', () => {
+    renderBelowIdentity();
+
+    expect(screen.getByText('2 other claims')).toBeInTheDocument();
+    expect(screen.queryByText('Grace')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sam')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Added by Ida/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Remove Grace/ })
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(1);
+  });
+
+  it('OneOtherPartyClaim_ReadsSingular', () => {
+    render(
+      <ClaimsList
+        claims={[own, others[0]]}
+        canRemove={(c) => c.by === 'self'}
+        tier="claims"
+        onRemoveClaim={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('1 other claim')).toBeInTheDocument();
+  });
+
+  it('LevelIdentity_RendersEveryRowInFullWithNoCount', () => {
+    render(
+      <ClaimsList
+        claims={[own, ...others]}
+        canRemove={(c) => c.by === 'self'}
+        tier="identity"
+        onRemoveClaim={vi.fn()}
+      />
+    );
+
+    expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    expect(screen.getByText('Grace')).toBeInTheDocument();
+    expect(screen.queryByText(/other claim/)).not.toBeInTheDocument();
+  });
+});

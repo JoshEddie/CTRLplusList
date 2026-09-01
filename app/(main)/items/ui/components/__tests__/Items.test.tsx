@@ -14,7 +14,7 @@ interface ItemStubProps {
   item: ItemDisplay;
   actor?: ProfileMembershipView;
   user_name?: string | null;
-  showSpoilers?: boolean;
+  tier?: string;
   showArchiveAction?: boolean;
   archivedView?: boolean;
 }
@@ -24,7 +24,7 @@ vi.mock('../Item', () => ({
     item,
     actor,
     user_name,
-    showSpoilers,
+    tier,
     showArchiveAction,
     archivedView,
   }: ItemStubProps) => (
@@ -34,7 +34,7 @@ vi.mock('../Item', () => ({
       data-actor-id={actor?.id ?? ''}
       data-actor-role={actor?.role.value ?? ''}
       data-user-name={user_name ?? ''}
-      data-show-spoilers={String(showSpoilers)}
+      data-tier={String(tier)}
       data-show-archive={String(showArchiveAction)}
       data-archived-view={String(archivedView)}
     />
@@ -94,7 +94,7 @@ describe('Items', () => {
           items={[makeItem('a')]}
           actor={makeProfile('viewer', 'viewer', ROLES.manager)}
           user_name="Vicky"
-          showSpoilers
+          tier="identity"
           showArchiveAction
           archivedView
         />
@@ -103,7 +103,7 @@ describe('Items', () => {
       expect(stub).toHaveAttribute('data-actor-id', 'viewer');
       expect(stub).toHaveAttribute('data-actor-role', ROLES.manager.value);
       expect(stub).toHaveAttribute('data-user-name', 'Vicky');
-      expect(stub).toHaveAttribute('data-show-spoilers', 'true');
+      expect(stub).toHaveAttribute('data-tier', 'identity');
       expect(stub).toHaveAttribute('data-show-archive', 'true');
       expect(stub).toHaveAttribute('data-archived-view', 'true');
     });

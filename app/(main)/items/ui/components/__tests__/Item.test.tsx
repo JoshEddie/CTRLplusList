@@ -73,7 +73,8 @@ vi.mock('../ItemCard', () => ({
       data-counter={p.counterText as string}
       data-is-owner={String(p.isOwner)}
       data-viewer-claimed={String(p.viewerClaimed)}
-      data-show-owner-claim={String(p.showOwnerClaimAction)}
+      data-has-any-claim={String(p.hasAnyClaim)}
+      data-tier={String(p.tier)}
       data-show-buy-claim={String(p.showBuyClaim)}
     >
       <button type="button" onClick={p.onPurchaseClick as () => void}>
@@ -146,7 +147,7 @@ vi.mock('../PurchaseModalSlot', () => ({
       data-claims={(p.claims as { id: string }[]).map((c) => c.id).join(',')}
       data-viewer-is-purchaser={String(p.viewerIsPurchaser)}
       data-is-owner={String(p.isOwner)}
-      data-show-spoilers={String(p.showSpoilers)}
+      data-tier={String(p.tier)}
       data-item-name={String((p.item as { name?: string | null })?.name ?? '')}
     >
       <button type="button" onClick={p.onSelfClaim as () => void}>
@@ -192,7 +193,7 @@ vi.mock('../PurchaseModalSlot', () => ({
         type="button"
         onClick={() =>
           (p.onRemoveClaim as (c: unknown) => void)(
-            (p.ownerClaims as unknown[])[0]
+            (p.claims as unknown[])[0]
           )
         }
       >
@@ -304,6 +305,15 @@ describe('Item', () => {
       expect(card()).toHaveAttribute('data-show-counter', 'true');
     });
 
+    it('BelowClaims_HidesCounter', () => {
+      renderItem({
+        item: { profile_id: OWNER, quantity_limit: null },
+        actor: actorOf('viewer'),
+        tier: 'surprise',
+      });
+      expect(card()).toHaveAttribute('data-show-counter', 'false');
+    });
+
     it('QuantityLimitOne_HidesCounter', () => {
       renderItem({
         item: { profile_id: OWNER, quantity_limit: 1 },
@@ -313,7 +323,7 @@ describe('Item', () => {
       expect(card()).toHaveAttribute('data-counter', '0/1 claimed');
     });
 
-    it('OwnerWithClaims_ForwardsSpoilerState', () => {
+    it('OwnerWithClaimsAtIdentity_ForwardsSpoilerPillTrue', () => {
       renderItem({
         actor: actorOf(OWNER),
         item: {
@@ -396,7 +406,7 @@ describe('Item', () => {
     });
   });
 
-  describe('OwnerClaimGate', () => {
+  describe('OwnerClaimAffordance', () => {
     const ownedWithRoom = {
       actor: actorOf(OWNER),
       item: {
@@ -408,38 +418,37 @@ describe('Item', () => {
       },
     };
 
-    it('OwnerSpoilersWithRemainingQuantity_ForwardsShowOwnerClaimTrue', () => {
-      renderItem({ ...ownedWithRoom, showSpoilers: true });
-      expect(card()).toHaveAttribute('data-show-owner-claim', 'true');
+    it('OwnerWithClaims_ForwardsHasAnyClaimTrueAndTheTier', () => {
+      renderItem({ ...ownedWithRoom, tier: 'claims' });
+      expect(card()).toHaveAttribute('data-has-any-claim', 'true');
+      expect(card()).toHaveAttribute('data-tier', 'claims');
     });
 
-    it('OwnerWithoutSpoilers_ForwardsShowOwnerClaimFalse', () => {
-      renderItem(ownedWithRoom);
-      expect(card()).toHaveAttribute('data-show-owner-claim', 'false');
+    it('OwnerBelowClaims_ForwardsTheTierSoTheMatrixHidesClaimState', () => {
+      renderItem({ ...ownedWithRoom, tier: 'surprise' });
+      expect(card()).toHaveAttribute('data-tier', 'surprise');
     });
 
-    it('OwnerSpoilersFullyClaimed_ForwardsShowOwnerClaimFalse', () => {
+    // A claim the viewer holds is no surprise to them, so it reaches the
+    // action matrix on their own list too — the tier governs other parties'.
+    it('OwnerHoldingTheirOwnClaim_ForwardsViewerClaimedTrue', () => {
       renderItem({
         actor: actorOf(OWNER),
-        showSpoilers: true,
+        tier: 'surprise',
         item: {
           profile_id: OWNER,
-          quantity_limit: 1,
+          quantity_limit: 3,
           purchases: [
-            { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
+            { id: 'po', by: 'self', firstName: 'You', claimedByViewer: true },
           ],
         },
       });
-      expect(card()).toHaveAttribute('data-show-owner-claim', 'false');
+      expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
     });
 
-    it('ViewerSpoilers_ForwardsShowOwnerClaimFalse', () => {
-      renderItem({
-        item: { profile_id: OWNER },
-        actor: actorOf('viewer'),
-        showSpoilers: true,
-      });
-      expect(card()).toHaveAttribute('data-show-owner-claim', 'false');
+    it('TierAbsent_DefaultsToIdentity', () => {
+      renderItem({ item: { profile_id: OWNER }, actor: actorOf('viewer') });
+      expect(card()).toHaveAttribute('data-tier', 'identity');
     });
   });
 
@@ -978,7 +987,6 @@ describe('Item', () => {
             ],
           },
           actor: actorOf(OWNER),
-          showSpoilers: true,
         },
         'purchaseItem=i1'
       );
@@ -986,12 +994,112 @@ describe('Item', () => {
     });
   });
 
+  /**
+   * Pins `claim-attribution` — "A reveal from the fully protected state SHALL
+   * be confirmed before the purchase modal opens". The confirmation intercepts
+   * the affordance, not the modal, so a pasted deep link still opens directly.
+   */
+  describe('RevealConfirmation', () => {
+    const protectedViewer = {
+      tier: 'surprise' as const,
+      actor: actorOf('viewer'),
+      item: { profile_id: OWNER },
+    };
+
+    const confirmation = () =>
+      screen.queryByText('This could spoil a surprise');
+
+    it.each(['surprise', 'progress'] as const)(
+      'AddClaimBelowClaimsAt%s_PresentsTheConfirmationWithoutOpeningTheModal',
+      async (tier) => {
+        const user = userEvent.setup();
+        renderItem({ ...protectedViewer, tier });
+        await user.click(
+          screen.getByRole('button', { name: 'card-add-claim' })
+        );
+
+        expect(confirmation()).toBeInTheDocument();
+        expect(router.push).not.toHaveBeenCalled();
+        expect(screen.queryByTestId('modal-slot')).not.toBeInTheDocument();
+      }
+    );
+
+    it.each(['surprise', 'progress'] as const)(
+      'ManageClaimBelowClaimsAt%s_IsAlsoIntercepted',
+      async (tier) => {
+        const user = userEvent.setup();
+        renderItem({ ...protectedViewer, tier });
+        await user.click(screen.getByRole('button', { name: 'card-claim' }));
+
+        expect(confirmation()).toBeInTheDocument();
+        expect(router.push).not.toHaveBeenCalled();
+      }
+    );
+
+    it('Confirm_WritesThePurchaseParamsAndDismissesTheDialog', async () => {
+      const user = userEvent.setup();
+      renderItem(protectedViewer);
+      await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
+      await user.click(screen.getByRole('button', { name: 'Show me' }));
+
+      expect(router.push).toHaveBeenCalledWith(
+        '/lists/l1?purchaseItem=i1&purchaseView=claim'
+      );
+      expect(confirmation()).not.toBeInTheDocument();
+    });
+
+    it('Cancel_LeavesThePageUnchangedAndDisclosesNothing', async () => {
+      const user = userEvent.setup();
+      renderItem(protectedViewer);
+      await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(confirmation()).not.toBeInTheDocument();
+      expect(router.push).not.toHaveBeenCalled();
+      expect(card()).toHaveAttribute('data-tier', 'surprise');
+    });
+
+    it('SecondActivation_PresentsTheConfirmationAgain', async () => {
+      const user = userEvent.setup();
+      renderItem(protectedViewer);
+      await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
+      await user.click(screen.getByRole('button', { name: 'Show me' }));
+      await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
+
+      expect(confirmation()).toBeInTheDocument();
+    });
+
+    it.each(['claims', 'identity'] as const)(
+      'AddClaimAt%s_OpensTheModalDirectly',
+      async (tier) => {
+        const user = userEvent.setup();
+        renderItem({ ...protectedViewer, tier });
+        await user.click(
+          screen.getByRole('button', { name: 'card-add-claim' })
+        );
+
+        expect(confirmation()).not.toBeInTheDocument();
+        expect(router.push).toHaveBeenCalledWith(
+          '/lists/l1?purchaseItem=i1&purchaseView=claim'
+        );
+      }
+    );
+
+    // A URL the viewer pasted is a deliberate act, which is the line the ADR
+    // draws: the interception is on the affordance, not on the modal.
+    it('DeepLinkBelowClaims_MountsTheModalWithNoConfirmation', () => {
+      renderItem(protectedViewer, 'purchaseItem=i1');
+
+      expect(screen.getByTestId('modal-slot')).toBeInTheDocument();
+      expect(confirmation()).not.toBeInTheDocument();
+    });
+  });
+
   describe('OwnerMasterUnclaim', () => {
-    // Owner master unclaim is dispatched from the modal's claims list (not the
-    // spoiler banner); the modal carries `ownerClaims` only when spoilers are on.
+    // Owner master unclaim is dispatched from the modal's claims list, not the
+    // spoiler banner. The claims it lists are what the resolved level admits.
     const ownerWithClaim = {
       actor: actorOf(OWNER),
-      showSpoilers: true,
       item: {
         profile_id: OWNER,
         quantity_limit: 3,

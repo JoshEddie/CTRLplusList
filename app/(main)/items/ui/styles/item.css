@@ -203,9 +203,9 @@
   margin-top: 2px;
 }
 
-/* Owner spoiler banner — same green footer treatment as the viewer's
+/* Owner-side claim banner — same green footer treatment as the viewer's
    claimed-by banner; the `<strong>Spoilers:</strong>` prefix tells the
-   owner the row is only revealed because they have spoilers on. */
+   owner the row is only revealed at item level `badge` or above. */
 .purchased-banner--spoiler strong {
   font-weight: 700;
   margin-right: 2px;
@@ -293,16 +293,20 @@
   gap: 8px;
   align-items: center;
   justify-content: center;
-  /* Large >900px: single row */
-  grid-template-columns: 1fr repeat(5, min-content);
-  grid-template-areas: 'search sort purchases stores price view';
+  /* Large >900px: single row. `spoilers` leads (the library's claim toggle,
+     left of search); it is empty on a list, where the control is the hero tile. */
+  grid-template-columns: min-content 1fr repeat(6, min-content);
+  grid-template-areas: 'spoilers search sort purchases stores price claims view';
 }
 
 .hide-grid-toggle .items-toolbar-row {
-  grid-template-columns: 1fr repeat(4, min-content);
-  grid-template-areas: 'search sort purchases stores price';
+  grid-template-columns: min-content 1fr repeat(5, min-content);
+  grid-template-areas: 'spoilers search sort purchases stores price claims';
 }
 
+.items-toolbar-cell--spoilers {
+  grid-area: spoilers;
+}
 .items-toolbar-cell--search {
   grid-area: search;
 }
@@ -317,6 +321,9 @@
 }
 .items-toolbar-cell--price {
   grid-area: price;
+}
+.items-toolbar-cell--claims {
+  grid-area: claims;
 }
 .items-toolbar-cell--view {
   grid-area: view;
@@ -369,16 +376,17 @@
 /* Medium 600–900px: 8-col grid so the 4 filters are equal width */
 @media (max-width: 900px) {
   .items-toolbar-row {
-    grid-template-columns: repeat(11, 1fr);
+    grid-template-columns: min-content repeat(11, 1fr);
     grid-template-areas:
-      'search search search search search search search search search view view'
-      'sort sort sort purchases purchases purchases purchases stores stores price price';
+      'spoilers search search search search search search search search search view view'
+      'spoilers sort sort sort purchases purchases purchases stores stores price price claims';
   }
 
   .hide-grid-toggle .items-toolbar-row {
+    grid-template-columns: min-content repeat(11, 1fr);
     grid-template-areas:
-      'search search search search search search search search search search search'
-      'sort sort sort purchases purchases purchases purchases stores stores price price';
+      'spoilers search search search search search search search search search search search'
+      'spoilers sort sort sort purchases purchases purchases stores stores price price claims';
   }
 }
 
@@ -394,13 +402,13 @@
    filters render as chips in a sub-row beneath the toolbar. */
 @media (max-width: 599px) {
   .items-toolbar-row {
-    grid-template-columns: 1fr auto;
-    grid-template-areas: 'search filters';
+    grid-template-columns: min-content 1fr auto;
+    grid-template-areas: 'spoilers search filters';
   }
 
   .hide-grid-toggle .items-toolbar-row {
-    grid-template-columns: 1fr auto;
-    grid-template-areas: 'search filters';
+    grid-template-columns: min-content 1fr auto;
+    grid-template-areas: 'spoilers search filters';
   }
 
   /* Hide the SegmentedControl-bearing view-toggle cell on mobile. The
@@ -525,12 +533,14 @@
   .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--sort,
   .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--purchases,
   .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--stores,
-  .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--price {
+  .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--price,
+  .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--claims {
     display: none;
   }
 
   /* The sheet's own affordance for each facet, in place of the popover. */
-  .items-toolbar-filters-group .store-filter-popover {
+  .items-toolbar-filters-group .store-filter-popover,
+  .items-toolbar-filters-group .claims-filter-popover {
     display: none;
   }
 
@@ -554,7 +564,8 @@
   .items-toolbar-filters-group .items-toolbar-cell--sort,
   .items-toolbar-filters-group .items-toolbar-cell--purchases,
   .items-toolbar-filters-group .items-toolbar-cell--stores,
-  .items-toolbar-filters-group .items-toolbar-cell--price {
+  .items-toolbar-filters-group .items-toolbar-cell--price,
+  .items-toolbar-filters-group .items-toolbar-cell--claims {
     grid-area: auto;
     width: 100%;
   }
@@ -621,10 +632,27 @@
    primitive (.popover-trigger in app/ui/components/popover-trigger/). Only
    the popover panel + body remains page-scoped. */
 
-.store-filter-popover {
+.store-filter-popover,
+.claims-filter-popover {
   position: relative;
   display: inline-block;
   width: 100%;
+}
+
+.claims-filter-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: min(300px, 90vw);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background-color: var(--light-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
 .store-filter-panel {
@@ -780,7 +808,8 @@
 /* Row-view outer grid (≥600px):
    col1: image (52px, spans content rows 1-2)
    col2: name (row1) + price line + leader-dots (row2)
-   col3: owner spoiler pill when revealed (spans rows 1-2; col 3 only)
+   col3: owner-side claim pill when the resolved level reveals it
+         (spans rows 1-2; col 3 only)
    col4: ItemActions block (spans rows 1-2; contents owned by item-actions)
    col5: owner-actions kebab (final column, owner only)
    row3: description (spans cols 1/-1, full-width footer line)
@@ -1222,3 +1251,12 @@ body:has(.item-drag-overlay) {
 
 /* Sortable rows inherit the .item-list row layout above; the
    .sortable-item wrapper just adds the drag handle on the left. */
+
+/* Claims collapsed below the identity level: a count, carrying no avatar,
+   name, date, attribution line or removal action. */
+.claims-withheld,
+.claim-reveal-summary {
+  margin: 0;
+  color: var(--muted-text-color);
+  font-size: 0.9rem;
+}

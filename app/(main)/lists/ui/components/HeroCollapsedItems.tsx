@@ -4,9 +4,11 @@ import { setListVisibility } from '@/lib/data/list.actions';
 import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
 import { followUser, unfollowUser } from '@/lib/data/profile.actions';
 import { MenuItem, MenuItemRadio } from '@/app/ui/components/menu';
-import { ListTable } from '@/lib/types';
+import { SPOILER_TIER_ROWS } from '@/app/ui/components/spoiler-tier-rows';
+import { withSpoilerParam } from '@/lib/spoilers';
+import { ListTable, type SpoilerTier } from '@/lib/types';
 import { type ListVisibility } from '@/lib/visibility';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { FaBookmark, FaCheck, FaPlus, FaRegBookmark } from 'react-icons/fa';
 import { MdOutlineIosShare } from 'react-icons/md';
@@ -98,6 +100,50 @@ export function VisibilityMenuItems({
           onSelect={() => apply(row.value)}
         >
           {row.label}
+        </MenuItemRadio>
+      ))}
+    </>
+  );
+}
+
+// ── Spoilers ─────────────────────────────────────────────────────────────
+// The hero Spoilers tile's twin inside the collapsed-hero kebab, rendered only
+// for a viewer resolving a membership. Same four rows the tile shows, writing
+// the same `spoiler` URL param via the shared omit-on-baseline rule, so tile
+// and strip stay in lockstep (`list-hero-collapse`).
+export function SpoilerMenuItems({
+  tier,
+  baseline,
+}: {
+  tier: SpoilerTier;
+  baseline: SpoilerTier;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const apply = (next: SpoilerTier) => {
+    if (next === tier) return;
+    const qs = withSpoilerParam(searchParams?.toString() || '', next, baseline);
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  };
+
+  return (
+    <>
+      {SPOILER_TIER_ROWS.map((row) => (
+        <MenuItemRadio
+          key={row.value}
+          icon={
+            <span
+              className="spoiler-dot"
+              style={{ background: row.tint }}
+              aria-hidden
+            />
+          }
+          checked={row.value === tier}
+          onSelect={() => apply(row.value)}
+        >
+          {row.title}
         </MenuItemRadio>
       ))}
     </>

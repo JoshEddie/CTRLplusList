@@ -8,6 +8,7 @@ import { getItemsByListId } from '@/lib/data/item';
 import { getUserIdentity } from '@/lib/data/profile';
 import { getUserIdByEmail } from '@/lib/data/user';
 import SortItemsContainer from '../SortItemsContainer';
+import { MAXIMAL_TIER, PROTECTED_TIER } from '@/lib/spoilers';
 import { makeProfile } from '@/test/helpers/profile';
 
 mockNextHeaders();
@@ -21,17 +22,24 @@ vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
 }));
 
+vi.mock('../itemsToolbar/ToolbarSlot', () => ({
+  default: (p: { mode: string }) => (
+    <div data-testid="toolbar-slot" data-mode={p.mode} />
+  ),
+}));
 vi.mock('../SortItems', () => ({
   default: (p: {
     items: unknown[];
     actor?: { id: string };
     listId: string;
+    tier?: string;
   }) => (
     <div
       data-testid="sort-items"
       data-item-count={String(p.items.length)}
       data-profile-id={p.actor?.id ?? ''}
       data-list-id={p.listId}
+      data-tier={String(p.tier)}
     />
   ),
 }));
@@ -59,33 +67,41 @@ beforeEach(() => {
 });
 
 describe('SortItemsContainer', () => {
-  it('Authenticated_ReadsViewerScopedAndRendersSortItems', async () => {
+  it('Authenticated_ReadsViewerScopedWithTierAndRendersSortItems', async () => {
     render(
       await SortItemsContainer({
         listId: 'l1',
-        isOwner: true,
-        showSpoilers: true,
+        tier: MAXIMAL_TIER,
       })
     );
     expect(getItemsByListId).toHaveBeenCalledWith('l1', {
       viewerSelfProfileId: 'p1',
-      isOwner: true,
-      showSpoilers: true,
+      tier: MAXIMAL_TIER,
     });
     const sort = screen.getByTestId('sort-items');
     expect(sort).toHaveAttribute('data-item-count', '2');
     expect(sort).toHaveAttribute('data-profile-id', 'p1');
     expect(sort).toHaveAttribute('data-list-id', 'l1');
+    expect(sort).toHaveAttribute('data-tier', MAXIMAL_TIER);
   });
 
-  it('Unauthenticated_ReadsWithoutViewerProfileIdAndOwnerFalse', async () => {
+  it('Render_MountsToolbarAheadOfTheSortableList', async () => {
+    render(await SortItemsContainer({ listId: 'l1', tier: PROTECTED_TIER }));
+    const toolbar = screen.getByTestId('toolbar-slot');
+    expect(toolbar).toHaveAttribute('data-mode', 'list');
+    expect(
+      toolbar.compareDocumentPosition(screen.getByTestId('sort-items')) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('Unauthenticated_ReadsWithoutViewerProfileId', async () => {
     vi.mocked(auth).mockResolvedValue({ user: {} } as never);
-    render(await SortItemsContainer({ listId: 'l1' }));
+    render(await SortItemsContainer({ listId: 'l1', tier: PROTECTED_TIER }));
     expect(getUserIdByEmail).not.toHaveBeenCalled();
     expect(getItemsByListId).toHaveBeenCalledWith('l1', {
       viewerSelfProfileId: undefined,
-      isOwner: false,
-      showSpoilers: false,
+      tier: PROTECTED_TIER,
     });
     expect(screen.getByTestId('sort-items')).toHaveAttribute(
       'data-profile-id',
@@ -94,7 +110,10 @@ describe('SortItemsContainer', () => {
   });
 
   it('Render_SuspenseFallbackIsPageLoadingIndicator', async () => {
-    const tree = (await SortItemsContainer({ listId: 'l1' })) as unknown as El;
+    const tree = (await SortItemsContainer({
+      listId: 'l1',
+      tier: PROTECTED_TIER,
+    })) as unknown as El;
     expect(tree.type).toBe(Suspense);
     const fallback = tree.props.fallback as El;
     expect(fallback.type).toBe(LoadingIndicator);

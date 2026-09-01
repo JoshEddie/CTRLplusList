@@ -9,12 +9,16 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { writableMembership } from '@/lib/data/profile.gate';
-import { getLiveInvite } from '@/lib/data/profile.members';
+import { getLiveInvite, getSpoilerDefault } from '@/lib/data/profile.members';
+import { PROTECTED_TIER } from '@/lib/spoilers';
 import { authedUserId } from '@/lib/data/user.session';
 import { redirect } from 'next/navigation';
 import InvitePage from '../InvitePage';
 
-vi.mock('@/lib/data/profile.members', () => ({ getLiveInvite: vi.fn() }));
+vi.mock('@/lib/data/profile.members', () => ({
+  getLiveInvite: vi.fn(),
+  getSpoilerDefault: vi.fn(),
+}));
 vi.mock('@/lib/data/profile.gate', () => ({ writableMembership: vi.fn() }));
 vi.mock('@/lib/data/user.session', () => ({ authedUserId: vi.fn() }));
 vi.mock('next/navigation', () => ({
@@ -23,8 +27,21 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 vi.mock('../InviteCard', () => ({
-  default: ({ token, signedIn }: { token: string; signedIn: boolean }) => (
-    <div data-testid="card" data-token={token} data-signed-in={String(signedIn)} />
+  default: ({
+    token,
+    signedIn,
+    offeredBaseline,
+  }: {
+    token: string;
+    signedIn: boolean;
+    offeredBaseline: string;
+  }) => (
+    <div
+      data-testid="card"
+      data-token={token}
+      data-signed-in={String(signedIn)}
+      data-offered={offeredBaseline}
+    />
   ),
 }));
 
@@ -44,6 +61,7 @@ const renderPage = async (token = 'tok-1') =>
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getLiveInvite).mockResolvedValue(invite as never);
+  vi.mocked(getSpoilerDefault).mockResolvedValue(PROTECTED_TIER);
   vi.mocked(authedUserId).mockResolvedValue('recipient');
   vi.mocked(writableMembership).mockResolvedValue(null);
 });
@@ -55,6 +73,15 @@ describe('InvitePage', () => {
     const card = screen.getByTestId('card');
     expect(card).toHaveAttribute('data-token', 'tok-1');
     expect(card).toHaveAttribute('data-signed-in', 'true');
+  });
+
+  it('LiveToken_OffersTheProfilesSpoilerDefaultReadAtOpen', async () => {
+    vi.mocked(getSpoilerDefault).mockResolvedValue('identity');
+
+    await renderPage();
+
+    expect(getSpoilerDefault).toHaveBeenCalledWith('kiddo');
+    expect(screen.getByTestId('card')).toHaveAttribute('data-offered', 'identity');
   });
 
   it('NoLiveInvite_RefusesWithoutSayingWhichConditionApplied', async () => {

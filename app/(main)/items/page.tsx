@@ -1,6 +1,8 @@
 import { getItemsByProfile } from '@/lib/data/item';
 import { actingAsName } from '@/lib/data/profile.active';
 import { getListsByProfile } from '@/lib/data/list';
+import { getSpoilerBaseline } from '@/lib/data/profile.members';
+import { resolveSpoilerTier } from '@/lib/spoilers';
 import { authedIdentity } from '@/lib/data/user.session';
 import { ItemDisplay } from '@/lib/types';
 import { redirect } from 'next/navigation';
@@ -18,20 +20,25 @@ export default async function Home({
   }
 
   const sp = await searchParams;
-  const purchasesParam =
-    typeof sp.purchases === 'string' ? sp.purchases : undefined;
-  const showSpoilers = purchasesParam === 'reveal' || purchasesParam === 'only';
+
+  // The library's items are owned by the profile the request acts as, so that
+  // is the profile whose membership resolves protection here.
+  const baseline = await getSpoilerBaseline(
+    identity.userId,
+    identity.activeProfile.id
+  );
+  const tier = resolveSpoilerTier(baseline, sp);
 
   const initialPageSize = await readItemsPageSize();
 
   const [activeItems, archivedItems] = await Promise.all([
     getItemsByProfile(identity.activeProfile.id, {
       filter: 'active',
-      showSpoilers,
+      tier,
     }),
     getItemsByProfile(identity.activeProfile.id, {
       filter: 'archived',
-      showSpoilers,
+      tier,
     }),
   ]);
 
@@ -53,6 +60,8 @@ export default async function Home({
         lists={lists}
         initialPageSize={initialPageSize}
         actingAs={actingAs}
+        tier={tier}
+        baseline={baseline}
       />
     </main>
   );

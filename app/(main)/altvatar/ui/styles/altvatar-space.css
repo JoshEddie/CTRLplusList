@@ -371,3 +371,107 @@
   height: 36px;
   flex-shrink: 0;
 }
+
+/* Claim visibility — a setting rather than a permission, so it sits in the
+   Settings panel below the name-and-tagline form. Gated per control: the
+   viewer's own row stays live while the rest disable. */
+.claim-visibility {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+.claim-visibility-heading {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+/* The viewer's own baseline: open, and the only control here their role never
+   forbids. */
+.claim-visibility-own {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.claim-visibility-label {
+  margin: 0;
+  font-weight: 600;
+}
+
+.claim-visibility-hint {
+  margin: 0;
+  color: var(--muted-text-color);
+  font-size: 0.9rem;
+}
+
+.claim-visibility-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Everything the viewer merely administers, one collapsed row each: a profile
+   with several members would otherwise be a wall of identical control sets. */
+.claim-visibility-administered {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.claim-visibility-row + .claim-visibility-row {
+  border-top: 1px solid var(--card-border-color);
+}
+
+.claim-visibility-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.claim-visibility-trigger:hover {
+  background-color: var(--secondary-background-color);
+}
+
+.claim-visibility-trigger:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: -2px;
+}
+
+.claim-visibility-row-title {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The closed row still answers what it is set to. Pushed right so the titles
+   stay a scannable column. */
+.claim-visibility-row-summary {
+  margin-left: auto;
+  color: var(--muted-text-color);
+  font-size: 0.9rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.claim-visibility-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 12px 12px;
+}

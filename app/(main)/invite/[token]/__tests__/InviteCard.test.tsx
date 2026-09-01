@@ -3,13 +3,17 @@
  * to and the role it grants, and redemption is an explicit act rather than a
  * side effect of the page being open.
  */
+import { PROTECTED_TIER } from '@/lib/spoilers';
 import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { redeemInvite } from '@/lib/data/profile.members.actions';
-import InviteCard, { type InviteView } from '../InviteCard';
+import InviteCard, {
+  CLAIM_VISIBILITY_LABEL,
+  type InviteView,
+} from '../InviteCard';
 
 vi.mock('@/lib/data/profile.members.actions', () => ({
   redeemInvite: vi.fn(),
@@ -55,6 +59,7 @@ const renderCard = (
       token="tok-1"
       invite={{ ...invite, ...overrides }}
       signedIn={signedIn}
+      offeredBaseline={PROTECTED_TIER}
     />
   );
 
@@ -101,9 +106,27 @@ describe('InviteCard', () => {
         screen.getByRole('button', { name: 'Accept invite' })
       );
 
-      expect(redeemInvite).toHaveBeenCalledWith('tok-1');
+      expect(redeemInvite).toHaveBeenCalledWith('tok-1', PROTECTED_TIER);
       expect(toastSuccess).toHaveBeenCalledWith('You now run this profile');
       expect(push).toHaveBeenCalledWith('/altvatar/kiddo');
+    });
+
+    it('AdjustedTier_SubmitsTheAdjustedTierRatherThanTheOffered', async () => {
+      vi.mocked(redeemInvite).mockResolvedValue({
+        success: true,
+        message: 'You now run this profile',
+      });
+      renderCard();
+
+      await userEvent.selectOptions(
+        screen.getByRole('combobox', { name: CLAIM_VISIBILITY_LABEL }),
+        'identity'
+      );
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Accept invite' })
+      );
+
+      expect(redeemInvite).toHaveBeenCalledWith('tok-1', 'identity');
     });
 
     it('Refused_ToastsTheRefusalAndStaysPut', async () => {

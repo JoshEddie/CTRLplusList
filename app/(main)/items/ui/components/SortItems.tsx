@@ -2,7 +2,7 @@
 
 import { updatePriority } from '@/lib/data/listItems.actions';
 import { LinkButton } from '@/app/ui/components/button';
-import { ProfileMembershipView, ItemDisplay } from '@/lib/types';
+import { ProfileMembershipView, ItemDisplay, SpoilerTier } from '@/lib/types';
 import { MdChecklist } from 'react-icons/md';
 import {
   closestCenter,
@@ -33,7 +33,7 @@ interface ItemsProps {
   items: ItemDisplay[];
   listId: string;
   actor?: ProfileMembershipView;
-  showSpoilers?: boolean;
+  tier?: SpoilerTier;
 }
 
 function EmptyListCTA({ listId }: { listId: string }) {
@@ -53,7 +53,7 @@ export default function SortItems({
   items,
   listId,
   actor,
-  showSpoilers,
+  tier,
 }: ItemsProps) {
   const router = useRouter();
   // Re-sync key: changes whenever any card-visible field changes, so an edit
@@ -63,7 +63,7 @@ export default function SortItems({
   const itemsKey = items
     .map((i) => {
       const pkey = (i.purchases ?? [])
-        .map((p) => `${p.id}:${p.firstName}:${p.by}`)
+        .map((p) => `${p.id}:${p.firstName ?? ''}:${p.by}`)
         .join('|');
       const s = i.store;
       const skey = s ? `${s.name}:${s.price}:${s.link}` : '';
@@ -164,7 +164,7 @@ export default function SortItems({
                 item={item}
                 listId={listId}
                 actor={actor}
-                showSpoilers={showSpoilers}
+                tier={tier}
                 isAnyDragging={isDragging}
               />
             );
@@ -191,7 +191,7 @@ export function SortableItem({
   className,
   listId,
   actor,
-  showSpoilers,
+  tier,
   isAnyDragging = false,
 }: {
   id: string;
@@ -199,7 +199,7 @@ export function SortableItem({
   className?: string;
   listId?: string;
   actor?: ProfileMembershipView;
-  showSpoilers?: boolean;
+  tier?: SpoilerTier;
   isAnyDragging?: boolean;
 }) {
   const {
@@ -245,7 +245,7 @@ export function SortableItem({
         item={item}
         listId={listId}
         actor={actor}
-        showSpoilers={showSpoilers}
+        tier={tier}
       />
     </div>
   );

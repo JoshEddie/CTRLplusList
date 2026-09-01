@@ -3,11 +3,12 @@
 import { FormShell, FormShellFooter } from '@/app/ui/components/FormShell';
 import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import { accentVars } from '@/lib/accent';
-import type { ProfileAvatarView, RoleShape } from '@/lib/types';
+import ClaimVisibilityFields from '@/app/(main)/altvatar/[id]/ClaimVisibilityFields';
+import type { ProfileAvatarView, RoleShape, SpoilerTier } from '@/lib/types';
 import { redeemInvite } from '@/lib/data/profile.members.actions';
 import { signInUser } from '@/lib/data/user.actions';
 import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
 import '../invite.css';
 
@@ -28,24 +29,30 @@ export type InviteView = ProfileAvatarView & {
 // face and colour here rather than being named in a sentence. A shell rather
 // than a page: an invite is a decision to take or leave, and the app behind it
 // is where either answer lands.
+export const CLAIM_VISIBILITY_LABEL = 'What you want to see about claims';
+
 export default function InviteCard({
   token,
   invite,
   signedIn,
+  offeredBaseline,
 }: {
   token: string;
   invite: InviteView;
   signedIn: boolean;
+  /** The profile's default as it stood when this page was opened — a seed the joiner may adjust before accepting. */
+  offeredBaseline: SpoilerTier;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [baseline, setBaseline] = useState(offeredBaseline);
 
   const leave = () => router.push('/');
 
   const accept = (event: React.FormEvent) => {
     event.preventDefault();
     startTransition(async () => {
-      const result = await redeemInvite(token);
+      const result = await redeemInvite(token, baseline);
       if (result.success) {
         toast.success(result.message);
         router.push(`/altvatar/${invite.id}`);
@@ -59,6 +66,19 @@ export default function InviteCard({
       <h1 className="invite-name">{invite.name}</h1>
       {invite.tagline && <p className="invite-tagline">{invite.tagline}</p>}
       <p className="invite-blurb">{roleBlurb(invite.role)}</p>
+      {signedIn && (
+        <div className="invite-claim-visibility">
+          <p className="invite-claim-visibility-label">
+            {CLAIM_VISIBILITY_LABEL}
+          </p>
+          <ClaimVisibilityFields
+            value={baseline}
+            disabled={isPending}
+            label={CLAIM_VISIBILITY_LABEL}
+            onChange={setBaseline}
+          />
+        </div>
+      )}
     </div>
   );
 

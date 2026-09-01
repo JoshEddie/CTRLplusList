@@ -6,7 +6,9 @@ import {
   SegmentedControl,
   SegmentedOption,
 } from '@/app/ui/components/segmented-control';
-import { SortKey } from '@/lib/types';
+import SpoilerPicker from '@/app/ui/components/SpoilerPicker';
+import { LIBRARY_TIER_ROWS } from '@/app/ui/components/spoiler-tier-rows';
+import { SortKey, SpoilerTier } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MdGridView, MdTune, MdViewList } from 'react-icons/md';
@@ -29,6 +31,9 @@ interface ItemsToolbarProps {
   showPriceSort: boolean;
   showPriceFilter: boolean;
   showGridToggle?: boolean;
+  /** The viewer's resolved tier and own baseline, present only on the library (`mode='items'`), where the compact toggle renders to the left of search. */
+  tier?: SpoilerTier;
+  baseline?: SpoilerTier;
 }
 
 export default function ItemsToolbar({
@@ -38,6 +43,8 @@ export default function ItemsToolbar({
   showPriceSort,
   showPriceFilter,
   showGridToggle = true,
+  tier,
+  baseline,
 }: ItemsToolbarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -47,7 +54,6 @@ export default function ItemsToolbar({
   const q = searchParams?.get('q') ?? '';
   const sort = (searchParams?.get('sort') as SortKey | null) ?? defaultSort;
   const selectedStores = searchParams?.getAll('store') ?? [];
-  const purchases = searchParams?.get('purchases') ?? 'hide';
   const show = searchParams?.get('show') ?? 'all';
   const priceMin = searchParams?.get('price_min') ?? '';
   const priceMax = searchParams?.get('price_max') ?? '';
@@ -115,7 +121,6 @@ export default function ItemsToolbar({
   const clearAll = () =>
     updateParams({
       sort: null,
-      purchases: null,
       show: null,
       store: null,
       price_min: null,
@@ -132,7 +137,6 @@ export default function ItemsToolbar({
     mode,
     sort,
     defaultSort,
-    purchases,
     show,
     selectedStores,
     priceMin,
@@ -152,6 +156,18 @@ export default function ItemsToolbar({
       className={`items-toolbar ${!showGridToggle ? 'hide-grid-toggle' : ''}`}
     >
       <div className="items-toolbar-row">
+        {/* The library's compact claim-visibility toggle, left of search — a
+            display control, not a filter facet (`items-library-shell`). Only
+            the library carries it; a list's control is the hero Spoilers tile. */}
+        {mode === 'items' && tier && baseline && (
+          <div className="items-toolbar-cell--spoilers">
+            <SpoilerPicker
+              tier={tier}
+              baseline={baseline}
+              rows={LIBRARY_TIER_ROWS}
+            />
+          </div>
+        )}
         <div className="items-search items-toolbar-cell--search">
           <SearchInputControl key={q} initialQ={q} onCommit={commitSearch} />
         </div>
@@ -179,7 +195,6 @@ export default function ItemsToolbar({
           sort={sort}
           defaultSort={defaultSort}
           sortOptions={sortOptions}
-          purchases={purchases}
           show={show}
           storeOptions={storeOptions}
           selectedStores={selectedStores}

@@ -5,7 +5,9 @@ import { auth } from '@/lib/auth';
 import { getItemsByProfile } from '@/lib/data/item';
 import { getListsByProfile } from '@/lib/data/list';
 import { getUserIdentity } from '@/lib/data/profile';
+import { getSpoilerBaseline } from '@/lib/data/profile.members';
 import { getUserIdByEmail } from '@/lib/data/user';
+import { PROTECTED_TIER } from '@/lib/spoilers';
 import Home from '../page';
 import { makeProfile } from '@/test/helpers/profile';
 
@@ -16,6 +18,9 @@ vi.mock('@/lib/data/user', () => ({
 }));
 vi.mock('@/lib/data/profile', () => ({
   getUserIdentity: vi.fn(),
+}));
+vi.mock('@/lib/data/profile.members', () => ({
+  getSpoilerBaseline: vi.fn(),
 }));
 vi.mock('@/lib/data/item', () => ({
   getItemsByProfile: vi.fn(),
@@ -51,6 +56,8 @@ vi.mock('../ui/components/ItemsPage', () => ({
     user_name?: string | null;
     lists?: unknown[];
     initialPageSize?: number;
+    tier?: string;
+    baseline?: string;
   }) => (
     <div
       data-testid="items-page"
@@ -60,6 +67,8 @@ vi.mock('../ui/components/ItemsPage', () => ({
       data-profile-id={props.actor?.id ?? ''}
       data-user-name={props.user_name ?? ''}
       data-lists-count={props.lists?.length ?? 0}
+      data-tier={String(props.tier)}
+      data-baseline={String(props.baseline)}
     />
   ),
 }));
@@ -75,6 +84,7 @@ function callPage(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getSpoilerBaseline).mockResolvedValue(PROTECTED_TIER);
   cookieHolder.value = undefined;
   vi.mocked(auth).mockResolvedValue({
     user: { email: 'viewer@test.local' },
@@ -147,7 +157,7 @@ describe('Page', () => {
 
       expect(getItemsByProfile).toHaveBeenCalledWith('kiddo', {
         filter: 'active',
-        showSpoilers: false,
+        tier: PROTECTED_TIER,
       });
       expect(getListsByProfile).toHaveBeenCalledWith('kiddo');
       const page = screen.getByTestId('items-page');
@@ -156,41 +166,43 @@ describe('Page', () => {
     });
   });
 
-  describe('SpoilerParam', () => {
-    it('PurchasesReveal_ReadsWithShowSpoilersTrue', async () => {
-      await callPage({ purchases: 'reveal' });
-      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
-        filter: 'active',
-        showSpoilers: true,
-      });
-      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
-        filter: 'archived',
-        showSpoilers: true,
-      });
-    });
-
-    it('PurchasesOnly_ReadsWithShowSpoilersTrue', async () => {
-      await callPage({ purchases: 'only' });
-      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
-        filter: 'active',
-        showSpoilers: true,
-      });
-    });
-
-    it('PurchasesHide_ReadsWithShowSpoilersFalse', async () => {
-      await callPage({ purchases: 'hide' });
-      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
-        filter: 'active',
-        showSpoilers: false,
-      });
-    });
-
-    it('PurchasesAbsent_ReadsWithShowSpoilersFalse', async () => {
+  describe('SpoilerTier', () => {
+    it('Render_ResolvesFromTheMembershipOnTheActingProfile', async () => {
       await callPage();
+      expect(getSpoilerBaseline).toHaveBeenCalledWith(
+        'viewer',
+        'viewer-profile'
+      );
+      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
+        filter: 'active',
+        tier: PROTECTED_TIER,
+      });
       expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
         filter: 'archived',
-        showSpoilers: false,
+        tier: PROTECTED_TIER,
       });
+    });
+
+    it('NoSpoilerParam_ForwardsBaselineTierAndBaselineToItemsPage', async () => {
+      render(await callPage());
+      const page = screen.getByTestId('items-page');
+      expect(page).toHaveAttribute('data-tier', PROTECTED_TIER);
+      expect(page).toHaveAttribute('data-baseline', PROTECTED_TIER);
+    });
+
+    it('SpoilerParam_RaisesTheTierForThisRequestAlone', async () => {
+      await callPage({ spoiler: 'identity' });
+      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
+        filter: 'active',
+        tier: 'identity',
+      });
+    });
+
+    it('SpoilerParam_ForwardsRaisedTierButUnchangedBaselineToItemsPage', async () => {
+      render(await callPage({ spoiler: 'identity' }));
+      const page = screen.getByTestId('items-page');
+      expect(page).toHaveAttribute('data-tier', 'identity');
+      expect(page).toHaveAttribute('data-baseline', PROTECTED_TIER);
     });
   });
 

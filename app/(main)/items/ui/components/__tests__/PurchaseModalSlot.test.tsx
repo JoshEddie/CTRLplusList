@@ -9,6 +9,10 @@ import { makeProfile } from '@/test/helpers/profile';
 
 // user.actions is a 'use server' module whose import chain reaches the DB
 // driver; PurchaseFlowContainer only consumes the picker read.
+vi.mock('@/lib/data/purchase.actions', () => ({
+  claimSummaryForItem: vi.fn(),
+}));
+
 vi.mock('@/lib/data/user.actions', () => ({
   getClaimPickerForItem: vi.fn(),
   signInUser: vi.fn(),
@@ -53,9 +57,7 @@ function renderSlot(
     viewerIsPurchaser: false,
     actor: undefined,
     isOwner: false,
-    showSpoilers: false,
-    ownerCanClaim: false,
-    ownerClaims: [],
+    tier: 'identity',
     item: ITEM,
     onClose: vi.fn(),
     onSelfClaim: vi.fn(),

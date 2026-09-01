@@ -88,13 +88,22 @@ export type ProfileCardView = ProfileAvatarView & {
   itemCount: number;
 };
 
+/**
+ * What a viewer sees before they ask: a single four-stage tier, weakest first.
+ * `surprise` hides everything; `progress` adds the list's claimed count;
+ * `claims` adds per-item badges and remaining capacity; `identity` names the
+ * claiming parties. Ordering and vocabulary live in `lib/spoilers.ts`.
+ */
+export type SpoilerTier = 'surprise' | 'progress' | 'claims' | 'identity';
+
 export type PurchaseView = {
   id: string;
   by: 'self' | 'other';
-  firstName: string;
+  /** Absent on another party's claim below the `identity` level, where the claim is disclosed as a bare count. */
+  firstName?: string;
   /** The viewer asserted this claim (`claimed_by_profile_id`) — grants the unclaim affordance even when the purchaser is someone else. */
   claimedByViewer: boolean;
-  /** Owner spoiler view only: the claimer's first name when the claimer differs from the purchaser. */
+  /** Identity level only: the claimer's first name when the claimer differs from the purchaser. */
   claimerFirstName?: string;
   /** Absent only on legacy fixtures — every persisted row carries it; optimistic rows stamp client time. */
   purchasedAt?: Date;

@@ -63,6 +63,12 @@
   --warn: #845309;
   --warn-bg: #fbf1d9;
   --warn-line: #ecd49a;
+  /* Claim-visibility tier tints — the Spoilers tile fill and its menu dots.
+     A genuinely new role: no existing token maps a tier to a colour. Peach
+     serves both `claims` and `identity` (per the 2026-09-01 mockup). */
+  --spoiler-tint-surprise: #d8f6c9;
+  --spoiler-tint-progress: #fff8c9;
+  --spoiler-tint-claims: #f6d5c9;
   --tab-active-color: var(--primary-color);
 
   --WCAG-input-size: 44px;

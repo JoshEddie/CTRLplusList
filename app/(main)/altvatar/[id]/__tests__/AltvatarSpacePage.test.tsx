@@ -3,6 +3,7 @@
  * and a Settings form", and the branch that hands every other viewer the
  * public view instead.
  */
+import { PROTECTED_TIER } from '@/lib/spoilers';
 import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -22,6 +23,9 @@ import { authedIdentity } from '@/lib/data/user.session';
 import { makeIdentity, makeProfile } from '@/test/helpers/profile';
 import AltvatarSpacePage from '../AltvatarSpacePage';
 
+vi.mock('../ClaimVisibilitySection', () => ({
+  default: () => <div data-testid="claim-visibility-stub" />,
+}));
 vi.mock('@/lib/data/profile', () => ({ getProfileMembership: vi.fn() }));
 vi.mock('@/lib/data/profileAvatar', () => ({ getAltvatarOptions: vi.fn() }));
 vi.mock('@/lib/data/profileAvatar.write', () => ({ writeAltvatar: vi.fn() }));
@@ -33,6 +37,7 @@ vi.mock('@/lib/data/user.session', () => ({ authedIdentity: vi.fn() }));
 vi.mock('@/lib/data/profile.members', () => ({
   getProfileMembers: vi.fn(async () => []),
   getPendingInvites: vi.fn(async () => []),
+  getSpoilerDefault: vi.fn(async () => PROTECTED_TIER),
 }));
 vi.mock('@/lib/data/list', () => ({ getListsByProfile: vi.fn(async () => []) }));
 vi.mock('@/lib/data/profile.members.actions', () => ({

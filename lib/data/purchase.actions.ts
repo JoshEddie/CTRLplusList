@@ -7,6 +7,7 @@ import {
   canRemovePurchase,
   claimConflictResponse,
   duplicateClaimResponse,
+  getItemClaimSummary,
   isEligiblePurchaser,
 } from '@/lib/data/purchase';
 import {
@@ -359,4 +360,11 @@ export async function removePurchase(
       error: 'Failed to remove purchase',
     };
   }
+}
+
+// The endpoint the reveal confirmation reaches, the way the attributed-purchaser
+// picker is already reached from the same modal. The read behind it is scoped
+// to the item and carries no identity, so it re-resolves no spoiler state.
+export async function claimSummaryForItem(itemId: string) {
+  return getItemClaimSummary(itemId);
 }

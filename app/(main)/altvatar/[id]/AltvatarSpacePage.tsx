@@ -1,9 +1,14 @@
 import { randomAccentName } from '@/lib/accent';
 import { rollAltvatar } from '@/lib/altvatar/shuffle';
 import { getProfileMembership } from '@/lib/data/profile';
+import {
+  getProfileMembers,
+  getSpoilerDefault,
+} from '@/lib/data/profile.members';
 import { getAltvatarOptions } from '@/lib/data/profileAvatar';
 import { authedIdentity } from '@/lib/data/user.session';
 import ProfileSettingsForm from '../ui/components/ProfileSettingsForm';
+import ClaimVisibilitySection from './ClaimVisibilitySection';
 import InviteFlow from './InviteFlow';
 import PermissionsSection from './PermissionsSection';
 import ProfileSpaceListsPanel from './ProfileSpaceListsPanel';
@@ -50,6 +55,14 @@ export default async function AltvatarSpacePage({
         accent: profile.accent ?? randomAccentName(),
       };
 
+  // Claim visibility is a setting, not a permission, so it renders here rather
+  // than beside the roster — and on a self-profile too, which carries no
+  // Permissions tab at all.
+  const [members, profileDefault] = await Promise.all([
+    getProfileMembers(id),
+    getSpoilerDefault(id),
+  ]);
+
   return (
     <main className="container container--profile-space">
       <div className="profile-space">
@@ -57,6 +70,15 @@ export default async function AltvatarSpacePage({
           profile={profile}
           draft={draft}
           readOnly={readOnly}
+          claimVisibility={
+            <ClaimVisibilitySection
+              profileId={id}
+              members={members}
+              profileDefault={profileDefault}
+              viewerUserId={identity.userId}
+              viewerIsOwner={isOwner}
+            />
+          }
           listsPanel={<ProfileSpaceListsPanel profileId={id} />}
           identityActions={
             managed && (

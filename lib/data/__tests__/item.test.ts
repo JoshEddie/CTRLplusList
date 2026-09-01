@@ -127,22 +127,8 @@ describe('getItemsByProfile', () => {
     expect(rows[1].store).toBeNull();
   });
 
-  describe('OwnerSpoilers', () => {
-    it('SpoilersOff_ReturnsEmptyPurchases-HasPurchasesTrue', async () => {
-      await seedUsers(db, [{ id: 'owner' }, { id: 'claimer', name: 'Cara' }]);
-      await seedItem(db, { id: 'gift', user_id: 'owner' });
-      await seedPurchase(db, {
-        id: 'p1',
-        item_id: 'gift',
-        profile_id: selfProfileOf('claimer'),
-      });
-
-      const rows = await dal.getItemsByProfile(selfProfileOf('owner'));
-      expect(rows[0].purchases).toEqual([]);
-      expect(rows[0].hasPurchases).toBe(true);
-    });
-
-    it('SpoilersOn_ReturnsFirstNameOtherRows', async () => {
+  describe('SpoilerTier', () => {
+    beforeEach(async () => {
       await seedUsers(db, [
         { id: 'owner' },
         { id: 'claimer', name: 'Cara Lee' },
@@ -156,9 +142,31 @@ describe('getItemsByProfile', () => {
         item_id: 'gift',
         profile_id: selfProfileOf('claimer'),
       });
+    });
 
+    it('Surprise_ReturnsEmptyPurchases-HasPurchasesFalse', async () => {
       const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
-        showSpoilers: true,
+        tier: 'surprise',
+      });
+      expect(rows[0].purchases).toEqual([]);
+      // `hasPurchases` now reflects only what the tier discloses: an item
+      // carrying only others' claims below `claims` reads as unclaimed.
+      expect(rows[0].hasPurchases).toBe(false);
+    });
+
+    it('Claims_ReturnsBareCountEntry-HasPurchasesTrue', async () => {
+      const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
+        tier: 'claims',
+      });
+      expect(rows[0].purchases).toEqual([
+        { id: 'p1', by: 'other', claimedByViewer: false },
+      ]);
+      expect(rows[0].hasPurchases).toBe(true);
+    });
+
+    it('Identity_ReturnsFirstNameOtherRows-HasPurchasesTrue', async () => {
+      const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
+        tier: 'identity',
       });
       expect(rows[0].purchases).toEqual([
         {
@@ -337,20 +345,58 @@ describe('getItemsByListId', () => {
       });
     }
 
-    it('OwnerNoSpoilers_ReturnsEmptyPurchases', async () => {
+    it('SurpriseNoViewerId_ReturnsEmptyPurchases-HasPurchasesFalse', async () => {
       await seedClaimedItem();
-      const rows = await dal.getItemsByListId('l1', { isOwner: true });
+      const rows = await dal.getItemsByListId('l1', { tier: 'surprise' });
       expect(rows[0].purchases).toEqual([]);
+      // No viewer id, so neither claim is held: `hasPurchases` reflects the
+      // empty projection rather than the unprojected rows.
+      expect(rows[0].hasPurchases).toBe(false);
     });
 
-    it('OwnerWithSpoilers_ReturnsFirstNameOtherRows', async () => {
+    it('Claims_ReturnsCountWithNoFirstName', async () => {
       await seedClaimedItem();
-      const rows = await dal.getItemsByListId('l1', {
-        isOwner: true,
-        showSpoilers: true,
-      });
+      const rows = await dal.getItemsByListId('l1', { tier: 'claims' });
+      expect(rows[0].purchases).toHaveLength(2);
+      expect(rows[0].purchases.map((p) => p.firstName)).toEqual([
+        undefined,
+        undefined,
+      ]);
+    });
+
+    it('Identity_ReturnsFirstNameOtherRows', async () => {
+      await seedClaimedItem();
+      const rows = await dal.getItemsByListId('l1', { tier: 'identity' });
       const tags = rows[0].purchases.map((p) => p.by);
       expect(tags).toEqual(['other', 'other']);
+    });
+
+    // The cached raw read is entered once for the list; each viewer's rows are
+    // projected separately, outside it — two viewers with differing tiers each
+    // get their own projection.
+    it('TwoViewersDifferingTiers_ProjectSeparatelyOverOneCachedRead', async () => {
+      await seedClaimedItem();
+      const viewerRows = await dal.getItemsByListId('l1', {
+        viewerSelfProfileId: selfProfileOf('viewer'),
+        tier: 'surprise',
+      });
+      const otherRows = await dal.getItemsByListId('l1', {
+        viewerSelfProfileId: selfProfileOf('other'),
+        tier: 'identity',
+      });
+      // 'viewer' at surprise keeps only their own held claim; 'other' at
+      // identity sees both, their own as self and the viewer's as other.
+      expect(viewerRows[0].purchases.map((p) => p.by)).toEqual(['self']);
+      expect(otherRows[0].purchases.map((p) => p.by)).toEqual([
+        'other',
+        'self',
+      ]);
+    });
+
+    it('RawRead_IsNotExported', () => {
+      expect(
+        Object.keys(dal).filter((name) => name.startsWith('raw'))
+      ).toEqual([]);
     });
 
     it('NonOwnerWithViewerId_TagsSelfAndOther', async () => {
@@ -422,8 +468,8 @@ describe('getItemsByListId', () => {
 });
 
 // Drives the private firstNameOf projection through getItemsByProfile
-// owner+spoilers (every claim maps to {by:'other', firstName}); covers the
-// falsy/whitespace/multi-word name branches and both sides of
+// owner + identity tier (every claim maps to {by:'other', firstName}); covers
+// the falsy/whitespace/multi-word name branches and both sides of
 // `p.purchaserProfile?.name ?? p.guest_name`.
 describe('firstNameOf', () => {
   it('VariedClaimerNames_ProjectsFirstTokenElseSomeone', async () => {
@@ -461,7 +507,7 @@ describe('firstNameOf', () => {
     await seedPurchase(db, { id: 'p-iNull', item_id: 'iNull' });
 
     const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
-      showSpoilers: true,
+      tier: 'identity',
     });
     const firstNameByItem = Object.fromEntries(
       rows.map((r) => [r.id, r.purchases[0]?.firstName])

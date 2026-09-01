@@ -2,7 +2,6 @@
 
 import { db } from '@/db';
 import { profile_invites, profile_members, user_blocks } from '@/db/schema';
-import { cacheTags, updateTags } from '@/lib/cacheTags';
 import {
   FORBIDDEN_RESPONSE,
   ownsProfile,
@@ -10,12 +9,21 @@ import {
 } from '@/lib/data/profile.gate';
 import { ROLES, grantableRole } from '@/lib/data/profile.roles';
 import { selfMemberships } from '@/lib/data/profile.identity';
+import { invalidateMembership } from '@/lib/data/profile.members.tags';
+import {
+  deleteMemberPreferences,
+  writeMemberTier,
+} from '@/lib/data/profilePreference.write';
 import {
   UNAUTHORIZED_RESPONSE,
   authedIdentity,
   authedUserId,
 } from '@/lib/data/user.session';
-import { type ActionResponse, type RoleShape } from '@/lib/types';
+import {
+  type ActionResponse,
+  type RoleShape,
+  type SpoilerTier,
+} from '@/lib/types';
 import { and, eq, exists, gt, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 
@@ -35,19 +43,6 @@ async function administeringOwner(
   if (!membership || !membership.role.admin)
     return { error: FORBIDDEN_RESPONSE };
   return { userId, role: membership.role };
-}
-
-// Both the acting owner's and the affected account's tags: a write that
-// refreshes only the actor leaves the other party's Profiles page and profile
-// switcher stating a membership that no longer holds. Narrow tags only — the
-// coarse table tag would invalidate every account's memberships for one
-// profile's role change.
-function invalidateMembership(profileId: string, affectedUserId: string): void {
-  updateTags(
-    cacheTags.membersOfProfile(profileId),
-    cacheTags.profilesOfUser(affectedUserId),
-    cacheTags.profile(profileId)
-  );
 }
 
 export async function setMemberRole(
@@ -147,6 +142,10 @@ export async function removeMember(
       };
     }
 
+    // The membership row cascades nothing to the account's preference rows, so
+    // revocation clears them explicitly — leaving no record of a revoked
+    // member's tier (`profiles-data-model`).
+    await deleteMemberPreferences(profileId, userId);
     invalidateMembership(profileId, userId);
     return { success: true, message: 'Member removed' };
   } catch (error) {
@@ -216,7 +215,10 @@ export async function mintInvite(
 // authorization. Consuming it and writing the row are one statement: a spent
 // token with no membership behind it is repairable by nobody, since the
 // recipient cannot redeem twice and the owner is never told.
-export async function redeemInvite(token: string): Promise<ActionResponse> {
+export async function redeemInvite(
+  token: string,
+  tier: SpoilerTier
+): Promise<ActionResponse> {
   try {
     const identity = await authedIdentity();
     if (!identity) return UNAUTHORIZED_RESPONSE;
@@ -311,6 +313,14 @@ export async function redeemInvite(token: string): Promise<ActionResponse> {
 
     // Zero rows now means one thing: the UPDATE's guard refused the token.
     if (admitted.length === 0) return INVALID_INVITE_RESPONSE;
+
+    // The accepted tier is a separate write against a different table, seeded
+    // from the offered value. Only for a genuinely new membership — a sitting
+    // member is neither re-seeded nor promoted. A membership with no tier row
+    // resolves safely to full protection, so this need not share the statement.
+    if (!invite.sitting_role) {
+      await writeMemberTier(invite.profile_id, userId, tier);
+    }
 
     invalidateMembership(invite.profile_id, userId);
     return invite.sitting_role

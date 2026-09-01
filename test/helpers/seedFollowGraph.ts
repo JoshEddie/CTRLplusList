@@ -1,5 +1,7 @@
 import {
   ACCENT_PREFERENCE_ID,
+  SPOILER_PREFERENCE_ROWS,
+  SPOILER_TIER_PREFERENCE_ID,
   lists,
   preferences,
   profile_avatars,
@@ -11,6 +13,7 @@ import {
   users,
 } from '../../db/schema';
 import { ROLES } from '@/lib/data/profile.roles';
+import type { SpoilerTier } from '@/lib/types';
 import type { bootPglite } from './db';
 import { selfProfileOf } from './profile';
 
@@ -74,6 +77,7 @@ export async function seedMembership(
     profile_id: string;
     role?: string;
     last_active_at?: Date | null;
+    baseline?: SpoilerTier;
   }
 ): Promise<void> {
   await db.insert(profile_members).values({
@@ -82,6 +86,17 @@ export async function seedMembership(
     role: membership.role ?? ROLES.owner.value,
     last_active_at: membership.last_active_at ?? null,
   });
+  // The tier is an account-keyed preference row, not a membership column. An
+  // absent row resolves to `surprise`, so only a supplied baseline writes one.
+  if (membership.baseline) {
+    await seedSpoilerCatalog(db);
+    await db.insert(profile_preferences).values({
+      profile_id: membership.profile_id,
+      user_id: membership.user_id,
+      preference_id: SPOILER_TIER_PREFERENCE_ID,
+      value: membership.baseline,
+    });
+  }
 }
 
 export async function seedFollow(
@@ -155,6 +170,30 @@ export async function seedAccentValue(
     profile_id,
     preference_id: ACCENT_PREFERENCE_ID,
     value: accent,
+  });
+}
+
+// The catalog rows and the per-profile values behind the profile-level spoiler
+// default. Seeded together because a value row references its catalog row.
+export async function seedSpoilerCatalog(db: TestDb): Promise<void> {
+  await db
+    .insert(preferences)
+    .values(SPOILER_PREFERENCE_ROWS.map((row) => ({ ...row })))
+    .onConflictDoNothing();
+}
+
+export async function seedSpoilerDefault(
+  db: TestDb,
+  profile_id: string,
+  tier: SpoilerTier
+): Promise<void> {
+  await seedSpoilerCatalog(db);
+  // The profile-wide default is the null-account row.
+  await db.insert(profile_preferences).values({
+    profile_id,
+    user_id: null,
+    preference_id: SPOILER_TIER_PREFERENCE_ID,
+    value: tier,
   });
 }
 

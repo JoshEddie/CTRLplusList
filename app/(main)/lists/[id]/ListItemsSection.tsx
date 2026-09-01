@@ -1,8 +1,11 @@
 import ItemsContainer from '@/app/(main)/items/ui/components/ItemsContainer';
 import SortItemsContainer from '@/app/(main)/items/ui/components/SortItemsContainer';
+import { hasActiveFilter } from '@/app/(main)/items/ui/components/itemsToolbar/utils';
 import { getList } from '@/lib/data/list';
+import { getSpoilerBaseline } from '@/lib/data/profile.members';
 import { authedIdentity } from '@/lib/data/user.session';
 import { guardListViewable } from '@/lib/listAccess';
+import { resolveSpoilerTier } from '@/lib/spoilers';
 import { VISIBILITY } from '@/lib/visibility';
 
 type Props = {
@@ -23,7 +26,14 @@ export default async function ListItemsSection({
 
   const isOwner = identity?.activeProfile.id === list.profile_id;
   const previewMode = isOwner && sp.preview === 'viewer';
-  const showSpoilers = isOwner && sp.spoilers === '1';
+
+  // Membership on the owning profile, never the ownership comparison above: a
+  // viewer acting as another profile they also run is still the human the
+  // surprise is for.
+  const tier = resolveSpoilerTier(
+    await getSpoilerBaseline(identity?.userId, list.profile_id),
+    sp
+  );
 
   // Mirror the hero's visibility gate. When the hero surfaces <ListPrivate>,
   // the items section renders nothing so the page doesn't leak items below
@@ -32,23 +42,20 @@ export default async function ListItemsSection({
     return null;
   }
 
-  const effectiveOwner = isOwner && !previewMode;
+  // The filter condition alone leaves the reorder layout: raising the tier
+  // changes what each row discloses, not which rows are present or their order,
+  // so a drag still writes a position derived from the full set. The owner
+  // adjusts their tier from the hero tile while the sortable rows stay put.
+  const reorderable =
+    isOwner && !previewMode && !hasActiveFilter(sp, 'list_order');
 
-  return effectiveOwner ? (
-    <SortItemsContainer
-      listId={id}
-      isOwner={true}
-      showSpoilers={showSpoilers}
-    />
+  return reorderable ? (
+    <SortItemsContainer listId={id} tier={tier} />
   ) : (
     <ItemsContainer
       listId={id}
-      // In preview mode, route through the owner-sanitize path so the
-      // spoilers toggle fully gates visibility (off = nothing, on = full names)
-      // instead of leaking first names regardless.
-      isListOwner={previewMode}
       viewerSelfProfileId={identity?.selfProfile.id}
-      showSpoilers={showSpoilers}
+      tier={tier}
     />
   );
 }
