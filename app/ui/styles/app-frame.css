@@ -1,4 +1,4 @@
-/* App frame — gradient nav + white-card surface. See openspec/changes/redesign-home-and-tokens. */
+/* App frame — gradient nav + white-card surface. */
 
 :root {
   --app-nav-height: calc(65px + env(safe-area-inset-top));

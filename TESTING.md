@@ -19,7 +19,7 @@ Any test you add MUST assert observable behavior — what the production code re
 
 **If you can't write a substantive assertion, the test belongs deleted, not weakened.** A coverage gap is more honest than a tautological green check — the gap shows up in the coverage report; the false-pass hides forever.
 
-This rule applies to every test in the repo. ESLint enforces the mechanical parts where configured (`vitest/expect-expect`, tautology shortlist); the rest is a manual review bar. The normative statement and the per-sub-proposal assertion audit it pairs with live in the `testing-foundation` capability spec at [openspec/specs/testing-foundation/spec.md](openspec/specs/testing-foundation/spec.md).
+This rule applies to every test in the repo. ESLint enforces the mechanical parts where configured (`vitest/expect-expect`, tautology shortlist); the rest is a manual review bar.
 
 ## Every delta-spec scenario is pinned by a named test
 

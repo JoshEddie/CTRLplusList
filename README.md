@@ -87,11 +87,6 @@ assets are emitted by Serwist at build time and disabled in dev mode (see
 
 - `CLAUDE.md` — project conventions, database driver caveats, dev auth bypass,
   and the database-migration workflow.
-- `openspec/specs/` — active capability specs (the contract surface).
-- `openspec/changes/` — proposals, design notes, and archived changes. The
-  `/opsx:propose`, `/opsx:apply`, and `/opsx:archive` slash commands manage
-  the lifecycle. Architectural decisions for this project live here — there
-  is no separate `docs/adr/` directory.
 
 ## License
 

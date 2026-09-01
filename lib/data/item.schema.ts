@@ -7,8 +7,7 @@ import { isValidProductUrl } from '@/lib/storeValidity';
 import { z } from 'zod';
 
 // Define Zod schema for item validation. The actor's user_id is resolved
-// server-side from the session, never accepted from the client payload — see
-// openspec/specs/server-endpoint-authorization.
+// server-side from the session, never accepted from the client payload
 export const ItemSchema = z.object({
   name: z
     .string()

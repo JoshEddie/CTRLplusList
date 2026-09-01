@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 // Zod contract for every profile writer. Internal, not an actions export: a
 // `'use server'` module's exports are client-callable endpoints, and a schema
-// is not one — see openspec/specs/data-layer-organization.
+// is not one.
 //
 // Split in two because the settings surface commits them separately: the fields
 // wait for a submit, while the identity commits the moment the customizer is

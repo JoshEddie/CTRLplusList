@@ -11,8 +11,7 @@ export const ACTIVE_PROFILE_COOKIE = 'active_profile';
 // pin is the same shape the switch action writes. There is deliberately no
 // environment override for the acting profile: an environment variable is
 // process-global and could not give one spec a managed-profile context and
-// another the self-profile. See
-// openspec/adr/2026-08-25-no-environment-override-for-the-acting-profile.md.
+// another the self-profile.
 //
 // A context carrying no selection cookie already resolves to the self-profile,
 // so the un-pinned starting state needs nothing at all — and the profile-switch

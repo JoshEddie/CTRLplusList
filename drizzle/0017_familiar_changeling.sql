@@ -1,4 +1,4 @@
--- Migration: spoiler-visibility-redesign (openspec change)
+-- Migration: spoiler-visibility-redesign
 --
 -- Additive/reshaping, forward-only. The spoiler tier moves off profile_members
 -- (no columns there) into profile_preferences, which gains a nullable account

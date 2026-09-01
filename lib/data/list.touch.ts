@@ -3,7 +3,7 @@ import { lists } from '@/db/schema';
 import { inArray } from 'drizzle-orm';
 
 // Internal write helper — advances list update recency for follower-notifiable
-// changes only (see openspec/specs/list-update-recency). Deliberately NOT in a
+// changes only. Deliberately NOT in a
 // 'use server' module: exporting it from one would expose it as a
 // client-callable endpoint.
 

@@ -1,4 +1,0 @@
-schema: spec-driven-review
-created: 2026-08-30
-goal: "Give owner vs manager roles server-side teeth, and add a Permissions
-  section to administer a profile's membership (issue #194)"

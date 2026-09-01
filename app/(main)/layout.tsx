@@ -5,10 +5,10 @@ import { resolveOnboarding } from '@/lib/data/onboarding';
 import AppFrame from '../ui/components/AppFrame';
 import { ProfileSwitchProvider } from '../ui/components/ProfileSwitchProvider';
 import '../ui/styles/app-frame.css';
+import './altvatar/ui/styles/altvatar-space.css';
 import './items/ui/styles/item.css';
 import './lists/ui/styles/following-and-history.css';
 import './lists/ui/styles/list.css';
-import './altvatar/ui/styles/altvatar-space.css';
 
 // This segment blocks on purpose. Whether `children` renders at all depends on
 // a database read, so nothing under `(main)` can be emitted before that read
@@ -27,8 +27,6 @@ export const instant = false;
 // there is no profile, so actor resolution yields nothing and nothing can own
 // content. Because the requested URL is untouched, completing the gate reveals
 // the page originally asked for.
-// See openspec/adr/2026-08-26-onboarding-is-a-layout-short-circuit-not-a-guard.md
-// See openspec/adr/2026-08-31-a-profile-less-account-still-gets-the-frame.md
 export default async function MainLayout({
   children,
   modal,

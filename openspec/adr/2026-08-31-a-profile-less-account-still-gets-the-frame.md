@@ -1,9 +1,0 @@
-# A profile-less account still gets the frame
-
-**Touching**: `app/(main)/layout.tsx`, `DAL`
-
-**Context**: The gate rendered instead of the whole frame, and the app's only sign-out lives in the frame's account menu, so a returning account met the gate unable to see which account it was signed in as or to leave it — `/sign-in` bounces a signed-in visitor back into the gate, and no route outside `(main)` ends a session. Putting a sign-out route outside `(main)` was considered and refused: it fixes the escape without fixing the silent half, which is that the gate never says whose account it is about to attach a profile to.
-
-**Decision**: The un-onboarded branch renders the gate inside `AppFrame` and `ProfileSwitchProvider` rather than in place of them, so the nav's account menu — name, email, sign-out — is reachable at the gate. The frame's identity read is not page work and the short-circuit is unchanged: `children` is still never rendered, no page component runs, no page data is fetched, and there is still no route and no redirect. A surface that must render for a profile-less account belongs inside the frame, not outside `(main)`; where such a request resolves no active profile, the nav avatar falls back to the account's name initials with no accent. The frame's destinations stay live but inert — following one changes the URL and the gate renders again.
-
-**Consequences**: The account menu's profile switcher needs no suppression, because an un-onboarded account holds at most one profile and `app-frame` already offers a single-profile viewer no switch rows — an invariant that stops holding the moment a membership-minting surface escapes the gate. `ProfileSwitchProvider` becomes mandatory in a branch that renders no switchable profile, because `useProfileSwitch()` runs unconditionally in the popover. The `facelessView` fallback, until now reachable only on error paths, becomes a live rendering path for every account signing up.

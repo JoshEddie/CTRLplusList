@@ -1,4 +1,4 @@
--- Migration: altvatar-and-onboarding-gate (openspec change)
+-- Migration: altvatar-and-onboarding-gate
 --
 -- Additive only. No backfill and no default row: the absence of a row is what
 -- `onboarding-gate` reads to decide an account has not onboarded, so a

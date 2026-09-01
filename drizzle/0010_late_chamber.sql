@@ -1,9 +1,8 @@
--- Migration: profiles-schema-phase-1 (openspec change)
+-- Migration: profiles-schema-phase-1
 --
 -- Forward-only additive schema plus idempotent backfill. No DROP statements,
 -- no repoints, no FK or index changes to pre-existing tables. Phase 2 (repoint
--- + enforce) and phase 3 (drops) land as separate soaked migrations. See:
---   openspec/changes/profiles-schema-phase-1/design.md
+-- + enforce) and phase 3 (drops) land as separate soaked migrations.
 --
 -- Rollback (run manually if needed):
 --   ALTER TABLE "items" DROP COLUMN "updated_by_user_id";

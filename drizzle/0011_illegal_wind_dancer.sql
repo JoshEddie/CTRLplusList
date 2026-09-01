@@ -1,4 +1,4 @@
--- Migration: profiles-schema-phase-2 (openspec change)
+-- Migration: profiles-schema-phase-2
 --
 -- Forward-only: add the seven profile-valued columns beside their account
 -- columns, backfill each through the owning account's self-profile, tighten
@@ -6,8 +6,7 @@
 -- primary keys over the profile columns, and drop the dormant saved_lists
 -- table. No interactive transactions (neon-http): every statement-breakpoint
 -- chunk is its own round trip; every cross-statement assertion lives inside
--- a single DO $$ block. See:
---   openspec/changes/profiles-schema-phase-2/design.md
+-- a single DO $$ block.
 --
 -- Rollback (run manually if needed):
 --   Steps 1-4 (columns, backfills, SET NOT NULL, new index) are additive and

@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
 // vitest 4 removed `environmentMatchGlobs`; the documented replacement is
 // `test.projects`. Two projects split test files by extension so .test.tsx
 // runs under jsdom (Testing Library) while .test.ts runs under node
-// (DAL / DB integration). See openspec change `test-foundation` design D1.
+// (DAL / DB integration).
 // `@/*` alias mirrors the tsconfig path mapping so test sources can import
 // production code via the same specifiers production uses (e.g. `@/db`,
 // `@/db/schema`). Without this, static imports like
@@ -16,7 +16,6 @@ const testExclude = [
   'node_modules/**',
   'dist/**',
   '.next/**',
-  'openspec/**',
   'e2e/**',
 ];
 

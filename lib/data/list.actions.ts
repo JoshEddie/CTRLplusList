@@ -2,9 +2,10 @@
 
 import { db } from '@/db';
 import { lists } from '@/db/schema';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import {
-  ADMIN_REQUIRED,
   ADMIN_OPTIONAL,
+  ADMIN_REQUIRED,
   authedWriter,
 } from '@/lib/data/profile.gate';
 import { type ActionResponse } from '@/lib/types';
@@ -14,14 +15,12 @@ import {
   fromDb,
   type ListVisibility,
 } from '@/lib/visibility';
-import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 // Define Zod schema for list validation. The actor's user_id is resolved
-// server-side from the session, never accepted from the client payload — see
-// openspec/specs/server-endpoint-authorization.
+// server-side from the session, never accepted from the client payload
 const ListSchema = z.object({
   name: z
     .string()

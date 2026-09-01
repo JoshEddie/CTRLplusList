@@ -9,8 +9,7 @@ export const UNAUTHORIZED_RESPONSE: ActionResponse = {
   error: 'Unauthorized',
 };
 
-// Session → users.id, the shared actor-resolution helper for action modules
-// (see openspec/specs/server-endpoint-authorization). Lives apart from the
+// Session → users.id, the shared actor-resolution helper for action modules. Lives apart from the
 // user read module so importing reads never drags in NextAuth initialization.
 export async function authedUserId(): Promise<string | null> {
   const session = await auth();

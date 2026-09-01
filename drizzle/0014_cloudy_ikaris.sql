@@ -1,4 +1,4 @@
--- Migration: active-profile-switcher (openspec change)
+-- Migration: active-profile-switcher
 --
 -- Additive only, no backfill. NULL is the correct value for a membership never
 -- acted as: `active-profile` defines when the timestamp is written (a switch,

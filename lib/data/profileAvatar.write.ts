@@ -1,18 +1,17 @@
 import { db } from '@/db';
 import { profile_avatars } from '@/db/schema';
 import { safeOpenmojiCode } from '@/lib/altvatar/openmoji.catalog';
-import { openmojiArtUrl } from '@/lib/altvatar/styles/openmoji';
+import { isAltvatarStyleId } from '@/lib/altvatar/registry';
 import { renderAltvatar } from '@/lib/altvatar/render';
 import { sanitizeSelections } from '@/lib/altvatar/resolve';
-import { isAltvatarStyleId } from '@/lib/altvatar/registry';
+import { openmojiArtUrl } from '@/lib/altvatar/styles/openmoji';
 import { ALTVATAR_STYLE_IDS } from '@/lib/altvatar/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { z } from 'zod';
 
 // Internal, not an action: a `'use server'` module's exports are
 // client-callable endpoints, and this one writes a profile's identity without
-// checking who is asking — its callers own that check. See
-// openspec/specs/data-layer-organization.
+// checking who is asking — its callers own that check.
 //
 // The rendering is never accepted from a client — one that arrived over the
 // wire is arbitrary content displayed to other people — so the payload carries

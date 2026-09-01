@@ -1,4 +1,4 @@
--- Migration: roles-enforcement-and-permissions (openspec change)
+-- Migration: roles-enforcement-and-permissions
 --
 -- Additive only. No backfill: an invite is minted by an owner's act, so there
 -- is nothing to carry forward for existing profiles.

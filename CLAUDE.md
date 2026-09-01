@@ -11,28 +11,7 @@ Non-negotiables; each links to its full text.
 - **Every `/* v8 ignore */` carries inline `--` rationale** naming unreachable branch; never valid on redundant guard. ([TESTING.md](TESTING.md))
 - **Five gates, checked separately**: `npm run lint` (pure `eslint .` — zero errors, zero non-size warnings) · `npx tsc --noEmit` · `npm run build` · `npm run test:coverage` · `npm run test:e2e`. Trunk landings: lint + typecheck locally pre-push; CI on `dev` push runs full battery. Non-executable changes (markdown/skills/specs, comment-only edits) may omit the two test gates — no checklist item, the omission + rationale named in the section's lead-in; any executable change voids it. CI still runs everything. (§ Trunk workflow)
 - **Skills never `git commit`** — stage, report, stop for owner's signature; never retry blocked signature. One change in apply stage at a time on `dev`. (§ Trunk workflow)
-- **Specs are the contract** — `openspec/specs/<capability>/spec.md` normative; archived changes are history. Every interactive surface routes through a primitive-family spec; no page-scoped one-off UI classes.
 - **Restart dev server after seeding/reseeding** — `'use cache'` DAL results stay stale otherwise. (§ Local dev)
-
-## Read this before touching that
-
-| Touching… | Read first |
-| --- | --- |
-| Any test | [TESTING.md](TESTING.md) — substance rules, forbidden patterns, fixtures, naming |
-| DB queries, DAL, schema, migrations | [DATABASE.md](DATABASE.md) — driver limits, migration workflow |
-| OpenSpec changes or specs | [openspec/config.yaml](openspec/config.yaml) + capability spec in `openspec/specs/` (see § Trunk workflow) |
-| Anything an architectural decision may already bind | [openspec/adr/INDEX.md](openspec/adr/INDEX.md) — trigger-keyed ADR index; open the entry it names before acting |
-| UI primitives / any interactive surface | Owning primitive-family spec (`button-system`, `menu-system`, …) in `openspec/specs/` |
-| Seeded UI states, local-mode internals, product-fetch mock | [LOCALDEV.md](LOCALDEV.md) — only when needed |
-
-## Trunk workflow
-
-Normative: each skill's SKILL.md — for the departure arc (`/embark-design`, `/embark-qualify`, `/landfall`) it is the whole contract, not just mechanics; `map-workflow` + `trunk-workflow` specs hold what remains. Labels: [.claude/skills/map/reference/label-machine.md](.claude/skills/map/reference/label-machine.md).
-
-- Route everything through the fleet: `/map` (all work definition) → `/embark-start` → `/embark-design` → `/embark-qualify` → `/embark-write-tasks` → `/artifact-review` → `/embark-apply` → `/spec-review` → `/landfall`, `/anchor` for map bearing moves, `/run-aground` for mid-voyage mirages, `/port-inspection`/`/close-map` for closure, `/release-review` for release cut. Never improvise a step the fleet owns (issues, ALL-CAPS labels, closing, releasing) by hand.
-- Work on `dev`; review before any commit exists; one change in apply at a time (also in hard rules).
-- Never hand-edit generated `openspec-*`/`opsx/*` files under `.claude/` — `openspec update` clobbers. Repo-owned (safe): `grill-me`, `finalize-spec-purposes`, fleet skills.
-- `openspec/schemas/spec-driven-review/` is a **repo-owned fork** of the package `@fission-ai/openspec` `spec-driven` schema (full copy — `resolveSchema` reads one file whole, no merge) plus three local artifacts: `review` (scaffolds `review.md` at propose time), `acceptance` (drafts `acceptance.md` user-journey flows), and `adr` (records each architectural decision as an entry for the library at `openspec/adr/`). It is **renamed** (not same-named shadowing) so the package `spec-driven` default stays reachable and there is no silent override; changes select it by name via `config.yaml`'s `schema:` default and each change's `.openspec.yaml`. It survives `openspec update` (which only clobbers the package dir). **On `openspec update`, reconcile the fork against the updated package `spec-driven` schema** — copy-forward or diff-and-merge the proposal/specs/design/tasks artifacts + templates, preserving the `review`, `acceptance` and `adr` additions — including `adr`'s declaration position between `proposal` and `specs`, which is load-bearing and fails silently if appended at the end (reason stated at the declaration) — so it does not silently drift. `openspec validate --strict` in the pre-merge gate catches a structurally broken fork.
 
 ## Writing code
 
@@ -50,7 +29,7 @@ Normative: each skill's SKILL.md — for the departure arc (`/embark-design`, `/
 - **Yellow** 300–400 = warning — pull easy wins where clean extraction exists; cohesive file may stay yellow. Only tolerated lint warnings.
 - **Green** <300 = goal, never via scattering one concern across files.
 - No `eslint-disable` for either rule.
-- Canonical: rules in [eslint.config.mjs](eslint.config.mjs), normative text in `openspec/specs/testing-foundation`.
+- Canonical: rules in [eslint.config.mjs](eslint.config.mjs)
 
 ### Abstraction (DRY · KISS · coupling)
 

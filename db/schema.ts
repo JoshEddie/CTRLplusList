@@ -79,8 +79,7 @@ export const lists = pgTable('lists', {
   updated_by_user_id: text('updated_by_user_id').references(() => users.id, {
     onDelete: 'set null',
   }),
-  // Legacy column — dormant during soak (see openspec change add-following-and-history,
-  // design Decision 4b). Removed in follow-up archive-legacy-share. Dev code reads
+  // Legacy column — dormant during soak. Removed in follow-up archive-legacy-share. Dev code reads
   // `visibility` only; `shared` is dual-written by setListVisibility for main compat.
   shared: boolean('shared').default(false).notNull(),
   visibility: text('visibility').notNull().default('private'),

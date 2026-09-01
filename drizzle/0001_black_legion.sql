@@ -1,9 +1,8 @@
--- Migration: add-following-and-history (openspec change)
+-- Migration: add-following-and-history
 --
 -- Forward-only schema additions plus data backfill. No DROP statements.
 -- Legacy artifacts (lists.shared, saved_lists) are intentionally preserved
--- for the soak period and dropped in a follow-up change. See:
---   openspec/changes/add-following-and-history/design.md
+-- for the soak period and dropped in a follow-up change.
 --
 -- Rollback (run manually if needed):
 --   ALTER TABLE "user" DROP COLUMN "last_seen_following_at";

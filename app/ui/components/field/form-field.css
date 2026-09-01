@@ -1,5 +1,5 @@
 :root {
-  /* Form-field tokens — see openspec/changes/standardize-form-fields design.md D8.
+  /* Form-field tokens
      Sibling to --neutral-border-color (which has non-form consumers we don't touch).
      Single size — 44px floor universally. */
   --field-min-height: var(--WCAG-input-size); /* WCAG 2.5.8 touch target */

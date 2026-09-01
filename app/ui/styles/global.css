@@ -31,7 +31,6 @@
 
   --max-width: 1500px;
 
-  /* Redesign tokens — see openspec/changes/redesign-home-and-tokens design.md D3 */
   --page-frame-gradient: linear-gradient(
     120deg,
     var(--primary-color-dark) 25%,
