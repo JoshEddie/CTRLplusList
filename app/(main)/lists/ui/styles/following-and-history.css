@@ -595,56 +595,16 @@
 }
 
 .list-collections-tabs {
-  display: flex;
-  align-items: stretch;
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  min-width: 0;
   flex: 1;
+  min-width: 0;
 }
-.list-collections-tabs::-webkit-scrollbar {
-  display: none;
-}
-.list-collections-tab {
-  display: inline-flex;
-  align-items: center;
-  padding: 10px 4px 12px;
-  margin: 0 8px;
-  font-family: var(--font-crimson-pro);
-  font-weight: 300;
-  font-size: 22px;
-  line-height: 1;
-  color: var(--meta-text-color);
-  text-decoration: none;
-  white-space: nowrap;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition:
-    color 0.15s ease,
-    border-color 0.15s ease;
-}
-.list-collections-tab:hover {
-  color: var(--heading-text-color);
-}
-.list-collections-tab--active {
-  color: var(--heading-text-color);
-  border-bottom-color: var(--primary-color);
-}
+
 .list-collections-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
   padding-bottom: 8px;
-}
-
-@media (max-width: 800px) {
-  .list-collections-tab {
-    font-size: 18px;
-    padding: 8px 4px 10px;
-    margin: 0 6px;
-  }
 }
 
 /* Shared full-page grid of list cards (My Lists, Bookmarks, History) */
@@ -669,9 +629,13 @@
   width: 100%;
 }
 
+/* The tabs family draws the rail directly under the strip, where the active
+   tab's underline meets it; the sticky chrome's own border would sit lower and
+   double it. */
 .container--list-collections .list-collections-nav {
   margin-bottom: 0;
   padding-top: calc(var(--container-padding-top) + 8px);
+  border-bottom: none;
 }
 
 .container--list-collections .list-card-grid,

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Tabs } from '@/app/ui/components/tabs';
 
 // Panels arrive rendered, and the strip only chooses which one shows: both are
 // server components, and passing them as props is what lets client tab state
@@ -14,22 +15,18 @@ export default function ProfileSpaceTabs({
 
   return (
     <>
-      <div className="profile-space-tabs" role="tablist">
-        {panels.map((panel) => (
-          <button
-            key={panel.id}
-            type="button"
-            role="tab"
-            id={`profile-space-tab-${panel.id}`}
-            aria-selected={panel.id === active}
-            aria-controls={`profile-space-panel-${panel.id}`}
-            className={`profile-space-tab${panel.id === active ? ' is-active' : ''}`}
-            onClick={() => setActive(panel.id)}
-          >
-            {panel.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        className="profile-space-tabs"
+        aria-label="Profile space sections"
+        items={panels.map((panel) => ({
+          label: panel.label,
+          value: panel.id,
+          id: `profile-space-tab-${panel.id}`,
+          panelId: `profile-space-panel-${panel.id}`,
+        }))}
+        value={active}
+        onChange={setActive}
+      />
       {panels.map((panel) => (
         <div
           key={panel.id}

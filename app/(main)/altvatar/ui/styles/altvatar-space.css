@@ -231,31 +231,7 @@
 }
 
 .profile-space-tabs {
-  display: flex;
-  gap: 12px;
-  border-bottom: 1px solid var(--divider-color);
   margin: 16px 0;
-  overflow-x: auto;
-}
-
-.profile-space-tab {
-  font-family: var(--font-crimson-pro);
-  font-weight: 300;
-  font-size: 22px;
-  line-height: 1;
-  color: var(--meta-text-color);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  padding: 8px 4px 10px;
-  margin: 0 8px -1px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.profile-space-tab.is-active {
-  color: var(--heading-text-color);
-  border-bottom-color: var(--primary-color);
 }
 
 .member-list {

@@ -1,0 +1,78 @@
+/* Tab strip primitive. One stylesheet for both modes — a nav of links and a
+   tablist of buttons render the same strip; only the element differs. */
+
+.tabs {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  overflow-x: auto;
+  /* `overflow-x: auto` computes `overflow-y` to `auto` as well, which lets a
+     strip scroll vertically against its own tab height. */
+  overflow-y: hidden;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--divider-color);
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tabs-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Horizontal padding absorbs the gap between labels so the dead space
+     between two tabs belongs to one of them. */
+  padding: 0 12px;
+  background: none;
+  border: none;
+  /* The active underline overlaps the strip's own rule rather than stacking
+     under it. */
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--meta-text-color);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .tabs-tab:hover {
+    color: var(--heading-text-color);
+  }
+}
+
+.tabs-tab:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: -2px;
+}
+
+.tabs-tab--active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.tabs--default .tabs-tab {
+  min-height: var(--WCAG-input-size);
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.tabs--sm .tabs-tab {
+  min-height: var(--WCAG-input-size-sm);
+  font-family: var(--font-roboto-condensed);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
+}
+
+@media (min-width: 801px) {
+  .tabs--default .tabs-tab {
+    font-size: 22px;
+  }
+}

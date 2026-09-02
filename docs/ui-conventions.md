@@ -21,7 +21,7 @@ A reusable interactive control lives in `app/ui/components/<kebab-name>/` as a
 **primitive family**: PascalCase component files with **named** exports, reached
 through an `index.ts` barrel, plus `<name>Classes.ts`, `types.ts`, and a
 co-located stylesheet where it needs them. Today: `button`, `chip`, `field`,
-`menu`, `popover-trigger`, `segmented-control`.
+`menu`, `popover-trigger`, `segmented-control`, `tabs`.
 
 - Import through the barrel, never the file. Named export is the family
   signature — every component outside these directories uses `export default`.
@@ -33,6 +33,18 @@ co-located stylesheet where it needs them. Today: `button`, `chip`, `field`,
 
 Why controls centralise here at all:
 [ADR-0013](adr/0013-interactive-controls-are-primitive-families.md).
+
+## Gate `:hover` behind `@media (hover: hover)`
+
+A bare `:hover` sticks on touch — tapping a control leaves it hovered until
+something else is tapped. Hover styling on anything a user taps belongs inside
+`@media (hover: hover)`.
+
+- `hover: hover`, not `any-hover: hover`. It asks about the *primary* input, so
+  a laptop with a touchscreen still gets the affordance and a phone does not.
+- Gated today: `menu`, `popover-trigger`, `segmented-control`, `tabs`. `button`
+  and `field` and the page-scoped stylesheets predate the rule and carry ungated
+  hover rules; gate them as you touch them.
 
 ## Reuse existing CSS variables
 

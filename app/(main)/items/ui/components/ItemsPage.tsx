@@ -14,6 +14,7 @@ import {
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { FaPlus } from 'react-icons/fa';
+import { Tabs } from '@/app/ui/components/tabs';
 import ItemFormContainer from './itemform/ItemFormContainer';
 import ItemsBrowser from './ItemsBrowser';
 
@@ -33,6 +34,8 @@ interface ItemsPageProps {
 }
 
 type Tab = 'active' | 'archived';
+
+const ITEMS_PANEL_ID = 'items-panel';
 
 export default function ItemsPage({
   items,
@@ -79,59 +82,55 @@ export default function ItemsPage({
           </Button>
         </Header>
 
-        <div
-          className="items-tabs"
-          role="tablist"
+        <Tabs
+          size="sm"
           aria-label="Filter items by archive state"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'active'}
-            className={`items-tab ${tab === 'active' ? 'active' : ''}`}
-            onClick={() => setTab('active')}
-          >
-            Active ({items.length})
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === 'archived'}
-            className={`items-tab ${tab === 'archived' ? 'active' : ''}`}
-            onClick={() => setTab('archived')}
-          >
-            Archived ({archivedItems.length})
-          </button>
-        </div>
+          items={[
+            {
+              label: `Active (${items.length})`,
+              value: 'active',
+              panelId: ITEMS_PANEL_ID,
+            },
+            {
+              label: `Archived (${archivedItems.length})`,
+              value: 'archived',
+              panelId: ITEMS_PANEL_ID,
+            },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
         <div id={HERO_TOOLBAR_SLOT_ID} />
       </div>
 
-      {source.length === 0 ? (
-        tab === 'active' ? (
-          <Empty
-            type="item"
-            setShowNewItem={setShowNewItem}
-            secondaryAction={actingAs ? SWITCH_PROFILE_ACTION : undefined}
-          />
+      <div id={ITEMS_PANEL_ID}>
+        {source.length === 0 ? (
+          tab === 'active' ? (
+            <Empty
+              type="item"
+              setShowNewItem={setShowNewItem}
+              secondaryAction={actingAs ? SWITCH_PROFILE_ACTION : undefined}
+            />
+          ) : (
+            <div className="empty-container">
+              <h3>No archived items</h3>
+              <p>Items you archive will appear here.</p>
+            </div>
+          )
         ) : (
-          <div className="empty-container">
-            <h3>No archived items</h3>
-            <p>Items you archive will appear here.</p>
-          </div>
-        )
-      ) : (
-        <ItemsBrowser
-          items={source}
-          mode="items"
-          initialPageSize={initialPageSize}
-          actor={actor}
-          user_name={user_name}
-          showArchiveAction
-          archivedView={tab === 'archived'}
-          tier={tier}
-          baseline={baseline}
-        />
-      )}
+          <ItemsBrowser
+            items={source}
+            mode="items"
+            initialPageSize={initialPageSize}
+            actor={actor}
+            user_name={user_name}
+            showArchiveAction
+            archivedView={tab === 'archived'}
+            tier={tier}
+            baseline={baseline}
+          />
+        )}
+      </div>
       {showNewItem && (
         <ItemFormContainer
           actingAs={actingAs}

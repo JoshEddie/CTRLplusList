@@ -715,37 +715,6 @@
   flex-wrap: wrap;
 }
 
-/* ── TABS (Active / Archived) ── */
-.items-tabs {
-  display: flex;
-  gap: 0;
-  border-bottom: 1px solid var(--card-border-color);
-  margin-bottom: 0;
-}
-
-.items-tab {
-  background: none;
-  border: none;
-  padding: 9px 18px;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: var(--font-roboto-condensed);
-  color: var(--muted-text-color);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: all 0.15s;
-}
-
-.items-tab:hover:not([aria-selected='true']) {
-  color: var(--neutral-text-color);
-}
-
-.items-tab[aria-selected='true'] {
-  border-bottom-color: var(--primary-color);
-  color: var(--primary-color);
-}
-
 /* The grid/list view toggle is the SegmentedControl primitive
    (tone=light); container styling lives in segmented-control.css. */
 
