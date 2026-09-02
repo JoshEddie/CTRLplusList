@@ -40,6 +40,7 @@ const othersClaim: PurchaseView = {
 
 const ITEM = {
   id: 'i1',
+  list_id: 'l1',
   name: 'Fancy Mug',
   description: '',
   image_url: '',

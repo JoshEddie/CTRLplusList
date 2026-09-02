@@ -1,0 +1,21 @@
+-- Migration: claims-belong-to-entries (the contract half of the claims-move-to-entries change)
+--
+-- Drops the item-scoped partial unique index that 0018 deliberately kept. Now
+-- that the write path names a list on every claim, the generalised
+-- `purchases_list_item_profile_unique_idx` binds every row it needs to, and
+-- the item-scoped one no longer guards anything — it only refuses a purchaser
+-- claiming the same item on two lists, which independent per-entry pools are
+-- meant to permit.
+--
+-- Safe to drop rather than replace: this is the removal half of an add-then-
+-- drop pair, and the replacement index has stood since 0018. No window opens.
+-- Nothing pre-existing violates it either, because the index being dropped was
+-- itself the stricter constraint.
+--
+-- Forward-only. Rollback in shape (only possible while no purchaser holds two
+-- claims on one item):
+--   CREATE UNIQUE INDEX "purchases_item_profile_unique_idx"
+--     ON "purchases" USING btree ("item_id","profile_id")
+--     WHERE "purchases"."profile_id" IS NOT NULL;
+
+DROP INDEX IF EXISTS "purchases_item_profile_unique_idx";

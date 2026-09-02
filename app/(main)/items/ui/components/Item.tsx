@@ -35,7 +35,10 @@ export default function Item({
   archivedView?: boolean;
   /** Render as a live preview inside the item form: no modal, no interactions. */
   preview?: boolean;
-  /** Owned-list context — enables the "Remove from list" owner action. */
+  /** The owner's own view of one of their lists — enables the "Remove from
+   * list" action. Not the same thing as `item.list_id`, which every list
+   * surface carries: this one says the viewer is managing the list, not
+   * merely looking at it. */
   listId?: string;
 }) {
   const searchParams = useSearchParams();
@@ -133,6 +136,7 @@ export default function Item({
           showCounter={claim.showCounter}
           counterText={claim.counterText}
           hasAnyClaim={claim.hasAnyClaim}
+          claimable={claim.claimable}
           tier={tier}
           showBuyClaim={claim.showBuyClaim}
           viewOnly={preview}
@@ -149,6 +153,7 @@ export default function Item({
           claims={claim.claims}
           claimSummary={claim.claimSummary}
           counterText={claim.counterText}
+          claimable={claim.claimable}
         />
 
         {isOwner && (

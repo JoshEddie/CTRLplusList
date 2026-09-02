@@ -19,15 +19,25 @@ async function gotoList(page: Page) {
   ).toBeVisible();
 }
 
-// A multi-quantity item (claim counter rendered) the viewer can still claim
-// and has not already claimed — the slots-remain state #260 routes.
-function multiQuantityClaimable(page: Page) {
-  return page
+// A multi-unit entry the viewer has not claimed and which has room for the TWO
+// claims this spec records — the slots-remain state Add Claim routes. Capacity
+// is per entry and enforced, so "has a counter" is no longer enough: a card one
+// unit short would pass the first claim and then lose its Add Claim. Reading
+// the remainder off the counter states the requirement instead of trusting a
+// seeded position, and throws rather than timing out if the seed stops meeting
+// it.
+async function multiUnitWithRoomForTwo(page: Page) {
+  const candidates = page
     .locator('.item-container')
     .filter({ has: page.getByRole('button', { name: 'Add Claim' }) })
     .filter({ has: page.locator('.claim-counter') })
-    .filter({ hasNotText: 'You claimed this' })
-    .first();
+    .filter({ hasNotText: 'You claimed this' });
+  for (const card of await candidates.all()) {
+    const counter = await card.locator('.claim-counter').innerText();
+    const parsed = /(\d+)\/(\d+) claimed/.exec(counter);
+    if (parsed && Number(parsed[2]) - Number(parsed[1]) >= 2) return card;
+  }
+  throw new Error('No multi-unit entry on the seeded list has two units free');
 }
 
 // A claimable linked item without a viewer claim — the Buy & Claim state.
@@ -46,7 +56,7 @@ test('AddClaimWhileClaimed_RoutesToClaimFlow_ManageListRemovesPerClaim', async (
 }) => {
   await gotoList(page);
 
-  const item = multiQuantityClaimable(page);
+  const item = await multiUnitWithRoomForTwo(page);
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
   // First claim: the ordinary one-tap self-claim.
@@ -109,7 +119,9 @@ test('AddClaimWhileClaimed_RoutesToClaimFlow_ManageListRemovesPerClaim', async (
   // A fresh server render agrees: self-claim kept, additional claim gone.
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
-  await expect(claimedAfter.getByText('You claimed this').first()).toBeVisible();
+  await expect(
+    claimedAfter.getByText('You claimed this').first()
+  ).toBeVisible();
   await expect(page.getByText(`for ${purchaser}`)).toHaveCount(0);
 });
 
@@ -153,7 +165,9 @@ test('BuyClaim_MatrixSpotCheck_KeptPathPersistsClaim', async ({
 
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
-  await expect(claimedAfter.getByText('You claimed this').first()).toBeVisible();
+  await expect(
+    claimedAfter.getByText('You claimed this').first()
+  ).toBeVisible();
 });
 
 test('BuyClaim_UndoPath_ReleasesClaim', async ({ page, context }) => {

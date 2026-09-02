@@ -116,6 +116,12 @@ export type ItemDisplay = ItemTable & {
   store?: ItemStoreTable | null;
   purchases?: PurchaseView[];
   hasPurchases?: boolean;
+  /** The entry this row was read through — a claim is made against it, so its absence (the item library) is what withdraws the claim affordance. */
+  list_id?: string;
+  /** The entry's capacity in units. Present with `list_id`. */
+  quantity?: number;
+  /** Units already claimed on the entry, summed server-side (ADR-0016) so units never enter the claim projection. Withheld below the `claims` tier. */
+  claimed_units?: number;
 };
 
 export type SortKey =

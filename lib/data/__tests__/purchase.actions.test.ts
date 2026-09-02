@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { items, lists, purchases } from '@/db/schema';
+import { items, list_items, lists, purchases } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
@@ -135,6 +135,7 @@ describe('createPurchase', () => {
     await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
 
     const res = await actions.createPurchase({
+      list_id: 'L',
       item_id: 'I',
       guest_name: null,
     });
@@ -158,6 +159,7 @@ describe('createPurchase', () => {
       cookieJar.store.set('active_profile', 'kiddo');
 
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
@@ -177,6 +179,7 @@ describe('createPurchase', () => {
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
 
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
@@ -206,6 +209,7 @@ describe('createPurchase', () => {
       // claimed_by_profile_id records the asserter — which is what grants them
       // removal rights.
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: '  Aunt May  ',
       });
@@ -231,6 +235,7 @@ describe('createPurchase', () => {
       noSession();
 
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: '  Gifty  ',
       });
@@ -255,6 +260,7 @@ describe('createPurchase', () => {
       noSession();
 
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: 'Gifty',
       });
@@ -277,6 +283,7 @@ describe('createPurchase', () => {
       setGuestCookie({ id: 'g1', name: 'Old Name', purchases: ['prior'] });
 
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: 'New Name',
       });
@@ -289,9 +296,12 @@ describe('createPurchase', () => {
     });
 
     it('AuthedClaim_WritesNoCookie', async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedList(db, { id: 'L', user_id: OWNER.id });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
       asOwner();
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: 'Aunt May',
       });
@@ -303,6 +313,7 @@ describe('createPurchase', () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       noSession();
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: '   ',
       });
@@ -314,6 +325,7 @@ describe('createPurchase', () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       noSession();
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
@@ -328,6 +340,7 @@ describe('createPurchase', () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       asGhost();
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
@@ -339,6 +352,7 @@ describe('createPurchase', () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       asGhost();
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: 'Gifty',
       });
@@ -354,6 +368,7 @@ describe('createPurchase', () => {
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
       asOther();
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
@@ -367,6 +382,7 @@ describe('createPurchase', () => {
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
       noSession();
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: 'Aunt May',
       });
@@ -383,6 +399,7 @@ describe('createPurchase', () => {
       await seedBlock(db, OWNER.id, OTHER.id);
       asOther();
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
@@ -400,6 +417,7 @@ describe('createPurchase', () => {
       await seedBlock(db, OWNER.id, OTHER.id);
       asOther();
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: 'Aunt May',
       });
@@ -408,13 +426,22 @@ describe('createPurchase', () => {
     });
 
     it('DuplicateSameUser_ReturnsDuplicateClaim-NoNewRow', async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedList(db, { id: 'L', user_id: OWNER.id });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, {
+        list_id: 'L',
+        item_id: 'I',
+        position: 65536,
+        quantity: 5,
+      });
       await seedPurchase(db, {
         id: 'p1',
         item_id: 'I',
+        list_id: 'L',
         profile_id: OWNER_PROFILE,
       });
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
@@ -422,37 +449,56 @@ describe('createPurchase', () => {
       expect(await purchaseRows('I')).toHaveLength(1);
     });
 
-    it('DuplicateSameGuest_ReturnsDuplicateClaim-NoNewRow', async () => {
+    // The guest name-duplicate check is gone: it approximated capacity, and
+    // its false positives told a second Josh he had already claimed something
+    // he had never seen. Capacity is what limits guests now.
+    it('SecondGuestSharingAFirstName_ClaimsSuccessfully-TwoRows', async () => {
       await seedList(db, {
         id: 'L',
         user_id: OWNER.id,
         visibility: 'unlisted',
       });
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
-      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, {
+        list_id: 'L',
+        item_id: 'I',
+        position: 65536,
+        quantity: 2,
+      });
       await seedPurchase(db, {
         id: 'p1',
         item_id: 'I',
+        list_id: 'L',
         profile_id: null,
-        guest_name: 'Gifty',
+        guest_name: 'Josh',
       });
       noSession();
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
-        guest_name: 'Gifty',
+        guest_name: 'Josh',
       });
-      expect(res.error).toBe('Duplicate claim');
-      expect(await purchaseRows('I')).toHaveLength(1);
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toHaveLength(2);
     });
 
     it('CapacityReached_ReturnsFullyClaimed-NoNewRow', async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: 1 });
+      await seedList(db, { id: 'L', user_id: OWNER.id });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, {
+        list_id: 'L',
+        item_id: 'I',
+        position: 65536,
+        quantity: 1,
+      });
       await seedPurchase(db, {
         id: 'p1',
         item_id: 'I',
+        list_id: 'L',
         profile_id: OTHER_PROFILE,
       });
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
@@ -461,10 +507,25 @@ describe('createPurchase', () => {
     });
 
     it('ConcurrentSameUser_SecondTripsUniqueIndex-ReturnsDuplicateClaim', async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedList(db, { id: 'L', user_id: OWNER.id });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, {
+        list_id: 'L',
+        item_id: 'I',
+        position: 65536,
+        quantity: 5,
+      });
       const [a, b] = await Promise.all([
-        actions.createPurchase({ item_id: 'I', guest_name: null }),
-        actions.createPurchase({ item_id: 'I', guest_name: null }),
+        actions.createPurchase({
+          list_id: 'L',
+          item_id: 'I',
+          guest_name: null,
+        }),
+        actions.createPurchase({
+          list_id: 'L',
+          item_id: 'I',
+          guest_name: null,
+        }),
       ]);
       const results = [a, b];
       expect(results.filter((r) => r.success)).toHaveLength(1);
@@ -481,16 +542,15 @@ describe('createPurchase', () => {
       await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
 
-      // Under neon-http the viewability check and the quantity re-fetch are
-      // separate round-trips; a concurrent delete can land between them. Let
-      // the first findFirst (inside isItemViewable) hit the real db, then make
-      // the re-fetch see the item gone.
-      const realFindFirst = db.query.items.findFirst.bind(db.query.items);
-      vi.spyOn(db.query.items, 'findFirst')
-        .mockImplementationOnce(realFindFirst)
-        .mockResolvedValueOnce(undefined as never);
+      // Under neon-http the entry gate and the owner re-fetch are separate
+      // round-trips; a concurrent delete can land between them. The gate reads
+      // through its own join, so the only findFirst left is the re-fetch.
+      vi.spyOn(db.query.items, 'findFirst').mockResolvedValueOnce(
+        undefined as never
+      );
 
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
@@ -498,12 +558,84 @@ describe('createPurchase', () => {
       expect(await purchaseRows('I')).toHaveLength(0);
     });
 
+    it('ItemOnNoList_ReturnsItemNotFound-NoRow', async () => {
+      // No entry, no claim. The item is the owner's own, so nothing but the
+      // absence of an entry refuses this.
+      await seedList(db, { id: 'L', user_id: OWNER.id });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      const res = await actions.createPurchase({
+        list_id: 'L',
+        item_id: 'I',
+        guest_name: null,
+      });
+      expect(res.error).toBe('Item not found');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('ItemOnAnotherViewableList_ReturnsItemNotFoundForTheUnnamedEntry-NoRow', async () => {
+      // The item is reachable through L2, but the claim named L1, where it has
+      // no entry. Reaching an item is not permission to claim it anywhere.
+      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
+      await seedList(db, { id: 'L2', user_id: OWNER.id, visibility: 'public' });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, { list_id: 'L2', item_id: 'I', position: 65536 });
+      asOther();
+      const res = await actions.createPurchase({
+        list_id: 'L',
+        item_id: 'I',
+        guest_name: null,
+      });
+      expect(res.error).toBe('Item not found');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('MultiListItem_ConsumesCapacityOnTheNamedEntryOnly', async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
+      await seedList(db, { id: 'L2', user_id: OWNER.id, visibility: 'public' });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, {
+        list_id: 'L',
+        item_id: 'I',
+        position: 65536,
+        quantity: 1,
+      });
+      await seedListItem(db, {
+        list_id: 'L2',
+        item_id: 'I',
+        position: 65536,
+        quantity: 1,
+      });
+
+      const claimed = await actions.createPurchase({
+        list_id: 'L',
+        item_id: 'I',
+        guest_name: null,
+      });
+      expect(claimed.success).toBe(true);
+
+      // L is now full; the same purchaser on L2 still has room, which the
+      // dropped item-scoped unique index would otherwise have refused.
+      const other = await actions.createPurchase({
+        list_id: 'L2',
+        item_id: 'I',
+        guest_name: null,
+      });
+      expect(other.success).toBe(true);
+      expect((await purchaseRows('I')).map((r) => r.list_id).sort()).toEqual([
+        'L',
+        'L2',
+      ]);
+    });
+
     it('InsertThrowsNonUnique_ReturnsFailedToCreatePurchase', async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedList(db, { id: 'L', user_id: OWNER.id });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
       vi.spyOn(db, 'insert').mockImplementation(() => {
         throw new Error('boom');
       });
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
@@ -524,6 +656,7 @@ describe('createPurchase', () => {
 
     it('EligibleTarget_InsertsCallerAsClaimerAndTargetAsPurchaser', async () => {
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
         purchased_by: TARGET_PROFILE,
@@ -547,6 +680,7 @@ describe('createPurchase', () => {
       // pool is the OWNER's mutuals, and 'stranger' has no owner edge.
       await seedUsers(db, [{ id: 'stranger', email: 'stranger@test.local' }]);
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
         purchased_by: selfProfileOf('stranger'),
@@ -560,6 +694,7 @@ describe('createPurchase', () => {
       await seedUsers(db, [{ id: 'oneway', email: 'oneway@test.local' }]);
       await seedFollow(db, OWNER.id, 'oneway');
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
         purchased_by: selfProfileOf('oneway'),
@@ -571,6 +706,7 @@ describe('createPurchase', () => {
     it('TargetBlockedClaimer_ReturnsIneligiblePurchaser-NoRow', async () => {
       await seedBlock(db, TARGET.id, OTHER.id);
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
         purchased_by: TARGET_PROFILE,
@@ -582,6 +718,7 @@ describe('createPurchase', () => {
     it('ClaimerBlockedTarget_ReturnsIneligiblePurchaser-NoRow', async () => {
       await seedBlock(db, OTHER.id, TARGET.id);
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
         purchased_by: TARGET_PROFILE,
@@ -592,6 +729,7 @@ describe('createPurchase', () => {
 
     it('TargetIsOwner_ReturnsIneligiblePurchaser-NoRow', async () => {
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
         purchased_by: OWNER_PROFILE,
@@ -604,6 +742,7 @@ describe('createPurchase', () => {
       // Picking yourself in the picker is just a self-claim — no eligibility
       // gate, identical row shape.
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
         purchased_by: OTHER_PROFILE,
@@ -619,6 +758,7 @@ describe('createPurchase', () => {
 
     it('PurchasedByWithGuestName_ReturnsAmbiguousPurchaser-NoRow', async () => {
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: 'Aunt May',
         purchased_by: TARGET_PROFILE,
@@ -630,6 +770,7 @@ describe('createPurchase', () => {
     it('UnauthenticatedWithPurchasedBy_ReturnsMissingIdentity-NoRow', async () => {
       noSession();
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
         purchased_by: TARGET_PROFILE,
@@ -639,13 +780,19 @@ describe('createPurchase', () => {
     });
 
     it('TargetAlreadyPurchaser_ReturnsDuplicateClaim-AlreadyMarkedMessage', async () => {
+      await db
+        .update(list_items)
+        .set({ quantity: 5 })
+        .where(eq(list_items.item_id, 'I'));
       await seedPurchase(db, {
         id: 'p1',
         item_id: 'I',
+        list_id: 'L',
         profile_id: TARGET_PROFILE,
         claimed_by_profile_id: TARGET_PROFILE,
       });
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
         purchased_by: TARGET_PROFILE,
@@ -662,13 +809,19 @@ describe('createPurchase', () => {
   describe('OwnerClaims', () => {
     beforeEach(async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'private' });
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: 1 });
-      await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, {
+        list_id: 'L',
+        item_id: 'I',
+        position: 65536,
+        quantity: 1,
+      });
       asOwner();
     });
 
     it('OwnerSelfClaim_InsertsOwnerAsClaimerAndPurchaser', async () => {
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
@@ -685,6 +838,7 @@ describe('createPurchase', () => {
       await seedFollow(db, OWNER.id, TARGET.id);
       await seedFollow(db, TARGET.id, OWNER.id);
       const res = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
         purchased_by: TARGET_PROFILE,
@@ -699,18 +853,20 @@ describe('createPurchase', () => {
     });
 
     it('OwnerSelfClaimOnLimitOneItem_BlocksSubsequentViewerClaimAsFullyClaimed', async () => {
-      // Owner claims count toward quantity_limit like any other claim.
+      // Owner claims consume the entry's units like any other claim.
       await db
         .update(lists)
         .set({ visibility: 'public' })
         .where(eq(lists.id, 'L'));
       const ownerRes = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
       expect(ownerRes.success).toBe(true);
       asOther();
       const viewerRes = await actions.createPurchase({
+        list_id: 'L',
         item_id: 'I',
         guest_name: null,
       });
@@ -719,23 +875,37 @@ describe('createPurchase', () => {
     });
   });
 
-  // Documents the accepted residual race (spec MODIFIED scenario: concurrent
-  // distinct claimants on a limited item). Two guests both pass the best-effort
-  // count and both insert because the partial unique index excludes NULL
-  // profile_id — the stored count exceeds quantity_limit. NOT a guarantee.
-  it('TwoDistinctGuestsConcurrent_BothInsertExceedingLimit', async () => {
+  // Capacity is enforced regardless of identity: the partial unique index
+  // cannot bind two NULL-profile guests, so the guard inside the insert is the
+  // only thing standing between them and an over-claimed entry. Sequential on
+  // purpose — the guard takes no row lock, so under a driver with real
+  // concurrency both claims can still land (ADR-0016), and a test that dressed
+  // this up as a race would be asserting a guarantee the app does not make.
+  it('TwoDistinctGuests_SecondRefusedByCapacityRatherThanIdentity', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'unlisted' });
-    await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: 1 });
-    await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+    await seedItem(db, { id: 'I', user_id: OWNER.id });
+    await seedListItem(db, {
+      list_id: 'L',
+      item_id: 'I',
+      position: 65536,
+      quantity: 1,
+    });
     noSession();
 
-    const [a, b] = await Promise.all([
-      actions.createPurchase({ item_id: 'I', guest_name: 'Alice' }),
-      actions.createPurchase({ item_id: 'I', guest_name: 'Bob' }),
-    ]);
-    expect(a.success).toBe(true);
-    expect(b.success).toBe(true);
-    expect(await purchaseRows('I')).toHaveLength(2);
+    const alice = await actions.createPurchase({
+      list_id: 'L',
+      item_id: 'I',
+      guest_name: 'Alice',
+    });
+    const bob = await actions.createPurchase({
+      list_id: 'L',
+      item_id: 'I',
+      guest_name: 'Bob',
+    });
+
+    expect(alice.success).toBe(true);
+    expect(bob).toMatchObject({ success: false, error: 'Fully claimed' });
+    expect(await purchaseRows('I')).toHaveLength(1);
   });
 });
 
@@ -1079,16 +1249,26 @@ describe('removePurchase', () => {
  * tier gates it, so what stands in for one is the rule that decides whether the
  * viewer may see the item at all.
  */
-describe('revealedClaimsForItem', () => {
+describe('revealedClaimsForEntry', () => {
   beforeEach(async () => {
-    await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: 2 });
-    await seedPurchase(db, { id: 'P', item_id: 'I', guest_name: 'Grandma' });
+    await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'owner' });
+    await seedItem(db, { id: 'I', user_id: OWNER.id });
+    await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+    await seedPurchase(db, {
+      id: 'P',
+      item_id: 'I',
+      list_id: 'L',
+      guest_name: 'Grandma',
+    });
   });
+
+  const openTheList = () =>
+    db.update(lists).set({ visibility: 'public' }).where(eq(lists.id, 'L'));
 
   it('OwnerOfTheItem_NamesEveryClaim', async () => {
     asOwner();
 
-    expect(await actions.revealedClaimsForItem('I')).toEqual([
+    expect(await actions.revealedClaimsForEntry('L', 'I')).toEqual([
       {
         id: 'P',
         by: 'other',
@@ -1099,42 +1279,82 @@ describe('revealedClaimsForItem', () => {
     ]);
   });
 
-  it('ViewerWhoCannotSeeTheItem_ReturnsEmptyRatherThanNaming', async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'owner' });
-    await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+  it('ViewerWhoCannotSeeTheList_ReturnsEmptyRatherThanNaming', async () => {
     asOther();
 
-    expect(await actions.revealedClaimsForItem('I')).toEqual([]);
+    expect(await actions.revealedClaimsForEntry('L', 'I')).toEqual([]);
   });
 
   it('SignedOutVisitorOnAPublicList_NamesEveryClaim', async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
-    await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
+    await openTheList();
     noSession();
 
     expect(
-      (await actions.revealedClaimsForItem('I')).map((c) => c.name)
+      (await actions.revealedClaimsForEntry('L', 'I')).map((c) => c.name)
+    ).toEqual(['Grandma']);
+  });
+
+  it('ClaimOnAnotherListOfTheSameItem_IsNotNamed', async () => {
+    await seedList(db, { id: 'L2', user_id: OWNER.id, visibility: 'public' });
+    await seedListItem(db, { list_id: 'L2', item_id: 'I', position: 65536 });
+    await seedPurchase(db, {
+      id: 'P2',
+      item_id: 'I',
+      list_id: 'L2',
+      guest_name: 'Grandpa',
+    });
+    asOwner();
+
+    expect(
+      (await actions.revealedClaimsForEntry('L', 'I')).map((c) => c.name)
     ).toEqual(['Grandma']);
   });
 });
 
 /**
  * Pins `claim-attribution` — the endpoint the claim affordance's reveal
- * reaches. It is scoped to the item and names nobody, so it is a pass-through
- * to the read rather than a second projection.
+ * reaches. Scoped to the entry and naming nobody, and gated by the same
+ * viewability rule as its sibling above.
  */
-describe('claimSummaryForItem', () => {
-  it('ClaimedLimitedItem_ReportsTheCountAndTheRemainder', async () => {
-    await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: 2 });
-    await seedPurchase(db, { id: 'P', item_id: 'I', guest_name: 'Grandma' });
+describe('claimSummaryForEntry', () => {
+  beforeEach(async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'owner' });
+    await seedItem(db, { id: 'I', user_id: OWNER.id });
+    await seedListItem(db, {
+      list_id: 'L',
+      item_id: 'I',
+      position: 65536,
+      quantity: 2,
+    });
+    await seedPurchase(db, {
+      id: 'P',
+      item_id: 'I',
+      list_id: 'L',
+      guest_name: 'Grandma',
+    });
+  });
 
-    expect(await actions.claimSummaryForItem('I')).toEqual({
-      claimCount: 1,
+  it('ClaimedEntry_ReportsClaimedUnitsAndTheRemainder', async () => {
+    await db
+      .update(lists)
+      .set({ visibility: 'public' })
+      .where(eq(lists.id, 'L'));
+    noSession();
+
+    expect(await actions.claimSummaryForEntry('L', 'I')).toEqual({
+      claimedUnits: 1,
       remaining: 1,
     });
   });
 
-  it('UnknownItem_ReturnsNull', async () => {
-    expect(await actions.claimSummaryForItem('no-such-item')).toBeNull();
+  it('ViewerWhoCannotSeeTheList_ReturnsNullRatherThanTheCount', async () => {
+    asOther();
+
+    expect(await actions.claimSummaryForEntry('L', 'I')).toBeNull();
+  });
+
+  it('UnknownEntry_ReturnsNull', async () => {
+    asOwner();
+    expect(await actions.claimSummaryForEntry('L', 'no-such-item')).toBeNull();
   });
 });

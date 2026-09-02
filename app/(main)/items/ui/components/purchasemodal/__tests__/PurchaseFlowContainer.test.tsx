@@ -2,7 +2,7 @@ import { ROLES } from '@/lib/data/profile.roles';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { claimSummaryForItem } from '@/lib/data/purchase.actions';
+import { claimSummaryForEntry } from '@/lib/data/purchase.actions';
 import { getClaimPickerForItem } from '@/lib/data/user.actions';
 import { PurchaseView } from '@/lib/types';
 import PurchaseFlowContainer from '../PurchaseFlowContainer';
@@ -12,9 +12,8 @@ import { makeProfile } from '@/test/helpers/profile';
 // driver; the picker read and the sign-in action are the only contracts the
 // modal consumes.
 vi.mock('@/lib/data/purchase.actions', () => ({
-  claimSummaryForItem: vi.fn(),
+  claimSummaryForEntry: vi.fn(),
 }));
-
 
 vi.mock('@/lib/data/user.actions', () => ({
   getClaimPickerForItem: vi.fn(),
@@ -32,6 +31,7 @@ const PICKER = {
 
 const ITEM = {
   id: 'i1',
+  list_id: 'l1',
   name: 'Fancy Mug',
   description: '',
   image_url: '',
@@ -70,7 +70,9 @@ function renderContainer(
 const disclosureTrigger = (name = 'Claiming for someone else?') =>
   screen.getByRole('button', { name: new RegExp(name.replace('?', '\\?')) });
 
-async function expandLoadedDisclosure(user: ReturnType<typeof userEvent.setup>) {
+async function expandLoadedDisclosure(
+  user: ReturnType<typeof userEvent.setup>
+) {
   await screen.findByRole('button', { name: 'Claim this gift' });
   await user.click(disclosureTrigger());
   return screen.findByRole('button', { name: /Sam Smith/ });
@@ -79,9 +81,9 @@ async function expandLoadedDisclosure(user: ReturnType<typeof userEvent.setup>) 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getClaimPickerForItem).mockResolvedValue(PICKER);
-  vi.mocked(claimSummaryForItem).mockResolvedValue({
-    claimCount: 0,
-    remaining: null,
+  vi.mocked(claimSummaryForEntry).mockResolvedValue({
+    claimedUnits: 0,
+    remaining: 1,
   });
 });
 
@@ -168,9 +170,7 @@ describe('PurchaseFlowContainer', () => {
     it('SelfClaimClick_CallsOnSelfClaim-NoDisclosureInteractionNeeded', async () => {
       const user = userEvent.setup();
       const { onSelfClaim } = renderContainer();
-      await user.click(
-        screen.getByRole('button', { name: 'Claim this gift' })
-      );
+      await user.click(screen.getByRole('button', { name: 'Claim this gift' }));
       expect(onSelfClaim).toHaveBeenCalledTimes(1);
     });
 
@@ -419,17 +419,47 @@ describe('PurchaseFlowContainer', () => {
     });
   });
 
+  // No entry, no claim — inside the modal too. `?purchaseItem=` can open this
+  // on the item library, which names no list, and a CTA there would dispatch a
+  // write that cannot land.
+  describe('NoEntry', () => {
+    const noEntry = {
+      ...((ITEM as object) ?? {}),
+      list_id: undefined,
+    } as never;
+
+    it('Authenticated_RendersNoSelfClaimCtaOrDisclosure', async () => {
+      renderContainer({ item: noEntry });
+
+      expect(
+        await screen.findByRole('link', { name: /Amazon/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Claim this gift' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /Claiming for someone/ })
+      ).not.toBeInTheDocument();
+    });
+
+    it('SignedOut_RendersNoGuestClaimField', () => {
+      renderContainer({ item: noEntry, actor: undefined });
+
+      expect(screen.queryByLabelText('Your name')).not.toBeInTheDocument();
+    });
+  });
+
   describe('Owner', () => {
     // Claim affordances are ungoverned by spoiler state: the owner reaches the
     // flow at every level, and only the disclosure the modal renders differs.
     it('BelowClaims_RendersOwnerCtaAfterTheRevealFetch', async () => {
-      vi.mocked(claimSummaryForItem).mockResolvedValue({
-        claimCount: 2,
+      vi.mocked(claimSummaryForEntry).mockResolvedValue({
+        claimedUnits: 2,
         remaining: 1,
       });
       renderContainer({ isOwner: true, tier: 'surprise' });
-      // The reveal summary discloses only the count and remaining capacity —
-      // it names no party.
+      // The reveal summary discloses only claimed units and the remaining
+      // capacity — it names no party, and neither number is a person count.
       expect(await screen.findByText('2 claimed · 1 left')).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: 'I bought this myself' })
@@ -444,11 +474,11 @@ describe('PurchaseFlowContainer', () => {
         item: { ...((ITEM as object) ?? {}), id: '' } as never,
       });
 
-      expect(claimSummaryForItem).not.toHaveBeenCalled();
+      expect(claimSummaryForEntry).not.toHaveBeenCalled();
     });
 
     it('BelowClaimsSummaryUnresolved_StillOffersTheClaimCta', () => {
-      vi.mocked(claimSummaryForItem).mockReturnValue(new Promise(() => {}));
+      vi.mocked(claimSummaryForEntry).mockReturnValue(new Promise(() => {}));
       renderContainer({ isOwner: true, tier: 'surprise' });
 
       expect(
@@ -456,23 +486,37 @@ describe('PurchaseFlowContainer', () => {
       ).toBeInTheDocument();
     });
 
-    it('BelowClaimsUnlimitedItem_ReportsTheCountWithoutARemainder', async () => {
-      vi.mocked(claimSummaryForItem).mockResolvedValue({
-        claimCount: 2,
-        remaining: null,
+    it('BelowClaimsUnclaimedEntry_ReportsNoClaimsRatherThanAFraction', async () => {
+      vi.mocked(claimSummaryForEntry).mockResolvedValue({
+        claimedUnits: 0,
+        remaining: 4,
       });
       renderContainer({ isOwner: true, tier: 'surprise' });
 
-      expect(await screen.findByText('2 claimed')).toBeInTheDocument();
+      expect(
+        await screen.findByText('No claims on this item yet.')
+      ).toBeInTheDocument();
+    });
+
+    it('BelowClaimsEntryWithoutAList_SkipsTheRevealFetch', () => {
+      renderContainer({
+        isOwner: true,
+        tier: 'surprise',
+        item: { ...((ITEM as object) ?? {}), list_id: undefined } as never,
+      });
+
+      expect(claimSummaryForEntry).not.toHaveBeenCalled();
     });
 
     it('BelowClaimsNoCapacityLeft_SuppressesTheClaimCta', async () => {
-      vi.mocked(claimSummaryForItem).mockResolvedValue({
-        claimCount: 3,
+      vi.mocked(claimSummaryForEntry).mockResolvedValue({
+        claimedUnits: 3,
         remaining: 0,
       });
       renderContainer({ isOwner: true, tier: 'surprise' });
-      expect(await screen.findByText('3 claimed · 0 left')).toBeInTheDocument();
+      // A full entry says so plainly rather than offering a "0 left" fraction,
+      // the same rule the card counter follows.
+      expect(await screen.findByText('Fully claimed')).toBeInTheDocument();
       expect(
         screen.queryByRole('button', { name: 'I bought this myself' })
       ).not.toBeInTheDocument();

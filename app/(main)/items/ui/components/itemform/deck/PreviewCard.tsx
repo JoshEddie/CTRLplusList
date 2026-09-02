@@ -23,6 +23,7 @@ export function PreviewCard({ item }: { item: ItemViewModel }) {
         hasAnyClaim={false}
         tier="surprise"
         viewOnly
+        claimable={false}
       />
     </div>
   );

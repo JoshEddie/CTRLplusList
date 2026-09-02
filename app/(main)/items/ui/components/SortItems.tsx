@@ -70,7 +70,7 @@ export default function SortItems({
         .join('|');
       const s = i.store;
       const skey = s ? `${s.name}:${s.price}:${s.link}` : '';
-      return `${i.id}:${i.name}:${i.image_url ?? ''}:${i.quantity_limit ?? ''}[${pkey}][${skey}]`;
+      return `${i.id}:${i.name}:${i.image_url ?? ''}:${i.quantity ?? ''}:${i.claimed_units ?? ''}[${pkey}][${skey}]`;
     })
     .join(';');
   const dndId = useId();

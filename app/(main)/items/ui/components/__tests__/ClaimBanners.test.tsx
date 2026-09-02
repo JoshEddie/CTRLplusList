@@ -39,6 +39,7 @@ function renderBanners(
     claims: [],
     claimSummary: '',
     counterText: '1/3 claimed',
+    claimable: true,
     ...overrides,
   };
   return { props, ...render(<ClaimBanners {...props} />) };
@@ -51,7 +52,9 @@ describe('ClaimBanners', () => {
       claims: [samClaim, joClaim],
       claimSummary: 'Sam, Jo Nakamura',
     });
-    expect(screen.getByRole('status')).toHaveTextContent('Claimed by Sam, Jo Nakamura');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Claimed by Sam, Jo Nakamura'
+    );
   });
 
   it('PurchasedButMine_SuppressesOthersBanner', () => {
@@ -113,6 +116,23 @@ describe('ClaimBanners', () => {
       expect(screen.queryByText('Jo Nakamura')).not.toBeInTheDocument();
     });
 
+    // Off a list there is no entry, so no capacity to count against and no
+    // counter. The banner shows the same line it already uses for a
+    // fully-claimed item rather than rendering a bare check mark.
+    it('OwnerWithNoEntry_ShowsTheClaimedByLine', () => {
+      renderBanners({
+        isOwner: true,
+        tier: 'claims',
+        claims: [samClaim, joClaim],
+        claimSummary: '2 people',
+        counterText: '',
+        claimable: false,
+      });
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Claimed by 2 people'
+      );
+    });
+
     it('OwnerAtClaimsWithAttributedClaim_NamesNeitherParty', () => {
       renderBanners({
         isOwner: true,
@@ -148,9 +168,7 @@ describe('ClaimBanners', () => {
 // answers, where the fallback keeps the label total.
 it('AttributedOwnClaimWithoutAName_LabelsItSomeone', () => {
   renderBanners({
-    myClaims: [
-      { id: 'p9', by: 'other', claimedByViewer: true },
-    ],
+    myClaims: [{ id: 'p9', by: 'other', claimedByViewer: true }],
   });
 
   expect(screen.getByRole('status')).toHaveTextContent(

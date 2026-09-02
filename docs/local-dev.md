@@ -27,9 +27,9 @@ Both onboarding values are one-shot against a given database: submitting the gat
 
 Deterministic states baked into `npm run db:reset:dev` / `dev:local` seed ([scripts/seed-dev-users.ts](../scripts/seed-dev-users.ts)). Read when hunting a specific UI state from seed.
 
-### `quantity_limit` coverage
+### Entry `quantity` coverage
 
-Every seeded list has overrides at positions 0, 1, last, rotating `(3, null, 1)` → `(null, 1, 3)` → `(1, 3, null)` across consecutive lists. Multi-claim + unlimited items get multiple deterministic purchase rows (`${itemId}-purchase-${n}`) so partial-claimed, fully-claimed, multi-buyer-unlimited UI states reachable from seed without clicking.
+Every seeded list has overrides at positions 0, 1, last, rotating `(3, 4, 1)` → `(4, 1, 3)` → `(1, 3, 4)` across consecutive lists. Multi-unit entries get several deterministic purchase rows (`${itemId}-purchase-${n}`) so partial-claimed and fully-claimed states are reachable from seed without clicking. The `4` seat is deliberately left at least two units short on every list, so there is always a multi-unit card that still accepts claims — capacity is enforced now, and a seat that is both busy and open no longer happens by accident.
 
 ### Imageless-item coverage
 

@@ -1,6 +1,6 @@
 import { db } from '@/db';
 import { items, list_items, lists } from '@/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import { hasBlocked } from '@/lib/data/profile';
 import type { UserIdentity } from '@/lib/types';
@@ -93,16 +93,61 @@ export async function isItemViewable(
     );
 
   for (const list of candidateLists) {
-    if (viewer && list.profile_id === viewer.activeProfile.id) return true;
-    if (
-      viewer &&
-      (await hasBlocked({
-        blockerProfileId: list.profile_id,
-        blockedProfileId: viewer.selfProfile.id,
-      }))
-    )
-      continue;
-    if (fromDb(list.visibility) !== VISIBILITY.OWNER) return true;
+    if (await isListViewable(list, viewer)) return true;
   }
   return false;
+}
+
+async function isListViewable(
+  list: { profile_id: string; visibility: string },
+  viewer: UserIdentity | null
+): Promise<boolean> {
+  if (viewer && list.profile_id === viewer.activeProfile.id) return true;
+  if (
+    viewer &&
+    (await hasBlocked({
+      blockerProfileId: list.profile_id,
+      blockedProfileId: viewer.selfProfile.id,
+    }))
+  )
+    return false;
+  return fromDb(list.visibility) !== VISIBILITY.OWNER;
+}
+
+/**
+ * Returns true iff the list entry — this item's presence on this list — exists
+ * and sits on a list the viewer may view, by the same predicate
+ * `isItemViewable` applies per candidate list.
+ *
+ * This is the claim gate. A claim belongs to an entry, so what a viewer may
+ * claim is an item's presence on a list they can see, not an item they can
+ * reach through some other list. An item on no list has no entry and so is
+ * unclaimable, which is the intended loss: such items are owner-only anyway.
+ *
+ * The item and the list must agree on whose they are, the same rule the list
+ * reads narrow by — an entry pairing someone else's item with your list is not
+ * a thing anyone may claim against.
+ */
+export async function isEntryViewable(
+  listId: string,
+  itemId: string,
+  viewer: UserIdentity | null
+): Promise<boolean> {
+  const [entry] = await db
+    .select({
+      profile_id: lists.profile_id,
+      visibility: lists.visibility,
+    })
+    .from(list_items)
+    .innerJoin(lists, eq(lists.id, list_items.list_id))
+    .innerJoin(items, eq(items.id, list_items.item_id))
+    .where(
+      and(
+        eq(list_items.list_id, listId),
+        eq(list_items.item_id, itemId),
+        eq(items.profile_id, lists.profile_id)
+      )
+    );
+  if (!entry) return false;
+  return isListViewable(entry, viewer);
 }

@@ -95,28 +95,45 @@ describe('profileReferences', () => {
     });
   });
 
+  // One claim per purchaser per ENTRY: the index binds (list, item,
+  // purchaser), so the same purchaser on a second list is a second claim.
   describe('PurchaserPartialUnique', () => {
     beforeEach(async () => {
       await db.insert(items).values({ id: 'i1', name: 'I', profile_id: 'p1' });
+      await db.insert(lists).values([
+        { id: 'l1', name: 'L', occasion: 'Birthday', profile_id: 'p1' },
+        { id: 'l2', name: 'L2', occasion: 'Birthday', profile_id: 'p1' },
+      ]);
     });
 
-    it('DuplicateProfilePurchaser_RejectsWith23505', async () => {
+    it('DuplicateProfilePurchaserOnOneEntry_RejectsWith23505', async () => {
       await db
         .insert(purchases)
-        .values({ id: 'pu1', item_id: 'i1', profile_id: 'p2' });
+        .values({ id: 'pu1', item_id: 'i1', list_id: 'l1', profile_id: 'p2' });
       expect(
         await sqlstateOfWrite(
-          db
-            .insert(purchases)
-            .values({ id: 'pu2', item_id: 'i1', profile_id: 'p2' })
+          db.insert(purchases).values({
+            id: 'pu2',
+            item_id: 'i1',
+            list_id: 'l1',
+            profile_id: 'p2',
+          })
         )
       ).toBe(PG_UNIQUE_VIOLATION);
     });
 
+    it('SameProfilePurchaserOnTwoEntries_BothPersist', async () => {
+      await db.insert(purchases).values([
+        { id: 'pu1', item_id: 'i1', list_id: 'l1', profile_id: 'p2' },
+        { id: 'pu2', item_id: 'i1', list_id: 'l2', profile_id: 'p2' },
+      ]);
+      expect(await db.select().from(purchases)).toHaveLength(2);
+    });
+
     it('MultipleNullPurchaserGuestRows_BothPersist', async () => {
       await db.insert(purchases).values([
-        { id: 'pu1', item_id: 'i1', guest_name: 'A' },
-        { id: 'pu2', item_id: 'i1', guest_name: 'B' },
+        { id: 'pu1', item_id: 'i1', list_id: 'l1', guest_name: 'A' },
+        { id: 'pu2', item_id: 'i1', list_id: 'l1', guest_name: 'B' },
       ]);
       const rows = await db.select({ id: purchases.id }).from(purchases);
       expect(rows).toHaveLength(2);

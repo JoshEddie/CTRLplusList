@@ -85,15 +85,22 @@ no list is visible to its owner only.
 A profile's entire item set, independent of any list.
 
 **List entry**:
-An item's presence on one list, carrying the position it holds there. An item on
-several lists has one entry per list. Stored as `list_items`, whose name reads
-like a pure join table even though the position it carries belongs to the entry
-rather than to the item or the list.
+An item's presence on one list, carrying the position it holds there, the
+quantity wanted there, and the claims made against it. An item on several lists
+has one entry per list, and the entries share nothing. Stored as `list_items`,
+whose name reads like a pure join table even though what it carries belongs to
+the entry rather than to the item or the list.
 
 **Quantity**:
-How many of an item its owner wants. Currently held on the **item**, so it is one
-value across every list the item appears on, and null means unlimited. Claims
-fill it one per claim, so it also caps how many separate people may claim.
+How many of an item its owner wants **on one list**. The same item asked for
+once at a birthday and four times at Christmas is two entries with two
+quantities. There is no unlimited quantity. The item form's own quantity field
+is a leftover of the older item-level meaning and bounds nothing.
+
+**Units**:
+What a claim covers, and what quantity is counted in. A claim covers one unit.
+Claimed units are summed from the claims themselves, never kept as a separate
+running total ([ADR-0016](docs/adr/0016-claimed-units-are-summed-not-stored.md)).
 
 **Occasion**:
 The free-text or picked label on a list, rendered as its eyebrow.
@@ -117,10 +124,12 @@ look ([ADR-0009](docs/adr/0009-generated-art-is-baked-and-persisted.md)).
 ## Claims
 
 **Claim**:
-A statement that someone is getting an item for its owner. The app cannot make
-a purchase, cannot track one, and cannot verify that one happened — only that
-somebody said they would. "Claim" is the strongest true word, which is why it is
-used everywhere a person can see, over the `purchases` table it is stored in.
+A statement that someone is getting an item for its owner, made against one
+**list entry**. A claim on one list consumes nothing on another, and an item on
+no list cannot be claimed at all. The app cannot make a purchase, cannot track
+one, and cannot verify that one happened — only that somebody said they would.
+"Claim" is the strongest true word, which is why it is used everywhere a person
+can see, over the `purchases` table it is stored in.
 _Avoid_: purchase, buy — accurate for neither what the app does nor what it knows
 
 **Purchaser**:

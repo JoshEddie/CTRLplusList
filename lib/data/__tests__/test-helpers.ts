@@ -105,7 +105,12 @@ export async function seedItem(
 
 export async function seedListItem(
   db: TestDb,
-  row: { list_id: string; item_id: string; position: number }
+  row: {
+    list_id: string;
+    item_id: string;
+    position: number;
+    quantity?: number;
+  }
 ): Promise<void> {
   await db.insert(list_items).values(row);
 }
@@ -115,6 +120,8 @@ export async function seedPurchase(
   purchase: {
     id: string;
     item_id: string;
+    list_id?: string | null;
+    units?: number;
     profile_id?: string | null;
     claimed_by_profile_id?: string | null;
     guest_name?: string | null;
@@ -124,6 +131,8 @@ export async function seedPurchase(
   await db.insert(purchases).values({
     id: purchase.id,
     item_id: purchase.item_id,
+    list_id: purchase.list_id ?? null,
+    units: purchase.units ?? 1,
     profile_id: purchase.profile_id ?? null,
     claimed_by_profile_id: purchase.claimed_by_profile_id ?? null,
     guest_name: purchase.guest_name ?? null,
