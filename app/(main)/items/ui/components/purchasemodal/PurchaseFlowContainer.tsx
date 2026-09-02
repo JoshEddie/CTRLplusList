@@ -5,7 +5,7 @@
 
 import { Button } from '@/app/ui/components/button';
 import { TextField } from '@/app/ui/components/field';
-import { claimSummaryForItem } from '@/lib/data/purchase.actions';
+import { claimSummaryForEntry } from '@/lib/data/purchase.actions';
 import {
   getClaimPickerForItem,
   signInUser,
@@ -69,19 +69,21 @@ function GuestClaimSection({
 // What a confirmed claim-affordance reveal discloses, and no more: that the
 // item carries claims and what capacity remains. Fetched rather than carried by
 // the page, whose payload withholds both at this level.
+// Both numbers are units, never a unit count beside a person count: "2 claimed
+// · 1 left" has to be readable as two halves of one capacity.
 function RevealSummary({
   summary,
 }: {
-  summary: { claimCount: number; remaining: number | null } | null;
+  summary: { claimedUnits: number; remaining: number } | null;
 }) {
   if (!summary) return null;
   return (
     <p className="claim-reveal-summary" role="status">
-      {summary.claimCount === 0
+      {summary.claimedUnits === 0
         ? 'No claims on this item yet.'
-        : `${summary.claimCount} claimed${
-            summary.remaining === null ? '' : ` · ${summary.remaining} left`
-          }`}
+        : summary.remaining === 0
+          ? 'Fully claimed'
+          : `${summary.claimedUnits} claimed · ${summary.remaining} left`}
     </p>
   );
 }
@@ -182,33 +184,37 @@ export default function PurchaseFlowContainer({
   const [pickerStatus, setPickerStatus] = useState<PickerStatus>('loading');
   const [fetchAttempt, setFetchAttempt] = useState(0);
   const [reveal, setReveal] = useState<{
-    claimCount: number;
-    remaining: number | null;
+    claimedUnits: number;
+    remaining: number;
   } | null>(null);
 
   // Claim affordances are ungoverned by spoiler state (`claim-attribution`), so
   // every authenticated viewer reaches the flow — the owner included.
   const showClaimSection = !!actor;
   const itemId = item.id;
+  const listId = item.list_id;
 
   // The modal only opens at this level after the viewer confirmed the reveal,
   // so arriving here IS the confirmation. The fetch is scoped to the item and
   // changes nothing the page carries.
   const needsReveal = !atLeast(tier, 'claims');
   useEffect(() => {
-    if (!needsReveal || !itemId) return;
+    if (!needsReveal || !itemId || !listId) return;
     let cancelled = false;
-    claimSummaryForItem(itemId).then((summary) => {
+    claimSummaryForEntry(listId, itemId).then((summary) => {
       if (!cancelled) setReveal(summary);
     });
     return () => {
       cancelled = true;
     };
-  }, [itemId, needsReveal]);
+  }, [itemId, listId, needsReveal]);
 
   // Nothing left to claim is a refusal the viewer should read before acting,
-  // not one the action returns after they try.
-  const canClaim = reveal?.remaining !== 0;
+  // not one the action returns after they try. An absent entry is the same
+  // kind of refusal: `?purchaseItem=` can open this modal on the item library,
+  // which names no list, and a CTA there would dispatch a write that cannot
+  // land.
+  const canClaim = !!listId && reveal?.remaining !== 0;
 
   // Each (item, attempt) pair is a fresh fetch; reset to loading at render
   // time so the effect body only performs async state updates.
@@ -251,7 +257,7 @@ export default function PurchaseFlowContainer({
       {needsReveal && <RevealSummary summary={reveal} />}
 
       {!showClaimSection ? (
-        <GuestClaimSection onGuestClaim={onGuestClaim} />
+        canClaim && <GuestClaimSection onGuestClaim={onGuestClaim} />
       ) : (
         <AuthedClaimSection
           isOwner={isOwner}

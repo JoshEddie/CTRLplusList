@@ -8,7 +8,9 @@ import { describe, expect, it, vi } from 'vitest';
 import ItemCard from '../ItemCard';
 
 vi.mock('@/lib/data/item.placeholder.actions', async () =>
-  (await import('../itemform/deck/__tests__/test-helpers')).placeholderActionsMock()
+  (
+    await import('../itemform/deck/__tests__/test-helpers')
+  ).placeholderActionsMock()
 );
 
 const STORE = { name: 'Amazon', link: 'https://a.example', price: '35.50' };
@@ -33,6 +35,7 @@ function renderCard(
     showCounter: true,
     counterText: '0/3 claimed',
     hasAnyClaim: false,
+    claimable: true,
     tier: 'claims',
     onPurchaseClick: vi.fn(),
     onAddClaimClick: vi.fn(),
@@ -106,7 +109,9 @@ describe('ItemCard', () => {
           store: { name: '', link: '', price: '12.00' },
         } as never,
       });
-      expect(container.querySelector('.item-price')).toHaveTextContent('$12.00');
+      expect(container.querySelector('.item-price')).toHaveTextContent(
+        '$12.00'
+      );
       expect(container.querySelector('.item-store-metadata')).toBeNull();
       expect(
         screen.queryByRole('link', { name: 'View item — opens in new tab' })

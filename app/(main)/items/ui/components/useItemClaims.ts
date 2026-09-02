@@ -3,7 +3,7 @@
 import {
   createPurchase,
   removePurchase,
-  revealedClaimsForItem,
+  revealedClaimsForEntry,
 } from '@/lib/data/purchase.actions';
 import { atLeast } from '@/lib/spoilers';
 import { storeComplete } from '@/lib/storeValidity';
@@ -58,12 +58,27 @@ export function useItemClaims({
     null
   );
 
-  const quantityLimit = item.quantity_limit;
-  const claimCount = claims.length;
-  const isFullyClaimed =
-    quantityLimit !== null &&
-    quantityLimit !== undefined &&
-    claimCount >= quantityLimit;
+  // The list entry this card was read through, or null on the item library,
+  // which spans every list and so has no entry to claim against. One
+  // discriminator for the whole hook: the id and the capacity arrive together
+  // or not at all, so nothing downstream can test one and assume the other.
+  //
+  // `claimedUnits` is the entry's own number, never summed from the projected
+  // claims — a per-claim unit count is not something the claims tier
+  // discloses. The local delta keeps an optimistic claim visible until the
+  // page re-reads; each claim covers exactly one unit.
+  const entry =
+    item.list_id !== undefined && item.quantity !== undefined
+      ? {
+          listId: item.list_id,
+          quantity: item.quantity,
+          claimedUnits:
+            (item.claimed_units ?? 0) + (claims.length - propPurchases.length),
+        }
+      : null;
+  const isFullyClaimed = !!entry && entry.claimedUnits >= entry.quantity;
+  const claimable = !!entry;
+  const entryListId = entry?.listId;
 
   // Claims this viewer can remove: their own (purchaser) or ones they
   // asserted for someone else (claimed_by_profile_id).
@@ -72,7 +87,7 @@ export function useItemClaims({
     [claims]
   );
   const hasViewerClaim = viewerClaims.length > 0;
-  const hasAnyClaim = claimCount > 0;
+  const hasAnyClaim = claims.length > 0;
   const claimSummary = useMemo(() => claimSummaryOf(claims), [claims]);
 
   // The claim affordance's reveal is the count and the remaining capacity, which
@@ -89,15 +104,15 @@ export function useItemClaims({
   // The claim route is never that modal: its reveal promises the count and no
   // names, so it reads the page's payload however nameless it arrives.
   useEffect(() => {
-    if (!revealNames || !namesWithheld || !item.id) return;
+    if (!revealNames || !namesWithheld || !item.id || !entryListId) return;
     let cancelled = false;
-    revealedClaimsForItem(item.id).then((revealed) => {
+    revealedClaimsForEntry(entryListId, item.id).then((revealed) => {
       if (!cancelled) setRevealedClaims(revealed);
     });
     return () => {
       cancelled = true;
     };
-  }, [revealNames, namesWithheld, item.id]);
+  }, [revealNames, namesWithheld, item.id, entryListId]);
 
   // One home for claim removal: dispatch, toast copy, and local-state filter.
   const removeClaim = async (claim: PurchaseView) => {
@@ -117,7 +132,9 @@ export function useItemClaims({
         }
       );
       setClaims((prev) => prev.filter((p) => p.id !== claim.id));
-      setRevealedClaims((prev) => prev?.filter((p) => p.id !== claim.id) ?? null);
+      setRevealedClaims(
+        (prev) => prev?.filter((p) => p.id !== claim.id) ?? null
+      );
       return true;
     } catch (error) {
       console.error('Failed to remove purchase:', error);
@@ -140,16 +157,24 @@ export function useItemClaims({
     optimistic: Omit<PurchaseView, 'id'>,
     settle: (succeeded: boolean, claim?: PurchaseView) => void = onSettled
   ) => {
+    // No entry, no claim — the one place the whole hook names a list, so no
+    // handler can reach the action without one.
+    if (!entryListId) return;
     try {
-      const result = await toast.promise(createPurchase(payload), {
-        loading: 'Adding claim',
-        success: 'Claim added successfully',
-        error: (err: Error) => err?.message || 'Failed to add claim',
-      });
+      const result = await toast.promise(
+        createPurchase({ ...payload, list_id: entryListId }),
+        {
+          loading: 'Adding claim',
+          success: 'Claim added successfully',
+          error: (err: Error) => err?.message || 'Failed to add claim',
+        }
+      );
       const id = result?.success ? result.id : undefined;
       if (id) {
         setClaims((prev) =>
-          prev.some((p) => p.id === id) ? prev : [...prev, { ...optimistic, id }]
+          prev.some((p) => p.id === id)
+            ? prev
+            : [...prev, { ...optimistic, id }]
         );
       } else if (!result?.success && result?.message) {
         toast.error(result.message);
@@ -174,9 +199,22 @@ export function useItemClaims({
       settle
     );
 
-  // Below `claims` the projection withheld other parties' claims, so a counter
-  // computed from the payload would state a false zero rather than hide.
-  const showCounter = quantityLimit !== 1 && atLeast(tier, 'claims');
+  // Below `claims` the entry's count is withheld, so a counter drawn from the
+  // payload would state a false zero rather than hide. An entry asking for one
+  // needs no fraction, and the library has no entry at all.
+  const showCounter =
+    !!entry && entry.quantity !== 1 && atLeast(tier, 'claims');
+
+  // An entry meeting its quantity says so plainly rather than showing a
+  // fraction: an owner who lowered the number afterwards would otherwise be
+  // presented with one that looks broken. Empty off a list, where there is no
+  // capacity to count against — what a surface shows instead is that surface's
+  // to decide, not this hook's to invent a second phrasing for.
+  const counterText = !entry
+    ? ''
+    : isFullyClaimed
+      ? 'Fully claimed'
+      : `${entry.claimedUnits}/${entry.quantity} claimed`;
 
   return {
     claims,
@@ -190,21 +228,22 @@ export function useItemClaims({
     countWithheld,
     namesWithheld,
     showCounter,
-    counterText:
-      quantityLimit == null
-        ? `${claimCount}/∞ claimed`
-        : `${claimCount}/${quantityLimit} claimed`,
+    counterText,
     // "Sold out" treatment (strikethrough price, faded stores, hidden claim
-    // button) only fires when the item is fully claimed. Partial multi-claim
-    // and unlimited items still accept buyers, so stores + claim button stay
-    // live and price stays unstruck.
+    // button) only fires once the entry's units are all spoken for. An entry
+    // with room left still accepts buyers, so stores + claim button stay live
+    // and price stays unstruck.
     showPurchased: isFullyClaimed && !isOwner,
     // The owner-side claim pill. Keyed on the resolved tier rather than on a
     // spoiler parameter: never below `claims`, and from `claims` upward whenever
     // claims exist (`item-store-links`).
     showSpoilerInfo: showsSpoilerBanner(isOwner, tier, hasAnyClaim),
+    // No entry, no claim: the library's items span every list and some sit on
+    // none, so the affordance that creates a claim is not offered there.
+    claimable,
     showBuyClaim:
       !!actor &&
+      claimable &&
       !isOwner &&
       !isFullyClaimed &&
       !hasViewerClaim &&

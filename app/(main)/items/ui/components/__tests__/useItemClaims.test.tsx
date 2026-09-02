@@ -2,7 +2,7 @@ import { ROLES } from '@/lib/data/profile.roles';
 import {
   createPurchase,
   removePurchase,
-  revealedClaimsForItem,
+  revealedClaimsForEntry,
 } from '@/lib/data/purchase.actions';
 import type { PurchaseView, SpoilerTier } from '@/lib/types';
 import { makeProfile } from '@/test/helpers/profile';
@@ -10,12 +10,12 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import toast from 'react-hot-toast';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useItemClaims } from '../useItemClaims';
-import { LINKED_STORE, makeItem } from './test-helpers';
+import { AMPLE_QUANTITY, LINKED_STORE, makeItem } from './test-helpers';
 
 vi.mock('@/lib/data/purchase.actions', () => ({
   createPurchase: vi.fn(),
   removePurchase: vi.fn(),
-  revealedClaimsForItem: vi.fn(async () => []),
+  revealedClaimsForEntry: vi.fn(async () => []),
 }));
 
 // Faithful on both shapes the hook uses it with: the function-form formatters
@@ -92,39 +92,38 @@ beforeEach(() => {
     id: 'server-id',
   } as never);
   vi.mocked(removePurchase).mockResolvedValue({ success: true } as never);
-  vi.mocked(revealedClaimsForItem).mockResolvedValue([]);
+  vi.mocked(revealedClaimsForEntry).mockResolvedValue([]);
 });
 
 describe('Capacity', () => {
-  it('QuantityLimitOneWithOneClaim_IsFullyClaimed', () => {
+  it('QuantityOneWithOneClaimedUnit_IsFullyClaimed', () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: 1, purchases: [ownClaim()] }),
+      item: makeItem({ quantity: 1, purchases: [ownClaim()] }),
     });
     expect(result.current.isFullyClaimed).toBe(true);
   });
 
-  it('QuantityLimitTwoWithOneClaim_IsNotFullyClaimed', () => {
+  it('QuantityTwoWithOneClaimedUnit_IsNotFullyClaimed', () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: 2, purchases: [ownClaim()] }),
+      item: makeItem({ quantity: 2, purchases: [ownClaim()] }),
     });
     expect(result.current.isFullyClaimed).toBe(false);
   });
 
-  // Unlimited has no ceiling to reach, so no number of claims closes it.
-  it('QuantityLimitNullWithClaims_IsNeverFullyClaimed', () => {
+  it('LargeQuantityWithTwoClaims_IsNotFullyClaimed', () => {
     const { result } = mount({
       item: makeItem({
-        quantity_limit: null,
+        quantity: AMPLE_QUANTITY,
         purchases: [ownClaim(), othersClaim()],
       }),
     });
     expect(result.current.isFullyClaimed).toBe(false);
   });
 
-  it('MoreClaimsThanTheLimit_IsFullyClaimed', () => {
+  it('MoreClaimedUnitsThanQuantity_IsFullyClaimed', () => {
     const { result } = mount({
       item: makeItem({
-        quantity_limit: 1,
+        quantity: 1,
         purchases: [ownClaim(), othersClaim()],
       }),
     });
@@ -133,28 +132,51 @@ describe('Capacity', () => {
 });
 
 describe('Counter', () => {
-  it('QuantityLimitTwo_CounterReportsClaimedOverTheLimit', () => {
+  it('QuantityTwoWithOneClaimedUnit_CounterReportsOneOverTwo', () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: 2, purchases: [ownClaim()] }),
+      item: makeItem({ quantity: 2, purchases: [ownClaim()] }),
     });
     expect(result.current.counterText).toBe('1/2 claimed');
   });
 
-  it('QuantityLimitNull_CounterReportsAgainstInfinity', () => {
+  // An entry that has met its quantity says so plainly: an owner who lowered
+  // the number afterwards would otherwise be shown a fraction reading 3/2.
+  it('ClaimedUnitsMeetingQuantity_CounterReadsFullyClaimed', () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: null, purchases: [ownClaim()] }),
+      item: makeItem({ quantity: 2, claimed_units: 2 }),
     });
-    expect(result.current.counterText).toBe('1/∞ claimed');
+    expect(result.current.counterText).toBe('Fully claimed');
   });
 
-  it('QuantityLimitTwo_ShowsTheCounter', () => {
-    const { result } = mount({ item: makeItem({ quantity_limit: 2 }) });
+  it('ClaimedUnitsPastQuantity_CounterReadsFullyClaimedWithNoFraction', () => {
+    const { result } = mount({
+      item: makeItem({ quantity: 2, claimed_units: 3 }),
+    });
+    expect(result.current.counterText).toBe('Fully claimed');
+  });
+
+  // The library reads no entry, so it has no capacity to count against and no
+  // counter to offer. What the owner's banner shows there is the banner's own.
+  it('NoEntry_CounterIsEmpty-Hidden', () => {
+    const { result } = mount({
+      item: makeItem({
+        list_id: undefined,
+        quantity: undefined,
+        purchases: [ownClaim(), othersClaim()],
+      }),
+    });
+    expect(result.current.counterText).toBe('');
+    expect(result.current.showCounter).toBe(false);
+  });
+
+  it('QuantityTwo_ShowsTheCounter', () => {
+    const { result } = mount({ item: makeItem({ quantity: 2 }) });
     expect(result.current.showCounter).toBe(true);
   });
 
   // A single-quantity item has nothing to count towards.
-  it('QuantityLimitOne_HidesTheCounter', () => {
-    const { result } = mount({ item: makeItem({ quantity_limit: 1 }) });
+  it('QuantityOne_HidesTheCounter', () => {
+    const { result } = mount({ item: makeItem({ quantity: 1 }) });
     expect(result.current.showCounter).toBe(false);
   });
 
@@ -162,7 +184,7 @@ describe('Counter', () => {
   // built from the payload would state a false zero rather than hide.
   it('TierBelowClaims_HidesTheCounter', () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: 2 }),
+      item: makeItem({ quantity: 2 }),
       tier: 'progress',
     });
     expect(result.current.showCounter).toBe(false);
@@ -173,7 +195,7 @@ describe('ViewerClaims', () => {
   it('MixedClaims_KeepsOnlyTheViewersOwnAndAssertedOnes', () => {
     const { result } = mount({
       item: makeItem({
-        quantity_limit: null,
+        quantity: AMPLE_QUANTITY,
         purchases: [ownClaim(), othersClaim(), assertedClaim()],
       }),
     });
@@ -182,14 +204,14 @@ describe('ViewerClaims', () => {
 
   it('NoViewerClaims_HasViewerClaimIsFalse', () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: null, purchases: [othersClaim()] }),
+      item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [othersClaim()] }),
     });
     expect(result.current.hasViewerClaim).toBe(false);
   });
 
   it('OwnClaim_ViewerIsThePurchaser', () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: null, purchases: [ownClaim()] }),
+      item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [ownClaim()] }),
     });
     expect(result.current.viewerIsPurchaser).toBe(true);
   });
@@ -197,7 +219,10 @@ describe('ViewerClaims', () => {
   // An asserted claim is removable by the viewer but bought by someone else.
   it('AssertedClaimOnly_ViewerIsNotThePurchaser', () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: null, purchases: [assertedClaim()] }),
+      item: makeItem({
+        quantity: AMPLE_QUANTITY,
+        purchases: [assertedClaim()],
+      }),
     });
     expect(result.current.viewerIsPurchaser).toBe(false);
   });
@@ -217,7 +242,10 @@ describe('SpoilerGates', () => {
   it('OwnerWithANamelessClaim_WithholdsNames', () => {
     const { result } = mount({
       isOwner: true,
-      item: makeItem({ quantity_limit: null, purchases: [namelessClaim()] }),
+      item: makeItem({
+        quantity: AMPLE_QUANTITY,
+        purchases: [namelessClaim()],
+      }),
     });
     expect(result.current.namesWithheld).toBe(true);
   });
@@ -225,7 +253,7 @@ describe('SpoilerGates', () => {
   it('OwnerWithEveryClaimNamed_DoesNotWithholdNames', () => {
     const { result } = mount({
       isOwner: true,
-      item: makeItem({ quantity_limit: null, purchases: [othersClaim()] }),
+      item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [othersClaim()] }),
     });
     expect(result.current.namesWithheld).toBe(false);
   });
@@ -234,7 +262,10 @@ describe('SpoilerGates', () => {
   // nothing to withhold from them.
   it('NonOwnerWithANamelessClaim_DoesNotWithholdNames', () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: null, purchases: [namelessClaim()] }),
+      item: makeItem({
+        quantity: AMPLE_QUANTITY,
+        purchases: [namelessClaim()],
+      }),
     });
     expect(result.current.namesWithheld).toBe(false);
   });
@@ -247,7 +278,7 @@ describe('SpoilerGates', () => {
   it('OwnerWithClaimsAtClaimsTier_ShowsTheSpoilerPill', () => {
     const { result } = mount({
       isOwner: true,
-      item: makeItem({ quantity_limit: null, purchases: [othersClaim()] }),
+      item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [othersClaim()] }),
     });
     expect(result.current.showSpoilerInfo).toBe(true);
   });
@@ -261,7 +292,7 @@ describe('SpoilerGates', () => {
 describe('PurchasedTreatment', () => {
   it('NonOwnerFullyClaimed_ShowsThePurchasedTreatment', () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: 1, purchases: [othersClaim()] }),
+      item: makeItem({ quantity: 1, purchases: [othersClaim()] }),
     });
     expect(result.current.showPurchased).toBe(true);
   });
@@ -270,7 +301,7 @@ describe('PurchasedTreatment', () => {
   it('OwnerFullyClaimed_HidesThePurchasedTreatment', () => {
     const { result } = mount({
       isOwner: true,
-      item: makeItem({ quantity_limit: 1, purchases: [othersClaim()] }),
+      item: makeItem({ quantity: 1, purchases: [othersClaim()] }),
     });
     expect(result.current.showPurchased).toBe(false);
   });
@@ -278,7 +309,7 @@ describe('PurchasedTreatment', () => {
 
 describe('BuyClaimAffordance', () => {
   const buyable = {
-    item: makeItem({ store: LINKED_STORE, quantity_limit: 1 }),
+    item: makeItem({ store: LINKED_STORE, quantity: 1 }),
     actor: actorOf(VIEWER),
   };
 
@@ -302,7 +333,7 @@ describe('BuyClaimAffordance', () => {
       ...buyable,
       item: makeItem({
         store: LINKED_STORE,
-        quantity_limit: 1,
+        quantity: 1,
         purchases: [othersClaim()],
       }),
     });
@@ -314,7 +345,7 @@ describe('BuyClaimAffordance', () => {
       ...buyable,
       item: makeItem({
         store: LINKED_STORE,
-        quantity_limit: null,
+        quantity: AMPLE_QUANTITY,
         purchases: [ownClaim()],
       }),
     });
@@ -331,11 +362,11 @@ describe('BuyClaimAffordance', () => {
 describe('ProjectionSync', () => {
   it('ProjectionChanges_ReplacesTheLocalClaims', () => {
     const { result, rerender, initialProps } = mount({
-      item: makeItem({ quantity_limit: null, purchases: [ownClaim()] }),
+      item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [ownClaim()] }),
     });
     rerender({
       ...initialProps,
-      item: makeItem({ quantity_limit: null, purchases: [othersClaim()] }),
+      item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [othersClaim()] }),
     });
     expect(result.current.claims.map((c) => c.id)).toEqual(['c2']);
   });
@@ -344,23 +375,55 @@ describe('ProjectionSync', () => {
   // it says may discard a claim the viewer just made.
   it('EquivalentProjectionRerendered_KeepsAnOptimisticallyAddedClaim', async () => {
     const { result, rerender, initialProps } = mount({
-      item: makeItem({ quantity_limit: null, purchases: [] }),
+      item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [] }),
     });
     await act(async () => {
       await result.current.handleSelfClaim();
     });
     rerender({
       ...initialProps,
-      item: makeItem({ quantity_limit: null, purchases: [] }),
+      item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [] }),
     });
     expect(result.current.claims.map((c) => c.id)).toEqual(['server-id']);
+  });
+});
+
+describe('NoEntry', () => {
+  // No entry, no claim: the affordance is withheld without one, and the write
+  // path refuses even when a handler is called directly.
+  const noEntry = () =>
+    mount({
+      item: makeItem({ list_id: undefined, quantity: undefined }),
+      actor: actorOf(VIEWER),
+    });
+
+  it('SelfClaim_SendsNoClaimAndAddsNothing', async () => {
+    const { result } = noEntry();
+    await act(async () => {
+      await result.current.handleSelfClaim();
+    });
+    expect(createPurchase).not.toHaveBeenCalled();
+    expect(result.current.claims).toEqual([]);
+  });
+
+  it('Render_IsNotClaimable-OffersNoBuyClaim', () => {
+    const { result } = mount({
+      item: makeItem({
+        list_id: undefined,
+        quantity: undefined,
+        store: LINKED_STORE,
+      }),
+      actor: actorOf(VIEWER),
+    });
+    expect(result.current.claimable).toBe(false);
+    expect(result.current.showBuyClaim).toBe(false);
   });
 });
 
 describe('RecordClaim', () => {
   it('SelfClaim_AppendsTheClaimUnderTheServerIssuedId', async () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: null }),
+      item: makeItem({ quantity: AMPLE_QUANTITY }),
       userName: 'Vicky',
     });
     await act(async () => {
@@ -377,7 +440,7 @@ describe('RecordClaim', () => {
   });
 
   it('SelfClaimWithoutAUserName_NamesTheClaimYou', async () => {
-    const { result } = mount({ item: makeItem({ quantity_limit: null }) });
+    const { result } = mount({ item: makeItem({ quantity: AMPLE_QUANTITY }) });
     await act(async () => {
       await result.current.handleSelfClaim();
     });
@@ -386,7 +449,7 @@ describe('RecordClaim', () => {
 
   it('SelfClaim_SettlesTheModal', async () => {
     const { result, onSettled } = mount({
-      item: makeItem({ quantity_limit: null }),
+      item: makeItem({ quantity: AMPLE_QUANTITY }),
     });
     await act(async () => {
       await result.current.handleSelfClaim();
@@ -396,7 +459,7 @@ describe('RecordClaim', () => {
 
   it('AttributedClaim_SendsThePurchasedByTarget', async () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: null }),
+      item: makeItem({ quantity: AMPLE_QUANTITY }),
       actor: actorOf(VIEWER),
     });
     await act(async () => {
@@ -404,6 +467,7 @@ describe('RecordClaim', () => {
     });
     expect(createPurchase).toHaveBeenCalledWith({
       item_id: 'i1',
+      list_id: 'l1',
       guest_name: null,
       purchased_by: 'sam',
     });
@@ -415,7 +479,7 @@ describe('RecordClaim', () => {
   // Attributing to yourself is a self-claim however the picker got there.
   it('AttributedClaimTargetingTheActor_RecordsItAsASelfClaim', async () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: null }),
+      item: makeItem({ quantity: AMPLE_QUANTITY }),
       actor: actorOf(VIEWER),
     });
     await act(async () => {
@@ -430,7 +494,7 @@ describe('RecordClaim', () => {
   // The action writes the guest cookie, which makes this the viewer's own claim
   // — matching how the server overlay marks it on the next read.
   it('SignedOutGuestClaim_MarksTheClaimAsTheViewersOwn', async () => {
-    const { result } = mount({ item: makeItem({ quantity_limit: null }) });
+    const { result } = mount({ item: makeItem({ quantity: AMPLE_QUANTITY }) });
     await act(async () => {
       await result.current.handleGuestClaim('Josh');
     });
@@ -441,7 +505,7 @@ describe('RecordClaim', () => {
 
   it('AuthedGuestClaim_MarksTheClaimAsSomeoneElses', async () => {
     const { result } = mount({
-      item: makeItem({ quantity_limit: null }),
+      item: makeItem({ quantity: AMPLE_QUANTITY }),
       actor: actorOf(VIEWER),
     });
     await act(async () => {
@@ -455,7 +519,7 @@ describe('RecordClaim', () => {
       success: false,
       message: 'Already claimed',
     } as never);
-    const { result } = mount({ item: makeItem({ quantity_limit: null }) });
+    const { result } = mount({ item: makeItem({ quantity: AMPLE_QUANTITY }) });
     await act(async () => {
       await result.current.handleSelfClaim();
     });
@@ -466,7 +530,10 @@ describe('RecordClaim', () => {
 
 describe('RemoveClaim', () => {
   const claimed = () =>
-    makeItem({ quantity_limit: null, purchases: [ownClaim(), othersClaim()] });
+    makeItem({
+      quantity: AMPLE_QUANTITY,
+      purchases: [ownClaim(), othersClaim()],
+    });
 
   it('Remove_DropsTheClaimAndReportsSuccess', async () => {
     const { result } = mount({ item: claimed() });
@@ -505,7 +572,7 @@ describe('RemoveClaim', () => {
   it('ManageRemoveLeavingAnotherViewerClaim_LeavesTheModalOpen', async () => {
     const { result, onSettled } = mount({
       item: makeItem({
-        quantity_limit: null,
+        quantity: AMPLE_QUANTITY,
         purchases: [ownClaim(), assertedClaim()],
       }),
     });
@@ -527,7 +594,7 @@ describe('RemoveClaim', () => {
 
 describe('BuyClaimUndo', () => {
   it('BuyClaim_ParksTheRecordedClaimForUndo', async () => {
-    const { result } = mount({ item: makeItem({ quantity_limit: null }) });
+    const { result } = mount({ item: makeItem({ quantity: AMPLE_QUANTITY }) });
     await act(async () => {
       await result.current.handleBuyClaim();
     });
@@ -538,7 +605,7 @@ describe('BuyClaimUndo', () => {
 
   it('RefusedBuyClaim_ParksNothing', async () => {
     vi.mocked(createPurchase).mockResolvedValue({ success: false } as never);
-    const { result } = mount({ item: makeItem({ quantity_limit: null }) });
+    const { result } = mount({ item: makeItem({ quantity: AMPLE_QUANTITY }) });
     await act(async () => {
       await result.current.handleBuyClaim();
     });
@@ -546,7 +613,7 @@ describe('BuyClaimUndo', () => {
   });
 
   it('DismissUndo_ClearsTheParkedClaim', async () => {
-    const { result } = mount({ item: makeItem({ quantity_limit: null }) });
+    const { result } = mount({ item: makeItem({ quantity: AMPLE_QUANTITY }) });
     await act(async () => {
       await result.current.handleBuyClaim();
     });
@@ -557,7 +624,7 @@ describe('BuyClaimUndo', () => {
   // Buy & Claim does not open the modal, so settling must not close anything.
   it('BuyClaim_DoesNotSettleTheModal', async () => {
     const { result, onSettled } = mount({
-      item: makeItem({ quantity_limit: null }),
+      item: makeItem({ quantity: AMPLE_QUANTITY }),
     });
     await act(async () => {
       await result.current.handleBuyClaim();
@@ -568,10 +635,10 @@ describe('BuyClaimUndo', () => {
 
 describe('NameReveal', () => {
   const withheld = () =>
-    makeItem({ quantity_limit: null, purchases: [namelessClaim()] });
+    makeItem({ quantity: AMPLE_QUANTITY, purchases: [namelessClaim()] });
 
   it('OwnerRevealingNamelessStubs_LoadsTheNamedClaims', async () => {
-    vi.mocked(revealedClaimsForItem).mockResolvedValue([othersClaim()]);
+    vi.mocked(revealedClaimsForEntry).mockResolvedValue([othersClaim()]);
     const { result } = mount({
       isOwner: true,
       item: withheld(),
@@ -591,22 +658,22 @@ describe('NameReveal', () => {
       revealNames: false,
     });
     await waitFor(() => expect(result.current.claims).toHaveLength(1));
-    expect(revealedClaimsForItem).not.toHaveBeenCalled();
+    expect(revealedClaimsForEntry).not.toHaveBeenCalled();
     expect(result.current.revealedClaims).toBeNull();
   });
 
   it('OwnerWithEveryClaimAlreadyNamed_NeverFetchesTheNames', async () => {
     const { result } = mount({
       isOwner: true,
-      item: makeItem({ quantity_limit: null, purchases: [othersClaim()] }),
+      item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [othersClaim()] }),
       revealNames: true,
     });
     await waitFor(() => expect(result.current.claims).toHaveLength(1));
-    expect(revealedClaimsForItem).not.toHaveBeenCalled();
+    expect(revealedClaimsForEntry).not.toHaveBeenCalled();
   });
 
   it('RemovalAfterAReveal_DropsTheRowFromTheRevealedClaimsToo', async () => {
-    vi.mocked(revealedClaimsForItem).mockResolvedValue([
+    vi.mocked(revealedClaimsForEntry).mockResolvedValue([
       othersClaim(),
       assertedClaim(),
     ]);

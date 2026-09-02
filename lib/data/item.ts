@@ -6,7 +6,7 @@ import { items, list_items, lists } from '@/db/schema';
 import { sanitizePurchases } from '@/lib/data/purchase';
 import { primaryStore } from '@/lib/storeValidity';
 import { withProfileAvatar } from '@/lib/data/profileAvatar';
-import { MAXIMAL_TIER } from '@/lib/spoilers';
+import { atLeast, MAXIMAL_TIER } from '@/lib/spoilers';
 import { ListTable, SpoilerTier } from '@/lib/types';
 import { cacheTags, itemRowTags } from '@/lib/cacheTags';
 import { and, eq, exists, isNotNull, isNull, sql } from 'drizzle-orm';
@@ -171,13 +171,21 @@ export async function getItemsByListId(
 ) {
   const rows = await rawItemsByListId(listId);
   const tier = opts.tier ?? MAXIMAL_TIER;
-  return rows.map((item) => {
+  return rows.map(({ claimed_units, ...item }) => {
     const purchases = sanitizePurchases(
       item.purchases,
       opts.viewerSelfProfileId,
       tier
     );
-    return { ...item, hasPurchases: purchases.length > 0, purchases };
+    return {
+      ...item,
+      hasPurchases: purchases.length > 0,
+      purchases,
+      // Summed before the projection so units never reach a `PurchaseView`,
+      // and withheld with everything else the tier conceals — a count sent to
+      // a viewer whose claim array was emptied would be a passive leak.
+      claimed_units: atLeast(tier, 'claims') ? claimed_units : undefined,
+    };
   });
 }
 
@@ -216,7 +224,10 @@ async function rawItemsByListId(listId: string) {
         item: {
           with: {
             stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
+            // Scoped to this list: claims belong to the entry, so the same
+            // item on another list contributes neither a badge nor capacity.
             purchases: {
+              where: (purchases, { eq }) => eq(purchases.list_id, listId),
               with: {
                 purchaserProfile: {
                   columns: { name: true },
@@ -241,11 +252,16 @@ async function rawItemsByListId(listId: string) {
 
     cacheTag(...itemRowTags(result.map((row) => row.item)));
 
-    return result.map(({ item: { images, stores, ...item } }) => ({
-      ...item,
-      image_url: images[0]?.url ?? null,
-      store: primaryStore(stores),
-    }));
+    return result.map(
+      ({ list_id, quantity, item: { images, stores, ...item } }) => ({
+        ...item,
+        list_id,
+        quantity,
+        claimed_units: item.purchases.reduce((sum, p) => sum + p.units, 0),
+        image_url: images[0]?.url ?? null,
+        store: primaryStore(stores),
+      })
+    );
   } catch (error) {
     console.error('Error fetching items:', error);
     throw new Error('Failed to fetch items');

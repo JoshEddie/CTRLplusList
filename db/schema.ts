@@ -103,12 +103,12 @@ export const items = pgTable('items', {
   archived_at: timestamp('archived_at'),
 });
 
-// The list entry: an item's presence on one list. Quantity and the
-// soft-removal flag are declared here ahead of the write path that fills them
-// (#361 expands, later tickets read) — `items.quantity_limit` is still the
-// authoritative quantity today. Claimed units are NOT stored: they are
-// SUM(purchases.units) over the entry, and a stored copy would be a second
-// answer to the same question with nothing able to detect it going wrong.
+// The list entry: an item's presence on one list, and what claims are made
+// against. `quantity` is the authoritative capacity; `items.quantity_limit`
+// survives as the item form's own field and bounds nothing. Claimed units are
+// NOT stored: they are SUM(purchases.units) over the entry, and a stored copy
+// would be a second answer to the same question with nothing able to detect it
+// going wrong (ADR-0016). Nothing reads `shown`.
 export const list_items = pgTable(
   'list_items',
   {
@@ -239,13 +239,9 @@ export const purchases = pgTable(
     purchased_at: timestamp('purchased_at').defaultNow().notNull(),
   },
   (table) => [
-    // Both indexes stand while the write path still leaves `list_id` null: the
-    // list-scoped one cannot bind a null list, so dropping the item-scoped one
-    // here would leave duplicate claims unguarded until the write path lands.
-    // The item-scoped index goes in the contract half.
-    uniqueIndex('purchases_item_profile_unique_idx')
-      .on(table.item_id, table.profile_id)
-      .where(sql`${table.profile_id} IS NOT NULL`),
+    // One claim per purchaser per ENTRY. An item-scoped predecessor stood here
+    // and was dropped: it refused a purchaser claiming the same item on two
+    // lists, which is exactly what independent per-entry pools permit.
     uniqueIndex('purchases_list_item_profile_unique_idx')
       .on(table.list_id, table.item_id, table.profile_id)
       .where(sql`${table.profile_id} IS NOT NULL`),

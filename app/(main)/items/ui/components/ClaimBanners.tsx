@@ -41,6 +41,7 @@ export default function ClaimBanners({
   claims,
   claimSummary,
   counterText,
+  claimable,
 }: {
   showPurchased: boolean;
   myClaims: PurchaseView[];
@@ -49,14 +50,19 @@ export default function ClaimBanners({
   claims: PurchaseView[];
   claimSummary: string;
   counterText: string;
+  /** A list entry backs this card, so the counter has a capacity to report. */
+  claimable: boolean;
 }) {
   const showSpoilerInfo = showsSpoilerBanner(isOwner, tier, claims.length > 0);
+  // One home for the line: the spoiler banner shows it off a list, where there
+  // is no entry and so no capacity for the counter to report.
+  const claimedByLine = `Claimed by ${claimSummary}`;
   return (
     <>
       {showPurchased && myClaims.length === 0 && (
         <div className="purchased-banner" role="status">
           <BannerCheck />
-          Claimed by {claimSummary}
+          {claimedByLine}
         </div>
       )}
       {!isOwner && myClaims.length > 0 && (
@@ -73,7 +79,7 @@ export default function ClaimBanners({
           <BannerCheck />
           {/* The count and the remaining capacity are all `claims` grants; who
               holds each claim is the modal's confirmed reveal alone. */}
-          <span>{counterText}</span>
+          <span>{claimable ? counterText : claimedByLine}</span>
         </div>
       )}
     </>

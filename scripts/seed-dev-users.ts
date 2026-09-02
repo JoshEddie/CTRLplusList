@@ -369,12 +369,19 @@ function itemsForList(listId: string): string[] {
   return out;
 }
 
-// Purchase fan-out per item:
-//   qty_limit = 3:       1 (partial) or 3 (fully-claimed), per listIdx parity
-//   qty_limit = null:    1 (single buyer) or 4 (many buyers), per listIdx parity
-//   qty_limit = 1:       0 or 1 via stride derived from the target ratio —
+// Purchase fan-out per item, keyed off the entry's quantity:
+//   quantity = 3:        1 (partial) or 3 (fully-claimed), per listIdx parity
+//   quantity = 4:        1 (single buyer) or 2 (several buyers), per listIdx
+//                        parity — two units short on purpose, so every list
+//                        carrying this seat has a multi-unit card that still
+//                        accepts two more claims. Capacity is enforced now, so
+//                        the seat that used to be unlimited can no longer be
+//                        both busy and open by accident.
+//   quantity = 1:        0 or 1 via stride derived from the target ratio —
 //                        viewer's archived items run hotter (~70%) since
 //                        archived often means purchased.
+// Never exceeds the quantity: capacity is now enforced, so a seed that
+// over-claims an entry would seed a state the app refuses to reach.
 function purchaseCountFor(
   item: { archived_at: Date | null; quantity_limit: number | null },
   ownerId: string,
@@ -383,7 +390,7 @@ function purchaseCountFor(
   baseRatio: number
 ): number {
   if (item.quantity_limit === 3) return listIdx % 2 === 0 ? 1 : 3;
-  if (item.quantity_limit === null) return listIdx % 2 === 0 ? 1 : 4;
+  if (item.quantity_limit === 4) return listIdx % 2 === 0 ? 1 : 2;
   const effectiveRatio =
     ownerId === VIEWER_ID && item.archived_at ? 0.7 : baseRatio;
   const stride = Math.max(1, Math.round(1 / effectiveRatio));
@@ -1118,14 +1125,15 @@ async function main() {
   // Archive ~20% of viewer-owned items so the /items archived filter has
   // content. Fixed reference epoch keeps archived_at stable across reseeds.
   const ARCHIVE_EPOCH = new Date('2026-04-01T00:00:00Z').getTime();
-  // Rotate quantity_limit across positions [0, 1, last] on a 3-list cycle so
-  // every position renders every value (3, null, 1) once per cycle. Lets the
-  // preview surface multi-claim, unlimited, and single-claim layouts at known
-  // positions without manual UI clicking.
-  const QTY_ROTATION: (number | null)[][] = [
-    [3, null, 1], // listIdx % 3 === 0
-    [null, 1, 3], // listIdx % 3 === 1
-    [1, 3, null], // listIdx % 3 === 2
+  // Rotate quantity across positions [0, 1, last] on a 3-list cycle so every
+  // position renders every value (3, 4, 1) once per cycle. Lets the preview
+  // surface the partial, many-buyer, and single-claim layouts at known
+  // positions without manual UI clicking. Unlimited no longer exists, so the
+  // seat that used to be `null` is a concrete number.
+  const QTY_ROTATION: number[][] = [
+    [3, 4, 1], // listIdx % 3 === 0
+    [4, 1, 3], // listIdx % 3 === 1
+    [1, 3, 4], // listIdx % 3 === 2
   ];
   const itemRows: {
     id: string;
@@ -1136,8 +1144,9 @@ async function main() {
     archived_at: Date | null;
     quantity_limit: number | null;
   }[] = [];
-  // `quantity` mirrors the migration's carry-over rule (unlimited lands on 1)
-  // so a seeded DB and a migrated one agree.
+  // `quantity` is the entry's capacity and the number every claim is measured
+  // against. `items.quantity_limit` is kept in step with it only because the
+  // item form still reads that field.
   const listItemRows: {
     list_id: string;
     item_id: string;
@@ -1152,7 +1161,7 @@ async function main() {
       const itemId = `${list.id}-item-${idx + 1}`;
       const h = hash(itemId);
       const archive = list.user_id === VIEWER_ID && h % 5 === 0; // ~20% of viewer items
-      let quantity_limit: number | null = 1;
+      let quantity_limit = 1;
       if (idx === 0) quantity_limit = rotation[0];
       else if (idx === 1) quantity_limit = rotation[1];
       else if (idx === lastIdx) quantity_limit = rotation[2];
@@ -1184,7 +1193,7 @@ async function main() {
         list_id: list.id,
         item_id: itemId,
         position: idx,
-        quantity: Math.max(quantity_limit ?? 1, 1),
+        quantity: quantity_limit,
         shown: true,
       });
     });
@@ -1418,7 +1427,7 @@ async function main() {
       purchased_at: ATTRIBUTION_EPOCH,
     },
     {
-      // Owner self-claim (unlimited item): claimer and purchaser are both the
+      // Owner self-claim: claimer and purchaser are both the
       // owner — the spoiler-view "I bought this myself" state.
       id: 'dev-purchase-owner-self',
       item_id: 'dev-list-viewer-birthday-item-2',

@@ -16,6 +16,7 @@ export default function ItemCard({
   showCounter,
   counterText,
   hasAnyClaim,
+  claimable,
   tier,
   showBuyClaim,
   viewOnly,
@@ -35,6 +36,8 @@ export default function ItemCard({
   showCounter: boolean;
   counterText: string;
   hasAnyClaim: boolean;
+  /** A list entry exists to claim against; see ItemActions. */
+  claimable: boolean;
   tier: SpoilerTier;
   /** Authed non-owner Buy & Claim signal; absent on view-only surfaces. */
   showBuyClaim?: boolean;
@@ -65,6 +68,7 @@ export default function ItemCard({
           viewerClaimed={viewerClaimed}
           guestViewer={guestViewer}
           hasAnyClaim={hasAnyClaim}
+          claimable={claimable}
           tier={tier}
           showBuyClaim={showBuyClaim}
           store={storeValid(item.store) ? (item.store ?? null) : null}

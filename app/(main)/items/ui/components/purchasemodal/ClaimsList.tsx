@@ -4,8 +4,8 @@ import { timeAgo } from '@/lib/timeAgo';
 import { PurchaseView } from '@/lib/types';
 import { useState } from 'react';
 
-// Bounded render: an unlimited-quantity item can carry
-// arbitrarily many claims, so the list never renders them all at once.
+// Bounded render: an entry asking for many units can carry as many claims, so
+// the list never renders them all at once.
 const INITIAL_VISIBLE = 10;
 const SEE_MORE_STEP = 10;
 
@@ -75,9 +75,7 @@ export default function ClaimsList({
                 that was typed is all there is to draw initials from. Account
                 linkage governs nothing here — a managed profile carries art on
                 the same terms as anyone else. */}
-            <ProfileAvatar
-              profile={claim.avatar ?? facelessView(claim.name)}
-            />
+            <ProfileAvatar profile={claim.avatar ?? facelessView(claim.name)} />
             <div className="claim-row-info">
               <span className="claim-row-name">{rowLabel(claim)}</span>
               {rowMeta(claim) && (

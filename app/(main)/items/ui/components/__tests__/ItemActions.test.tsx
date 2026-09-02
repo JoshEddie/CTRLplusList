@@ -17,6 +17,7 @@ function renderActions(
     fullyClaimed: false,
     viewerClaimed: false,
     hasAnyClaim: false,
+    claimable: true,
     tier: 'claims',
     store: STORE,
     onPurchaseClick: vi.fn(),
@@ -32,6 +33,25 @@ const buyClaim = () =>
   screen.queryByRole('link', { name: 'Buy & Claim — opens in new tab' });
 
 describe('ItemActions', () => {
+  // No entry, no claim: the item library names no list, so the affordance that
+  // would create a claim is not offered there. Managing an existing claim is
+  // untouched — removal is row-based and needs no entry.
+  describe('NoEntry', () => {
+    it('Unclaimed_RendersNoAddClaim', () => {
+      renderActions({ claimable: false });
+      expect(
+        screen.queryByRole('button', { name: 'Add Claim' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('OwnerWithClaims_StillRendersManageClaims', () => {
+      renderActions({ claimable: false, isOwner: true, hasAnyClaim: true });
+      expect(
+        screen.getByRole('button', { name: 'Manage claims' })
+      ).toBeInTheDocument();
+    });
+  });
+
   describe('StateMatrix', () => {
     it('AuthedClaimableWithLink_RendersBuyClaimPrimaryOverViewAndAdd', () => {
       renderActions({ showBuyClaim: true });
@@ -267,6 +287,7 @@ describe('ItemActions', () => {
             fullyClaimed={false}
             viewerClaimed={false}
             hasAnyClaim={false}
+            claimable
             tier="claims"
             store={STORE}
           />
@@ -298,6 +319,7 @@ describe('ItemActions', () => {
             fullyClaimed={false}
             viewerClaimed={false}
             hasAnyClaim={false}
+            claimable
             tier="claims"
             showBuyClaim
             store={STORE}

@@ -1,9 +1,9 @@
 # Behaviour may not vary observably on spoiler-hidden state
 
 A viewer held below the `claims` tier must not be able to infer that a claim
-exists from how the app *behaves* — a refused action, a differently-worded
+exists from how the app _behaves_ — a refused action, a differently-worded
 confirmation, an entry that lingers where an unclaimed one would vanish.
-Spoiler tiers gate claim *content*; this extends the same gate to mechanism,
+Spoiler tiers gate claim _content_; this extends the same gate to mechanism,
 because a difference in behaviour is itself a disclosure. Gating only the data
 payload was the alternative — it is where the tier machinery naturally sits —
 and it leaves every branch on claim state as an open channel.
@@ -18,7 +18,8 @@ opens Add claim or Manage claim is routed through `setPendingReveal` into a
 "This could spoil a surprise" confirmation, worded differently depending on
 whether the count or the claimers' names would be exposed — the disclosure is
 gated on consent rather than suppressed. `isFullyClaimed` is the other
-deliberate instance: derived from the sanitized purchase array, so a `progress`
+deliberate instance: derived from the entry's claimed-unit count, which the
+read withholds below `claims` alongside the claims themselves — so a `progress`
 viewer sees a fully-claimed item as claimable and the sold-out treatment never
 appears.
 
