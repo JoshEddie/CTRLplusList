@@ -13,6 +13,7 @@ import {
 } from '@/lib/data/purchase.actions';
 import Item from '../Item';
 import { makeProfile } from '@/test/helpers/profile';
+import { LINKED_STORE, makeItem } from './test-helpers';
 
 vi.mock('@/lib/data/purchase.actions', () => ({
   createPurchase: vi.fn(),
@@ -206,22 +207,6 @@ vi.mock('../PurchaseModalSlot', () => ({
 const OWNER = 'owner';
 
 const actorOf = (id: string) => makeProfile(id, id, ROLES.owner);
-
-function makeItem(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 'i1',
-    name: 'Gift',
-    description: '',
-    image_url: '',
-    profile_id: OWNER,
-    quantity_limit: 1,
-    store: null,
-    purchases: [],
-    created_at: new Date(),
-    updated_at: new Date(),
-    ...overrides,
-  } as never;
-}
 
 function renderItem(
   props: Omit<Partial<React.ComponentProps<typeof Item>>, 'item'> & {
@@ -764,11 +749,6 @@ describe('Item', () => {
   });
 
   describe('BuyClaim', () => {
-    const LINKED_STORE = {
-      name: 'Amazon',
-      link: 'https://a.example',
-      price: '35.50',
-    };
     const buyable = {
       item: { profile_id: OWNER, store: LINKED_STORE },
       actor: actorOf('viewer'),
