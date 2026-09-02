@@ -222,7 +222,7 @@ describe('setProfileSpoilerDefault', () => {
 });
 
 // The account-keyed tier row does not cascade with the membership row, so
-// revocation clears it explicitly (`profiles-data-model`).
+// revocation clears it explicitly.
 describe('deleteMemberPreferences', () => {
   it('MemberWithATierRow_ClearsThatAccountRowButLeavesTheDefault', async () => {
     await seedSpoilerDefault(db, KIDDO, 'claims');

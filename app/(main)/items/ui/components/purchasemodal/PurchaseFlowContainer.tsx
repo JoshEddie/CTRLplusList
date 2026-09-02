@@ -1,5 +1,8 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import { Button } from '@/app/ui/components/button';
 import { TextField } from '@/app/ui/components/field';
 import { claimSummaryForItem } from '@/lib/data/purchase.actions';

@@ -322,8 +322,8 @@ describe('createPurchase', () => {
 
     it('AuthedUnknownEmail_ReturnsUnauthorized-NoRow', async () => {
       // A stale session must not fall through to the guest path and write a
-      // purchases row with claimed_by_profile_id = NULL (server-endpoint-authorization,
-      // "A stale session does not become a guest").
+      // purchases row with claimed_by_profile_id = NULL — a stale session does
+      // not become a guest.
       await seedItem(db, { id: 'I', user_id: OWNER.id });
       asGhost();
       const res = await actions.createPurchase({

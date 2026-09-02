@@ -1,3 +1,6 @@
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import { hasBlocked } from '@/lib/data/profile';
 import { isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
 import { getBookmarkStatus } from '@/lib/data/visit';

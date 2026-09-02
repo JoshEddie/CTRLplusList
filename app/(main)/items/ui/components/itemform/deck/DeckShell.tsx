@@ -1,5 +1,8 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { CloseButton } from '@/app/ui/components/button';
 import { useDismiss } from '@/app/ui/components/use-dismiss';

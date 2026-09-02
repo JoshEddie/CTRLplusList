@@ -4,28 +4,28 @@ Read this file before adding or modifying DB queries, DAL functions, or schema m
 
 ## Driver: no transactions
 
-The DB layer uses `drizzle-orm/neon-http` over Neon's HTTP API. **Interactive transactions are not supported on this driver.** Do not introduce `db.transaction(async (tx) => { … })`, `SELECT … FOR UPDATE`, or any code that assumes a multi-statement session — every query is its own HTTP round-trip with its own connection.
+The DB layer uses `drizzle-orm/neon-http` over Neon's HTTP API. **Interactive transactions are not supported on this driver** — see [ADR-0001](adr/0001-no-interactive-database-transactions.md) for why, and what replaces them. Do not introduce `db.transaction(async (tx) => { … })`, `SELECT … FOR UPDATE`, or any code that assumes a multi-statement session — every query is its own HTTP round-trip with its own connection.
 
 Concrete implications:
 
 - Race conditions that need cross-statement atomicity must be backstopped at the DB layer (unique indexes, partial unique indexes, `ON CONFLICT` clauses), or accepted as residual.
-- **Two or more writes that need atomicity go in one data-modifying CTE** — one statement is one implicit transaction, so a constraint violation anywhere in it rolls back every branch, the inner INSERT included, and FK triggers fire at end of statement so a child row may reference a parent created alongside it. Drizzle expresses it as `db.$with()` over an INSERT body; `createSelfProfile` in [lib/data/profile.self.ts](lib/data/profile.self.ts) is the worked example. The uniqueness backstop then raises rather than returns, so a caller wanting idempotency catches the SQLSTATE narrowed to the index it means.
-- **A cross-row cardinality floor is a guard folded into the mutating statement, never a read-then-write.** "At least one owner survives" cannot be expressed by a unique index — uniques bound a set from above, not below — and a count read followed by a delete decides on state that has already moved by the time the delete lands. Write it as `DELETE … AND EXISTS (SELECT 1 … WHERE <the survivor condition>)` over an alias of the same table, with zero rows affected as the refusal, so the check evaluates at statement time. The residual window under true concurrency stays open, so this shape is only chosen where the state it lands in is one the application already tolerates by another route. `removeMember` in [lib/data/profile.members.actions.ts](lib/data/profile.members.actions.ts) is the worked example.
+- **Two or more writes that need atomicity go in one data-modifying CTE** — one statement is one implicit transaction, so a constraint violation anywhere in it rolls back every branch, the inner INSERT included, and FK triggers fire at end of statement so a child row may reference a parent created alongside it. Drizzle expresses it as `db.$with()` over an INSERT body; `createSelfProfile` in [lib/data/profile.self.ts](../lib/data/profile.self.ts) is the worked example. The uniqueness backstop then raises rather than returns, so a caller wanting idempotency catches the SQLSTATE narrowed to the index it means.
+- **A cross-row cardinality floor is a guard folded into the mutating statement, never a read-then-write.** "At least one owner survives" cannot be expressed by a unique index — uniques bound a set from above, not below — and a count read followed by a delete decides on state that has already moved by the time the delete lands. Write it as `DELETE … AND EXISTS (SELECT 1 … WHERE <the survivor condition>)` over an alias of the same table, with zero rows affected as the refusal, so the check evaluates at statement time. The residual window under true concurrency stays open, so this shape is only chosen where the state it lands in is one the application already tolerates by another route. `removeMember` in [lib/data/profile.members.actions.ts](../lib/data/profile.members.actions.ts) is the worked example.
 - **Never replace a uniqueness constraint by drop-then-create.** With no interactive transaction to hold the pair, the window between them is unprotected, and a duplicate that lands in it is recorded permanently — the new index cannot be created over data that already violates it. Add the replacement beside the old one, then drop the old one in a later statement.
 - Do not propose switching to `drizzle-orm/neon-serverless` / WebSocket Pool without explicit owner approval — it's been considered and declined.
 - If you find code claiming to use a transaction here, it's broken; convert it to single-statement + DB-constraint enforcement instead.
 
-See [db/index.ts](db/index.ts) for the driver instantiation.
+See [db/index.ts](../db/index.ts) for the driver instantiation.
 
 ## Migrations
 
-The migration workflow uses Drizzle Kit against the schema declared in [db/schema.ts](db/schema.ts).
+The migration workflow uses Drizzle Kit against the schema declared in [db/schema.ts](../db/schema.ts).
 
 **Authoring a migration:**
 
 1. Edit the schema file (e.g. add a column, table, or index).
 2. Generate SQL: `npm run db:generate`. This writes a new `drizzle/NNNN_<slug>.sql` plus a `meta/_journal.json` entry.
-3. **Review the generated SQL before running it.** Drizzle 0.45 occasionally emits over-broad statements (e.g. unnecessary column rewrites) and never adds the safety wrappers we want (pre-flight `DO $$ ... $$` assertions, `IF [NOT] EXISTS` guards on DDL, explicit `ON CONFLICT` clauses, idempotent backfills). Hand-edit the file if needed — see [drizzle/0001_black_legion.sql](drizzle/0001_black_legion.sql) for the conventions (forward-only, no DROPs, `IF [NOT] EXISTS` on every `CREATE`/`ALTER`/`DROP` so a migration still applies cleanly if a table or column was added manually out-of-band, pre-flight assertion blocks, inline rollback notes in comments).
+3. **Review the generated SQL before running it.** Drizzle 0.45 occasionally emits over-broad statements (e.g. unnecessary column rewrites) and never adds the safety wrappers we want (pre-flight `DO $$ ... $$` assertions, `IF [NOT] EXISTS` guards on DDL, explicit `ON CONFLICT` clauses, idempotent backfills). Hand-edit the file if needed — see [drizzle/0001_black_legion.sql](../drizzle/0001_black_legion.sql) for the conventions (forward-only, no DROPs, `IF [NOT] EXISTS` on every `CREATE`/`ALTER`/`DROP` so a migration still applies cleanly if a table or column was added manually out-of-band, pre-flight assertion blocks, inline rollback notes in comments).
 4. Apply locally: `npm run db:migrate`. Then restart the dev server so any `'use cache'`-tagged DAL functions re-fetch.
 5. Re-run `npm run db:seed:dev` if the schema change broke the seed (the seed refuses to run on prod via the same `NODE_ENV` guardrail as the bypass).
 

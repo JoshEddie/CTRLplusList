@@ -144,7 +144,7 @@ export async function removeMember(
 
     // The membership row cascades nothing to the account's preference rows, so
     // revocation clears them explicitly — leaving no record of a revoked
-    // member's tier (`profiles-data-model`).
+    // member's tier.
     await deleteMemberPreferences(profileId, userId);
     invalidateMembership(profileId, userId);
     return { success: true, message: 'Member removed' };

@@ -1,3 +1,6 @@
+// TODO(#343): extract the duplicated literal to a constant, then drop this disable
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import { db } from '@/db';
 import {
   item_images,

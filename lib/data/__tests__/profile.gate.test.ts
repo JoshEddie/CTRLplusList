@@ -1,7 +1,7 @@
 /**
- * Pins `server-endpoint-authorization` — "A profile-scoped write SHALL
- * re-verify membership on the profile it acts as" — and `active-profile`'s
- * "A membership SHALL record when its account last acted as its profile",
+ * Pins two rules: a profile-scoped write re-verifies membership on the
+ * profile it acts as, and a membership records when its account last acted
+ * as its profile,
  * including its hourly coarsening. The gate is load-bearing twice, for
  * authorization and for the recording, so it is covered here directly rather
  * than only incidentally through the actions that call it.

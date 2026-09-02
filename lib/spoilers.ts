@@ -1,7 +1,7 @@
 // The claim-visibility vocabulary and the composition of a stored baseline
 // tier with the current request's adjustment. Not in `lib/data/` — combining a
-// stored value with request parameters is not a data-layer concern
-// (`data-layer-organization`). Nothing here imports a runtime, so `db/schema`
+// stored value with request parameters is not a data-layer concern.
+// Nothing here imports a runtime, so `db/schema`
 // can read the tier vocabulary for its CHECK without a cycle.
 import type { SpoilerTier } from '@/lib/types';
 

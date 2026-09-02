@@ -32,7 +32,7 @@ Postgres (HTTP driver) + Drizzle, and a Serwist-backed PWA shell.
    npm run db:migrate
    ```
    Review generated SQL before running in any environment other than your own
-   dev database — see `CLAUDE.md` ("Database migrations") for the workflow.
+   dev database — see `docs/database.md` ("Migrations") for the workflow.
 4. Seed dev data (optional, recommended):
    ```bash
    npm run db:seed:dev
@@ -56,7 +56,7 @@ for `dev-test-viewer`. The `BYPASS_SESSION_USER` env var selects the identity
 (`guest` ⇒ no session; any other seeded id ⇒ that user). Docker is a
 prerequisite. The bypass is scoped to a localhost `DATABASE_URL` by a boot
 guard in `db/index.ts`, so it can never activate against a hosted database.
-See `CLAUDE.md` ("Local dev + e2e auth bypass").
+See `docs/local-dev.md`.
 
 To reset after local drift:
 
@@ -75,9 +75,7 @@ npm run build
 ```
 
 The `build` script invokes `next build --webpack` — a deliberate Turbopack
-opt-out required by `@serwist/next` 9.5 (the PWA service-worker integration).
-When Serwist supports Turbopack, drop the `--webpack` flag and remove this
-note.
+opt-out, see [ADR-0011](docs/adr/0011-webpack-opt-out-for-serwist.md).
 
 Deployment target is Vercel. The PWA manifest, service worker, and offline
 assets are emitted by Serwist at build time and disabled in dev mode (see
@@ -85,8 +83,11 @@ assets are emitted by Serwist at build time and disabled in dev mode (see
 
 ## Workflow & conventions
 
-- `CLAUDE.md` — project conventions, database driver caveats, dev auth bypass,
-  and the database-migration workflow.
+- `CLAUDE.md` — hard rules and a pointer table into `docs/`.
+- `CONTEXT.md` — the domain glossary: what each term means right now.
+- `docs/adr/` — why things are built the way they are.
+- `docs/` — database, testing, local dev, code style, abstraction, UI
+  conventions, and the landing workflow.
 
 ## License
 

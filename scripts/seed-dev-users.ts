@@ -9,7 +9,7 @@
  * deterministic IDs and `.onConflictDoNothing()`. Hard-fails on production.
  *
  * --------------------------------------------------------------------------
- * Seed-as-fixture (testing-foundation capability).
+ * Seed-as-fixture.
  *
  * This file is the canonical E2E fixture. E2E specs assert against the
  * entities created here (users, lists, items, visits, follows). Any edit
@@ -598,7 +598,7 @@ const FRIEND_LIST_TEMPLATES: {
     name: "Jack's Holiday",
     occasion: 'Holiday',
   },
-  // testing-foundation: spike audit additions. These three lists give the
+  // These three lists give the
   // E2E fixture a friend-owned OWNER list, a friend-owned LINK list, and a
   // new friend (kim) owning a FOLLOWERS list with no list_visits row for
   // the viewer. dave + jack are existing not-followed-by-viewer friends.
@@ -699,7 +699,7 @@ type SeedVisit = {
 // Visit every public friend list — gives Recently Visited enough rows (≥15) to
 // force pagination and horizontal scroll. Bookmark every other one so the
 // Bookmarks rail has plenty of content too. Kim is excluded per the
-// testing-foundation spike audit: kim must have zero list_visits rows so
+// kim must have zero list_visits rows so
 // the "user with no visit history from the viewer" surface is reachable
 // directly from the seed.
 const seedVisits: SeedVisit[] = FRIEND_LIST_TEMPLATES.filter(

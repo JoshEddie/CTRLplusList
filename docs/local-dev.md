@@ -1,10 +1,10 @@
 # Local-mode reference
 
-Deep reference for local mode (`USE_PG_DRIVER=1`). Day-to-day commands + guardrails live in CLAUDE.md § Local dev.
+Deep reference for local mode (`USE_PG_DRIVER=1`). Day-to-day commands live in [CLAUDE.md](../CLAUDE.md) § Commands.
 
 ## Auth bypass mechanics
 
-App gates every protected page on Google OAuth via NextAuth → preview tools can't validate UI without real sign-in. "Local mode" = localhost Docker Postgres **plus** synthesized sessions (no real OAuth), entered with single flag `USE_PG_DRIVER=1` — same flag points DB driver at local Postgres ([db/index.ts](db/index.ts)), turns off real auth ([lib/auth.ts](lib/auth.ts)), and is what e2e servers set. **Docker prerequisite** (Docker Desktop on macOS — `dev:local` auto-starts it).
+App gates every protected page on Google OAuth via NextAuth → preview tools can't validate UI without real sign-in. "Local mode" = localhost Docker Postgres **plus** synthesized sessions (no real OAuth), entered with single flag `USE_PG_DRIVER=1` — same flag points DB driver at local Postgres ([db/index.ts](../db/index.ts)), turns off real auth ([lib/auth.ts](../lib/auth.ts)), and is what e2e servers set. **Docker prerequisite** (Docker Desktop on macOS — `dev:local` auto-starts it).
 
 - `npm run dev:local` — localhost Postgres sidecar (`docker-compose.e2e.yml`), schema via `drizzle-kit push`, seeds `dev-test-viewer` + friend graph (idempotent), starts `next dev` with `USE_PG_DRIVER=1`.
 - Nothing to hand-set: localhost `DATABASE_URL` lives once in `e2e/.env` (committed, non-secret — only `*.local` env files hold secrets, gitignored per `.env*.local` convention), shared by scripts, `docker-compose.e2e.yml`, `e2e/helpers/constants.ts`.
@@ -25,7 +25,7 @@ Both onboarding values are one-shot against a given database: submitting the gat
 
 ## Seeded data coverage
 
-Deterministic states baked into `npm run db:reset:dev` / `dev:local` seed ([scripts/seed-dev-users.ts](scripts/seed-dev-users.ts)). Read when hunting a specific UI state from seed.
+Deterministic states baked into `npm run db:reset:dev` / `dev:local` seed ([scripts/seed-dev-users.ts](../scripts/seed-dev-users.ts)). Read when hunting a specific UI state from seed.
 
 ### `quantity_limit` coverage
 
@@ -63,16 +63,16 @@ Authenticated fan-out purchase rows = self-claims (`claimed_by_profile_id` = the
 
 ## Implementation files
 
-- [db/index.ts](db/index.ts) — `USE_PG_DRIVER` driver-switch (postgres-js vs neon-http) + localhost boot guard.
-- [lib/auth.ts](lib/auth.ts) — bypass keyed on `USE_PG_DRIVER`; `BYPASS_SESSION_USER` selector; exports `BYPASS_USER_ID = 'dev-test-viewer'` and `GUEST_SESSION_USER = 'guest'`.
-- [scripts/seed-dev-users.ts](scripts/seed-dev-users.ts) — idempotent; refuses prod; upserts most tables via Drizzle `.insert().onConflictDoUpdate()` (few `.onConflictDoNothing()`) so reseeds pick up edits.
-- [scripts/setup-e2e-db.sh](scripts/setup-e2e-db.sh) / [scripts/dev-local.sh](scripts/dev-local.sh) / [scripts/test-e2e.sh](scripts/test-e2e.sh) — `setup-e2e-db.sh` = Docker bring-up + schema only; data-state step is caller's: `dev:local` seeds (preserves UI-created rows), `test:e2e` runs `db:reset:dev` (cascade wipe + reseed) so every e2e run starts identical.
+- [db/index.ts](../db/index.ts) — `USE_PG_DRIVER` driver-switch (postgres-js vs neon-http) + localhost boot guard.
+- [lib/auth.ts](../lib/auth.ts) — bypass keyed on `USE_PG_DRIVER`; `BYPASS_SESSION_USER` selector; exports `BYPASS_USER_ID = 'dev-test-viewer'` and `GUEST_SESSION_USER = 'guest'`.
+- [scripts/seed-dev-users.ts](../scripts/seed-dev-users.ts) — idempotent; refuses prod; upserts most tables via Drizzle `.insert().onConflictDoUpdate()` (few `.onConflictDoNothing()`) so reseeds pick up edits.
+- [scripts/setup-e2e-db.sh](../scripts/setup-e2e-db.sh) / [scripts/dev-local.sh](../scripts/dev-local.sh) / [scripts/test-e2e.sh](../scripts/test-e2e.sh) — `setup-e2e-db.sh` = Docker bring-up + schema only; data-state step is caller's: `dev:local` seeds (preserves UI-created rows), `test:e2e` runs `db:reset:dev` (cascade wipe + reseed) so every e2e run starts identical.
 - Route-handler / middleware overloads of `auth(req, ctx)` pass through to real NextAuth — production auth path unchanged.
 
 ## Product-fetch mock
 
 - Local mode only (same `USE_PG_DRIVER=1` flag, no own flag): pasting `https://mock.test/<scenario>` into add-item flow returns deterministic fixture instead of calling Zyte — every downstream deck state reachable in seconds, zero quota.
 - Scenario = URL's first path segment, toggled per request, no restart. Any other hostname takes real path even locally (paste real URL with key configured to test real Zyte). Unknown scenario → `fetch_failed`.
-- fixtures: [lib/product-fetch/mock.ts](lib/product-fetch/mock.ts).
+- fixtures: [lib/product-fetch/mock.ts](../lib/product-fetch/mock.ts).
 - Mock requests bypass product-fetch rate-limit bucket; `https://mock.test/rate-limited` returns route-level 429.
 - Outside local mode mock doesn't exist — `mock.test` fails like dead link.

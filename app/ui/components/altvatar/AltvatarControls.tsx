@@ -1,5 +1,8 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import '@/app/ui/components/field/form-field.css';
 import '@/app/ui/styles/altvatar.css';

@@ -17,7 +17,7 @@ export const ProfileFieldsSchema = z.object({
     .max(60, 'Name must be 60 characters or less'),
 
   // Trim first, then cap: the 40 bounds what is stored, and a blank tagline is
-  // NULL rather than '' (profiles-data-model).
+  // NULL rather than ''.
   tagline: z
     .string()
     .optional()

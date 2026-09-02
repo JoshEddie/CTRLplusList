@@ -1,5 +1,5 @@
 /**
- * Pins `profiles-data-model`'s avatar read shape: the customizer is the only
+ * Pins the avatar read shape: the customizer is the only
  * reader of the stored selections, and a profile's face is joined straight onto
  * the profile id with no account column among its sources.
  */

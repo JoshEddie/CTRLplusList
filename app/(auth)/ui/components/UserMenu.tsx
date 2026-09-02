@@ -1,5 +1,8 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import SignInButton from '@/app/(auth)/ui/components/SignInButton';
 import { CloseButton, buttonClasses } from '@/app/ui/components/button';
 import type { ProfileSwitcherView } from '@/lib/data/profile.active';

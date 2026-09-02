@@ -1,98 +1,77 @@
 # Claude notes
 
-## Hard rules at a glance
+CTRLplusList — a family gift-list app (Next.js App Router, NextAuth/Google, Neon Postgres + Drizzle, Serwist PWA).
 
-Non-negotiables; each links to its full text.
+## Read this before touching that
 
-- **No interactive DB transactions** — no `db.transaction(...)`, no `SELECT … FOR UPDATE`; `neon-http` runs every query as its own HTTP round-trip. Atomicity via unique / partial-unique indexes + `ON CONFLICT`. ([DATABASE.md](DATABASE.md))
-- **No comments by default** — only non-obvious WHY earns one. (§ Comments)
-- **File size** — >400 lines of code = merge-blocking lint error; 300–400 = only tolerated lint warning; never `eslint-disable` either rule. (§ File size)
-- **Tests assert observable behavior** — no execute-for-coverage, no tautologies; names lint-enforced `<StateUnderTest>_<ExpectedBehavior>`. ([TESTING.md](TESTING.md))
-- **Every `/* v8 ignore */` carries inline `--` rationale** naming unreachable branch; never valid on redundant guard. ([TESTING.md](TESTING.md))
-- **Five gates, checked separately**: `npm run lint` (pure `eslint .` — zero errors, zero non-size warnings) · `npx tsc --noEmit` · `npm run build` · `npm run test:coverage` · `npm run test:e2e`. Trunk landings: lint + typecheck locally pre-push; CI on `dev` push runs full battery. Non-executable changes (markdown/skills/specs, comment-only edits) may omit the two test gates — no checklist item, the omission + rationale named in the section's lead-in; any executable change voids it. CI still runs everything. (§ Trunk workflow)
-- **Skills never `git commit`** — stage, report, stop for owner's signature; never retry blocked signature. One change in apply stage at a time on `dev`. (§ Trunk workflow)
-- **Restart dev server after seeding/reseeding** — `'use cache'` DAL results stay stale otherwise. (§ Local dev)
+| Touching… | Read first |
+| --- | --- |
+| DB queries, DAL, schema, migrations | [docs/database.md](docs/database.md) |
+| Any test | [docs/testing.md](docs/testing.md) |
+| Writing or running an e2e spec | [e2e/README.md](e2e/README.md) — the filename picks the Playwright project |
+| Deciding whether to extract, share, or split something | [docs/abstraction.md](docs/abstraction.md) |
+| Pages, components, CSS tokens | [docs/ui-conventions.md](docs/ui-conventions.md) |
+| Comments, file size, markdown | [docs/code-style.md](docs/code-style.md) |
+| Landing, gates, commits | [docs/workflow.md](docs/workflow.md) |
+| Seeded UI states, local-mode internals, product-fetch mock | [docs/local-dev.md](docs/local-dev.md) |
+| Any domain term (profile, account, claim, spoiler, tier) | [CONTEXT.md](CONTEXT.md) |
+| Why something is built the way it is | [docs/adr/](docs/adr/) |
 
-## Writing code
+## Working with the owner
 
-### Comments
+- A short or fragmentary message is a thought, not a spec. Work out what it's
+  driving at before responding to how it was worded.
+- Consecutive messages are one line of thought, not a queue of orders. Each may
+  build on, correct, or contradict the last. Default to conversation; wait to be
+  told to build.
+- Check the idea against the code before judging it. Disagreement that skipped
+  verification is noise.
+- Most ideas are partly right. Take the part that works and carry it forward —
+  reply with where it leads, not a ruling on it. "That breaks on X, but the Y in
+  it points at Z" is the reply; "that won't work, because…" is not.
+- An issue filed on your own initiative is `needs-triage` — the label records
+  whether I have evaluated it, not how well you wrote it. A skill publishing
+  work I already approved sets its own label.
+- A standing instruction stays in force. If asked to keep something current,
+  update it every turn it changes — not when convenient, and not only when
+  reminded.
 
-- None by default. Add only when WHY non-obvious — hidden constraint, subtle invariant, workaround for specific bug, surprising behavior.
-- If removing comment wouldn't confuse future reader, don't write it.
-- Never explain WHAT — identifiers do that.
-- Never reference current task/fix/callers ("used by X", "added for Y flow", "handles issue #123") — belongs in PR description, rots.
+## Hard rules
 
-### File size (red / yellow / green)
+Non-negotiable regardless of what you are touching.
 
-- Scope: production source (`app/**`, `lib/**`, `hooks/**`, `db/**`); test files + `**/__tests__/**` exempt; `scripts/**`, `e2e/**` outside scoped set. Counted in lines of **code** (comments + blanks free).
-- **Red** >400 = error — split by table-cohesion/domain before merge.
-- **Yellow** 300–400 = warning — pull easy wins where clean extraction exists; cohesive file may stay yellow. Only tolerated lint warnings.
-- **Green** <300 = goal, never via scattering one concern across files.
-- No `eslint-disable` for either rule.
-- Canonical: rules in [eslint.config.mjs](eslint.config.mjs)
+- **No interactive DB transactions** — no `db.transaction(...)`, no `SELECT … FOR UPDATE`; `neon-http` runs every query as its own HTTP round-trip. Atomicity comes from unique / partial-unique indexes + `ON CONFLICT`. ([docs/database.md](docs/database.md))
+- **Never `revalidateTag` / `revalidatePath`** — invalidate only through `updateTags()` from [lib/cacheTags.ts](lib/cacheTags.ts), naming the narrow tag for every key touched. The coarse table tags are a bulk escape hatch no ordinary write fires. ([docs/adr/0004-narrow-tag-invalidation-contract.md](docs/adr/0004-narrow-tag-invalidation-contract.md))
+- **No comments by default** — only a non-obvious WHY earns one. ([docs/code-style.md](docs/code-style.md))
+- **File size** — >400 lines of code is a merge-blocking lint error; 300–400 warns. Never `eslint-disable` either rule. ([docs/code-style.md](docs/code-style.md))
+- **Extract duplication at the second copy** — no count threshold above two. ([docs/abstraction.md](docs/abstraction.md))
+- **Tests assert observable behavior** — no execute-for-coverage, no tautologies; names are lint-enforced `<StateUnderTest>_<ExpectedBehavior>`. ([docs/testing.md](docs/testing.md))
+- **Every `/* v8 ignore */` carries an inline `--` rationale** naming the unreachable branch; never valid over a redundant guard. ([docs/testing.md](docs/testing.md))
+- **Five gates, checked separately** — lint · type-check · build · unit coverage · e2e. ([docs/workflow.md](docs/workflow.md))
+- **Docs describe what is true now** — `CONTEXT.md` and `docs/adr/` record current meaning, not a binding contract. A change that makes one of them false updates it in the same diff; silent drift is the failure, not the change. ([docs/agents/domain.md](docs/agents/domain.md))
+- **Never `git commit`** — stage, report, stop for the owner's signature. ([docs/workflow.md](docs/workflow.md))
 
-### Abstraction (DRY · KISS · coupling)
+## Commands
 
-#### Duplication (DRY)
+Standard npm scripts, with three that are not what you'd guess:
 
-**Decision rule** — extract when ANY of: 3+ copies · unit has structure (branching, typed factory, multi-field literal) · copy could drift silently (still compiles/passes while meaning diverges). Stay inline only when ALL of: ≤2 copies · 1–2 lines · no structure · divergence fails loudly.
+- `npm run build` → `next build --webpack`. The Turbopack opt-out is required by `@serwist/next` 9.5; drop `--webpack` when Serwist supports Turbopack.
+- `npm run dev:local` → Docker Postgres + synthesized sessions (no real OAuth), via the single flag `USE_PG_DRIVER=1`. Plain `npm run dev` uses Neon + real Google sign-in.
+- `npm run db:reset:dev` → cascade wipe + reseed. **Restart the dev server after any seed or reset** — `'use cache'` DAL results stay stale until you do (the seed script runs outside the Next.js process and can't bump `revalidateTag`).
 
-- Identical-by-design logic → one home on sight; don't ask.
-- Keep copies apart only when nameable as different concepts changing for different reasons; looks-alike ≠ duplication.
-- Trivial exception: shared line or two, no structure, may stay inline. *Trivial* is the bar, not copy count. Three forces: **weight** (line or two stays; typed factory / multi-field literal / branching extracts), **drift hazard** (extract when copy can fall behind **silently**; inline fine when divergence fails loudly or doesn't matter), **count** (3+ extracts even when trivial — count only escalates, never overrides weight or drift). Two copies = judgment call; heavy or drift-prone earns one home even at two.
+## Agent skills
 
-#### Over-generality (KISS)
+### Issue tracker
 
-- No generality for cases that don't exist — parameters/flags/branches with no current caller = dead code, unless planned for imminent use.
-- Don't tear down clean, working, tested abstraction for being more general than needed; stripping covered code = risk, no live defect.
+GitHub Issues on [JoshEddie/CTRLplusList](https://github.com/JoshEddie/CTRLplusList) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
-#### Redundant guards
+### Triage labels
 
-- Don't re-test condition your own earlier control flow decided. Guard (`if (cond) redirect()/return/throw`) whose condition already excluded upstream in same function = dead code — remove, let narrowing flow from existing control flow (merge/move upstream guard, early-return). Never paper over with `/* v8 ignore */`.
-- NOT a defensive guard, whose condition turns on invariant established outside function (framework lifecycle, platform, third-party/DB contract) compiler can't prove — legitimate. Tell: rationale citing function's own earlier code ("guard above already redirects…") = redundant kind.
+Default canonical labels used as-is (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), created on the repo. See `docs/agents/triage-labels.md`.
 
-#### Fragile coupling
+### Domain docs
 
-- Shared abstraction's callers diverge → split back into separate concepts; no flags/params/branches so one thing serves all.
-- Coupling between callers that are genuinely one concept changing together = abstraction working.
-
-#### Extraction for leanness
-
-- Extract single-caller helpers for lean files — readability extraction is norm, needs no justification.
-
-#### Where extracted helpers live
-
-- Small/generic/pure helpers → **co-located `utils.ts`** for that directory (create if absent), not own single-purpose file. `capRail` in `app/(main)/lists/ui/components/rails/utils.ts`, following `app/ui/components/utils.ts` (`initialsOf`).
-- Descriptively-named standalone module reserved for genuine domain/capability concept (`lib/data/user.ts`, `lib/visibility.ts`, `lib/listAccess.ts`). `utils.ts` = small stuff, not domain-logic dump.
-
-#### Worked example: `Button` / `LinkButton`
-
-Trio in `app/ui/components/button/`:
-
-- **DRY** — only genuine shared thing, visual styling, lives in `buttonClasses()`.
-- **Fragile coupling** — separate components, not one polymorphic thing behind `as`/`href` flag: `Button` = `<button>` (`ButtonHTMLAttributes` + `type`), `LinkButton` = Next `<Link>` (`AnchorHTMLAttributes` + `LinkProps`).
-- **KISS** — each carries only its concept's props: `Button` has `isLoading`/`disabled`, `LinkButton` doesn't — link can't load or be disabled; adding "for symmetry" = generality for nonexistent caller.
-
-### Components, pages, styling
-
-- **Thin `page.tsx`** — route files = shells forwarding props to co-located `<RouteName>Page.tsx` (`HistoryPage.tsx` next to `page.tsx`). Page component awaits `params`/`searchParams`, owns auth, data fetching, business logic; route file maps URL → component. Touching page with inline logic → split it; no unprompted bulk-refactor.
-- **Extract subcomponents** — JSX block with own identity (row, card, "list + empty state") or past ~5 lines → named subcomponent; no inline nested JSX in parent. `length === 0 ? <empty> : <ul>{map(...)}</ul>` = own component (`BookmarksList`); per-item rendering own (`BookmarkRow`); parent reads like outline. Co-locate next to page, or feature's `ui/components/` if reused. Trivial two-line conditional needs no name.
-- **Reuse existing CSS variables** — applying design mockup: defer to token set + naming in `app/ui/styles/global.css` (`--primary-color`, `--neutral-text-color`, `--secondary-background-color`, …). Map `mockup value → existing var` first; new token only when no existing token's role covers value, named same `--<role>-color` style — never parallel shorthand system (`--p`, `--ink`).
-
-### Writing markdown (docs, skills, specs)
-
-- Titled concept with own sub-points → real `###`/`####` subheading + bullet list — not list item with bolded inline title. Avoid `- **Standard review** — a, b, c.`; prefer `### Standard review` heading over `- a` / `- b` / `- c`. Same for numbered-list-with-bold.
-- Genuinely flat enumerations (ranked signals, condition→action branches, glossary legends) stay plain bullets.
-
-## Local dev (via `USE_PG_DRIVER`)
-
-- **Local mode:** `npm run dev:local` — Docker Postgres + synthesized sessions (no real OAuth); every protected page renders as `dev-test-viewer`. Single flag `USE_PG_DRIVER=1` drives both DB driver + auth bypass.
-- **Real auth:** plain `npm run dev` — Neon + real Google sign-in, as production/Vercel.
-- **Reset after drift:** `npm run db:reset:dev` — cascade wipe + reseed.
-- **After seeding/resetting, restart dev server** — `'use cache'` DAL results stale until restart (seed script can't bump `revalidateTag`).
-- **Hard guardrail:** boot guard in [db/index.ts](db/index.ts) refuses `USE_PG_DRIVER=1` with non-localhost `DATABASE_URL` — loud outage, never silent bypass.
-- **Product-fetch mock:** local mode only — paste `https://mock.test/<scenario>` into add-item flow for deterministic Zyte fixture, zero quota.
-- **Everything else** (session identity via `BYPASS_SESSION_USER`, env layout, seeded coverage, file map, mock scenarios): [LOCALDEV.md](LOCALDEV.md).
+Single-context — `CONTEXT.md` + `docs/adr/` at the repo root (created lazily by `/domain-modeling`, not yet present). See `docs/agents/domain.md`.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

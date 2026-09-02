@@ -1,5 +1,8 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import { Button } from '@/app/ui/components/button';
 import { DeckScreen } from './DeckShell';
 import { NoteEditor } from './editors/NoteEditor';

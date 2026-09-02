@@ -116,7 +116,7 @@ export async function writeMemberTier(
 
 // Delete a member's account-keyed preference rows on a profile. Called when a
 // membership is revoked: the rows do not cascade with the `profile_members`
-// row, so revocation must clear them explicitly (`profiles-data-model`).
+// row, so revocation must clear them explicitly.
 export async function deleteMemberPreferences(
   profileId: string,
   userId: string

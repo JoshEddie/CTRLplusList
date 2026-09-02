@@ -198,7 +198,7 @@ describe('removeFollower', () => {
   });
 
   it('OnlySeversEdgeWhereActorIsFollowee_LeavesThirdPartyEdgeIntact', async () => {
-    // server-endpoint-authorization SHALL: removeFollower(B) deletes only the
+    // removeFollower(B) deletes only the
     // (follower=B, followee=actor) edge. An edge from B to a third user C —
     // where the actor is not the followee — must survive, so a caller cannot
     // sever follow relationships between two other users.

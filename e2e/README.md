@@ -57,7 +57,7 @@ flow writes can be cleaned up. `dev-profile-managed` ("Managed Profile") carries
 two fixtures a single write destroys — the NULL `last_active_at` that is the
 never-acted-as ordering branch, and its empty list set — so **no spec may write
 on it or switch to it**. The full seeded profile set is in
-[LOCALDEV.md](../LOCALDEV.md).
+[docs/local-dev.md](../docs/local-dev.md).
 
 **A fourth managed seat carries the claim-visibility fixture.**
 `dev-profile-visibility` ("Visibility Profile") exists only so an owner
@@ -151,4 +151,4 @@ the harness self-tests — minimal proofs that each mode renders.
   (copy-on-write), replays `drizzle-kit migrate`, re-seeds, and smoke-reads
   through the production `neon-http` driver.
 
-See `.github/workflows/ci.yml` and the `testing-foundation` capability spec.
+See `.github/workflows/ci.yml`.

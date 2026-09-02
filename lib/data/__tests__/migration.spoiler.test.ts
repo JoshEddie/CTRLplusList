@@ -1,5 +1,5 @@
 /**
- * Pins `profiles-data-model`'s spoiler-tier reshaping against a real database
+ * Pins the spoiler-tier reshaping against a real database
  * with every migration replayed: the tier moved off `profile_members` (no
  * columns there) into `profile_preferences`, which gained a nullable account
  * key so one row can be profile-wide (user_id NULL) or per-member (user_id

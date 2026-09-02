@@ -1,5 +1,8 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import FollowDisclosureDialog from '@/app/(main)/users/ui/components/FollowDisclosureDialog';
 import { MenuItem, MenuItemRadio } from '@/app/ui/components/menu';
 import {

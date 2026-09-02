@@ -21,22 +21,11 @@ Any test you add MUST assert observable behavior — what the production code re
 
 This rule applies to every test in the repo. ESLint enforces the mechanical parts where configured (`vitest/expect-expect`, tautology shortlist); the rest is a manual review bar.
 
-## Every delta-spec scenario is pinned by a named test
-
-When a change's delta specs add or modify a SHALL statement or a `#### Scenario:`, a named test in this repo pins it. The scope is the change's own delta — the standing corpus is not swept.
-
-The unit differs by layer, because a failing test should name the scenario that broke:
-
-- **Unit and integration** — one scenario per test. A test covering several scenarios makes the failure ambiguous about which contract broke.
-- **E2E** — one test spans an acceptance flow, and a flow is a chain of scenarios, so covering several is the correct shape there.
-
-It is a norm, not a count. A scenario may honestly earn several tests, and a scenario sharing a flow test with its neighbours is not the failure this bar catches — a scenario with zero tests is. `/spec-review`'s testing arena enforces the same bar from the reviewer's side.
-
 ## Shared setup belongs in a fixture, not duplicated or merged away
 
 When sibling tests need the *same* Arrange (identical seed, mocks, render), hoist it into the enclosing `describe`'s `beforeEach`. Do NOT copy the setup inline into each test, and do NOT collapse distinct triggers into one multi-assert test just to write the setup once. Both shortcuts are wrong, in opposite directions:
 
-- **Duplicated inline setup** violates DRY (see [CLAUDE.md](CLAUDE.md)) — the same seed pasted into N bodies drifts and rots.
+- **Duplicated inline setup** violates DRY (see [abstraction.md](abstraction.md)) — the same seed pasted into N bodies drifts and rots.
 - **Merging the triggers** violates one-test = one-trigger (see *Test naming convention → Vitest*) and forfeits failure isolation: the first failed `expect` aborts the test, so a regression in the first trigger hides whether the rest still hold.
 
 A `beforeEach` resolves both: setup is written once, each trigger stays its own test (granular spec-line name, independent pass/fail), and the shared world is named at the top of the block. A test's identity is its Act + Assert, not its Arrange — shared Arrange is a fixture concern, never a reason to fuse two triggers.
@@ -69,7 +58,7 @@ describe('isFollowing', () => {
 });
 ```
 
-Threshold: this is CLAUDE.md's duplication judgment (weight · drift · count), and it governs both placements — a `beforeEach` when the sharers live in one file, a colocated `__tests__/test-helpers.tsx` when they span files. A single shared line can stay inline; extract when the Arrange is non-trivial, when three-plus tests key off it, or when it would **drift silently**. Fixtures lean toward extract earlier than ordinary code: a stale fixture doesn't fail, it makes a test pass while quietly exercising the wrong thing — so a typed, multi-field factory reused even twice is usually worth one home. (A typed factory is partly self-policing — TypeScript breaks every copy when the *shape* changes — but **value** drift, a changed default, is silent and uncaught: that's the hazard.)
+Threshold: this is [abstraction.md](abstraction.md)'s duplication rule — extract at the second copy — and it governs both placements: a `beforeEach` when the sharers live in one file, a colocated `__tests__/test-helpers.tsx` when they span files. The single-line inline allowance almost never applies to an Arrange, because a stale fixture drifts silently. Fixtures lean toward extract earlier than ordinary code: a stale fixture doesn't fail, it makes a test pass while quietly exercising the wrong thing — so a typed, multi-field factory reused even twice is usually worth one home. (A typed factory is partly self-policing — TypeScript breaks every copy when the *shape* changes — but **value** drift, a changed default, is silent and uncaught: that's the hazard.)
 
 ## Coverage ignore annotations require a rationale
 
@@ -118,11 +107,10 @@ The seam must be a **genuine** config or behavior surface, not a test-only backd
 
 Reserve `/* v8 ignore */` for code that is genuinely unreachable (a defensive guard whose condition turns on an invariant established *outside* the function — framework lifecycle, platform, a third-party/DB contract — the compiler can't prove) or truly external (a third-party error path you cannot provoke). "Hard to set up" is a signal to push harder on (a) or (b), not a reason for (c).
 
-An ignore over a **redundant guard** is never valid (b), not (c). A redundant guard re-tests a condition the function's own earlier control flow already decided — an upstream guard or branch that already excluded the case (see `Redundant guards` in [CLAUDE.md](CLAUDE.md)). It is dead code, not unreachable code: the fix is to remove it and let any narrowing flow from the existing control flow, never to ignore it. **Tell:** a rationale that cites the function's own earlier code ("the guard above already redirects…") is describing a redundant guard. Contrast the legitimate defensive guard above, whose invariant is external and so can never name a local cause.
+An ignore over a **redundant guard** is never valid (b), not (c). A redundant guard re-tests a condition the function's own earlier control flow already decided — an upstream guard or branch that already excluded the case (see `Redundant guards` in [abstraction.md](abstraction.md)). It is dead code, not unreachable code: the fix is to remove it and let any narrowing flow from the existing control flow, never to ignore it. **Tell:** a rationale that cites the function's own earlier code ("the guard above already redirects…") is describing a redundant guard. Contrast the legitimate defensive guard above, whose invariant is external and so can never name a local cause.
 
 ## Test file location
 
-Test files MUST live in a `__tests__/` directory colocated with the module they test — NOT alongside it. The colocation requirement from `testing-foundation` stands (tests stay next to the code they exercise), but the `__tests__/` folder keeps source directory listings focused on production files and groups multiple tests for the same module without polluting the parent directory.
 
 ```
 app/ui/components/button/
@@ -151,7 +139,6 @@ import { Button } from '../Button';
 // app/ui/components/button/Button.test.tsx
 ```
 
-The normative statement lives in the `testing-foundation` capability spec alongside the colocation rule.
 
 ## Test naming convention
 
@@ -174,24 +161,10 @@ Test names MUST be self-documenting and structurally consistent — failures sho
 - **One test = one trigger.** Assert all of a single trigger's effects together (dash-joined); a single-trigger compound is NOT split — splitting only duplicates setup. Split only when a title would span multiple distinct triggers (actions). The discriminator is the number of triggers, not the number of dashes.
 
 ```ts
-// ✅ Good — unit test (utility function)
+// ✅ Good — the shape is identical for utilities, components and DAL
 describe('fromDb', () => {
   it('InputPrivate_ReturnsOWNER', ...)
-  it('InputUnlisted_ReturnsLINK', ...)
   it('UnknownInput_ThrowsUnknownVisibilityValueError', ...)
-});
-
-// ✅ Good — component / helper test
-describe('buttonClasses', () => {
-  it('PrimaryDefaultSize_ReturnsBtnPrimary', ...)
-  it('PrimarySizeSm_ReturnsBtnPrimaryBtnSm', ...)
-  it('ExtraEmpty_ElidesNoTrailingSpace', ...)
-});
-
-// ✅ Good — DAL / action test
-describe('guardListViewable', () => {
-  it('NullListAuthedViewer_RedirectsToLists', ...)
-  it('OwnerBlockedViewer_RedirectsToLists', ...)
 });
 
 // ✅ Good — parameterized
@@ -301,5 +274,3 @@ test('should sign in', ...)
 test('basic navigation works', ...)
 test('list creation', ...)
 ```
-
-The normative statement of the naming convention lives in the `testing-foundation` capability spec (same location as the substance bar above).

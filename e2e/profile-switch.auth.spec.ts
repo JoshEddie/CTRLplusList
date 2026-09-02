@@ -21,8 +21,8 @@ import { pinActingProfile } from './helpers/activeProfile';
 // target membership's last-acted-as timestamp, and no affordance in the
 // viewer's UI unsets it. The flow therefore switches only to "Owned Profile",
 // whose seeded timestamp is already non-NULL — never to "Managed Profile",
-// whose NULL is the never-acted-as ordering fixture `profiles-data-model`
-// seeds and which stamping would consume for every later run against the same
+// whose NULL is the never-acted-as ordering fixture the seed creates, and
+// which stamping would consume for every later run against the same
 // database. The acting profile itself is restored: the flow ends back on the
 // viewer's self-profile.
 //

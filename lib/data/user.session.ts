@@ -21,9 +21,8 @@ export async function authedUserId(): Promise<string | null> {
 // Session → { userId, selfProfile, activeProfile }. The seam names both
 // profiles and exposes no unqualified one: an endpoint comparing against an
 // ownership column or writing new content takes the active profile, and one
-// naming or acting for the human takes the self-profile, per
-// server-endpoint-authorization. Both causes of an unresolvable actor (no
-// session, no users row) yield null, per its rejection shape.
+// naming or acting for the human takes the self-profile. Both causes of an
+// unresolvable actor (no session, no users row) yield null.
 export async function authedIdentity(): Promise<UserIdentity | null> {
   const userId = await authedUserId();
   if (!userId) return null;

@@ -1,3 +1,6 @@
+// TODO(#343): extract the duplicated literal to a constant, then drop this disable
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import AppViewport from '@/app/ui/components/AppViewport';
 import { ServiceWorkerRegistration } from '@/app/ui/components/ServiceWorkerRegistration';
 import '@/app/ui/styles/button.css';

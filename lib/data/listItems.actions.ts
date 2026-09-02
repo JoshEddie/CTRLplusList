@@ -1,5 +1,8 @@
 'use server';
 
+// TODO(#343): extract the duplicated literal to a constant, then drop this disable
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import { db } from '@/db';
 import { items, list_items, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
@@ -40,8 +43,7 @@ export async function setListItems(
     // The gate's own rejection collapses into this one: the session-presence
     // check above already refused the no-session cause, so a stale session and
     // a revoked membership both fall to the ownership comparison a null actor
-    // can never pass, and all three keep the endpoint's own 'Forbidden' code
-    // per server-endpoint-authorization's exemption.
+    // can never pass, and all three keep the endpoint's own 'Forbidden' code.
     const actor = await authedWriter(ADMIN_OPTIONAL);
     if (
       'error' in actor ||

@@ -2,7 +2,7 @@
  * WCAG 2.x sRGB contrast utilities — a browserless engine for asserting that
  * text colors clear their AA contrast thresholds against a background.
  *
- * Shared per `testing-foundation` ("shared helpers under `test/helpers/`").
+ * Shared helpers live under `test/helpers/`.
  * Consumed by `app/(main)/lists/ui/styles/__tests__/hero-contrast.test.ts`.
  */
 

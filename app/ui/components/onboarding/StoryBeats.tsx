@@ -1,5 +1,8 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import AltvatarPreview from '@/app/ui/components/altvatar/AltvatarPreview';
 import ProfileAvatar, { facelessView } from '@/app/ui/components/ProfileAvatar';
 import { accentVars } from '@/lib/accent';

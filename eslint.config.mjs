@@ -1,5 +1,6 @@
 import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
 import nextTypescript from 'eslint-config-next/typescript';
+import react from 'eslint-plugin-react';
 import sonarjs from 'eslint-plugin-sonarjs';
 import testingLibrary from 'eslint-plugin-testing-library';
 import vitest from 'eslint-plugin-vitest';
@@ -26,7 +27,7 @@ const eslintConfig = [
   // File-size bands (policy: CLAUDE.md); two rules because each carries one
   // severity.
   {
-    files: ['app/**', 'lib/**', 'hooks/**', 'db/**'],
+    files: ['app/**', 'lib/**', 'db/**'],
     ignores: [
       '**/*.test.*',
       '**/__tests__/**',
@@ -47,6 +48,28 @@ const eslintConfig = [
   {
     rules: {
       '@typescript-eslint/no-unused-vars': 'error',
+      // Surfaces the issue-linked TODO beside every exemption disable, so the
+      // burn-down list is the lint output rather than a maintained file.
+      'no-warning-comments': ['warn', { terms: ['todo'], location: 'start' }],
+    },
+  },
+  // One React *component* per file. Scoped to `app/**/*.tsx` on purpose: this
+  // says nothing about how many functions a module may export, and must never
+  // reach the DAL or a utils module.
+  {
+    files: ['app/**/*.tsx'],
+    ignores: ['**/*.test.*', '**/__tests__/**'],
+    plugins: { react },
+    rules: {
+      'react/no-multi-comp': ['error', { ignoreStateless: false }],
+    },
+  },
+  {
+    files: ['app/**', 'lib/**', 'db/**'],
+    ignores: ['**/*.test.*', '**/__tests__/**'],
+    plugins: { sonarjs },
+    rules: {
+      'sonarjs/no-duplicate-string': ['error', { threshold: 3 }],
     },
   },
   {
@@ -68,17 +91,17 @@ const eslintConfig = [
           mustMatch: {
             it: [
               '^[A-Z][A-Za-z0-9%#]*_[A-Z%][A-Za-z0-9%#]*(-[A-Z][A-Za-z0-9%#]*)*$',
-              'it()/test() titles must match <State>_<Behavior>(-<Behavior>)*: one underscore = the state│behavior boundary, single-token PascalCase state (compound state → nested describe), dash-joined PascalCase behavior facets. See TESTING.md.',
+              'it()/test() titles must match <State>_<Behavior>(-<Behavior>)*: one underscore = the state│behavior boundary, single-token PascalCase state (compound state → nested describe), dash-joined PascalCase behavior facets. See docs/testing.md.',
             ],
             test: [
               '^[A-Z][A-Za-z0-9%#]*_[A-Z%][A-Za-z0-9%#]*(-[A-Z][A-Za-z0-9%#]*)*$',
-              'it()/test() titles must match <State>_<Behavior>(-<Behavior>)*: one underscore = the state│behavior boundary, single-token PascalCase state (compound state → nested describe), dash-joined PascalCase behavior facets. See TESTING.md.',
+              'it()/test() titles must match <State>_<Behavior>(-<Behavior>)*: one underscore = the state│behavior boundary, single-token PascalCase state (compound state → nested describe), dash-joined PascalCase behavior facets. See docs/testing.md.',
             ],
           },
           mustNotMatch: {
             describe: [
               '[^\\w$]',
-              'describe() titles must be identifier/tag form: no whitespace or punctuation (dash is the behavior-facet joiner in it()/test() only). See TESTING.md.',
+              'describe() titles must be identifier/tag form: no whitespace or punctuation (dash is the behavior-facet joiner in it()/test() only). See docs/testing.md.',
             ],
           },
         },

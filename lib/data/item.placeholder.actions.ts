@@ -1,5 +1,8 @@
 'use server';
 
+// TODO(#343): extract the duplicated literal to a constant, then drop this disable
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import { db } from '@/db';
 import { item_images, items } from '@/db/schema';
 import {
@@ -14,7 +17,7 @@ import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-// Guest-callable by design (enumerated in server-endpoint-authorization): the
+// Guest-callable by design: the
 // payload is the item id alone and the stored row is fully server-derived, so
 // no session is required — only view authorization, the same gate the guest
 // purchase path uses. Concurrent mints race check-then-insert (no transactions

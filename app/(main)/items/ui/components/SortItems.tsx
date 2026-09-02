@@ -1,5 +1,8 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import { updatePriority } from '@/lib/data/listItems.actions';
 import { LinkButton } from '@/app/ui/components/button';
 import { ProfileMembershipView, ItemDisplay, SpoilerTier } from '@/lib/types';

@@ -3,7 +3,7 @@
 import { TextField } from '@/app/ui/components/field';
 
 // The two text fields both writers share. The tagline's `maxLength` mirrors its
-// server contract client-side per profiles-data-model; the trim-to-null is the
+// server contract client-side; the trim-to-null is the
 // schema's own transform, not restated here.
 export default function ProfileFields({
   name,

@@ -1,5 +1,8 @@
 'use server';
 
+// TODO(#343): extract the duplicated literal to a constant, then drop this disable
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import { db } from '@/db';
 import { items, purchases } from '@/db/schema';
 import { auth } from '@/lib/auth';

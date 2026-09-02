@@ -19,7 +19,7 @@ import { expect, test, type Locator } from '@playwright/test';
 const LIST = '/lists/dev-list-alice-wedding';
 const LIST_HEADING = "Alice's Wedding Registry";
 
-// The seeded linkless extras (LOCALDEV.md § non-link states).
+// The seeded linkless extras (docs/local-dev.md § non-link states).
 const PRICED_ITEM = 'Spa day gift card';
 const BARE_ITEM = 'A homemade dinner for two';
 
