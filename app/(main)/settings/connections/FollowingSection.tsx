@@ -26,7 +26,7 @@ export default async function FollowingSection() {
           actions={
             <ConnectionsAction
               action="unfollow"
-              targetId={f.followee_profile_id}
+              targetProfileId={f.followee_profile_id}
             />
           }
         />

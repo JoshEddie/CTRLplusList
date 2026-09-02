@@ -11,7 +11,11 @@ import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import toast from 'react-hot-toast';
 
-type Action = 'unfollow' | 'remove' | 'block' | 'unblock';
+type Target =
+  | { action: 'remove'; followerAccountId: string }
+  | { action: 'unfollow' | 'block' | 'unblock'; targetProfileId: string };
+
+type Action = Target['action'];
 
 const labels: Record<Action, string> = {
   unfollow: 'Unfollow',
@@ -30,13 +34,10 @@ const fns: Record<
   unblock: unblockUser,
 };
 
-export default function ConnectionsAction({
-  action,
-  targetId,
-}: {
-  action: Action;
-  targetId: string;
-}) {
+export default function ConnectionsAction(props: Target) {
+  const { action } = props;
+  const targetId =
+    props.action === 'remove' ? props.followerAccountId : props.targetProfileId;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   return (

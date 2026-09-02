@@ -26,7 +26,7 @@ export default async function BlockedSection() {
           actions={
             <ConnectionsAction
               action="unblock"
-              targetId={b.blocked_profile_id}
+              targetProfileId={b.blocked_profile_id}
             />
           }
         />

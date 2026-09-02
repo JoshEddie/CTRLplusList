@@ -21,8 +21,20 @@ vi.mock('next/link', async () => ({
 // id, Block a profile id — and neither reaches the DOM through the real
 // button. Surfacing both here is what fails if they are ever swapped.
 vi.mock('../ConnectionsActions', () => ({
-  default: ({ action, targetId }: { action: string; targetId: string }) => (
-    <button type="button" data-target-id={targetId}>
+  default: ({
+    action,
+    followerAccountId,
+    targetProfileId,
+  }: {
+    action: string;
+    followerAccountId?: string;
+    targetProfileId?: string;
+  }) => (
+    <button
+      type="button"
+      data-account-id={followerAccountId}
+      data-profile-id={targetProfileId}
+    >
       {action}
     </button>
   ),
@@ -95,14 +107,12 @@ describe('FollowersSection', () => {
 
       const [aliceRow] = screen.getAllByRole('listitem');
       const alice = within(aliceRow);
-      expect(alice.getByRole('button', { name: 'remove' })).toHaveAttribute(
-        'data-target-id',
-        'ua'
-      );
-      expect(alice.getByRole('button', { name: 'block' })).toHaveAttribute(
-        'data-target-id',
-        'self-ua'
-      );
+      const remove = alice.getByRole('button', { name: 'remove' });
+      expect(remove).toHaveAttribute('data-account-id', 'ua');
+      expect(remove).not.toHaveAttribute('data-profile-id');
+      const block = alice.getByRole('button', { name: 'block' });
+      expect(block).toHaveAttribute('data-profile-id', 'self-ua');
+      expect(block).not.toHaveAttribute('data-account-id');
     });
 
     it('ActingAsAManagedProfile_StillReadsTheSelfProfile', async () => {

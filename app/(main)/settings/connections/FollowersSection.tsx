@@ -25,10 +25,13 @@ export default async function FollowersSection() {
           since={f.created_at}
           actions={
             <>
-              <ConnectionsAction action="remove" targetId={f.follower_id} />
+              <ConnectionsAction
+                action="remove"
+                followerAccountId={f.follower_id}
+              />
               <ConnectionsAction
                 action="block"
-                targetId={f.follower.profile_id}
+                targetProfileId={f.follower.profile_id}
               />
             </>
           }
