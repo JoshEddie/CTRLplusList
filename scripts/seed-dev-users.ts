@@ -789,7 +789,13 @@ function appendLinklessExtras(
     archived_at: Date | null;
     quantity_limit: number | null;
   }[],
-  listItemRows: { list_id: string; item_id: string; position: number }[]
+  listItemRows: {
+    list_id: string;
+    item_id: string;
+    position: number;
+    quantity: number;
+    shown: boolean;
+  }[]
 ): Map<string, string> {
   const pricedByItem = new Map<string, string>();
   LINKLESS_EXTRAS.forEach((extra, i) => {
@@ -808,6 +814,8 @@ function appendLinklessExtras(
       list_id: extra.list_id,
       item_id: itemId,
       position: list.itemNames.length + i,
+      quantity: 1,
+      shown: true,
     });
     if (extra.price !== '') pricedByItem.set(itemId, extra.price);
   });
@@ -1128,8 +1136,15 @@ async function main() {
     archived_at: Date | null;
     quantity_limit: number | null;
   }[] = [];
-  const listItemRows: { list_id: string; item_id: string; position: number }[] =
-    [];
+  // `quantity` mirrors the migration's carry-over rule (unlimited lands on 1)
+  // so a seeded DB and a migrated one agree.
+  const listItemRows: {
+    list_id: string;
+    item_id: string;
+    position: number;
+    quantity: number;
+    shown: boolean;
+  }[] = [];
   seedLists.forEach((list, listIdx) => {
     const rotation = QTY_ROTATION[listIdx % QTY_ROTATION.length];
     const lastIdx = list.itemNames.length - 1;
@@ -1165,7 +1180,13 @@ async function main() {
           : null,
         quantity_limit,
       });
-      listItemRows.push({ list_id: list.id, item_id: itemId, position: idx });
+      listItemRows.push({
+        list_id: list.id,
+        item_id: itemId,
+        position: idx,
+        quantity: Math.max(quantity_limit ?? 1, 1),
+        shown: true,
+      });
     });
   });
   const linklessPricedByItem = appendLinklessExtras(itemRows, listItemRows);
@@ -1183,7 +1204,13 @@ async function main() {
         quantity_limit: sql`excluded.quantity_limit`,
       },
     });
-  await db.insert(list_items).values(listItemRows).onConflictDoNothing();
+  await db
+    .insert(list_items)
+    .values(listItemRows)
+    .onConflictDoUpdate({
+      target: [list_items.list_id, list_items.item_id],
+      set: { quantity: sql`excluded.quantity`, shown: sql`excluded.shown` },
+    });
   console.log(
     `  items: ${itemRows.length} upserted, list_items: ${listItemRows.length} upserted`
   );
@@ -1348,6 +1375,13 @@ async function main() {
   const friendIds = FRIENDS.map((f) => friendId(f.slug));
   const GUEST_NAMES = ['Grandma', 'Uncle Mike', 'A friend', 'Neighbor Pat'];
   const PURCHASE_EPOCH = new Date('2026-05-01T00:00:00Z').getTime();
+  // Every seeded item sits on exactly one list, so a claim's list is its item's
+  // only entry. Snapshot columns are left null on purpose: null falls back to
+  // the live item, and seeding a copy of a row that is right there would be
+  // fabricating a record of an edit that never happened.
+  const listOfItem = new Map(
+    listItemRows.map((row) => [row.item_id, row.list_id])
+  );
   const purchaseRows: {
     id: string;
     item_id: string;
@@ -1511,7 +1545,13 @@ async function main() {
   if (purchaseRows.length > 0) {
     await db
       .insert(purchases)
-      .values(purchaseRows)
+      .values(
+        purchaseRows.map((row) => ({
+          ...row,
+          list_id: listOfItem.get(row.item_id)!,
+          units: 1,
+        }))
+      )
       .onConflictDoUpdate({
         target: purchases.id,
         set: {
@@ -1519,6 +1559,8 @@ async function main() {
           claimed_by_profile_id: sql`excluded.claimed_by_profile_id`,
           guest_name: sql`excluded.guest_name`,
           purchased_at: sql`excluded.purchased_at`,
+          list_id: sql`excluded.list_id`,
+          units: sql`excluded.units`,
         },
       });
   }

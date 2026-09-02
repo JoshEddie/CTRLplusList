@@ -103,6 +103,12 @@ export const items = pgTable('items', {
   archived_at: timestamp('archived_at'),
 });
 
+// The list entry: an item's presence on one list. Quantity and the
+// soft-removal flag are declared here ahead of the write path that fills them
+// (#361 expands, later tickets read) — `items.quantity_limit` is still the
+// authoritative quantity today. Claimed units are NOT stored: they are
+// SUM(purchases.units) over the entry, and a stored copy would be a second
+// answer to the same question with nothing able to detect it going wrong.
 export const list_items = pgTable(
   'list_items',
   {
@@ -113,6 +119,8 @@ export const list_items = pgTable(
       .references(() => items.id, { onDelete: 'cascade' })
       .notNull(),
     position: integer('position').notNull(),
+    quantity: integer('quantity').notNull().default(1),
+    shown: boolean('shown').notNull().default(true),
   },
   (table) => [primaryKey({ columns: [table.list_id, table.item_id] })]
 );
@@ -204,9 +212,22 @@ export const purchases = pgTable(
   'purchases',
   {
     id: text('id').primaryKey(),
-    item_id: text('item_id')
-      .references(() => items.id, { onDelete: 'cascade' })
-      .notNull(),
+    // Nullable on both references so a claim outlives the thing it was made
+    // against: deleting an item, or a list, detaches the claim rather than
+    // destroying somebody's record of a real purchase.
+    item_id: text('item_id').references(() => items.id, {
+      onDelete: 'set null',
+    }),
+    list_id: text('list_id').references(() => lists.id, {
+      onDelete: 'set null',
+    }),
+    units: integer('units').notNull().default(1),
+    // Snapshot of what was claimed, as it was at claim time. Null falls back
+    // to the live item, so rows written before the snapshot existed render
+    // exactly as they always have.
+    item_name: text('item_name'),
+    item_price: text('item_price'),
+    store_name: text('store_name'),
     profile_id: text('profile_id').references(() => profiles.id, {
       onDelete: 'cascade',
     }),
@@ -218,8 +239,15 @@ export const purchases = pgTable(
     purchased_at: timestamp('purchased_at').defaultNow().notNull(),
   },
   (table) => [
+    // Both indexes stand while the write path still leaves `list_id` null: the
+    // list-scoped one cannot bind a null list, so dropping the item-scoped one
+    // here would leave duplicate claims unguarded until the write path lands.
+    // The item-scoped index goes in the contract half.
     uniqueIndex('purchases_item_profile_unique_idx')
       .on(table.item_id, table.profile_id)
+      .where(sql`${table.profile_id} IS NOT NULL`),
+    uniqueIndex('purchases_list_item_profile_unique_idx')
+      .on(table.list_id, table.item_id, table.profile_id)
       .where(sql`${table.profile_id} IS NOT NULL`),
   ]
 );
