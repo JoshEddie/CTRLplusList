@@ -76,7 +76,8 @@ export async function getFollowersOfProfile(profileId: string) {
   }
 }
 
-// Not cached: joins the blocked profile's own face.
+// Not cached: adopting `'use cache'` is a freshness decision with its own tag
+// audit, and this read keeps its current behaviour until one is made.
 export async function getBlockedByProfile(profileId: string) {
   try {
     const result = await db

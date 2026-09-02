@@ -29,7 +29,8 @@ export const getUserIdByEmail: (email: string) => Promise<UserTable | null> =
     }
   });
 
-// Not cached: joins the followee profile's own face.
+// Not cached: adopting `'use cache'` is a freshness decision with its own tag
+// audit, and this read keeps its current behaviour until one is made.
 export async function getFollowingByUser(userId: string) {
   try {
     const result = await db

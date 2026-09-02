@@ -141,12 +141,6 @@ export type ItemDetails = {
   lists: OptionType[];
 };
 
-export type ListItemTable = {
-  list_id: string;
-  item_id: string;
-  position: number;
-};
-
 export type ItemStoreTable = {
   name: string;
   link: string;
@@ -155,16 +149,6 @@ export type ItemStoreTable = {
   price_fetched_at?: Date | string | null;
   canonical_url?: string | null;
   currency?: string | null;
-};
-
-export type PurchaseTable = {
-  id: string;
-  item_id: string;
-  profile_id: string | null;
-  claimed_by_profile_id: string | null;
-  guest_name: string | null;
-  purchased_at: Date;
-  purchaserProfile: { name: string | null } | null;
 };
 
 export type OptionType = {

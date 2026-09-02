@@ -120,42 +120,6 @@ describe('getListsByProfile', () => {
   });
 });
 
-describe('getListsSharedByProfile', () => {
-  it('LinkAndFollowersLists_ReturnedOrderedByCreatedAtDesc-ExcludesOwnerOnly', async () => {
-    await seedUsers(db, [{ id: 'owner' }]);
-    await seedList(db, {
-      id: 'priv',
-      user_id: 'owner',
-      visibility: 'private',
-      created_at: new Date('2023-01-01'),
-    });
-    await seedList(db, {
-      id: 'link',
-      user_id: 'owner',
-      visibility: 'unlisted',
-      created_at: new Date('2020-01-01'),
-    });
-    await seedList(db, {
-      id: 'followers',
-      user_id: 'owner',
-      visibility: 'public',
-      created_at: new Date('2022-01-01'),
-    });
-
-    const rows = await dal.getListsSharedByProfile(selfProfileOf('owner'));
-    expect(rows.map((r) => r.id)).toEqual(['followers', 'link']);
-  });
-
-  it('QueryThrows_RejectsWithFetchListsError', async () => {
-    vi.spyOn(db.query.lists, 'findMany').mockRejectedValueOnce(
-      new Error('boom')
-    );
-    await expect(
-      dal.getListsSharedByProfile(selfProfileOf('owner'))
-    ).rejects.toThrow('Failed to fetch lists');
-  });
-});
-
 describe('getPublicListsByProfile', () => {
   it('FollowersLists_OnlyReturnedOrderedBySharedAtDesc-ProfileProjection', async () => {
     await seedUsers(db, [

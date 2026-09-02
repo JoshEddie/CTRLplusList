@@ -120,40 +120,6 @@ export async function getListsByProfile(profileId: string) {
   }
 }
 
-export async function getListsSharedByProfile(profileId: string) {
-  'use cache';
-  cacheTag(
-    cacheTags.lists,
-    cacheTags.profiles,
-    cacheTags.profileAvatars,
-    cacheTags.profilePreferences,
-    cacheTags.listsOfProfile(profileId),
-    ...profileIdentityTags([profileId])
-  );
-  try {
-    const result = await db.query.lists.findMany({
-      where: and(
-        inArray(
-          lists.visibility,
-          visibilityDbValues([VISIBILITY.LINK, VISIBILITY.FOLLOWERS])
-        ),
-        eq(lists.profile_id, profileId)
-      ),
-      with: {
-        profile: {
-          columns: { id: true, name: true },
-          with: withProfileAvatar,
-        },
-      },
-      orderBy: (lists, { desc }) => [desc(lists.created_at)],
-    });
-    return result.map(withOwnerAvatar);
-  } catch (error) {
-    console.error('Error fetching lists:', error);
-    throw new Error('Failed to fetch lists');
-  }
-}
-
 // Not cached: adopting `'use cache'` is a freshness decision with its own tag
 // audit, and this read keeps its current behaviour until one is made.
 export async function getPublicListsByProfile(
