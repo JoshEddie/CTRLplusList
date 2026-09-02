@@ -84,6 +84,17 @@ no list is visible to its owner only.
 **Item library**:
 A profile's entire item set, independent of any list.
 
+**List entry**:
+An item's presence on one list, carrying the position it holds there. An item on
+several lists has one entry per list. Stored as `list_items`, whose name reads
+like a pure join table even though the position it carries belongs to the entry
+rather than to the item or the list.
+
+**Quantity**:
+How many of an item its owner wants. Currently held on the **item**, so it is one
+value across every list the item appears on, and null means unlimited. Claims
+fill it one per claim, so it also caps how many separate people may claim.
+
 **Occasion**:
 The free-text or picked label on a list, rendered as its eyebrow.
 
