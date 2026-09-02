@@ -9,7 +9,7 @@ import {
 } from '@/db/schema';
 import { selfMemberships } from '@/lib/data/profile.identity';
 import { accentPreferences, avatarColumns } from '@/lib/data/profileAvatar';
-import { cacheTags } from '@/lib/cacheTags';
+import { cacheTags, profileIdentityTags } from '@/lib/cacheTags';
 import { roleOf } from '@/lib/data/profile.roles';
 import { MAXIMAL_TIER, spoilerTierOf } from '@/lib/spoilers';
 import type { SpoilerTier } from '@/lib/types';
@@ -58,7 +58,12 @@ export async function getProfileMembers(profileId: string) {
         )
       )
       .where(eq(profile_members.profile_id, profileId));
-    cacheTag(...rows.map((row) => cacheTags.profilesOfUser(row.user_id)));
+    cacheTag(
+      ...rows.map((row) => cacheTags.profilesOfUser(row.user_id)),
+      // The face on each row is the member's own self-profile, so the roster
+      // repaints when they rename, redraw or recolour it.
+      ...profileIdentityTags(rows.map((row) => row.id))
+    );
     // The baseline tier rides the roster rather than being read per member: it
     // is the same row the roster already joins, and the Settings panel renders
     // one control per member.

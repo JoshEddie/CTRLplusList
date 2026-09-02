@@ -18,13 +18,13 @@ import { cssRgb } from '../test/helpers/contrast';
 //
 // RESIDUE (documented for future spec authors): the creation test inserts a
 // managed profile plus its owner membership and accent row, the edit test
-// renames the owned profile's tagline, and the swatch test commits an accent
-// and an Altvatar row for `dev-profile-owned`. All persist for the remainder of
-// the run until the next `db:reset:dev`. No other spec asserts profile counts
-// or the owned profile's tagline, so that much is invisible outside this file
-// — but the swatch row is not contained: it clobbers this file's own fixture,
-// the accentless `dev-profile-owned` whose rolled-suggestion branch the swatch
-// test opens on. `scripts/test-e2e.sh` resets first, so `npm run test:e2e`
+// renames the owned profile's tagline, and the swatch and Altvatar-save tests
+// each commit an accent and an Altvatar row for `dev-profile-owned`. All
+// persist for the remainder of the run until the next `db:reset:dev`. No other
+// spec asserts profile counts or the owned profile's tagline, so that much is
+// invisible outside this file — but the swatch row is not contained: it
+// clobbers this file's own fixture, the accentless `dev-profile-owned` whose
+// rolled-suggestion branch the swatch test opens on. `scripts/test-e2e.sh` resets first, so `npm run test:e2e`
 // never meets it; a bare `npx playwright test` re-run does, and the assertion
 // keeps passing over a branch that is no longer there. Reseed with
 // `npm run db:reset:dev` before trusting that leg on the iteration path.
@@ -143,6 +143,46 @@ test('ProfileSpace_OwnerPicksASwatch_RepaintsTheBandFromTheAccentVariable', asyn
     new RegExp(
       `${cssRgb(preset.light)}.*${cssRgb(preset.dark)}`.replace(/[()]/g, '\\$&')
     )
+  );
+});
+
+// The saved face has to reach every surface that renders it, and only a real
+// server round-trip proves the identity cache tags fired. The thing kind is
+// what makes that assertable: its art is a bundled `/openmoji/<code>.svg`
+// route, so the picked picture is one URL to carry across the two reads —
+// where a generated person's art is markup nobody can name in advance.
+test('ProfileSpace_OwnerSavesAnAltvatar_RepaintsTheFaceOnTheCardsPage', async ({
+  page,
+}) => {
+  await page.goto('/altvatar/dev-profile-owned');
+  await page.getByRole('button', { name: 'Edit Altvatar' }).click();
+  const customizer = page.getByRole('dialog', {
+    name: 'Customise your Altvatar',
+  });
+
+  await customizer.getByRole('radio', { name: 'Thing' }).click();
+  await customizer.getByRole('tab', { name: 'Icon' }).click();
+  await customizer.getByLabel('Search icons').fill('rocket');
+
+  // The picker opens on the whole catalog and searches on a debounce, so the
+  // tile is named rather than taken by position: anything positional reads the
+  // grid still on screen from before the query landed.
+  const tile = customizer.getByRole('radio', { name: 'rocket', exact: true });
+  await expect(tile).toBeVisible();
+  const art = await tile.getByTestId('altvatar-art').getAttribute('src');
+  await tile.click();
+  await customizer.getByRole('button', { name: 'Use this Altvatar' }).click();
+  await expect(page.getByText('Altvatar saved')).toBeVisible();
+
+  // The second surface: the cards page reads the profile through its own
+  // cached read, so a face that arrives here came past the invalidation.
+  await page.goto('/altvatar');
+  const card = page
+    .locator('.profile-card')
+    .filter({ hasText: 'Owned Profile' });
+  await expect(card.getByTestId('altvatar-art')).toHaveAttribute(
+    'src',
+    String(art)
   );
 });
 

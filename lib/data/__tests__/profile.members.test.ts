@@ -21,7 +21,7 @@ import {
   selfProfileOf,
 } from '@/test/helpers/seedFollowGraph';
 import { cacheTag } from 'next/cache';
-import { cacheTags } from '@/lib/cacheTags';
+import { cacheTags, profileIdentityTags } from '@/lib/cacheTags';
 
 mockNextCache();
 
@@ -130,18 +130,22 @@ describe('getProfileMembers', () => {
     expect(await dal.getProfileMembers(KIDDO)).toEqual([]);
   });
 
-  it('EveryMember_TagsTheirOwnAccount', async () => {
+  it('EveryMember_TagsTheirOwnAccount-TagsSelfProfileIdentity', async () => {
     await seedMembership(db, { user_id: MANAGER, profile_id: KIDDO });
 
     await dal.getProfileMembers(KIDDO);
 
+    const tagged = vi.mocked(cacheTag).mock.calls.flat();
     // The read is keyed on the profile but its rows belong to accounts, so a
     // membership write on either side has a tag to fire.
-    expect(cacheTag).toHaveBeenCalledWith(cacheTags.profilesOfUser(MANAGER));
+    expect(tagged).toContain(cacheTags.profilesOfUser(MANAGER));
     // The profile's own narrow tag, so a role change on one profile need not
     // fire the coarse table tag and invalidate every account's memberships.
-    expect(vi.mocked(cacheTag).mock.calls.flat()).toContain(
-      cacheTags.membersOfProfile(KIDDO)
+    expect(tagged).toContain(cacheTags.membersOfProfile(KIDDO));
+    // Each row wears the member's own self-profile face — name, art and accent
+    // — so all three identity rows must reach the roster when they change.
+    expect(tagged).toEqual(
+      expect.arrayContaining(profileIdentityTags([selfProfileOf(MANAGER)]))
     );
   });
 
