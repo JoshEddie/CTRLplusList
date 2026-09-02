@@ -131,7 +131,7 @@ describe('createPurchase', () => {
   it('AuthedSelfClaim_LeavesListUpdatedAtUnchanged', async () => {
     const STALE = new Date('2020-01-01T00:00:00.000Z');
     await seedList(db, { id: 'L', user_id: OWNER.id, updated_at: STALE });
-    await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+    await seedItem(db, { id: 'I', user_id: OWNER.id });
     await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
 
     const res = await actions.createPurchase({
@@ -152,7 +152,7 @@ describe('createPurchase', () => {
       // A third party's public list, so viewability does not depend on the
       // claimer's own ownership and the claim is the only thing under test.
       await seedList(db, { id: 'L', user_id: OTHER.id, visibility: 'public' });
-      await seedItem(db, { id: 'I', user_id: OTHER.id, quantity_limit: null });
+      await seedItem(db, { id: 'I', user_id: OTHER.id });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
       await seedManagedProfile(db, { id: 'kiddo', name: 'Kiddo' });
       await seedMembership(db, { user_id: OWNER.id, profile_id: 'kiddo' });
@@ -175,7 +175,7 @@ describe('createPurchase', () => {
 
     it('AuthedSelfClaim_InsertsSelfProfileForBothRoles-NullGuestName', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
 
       const res = await actions.createPurchase({
@@ -201,7 +201,7 @@ describe('createPurchase', () => {
 
     it('AuthedOnBehalf_RecordsNamedGuestClaimWithCallerAsClaimer', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
 
       // A signed-in caller recording a claim for a named non-user stores the
@@ -230,7 +230,7 @@ describe('createPurchase', () => {
         user_id: OWNER.id,
         visibility: 'unlisted',
       });
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
       noSession();
 
@@ -255,7 +255,7 @@ describe('createPurchase', () => {
         user_id: OWNER.id,
         visibility: 'unlisted',
       });
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
       noSession();
 
@@ -277,7 +277,7 @@ describe('createPurchase', () => {
         user_id: OWNER.id,
         visibility: 'unlisted',
       });
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
       noSession();
       setGuestCookie({ id: 'g1', name: 'Old Name', purchases: ['prior'] });
@@ -378,7 +378,7 @@ describe('createPurchase', () => {
 
     it('GuestOnPublicList_InsertsNullProfileIdAndGuestName', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
       noSession();
       const res = await actions.createPurchase({
@@ -539,7 +539,7 @@ describe('createPurchase', () => {
 
     it('ItemDeletedBetweenViewabilityCheckAndRefetch_ReturnsItemNotFound-NoRow', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
 
       // Under neon-http the entry gate and the owner re-fetch are separate
@@ -646,7 +646,7 @@ describe('createPurchase', () => {
   describe('AttributedClaims', () => {
     beforeEach(async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
       await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
       // TARGET is an owner-mutual; OTHER (the claimer) needs no relationship.
       await seedFollow(db, OWNER.id, TARGET.id);
@@ -1081,7 +1081,7 @@ describe('removePurchase', () => {
 
   describe('RightsMatrix', () => {
     beforeEach(async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id, quantity_limit: null });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
     });
 
     it('ClaimerOnAttributedRow_DeletesRow', async () => {
@@ -1132,7 +1132,6 @@ describe('removePurchase', () => {
       await seedItem(db, {
         id: 'K',
         profile_id: 'kiddo',
-        quantity_limit: null,
       });
       await seedPurchase(db, {
         id: 'p1',

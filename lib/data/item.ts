@@ -144,7 +144,6 @@ export async function getItemById(id: string, profileId: string) {
       // Active image sourced from item_images (id-ordered, so a stray
       // double-active resolves deterministically), not items.image_url.
       image_url: result.images.find((image) => image.active)?.url ?? null,
-      quantity_limit: result.quantity_limit,
       profile_id: result.profile_id,
       created_at: result.created_at,
       updated_at: result.updated_at,

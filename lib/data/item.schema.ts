@@ -74,11 +74,6 @@ export const ItemSchema = z.object({
     })
     .optional(),
 
-  quantity_limit: z
-    .number()
-    .int('Quantity limit must be a whole number')
-    .min(1, 'Quantity limit must be at least 1')
-    .nullable(),
   lists: z
     .array(
       z.object({

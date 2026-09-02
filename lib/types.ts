@@ -76,7 +76,6 @@ export type ItemTable = {
   created_at: Date;
   updated_at: Date;
   profile_id: string;
-  quantity_limit: number | null;
   archived_at?: Date | null;
 };
 
@@ -142,7 +141,6 @@ export type ItemDetails = {
   image_url?: string | null;
   /** Fetched image-candidate pool; present only when the form session originated from a product fetch. */
   image_candidates?: string[];
-  quantity_limit: number | null;
   store: ItemStoreTable | null;
   lists: OptionType[];
 };

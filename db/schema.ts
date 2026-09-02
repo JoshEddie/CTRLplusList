@@ -99,16 +99,15 @@ export const items = pgTable('items', {
   updated_by_user_id: text('updated_by_user_id').references(() => users.id, {
     onDelete: 'set null',
   }),
-  quantity_limit: integer('quantity_limit').default(1),
   archived_at: timestamp('archived_at'),
 });
 
 // The list entry: an item's presence on one list, and what claims are made
-// against. `quantity` is the authoritative capacity; `items.quantity_limit`
-// survives as the item form's own field and bounds nothing. Claimed units are
-// NOT stored: they are SUM(purchases.units) over the entry, and a stored copy
-// would be a second answer to the same question with nothing able to detect it
-// going wrong (ADR-0016). Nothing reads `shown`.
+// against. `quantity` is the only capacity there is — an item carries no
+// quantity of its own. Claimed units are NOT stored: they are
+// SUM(purchases.units) over the entry, and a stored copy would be a second
+// answer to the same question with nothing able to detect it going wrong
+// (ADR-0016). Nothing reads `shown`.
 export const list_items = pgTable(
   'list_items',
   {

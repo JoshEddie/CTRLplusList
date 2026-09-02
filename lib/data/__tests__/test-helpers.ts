@@ -83,7 +83,6 @@ export async function seedItem(
     name?: string;
     description?: string;
     image_url?: string | null;
-    quantity_limit?: number | null;
     archived_at?: Date | null;
     created_at?: Date;
   }
@@ -96,8 +95,6 @@ export async function seedItem(
     description: item.description ?? '',
     image_url: item.image_url ?? null,
     profile_id: profileId,
-    // Matches the schema default — explicit so the seeded state is readable.
-    quantity_limit: item.quantity_limit === undefined ? 1 : item.quantity_limit,
     archived_at: item.archived_at ?? null,
     ...(item.created_at ? { created_at: item.created_at } : {}),
   });

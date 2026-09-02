@@ -55,7 +55,6 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       updated_at: new Date(),
       profile_id: identity.activeProfile.id,
       updated_by_user_id: identity.userId,
-      quantity_limit: validatedData.quantity_limit,
     });
 
     const lists = validatedData.lists || [];
@@ -129,8 +128,6 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
       updateData.description = validatedData.description;
     // image_url is no longer a column write — the active image lives in
     // item_images.active, re-pointed below.
-    if (validatedData.quantity_limit !== undefined)
-      updateData.quantity_limit = validatedData.quantity_limit;
 
     if (Object.keys(updateData).length > 0) {
       updateData.updated_by_user_id = identity.userId;

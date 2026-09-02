@@ -101,8 +101,8 @@ export function isLinkless(item: ItemViewModel): boolean {
   return isBareStore(item.store);
 }
 
-// Measures user-entered work only: a failure-path seeded store link and the
-// qty default are not effort worth guarding, so they don't count.
+// Measures user-entered work only: a failure-path seeded store link is not
+// effort worth guarding, so it doesn't count.
 export function isDirtyDraft(item: ItemViewModel): boolean {
   return (
     item.name.trim() !== '' ||

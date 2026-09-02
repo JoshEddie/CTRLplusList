@@ -79,7 +79,6 @@ function makeItem(overrides: Partial<ItemDetails> = {}): ItemDetails {
     id: 'placeholder-id',
     name: 'Valid Item Name',
     description: 'desc',
-    quantity_limit: null,
     // A complete store — the actions reject anything less.
     store: { name: 'Amazon', link: 'https://a.test', price: '10' },
     lists: [],
@@ -194,19 +193,6 @@ describe('createItem', () => {
       expect(await itemRows()).toHaveLength(0);
     });
 
-    it('QuantityLimitFractional_ReturnsQuantityFieldError-NoRow', async () => {
-      const res = await actions.createItem(makeItem({ quantity_limit: 1.5 }));
-      expect(res.success).toBe(false);
-      expect(res.errors?.quantity_limit).toBeDefined();
-      expect(await itemRows()).toHaveLength(0);
-    });
-
-    it('QuantityLimitZero_ReturnsQuantityFieldError-NoRow', async () => {
-      const res = await actions.createItem(makeItem({ quantity_limit: 0 }));
-      expect(res.success).toBe(false);
-      expect(res.errors?.quantity_limit).toBeDefined();
-      expect(await itemRows()).toHaveLength(0);
-    });
   });
 
   describe('Success', () => {
@@ -224,7 +210,6 @@ describe('createItem', () => {
           name: 'New Gift',
           description: '',
           image_url: 'https://img.test/x.png',
-          quantity_limit: 3,
           lists: [{ value: 'L', label: 'L' }],
           store: { name: 'Amazon', link: 'https://a.test', price: '10' },
         })
@@ -235,7 +220,6 @@ describe('createItem', () => {
       expect(created).toMatchObject({
         name: 'New Gift',
         description: '',
-        quantity_limit: 3,
         profile_id: selfProfileOf(OWNER.id),
         updated_by_user_id: OWNER.id,
       });
@@ -456,7 +440,6 @@ describe('updateItem', () => {
         name: 'New Name',
         description: 'newdesc',
         image_url: 'https://i.test/p.png',
-        quantity_limit: 2,
         lists: undefined as unknown as ItemDetails['lists'],
       })
     );
@@ -490,7 +473,6 @@ describe('updateItem', () => {
         id: 'I',
         user_id: OWNER.id,
         name: 'Old',
-        quantity_limit: 1,
       });
       await seedList(db, { id: 'L1', user_id: OWNER.id });
       await seedList(db, { id: 'L2', user_id: OWNER.id });
@@ -516,7 +498,6 @@ describe('updateItem', () => {
         makeItem({
           id: 'I',
           name: 'Updated',
-          quantity_limit: 5,
           lists: [{ value: 'L2', label: 'L2' }],
           store: { name: 'a1x', link: 'https://a.test', price: '12.99' },
         })
@@ -526,7 +507,6 @@ describe('updateItem', () => {
       const row = (await itemRows()).find((i) => i.id === 'I');
       expect(row).toMatchObject({
         name: 'Updated',
-        quantity_limit: 5,
         updated_by_user_id: OWNER.id,
       });
 
@@ -651,7 +631,6 @@ describe('updateItem', () => {
         user_id: OWNER.id,
         name: 'Keep',
         description: 'keepdesc',
-        quantity_limit: 4,
       });
       const res = await actions.updateItem({
         id: 'I',
@@ -664,7 +643,6 @@ describe('updateItem', () => {
       expect(row).toMatchObject({
         name: 'Keep',
         description: 'keepdesc',
-        quantity_limit: 4,
       });
       const rows = await imageRows('I');
       expect(rows.filter((r) => r.active).map((r) => r.url)).toEqual([

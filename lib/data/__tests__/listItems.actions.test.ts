@@ -22,6 +22,7 @@ import {
   seedItem,
   seedList,
   seedListItem,
+  seedPurchase,
   type TestDb,
 } from './test-helpers';
 
@@ -581,5 +582,104 @@ describe('updatePriority', () => {
     });
     const res = await actions.updatePriority('C', 'B', 'L');
     expect(res.error).toBe('Failed to update item priority');
+  });
+});
+
+describe('setListItemQuantity', () => {
+  const entryRow = async () =>
+    (await listItemRows('L')).find((r) => r.item_id === 'A');
+
+  beforeEach(async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id });
+    await seedItem(db, { id: 'A', user_id: OWNER.id });
+    await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
+  });
+
+  it('Owner_WritesQuantity-BumpsListMembershipTag', async () => {
+    const res = await actions.setListItemQuantity('L', 'A', 4);
+    expect(res).toMatchObject({ success: true, message: 'Quantity updated' });
+    expect((await entryRow())?.quantity).toBe(4);
+    expect(updateTag).toHaveBeenCalledWith('list_items:list:L');
+  });
+
+  it('BelowClaimedUnits_WritesQuantity-ReturnsSameResponseAsUnclaimed', async () => {
+    await actions.setListItemQuantity('L', 'A', 4);
+    await seedPurchase(db, {
+      id: 'P',
+      item_id: 'A',
+      list_id: 'L',
+      units: 3,
+      guest_name: 'Josh',
+    });
+
+    const res = await actions.setListItemQuantity('L', 'A', 1);
+    expect(res).toMatchObject({ success: true, message: 'Quantity updated' });
+    expect((await entryRow())?.quantity).toBe(1);
+  });
+
+  it('OtherEntryOfSameItem_LeavesItsQuantityUnchanged', async () => {
+    await seedList(db, { id: 'L2', user_id: OWNER.id });
+    await seedListItem(db, { list_id: 'L2', item_id: 'A', position: 65536 });
+
+    await actions.setListItemQuantity('L', 'A', 4);
+
+    const [other] = await db
+      .select()
+      .from(list_items)
+      .where(eq(list_items.list_id, 'L2'));
+    expect(other.quantity).toBe(1);
+  });
+
+  it('NoSession_ReturnsUnauthorized-NoWrite', async () => {
+    noSession();
+    const res = await actions.setListItemQuantity('L', 'A', 4);
+    expect(res.error).toBe('Unauthorized');
+    expect((await entryRow())?.quantity).toBe(1);
+  });
+
+  it('NonOwner_ReturnsForbidden-NoWrite', async () => {
+    asOther();
+    const res = await actions.setListItemQuantity('L', 'A', 4);
+    expect(res.error).toBe('Forbidden');
+    expect((await entryRow())?.quantity).toBe(1);
+  });
+
+  it('MissingList_ReturnsNotFound', async () => {
+    const res = await actions.setListItemQuantity('nope', 'A', 4);
+    expect(res.message).toBe('List not found');
+    expect(res.error).toBe('Not found');
+  });
+
+  it('ItemNotOnList_ReturnsNotFound-NoTagBump', async () => {
+    const res = await actions.setListItemQuantity('L', 'ghost', 4);
+    expect(res.message).toBe('Item is not on this list');
+    expect(res.error).toBe('Not found');
+    expect(contentTagCalls(updateTag)).toEqual([]);
+  });
+
+  describe('RejectedQuantities', () => {
+    it.each([0, -1, 1.5, 1000])(
+      'Quantity%s_ReturnsInvalidInput-NoWrite',
+      async (quantity) => {
+        const res = await actions.setListItemQuantity('L', 'A', quantity);
+        expect(res.message).toBe(
+          'Quantity must be a whole number between 1 and 999'
+        );
+        expect(res.error).toBe('Invalid input');
+        expect((await entryRow())?.quantity).toBe(1);
+      }
+    );
+  });
+
+  it('UpdateThrows_ReturnsFailedToSetQuantity', async () => {
+    vi.spyOn(db, 'update').mockImplementation(() => {
+      throw new Error('boom');
+    });
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const res = await actions.setListItemQuantity('L', 'A', 4);
+    expect(res.error).toBe('Failed to set quantity');
+    expect(consoleError).toHaveBeenCalled();
   });
 });

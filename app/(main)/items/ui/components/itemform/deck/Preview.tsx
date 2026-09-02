@@ -6,7 +6,7 @@ import { FaList, FaPen, FaPlus, FaTag } from 'react-icons/fa6';
 import { ActionRow } from './ActionRow';
 import { DeckScreen } from './DeckShell';
 import { PreviewCard } from './PreviewCard';
-import { listsQtySubtext, storeSubtext } from './summaries';
+import { listsSubtext, storeSubtext } from './summaries';
 import { TierNote } from './TierNote';
 import { TrimChip } from './TrimChip';
 import type { ItemActions } from './useItemActions';
@@ -118,8 +118,8 @@ export function Preview({
             )}
             <ActionRow
               icon={<FaList />}
-              label="Lists & quantity"
-              sub={listsQtySubtext(item)}
+              label="Lists"
+              sub={listsSubtext(item)}
               onClick={onOpenLists}
             />
             {!item.description && (

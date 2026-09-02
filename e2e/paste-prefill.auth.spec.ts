@@ -89,10 +89,10 @@ test('Deck_CleanFetch_IntroPhotoNoteThenCreate', async ({ page }) => {
   await expect(page.getByText('Add a note')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  // Preview: quantity defaults to 1 in the subtext; create flows through the
-  // unchanged action.
+  // Preview: the Lists row reads the empty membership; create flows through
+  // the unchanged action.
   await expect(page.getByText('Last look')).toBeVisible();
-  await expect(page.getByText('Not on a list · Qty 1')).toBeVisible();
+  await expect(page.getByText('Not on a list')).toBeVisible();
   await page.getByRole('button', { name: 'Create item' }).click();
   await expect(page.getByText('Item created successfully')).toBeVisible();
   // The form modal closes itself on successful create.

@@ -13,8 +13,7 @@ export default function ItemCard({
   viewerClaimed,
   guestViewer,
   fullyClaimed,
-  showCounter,
-  counterText,
+  entryLine,
   hasAnyClaim,
   claimable,
   tier,
@@ -33,8 +32,8 @@ export default function ItemCard({
   /** Signed-out viewer — gates the claimed-guest Add Claim carve-out in ItemActions. */
   guestViewer?: boolean;
   fullyClaimed: boolean;
-  showCounter: boolean;
-  counterText: string;
+  /** The entry's line under the row — claim progress or the bare ask. Empty renders nothing. */
+  entryLine: string;
   hasAnyClaim: boolean;
   /** A list entry exists to claim against; see ItemActions. */
   claimable: boolean;
@@ -77,9 +76,7 @@ export default function ItemCard({
           onAddClaimClick={onAddClaimClick}
           onBuyClaimClick={onBuyClaimClick}
         />
-        {showCounter && !isOwner && !showPurchased && (
-          <div className="claim-counter">{counterText}</div>
-        )}
+        {entryLine && <div className="item-entry-line">{entryLine}</div>}
       </div>
     </div>
   );

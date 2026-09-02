@@ -32,8 +32,7 @@ function renderCard(
     showSpoilerInfo: false,
     viewerClaimed: false,
     fullyClaimed: false,
-    showCounter: true,
-    counterText: '0/3 claimed',
+    entryLine: '0/3 claimed',
     hasAnyClaim: false,
     claimable: true,
     tier: 'claims',
@@ -45,7 +44,7 @@ function renderCard(
 }
 
 describe('ItemCard', () => {
-  it('Viewer_RendersAddClaim-CounterAndDescription', () => {
+  it('Viewer_RendersAddClaim-EntryLineAndDescription', () => {
     renderCard({
       item: {
         id: 'i1',
@@ -209,15 +208,19 @@ describe('ItemCard', () => {
     expect(container.querySelector('.itemDescription')).toBeNull();
   });
 
+  it('EmptyEntryLine_OmitsTheLine', () => {
+    const { container } = renderCard({ entryLine: '' });
+    expect(container.querySelector('.item-entry-line')).toBeNull();
+  });
+
   describe('FullyClaimed', () => {
-    it('FullyClaimed_ShowsStatus-HidesCounter-KeepsPriceLine', () => {
+    it('FullyClaimed_ShowsStatus-KeepsPriceLine', () => {
       const { container } = renderCard({
         fullyClaimed: true,
         showPurchased: true,
         item: { id: 'i1', name: 'Gift', store: STORE } as never,
       });
       expect(screen.getByRole('status')).toHaveTextContent('Fully claimed');
-      expect(screen.queryByText('0/3 claimed')).not.toBeInTheDocument();
       expect(container.querySelector('.item-price')).toHaveTextContent(
         '$35.50'
       );

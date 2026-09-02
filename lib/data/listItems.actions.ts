@@ -12,6 +12,10 @@ import {
   rebalanceList,
   reorderPosition,
 } from '@/lib/data/listItems.positions';
+import {
+  ENTRY_QUANTITY_ERROR,
+  EntryQuantitySchema,
+} from '@/lib/data/listItems.schema';
 import { ADMIN_OPTIONAL, authedWriter } from '@/lib/data/profile.gate';
 import { type ActionResponse } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
@@ -157,30 +161,45 @@ export async function setListItems(
   }
 }
 
+// The entry-write owner gate: the acted-as profile must own the list the entry
+// belongs to. Not shared with every write in this module — the others answer a
+// refused write with a different code.
+async function guardOwnedList(
+  list_id: string
+): Promise<{ profile_id: string } | { error: ActionResponse }> {
+  const actor = await authedWriter(ADMIN_OPTIONAL);
+  if ('error' in actor) {
+    return { error: actor.error };
+  }
+  const list = await db.query.lists.findFirst({
+    where: eq(lists.id, list_id),
+    columns: { profile_id: true },
+  });
+  if (!list) {
+    return {
+      error: { success: false, message: 'List not found', error: 'Not found' },
+    };
+  }
+  if (list.profile_id !== actor.identity.activeProfile.id) {
+    return {
+      error: {
+        success: false,
+        message: 'Unauthorized - list does not belong to you',
+        error: 'Forbidden',
+      },
+    };
+  }
+  return list;
+}
+
 export async function removeListItem(
   list_id: string,
   item_id: string
 ): Promise<ActionResponse> {
   try {
-    const actor = await authedWriter(ADMIN_OPTIONAL);
-    if ('error' in actor) {
-      return actor.error;
-    }
-    const { identity } = actor;
-
-    const list = await db.query.lists.findFirst({
-      where: eq(lists.id, list_id),
-      columns: { profile_id: true },
-    });
-    if (!list) {
-      return { success: false, message: 'List not found', error: 'Not found' };
-    }
-    if (list.profile_id !== identity.activeProfile.id) {
-      return {
-        success: false,
-        message: 'Unauthorized - list does not belong to you',
-        error: 'Forbidden',
-      };
+    const list = await guardOwnedList(list_id);
+    if ('error' in list) {
+      return list.error;
     }
 
     const deleted = await db
@@ -298,6 +317,57 @@ export async function updatePriority(
       success: false,
       message: 'Failed to update item priority',
       error: 'Failed to update item priority',
+    };
+  }
+}
+
+export async function setListItemQuantity(
+  list_id: string,
+  item_id: string,
+  quantity: number
+): Promise<ActionResponse> {
+  try {
+    const list = await guardOwnedList(list_id);
+    if ('error' in list) {
+      return list.error;
+    }
+
+    if (!EntryQuantitySchema.safeParse(quantity).success) {
+      return {
+        success: false,
+        message: ENTRY_QUANTITY_ERROR,
+        error: 'Invalid input',
+      };
+    }
+
+    // Unconditional on what is already claimed: refusing here would turn an
+    // ordinary edit into a disclosure that somebody has bought something,
+    // which an owner held below the claims tier must never be told (ADR-0015).
+    // An over-claimed entry is legal and transient.
+    const updated = await db
+      .update(list_items)
+      .set({ quantity })
+      .where(
+        and(eq(list_items.list_id, list_id), eq(list_items.item_id, item_id))
+      )
+      .returning({ item_id: list_items.item_id });
+    if (updated.length === 0) {
+      return {
+        success: false,
+        message: 'Item is not on this list',
+        error: 'Not found',
+      };
+    }
+
+    updateTags(cacheTags.itemsOfList(list_id));
+
+    return { success: true, message: 'Quantity updated' };
+  } catch (error) {
+    console.error('Error setting list item quantity:', error);
+    return {
+      success: false,
+      message: 'An error occurred while setting the quantity',
+      error: 'Failed to set quantity',
     };
   }
 }

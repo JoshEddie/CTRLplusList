@@ -374,23 +374,23 @@ function itemsForList(listId: string): string[] {
 //   quantity = 4:        1 (single buyer) or 2 (several buyers), per listIdx
 //                        parity — two units short on purpose, so every list
 //                        carrying this seat has a multi-unit card that still
-//                        accepts two more claims. Capacity is enforced now, so
-//                        the seat that used to be unlimited can no longer be
-//                        both busy and open by accident.
+//                        accepts two more claims. Capacity is enforced, so a
+//                        seat can no longer be both busy and open by accident.
 //   quantity = 1:        0 or 1 via stride derived from the target ratio —
 //                        viewer's archived items run hotter (~70%) since
 //                        archived often means purchased.
 // Never exceeds the quantity: capacity is now enforced, so a seed that
 // over-claims an entry would seed a state the app refuses to reach.
 function purchaseCountFor(
-  item: { archived_at: Date | null; quantity_limit: number | null },
+  item: { archived_at: Date | null },
+  quantity: number,
   ownerId: string,
   listIdx: number,
   itemIdx: number,
   baseRatio: number
 ): number {
-  if (item.quantity_limit === 3) return listIdx % 2 === 0 ? 1 : 3;
-  if (item.quantity_limit === 4) return listIdx % 2 === 0 ? 1 : 2;
+  if (quantity === 3) return listIdx % 2 === 0 ? 1 : 3;
+  if (quantity === 4) return listIdx % 2 === 0 ? 1 : 2;
   const effectiveRatio =
     ownerId === VIEWER_ID && item.archived_at ? 0.7 : baseRatio;
   const stride = Math.max(1, Math.round(1 / effectiveRatio));
@@ -794,7 +794,6 @@ function appendLinklessExtras(
     profile_id: string;
     image_url: string;
     archived_at: Date | null;
-    quantity_limit: number | null;
   }[],
   listItemRows: {
     list_id: string;
@@ -815,7 +814,6 @@ function appendLinklessExtras(
       profile_id: listProfileOf(list),
       image_url: '',
       archived_at: null,
-      quantity_limit: 1,
     });
     listItemRows.push({
       list_id: extra.list_id,
@@ -1128,8 +1126,7 @@ async function main() {
   // Rotate quantity across positions [0, 1, last] on a 3-list cycle so every
   // position renders every value (3, 4, 1) once per cycle. Lets the preview
   // surface the partial, many-buyer, and single-claim layouts at known
-  // positions without manual UI clicking. Unlimited no longer exists, so the
-  // seat that used to be `null` is a concrete number.
+  // positions without manual UI clicking.
   const QTY_ROTATION: number[][] = [
     [3, 4, 1], // listIdx % 3 === 0
     [4, 1, 3], // listIdx % 3 === 1
@@ -1142,11 +1139,9 @@ async function main() {
     profile_id: string;
     image_url: string;
     archived_at: Date | null;
-    quantity_limit: number | null;
   }[] = [];
   // `quantity` is the entry's capacity and the number every claim is measured
-  // against. `items.quantity_limit` is kept in step with it only because the
-  // item form still reads that field.
+  // against; an item carries no quantity of its own.
   const listItemRows: {
     list_id: string;
     item_id: string;
@@ -1161,16 +1156,16 @@ async function main() {
       const itemId = `${list.id}-item-${idx + 1}`;
       const h = hash(itemId);
       const archive = list.user_id === VIEWER_ID && h % 5 === 0; // ~20% of viewer items
-      let quantity_limit = 1;
-      if (idx === 0) quantity_limit = rotation[0];
-      else if (idx === 1) quantity_limit = rotation[1];
-      else if (idx === lastIdx) quantity_limit = rotation[2];
+      let quantity = 1;
+      if (idx === 0) quantity = rotation[0];
+      else if (idx === 1) quantity = rotation[1];
+      else if (idx === lastIdx) quantity = rotation[2];
       // The claim-visibility seat's first item is pinned to a single claim so
       // its seeded claim fills it: what a raised baseline discloses on a
       // non-owner's card is the fully-claimed treatment, and the rotation
       // would otherwise decide that per run position.
       if (list.id === 'dev-list-visibility-wishlist' && idx === 0) {
-        quantity_limit = 1;
+        quantity = 1;
       }
       // Every third item on every fourth list seeds imageless so the lazy
       // placeholder-mint path (empty container -> generated art on first view)
@@ -1187,20 +1182,22 @@ async function main() {
         archived_at: archive
           ? new Date(ARCHIVE_EPOCH - (h % 30) * 86400000)
           : null,
-        quantity_limit,
       });
       listItemRows.push({
         list_id: list.id,
         item_id: itemId,
         position: idx,
-        quantity: quantity_limit,
+        quantity,
         shown: true,
       });
     });
   });
   const linklessPricedByItem = appendLinklessExtras(itemRows, listItemRows);
-  // onConflictDoUpdate so re-runs apply new image_url, archived_at, and
-  // quantity_limit to previously-seeded rows.
+  const quantityOf = new Map(
+    listItemRows.map((row) => [row.item_id, row.quantity])
+  );
+  // onConflictDoUpdate so re-runs apply new image_url and archived_at to
+  // previously-seeded rows.
   await db
     .insert(items)
     .values(itemRows)
@@ -1210,7 +1207,6 @@ async function main() {
         description: sql`excluded.description`,
         image_url: sql`excluded.image_url`,
         archived_at: sql`excluded.archived_at`,
-        quantity_limit: sql`excluded.quantity_limit`,
       },
     });
   await db
@@ -1491,9 +1487,9 @@ async function main() {
   const specialClaimItems = new Set(specialClaimRows.map((r) => r.item_id));
   // Position-based selection per list (rather than global hash) so every list
   // — including small friend lists — gets a guaranteed share. For each list,
-  // mark every Nth item as purchased. Multi-claim and unlimited items receive
-  // multiple purchase rows (fan-out) so partial- and fully-claimed UI states
-  // are reachable from seeded data alone.
+  // mark every Nth item as purchased. Multi-unit entries receive multiple
+  // purchase rows (fan-out) so partial- and fully-claimed UI states are
+  // reachable from seeded data alone.
   seedLists.forEach((list, listIdx) => {
     const listItemIds = list.itemNames.map(
       (_, idx) => `${list.id}-item-${idx + 1}`
@@ -1511,6 +1507,7 @@ async function main() {
 
       const purchaseCount = purchaseCountFor(
         item,
+        quantityOf.get(itemId) ?? 1,
         list.user_id,
         listIdx,
         idx,
