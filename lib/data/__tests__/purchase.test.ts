@@ -112,7 +112,7 @@ describe('getItemsByPurchased', () => {
       { id: 'owner' },
       { id: 'other', name: 'Otto' },
     ]);
-    await seedItem(db, { id: 'shared', user_id: 'owner', quantity_limit: 2 });
+    await seedItem(db, { id: 'shared', user_id: 'owner' });
     await seedPurchase(db, {
       id: 'mine',
       item_id: 'shared',

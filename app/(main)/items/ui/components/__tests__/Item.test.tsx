@@ -75,8 +75,7 @@ vi.mock('../ItemCard', () => ({
       data-show-purchased={String(p.showPurchased)}
       data-show-spoiler={String(p.showSpoilerInfo)}
       data-fully-claimed={String(p.fullyClaimed)}
-      data-show-counter={String(p.showCounter)}
-      data-counter={p.counterText as string}
+      data-entry-line={p.entryLine as string}
       data-is-owner={String(p.isOwner)}
       data-viewer-claimed={String(p.viewerClaimed)}
       data-has-any-claim={String(p.hasAnyClaim)}
@@ -139,8 +138,8 @@ vi.mock('../OwnerActions', () => ({
       data-archived={String(p.archivedView)}
       data-show-archive={String(p.showArchiveAction)}
     >
-      <button type="button" onClick={p.onArchived as () => void}>
-        owner-archived
+      <button type="button" onClick={p.onChanged as () => void}>
+        owner-changed
       </button>
     </div>
   ),
@@ -251,10 +250,10 @@ describe('Item', () => {
       expect(screen.queryByTestId('owner-actions')).not.toBeInTheDocument();
     });
 
-    it('OwnerArchivedCallback_Refreshes', async () => {
+    it('OwnerChangedCallback_Refreshes', async () => {
       const user = userEvent.setup();
       renderItem({ actor: actorOf(OWNER), showArchiveAction: true });
-      await user.click(screen.getByRole('button', { name: 'owner-archived' }));
+      await user.click(screen.getByRole('button', { name: 'owner-changed' }));
       expect(router.refresh).toHaveBeenCalled();
     });
   });
@@ -276,34 +275,35 @@ describe('Item', () => {
       expect(banners()).toHaveAttribute('data-claims', 'Sam');
     });
 
-    it('QuantityAboveOne_ForwardsTheFractionCounter', () => {
+    it('QuantityAboveOne_ForwardsTheFractionEntryLine', () => {
       renderItem({
         item: { profile_id: OWNER, quantity: AMPLE_QUANTITY },
         actor: actorOf('viewer'),
       });
       expect(card()).toHaveAttribute(
-        'data-counter',
+        'data-entry-line',
         `0/${AMPLE_QUANTITY} claimed`
       );
-      expect(card()).toHaveAttribute('data-show-counter', 'true');
     });
 
-    it('BelowClaims_HidesCounter', () => {
+    it('BelowClaims_ForwardsTheBareAskEntryLine', () => {
       renderItem({
         item: { profile_id: OWNER, quantity: AMPLE_QUANTITY },
         actor: actorOf('viewer'),
         tier: 'surprise',
       });
-      expect(card()).toHaveAttribute('data-show-counter', 'false');
+      expect(card()).toHaveAttribute(
+        'data-entry-line',
+        `${AMPLE_QUANTITY} wanted`
+      );
     });
 
-    it('QuantityOne_HidesCounter', () => {
+    it('QuantityOne_ForwardsEmptyEntryLine', () => {
       renderItem({
         item: { profile_id: OWNER, quantity: 1 },
         actor: actorOf('viewer'),
       });
-      expect(card()).toHaveAttribute('data-show-counter', 'false');
-      expect(card()).toHaveAttribute('data-counter', '0/1 claimed');
+      expect(card()).toHaveAttribute('data-entry-line', '');
     });
 
     it('OwnerWithClaimsAtIdentity_ForwardsSpoilerPillTrue', () => {

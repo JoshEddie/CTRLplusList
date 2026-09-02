@@ -25,7 +25,6 @@ export function makeItem(overrides: Record<string, unknown> = {}): ItemDisplay {
     description: '',
     image_url: '',
     profile_id: 'owner',
-    quantity_limit: 1,
     list_id: 'l1',
     quantity: 1,
     store: null,

@@ -133,8 +133,7 @@ export default function Item({
           viewerClaimed={claim.hasViewerClaim}
           guestViewer={!actor}
           fullyClaimed={claim.isFullyClaimed}
-          showCounter={claim.showCounter}
-          counterText={claim.counterText}
+          entryLine={claim.entryLine}
           hasAnyClaim={claim.hasAnyClaim}
           claimable={claim.claimable}
           tier={tier}
@@ -162,9 +161,10 @@ export default function Item({
             showArchiveAction={showArchiveAction}
             archivedView={archivedView}
             listId={listId}
+            quantity={item.quantity}
             pathname={pathname}
             searchParams={searchParams}
-            onArchived={() => router.refresh()}
+            onChanged={() => router.refresh()}
           />
         )}
       </div>

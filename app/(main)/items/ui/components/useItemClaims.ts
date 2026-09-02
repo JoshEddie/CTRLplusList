@@ -18,6 +18,22 @@ import toast from 'react-hot-toast';
 import { AttributedTarget } from './purchasemodal/PurchaseFlowContainer';
 import { claimSummaryOf, showsSpoilerBanner } from './utils';
 
+// The one line a row carries under itself, so the card renders a single node.
+// `progress` is the claim fraction where the viewer's tier grants it and null
+// where it does not — the owner included, whose claim count belongs on the
+// spoiler banner rather than beside their own number. Empty off a list, on an
+// entry asking for one (so an ordinary list reads as it always has), and on a
+// sold-out row, which leaves the line to its claimed-by banner.
+function entryLineOf(
+  entry: { quantity: number } | null,
+  multiUnit: boolean,
+  soldOut: boolean,
+  progress: string | null
+): string {
+  if (!entry || !multiUnit || soldOut) return '';
+  return progress ?? `${entry.quantity} wanted`;
+}
+
 // The viewer's picture of one item's claims: the projected array the page
 // arrived with, everything derived from it, and the writes that change it.
 export function useItemClaims({
@@ -199,11 +215,13 @@ export function useItemClaims({
       settle
     );
 
+  // An entry asking for one has no fraction to show, and the library has no
+  // entry at all.
+  const multiUnit = !!entry && entry.quantity !== 1;
+
   // Below `claims` the entry's count is withheld, so a counter drawn from the
-  // payload would state a false zero rather than hide. An entry asking for one
-  // needs no fraction, and the library has no entry at all.
-  const showCounter =
-    !!entry && entry.quantity !== 1 && atLeast(tier, 'claims');
+  // payload would state a false zero rather than hide.
+  const showCounter = multiUnit && atLeast(tier, 'claims');
 
   // An entry meeting its quantity says so plainly rather than showing a
   // fraction: an owner who lowered the number afterwards would otherwise be
@@ -216,6 +234,15 @@ export function useItemClaims({
       ? 'Fully claimed'
       : `${entry.claimedUnits}/${entry.quantity} claimed`;
 
+  const showPurchased = isFullyClaimed && !isOwner;
+
+  const entryLine = entryLineOf(
+    entry,
+    multiUnit,
+    showPurchased,
+    showCounter && !isOwner ? counterText : null
+  );
+
   return {
     claims,
     revealedClaims,
@@ -227,13 +254,13 @@ export function useItemClaims({
     claimSummary,
     countWithheld,
     namesWithheld,
-    showCounter,
     counterText,
+    entryLine,
     // "Sold out" treatment (strikethrough price, faded stores, hidden claim
     // button) only fires once the entry's units are all spoken for. An entry
     // with room left still accepts buyers, so stores + claim button stay live
     // and price stays unstruck.
-    showPurchased: isFullyClaimed && !isOwner,
+    showPurchased,
     // The owner-side claim pill. Keyed on the resolved tier rather than on a
     // spoiler parameter: never below `claims`, and from `claims` upward whenever
     // claims exist (`item-store-links`).

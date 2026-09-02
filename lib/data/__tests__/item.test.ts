@@ -178,7 +178,7 @@ describe('getItemsByProfile', () => {
 describe('getItemById', () => {
   it('ExistingItem_ReshapesListMembershipsWithPosition-SelectsLowestPricedStore', async () => {
     await seedUsers(db, [{ id: 'u' }]);
-    await seedItem(db, { id: 'i1', user_id: 'u', quantity_limit: 3 });
+    await seedItem(db, { id: 'i1', user_id: 'u' });
     await seedList(db, { id: 'l1', user_id: 'u' });
     await seedList(db, { id: 'l2', user_id: 'u' });
     await seedListItem(db, { list_id: 'l1', item_id: 'i1', position: 5 });
@@ -200,7 +200,6 @@ describe('getItemById', () => {
 
     const item = await dal.getItemById('i1', selfProfileOf('u'));
     expect(item?.id).toBe('i1');
-    expect(item?.quantity_limit).toBe(3);
     expect(item?.store?.name).toBe('second');
     const byListId = Object.fromEntries(
       (item?.lists ?? []).map((l) => [l.id, l.position])

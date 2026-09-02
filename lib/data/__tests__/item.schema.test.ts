@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ItemSchema } from '../item.schema';
 
-const base = { name: 'A valid item name', quantity_limit: 1 };
+const base = { name: 'A valid item name' };
 
 describe('ItemSchema', () => {
   describe('description', () => {

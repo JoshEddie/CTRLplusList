@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { createListWithFirstItem } from '../test/helpers/e2e/utils';
 
 // Flow: owner removes an item from a list straight from the item card's kebab
 // menu (the single-item shortcut to the choose-items bulk flow). Build-own-
@@ -8,24 +9,10 @@ import { expect, test } from '@playwright/test';
 test('ListPage_OwnerRemovesItemViaKebab_ItemOffListButInLibrary', async ({
   page,
 }) => {
-  const listName = `E2E Remove ${Date.now()}`;
-
-  await page.goto('/lists');
-  await page.getByRole('button', { name: 'New List' }).first().click();
-  await page.getByRole('textbox', { name: 'Name', exact: true }).fill(listName);
-  await page.getByRole('textbox', { name: 'Date', exact: true }).fill('2030-06-01');
-  await page.getByRole('button', { name: 'Create List' }).click();
-
-  await expect(page).toHaveURL(/\/lists\/[^/]+\/choose-items\?new=1$/);
-  const listId = page.url().match(/\/lists\/([^/]+)\/choose-items/)?.[1];
-  expect(listId).toBeTruthy();
-
-  const chosenRow = page.locator('ul.choose-items-list li').first();
-  await chosenRow.getByRole('checkbox').check();
-  const chosenItemName = (await chosenRow.locator('.itemName').innerText()).trim();
-  await page.getByRole('button', { name: /Add 1 item to list/ }).click();
-
-  await expect(page).toHaveURL(new RegExp(`/lists/${listId}$`));
+  const chosenItemName = await createListWithFirstItem(
+    page,
+    `E2E Remove ${Date.now()}`
+  );
   const listRow = page.locator('.sortable-item', { hasText: chosenItemName });
   await expect(listRow).toBeVisible();
 

@@ -30,10 +30,10 @@ async function multiUnitWithRoomForTwo(page: Page) {
   const candidates = page
     .locator('.item-container')
     .filter({ has: page.getByRole('button', { name: 'Add Claim' }) })
-    .filter({ has: page.locator('.claim-counter') })
+    .filter({ has: page.locator('.item-entry-line') })
     .filter({ hasNotText: 'You claimed this' });
   for (const card of await candidates.all()) {
-    const counter = await card.locator('.claim-counter').innerText();
+    const counter = await card.locator('.item-entry-line').innerText();
     const parsed = /(\d+)\/(\d+) claimed/.exec(counter);
     if (parsed && Number(parsed[2]) - Number(parsed[1]) >= 2) return card;
   }

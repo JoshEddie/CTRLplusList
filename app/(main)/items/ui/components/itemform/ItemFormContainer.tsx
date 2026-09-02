@@ -10,7 +10,7 @@ import { DeckScreen, DeckShell } from './deck/DeckShell';
 import { FocusEditor } from './deck/FocusEditor';
 import type { RowField } from './deck/focus';
 import { Preview } from './deck/Preview';
-import { ListsQtySheet } from './deck/sheets/ListsQtySheet';
+import { ListsSheet } from './deck/sheets/ListsSheet';
 import { FetchFailure } from './deck/FetchFailure';
 import { FillManually } from './deck/FillManually';
 import { Triage } from './deck/Triage';
@@ -157,7 +157,7 @@ const ItemFormContainer = ({
     if (listsSheetOpen) {
       return (
         <DeckScreen
-          title="Lists & quantity"
+          title="Lists"
           foot={
             <Button
               variant="primary"
@@ -168,7 +168,7 @@ const ItemFormContainer = ({
             </Button>
           }
         >
-          <ListsQtySheet
+          <ListsSheet
             item={viewModel}
             actions={actions}
             listOptions={listOptions}

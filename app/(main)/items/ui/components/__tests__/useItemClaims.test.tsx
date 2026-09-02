@@ -157,7 +157,7 @@ describe('Counter', () => {
 
   // The library reads no entry, so it has no capacity to count against and no
   // counter to offer. What the owner's banner shows there is the banner's own.
-  it('NoEntry_CounterIsEmpty-Hidden', () => {
+  it('NoEntry_CounterIsEmpty-EntryLineIsEmpty', () => {
     const { result } = mount({
       item: makeItem({
         list_id: undefined,
@@ -166,28 +166,48 @@ describe('Counter', () => {
       }),
     });
     expect(result.current.counterText).toBe('');
-    expect(result.current.showCounter).toBe(false);
+    expect(result.current.entryLine).toBe('');
   });
 
-  it('QuantityTwo_ShowsTheCounter', () => {
+  it('QuantityTwo_EntryLineReadsClaimProgress', () => {
     const { result } = mount({ item: makeItem({ quantity: 2 }) });
-    expect(result.current.showCounter).toBe(true);
+    expect(result.current.entryLine).toBe('0/2 claimed');
   });
 
-  // A single-quantity item has nothing to count towards.
-  it('QuantityOne_HidesTheCounter', () => {
+  // A single-quantity item has nothing to count towards, so an ordinary list
+  // reads exactly as it did before entries carried a number.
+  it('QuantityOne_EntryLineIsEmpty', () => {
     const { result } = mount({ item: makeItem({ quantity: 1 }) });
-    expect(result.current.showCounter).toBe(false);
+    expect(result.current.entryLine).toBe('');
   });
 
   // Below `claims` the projection withheld other parties' claims, so a counter
-  // built from the payload would state a false zero rather than hide.
-  it('TierBelowClaims_HidesTheCounter', () => {
+  // built from the payload would state a false zero rather than hide. The
+  // owner's ask is not claim data, so it survives the withholding.
+  it('TierBelowClaims_EntryLineReadsTheBareAsk', () => {
     const { result } = mount({
       item: makeItem({ quantity: 2 }),
       tier: 'progress',
     });
-    expect(result.current.showCounter).toBe(false);
+    expect(result.current.entryLine).toBe('2 wanted');
+  });
+
+  // The owner's claim count is spoiler-gated onto their banner; the row states
+  // what they asked for, which is theirs to know at every tier.
+  it('Owner_EntryLineReadsTheBareAsk', () => {
+    const { result } = mount({
+      item: makeItem({ quantity: 4, claimed_units: 2 }),
+      isOwner: true,
+    });
+    expect(result.current.entryLine).toBe('4 wanted');
+  });
+
+  // The sold-out row already carries its claimed-by banner.
+  it('FullyClaimedViewer_EntryLineIsEmpty', () => {
+    const { result } = mount({
+      item: makeItem({ quantity: 2, claimed_units: 2 }),
+    });
+    expect(result.current.entryLine).toBe('');
   });
 });
 
