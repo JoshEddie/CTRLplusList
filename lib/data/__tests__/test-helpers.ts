@@ -22,6 +22,14 @@ export type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
 
 export { selfProfileOf };
 
+// The one string that pairs the claim writers with the claimed-count read:
+// createPurchase / removePurchase fire it, and getListClaimedCount has to
+// carry it or no claim ever moves the count. Spelled out rather than taken
+// from `cacheTags` so a change to the builder fails both sides here instead of
+// passing silently on both.
+export const claimedItemPoolTag = (profileId: string) =>
+  `items:profile:${profileId}`;
+
 // Owned rows FK the owning profile, so seedList/seedItem upsert it first. The
 // profile carries no account reference; a test that needs the account side
 // seeds it through seedUsers, which writes the `self` membership.

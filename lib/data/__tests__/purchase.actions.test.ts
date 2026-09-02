@@ -14,6 +14,7 @@ import {
 } from '@/test/helpers/seedFollowGraph';
 
 import {
+  claimedItemPoolTag,
   seedItem,
   seedList,
   seedListItem,
@@ -189,7 +190,7 @@ describe('createPurchase', () => {
         }),
       ]);
       expect(res.id).toBe(rows[0].id);
-      expect(updateTag).toHaveBeenCalledWith(`items:profile:${OWNER_PROFILE}`);
+      expect(updateTag).toHaveBeenCalledWith(claimedItemPoolTag(OWNER_PROFILE));
       expect(updateTag).toHaveBeenCalledWith(
         `purchases:profile:${OWNER_PROFILE}`
       );
@@ -216,7 +217,7 @@ describe('createPurchase', () => {
           guest_name: 'Aunt May',
         }),
       ]);
-      expect(updateTag).toHaveBeenCalledWith(`items:profile:${OWNER_PROFILE}`);
+      expect(updateTag).toHaveBeenCalledWith(claimedItemPoolTag(OWNER_PROFILE));
     });
 
     it('GuestWithName_InsertsAllNullIdentitiesAndGuestName', async () => {
@@ -535,7 +536,7 @@ describe('createPurchase', () => {
           guest_name: null,
         }),
       ]);
-      expect(updateTag).toHaveBeenCalledWith(`items:profile:${OWNER_PROFILE}`);
+      expect(updateTag).toHaveBeenCalledWith(claimedItemPoolTag(OWNER_PROFILE));
       expect(updateTag).toHaveBeenCalledWith(
         `purchases:profile:${TARGET_PROFILE}`
       );
@@ -750,7 +751,7 @@ describe('removePurchase', () => {
       const res = await actions.removePurchase({ purchase_id: 'p1' });
       expect(res.success).toBe(true);
       expect(await purchaseRows('I')).toHaveLength(0);
-      expect(updateTag).toHaveBeenCalledWith(`items:profile:${OWNER_PROFILE}`);
+      expect(updateTag).toHaveBeenCalledWith(claimedItemPoolTag(OWNER_PROFILE));
       expect(updateTag).toHaveBeenCalledWith(
         `purchases:profile:${OWNER_PROFILE}`
       );

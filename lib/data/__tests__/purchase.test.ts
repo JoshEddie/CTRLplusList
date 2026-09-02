@@ -13,6 +13,7 @@ import {
 } from '@/test/helpers/seedFollowGraph';
 
 import {
+  claimedItemPoolTag,
   seedItem,
   seedItemStore,
   seedList,
@@ -20,6 +21,10 @@ import {
   seedPurchase,
   type TestDb,
 } from './test-helpers';
+
+// After the mockNextCache import: the helper's hoisted vi.mock only registers
+// when its module runs, so an earlier `next/cache` import binds the real one.
+import { cacheTag } from 'next/cache';
 
 mockNextCache();
 
@@ -494,6 +499,7 @@ describe('getListClaimedCount', () => {
       item_id: 'i2',
       profile_id: selfProfileOf('sam'),
     });
+    vi.mocked(cacheTag).mockClear();
   });
 
   it('ListWithTwoOfThreeClaimed_ReportsTwoClaimedItems', async () => {
@@ -534,6 +540,38 @@ describe('getListClaimedCount', () => {
     await seedList(db, { id: 'l2', user_id: 'owner' });
 
     expect(await dal.getListClaimedCount('l2')).toEqual({ claimedItemCount: 0 });
+  });
+
+  // `claimedItemPoolTag` is the string purchase.actions.test asserts
+  // `updateTag` was called with on every claim. Reading and writing assert the
+  // one source, so the pair cannot drift apart silently.
+  it('ListWithClaims_TagsTheOwningProfilesItemPool', async () => {
+    await dal.getListClaimedCount('l1');
+
+    expect(vi.mocked(cacheTag).mock.calls.flat()).toContain(
+      claimedItemPoolTag(selfProfileOf('owner'))
+    );
+  });
+
+  // The first claim on a claimless list is the case a purchases-first join
+  // cannot tag: no purchase rows means no profile to name.
+  it('ListWithNoItems_TagsTheOwningProfilesItemPool', async () => {
+    await seedList(db, { id: 'l2', user_id: 'owner' });
+
+    await dal.getListClaimedCount('l2');
+
+    expect(vi.mocked(cacheTag).mock.calls.flat()).toContain(
+      claimedItemPoolTag(selfProfileOf('owner'))
+    );
+  });
+
+  it('UnknownListId_ReportsZeroAndNamesNoProfile', async () => {
+    expect(await dal.getListClaimedCount('nope')).toEqual({
+      claimedItemCount: 0,
+    });
+    expect(vi.mocked(cacheTag).mock.calls.flat()).not.toContain(
+      claimedItemPoolTag(selfProfileOf('owner'))
+    );
   });
 
   it('QueryThrows_RejectsWithFailedToFetchListClaimedCount', async () => {

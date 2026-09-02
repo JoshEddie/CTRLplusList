@@ -2,6 +2,7 @@ import { db } from '@/db';
 import {
   items,
   list_items,
+  lists,
   purchases,
   user_blocks,
   user_follows,
@@ -276,17 +277,39 @@ export async function getListClaimedCount(listId: string) {
   'use cache';
   cacheTag(
     cacheTags.items,
+    cacheTags.lists,
     cacheTags.itemsOfList(listId),
     cacheTags.list(listId)
   );
   try {
+    // Driven from `lists`, not `purchases`: the tag below has to name the
+    // owning profile even when the list carries no claim yet, and a
+    // purchases-first join has no row to read it from until the first one
+    // lands — which is the very claim the count must move for.
     const rows = await db
-      .select({ item_id: purchases.item_id })
-      .from(purchases)
-      .innerJoin(list_items, eq(list_items.item_id, purchases.item_id))
-      .where(eq(list_items.list_id, listId));
+      .select({
+        profile_id: lists.profile_id,
+        item_id: list_items.item_id,
+        purchase_id: purchases.id,
+      })
+      .from(lists)
+      .leftJoin(list_items, eq(list_items.list_id, lists.id))
+      .leftJoin(purchases, eq(purchases.item_id, list_items.item_id))
+      .where(eq(lists.id, listId));
 
-    return { claimedItemCount: new Set(rows.map((row) => row.item_id)).size };
+    // Claims land on items the list's own profile owns (setListItems refuses
+    // any other), so this is the same tag createPurchase / removePurchase
+    // already fire — the read joins the writers' invalidation without any
+    // writer gaining an obligation. Every row carries the one owning profile,
+    // so the first is the whole answer.
+    const [owner] = rows;
+    if (owner) cacheTag(cacheTags.itemsOfProfile(owner.profile_id));
+
+    return {
+      claimedItemCount: new Set(
+        rows.filter((row) => row.purchase_id !== null).map((row) => row.item_id)
+      ).size,
+    };
   } catch (error) {
     console.error('Error fetching list claimed count:', error);
     throw new Error('Failed to fetch list claimed count');
