@@ -5,7 +5,6 @@
 
 import { db } from '@/db';
 import { items, purchases } from '@/db/schema';
-import { auth } from '@/lib/auth';
 import {
   canRemovePurchase,
   claimConflictResponse,
@@ -15,112 +14,22 @@ import {
   isEligiblePurchaser,
 } from '@/lib/data/purchase';
 import {
-  GUEST_CLAIMS_COOKIE,
-  GUEST_CLAIMS_COOKIE_ATTRIBUTES,
-  appendGuestClaim,
-  parseGuestClaims,
-  pruneGuestClaim,
-} from '@/lib/data/purchase.cookie';
+  forgetGuestClaim,
+  readGuestClaims,
+  rememberGuestClaim,
+  resolveClaimIdentity,
+} from '@/lib/data/purchase.identity';
 import { writableMembership } from '@/lib/data/profile.gate';
 import { authedIdentity } from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
-import {
-  type ActionResponse,
-  type PurchaseView,
-  type UserIdentity,
-} from '@/lib/types';
+import { type ActionResponse, type PurchaseView } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { cookies } from 'next/headers';
 
 // Postgres unique-violation error code.
 const PG_UNIQUE_VIOLATION = '23505';
-
-// Resolve who a createPurchase claim is authorized AS vs stored AS, producing
-// one of the four row shapes (claimed_by_profile_id = who asserted,
-// profile_id = the purchaser):
-//   self-claim:               asserter = caller's self-profile, purchaser = caller's self-profile
-//   attributed claim:         asserter = caller's self-profile, purchaser = purchased_by target
-//   authenticated guest name: asserter = caller's self-profile, purchaser = NULL, guest_name set
-//   signed-out guest:         asserter = NULL,                  purchaser = NULL, guest_name set
-// The asserter is always the session-resolved caller's self-profile — a claim
-// is a human act; the purchased_by target is a payload field but only an
-// attribution target (a profile id) — eligibility is re-verified against the
-// live follow/block graph before insert.
-async function resolveClaimIdentity(
-  rawGuestName: string | null,
-  purchasedBy: string | null
-): Promise<
-  | {
-      viewer: UserIdentity | null;
-      callerProfileId: string | null;
-      purchaserProfileId: string | null;
-      guestName: string | null;
-    }
-  | { error: ActionResponse }
-> {
-  const session = await auth();
-  const trimmed = rawGuestName?.trim() ?? '';
-  if (session?.user?.email) {
-    const identity = await authedIdentity();
-    if (!identity) {
-      return {
-        error: {
-          success: false,
-          message: 'User not found',
-          error: 'Unauthorized',
-        },
-      };
-    }
-    if (purchasedBy && trimmed) {
-      return {
-        error: {
-          success: false,
-          message: 'Cannot identify which claim to add',
-          error: 'Ambiguous purchaser',
-        },
-      };
-    }
-    if (purchasedBy) {
-      return {
-        viewer: identity,
-        callerProfileId: identity.selfProfile.id,
-        purchaserProfileId: purchasedBy,
-        guestName: null,
-      };
-    }
-    return trimmed
-      ? {
-          viewer: identity,
-          callerProfileId: identity.selfProfile.id,
-          purchaserProfileId: null,
-          guestName: trimmed,
-        }
-      : {
-          viewer: identity,
-          callerProfileId: identity.selfProfile.id,
-          purchaserProfileId: identity.selfProfile.id,
-          guestName: null,
-        };
-  }
-  if (purchasedBy || !trimmed) {
-    return {
-      error: {
-        success: false,
-        message: 'Cannot identify which claim to add',
-        error: 'Missing identity',
-      },
-    };
-  }
-  return {
-    viewer: null,
-    callerProfileId: null,
-    purchaserProfileId: null,
-    guestName: trimmed,
-  };
-}
 
 export async function createPurchase(data: {
   item_id: string;
@@ -240,19 +149,9 @@ export async function createPurchase(data: {
     }
 
     if (!callerProfileId) {
-      const store = await cookies();
-      const claims = appendGuestClaim(
-        parseGuestClaims(store.get(GUEST_CLAIMS_COOKIE)?.value),
-        insertedId,
-        // guestName is non-null here: the signed-out branch of
-        // resolveClaimIdentity rejects an empty name.
-        guestName as string
-      );
-      store.set(
-        GUEST_CLAIMS_COOKIE,
-        JSON.stringify(claims),
-        GUEST_CLAIMS_COOKIE_ATTRIBUTES
-      );
+      // guestName is non-null here: the signed-out branch of
+      // resolveClaimIdentity rejects an empty name.
+      await rememberGuestClaim(insertedId, guestName as string);
     }
 
     updateTags(
@@ -321,15 +220,12 @@ export async function removePurchase(
       columns: { profile_id: true },
     });
 
-    let guestClaims = null;
-    if (!actorIdentity) {
-      const store = await cookies();
-      guestClaims = parseGuestClaims(store.get(GUEST_CLAIMS_COOKIE)?.value);
-    }
+    const guestClaims = actorIdentity ? null : await readGuestClaims();
 
     if (
       !canRemovePurchase(
         row,
+        /* v8 ignore next -- purchases.item_id is NOT NULL with ON DELETE CASCADE, so a claim row never outlives its item and the missing-item branch is unreachable. */
         targetItem?.profile_id ?? null,
         actorIdentity,
         new Set(guestClaims?.purchases),
@@ -345,14 +241,10 @@ export async function removePurchase(
 
     await db.delete(purchases).where(eq(purchases.id, row.id));
     if (guestClaims) {
-      const store = await cookies();
-      store.set(
-        GUEST_CLAIMS_COOKIE,
-        JSON.stringify(pruneGuestClaim(guestClaims, row.id)),
-        GUEST_CLAIMS_COOKIE_ATTRIBUTES
-      );
+      await forgetGuestClaim(guestClaims, row.id);
     }
     updateTags(
+      /* v8 ignore next -- same FK contract: targetItem is always present, so the empty-tag branch is unreachable. */
       ...(targetItem ? [cacheTags.itemsOfProfile(targetItem.profile_id)] : []),
       ...(row.profile_id ? [cacheTags.purchasesOfProfile(row.profile_id)] : [])
     );
