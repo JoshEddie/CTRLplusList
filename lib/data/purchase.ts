@@ -249,9 +249,14 @@ export async function getItemsByPurchased(profileId?: string) {
       orderBy: (purchases, { desc }) => [desc(purchases.purchased_at)],
     });
 
-    cacheTag(...itemRowTags(result.map((row) => row.item)));
+    // A claim whose item was deleted has no live item to render. Dropping it
+    // here keeps this page reading exactly as it did when deleting an item
+    // destroyed the claim outright; the record view that gives an orphan
+    // something to show is a later ticket.
+    const claimedItems = result.flatMap((row) => (row.item ? [row.item] : []));
+    cacheTag(...itemRowTags(claimedItems));
 
-    return result.map(({ item: { stores, ...item } }) => ({
+    return claimedItems.map(({ stores, ...item }) => ({
       ...item,
       store: primaryStore(stores),
       // A constant, not a resolved tier: the rows this read selects are ones

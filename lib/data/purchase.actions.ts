@@ -215,17 +215,21 @@ export async function removePurchase(
       };
     }
 
-    const targetItem = await db.query.items.findFirst({
-      where: eq(items.id, row.item_id),
-      columns: { profile_id: true },
-    });
+    // A claim whose item was deleted keeps a null item reference, so there is
+    // no owner to compare against and no item tag to bump. The claim is still
+    // its holder's to drop.
+    const targetItem = row.item_id
+      ? await db.query.items.findFirst({
+          where: eq(items.id, row.item_id),
+          columns: { profile_id: true },
+        })
+      : undefined;
 
     const guestClaims = actorIdentity ? null : await readGuestClaims();
 
     if (
       !canRemovePurchase(
         row,
-        /* v8 ignore next -- purchases.item_id is NOT NULL with ON DELETE CASCADE, so a claim row never outlives its item and the missing-item branch is unreachable. */
         targetItem?.profile_id ?? null,
         actorIdentity,
         new Set(guestClaims?.purchases),
@@ -244,7 +248,6 @@ export async function removePurchase(
       await forgetGuestClaim(guestClaims, row.id);
     }
     updateTags(
-      /* v8 ignore next -- same FK contract: targetItem is always present, so the empty-tag branch is unreachable. */
       ...(targetItem ? [cacheTags.itemsOfProfile(targetItem.profile_id)] : []),
       ...(row.profile_id ? [cacheTags.purchasesOfProfile(row.profile_id)] : [])
     );

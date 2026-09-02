@@ -1,5 +1,7 @@
+import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { items, purchases } from '@/db/schema';
 import { ROLES } from '@/lib/data/profile.roles';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
@@ -139,6 +141,30 @@ describe('getItemsByPurchased', () => {
       by: 'other',
       claimedByViewer: false,
     });
+  });
+
+  it('ClaimWhoseItemWasDeleted_IsOmitted-SurvivingClaimsStillListed', async () => {
+    await seedUsers(db, [{ id: 'buyer' }, { id: 'owner' }]);
+    await seedItem(db, { id: 'gone', user_id: 'owner' });
+    await seedItem(db, { id: 'kept', user_id: 'owner' });
+    await seedPurchase(db, {
+      id: 'orphan',
+      item_id: 'gone',
+      profile_id: selfProfileOf('buyer'),
+    });
+    await seedPurchase(db, {
+      id: 'live',
+      item_id: 'kept',
+      profile_id: selfProfileOf('buyer'),
+    });
+    await db.delete(items).where(eq(items.id, 'gone'));
+
+    const rows = await dal.getItemsByPurchased(selfProfileOf('buyer'));
+
+    expect(rows.map((r) => r.id)).toEqual(['kept']);
+    // The claim itself outlives its item — it is this page that has nothing
+    // to render for it yet.
+    expect(await db.select().from(purchases)).toHaveLength(2);
   });
 
   it('QueryThrows_RejectsWithRawError', async () => {

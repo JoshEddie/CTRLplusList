@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { lists, purchases } from '@/db/schema';
+import { items, lists, purchases } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
@@ -755,6 +755,23 @@ describe('removePurchase', () => {
       expect(updateTag).toHaveBeenCalledWith(
         `purchases:profile:${OWNER_PROFILE}`
       );
+    });
+
+    it('ClaimWhoseItemWasDeleted_IsStillRemovableByItsHolder', async () => {
+      // ON DELETE SET NULL detaches the claim instead of destroying it, so the
+      // removal path has to reach a claim with no item and no owner to compare.
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        profile_id: OWNER_PROFILE,
+      });
+      await db.delete(items).where(eq(items.id, 'I'));
+
+      const res = await actions.removePurchase({ purchase_id: 'p1' });
+
+      expect(res.success).toBe(true);
+      expect(await db.select().from(purchases)).toHaveLength(0);
     });
 
     it('AuthedNonOwner_ReturnsNotYourClaim-RowPersists', async () => {
