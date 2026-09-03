@@ -1,3 +1,4 @@
+import { getMessage } from '@/lib/i18n/utils';
 import { priceAmount } from '@/lib/storeValidity';
 import { atLeast } from '@/lib/spoilers';
 import { PurchaseView, SpoilerTier } from '@/lib/types';
@@ -16,8 +17,7 @@ export function showsSpoilerBanner(
 // The card's "Claimed by …" line. No tier names another party's claim, so the
 // line reports how many rather than who — names are the modal's reveal alone.
 export function claimSummaryOf(claims: PurchaseView[]): string {
-  if (claims.length === 0) return '';
-  return claims.length === 1 ? '1 person' : `${claims.length} people`;
+  return getMessage('claim_summary', { count: claims.length });
 }
 
 export function firstToken(name: string): string {
@@ -61,4 +61,3 @@ export function containerClasses(flags: {
     .filter(Boolean)
     .join(' ');
 }
-

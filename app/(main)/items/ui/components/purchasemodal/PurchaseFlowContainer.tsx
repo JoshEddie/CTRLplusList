@@ -11,6 +11,7 @@ import {
   signInUser,
   type ClaimPicker,
 } from '@/lib/data/user.actions';
+import { getMessage } from '@/lib/i18n/utils';
 import {
   ProfileMembershipView,
   ItemDisplay,
@@ -41,18 +42,20 @@ function GuestClaimSection({
     <>
       <div className="guest-purchase">
         <TextField
-          label="Your name"
+          label={getMessage('claim_guest_name_label')}
           value={guestName}
           onChange={(e) => setGuestName(e.target.value)}
-          placeholder="Your name"
+          placeholder={getMessage('claim_guest_name_label')}
         />
         <ModalButtons
-          primary_button_text="Claim as Guest"
+          primary_button_text={getMessage('claim_as_guest_label')}
           primary_button_onclick={() =>
             guestName.trim() && onGuestClaim(guestName.trim())
           }
           primary_button_disabled={!guestName.trim()}
-          primary_button_disabled_with_tooltip="Please enter a name to continue"
+          primary_button_disabled_with_tooltip={getMessage(
+            'claim_guest_name_required'
+          )}
         />
       </div>
       <form action={signInUser} className="guest-signin-footer">
@@ -80,10 +83,13 @@ function RevealSummary({
   return (
     <p className="claim-reveal-summary" role="status">
       {summary.claimedUnits === 0
-        ? 'No claims on this item yet.'
+        ? getMessage('claim_reveal_none')
         : summary.remaining === 0
-          ? 'Fully claimed'
-          : `${summary.claimedUnits} claimed · ${summary.remaining} left`}
+          ? getMessage('claim_fully_claimed')
+          : getMessage('claim_reveal_units', {
+              claimed: summary.claimedUnits,
+              remaining: summary.remaining,
+            })}
     </p>
   );
 }
@@ -135,13 +141,15 @@ function AuthedClaimSection({
               className="claim-self-cta"
               onClick={onSelfClaim}
             >
-              {isOwner ? 'I bought this myself' : 'Claim this gift'}
+              {getMessage(isOwner ? 'claim_cta_owner' : 'claim_cta_viewer')}
             </Button>
           )}
           <ClaimDisclosure
-            label={
-              isOwner ? 'Claiming for someone?' : 'Claiming for someone else?'
-            }
+            label={getMessage(
+              isOwner
+                ? 'claim_disclosure_label_owner'
+                : 'claim_disclosure_label_viewer'
+            )}
             circleLabel={circleLabel}
             status={pickerStatus}
             pool={pool}
@@ -246,8 +254,12 @@ export default function PurchaseFlowContainer({
   const retry = useCallback(() => setFetchAttempt((n) => n + 1), []);
 
   const circleLabel = isOwner
-    ? 'your circle'
-    : `${picker?.ownerName ? firstToken(picker.ownerName) : 'the owner'}'s circle`;
+    ? getMessage('claim_circle_owner')
+    : getMessage('claim_circle_viewer', {
+        name: picker?.ownerName
+          ? firstToken(picker.ownerName)
+          : getMessage('owner_name_placeholder'),
+      });
 
   return (
     <div className="claim-modal">

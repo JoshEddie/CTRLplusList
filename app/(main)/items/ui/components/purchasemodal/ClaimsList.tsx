@@ -1,5 +1,6 @@
 import ProfileAvatar, { facelessView } from '@/app/ui/components/ProfileAvatar';
 import { Button } from '@/app/ui/components/button';
+import { getMessage } from '@/lib/i18n/utils';
 import { timeAgo } from '@/lib/timeAgo';
 import { PurchaseView } from '@/lib/types';
 import { useState } from 'react';
@@ -16,7 +17,10 @@ type NamedClaim = PurchaseView & { name: string };
 function rowLabel(claim: NamedClaim): string {
   const name = claim.name;
   if (claim.by !== 'self') return name;
-  return name === 'You' ? 'You' : `${name} (you)`;
+  // A nameless claim already carries the viewer's stand-in name, which says
+  // "you" on its own — suffixing it would read "You (you)".
+  if (name === getMessage('viewer_name_placeholder')) return name;
+  return getMessage('claim_row_name_own', { name });
 }
 
 // One meta line under the name: "Added by you · 3 hours ago" for attributed
@@ -26,12 +30,15 @@ function rowMeta(claim: PurchaseView): string | null {
   const when = claim.purchasedAt ? timeAgo(claim.purchasedAt) : '';
   const attribution =
     claim.by !== 'self' && claim.claimedByViewer
-      ? 'Added by you'
+      ? getMessage('claim_row_meta_added_by_viewer')
       : claim.claimerName
-        ? `Added by ${claim.claimerName}`
+        ? getMessage('claim_row_meta_added_by', { name: claim.claimerName })
         : null;
-  if (attribution) return when ? `${attribution} · ${when}` : attribution;
-  return when ? `claimed ${when}` : null;
+  if (attribution)
+    return when
+      ? getMessage('claim_row_meta_with_time', { attribution, when })
+      : attribution;
+  return when ? getMessage('claim_row_meta_claimed', { when }) : null;
 }
 
 export default function ClaimsList({
@@ -67,7 +74,7 @@ export default function ClaimsList({
   const remaining = named.length - visible.length;
   return (
     <div className="claims-section">
-      <p className="claims-section-label">Claimed by</p>
+      <p className="claims-section-label">{getMessage('claim_list_label')}</p>
       <ul className="claims-list">
         {visible.map((claim) => (
           <li key={claim.id} className="claim-row">
@@ -90,11 +97,13 @@ export default function ClaimsList({
                 onClick={() => onRemoveClaim(claim)}
                 aria-label={
                   claim.by === 'self'
-                    ? 'Remove your claim'
-                    : `Remove ${claim.name}'s claim`
+                    ? getMessage('claim_remove_own_aria_label')
+                    : getMessage('claim_remove_other_aria_label', {
+                        name: claim.name,
+                      })
                 }
               >
-                Remove
+                {getMessage('claim_remove_label')}
               </Button>
             )}
           </li>
@@ -102,7 +111,7 @@ export default function ClaimsList({
       </ul>
       {withheld > 0 && (
         <p className="claims-withheld" role="status">
-          {withheld === 1 ? '1 other claim' : `${withheld} other claims`}
+          {getMessage('claim_withheld_others', { count: withheld })}
         </p>
       )}
       {remaining > 0 && (
@@ -112,7 +121,7 @@ export default function ClaimsList({
           className="claims-see-more"
           onClick={() => setVisibleCount((count) => count + SEE_MORE_STEP)}
         >
-          See more ({remaining})
+          {getMessage('claim_see_more', { count: remaining })}
         </Button>
       )}
     </div>

@@ -8,6 +8,7 @@ import {
   pruneGuestClaim,
 } from '@/lib/data/purchase.cookie';
 import { authedIdentity } from '@/lib/data/user.session';
+import { getMessage } from '@/lib/i18n/utils';
 import { type ActionResponse, type UserIdentity } from '@/lib/types';
 import { cookies } from 'next/headers';
 
@@ -41,8 +42,8 @@ export async function resolveClaimIdentity(
       return {
         error: {
           success: false,
-          message: 'User not found',
-          error: 'Unauthorized',
+          message: getMessage('claim_user_not_found'),
+          error: getMessage('claim_error_unauthorized'),
         },
       };
     }
@@ -50,8 +51,8 @@ export async function resolveClaimIdentity(
       return {
         error: {
           success: false,
-          message: 'Cannot identify which claim to add',
-          error: 'Ambiguous purchaser',
+          message: getMessage('claim_add_unidentified'),
+          error: getMessage('claim_error_ambiguous_purchaser'),
         },
       };
     }
@@ -81,8 +82,8 @@ export async function resolveClaimIdentity(
     return {
       error: {
         success: false,
-        message: 'Cannot identify which claim to add',
-        error: 'Missing identity',
+        message: getMessage('claim_add_unidentified'),
+        error: getMessage('claim_error_missing_identity'),
       },
     };
   }

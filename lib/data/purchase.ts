@@ -7,6 +7,7 @@ import {
   user_follows,
 } from '@/db/schema';
 import { accountsOfProfiles } from '@/lib/data/profile';
+import { getMessage } from '@/lib/i18n/utils';
 import { primaryStore } from '@/lib/storeValidity';
 import { avatarViewOf, withProfileAvatar } from '@/lib/data/profileAvatar';
 import { MAXIMAL_TIER, type ClaimProjection } from '@/lib/spoilers';
@@ -145,10 +146,10 @@ export async function isEligiblePurchaser(
 export function duplicateClaimResponse(isAttributed: boolean): ActionResponse {
   return {
     success: false,
-    message: isAttributed
-      ? 'Already marked as the purchaser'
-      : 'You have already claimed this item',
-    error: 'Duplicate claim',
+    message: getMessage(
+      isAttributed ? 'claim_duplicate_attributed' : 'claim_duplicate_own'
+    ),
+    error: getMessage('claim_error_duplicate'),
   };
 }
 

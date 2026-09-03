@@ -5,6 +5,7 @@ import {
   removePurchase,
   revealedClaimsForEntry,
 } from '@/lib/data/purchase.actions';
+import { getMessage } from '@/lib/i18n/utils';
 import { atLeast } from '@/lib/spoilers';
 import { storeComplete } from '@/lib/storeValidity';
 import {
@@ -31,7 +32,10 @@ function entryLineOf(
   progress: string | null
 ): string {
   if (!entry || !multiUnit || soldOut) return '';
-  return progress ?? `${entry.quantity} wanted`;
+  return (
+    progress ??
+    getMessage('entry_quantity_wanted', { quantity: entry.quantity })
+  );
 }
 
 // The viewer's picture of one item's claims: the projected array the page
@@ -142,9 +146,9 @@ export function useItemClaims({
           return response;
         }),
         {
-          loading: 'Removing claim',
-          success: 'Claim removed successfully',
-          error: 'Failed to remove claim',
+          loading: getMessage('claim_remove_loading'),
+          success: getMessage('claim_remove_success'),
+          error: getMessage('claim_remove_error'),
         }
       );
       setClaims((prev) => prev.filter((p) => p.id !== claim.id));
@@ -180,9 +184,9 @@ export function useItemClaims({
       const result = await toast.promise(
         createPurchase({ ...payload, list_id: entryListId }),
         {
-          loading: 'Adding claim',
-          success: 'Claim added successfully',
-          error: (err: Error) => err?.message || 'Failed to add claim',
+          loading: getMessage('claim_add_loading'),
+          success: getMessage('claim_add_success'),
+          error: (err: Error) => err?.message || getMessage('claim_add_error'),
         }
       );
       const id = result?.success ? result.id : undefined;
@@ -208,7 +212,7 @@ export function useItemClaims({
       { item_id: item.id || '', guest_name: null },
       {
         by: 'self',
-        name: userName || 'You',
+        name: userName || getMessage('viewer_name_placeholder'),
         claimedByViewer: true,
         purchasedAt: new Date(),
       },
@@ -231,8 +235,11 @@ export function useItemClaims({
   const counterText = !entry
     ? ''
     : isFullyClaimed
-      ? 'Fully claimed'
-      : `${entry.claimedUnits}/${entry.quantity} claimed`;
+      ? getMessage('claim_fully_claimed')
+      : getMessage('claim_counter', {
+          claimed: entry.claimedUnits,
+          quantity: entry.quantity,
+        });
 
   const showPurchased = isFullyClaimed && !isOwner;
 
