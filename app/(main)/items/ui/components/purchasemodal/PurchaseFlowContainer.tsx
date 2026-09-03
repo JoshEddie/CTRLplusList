@@ -21,7 +21,7 @@ import {
   SpoilerTier,
 } from '@/lib/types';
 import { useCallback, useEffect, useState } from 'react';
-import { clampUnits, firstToken } from '../utils';
+import { firstToken, unitsClaimedLabel } from '../utils';
 import ClaimDisclosure, {
   type AttributedTarget,
   type PickerStatus,
@@ -96,53 +96,46 @@ function RevealSummary({
   );
 }
 
+// Four sentences, not one with two holes: "I bought 3 of these myself" and
+// "Claim 3 of these" are different sentences, and each drops its number below
+// two rather than reading "Claim 1 of these".
+function claimCtaLabel(isOwner: boolean, units: number): string {
+  if (units > 1) {
+    return getMessage(isOwner ? 'claim_cta_owner_units' : 'claim_cta_viewer_units', {
+      units,
+    });
+  }
+  return getMessage(isOwner ? 'claim_cta_owner' : 'claim_cta_viewer');
+}
+
 function AuthedClaimSection({
   isOwner,
   canClaim,
-  claims,
-  capacity,
-  masterUnclaimDisabled,
   viewerIsPurchaser,
   circleLabel,
   pickerStatus,
   pool,
+  units,
   onRetry,
   onSelfClaim,
   onAttributedClaim,
   onGuestClaim,
-  onRemoveClaim,
-  onUpdateUnits,
 }: {
   isOwner: boolean;
   canClaim: boolean;
-  claims: PurchaseView[];
-  capacity: EntryCapacity | null;
-  masterUnclaimDisabled: boolean;
   viewerIsPurchaser?: boolean;
   circleLabel: string;
   pickerStatus: PickerStatus;
   pool: ClaimPicker['pool'];
+  /** How many units the CTA would claim, so the button states the ask rather than leaving it to the control above it. */
+  units: number;
   onRetry: () => void;
   onSelfClaim: () => void;
   onAttributedClaim: (target: AttributedTarget) => void;
   onGuestClaim: (name: string) => void;
-  onRemoveClaim: (claim: PurchaseView) => void;
-  onUpdateUnits: (claim: PurchaseView, units: number) => void;
 }) {
   return (
     <>
-      {isOwner && (
-        // The owner edits units on a claim somebody else made — a capability
-        // beyond master unclaim, and gated by the same ownership floor.
-        <ClaimsList
-          claims={claims}
-          canRemove={() => true}
-          capacity={capacity}
-          removalDisabled={masterUnclaimDisabled}
-          onRemoveClaim={onRemoveClaim}
-          onUpdateUnits={onUpdateUnits}
-        />
-      )}
       {canClaim && (
         <>
           {(isOwner || !viewerIsPurchaser) && (
@@ -151,7 +144,7 @@ function AuthedClaimSection({
               className="claim-self-cta"
               onClick={onSelfClaim}
             >
-              {getMessage(isOwner ? 'claim_cta_owner' : 'claim_cta_viewer')}
+              {claimCtaLabel(isOwner, units)}
             </Button>
           )}
           <ClaimDisclosure
@@ -203,7 +196,7 @@ export default function PurchaseFlowContainer({
   onUpdateUnits: (claim: PurchaseView, units: number) => void;
 }) {
   const [picker, setPicker] = useState<ClaimPicker | null>(null);
-  const [unitsValue, setUnitsValue] = useState('1');
+  const [unitsValue, setUnitsValue] = useState(1);
   const [pickerStatus, setPickerStatus] = useState<PickerStatus>('loading');
   const [fetchAttempt, setFetchAttempt] = useState(0);
   const [reveal, setReveal] = useState<{
@@ -246,8 +239,13 @@ export default function PurchaseFlowContainer({
   // control at all: the overwhelmingly common claim is unchanged.
   const remaining =
     (needsReveal ? reveal?.remaining : capacity?.remaining) ?? 0;
-  const showUnits = (capacity?.quantity ?? 1) > 1 && remaining > 0;
-  const units = showUnits ? (clampUnits(unitsValue, remaining) ?? 1) : 1;
+  const quantity = capacity?.quantity ?? 1;
+  const showUnits = quantity > 1 && remaining > 1;
+  // Before the reveal lands there is no remainder to subtract from, and the
+  // readout would state a full house rather than nothing.
+  const unitsStatus =
+    needsReveal && !reveal ? undefined : unitsClaimedLabel(quantity, remaining);
+  const units = showUnits ? Math.min(unitsValue, remaining) : 1;
 
   // Each (item, attempt) pair is a fresh fetch; reset to loading at render
   // time so the effect body only performs async state updates.
@@ -293,11 +291,26 @@ export default function PurchaseFlowContainer({
 
       {needsReveal && <RevealSummary summary={reveal} />}
 
+      {showClaimSection && isOwner && (
+        // Above the control that claims, not between it and the button that
+        // does: the owner edits units on a claim somebody else made — a
+        // capability beyond master unclaim, gated by the same ownership floor.
+        <ClaimsList
+          claims={claims}
+          canRemove={() => true}
+          capacity={capacity}
+          unitsStatus={unitsStatus}
+          removalDisabled={!actor.role.admin}
+          onRemoveClaim={onRemoveClaim}
+          onUpdateUnits={onUpdateUnits}
+        />
+      )}
+
       {canClaim && showUnits && (
         <UnitsField
           label={getMessage('claim_units_field_label')}
-          description={getMessage('claim_units_remaining', { remaining })}
-          value={unitsValue}
+          status={unitsStatus}
+          value={units}
           max={remaining}
           onChange={setUnitsValue}
         />
@@ -313,19 +326,15 @@ export default function PurchaseFlowContainer({
         <AuthedClaimSection
           isOwner={isOwner}
           canClaim={canClaim}
-          claims={claims}
-          capacity={capacity}
-          masterUnclaimDisabled={!actor.role.admin}
           viewerIsPurchaser={viewerIsPurchaser}
           circleLabel={circleLabel}
           pickerStatus={pickerStatus}
           pool={picker?.pool ?? []}
           onRetry={retry}
+          units={units}
           onSelfClaim={() => onSelfClaim(units)}
           onAttributedClaim={(target) => onAttributedClaim(target, units)}
           onGuestClaim={(name) => onGuestClaim(name, units)}
-          onRemoveClaim={onRemoveClaim}
-          onUpdateUnits={onUpdateUnits}
         />
       )}
     </div>

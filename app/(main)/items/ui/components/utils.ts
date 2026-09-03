@@ -20,15 +20,14 @@ export function claimSummaryOf(claims: PurchaseView[]): string {
   return getMessage('claim_summary', { count: claims.length });
 }
 
-// What the units field currently means as a unit count, clamped to what the
-// entry has room for — a number input's min/max bound its spinners, not what
-// can be typed into it. Null is "not a number at all", which is only ever an
-// empty field: the claim CTAs fall back to one unit and the Update button goes
-// inert, rather than either sending a number the capacity guard would refuse.
-export function clampUnits(value: string, max: number): number | null {
-  const parsed = Math.trunc(Number(value));
-  if (value.trim() === '' || Number.isNaN(parsed)) return null;
-  return Math.min(Math.max(parsed, 1), max);
+// What the entry already has spoken for, phrased for the label row beside a
+// units control. Derived from capacity rather than from the projected claims,
+// which carry no unit counts below the revealed tier.
+export function unitsClaimedLabel(quantity: number, remaining: number): string {
+  return getMessage('claim_units_status', {
+    claimed: quantity - remaining,
+    quantity,
+  });
 }
 
 // What an existing claim could be raised to: everything the entry has spare,

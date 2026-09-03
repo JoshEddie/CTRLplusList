@@ -658,12 +658,12 @@ describe('setListItemQuantity', () => {
   });
 
   describe('RejectedQuantities', () => {
-    it.each([0, -1, 1.5, 1000])(
+    it.each([0, -1, 1.5, 100])(
       'Quantity%s_ReturnsInvalidInput-NoWrite',
       async (quantity) => {
         const res = await actions.setListItemQuantity('L', 'A', quantity);
         expect(res.message).toBe(
-          'Quantity must be a whole number between 1 and 999'
+          'Quantity must be a whole number between 1 and 99'
         );
         expect(res.error).toBe('Invalid input');
         expect((await entryRow())?.quantity).toBe(1);

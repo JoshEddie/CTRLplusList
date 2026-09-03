@@ -97,9 +97,9 @@ How many of an item its owner wants **on one list** — the only quantity there
 is, since an item carries none of its own. The same item asked for once at a
 birthday and four times at Christmas is two entries with two quantities. Set
 from the list being looked at, through the row's kebab menu, and shown on the
-row only when it is above 1. There is no unlimited quantity. Lowering it below
-what is already claimed succeeds quietly: refusing would tell an owner held
-below the claims tier that somebody has bought something
+row only when it is above 1. There is no unlimited quantity, and none above 99.
+Lowering it below what is already claimed succeeds quietly: refusing would tell
+an owner held below the claims tier that somebody has bought something
 ([ADR-0015](docs/adr/0015-behaviour-may-not-vary-on-spoiler-hidden-state.md)).
 
 **Units**:
@@ -107,10 +107,11 @@ What a claim covers, and what quantity is counted in — capacity is measured in
 units rather than in people, so four towels is satisfied by one person buying
 four, by four people buying one each, or by any split between. A claim covers
 one unit unless its claimer says otherwise; the stepper that says otherwise is
-hidden entirely on an entry asking for one, and capped at what remains. Units
-move up and down within what remains, and dropping a claim to zero *is*
-unclaiming — a zero-unit row is not representable. A per-claim unit count is
-visible only to the claim's holder and at the revealed tier; the claims tier
+capped at what remains, and hidden wherever that leaves one number to pick — an
+entry asking for one, or one unit left of many. Units move up and down within
+what remains, and dropping a claim to zero *is* unclaiming — a zero-unit row is
+not representable. A per-claim unit count is visible only to the claim's holder
+and at the revealed tier; the claims tier
 keeps its bare presence flag. Claimed units are summed from the claims
 themselves, never kept as a separate running total
 ([ADR-0016](docs/adr/0016-claimed-units-are-summed-not-stored.md)).

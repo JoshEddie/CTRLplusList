@@ -240,8 +240,27 @@ describe('WithheldClaims', () => {
     it('EntryWithRoomToGrow_ShowsTheClaimsCurrentUnits', () => {
       mountEditable();
 
-      expect(screen.getByLabelText('Units')).toHaveValue(2);
-      expect(screen.getByLabelText('Units')).toHaveAttribute('max', '4');
+      expect(screen.getByRole('spinbutton')).toHaveValue(2);
+      expect(screen.getByRole('spinbutton')).toHaveAttribute('max', '4');
+    });
+
+    it('StatusGiven_ItSitsBesideTheUnitsControl', () => {
+      mountEditable({ unitsStatus: '2 of 4 claimed' });
+
+      expect(screen.getByText('2 of 4 claimed')).toBeInTheDocument();
+    });
+
+    it('NoStatusGiven_TheRowSaysNothingAboutWhatIsClaimed', () => {
+      mountEditable();
+
+      expect(screen.queryByText(/of 4 claimed/)).not.toBeInTheDocument();
+    });
+
+    it('UntouchedCount_LeavesUpdateInert', () => {
+      const onUpdateUnits = mountEditable();
+
+      expect(screen.getByRole('button', { name: 'Update' })).toBeDisabled();
+      expect(onUpdateUnits).not.toHaveBeenCalled();
     });
 
     it('SingleUnitEntry_RendersNoUnitsControl', () => {
@@ -250,28 +269,28 @@ describe('WithheldClaims', () => {
         capacity: { quantity: 1, remaining: 0 },
       });
 
-      expect(screen.queryByLabelText('Units')).not.toBeInTheDocument();
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     });
 
     it('RowTheViewerCannotRemove_RendersNoUnitsControl', () => {
       mountEditable({ canRemove: () => false });
 
-      expect(screen.queryByLabelText('Units')).not.toBeInTheDocument();
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     });
 
     it('MasterUnclaimBelowTheOwnerFloor_RendersNoUnitsControl', () => {
       mountEditable({ removalDisabled: true });
 
-      expect(screen.queryByLabelText('Units')).not.toBeInTheDocument();
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     });
 
     it('NewCountThenUpdate_ReportsTheClaimAndItsUnits', async () => {
       const user = userEvent.setup();
       const onUpdateUnits = mountEditable();
 
-      await user.clear(screen.getByLabelText('Units'));
-      await user.type(screen.getByLabelText('Units'), '4');
-      await user.click(screen.getByRole('button', { name: 'Update' }));
+      await user.clear(screen.getByRole('spinbutton'));
+      await user.type(screen.getByRole('spinbutton'), '4');
+      await user.click(screen.getByRole('button', { name: 'Update to 4' }));
 
       expect(onUpdateUnits).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'p1' }),
@@ -283,18 +302,19 @@ describe('WithheldClaims', () => {
       const user = userEvent.setup();
       const onUpdateUnits = mountEditable();
 
-      await user.clear(screen.getByLabelText('Units'));
-      await user.type(screen.getByLabelText('Units'), '9');
-      await user.click(screen.getByRole('button', { name: 'Update' }));
+      await user.clear(screen.getByRole('spinbutton'));
+      await user.type(screen.getByRole('spinbutton'), '9');
+      await user.click(screen.getByRole('button', { name: 'Update to 4' }));
 
       expect(onUpdateUnits).toHaveBeenCalledWith(expect.anything(), 4);
     });
 
-    it('EmptiedUnitsField_LeavesUpdateInert', async () => {
+    it('CountMovedThenBack_LeavesUpdateInertAgain', async () => {
       const user = userEvent.setup();
       const onUpdateUnits = mountEditable();
 
-      await user.clear(screen.getByLabelText('Units'));
+      await user.click(screen.getByRole('button', { name: 'Increase' }));
+      await user.click(screen.getByRole('button', { name: 'Decrease' }));
 
       expect(screen.getByRole('button', { name: 'Update' })).toBeDisabled();
       expect(onUpdateUnits).not.toHaveBeenCalled();
