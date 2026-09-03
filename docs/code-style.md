@@ -13,6 +13,7 @@ Scope: production source (`app/**`, `lib/**`, `hooks/**`, `db/**`). Test files a
 - **Yellow** 300–400 = warning — pull easy wins where a clean extraction exists; a cohesive file may stay yellow.
 - **Green** <300 = the goal, never reached by scattering one concern across files.
 - No `eslint-disable` for either rule.
+- Two flat cohorts are exempt in the config's `ignores`: `db/schema.ts` (table declarations) and `lib/i18n/en.ts` (message strings). Neither has a domain seam to split on.
 
 Canonical: [eslint.config.mjs](../eslint.config.mjs).
 
@@ -34,6 +35,20 @@ tolerated; anything else is a failure.
 
 Deleting the disable and the TODO together is what closes one. Never add a
 disable without the TODO — a silent disable is invisible and never gets removed.
+
+## User-facing copy
+
+Every string a person reads is declared once in `lib/i18n/en.ts` and reached
+through `getMessage` ([ADR-0017](adr/0017-user-facing-copy-has-one-home.md)).
+Keys are flat and alphabetical, and nothing but `lib/i18n/utils.ts` imports the
+catalogue.
+
+- **Apostrophes are `’` (U+2019)** — `'` is ICU's quoting character.
+- **A string that displays a count declares its own plural**, with `#` for the
+  number. A string that varies with a count but never shows one stays two keys
+  the caller picks between.
+- **A key name carries the axis it varies on**: `_owner` / `_viewer` for who is
+  reading, `_own` for whose thing it is.
 
 ## Writing markdown (docs, skills, specs)
 

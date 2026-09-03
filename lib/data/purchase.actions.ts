@@ -1,8 +1,5 @@
 'use server';
 
-// TODO(#343): extract the duplicated literal to a constant, then drop this disable
-/* eslint-disable sonarjs/no-duplicate-string */
-
 import { db } from '@/db';
 import { items, list_items, purchases } from '@/db/schema';
 import {
@@ -20,6 +17,7 @@ import {
 } from '@/lib/data/purchase.identity';
 import { writableMembership } from '@/lib/data/profile.gate';
 import { authedIdentity } from '@/lib/data/user.session';
+import { getMessage } from '@/lib/i18n/utils';
 import { isEntryViewable } from '@/lib/listAccess';
 import { sqlstateOf } from '@/lib/sqlstate';
 import { type ActionResponse, type PurchaseView } from '@/lib/types';
@@ -77,8 +75,8 @@ export async function createPurchase(data: {
     if (!viewable) {
       return {
         success: false,
-        message: 'Item not found',
-        error: 'Item not found',
+        message: getMessage('claim_item_not_found'),
+        error: getMessage('claim_error_item_not_found'),
       };
     }
 
@@ -89,8 +87,8 @@ export async function createPurchase(data: {
     if (!item) {
       return {
         success: false,
-        message: 'Item not found',
-        error: 'Item not found',
+        message: getMessage('claim_item_not_found'),
+        error: getMessage('claim_error_item_not_found'),
       };
     }
 
@@ -135,15 +133,15 @@ export async function createPurchase(data: {
 
     return {
       success: true,
-      message: 'Item marked as purchased successfully',
+      message: getMessage('claim_create_success'),
       id: insertedId,
     };
   } catch (error) {
     console.error('Error creating purchase:', error);
     return {
       success: false,
-      message: 'An error occurred while marking the item as purchased',
-      error: 'Failed to create purchase',
+      message: getMessage('claim_create_failed'),
+      error: getMessage('claim_error_create_failed'),
     };
   }
 }
@@ -166,8 +164,8 @@ async function attributionRefusal(
   if (eligible) return null;
   return {
     success: false,
-    message: 'That person cannot be marked as the purchaser',
-    error: 'Ineligible purchaser',
+    message: getMessage('claim_ineligible_purchaser'),
+    error: getMessage('claim_error_ineligible_purchaser'),
   };
 }
 
@@ -212,8 +210,8 @@ async function recordEntryClaim(
     return {
       refusal: {
         success: false,
-        message: 'This item is fully claimed',
-        error: 'Fully claimed',
+        message: getMessage('claim_item_fully_claimed'),
+        error: getMessage('claim_error_fully_claimed'),
       },
     };
   }
@@ -283,8 +281,8 @@ export async function removePurchase(
     if (!data.purchase_id) {
       return {
         success: false,
-        message: 'Cannot identify which claim to remove',
-        error: 'Missing identity',
+        message: getMessage('claim_remove_unidentified'),
+        error: getMessage('claim_error_missing_identity'),
       };
     }
 
@@ -308,8 +306,8 @@ export async function removePurchase(
     if (!row) {
       return {
         success: false,
-        message: 'Claim not found',
-        error: 'Not found',
+        message: getMessage('claim_not_found'),
+        error: getMessage('claim_error_not_found'),
       };
     }
 
@@ -336,8 +334,8 @@ export async function removePurchase(
     ) {
       return {
         success: false,
-        message: 'Not your claim',
-        error: 'Not your claim',
+        message: getMessage('claim_not_yours'),
+        error: getMessage('claim_error_not_yours'),
       };
     }
 
@@ -351,14 +349,14 @@ export async function removePurchase(
     );
     return {
       success: true,
-      message: 'Item marked as not purchased successfully',
+      message: getMessage('claim_delete_success'),
     };
   } catch (error) {
     console.error('Error removing purchase:', error);
     return {
       success: false,
-      message: 'An error occurred while removing the purchase',
-      error: 'Failed to remove purchase',
+      message: getMessage('claim_delete_failed'),
+      error: getMessage('claim_error_remove_failed'),
     };
   }
 }

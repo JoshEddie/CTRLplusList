@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, LinkButton } from '@/app/ui/components/button';
+import { getMessage } from '@/lib/i18n/utils';
 import { atLeast } from '@/lib/spoilers';
 import type { ItemStoreTable, SpoilerTier } from '@/lib/types';
 import { MdCheck, MdOpenInNew } from 'react-icons/md';
@@ -90,13 +91,13 @@ export default function ItemActions({
           href={store.link}
           target="_blank"
           rel="noreferrer"
-          aria-label="Buy & Claim — opens in new tab"
+          aria-label={getMessage('buy_claim_aria_label')}
           onClick={(e) => {
             e.stopPropagation();
             onBuyClaimClick?.();
           }}
         >
-          <span>Buy &amp; Claim</span>
+          <span>{getMessage('buy_claim_label')}</span>
           <MdOpenInNew aria-hidden />
         </LinkButton>
       )}
@@ -106,7 +107,7 @@ export default function ItemActions({
           className="item-actions-claim"
           onClick={onPurchaseClick}
         >
-          {isOwner ? 'Manage claims' : 'Manage claim'}
+          {getMessage(isOwner ? 'claim_manage_owner' : 'claim_manage_viewer')}
         </Button>
       )}
       {showStatus && (
@@ -116,7 +117,7 @@ export default function ItemActions({
         >
           <span className="claimed-state-label">
             <MdCheck aria-hidden />
-            Fully claimed
+            {getMessage('claim_fully_claimed')}
           </span>
         </div>
       )}
@@ -126,7 +127,7 @@ export default function ItemActions({
           className="item-actions-add"
           onClick={onAddClaimClick}
         >
-          Add Claim
+          {getMessage('claim_add_label')}
         </Button>
       )}
       {showView && (
@@ -136,11 +137,16 @@ export default function ItemActions({
           href={store.link}
           target="_blank"
           rel="noreferrer"
-          aria-label="View item — opens in new tab"
+          aria-label={getMessage('view_item_aria_label')}
           onClick={(e) => e.stopPropagation()}
         >
           <span>
-            View <span className="item-actions-view-label">item</span>
+            <span className="item-actions-view-label">
+              {getMessage('view_item_label')}
+            </span>
+            <span className="item-actions-view-short">
+              {getMessage('view_item_label_short')}
+            </span>
           </span>
           <MdOpenInNew aria-hidden />
         </LinkButton>
