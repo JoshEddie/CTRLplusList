@@ -5,6 +5,7 @@ import { getItemsByProfile } from '@/lib/data/item';
 import { getList, getListsByProfile } from '@/lib/data/list';
 import { actingAsName } from '@/lib/data/profile.active';
 import { authedIdentity } from '@/lib/data/user.session';
+import { ItemDisplay } from '@/lib/types';
 import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import ChooseItemsForm from './ChooseItemsForm';
@@ -44,9 +45,19 @@ export default async function ChooseItemsBody({ params, searchParams }: Props) {
 
   const currentListItemIds = new Set(currentListItems.map((r) => r.item_id));
 
-  const displayItems = allItems.filter(
-    (item) => !item.archived_at || currentListItemIds.has(item.id)
-  );
+  // Claim data is dropped outright rather than projected through a tier: this
+  // surface asks one question — on the list or not — and claim chrome competes
+  // with the checkbox that answers it. A tier would still carry the owner's own
+  // claims, and ADR-0015 has nothing that would catch the claim-state branch
+  // they keep alive.
+  const displayItems = allItems
+    .filter((item) => !item.archived_at || currentListItemIds.has(item.id))
+    .map((item) => {
+      const stripped: ItemDisplay = { ...item };
+      delete stripped.purchases;
+      delete stripped.hasPurchases;
+      return stripped;
+    });
 
   return (
     <ChooseItemsForm

@@ -38,7 +38,7 @@ vi.mock('../ChooseItemsForm', () => ({
   default: (p: {
     list_id: string;
     list_name: string;
-    items: { id: string }[];
+    items: Record<string, unknown>[];
     initialSelectedIds: string[];
     isNew: boolean;
     actor: { id: string };
@@ -49,6 +49,10 @@ vi.mock('../ChooseItemsForm', () => ({
       data-list-id={p.list_id}
       data-list-name={p.list_name}
       data-item-ids={p.items.map((i) => i.id).join(',')}
+      data-claim-keys={p.items
+        .flatMap((i) => Object.keys(i))
+        .filter((k) => k === 'purchases' || k === 'hasPurchases')
+        .join(',')}
       data-selected={p.initialSelectedIds.join(',')}
       data-is-new={String(p.isNew)}
       data-profile-id={p.actor.id}
@@ -85,9 +89,26 @@ beforeEach(() => {
     profile_id: 'p1',
   } as never);
   vi.mocked(getItemsByProfile).mockResolvedValue([
-    { id: 'a1', name: 'Active', archived_at: null },
+    {
+      id: 'a1',
+      name: 'Active',
+      archived_at: null,
+      hasPurchases: true,
+      // Both shapes the read can hand back: another party's claim, and one the
+      // owner holds themselves — which no tier would have withheld.
+      purchases: [
+        { id: 'c1', by: 'other', claimedByViewer: false },
+        { id: 'c2', by: 'self', name: 'Owner', claimedByViewer: true },
+      ],
+    },
     { id: 'a2', name: 'ArchivedOff', archived_at: new Date() },
-    { id: 'a3', name: 'ArchivedOn', archived_at: new Date() },
+    {
+      id: 'a3',
+      name: 'ArchivedOn',
+      archived_at: new Date(),
+      hasPurchases: false,
+      purchases: [],
+    },
   ] as never);
   vi.mocked(getListsByProfile).mockResolvedValue([
     { id: 'l1' },
@@ -145,6 +166,17 @@ describe('ChooseItemsBody', () => {
       expect(form).toHaveAttribute('data-profile-id', 'p1');
       expect(form).toHaveAttribute('data-lists-count', '2');
       expect(form).toHaveAttribute('data-is-new', 'false');
+    });
+
+    it('ItemsCarryingClaims_ForwardsNoPurchaseKeys', async () => {
+      membership.rows = [{ item_id: 'a3' }];
+      render(await ChooseItemsBody(props('l1')));
+      const form = screen.getByTestId('choose-form');
+      // Anchors the empty claim keys below: no rows forwarded produces the
+      // same empty string, so the absence has to be read against a payload
+      // that carried the claims to begin with.
+      expect(form).toHaveAttribute('data-item-ids', 'a1,a3');
+      expect(form).toHaveAttribute('data-claim-keys', '');
     });
 
     it('NewFlag_ForwardsIsNewTrue', async () => {
