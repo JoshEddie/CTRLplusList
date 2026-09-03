@@ -1,6 +1,6 @@
 import { db } from '@/db';
-import { items, list_items, lists } from '@/db/schema';
-import { and, eq, inArray } from 'drizzle-orm';
+import { items, list_items, lists, purchases } from '@/db/schema';
+import { and, eq, inArray, or } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import { hasBlocked } from '@/lib/data/profile';
 import type { UserIdentity } from '@/lib/types';
@@ -127,16 +127,27 @@ async function isListViewable(
  * The item and the list must agree on whose they are, the same rule the list
  * reads narrow by — an entry pairing someone else's item with your list is not
  * a thing anyone may claim against.
+ *
+ * A soft-removed entry is not viewable by default, which is what makes the
+ * claim gate refuse it: the owner has dropped the item, so it admits no new
+ * claims. `includeRemoved` opens it for the reveals reached from a ghost that
+ * is ON somebody's screen — managing a claim already made is not making one —
+ * and it opens it no wider than that: only the list's owner, and whoever holds
+ * a claim on the entry, are people the read path ever shows a ghost to. A
+ * caller who merely holds the two ids is refused, so the reveals cannot answer
+ * the question the read withholds.
  */
 export async function isEntryViewable(
   listId: string,
   itemId: string,
-  viewer: UserIdentity | null
+  viewer: UserIdentity | null,
+  opts: { includeRemoved?: boolean } = {}
 ): Promise<boolean> {
   const [entry] = await db
     .select({
       profile_id: lists.profile_id,
       visibility: lists.visibility,
+      shown: list_items.shown,
     })
     .from(list_items)
     .innerJoin(lists, eq(lists.id, list_items.list_id))
@@ -149,5 +160,37 @@ export async function isEntryViewable(
       )
     );
   if (!entry) return false;
+  if (!entry.shown) {
+    if (!opts.includeRemoved) return false;
+    const owns = viewer?.activeProfile.id === entry.profile_id;
+    if (!owns && !(await holdsEntryClaim(listId, itemId, viewer))) return false;
+  }
   return isListViewable(entry, viewer);
+}
+
+// Whether the viewer is a party to a claim on the entry — its purchaser, or
+// whoever recorded it. A guest's claim names no profile and is held by cookie
+// alone (ADR-0008); no guest reaches the reveals this gates, so there is
+// nothing here for one to match.
+async function holdsEntryClaim(
+  listId: string,
+  itemId: string,
+  viewer: UserIdentity | null
+): Promise<boolean> {
+  if (!viewer) return false;
+  const [held] = await db
+    .select({ id: purchases.id })
+    .from(purchases)
+    .where(
+      and(
+        eq(purchases.list_id, listId),
+        eq(purchases.item_id, itemId),
+        or(
+          eq(purchases.profile_id, viewer.selfProfile.id),
+          eq(purchases.claimed_by_profile_id, viewer.selfProfile.id)
+        )
+      )
+    )
+    .limit(1);
+  return !!held;
 }

@@ -3,6 +3,7 @@
 
 import { db } from '@/db';
 import { items, list_items, lists } from '@/db/schema';
+import { SHOWN_ENTRY } from '@/lib/data/listItems.presence';
 import { sanitizePurchases } from '@/lib/data/purchase';
 import { primaryStore } from '@/lib/storeValidity';
 import { withProfileAvatar } from '@/lib/data/profileAvatar';
@@ -109,7 +110,14 @@ export async function getItemById(id: string, profileId: string) {
       with: {
         stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
         images: { orderBy: (images, { asc }) => [asc(images.id)] },
+        // Soft-removed entries are omitted at every tier. The ghost is
+        // per-item claim state, and this read is not viewer-scoped — it is
+        // cached on (item, profile) alone — so there is no tier here to gate
+        // it by, and disclosing it unconditionally would tell a protected
+        // owner that somebody has claimed (ADR-0015). The list page is where
+        // an owner at `claims` sees the ghost.
         list_items: {
+          where: () => SHOWN_ENTRY,
           with: {
             list: true,
           },
@@ -166,28 +174,58 @@ export async function getItemsByListId(
   opts: {
     viewerSelfProfileId?: string;
     tier?: SpoilerTier;
+    /** The viewer is looking at their own list AS its owner — false in the owner's viewer preview. */
+    isOwner?: boolean;
+    /** Claim ids a signed-out viewer holds by cookie, so a guest is a claim holder too (ADR-0008). */
+    heldClaimIds?: readonly string[];
   } = {}
 ) {
   const rows = await rawItemsByListId(listId);
   const tier = opts.tier ?? MAXIMAL_TIER;
-  return rows.map(({ claimed_units, ...item }) => {
-    const purchases = sanitizePurchases(
-      item.purchases,
-      opts.viewerSelfProfileId,
-      tier
-    );
-    return {
-      ...item,
-      hasPurchases: purchases.length > 0,
-      purchases,
-      // The entry's own number, summed before the projection rather than from
-      // it: a projected claim carries its units only where the viewer may see
-      // them, so the array is not the answer at every tier. Withheld with
-      // everything else the tier conceals — a count sent to a viewer whose
-      // claim array was emptied would be a passive leak.
-      claimed_units: atLeast(tier, 'claims') ? claimed_units : undefined,
-    };
-  });
+  const heldClaimIds = new Set(opts.heldClaimIds ?? []);
+  const holdsClaim = (claim: {
+    id: string;
+    profile_id: string | null;
+    claimed_by_profile_id: string | null;
+  }) =>
+    heldClaimIds.has(claim.id) ||
+    (!!opts.viewerSelfProfileId &&
+      (claim.profile_id === opts.viewerSelfProfileId ||
+        claim.claimed_by_profile_id === opts.viewerSelfProfileId));
+
+  // A soft-removed entry survives only for the people it survives FOR: whoever
+  // holds a claim on it, so they keep their record and their ability to manage
+  // it, and the owner once their tier already discloses per-item claim state.
+  // `claims` is that tier and not one below it — the ghost's presence says this
+  // entry is claimed, which is exactly what `progress` withholds, and an owner
+  // at the protected tier must see removal behave identically either way
+  // (ADR-0015). Everyone else must not be able to tell the entry was here.
+  const ownerSeesRemoved = !!opts.isOwner && atLeast(tier, 'claims');
+
+  return rows
+    .filter(
+      ({ shown, purchases }) =>
+        shown || ownerSeesRemoved || purchases.some(holdsClaim)
+    )
+    .map(({ claimed_units, shown, ...item }) => {
+      const purchases = sanitizePurchases(
+        item.purchases,
+        opts.viewerSelfProfileId,
+        tier
+      );
+      return {
+        ...item,
+        removed: !shown,
+        hasPurchases: purchases.length > 0,
+        purchases,
+        // The entry's own number, summed before the projection rather than from
+        // it: a projected claim carries its units only where the viewer may see
+        // them, so the array is not the answer at every tier. Withheld with
+        // everything else the tier conceals — a count sent to a viewer whose
+        // claim array was emptied would be a passive leak.
+        claimed_units: atLeast(tier, 'claims') ? claimed_units : undefined,
+      };
+    });
 }
 
 async function rawItemsByListId(listId: string) {
@@ -254,10 +292,11 @@ async function rawItemsByListId(listId: string) {
     cacheTag(...itemRowTags(result.map((row) => row.item)));
 
     return result.map(
-      ({ list_id, quantity, item: { images, stores, ...item } }) => ({
+      ({ list_id, quantity, shown, item: { images, stores, ...item } }) => ({
         ...item,
         list_id,
         quantity,
+        shown,
         claimed_units: item.purchases.reduce((sum, p) => sum + p.units, 0),
         image_url: images[0]?.url ?? null,
         store: primaryStore(stores),

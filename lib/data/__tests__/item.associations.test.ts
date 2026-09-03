@@ -5,8 +5,8 @@ import {
   setTestCookie,
 } from '@/test/helpers/next-headers';
 
-import { eq } from 'drizzle-orm';
-import { list_items, lists } from '@/db/schema';
+import { and, eq } from 'drizzle-orm';
+import { list_items, lists, purchases } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
@@ -22,6 +22,7 @@ import {
   seedItem,
   seedList,
   seedListItem,
+  seedPurchase,
   type TestDb,
 } from './test-helpers';
 
@@ -201,6 +202,57 @@ describe('updateItemLists', () => {
     expect(
       await db.select().from(list_items).where(eq(list_items.list_id, 'A'))
     ).toHaveLength(1);
+  });
+
+  describe('SoftRemoval', () => {
+    beforeEach(async () => {
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedList(db, { id: 'A', user_id: OWNER.id });
+      await seedList(db, { id: 'B', user_id: OWNER.id });
+      await seedListItem(db, { list_id: 'A', item_id: 'I', position: 65536 });
+      await seedPurchase(db, {
+        id: 'P',
+        item_id: 'I',
+        list_id: 'A',
+        guest_name: 'Guest',
+      });
+    });
+
+    it('ClaimedListDeselected_KeepsTheRowUnshown-KeepsTheClaim', async () => {
+      await associations.updateItemLists([], 'I');
+
+      const rows = await db
+        .select()
+        .from(list_items)
+        .where(eq(list_items.item_id, 'I'));
+      expect(rows.map((r) => [r.list_id, r.shown])).toEqual([['A', false]]);
+      expect(await db.select().from(purchases)).toHaveLength(1);
+    });
+
+    it('SoftRemovedListReselected_RestoresItAtTheEnd', async () => {
+      await associations.updateItemLists([], 'I');
+      await seedItem(db, { id: 'J', user_id: OWNER.id });
+      await seedListItem(db, { list_id: 'A', item_id: 'J', position: 131072 });
+
+      await associations.updateItemLists(['A'], 'I');
+
+      const [restored] = await db
+        .select()
+        .from(list_items)
+        .where(and(eq(list_items.item_id, 'I'), eq(list_items.list_id, 'A')));
+      expect({ shown: restored.shown, position: restored.position }).toEqual({
+        shown: true,
+        position: 196608,
+      });
+    });
+
+    it('SoftRemovedListLeftUnselected_TouchesNothing', async () => {
+      await associations.updateItemLists([], 'I');
+      updateTag.mockClear();
+
+      await associations.updateItemLists([], 'I');
+      expect(contentTagCalls(updateTag)).toEqual([]);
+    });
   });
 
   describe('UpdateRecency', () => {

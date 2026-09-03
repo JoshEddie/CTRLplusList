@@ -127,6 +127,8 @@ describe('ItemsContainer', () => {
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
         viewerSelfProfileId: 'v2',
         tier: MAXIMAL_TIER,
+        isOwner: undefined,
+        heldClaimIds: undefined,
       });
       const browser = screen.getByTestId('items-browser');
       expect(browser).toHaveAttribute('data-mode', 'list');
@@ -139,8 +141,28 @@ describe('ItemsContainer', () => {
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
         viewerSelfProfileId: 'self-viewer',
         tier: undefined,
+        isOwner: undefined,
+        heldClaimIds: undefined,
       });
       expect(getItemsByProfile).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('OwnerFlag', () => {
+    it('IsOwnerTrue_ForwardsIsOwnerToTheListRead', async () => {
+      render(
+        await ItemsContainer({
+          listId: 'list1',
+          isOwner: true,
+          tier: MAXIMAL_TIER,
+        })
+      );
+      expect(getItemsByListId).toHaveBeenCalledWith('list1', {
+        viewerSelfProfileId: 'self-viewer',
+        tier: MAXIMAL_TIER,
+        isOwner: true,
+        heldClaimIds: undefined,
+      });
     });
   });
 
@@ -152,6 +174,8 @@ describe('ItemsContainer', () => {
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
         viewerSelfProfileId: undefined,
         tier: undefined,
+        isOwner: undefined,
+        heldClaimIds: undefined,
       });
     });
   });
@@ -192,6 +216,21 @@ describe('ItemsContainer', () => {
         { id: 'p1', by: 'self', name: 'Gifty', claimedByViewer: true },
         { id: 'p2', by: 'other', name: 'Someone', claimedByViewer: false },
       ]);
+    });
+
+    // The cookie is a guest's only handle on their own claims (ADR-0008), so
+    // it is also what tells a soft-removed entry they hold apart from one they
+    // may not see — and the read needs it BEFORE it decides which rows to
+    // return, not after.
+    it('SessionlessWithCookie_ForwardsTheCookiesClaimIdsAsHeldClaimIds', async () => {
+      vi.mocked(auth).mockResolvedValue(null as never);
+      render(await ItemsContainer({ listId: 'list1' }));
+      expect(getItemsByListId).toHaveBeenCalledWith('list1', {
+        viewerSelfProfileId: undefined,
+        tier: undefined,
+        isOwner: undefined,
+        heldClaimIds: ['p1'],
+      });
     });
 
     it('AuthedWithLeftoverCookie_LeavesClaimsUntouched', async () => {

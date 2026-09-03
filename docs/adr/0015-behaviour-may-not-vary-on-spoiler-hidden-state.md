@@ -13,15 +13,25 @@ owner "you cannot do that, someone has claimed it" is not implementable as
 stated; it must either behave identically in both cases, or surface the
 difference only above `claims`.
 
-Only one part of the app actively enforces this. An owner below `claims` who
+Three parts of the app actively enforce this. An owner below `claims` who
 opens Add claim or Manage claim is routed through `setPendingReveal` into a
 "This could spoil a surprise" confirmation, worded differently depending on
 whether the count or the claimers' names would be exposed — the disclosure is
-gated on consent rather than suppressed. `isFullyClaimed` is the other
+gated on consent rather than suppressed. `isFullyClaimed` is the second
 deliberate instance: derived from the entry's claimed-unit count, which the
 read withholds below `claims` alongside the claims themselves — so a `progress`
 viewer sees a fully-claimed item as claimable and the sold-out treatment never
 appears.
+
+Soft removal is the third, and the one where the *mechanism* rather than a
+payload is what had to be gated. Removing an item from a list deletes the entry
+when it carries no claims and keeps it hidden when it does, so the surviving
+ghost states that somebody has claimed. `getItemsByListId` therefore withholds
+it from its own owner below `claims`, and `getItemById` — which is cached per
+item and has no tier to consult — withholds it from every reader; the two
+together are what make removal look identical to a protected owner whether or
+not the entry was claimed. The people the entry survives for reach it by
+holding a claim on it, which is not a tier question at all.
 
 Everywhere else the principle holds because nothing branches on claim state at
 all. That is the absence of a violation, not the presence of a guard: there is

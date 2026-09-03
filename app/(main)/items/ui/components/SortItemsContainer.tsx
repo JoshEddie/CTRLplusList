@@ -20,6 +20,9 @@ export default async function SortItemsContainer({
   const items: ItemDisplay[] = await getItemsByListId(listId, {
     viewerSelfProfileId: identity?.selfProfile.id,
     tier,
+    // This container renders only on the owner's own list, outside preview —
+    // ListItemsSection reaches it by no other route.
+    isOwner: true,
   });
 
   const actor = identity?.activeProfile;

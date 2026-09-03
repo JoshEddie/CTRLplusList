@@ -56,6 +56,9 @@ export default async function ListItemsSection({
       listId={id}
       viewerSelfProfileId={identity?.selfProfile.id}
       tier={tier}
+      // Preview is the owner asking to be shown their list as a viewer, so it
+      // withdraws the ghost entries along with everything else owner-only.
+      isOwner={isOwner && !previewMode}
     />
   );
 }

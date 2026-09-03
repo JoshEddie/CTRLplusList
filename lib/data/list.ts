@@ -7,6 +7,7 @@ import {
   profiles,
 } from '@/db/schema';
 import { cacheTags, profileIdentityTags } from '@/lib/cacheTags';
+import { SHOWN_ENTRY } from '@/lib/data/listItems.presence';
 import {
   accentPreferences,
   avatarColumns,
@@ -67,7 +68,13 @@ export async function getList(id: string) {
       .innerJoin(profiles, eq(profiles.id, lists.profile_id))
       .leftJoin(profile_avatars, eq(profile_avatars.profile_id, profiles.id))
       .leftJoin(accentPreferences, eq(accentPreferences.profile_id, profiles.id))
-      .leftJoin(list_items, eq(list_items.list_id, lists.id))
+      // Soft-removed entries are not on the list any more, whoever is looking:
+      // the count is one number for every viewer, so it answers for the list
+      // the owner asked for rather than for the ghosts a claim keeps alive.
+      .leftJoin(
+        list_items,
+        and(eq(list_items.list_id, lists.id), SHOWN_ENTRY)
+      )
       .leftJoin(
         items,
         and(

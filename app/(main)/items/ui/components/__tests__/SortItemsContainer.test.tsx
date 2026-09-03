@@ -77,6 +77,7 @@ describe('SortItemsContainer', () => {
     expect(getItemsByListId).toHaveBeenCalledWith('l1', {
       viewerSelfProfileId: 'p1',
       tier: MAXIMAL_TIER,
+      isOwner: true,
     });
     const sort = screen.getByTestId('sort-items');
     expect(sort).toHaveAttribute('data-item-count', '2');
@@ -102,6 +103,7 @@ describe('SortItemsContainer', () => {
     expect(getItemsByListId).toHaveBeenCalledWith('l1', {
       viewerSelfProfileId: undefined,
       tier: PROTECTED_TIER,
+      isOwner: true,
     });
     expect(screen.getByTestId('sort-items')).toHaveAttribute(
       'data-profile-id',

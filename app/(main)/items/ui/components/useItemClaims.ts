@@ -39,6 +39,27 @@ function entryLineOf(
   );
 }
 
+// The list entry a card was read through, or null on the item library, which
+// spans every list and so has no entry to claim against. One discriminator for
+// the whole hook: the id and the capacity arrive together or not at all, so
+// nothing downstream can test one and assume the other.
+//
+// `claimedUnits` is the entry's own number, never summed from the projected
+// claims — a per-claim unit count is not something the claims tier discloses.
+// `unitDelta` keeps an optimistic claim visible until the page re-reads, and
+// moves with the units a claim covers rather than by one per row.
+function entryOf(item: ItemDisplay, unitDelta: number) {
+  if (item.list_id === undefined || item.quantity === undefined) return null;
+  return {
+    listId: item.list_id,
+    quantity: item.quantity,
+    claimedUnits: (item.claimed_units ?? 0) + unitDelta,
+    // Soft-removed: still an entry, and still one whose claims are managed,
+    // but the owner has dropped the item so it takes no new ones.
+    removed: !!item.removed,
+  };
+}
+
 // A claim's own unit count where the viewer may see it, and one otherwise —
 // the claims-tier stub for another party's claim carries none. The fallback
 // only has to be stable, not true: the stubs are identical on both sides of
@@ -89,28 +110,15 @@ export function useItemClaims({
     null
   );
 
-  // The list entry this card was read through, or null on the item library,
-  // which spans every list and so has no entry to claim against. One
-  // discriminator for the whole hook: the id and the capacity arrive together
-  // or not at all, so nothing downstream can test one and assume the other.
-  //
-  // `claimedUnits` is the entry's own number, never summed from the projected
-  // claims — a per-claim unit count is not something the claims tier
-  // discloses. The local delta keeps an optimistic claim visible until the
-  // page re-reads, and moves with the units a claim covers rather than by one
-  // per row.
-  const entry =
-    item.list_id !== undefined && item.quantity !== undefined
-      ? {
-          listId: item.list_id,
-          quantity: item.quantity,
-          claimedUnits:
-            (item.claimed_units ?? 0) +
-            (sumUnits(claims) - sumUnits(propPurchases)),
-        }
-      : null;
+  const entry = entryOf(item, sumUnits(claims) - sumUnits(propPurchases));
   const isFullyClaimed = !!entry && entry.claimedUnits >= entry.quantity;
   const claimable = !!entry;
+  // The one card that carries an entry and still takes no new claim: the owner
+  // dropped the item, and the only reason a removed one is on the page at all
+  // is a claim somebody already holds. Managing that claim is row-based, so it
+  // is unaffected — and the entry's capacity is still real, which is why this
+  // is a second signal rather than a narrowing of `claimable`.
+  const acceptsClaims = claimable && !entry.removed;
   const entryListId = entry?.listId;
 
   // Claims this viewer can remove: their own (purchaser) or ones they
@@ -323,6 +331,7 @@ export function useItemClaims({
     // No entry, no claim: the library's items span every list and some sit on
     // none, so the affordance that creates a claim is not offered there.
     claimable,
+    acceptsClaims,
     // What a units control may offer. Null off a list, which is what withdraws
     // the control entirely — the same discriminator the claim affordance uses.
     capacity: entry
@@ -333,7 +342,7 @@ export function useItemClaims({
       : null,
     showBuyClaim:
       !!actor &&
-      claimable &&
+      acceptsClaims &&
       !isOwner &&
       !isFullyClaimed &&
       !hasViewerClaim &&

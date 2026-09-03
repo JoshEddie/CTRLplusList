@@ -13,13 +13,18 @@ import {
   reorderPosition,
 } from '@/lib/data/listItems.positions';
 import {
+  attachEntries,
+  detachEntries,
+  presenceDiff,
+} from '@/lib/data/listItems.presence';
+import {
   ENTRY_QUANTITY_ERROR,
   EntryQuantitySchema,
 } from '@/lib/data/listItems.schema';
 import { ADMIN_OPTIONAL, authedWriter } from '@/lib/data/profile.gate';
 import { type ActionResponse } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 
 export async function setListItems(
@@ -71,13 +76,13 @@ export async function setListItems(
 
     const incomingIds = new Set(parsed.data);
     const existing = await db
-      .select({ item_id: list_items.item_id })
+      .select({ item_id: list_items.item_id, shown: list_items.shown })
       .from(list_items)
       .where(eq(list_items.list_id, list_id));
-    const existingIds = new Set(existing.map((r) => r.item_id));
-
-    const toRemove = [...existingIds].filter((id) => !incomingIds.has(id));
-    const toInsert = [...incomingIds].filter((id) => !existingIds.has(id));
+    const { attach: toInsert, detach: toRemove } = presenceDiff(
+      existing.filter((r) => r.shown).map((r) => r.item_id),
+      [...incomingIds]
+    );
 
     if (toRemove.length === 0 && toInsert.length === 0) {
       return { success: true, message: 'No changes' };
@@ -100,36 +105,8 @@ export async function setListItems(
       }
     }
 
-    if (toRemove.length > 0) {
-      await db
-        .delete(list_items)
-        .where(
-          and(
-            eq(list_items.list_id, list_id),
-            inArray(list_items.item_id, toRemove)
-          )
-        );
-    }
-
-    if (toInsert.length > 0) {
-      const baseResult = await db
-        .select({
-          base: sql<number>`COALESCE(MAX(${list_items.position}) + 65536, 65536)`,
-        })
-        .from(list_items)
-        .where(eq(list_items.list_id, list_id))
-        .limit(1);
-      /* v8 ignore next -- the COALESCE in the query guarantees a row with a numeric base, so the ?. and ?? 65536 fallbacks are unreachable */
-      const basePosition = Math.floor(baseResult[0]?.base ?? 65536);
-
-      await db.insert(list_items).values(
-        toInsert.map((item_id, index) => ({
-          list_id,
-          item_id,
-          position: basePosition + index * 65536,
-        }))
-      );
-    }
+    await detachEntries(list_id, toRemove);
+    await attachEntries(list_id, toInsert);
 
     await touchLists([list_id]);
 
@@ -202,13 +179,8 @@ export async function removeListItem(
       return list.error;
     }
 
-    const deleted = await db
-      .delete(list_items)
-      .where(
-        and(eq(list_items.list_id, list_id), eq(list_items.item_id, item_id))
-      )
-      .returning({ item_id: list_items.item_id });
-    if (deleted.length === 0) {
+    const detached = await detachEntries(list_id, [item_id]);
+    if (detached.length === 0) {
       return {
         success: false,
         message: 'Item is not on this list',

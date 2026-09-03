@@ -51,12 +51,14 @@ vi.mock('@/app/(main)/items/ui/components/ItemsContainer', () => ({
     listId: string;
     viewerSelfProfileId?: string;
     tier?: string;
+    isOwner?: boolean;
   }) => (
     <div
       data-testid="items-container"
       data-list-id={p.listId}
       data-viewer-self-profile-id={p.viewerSelfProfileId ?? ''}
       data-tier={String(p.tier)}
+      data-is-owner={String(p.isOwner)}
     />
   ),
 }));
@@ -140,6 +142,22 @@ describe('ListItemsSection', () => {
     const c = screen.getByTestId('items-container');
     expect(c).toHaveAttribute('data-tier', 'surprise');
     expect(c).toHaveAttribute('data-viewer-self-profile-id', 'p-u1');
+  });
+
+  it('OwnerPreviewMode_MountsItemsContainerAsNonOwner', async () => {
+    render(await ListItemsSection(props('l1', { preview: 'viewer' })));
+    expect(screen.getByTestId('items-container')).toHaveAttribute(
+      'data-is-owner',
+      'false'
+    );
+  });
+
+  it('OwnerWithAStoreFilter_MountsItemsContainerAsOwner', async () => {
+    render(await ListItemsSection(props('l1', { store: 'Amazon' })));
+    expect(screen.getByTestId('items-container')).toHaveAttribute(
+      'data-is-owner',
+      'true'
+    );
   });
 
   it('OwnerOnlyListNonOwner_RendersNothing', async () => {

@@ -74,6 +74,23 @@ describe('getList', () => {
     expect(list?.item_count).toBe(1);
   });
 
+  it('SoftRemovedEntry_ExcludedFromItemCount', async () => {
+    await seedUsers(db, [{ id: 'owner' }]);
+    await seedList(db, { id: 'l1', user_id: 'owner' });
+    await seedItem(db, { id: 'kept', user_id: 'owner' });
+    await seedItem(db, { id: 'gone', user_id: 'owner' });
+    await seedListItem(db, { list_id: 'l1', item_id: 'kept', position: 1 });
+    await seedListItem(db, {
+      list_id: 'l1',
+      item_id: 'gone',
+      position: 2,
+      shown: false,
+    });
+
+    const list = await dal.getList('l1');
+    expect(list?.item_count).toBe(1);
+  });
+
   it('UnknownId_ReturnsUndefined', async () => {
     expect(await dal.getList('missing')).toBeUndefined();
   });

@@ -92,6 +92,19 @@ creates its entry at quantity 1. Stored as `list_items`, whose name reads like a
 pure join table even though what it carries belongs to the entry rather than to
 the item or the list.
 
+**Soft removal**:
+What taking a *claimed* item off a list does. Removing an unclaimed entry
+deletes it outright; removing one that carries claims keeps the row and hides
+it, so the owner stops seeing it, the people holding claims keep both the record
+and the ability to manage them, and no new claim can land on it. Re-adding the
+same item restores the entry, its quantity, and its claims, at the **end** of
+the list — no position survives a removal. The ghost is per-item claim state, so
+it reaches its owner only at the `claims` tier: below that, removal looks
+identical whether or not anyone had claimed
+([ADR-0015](docs/adr/0015-behaviour-may-not-vary-on-spoiler-hidden-state.md)).
+_Avoid_: archived, deleted — the entry is neither, and only a claim can put one
+in this state.
+
 **Quantity**:
 How many of an item its owner wants **on one list** — the only quantity there
 is, since an item carries none of its own. The same item asked for once at a

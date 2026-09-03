@@ -34,7 +34,7 @@ function renderCard(
     fullyClaimed: false,
     entryLine: '0/3 claimed',
     hasAnyClaim: false,
-    claimable: true,
+    acceptsClaims: true,
     tier: 'claims',
     onPurchaseClick: vi.fn(),
     onAddClaimClick: vi.fn(),
@@ -200,6 +200,36 @@ describe('ItemCard', () => {
       expect(container.querySelector('.item-price')).toHaveTextContent(
         '$35.50'
       );
+    });
+  });
+
+  describe('SoftRemovedEntry', () => {
+    const removedItem = {
+      id: 'i1',
+      name: 'Gift',
+      description: '',
+      image_url: '',
+      store: null,
+      removed: true,
+    } as never;
+
+    it('Viewer_RendersYourClaimStillStandsNote', () => {
+      renderCard({ item: removedItem, acceptsClaims: false });
+      expect(
+        screen.getByText('Removed from this list — your claim still stands')
+      ).toBeInTheDocument();
+    });
+
+    it('Owner_RendersKeptBecauseItCarriesClaimsNote', () => {
+      renderCard({ item: removedItem, isOwner: true, acceptsClaims: false });
+      expect(
+        screen.getByText('Removed — kept because it carries claims')
+      ).toBeInTheDocument();
+    });
+
+    it('ShownEntry_OmitsTheNote', () => {
+      renderCard();
+      expect(screen.queryByText(/^Removed/)).not.toBeInTheDocument();
     });
   });
 

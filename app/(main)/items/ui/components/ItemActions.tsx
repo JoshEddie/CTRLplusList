@@ -16,8 +16,8 @@ type ItemActionsProps = {
   guestViewer?: boolean;
   /** The item carries claims the viewer's resolved tier discloses. */
   hasAnyClaim: boolean;
-  /** A list entry exists to claim against. False on the item library, which spans every list and so names none. */
-  claimable: boolean;
+  /** A list entry exists to claim against and still takes new claims. False on the item library, which spans every list and so names none, and on a soft-removed entry, which the owner has dropped. */
+  acceptsClaims: boolean;
   /** The viewer's resolved tier (`spoiler-visibility`). */
   tier: SpoilerTier;
   /** Authed non-owner Buy & Claim signal. */
@@ -42,7 +42,7 @@ export default function ItemActions({
   viewerClaimed,
   guestViewer,
   hasAnyClaim,
-  claimable,
+  acceptsClaims,
   tier,
   showBuyClaim,
   store,
@@ -66,10 +66,11 @@ export default function ItemActions({
   const ownerCanAdd = revealed ? !fullyClaimed && !hasAnyClaim : !viewerClaimed;
   const nonOwnerCanAdd = !claimedGuest && (!revealed || !fullyClaimed);
   // No entry, no claim: a claim is made against an item's presence on a list,
-  // so a surface that names no list offers no way to create one. Managing a
-  // claim that already exists is unaffected — removal is row-based.
+  // so a surface that names no list offers no way to create one, and neither
+  // does an entry the owner has removed. Managing a claim that already exists
+  // is unaffected — removal is row-based.
   const showAdd =
-    !viewOnly && claimable && (isOwner ? ownerCanAdd : nonOwnerCanAdd);
+    !viewOnly && acceptsClaims && (isOwner ? ownerCanAdd : nonOwnerCanAdd);
   // Keyed on a navigable link, never mere store presence — a PRICED/linkless
   // item must keep its Add Claim-only action set (design D-Linkless-256).
   const showBuy = !viewOnly && revealed && !!showBuyClaim && !!store?.link;

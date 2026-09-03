@@ -92,6 +92,8 @@ export const en = {
   entry_quantity_save_label: 'Save',
   entry_quantity_title: 'How many do you want?',
   entry_quantity_wanted: '{quantity, plural, other {# wanted}}',
+  entry_removed_owner: 'Removed — kept because it carries claims',
+  entry_removed_viewer: 'Removed from this list — your claim still stands',
   owner_name_placeholder: 'the owner',
   someone_name_placeholder: 'Someone',
   stepper_decrease_label: 'Decrease',

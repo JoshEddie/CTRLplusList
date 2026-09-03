@@ -107,6 +107,7 @@ export async function seedListItem(
     item_id: string;
     position: number;
     quantity?: number;
+    shown?: boolean;
   }
 ): Promise<void> {
   await db.insert(list_items).values(row);
