@@ -56,11 +56,13 @@ function renderContainer(
     isOwner: false,
     tier: 'claims',
     claims: [],
+    capacity: { quantity: 1, remaining: 1 },
     item: ITEM,
     onSelfClaim: vi.fn(),
     onAttributedClaim: vi.fn(),
     onGuestClaim: vi.fn(),
     onRemoveClaim: vi.fn(),
+    onUpdateUnits: vi.fn(),
     ...overrides,
   };
   render(<PurchaseFlowContainer {...props} />);
@@ -146,7 +148,7 @@ describe('PurchaseFlowContainer', () => {
       const { onGuestClaim } = renderContainer({ actor: undefined });
       await user.type(screen.getByLabelText('Your name'), '  Bob  ');
       await user.click(screen.getByRole('button', { name: 'Claim as Guest' }));
-      expect(onGuestClaim).toHaveBeenCalledWith('Bob');
+      expect(onGuestClaim).toHaveBeenCalledWith('Bob', 1);
     });
   });
 
@@ -207,7 +209,7 @@ describe('PurchaseFlowContainer', () => {
       await user.click(
         screen.getByRole('button', { name: 'Confirm — Sam Smith' })
       );
-      expect(onAttributedClaim).toHaveBeenCalledWith(PICKER.pool[0]);
+      expect(onAttributedClaim).toHaveBeenCalledWith(PICKER.pool[0], 1);
     });
 
     it('SelectedRowSecondClick_DeselectsAndHidesConfirm', async () => {
@@ -257,7 +259,7 @@ describe('PurchaseFlowContainer', () => {
       await user.click(
         screen.getByRole('button', { name: 'Confirm — Aunt May' })
       );
-      expect(onGuestClaim).toHaveBeenCalledWith('Aunt May');
+      expect(onGuestClaim).toHaveBeenCalledWith('Aunt May', 1);
     });
 
     it('SelectionAndFreeText_MutuallyExclusive', async () => {
@@ -338,11 +340,13 @@ describe('PurchaseFlowContainer', () => {
         isOwner: false,
         tier: 'claims',
         claims: [],
+        capacity: { quantity: 1, remaining: 1 },
         item: ITEM,
         onSelfClaim: vi.fn(),
         onAttributedClaim: vi.fn(),
         onGuestClaim: vi.fn(),
         onRemoveClaim: vi.fn(),
+        onUpdateUnits: vi.fn(),
       };
       const { rerender } = render(<PurchaseFlowContainer {...props} />);
       rerender(
@@ -378,11 +382,13 @@ describe('PurchaseFlowContainer', () => {
         isOwner: false,
         tier: 'claims',
         claims: [],
+        capacity: { quantity: 1, remaining: 1 },
         item: ITEM,
         onSelfClaim: vi.fn(),
         onAttributedClaim: vi.fn(),
         onGuestClaim: vi.fn(),
         onRemoveClaim: vi.fn(),
+        onUpdateUnits: vi.fn(),
       };
       const { rerender } = render(<PurchaseFlowContainer {...props} />);
       rerender(
@@ -586,6 +592,119 @@ describe('PurchaseFlowContainer', () => {
       expect(
         screen.getByRole('button', { name: "Remove Bob's claim" })
       ).toBeEnabled();
+    });
+  });
+
+  // Capacity is measured in units, so one purchaser can take some or all of
+  // what is wanted. An entry asking for one is unchanged — no control at all.
+  describe('UnitStepper', () => {
+    const unitsField = () => screen.getByLabelText('How many?');
+
+    it('EntryAskingForOne_RendersNoStepper', async () => {
+      renderContainer({ capacity: { quantity: 1, remaining: 1 } });
+      await screen.findByRole('button', { name: 'Claim this gift' });
+
+      expect(screen.queryByLabelText('How many?')).not.toBeInTheDocument();
+    });
+
+    it('MultiUnitEntry_StepperCapsAtWhatRemains', async () => {
+      renderContainer({ capacity: { quantity: 4, remaining: 3 } });
+      await screen.findByRole('button', { name: 'Claim this gift' });
+
+      expect(unitsField()).toHaveAttribute('max', '3');
+      expect(unitsField()).toHaveValue(1);
+    });
+
+    it('ChosenUnits_CarriedByTheSelfClaim', async () => {
+      const user = userEvent.setup();
+      const { onSelfClaim } = renderContainer({
+        capacity: { quantity: 4, remaining: 4 },
+      });
+      await screen.findByRole('button', { name: 'Claim this gift' });
+
+      await user.clear(unitsField());
+      await user.type(unitsField(), '3');
+      await user.click(screen.getByRole('button', { name: 'Claim this gift' }));
+
+      expect(onSelfClaim).toHaveBeenCalledWith(3);
+    });
+
+    it('UnitsTypedBeyondTheRemainder_ClampedToIt', async () => {
+      const user = userEvent.setup();
+      const { onSelfClaim } = renderContainer({
+        capacity: { quantity: 9, remaining: 2 },
+      });
+      await screen.findByRole('button', { name: 'Claim this gift' });
+
+      await user.clear(unitsField());
+      await user.type(unitsField(), '9');
+      await user.click(screen.getByRole('button', { name: 'Claim this gift' }));
+
+      expect(onSelfClaim).toHaveBeenCalledWith(2);
+    });
+
+    it('EmptiedUnitsField_FallsBackToOneUnit', async () => {
+      const user = userEvent.setup();
+      const { onSelfClaim } = renderContainer({
+        capacity: { quantity: 4, remaining: 4 },
+      });
+      await screen.findByRole('button', { name: 'Claim this gift' });
+
+      await user.clear(unitsField());
+      await user.click(screen.getByRole('button', { name: 'Claim this gift' }));
+
+      expect(onSelfClaim).toHaveBeenCalledWith(1);
+    });
+
+    it('MultiUnitEntry_StepperNamesWhatIsStillFree', async () => {
+      renderContainer({ capacity: { quantity: 4, remaining: 3 } });
+      await screen.findByRole('button', { name: 'Claim this gift' });
+
+      expect(screen.getByText('3 left')).toBeInTheDocument();
+    });
+
+    // Below `claims` the page's payload withholds what is claimed, so its
+    // remainder reads as the whole quantity. The control waits for the reveal
+    // rather than offering a cap it would take back.
+    it('BelowClaimsBeforeTheReveal_RendersNoStepper', () => {
+      vi.mocked(claimSummaryForEntry).mockReturnValue(new Promise(() => {}));
+      renderContainer({
+        tier: 'surprise',
+        capacity: { quantity: 4, remaining: 4 },
+      });
+
+      expect(screen.queryByLabelText('How many?')).not.toBeInTheDocument();
+    });
+
+    it('BelowClaimsAfterTheReveal_StepperCapsAtTheRevealedRemainder', async () => {
+      vi.mocked(claimSummaryForEntry).mockResolvedValue({
+        claimedUnits: 3,
+        remaining: 1,
+      });
+      renderContainer({
+        tier: 'surprise',
+        capacity: { quantity: 4, remaining: 4 },
+      });
+
+      expect(await screen.findByLabelText('How many?')).toHaveAttribute(
+        'max',
+        '1'
+      );
+    });
+
+    it('ChosenUnits_CarriedByAGuestClaim', async () => {
+      const user = userEvent.setup();
+      const { onGuestClaim } = renderContainer({
+        actor: undefined,
+        capacity: { quantity: 4, remaining: 4 },
+      });
+
+      await user.clear(unitsField());
+      await user.type(unitsField(), '2');
+      await user.type(screen.getByLabelText('Your name'), 'Grandma');
+      await user.click(screen.getByRole('button', { name: 'Claim as Guest' }));
+
+      expect(onGuestClaim).toHaveBeenCalledWith('Grandma', 2);
     });
   });
 });

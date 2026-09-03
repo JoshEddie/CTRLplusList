@@ -128,6 +128,7 @@ describe('getItemsByPurchased', () => {
     const byId = Object.fromEntries(rows[0].purchases.map((p) => [p.id, p]));
     expect(byId.mine).toEqual({
       id: 'mine',
+      units: 1,
       by: 'self',
       name: 'Bea',
       claimedByViewer: false,
@@ -230,6 +231,7 @@ describe('sanitizePurchases', () => {
     purchased_at: CLAIMED_AT,
     id: 'p1',
     profile_id: 'bea',
+    units: 1,
     claimed_by_profile_id: 'carl',
     guest_name: null,
     purchaserProfile: {
@@ -245,6 +247,7 @@ describe('sanitizePurchases', () => {
       const [view] = dal.sanitizePurchases([attributedRow], 'bea', 'revealed');
       expect(view).toEqual({
         id: 'p1',
+        units: 1,
         purchasedAt: CLAIMED_AT,
         avatar: {
           name: 'Bea Buyer',
@@ -263,6 +266,7 @@ describe('sanitizePurchases', () => {
       const [view] = dal.sanitizePurchases([attributedRow], 'carl', 'revealed');
       expect(view).toEqual({
         id: 'p1',
+        units: 1,
         purchasedAt: CLAIMED_AT,
         avatar: {
           name: 'Bea Buyer',
@@ -285,6 +289,7 @@ describe('sanitizePurchases', () => {
       );
       expect(view).toEqual({
         id: 'p1',
+        units: 1,
         purchasedAt: CLAIMED_AT,
         avatar: {
           name: 'Bea Buyer',
@@ -306,6 +311,7 @@ describe('sanitizePurchases', () => {
             id: 'p3',
             purchased_at: CLAIMED_AT,
             profile_id: 'own',
+            units: 1,
             claimed_by_profile_id: 'own',
             guest_name: null,
             purchaserProfile: { name: 'Olive Owner' },
@@ -317,6 +323,7 @@ describe('sanitizePurchases', () => {
       );
       expect(view).toEqual({
         id: 'p3',
+        units: 1,
         purchasedAt: CLAIMED_AT,
         avatar: {
           name: 'Olive Owner',
@@ -337,6 +344,7 @@ describe('sanitizePurchases', () => {
             id: 'p2',
             purchased_at: CLAIMED_AT,
             profile_id: null,
+            units: 1,
             claimed_by_profile_id: 'carl',
             guest_name: 'Mom',
             purchaserProfile: null,
@@ -348,6 +356,7 @@ describe('sanitizePurchases', () => {
       );
       expect(view).toEqual({
         id: 'p2',
+        units: 1,
         purchasedAt: CLAIMED_AT,
         by: 'other',
         name: 'Mom',
@@ -363,6 +372,7 @@ describe('sanitizePurchases', () => {
             id: 'p4',
             purchased_at: CLAIMED_AT,
             profile_id: null,
+            units: 1,
             claimed_by_profile_id: null,
             guest_name: 'Grandma',
             purchaserProfile: null,
@@ -374,6 +384,7 @@ describe('sanitizePurchases', () => {
       );
       expect(view).toEqual({
         id: 'p4',
+        units: 1,
         purchasedAt: CLAIMED_AT,
         by: 'other',
         name: 'Grandma',
@@ -397,6 +408,27 @@ describe('sanitizePurchases', () => {
           'claims'
         )
       ).toHaveLength(2);
+    });
+
+    // The stub stays a bare presence flag: a per-row unit count here would
+    // turn "three people claimed" into "one person claimed three".
+    it('OtherPartyMultiUnitClaim_StubCarriesNoUnitCount', () => {
+      expect(
+        dal.sanitizePurchases(
+          [{ ...attributedRow, units: 4 }],
+          'someone',
+          'claims'
+        )
+      ).toEqual([{ id: 'p1', by: 'other', claimedByViewer: false }]);
+    });
+
+    it('ViewerOwnMultiUnitClaim_CarriesItsUnitCount', () => {
+      const [view] = dal.sanitizePurchases(
+        [{ ...attributedRow, units: 4 }],
+        'bea',
+        'claims'
+      );
+      expect(view.units).toBe(4);
     });
 
     it('ViewerOwnClaim_ReturnsFullSelfAlongsideStrippedOthers', () => {
@@ -480,6 +512,7 @@ describe('sanitizePurchases', () => {
       'claimerName',
       'purchasedAt',
       'avatar',
+      'units',
     ];
 
     it.each(['surprise', 'progress', 'claims', 'revealed'] as const)(
@@ -560,6 +593,7 @@ describe('getListClaimedCount', () => {
         id: 'p1',
         purchased_at: new Date(),
         profile_id: selfProfileOf('cara'),
+        units: 1,
         claimed_by_profile_id: selfProfileOf('cara'),
         guest_name: null,
         purchaserProfile: { name: 'Cara Lee' },

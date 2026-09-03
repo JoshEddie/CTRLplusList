@@ -643,6 +643,127 @@ describe('createPurchase', () => {
     });
   });
 
+  describe('Units', () => {
+    beforeEach(async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, {
+        list_id: 'L',
+        item_id: 'I',
+        position: 65536,
+        quantity: 4,
+      });
+    });
+
+    it('ClaimForSeveralUnits_PersistsTheCount', async () => {
+      const res = await actions.createPurchase({
+        list_id: 'L',
+        item_id: 'I',
+        guest_name: null,
+        units: 3,
+      });
+
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toMatchObject([{ units: 3 }]);
+    });
+
+    it('ClaimWithoutUnits_CoversOne', async () => {
+      await actions.createPurchase({
+        list_id: 'L',
+        item_id: 'I',
+        guest_name: null,
+      });
+
+      expect(await purchaseRows('I')).toMatchObject([{ units: 1 }]);
+    });
+
+    it('OnePurchaserTakingEveryUnit_LeavesNoRoomForAnother', async () => {
+      const all = await actions.createPurchase({
+        list_id: 'L',
+        item_id: 'I',
+        guest_name: null,
+        units: 4,
+      });
+      asOther();
+      const next = await actions.createPurchase({
+        list_id: 'L',
+        item_id: 'I',
+        guest_name: null,
+      });
+
+      expect(all.success).toBe(true);
+      expect(next.error).toBe('Fully claimed');
+      expect(await purchaseRows('I')).toHaveLength(1);
+    });
+
+    it('UnitsBeyondRemaining_ReturnsFullyClaimed-NoRow', async () => {
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'I',
+        list_id: 'L',
+        units: 2,
+        profile_id: OTHER_PROFILE,
+      });
+
+      const res = await actions.createPurchase({
+        list_id: 'L',
+        item_id: 'I',
+        guest_name: null,
+        units: 3,
+      });
+
+      expect(res.error).toBe('Fully claimed');
+      expect(await purchaseRows('I')).toHaveLength(1);
+    });
+
+    it('FractionalUnits_ReturnsInvalidUnits-NoRow', async () => {
+      const res = await actions.createPurchase({
+        list_id: 'L',
+        item_id: 'I',
+        guest_name: null,
+        units: 1.5,
+      });
+
+      expect(res.error).toBe('Invalid units');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('ZeroUnits_ReturnsInvalidUnits-NoRow', async () => {
+      const res = await actions.createPurchase({
+        list_id: 'L',
+        item_id: 'I',
+        guest_name: null,
+        units: 0,
+      });
+
+      expect(res.error).toBe('Invalid units');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
+    it('AttributedClaimForSeveralUnits_PersistsTheCountOnTheTargetsRow', async () => {
+      await seedFollow(db, OWNER.id, TARGET.id);
+      await seedFollow(db, TARGET.id, OWNER.id);
+      asOther();
+
+      const res = await actions.createPurchase({
+        list_id: 'L',
+        item_id: 'I',
+        guest_name: null,
+        purchased_by: TARGET_PROFILE,
+        units: 2,
+      });
+
+      expect(res.success).toBe(true);
+      expect(await purchaseRows('I')).toMatchObject([
+        {
+          units: 2,
+          profile_id: TARGET_PROFILE,
+          claimed_by_profile_id: OTHER_PROFILE,
+        },
+      ]);
+    });
+  });
+
   describe('AttributedClaims', () => {
     beforeEach(async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
@@ -1244,6 +1365,207 @@ describe('removePurchase', () => {
 });
 
 /**
+ * Pins the units contract: a claim's units move within what its entry still
+ * has room for, and zero units is unclaiming rather than a row holding nothing.
+ */
+describe('setPurchaseUnits', () => {
+  beforeEach(async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id });
+    await seedItem(db, { id: 'I', user_id: OWNER.id });
+    await seedListItem(db, {
+      list_id: 'L',
+      item_id: 'I',
+      position: 65536,
+      quantity: 5,
+    });
+    await seedPurchase(db, {
+      id: 'p1',
+      item_id: 'I',
+      list_id: 'L',
+      units: 2,
+      profile_id: OTHER_PROFILE,
+      claimed_by_profile_id: OTHER_PROFILE,
+    });
+    asOther();
+  });
+
+  it('RaiseWithinRemaining_PersistsTheNewCount', async () => {
+    const res = await actions.setPurchaseUnits({
+      purchase_id: 'p1',
+      units: 5,
+    });
+
+    expect(res.success).toBe(true);
+    expect(await purchaseRows('I')).toMatchObject([{ units: 5 }]);
+  });
+
+  it('Lower_PersistsTheNewCount', async () => {
+    const res = await actions.setPurchaseUnits({
+      purchase_id: 'p1',
+      units: 1,
+    });
+
+    expect(res.success).toBe(true);
+    expect(await purchaseRows('I')).toMatchObject([{ units: 1 }]);
+  });
+
+  // Room is what the entry wants minus every OTHER claim on it, so the claim
+  // being edited does not compete with itself.
+  it('RaiseBeyondRemaining_ReturnsFullyClaimed-CountUnchanged', async () => {
+    await seedPurchase(db, {
+      id: 'p2',
+      item_id: 'I',
+      list_id: 'L',
+      units: 2,
+      profile_id: TARGET_PROFILE,
+    });
+
+    const res = await actions.setPurchaseUnits({
+      purchase_id: 'p1',
+      units: 4,
+    });
+
+    expect(res.error).toBe('Fully claimed');
+    expect(
+      (await purchaseRows('I')).find((row) => row.id === 'p1')?.units
+    ).toBe(2);
+  });
+
+  it('RaiseToExactlyTheRemainder_Persists', async () => {
+    await seedPurchase(db, {
+      id: 'p2',
+      item_id: 'I',
+      list_id: 'L',
+      units: 2,
+      profile_id: TARGET_PROFILE,
+    });
+
+    const res = await actions.setPurchaseUnits({
+      purchase_id: 'p1',
+      units: 3,
+    });
+
+    expect(res.success).toBe(true);
+    expect(
+      (await purchaseRows('I')).find((row) => row.id === 'p1')?.units
+    ).toBe(3);
+  });
+
+  it('ZeroUnits_DeletesTheRow', async () => {
+    const res = await actions.setPurchaseUnits({
+      purchase_id: 'p1',
+      units: 0,
+    });
+
+    expect(res.success).toBe(true);
+    expect(await purchaseRows('I')).toHaveLength(0);
+  });
+
+  it('FractionalUnits_ReturnsInvalidUnits-CountUnchanged', async () => {
+    const res = await actions.setPurchaseUnits({
+      purchase_id: 'p1',
+      units: 2.5,
+    });
+
+    expect(res.error).toBe('Invalid units');
+    expect(await purchaseRows('I')).toMatchObject([{ units: 2 }]);
+  });
+
+  // The owner's new capability: editing a statement somebody else made,
+  // alongside the master unclaim they already had.
+  it('ItemOwnerOnAnotherPartysClaim_MovesItsUnits', async () => {
+    asOwner();
+
+    const res = await actions.setPurchaseUnits({
+      purchase_id: 'p1',
+      units: 4,
+    });
+
+    expect(res.success).toBe(true);
+    expect(await purchaseRows('I')).toMatchObject([{ units: 4 }]);
+  });
+
+  it('UnrelatedAuthedUser_ReturnsNotYourClaim-CountUnchanged', async () => {
+    asTarget();
+
+    const res = await actions.setPurchaseUnits({
+      purchase_id: 'p1',
+      units: 4,
+    });
+
+    expect(res.error).toBe('Not your claim');
+    expect(await purchaseRows('I')).toMatchObject([{ units: 2 }]);
+  });
+
+  it('GuestCookieListedRow_MovesItsUnits', async () => {
+    await seedPurchase(db, {
+      id: 'g1',
+      item_id: 'I',
+      list_id: 'L',
+      units: 1,
+      guest_name: 'Grandma',
+    });
+    noSession();
+    setGuestCookie({ id: 'guest', name: 'Grandma', purchases: ['g1'] });
+
+    const res = await actions.setPurchaseUnits({
+      purchase_id: 'g1',
+      units: 3,
+    });
+
+    expect(res.success).toBe(true);
+    expect(
+      (await purchaseRows('I')).find((row) => row.id === 'g1')?.units
+    ).toBe(3);
+  });
+
+  it('MissingRow_ReturnsNotFound', async () => {
+    const res = await actions.setPurchaseUnits({
+      purchase_id: 'nope',
+      units: 2,
+    });
+
+    expect(res.error).toBe('Not found');
+  });
+
+  // ON DELETE SET NULL leaves the claim with no entry, so there is no capacity
+  // the edit could be measured against.
+  it('ClaimWhoseItemWasDeleted_ReturnsFullyClaimed-CountUnchanged', async () => {
+    await db.delete(items).where(eq(items.id, 'I'));
+
+    const res = await actions.setPurchaseUnits({
+      purchase_id: 'p1',
+      units: 3,
+    });
+
+    expect(res.error).toBe('Fully claimed');
+    expect(await db.select().from(purchases)).toMatchObject([{ units: 2 }]);
+  });
+
+  it('UpdateThrows_ReturnsFailedToUpdateClaimUnits', async () => {
+    vi.spyOn(db, 'update').mockImplementation(() => {
+      throw new Error('boom');
+    });
+
+    const res = await actions.setPurchaseUnits({
+      purchase_id: 'p1',
+      units: 3,
+    });
+
+    expect(res.error).toBe('Failed to update claim units');
+  });
+
+  it('SuccessfulEdit_BumpsItemAndPurchaserTags', async () => {
+    await actions.setPurchaseUnits({ purchase_id: 'p1', units: 3 });
+
+    expect(updateTag).toHaveBeenCalledWith(claimedItemPoolTag(OWNER_PROFILE));
+    expect(updateTag).toHaveBeenCalledWith(
+      `purchases:profile:${OTHER_PROFILE}`
+    );
+  });
+});
+
+/**
  * Pins `claim-attribution` — the endpoint the owner's name reveal reaches. No
  * tier gates it, so what stands in for one is the rule that decides whether the
  * viewer may see the item at all.
@@ -1270,6 +1592,7 @@ describe('revealedClaimsForEntry', () => {
     expect(await actions.revealedClaimsForEntry('L', 'I')).toEqual([
       {
         id: 'P',
+        units: 1,
         by: 'other',
         name: 'Grandma',
         claimedByViewer: false,

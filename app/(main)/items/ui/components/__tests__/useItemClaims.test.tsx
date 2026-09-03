@@ -3,6 +3,7 @@ import {
   createPurchase,
   removePurchase,
   revealedClaimsForEntry,
+  setPurchaseUnits,
 } from '@/lib/data/purchase.actions';
 import type { PurchaseView, SpoilerTier } from '@/lib/types';
 import { makeProfile } from '@/test/helpers/profile';
@@ -16,6 +17,7 @@ vi.mock('@/lib/data/purchase.actions', () => ({
   createPurchase: vi.fn(),
   removePurchase: vi.fn(),
   revealedClaimsForEntry: vi.fn(async () => []),
+  setPurchaseUnits: vi.fn(),
 }));
 
 // Faithful on both shapes the hook uses it with: the function-form formatters
@@ -490,6 +492,7 @@ describe('RecordClaim', () => {
       list_id: 'l1',
       guest_name: null,
       purchased_by: 'sam',
+      units: 1,
     });
     expect(result.current.claims[0]).toEqual(
       expect.objectContaining({ by: 'other', name: 'Sam' })
@@ -707,5 +710,129 @@ describe('NameReveal', () => {
       await result.current.removeClaim(othersClaim());
     });
     expect(result.current.revealedClaims?.map((c) => c.id)).toEqual(['c3']);
+  });
+});
+
+// Capacity is measured in units, so what a claim covers is a number the hook
+// both sends and keeps.
+describe('ClaimUnits', () => {
+  beforeEach(() => {
+    vi.mocked(setPurchaseUnits).mockResolvedValue({
+      success: true,
+      message: 'ok',
+    });
+  });
+
+  it('MultiUnitSelfClaim_SendsTheUnitsAndHoldsThemOptimistically', async () => {
+    vi.mocked(createPurchase).mockResolvedValue({
+      success: true,
+      message: 'ok',
+      id: 'srv-1',
+    });
+    const { result } = mount({
+      item: makeItem({ quantity: 4 }),
+      actor: actorOf(VIEWER),
+    });
+
+    await act(async () => {
+      await result.current.handleSelfClaim(3);
+    });
+
+    expect(createPurchase).toHaveBeenCalledWith(
+      expect.objectContaining({ units: 3 })
+    );
+    expect(result.current.claims[0]).toEqual(
+      expect.objectContaining({ id: 'srv-1', units: 3 })
+    );
+  });
+
+  // The counter follows units rather than rows: three units on one claim leave
+  // one of four, not three.
+  it('ThreeUnitsOnOneClaim_LeaveOneOfFourRemaining', () => {
+    const { result } = mount({
+      item: makeItem({
+        quantity: 4,
+        claimed_units: 3,
+        purchases: [ownClaim()],
+      }),
+    });
+
+    expect(result.current.capacity).toEqual({ quantity: 4, remaining: 1 });
+    expect(result.current.isFullyClaimed).toBe(false);
+  });
+
+  it('OnePurchaserHoldingEveryUnit_LeavesTheEntryFullyClaimed', () => {
+    const { result } = mount({
+      item: makeItem({
+        quantity: 4,
+        claimed_units: 4,
+        purchases: [othersClaim()],
+      }),
+    });
+
+    expect(result.current.capacity).toEqual({ quantity: 4, remaining: 0 });
+    expect(result.current.isFullyClaimed).toBe(true);
+  });
+
+  it('UnitsRaised_PersistsAndMovesTheRemainder', async () => {
+    const { result } = mount({
+      item: makeItem({
+        quantity: 4,
+        claimed_units: 1,
+        purchases: [{ ...ownClaim(), units: 1 }],
+      }),
+    });
+
+    await act(async () => {
+      await result.current.updateClaimUnits(result.current.claims[0], 3);
+    });
+
+    expect(setPurchaseUnits).toHaveBeenCalledWith({
+      purchase_id: 'c1',
+      units: 3,
+    });
+    expect(result.current.claims[0].units).toBe(3);
+    expect(result.current.capacity?.remaining).toBe(1);
+  });
+
+  // Zero units is unclaiming, so the row goes rather than showing a claim for
+  // nothing.
+  it('UnitsDroppedToZero_RemovesTheClaimLocally', async () => {
+    const { result } = mount({
+      item: makeItem({
+        quantity: 4,
+        claimed_units: 2,
+        purchases: [{ ...ownClaim(), units: 2 }],
+      }),
+    });
+
+    await act(async () => {
+      await result.current.updateClaimUnits(result.current.claims[0], 0);
+    });
+
+    expect(result.current.claims).toEqual([]);
+    expect(result.current.capacity?.remaining).toBe(4);
+  });
+
+  it('RefusedUnitEdit_LeavesTheClaimUntouched', async () => {
+    vi.mocked(setPurchaseUnits).mockResolvedValue({
+      success: false,
+      message: 'This item is fully claimed',
+      error: 'Fully claimed',
+    });
+    const { result } = mount({
+      item: makeItem({
+        quantity: 4,
+        claimed_units: 2,
+        purchases: [{ ...ownClaim(), units: 2 }],
+      }),
+    });
+
+    const moved = await act(async () =>
+      result.current.updateClaimUnits(result.current.claims[0], 4)
+    );
+
+    expect(moved).toBe(false);
+    expect(result.current.claims[0].units).toBe(2);
   });
 });

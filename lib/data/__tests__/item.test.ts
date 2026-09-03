@@ -437,6 +437,7 @@ describe('getItemsByListId', () => {
       const byId = Object.fromEntries(rows[0].purchases.map((p) => [p.id, p]));
       expect(byId.pv).toEqual({
         id: 'pv',
+        units: 1,
         by: 'self',
         name: 'Vic',
         claimedByViewer: false,

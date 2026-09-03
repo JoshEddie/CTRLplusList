@@ -12,15 +12,16 @@ import {
   type ClaimPicker,
 } from '@/lib/data/user.actions';
 import { getMessage } from '@/lib/i18n/utils';
+import { atLeast } from '@/lib/spoilers';
 import {
-  ProfileMembershipView,
+  EntryCapacity,
   ItemDisplay,
+  ProfileMembershipView,
   PurchaseView,
   SpoilerTier,
 } from '@/lib/types';
-import { atLeast } from '@/lib/spoilers';
 import { useCallback, useEffect, useState } from 'react';
-import { firstToken } from '../utils';
+import { clampUnits, firstToken } from '../utils';
 import ClaimDisclosure, {
   type AttributedTarget,
   type PickerStatus,
@@ -29,6 +30,7 @@ import ClaimsList from './ClaimsList';
 import ModalButtons from './ModalButtons';
 import ModalStoreRow from './ModalStoreRow';
 import PurchaseModalHeader from './PurchaseModalHeader';
+import UnitsField from './UnitsField';
 
 export type { AttributedTarget };
 
@@ -98,6 +100,7 @@ function AuthedClaimSection({
   isOwner,
   canClaim,
   claims,
+  capacity,
   masterUnclaimDisabled,
   viewerIsPurchaser,
   circleLabel,
@@ -108,10 +111,12 @@ function AuthedClaimSection({
   onAttributedClaim,
   onGuestClaim,
   onRemoveClaim,
+  onUpdateUnits,
 }: {
   isOwner: boolean;
   canClaim: boolean;
   claims: PurchaseView[];
+  capacity: EntryCapacity | null;
   masterUnclaimDisabled: boolean;
   viewerIsPurchaser?: boolean;
   circleLabel: string;
@@ -122,15 +127,20 @@ function AuthedClaimSection({
   onAttributedClaim: (target: AttributedTarget) => void;
   onGuestClaim: (name: string) => void;
   onRemoveClaim: (claim: PurchaseView) => void;
+  onUpdateUnits: (claim: PurchaseView, units: number) => void;
 }) {
   return (
     <>
       {isOwner && (
+        // The owner edits units on a claim somebody else made — a capability
+        // beyond master unclaim, and gated by the same ownership floor.
         <ClaimsList
           claims={claims}
           canRemove={() => true}
+          capacity={capacity}
           removalDisabled={masterUnclaimDisabled}
           onRemoveClaim={onRemoveClaim}
+          onUpdateUnits={onUpdateUnits}
         />
       )}
       {canClaim && (
@@ -168,27 +178,32 @@ export default function PurchaseFlowContainer({
   isOwner,
   tier,
   claims,
+  capacity,
   viewerIsPurchaser,
   item,
   onSelfClaim,
   onAttributedClaim,
   onGuestClaim,
   onRemoveClaim,
+  onUpdateUnits,
 }: {
   actor?: ProfileMembershipView;
   isOwner: boolean;
   tier: SpoilerTier;
   claims: PurchaseView[];
-  /** The viewer is already the recorded purchaser of one of the item's claims; a second self-claim is unsupported, so the self-claim CTA is suppressed. */
-  // TODO(#230): allow a second self-claim.
+  /** Null off a list, where there is nothing to claim against. */
+  capacity: EntryCapacity | null;
+  /** The viewer is already the recorded purchaser of one of the item's claims, so the self-claim CTA is suppressed: a purchaser holds one claim per entry and takes more of it by raising that claim's units, not by making a second one. */
   viewerIsPurchaser?: boolean;
   item: ItemDisplay;
-  onSelfClaim: () => void;
-  onAttributedClaim: (target: AttributedTarget) => void;
-  onGuestClaim: (name: string) => void;
+  onSelfClaim: (units: number) => void;
+  onAttributedClaim: (target: AttributedTarget, units: number) => void;
+  onGuestClaim: (name: string, units: number) => void;
   onRemoveClaim: (claim: PurchaseView) => void;
+  onUpdateUnits: (claim: PurchaseView, units: number) => void;
 }) {
   const [picker, setPicker] = useState<ClaimPicker | null>(null);
+  const [unitsValue, setUnitsValue] = useState('1');
   const [pickerStatus, setPickerStatus] = useState<PickerStatus>('loading');
   const [fetchAttempt, setFetchAttempt] = useState(0);
   const [reveal, setReveal] = useState<{
@@ -223,6 +238,16 @@ export default function PurchaseFlowContainer({
   // which names no list, and a CTA there would dispatch a write that cannot
   // land.
   const canClaim = !!listId && reveal?.remaining !== 0;
+
+  // Below the `claims` tier the page's payload withholds what is claimed, so
+  // its remainder would read as the whole quantity — the confirmed reveal is
+  // the only number there, and the control waits for it rather than offering a
+  // cap it would then have to take back. One entry asking for one needs no
+  // control at all: the overwhelmingly common claim is unchanged.
+  const remaining =
+    (needsReveal ? reveal?.remaining : capacity?.remaining) ?? 0;
+  const showUnits = (capacity?.quantity ?? 1) > 1 && remaining > 0;
+  const units = showUnits ? (clampUnits(unitsValue, remaining) ?? 1) : 1;
 
   // Each (item, attempt) pair is a fresh fetch; reset to loading at render
   // time so the effect body only performs async state updates.
@@ -268,23 +293,39 @@ export default function PurchaseFlowContainer({
 
       {needsReveal && <RevealSummary summary={reveal} />}
 
+      {canClaim && showUnits && (
+        <UnitsField
+          label={getMessage('claim_units_field_label')}
+          description={getMessage('claim_units_remaining', { remaining })}
+          value={unitsValue}
+          max={remaining}
+          onChange={setUnitsValue}
+        />
+      )}
+
       {!showClaimSection ? (
-        canClaim && <GuestClaimSection onGuestClaim={onGuestClaim} />
+        canClaim && (
+          <GuestClaimSection
+            onGuestClaim={(name) => onGuestClaim(name, units)}
+          />
+        )
       ) : (
         <AuthedClaimSection
           isOwner={isOwner}
           canClaim={canClaim}
           claims={claims}
+          capacity={capacity}
           masterUnclaimDisabled={!actor.role.admin}
           viewerIsPurchaser={viewerIsPurchaser}
           circleLabel={circleLabel}
           pickerStatus={pickerStatus}
           pool={picker?.pool ?? []}
           onRetry={retry}
-          onSelfClaim={onSelfClaim}
-          onAttributedClaim={onAttributedClaim}
-          onGuestClaim={onGuestClaim}
+          onSelfClaim={() => onSelfClaim(units)}
+          onAttributedClaim={(target) => onAttributedClaim(target, units)}
+          onGuestClaim={(name) => onGuestClaim(name, units)}
           onRemoveClaim={onRemoveClaim}
+          onUpdateUnits={onUpdateUnits}
         />
       )}
     </div>

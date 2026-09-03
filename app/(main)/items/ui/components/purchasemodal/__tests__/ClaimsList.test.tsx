@@ -5,6 +5,7 @@
  * profile renders its art on the same terms as a self-profile does.
  */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PurchaseView } from '@/lib/types';
@@ -213,5 +214,90 @@ describe('WithheldClaims', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(3);
     expect(screen.getByText('Grace')).toBeInTheDocument();
     expect(screen.queryByText(/other claim/)).not.toBeInTheDocument();
+  });
+
+  // A claim's units are editable wherever it is removable — the viewer's own
+  // claim, one they asserted, and (in the owner's master list) somebody else's.
+  // An entry asking for one has nothing to edit.
+  describe('UnitEditing', () => {
+    const mountEditable = (
+      over: Partial<React.ComponentProps<typeof ClaimsList>> = {}
+    ) => {
+      const onUpdateUnits = vi.fn();
+      render(
+        <ClaimsList
+          claims={[claim({ by: 'self', name: 'You', units: 2 })]}
+          canRemove={() => true}
+          capacity={{ quantity: 4, remaining: 2 }}
+          onRemoveClaim={vi.fn()}
+          onUpdateUnits={onUpdateUnits}
+          {...over}
+        />
+      );
+      return onUpdateUnits;
+    };
+
+    it('EntryWithRoomToGrow_ShowsTheClaimsCurrentUnits', () => {
+      mountEditable();
+
+      expect(screen.getByLabelText('Units')).toHaveValue(2);
+      expect(screen.getByLabelText('Units')).toHaveAttribute('max', '4');
+    });
+
+    it('SingleUnitEntry_RendersNoUnitsControl', () => {
+      mountEditable({
+        claims: [claim({ by: 'self', name: 'You', units: 1 })],
+        capacity: { quantity: 1, remaining: 0 },
+      });
+
+      expect(screen.queryByLabelText('Units')).not.toBeInTheDocument();
+    });
+
+    it('RowTheViewerCannotRemove_RendersNoUnitsControl', () => {
+      mountEditable({ canRemove: () => false });
+
+      expect(screen.queryByLabelText('Units')).not.toBeInTheDocument();
+    });
+
+    it('MasterUnclaimBelowTheOwnerFloor_RendersNoUnitsControl', () => {
+      mountEditable({ removalDisabled: true });
+
+      expect(screen.queryByLabelText('Units')).not.toBeInTheDocument();
+    });
+
+    it('NewCountThenUpdate_ReportsTheClaimAndItsUnits', async () => {
+      const user = userEvent.setup();
+      const onUpdateUnits = mountEditable();
+
+      await user.clear(screen.getByLabelText('Units'));
+      await user.type(screen.getByLabelText('Units'), '4');
+      await user.click(screen.getByRole('button', { name: 'Update' }));
+
+      expect(onUpdateUnits).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'p1' }),
+        4
+      );
+    });
+
+    it('CountBeyondTheCeiling_ClampedToIt', async () => {
+      const user = userEvent.setup();
+      const onUpdateUnits = mountEditable();
+
+      await user.clear(screen.getByLabelText('Units'));
+      await user.type(screen.getByLabelText('Units'), '9');
+      await user.click(screen.getByRole('button', { name: 'Update' }));
+
+      expect(onUpdateUnits).toHaveBeenCalledWith(expect.anything(), 4);
+    });
+
+    it('EmptiedUnitsField_LeavesUpdateInert', async () => {
+      const user = userEvent.setup();
+      const onUpdateUnits = mountEditable();
+
+      await user.clear(screen.getByLabelText('Units'));
+
+      expect(screen.getByRole('button', { name: 'Update' })).toBeDisabled();
+      expect(onUpdateUnits).not.toHaveBeenCalled();
+    });
   });
 });

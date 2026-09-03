@@ -180,9 +180,11 @@ export async function getItemsByListId(
       ...item,
       hasPurchases: purchases.length > 0,
       purchases,
-      // Summed before the projection so units never reach a `PurchaseView`,
-      // and withheld with everything else the tier conceals — a count sent to
-      // a viewer whose claim array was emptied would be a passive leak.
+      // The entry's own number, summed before the projection rather than from
+      // it: a projected claim carries its units only where the viewer may see
+      // them, so the array is not the answer at every tier. Withheld with
+      // everything else the tier conceals — a count sent to a viewer whose
+      // claim array was emptied would be a passive leak.
       claimed_units: atLeast(tier, 'claims') ? claimed_units : undefined,
     };
   });

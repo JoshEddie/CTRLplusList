@@ -23,6 +23,47 @@ export function firstClaimableSingleItem(page: Page): Locator {
     .first();
 }
 
+// Opens a seeded list and waits for its heading, so a spec's first assertion
+// fails on the thing it is testing rather than on an unloaded page.
+export async function openList(
+  page: Page,
+  path: string,
+  heading: string
+): Promise<void> {
+  await page.goto(path);
+  await expect(
+    page.getByRole('heading', { name: heading }).first()
+  ).toBeVisible();
+}
+
+// The first multi-unit entry on the current list page with at least `minFree`
+// units unclaimed and no claim of the viewer's. Capacity is per entry and
+// enforced, so "has a counter" is not enough: a card one unit short passes a
+// first claim and then loses its affordance. Reading the remainder off the
+// counter states the requirement instead of trusting a seeded position, and
+// throws rather than timing out if the seed stops meeting it.
+export async function multiUnitEntryWithRoom(
+  page: Page,
+  minFree: number
+): Promise<{ card: Locator; claimed: number; quantity: number }> {
+  const candidates = page
+    .locator('.item-container')
+    .filter({ has: page.getByRole('button', { name: 'Add Claim' }) })
+    .filter({ has: page.locator('.item-entry-line') })
+    .filter({ hasNotText: 'You claimed this' });
+  for (const card of await candidates.all()) {
+    const counter = await card.locator('.item-entry-line').innerText();
+    const parsed = /(\d+)\/(\d+) claimed/.exec(counter);
+    if (!parsed) continue;
+    const claimed = Number(parsed[1]);
+    const quantity = Number(parsed[2]);
+    if (quantity - claimed >= minFree) return { card, claimed, quantity };
+  }
+  throw new Error(
+    `No multi-unit entry on the seeded list has ${minFree} units free`
+  );
+}
+
 // Removes an item a spec created, through the affordances a user has: the
 // card's kebab → Edit → the edit Preview's Delete → the confirm dialog. Scope
 // the confirm click to the dialog — the Preview's own delete button carries the

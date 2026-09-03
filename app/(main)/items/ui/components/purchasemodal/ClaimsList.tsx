@@ -2,8 +2,10 @@ import ProfileAvatar, { facelessView } from '@/app/ui/components/ProfileAvatar';
 import { Button } from '@/app/ui/components/button';
 import { getMessage } from '@/lib/i18n/utils';
 import { timeAgo } from '@/lib/timeAgo';
-import { PurchaseView } from '@/lib/types';
+import { EntryCapacity, PurchaseView } from '@/lib/types';
 import { useState } from 'react';
+import { claimUnitsCeiling } from '../utils';
+import UnitsField from './UnitsField';
 
 // Bounded render: an entry asking for many units can carry as many claims, so
 // the list never renders them all at once.
@@ -44,19 +46,27 @@ function rowMeta(claim: PurchaseView): string | null {
 export default function ClaimsList({
   claims,
   canRemove,
+  capacity,
   removalDisabled = false,
   onRemoveClaim,
+  onUpdateUnits,
 }: {
   claims: PurchaseView[];
   canRemove: (claim: PurchaseView) => boolean;
+  /** What is left of the entry's ask, which bounds how far a claim on it can be raised. Null off a list. */
+  capacity?: EntryCapacity | null;
   // Which removal a row offers depends on who is listed: the owner's list is
   // master unclaim and takes the owner floor, the manage view is the viewer's
   // own claims and takes none. The caller knows which it opened, so the floor
   // arrives decided rather than being read here.
   removalDisabled?: boolean;
   onRemoveClaim: (claim: PurchaseView) => void;
+  onUpdateUnits?: (claim: PurchaseView, units: number) => void;
 }) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const ceilingFor = (claim: PurchaseView) =>
+    claimUnitsCeiling(capacity, claim);
   if (claims.length === 0) return null;
   const sorted = [
     ...claims.filter((claim) => canRemove(claim)),
@@ -106,6 +116,20 @@ export default function ClaimsList({
                 {getMessage('claim_remove_label')}
               </Button>
             )}
+            {canRemove(claim) &&
+              !removalDisabled &&
+              onUpdateUnits &&
+              ceilingFor(claim) > 1 && (
+                <UnitsField
+                  label={getMessage('claim_units_row_label')}
+                  value={drafts[claim.id] ?? String(claim.units ?? 1)}
+                  max={ceilingFor(claim)}
+                  onChange={(next) =>
+                    setDrafts((prev) => ({ ...prev, [claim.id]: next }))
+                  }
+                  onSubmit={(units) => onUpdateUnits(claim, units)}
+                />
+              )}
           </li>
         ))}
       </ul>

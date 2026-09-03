@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { multiUnitEntryWithRoom, openList } from '../test/helpers/e2e/utils';
 
 // Consolidated e2e coverage for the #234/#235/#260 surface (deferred from the
 // buy-and-claim-authed change): the ItemActions matrix spot-check, Buy & Claim's
@@ -12,33 +13,7 @@ const LIST_HEADING = "Bob's Holiday List";
 const BUY_CLAIM = 'Buy & Claim — opens in new tab';
 const VIEW_ITEM = 'View item — opens in new tab';
 
-async function gotoList(page: Page) {
-  await page.goto(LIST);
-  await expect(
-    page.getByRole('heading', { name: LIST_HEADING }).first()
-  ).toBeVisible();
-}
-
-// A multi-unit entry the viewer has not claimed and which has room for the TWO
-// claims this spec records — the slots-remain state Add Claim routes. Capacity
-// is per entry and enforced, so "has a counter" is no longer enough: a card one
-// unit short would pass the first claim and then lose its Add Claim. Reading
-// the remainder off the counter states the requirement instead of trusting a
-// seeded position, and throws rather than timing out if the seed stops meeting
-// it.
-async function multiUnitWithRoomForTwo(page: Page) {
-  const candidates = page
-    .locator('.item-container')
-    .filter({ has: page.getByRole('button', { name: 'Add Claim' }) })
-    .filter({ has: page.locator('.item-entry-line') })
-    .filter({ hasNotText: 'You claimed this' });
-  for (const card of await candidates.all()) {
-    const counter = await card.locator('.item-entry-line').innerText();
-    const parsed = /(\d+)\/(\d+) claimed/.exec(counter);
-    if (parsed && Number(parsed[2]) - Number(parsed[1]) >= 2) return card;
-  }
-  throw new Error('No multi-unit entry on the seeded list has two units free');
-}
+const gotoList = (page: Page) => openList(page, LIST, LIST_HEADING);
 
 // A claimable linked item without a viewer claim — the Buy & Claim state.
 function buyClaimable(page: Page) {
@@ -56,7 +31,7 @@ test('AddClaimWhileClaimed_RoutesToClaimFlow_ManageListRemovesPerClaim', async (
 }) => {
   await gotoList(page);
 
-  const item = await multiUnitWithRoomForTwo(page);
+  const { card: item } = await multiUnitEntryWithRoom(page, 2);
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
   // First claim: the ordinary one-tap self-claim.

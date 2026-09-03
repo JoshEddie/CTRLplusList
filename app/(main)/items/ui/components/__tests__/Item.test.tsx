@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createPurchase,
   removePurchase,
+  setPurchaseUnits,
   revealedClaimsForEntry,
 } from '@/lib/data/purchase.actions';
 import Item from '../Item';
@@ -19,6 +20,7 @@ vi.mock('@/lib/data/purchase.actions', () => ({
   createPurchase: vi.fn(),
   removePurchase: vi.fn(),
   revealedClaimsForEntry: vi.fn(async () => []),
+  setPurchaseUnits: vi.fn(),
 }));
 
 const router = vi.hoisted(() => ({
@@ -112,6 +114,13 @@ vi.mock('../ClaimUndoPopup', () => ({
         <button type="button" onClick={p.onClose as () => void}>
           popup-keep
         </button>
+        <button
+          type="button"
+          onClick={() => (p.onUpdateUnits as (units: number) => void)(3)}
+        >
+          popup-raise
+        </button>
+        <span data-testid="undo-max-units">{String(p.maxUnits)}</span>
       </div>
     ) : null,
 }));
@@ -158,7 +167,10 @@ vi.mock('../PurchaseModalSlot', () => ({
       data-tier={String(p.tier)}
       data-item-name={String((p.item as { name?: string | null })?.name ?? '')}
     >
-      <button type="button" onClick={p.onSelfClaim as () => void}>
+      <button
+        type="button"
+        onClick={() => (p.onSelfClaim as (units: number) => void)(1)}
+      >
         claim-self
       </button>
       <button
@@ -563,6 +575,7 @@ describe('Item', () => {
         item_id: 'i1',
         list_id: 'l1',
         guest_name: null,
+        units: 1,
       });
       await waitFor(() =>
         expect(screen.getByTestId('claim-banners')).toHaveAttribute(
@@ -583,6 +596,7 @@ describe('Item', () => {
         list_id: 'l1',
         guest_name: null,
         purchased_by: 'u9',
+        units: 1,
       });
       // The optimistic row carries the name in full, as the server render
       // will; the viewer asserted the claim, so the undo affordance unlocks.
@@ -606,6 +620,7 @@ describe('Item', () => {
         item_id: 'i1',
         list_id: 'l1',
         guest_name: 'Sam Lee',
+        units: 1,
       });
       await waitFor(() =>
         expect(screen.getByTestId('claim-banners')).toHaveAttribute(
@@ -640,6 +655,7 @@ describe('Item', () => {
         item_id: '',
         list_id: 'l1',
         guest_name: null,
+        units: 1,
       });
       await user.click(
         screen.getByRole('button', { name: 'claim-attributed' })
@@ -649,12 +665,14 @@ describe('Item', () => {
         list_id: 'l1',
         guest_name: null,
         purchased_by: 'u9',
+        units: 1,
       });
       await user.click(screen.getByRole('button', { name: 'claim-guest' }));
       expect(createPurchase).toHaveBeenCalledWith({
         item_id: '',
         list_id: 'l1',
         guest_name: 'Sam Lee',
+        units: 1,
       });
     });
 
@@ -836,6 +854,7 @@ describe('Item', () => {
         item_id: 'i1',
         list_id: 'l1',
         guest_name: null,
+        units: 1,
       });
       await waitFor(() => expect(popup()).toBeInTheDocument());
       expect(banners()).toHaveAttribute('data-my-claim', 'true');
@@ -871,6 +890,47 @@ describe('Item', () => {
         expect(banners()).toHaveAttribute('data-my-claim', 'false')
       );
       expect(popup()).not.toBeInTheDocument();
+    });
+
+    // Buy & Claim records one unit whatever the entry asks for; the
+    // confirmation is where somebody who bought several raises the count.
+    it('SingleUnitEntry_PopupOffersNoRaise', async () => {
+      const user = userEvent.setup();
+      renderItem(buyable);
+      await user.click(screen.getByRole('button', { name: 'card-buy-claim' }));
+      await waitFor(() => expect(popup()).toBeInTheDocument());
+      expect(screen.getByTestId('undo-max-units')).toHaveTextContent('1');
+    });
+
+    it('MultiUnitEntry_PopupCeilingIsTheRemainderPlusTheClaimedUnit', async () => {
+      const user = userEvent.setup();
+      renderItem({
+        ...buyable,
+        item: { ...buyable.item, quantity: 4, claimed_units: 0 },
+      });
+      await user.click(screen.getByRole('button', { name: 'card-buy-claim' }));
+      await waitFor(() => expect(popup()).toBeInTheDocument());
+      expect(screen.getByTestId('undo-max-units')).toHaveTextContent('4');
+    });
+
+    it('PopupRaise_MovesTheJustRecordedClaimToThatCount', async () => {
+      vi.mocked(setPurchaseUnits).mockResolvedValue({
+        success: true,
+      } as never);
+      const user = userEvent.setup();
+      renderItem({
+        ...buyable,
+        item: { ...buyable.item, quantity: 4, claimed_units: 0 },
+      });
+      await user.click(screen.getByRole('button', { name: 'card-buy-claim' }));
+      await waitFor(() => expect(popup()).toBeInTheDocument());
+
+      await user.click(screen.getByRole('button', { name: 'popup-raise' }));
+
+      expect(setPurchaseUnits).toHaveBeenCalledWith({
+        purchase_id: 'srv-1',
+        units: 3,
+      });
     });
 
     it('PopupKeep_DismissesWithClaimIntact', async () => {
