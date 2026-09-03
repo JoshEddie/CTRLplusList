@@ -196,6 +196,7 @@
 
 .claim-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
@@ -228,6 +229,26 @@
   font-size: 13px;
   font-weight: 400;
   color: var(--muted-text-color);
+}
+
+/* How many units a claim covers. Sits inline in a claim row and as its own
+   block in the claim flow; the field takes the slack either way, so the Update
+   button beside it never has to be measured. */
+.claim-units {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.claim-units .form_field {
+  flex: 1;
+  min-width: 0;
+}
+
+.claim-row .claim-units {
+  /* Its own line under the name and the removal button: three controls abreast
+     do not fit a phone. */
+  flex: 1 1 100%;
 }
 
 /* Collapsed-by-default attributed-claim disclosure. */

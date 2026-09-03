@@ -98,6 +98,8 @@ export type SpoilerTier = 'surprise' | 'progress' | 'claims';
 
 export type PurchaseView = {
   id: string;
+  /** How many units the claim covers. Absent on another party's claim below a confirmed reveal, alongside the name — a per-claim count there would disclose more than the claims tier ever did. */
+  units?: number;
   by: 'self' | 'other';
   /** Absent on another party's claim, which every tier discloses as a bare count; present only on the viewer's own claims and on a confirmed reveal. */
   name?: string;
@@ -110,6 +112,11 @@ export type PurchaseView = {
   /** The purchaser profile's own face, where the purchaser is a profile. Absent for a free-text purchaser and on optimistic rows, both of which render initials. Account linkage does not govern it: a managed profile carries a face on the same terms as anyone else. */
   avatar?: ProfileAvatarView;
 };
+
+// A list entry's ask and what is left of it, in units. Null wherever there is
+// no entry — the item library, whose items span every list and some no list at
+// all — which is what withdraws every units control at once.
+export type EntryCapacity = { quantity: number; remaining: number };
 
 export type ItemDisplay = ItemTable & {
   store?: ItemStoreTable | null;

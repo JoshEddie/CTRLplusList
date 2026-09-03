@@ -23,6 +23,7 @@ import { cacheTag } from 'next/cache';
 
 type RawPurchase = {
   id: string;
+  units: number;
   profile_id: string | null;
   claimed_by_profile_id: string | null;
   guest_name: string | null;
@@ -68,8 +69,13 @@ export function sanitizePurchases(
       return views;
     }
 
+    // Units ride only on a claim that is named: the holder's own, and every
+    // claim once a reveal is confirmed. The stub above carries none, so the
+    // claims tier keeps saying "three people claimed" rather than gaining the
+    // "one person claimed three" it never disclosed.
     const view: PurchaseView = {
       id: p.id,
+      units: p.units,
       by: isSelf ? ('self' as const) : ('other' as const),
       name: p.purchaserProfile?.name ?? p.guest_name ?? undefined,
       claimedByViewer,
@@ -153,7 +159,8 @@ export function duplicateClaimResponse(isAttributed: boolean): ActionResponse {
   };
 }
 
-// Removal rights matrix: the claimer (claimed_by_profile_id), the purchaser
+// Removal rights matrix — and, since dropping a claim to zero units is
+// unclaiming, the rights matrix for moving its units too: the claimer (claimed_by_profile_id), the purchaser
 // (profile_id), or the item's owning profile (master unclaim) — all profile-id
 // comparisons. Unauthenticated callers are authorized only on
 // all-NULL-identity rows whose id their guest_claims cookie lists — the cookie

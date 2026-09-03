@@ -103,9 +103,17 @@ below the claims tier that somebody has bought something
 ([ADR-0015](docs/adr/0015-behaviour-may-not-vary-on-spoiler-hidden-state.md)).
 
 **Units**:
-What a claim covers, and what quantity is counted in. A claim covers one unit.
-Claimed units are summed from the claims themselves, never kept as a separate
-running total ([ADR-0016](docs/adr/0016-claimed-units-are-summed-not-stored.md)).
+What a claim covers, and what quantity is counted in — capacity is measured in
+units rather than in people, so four towels is satisfied by one person buying
+four, by four people buying one each, or by any split between. A claim covers
+one unit unless its claimer says otherwise; the stepper that says otherwise is
+hidden entirely on an entry asking for one, and capped at what remains. Units
+move up and down within what remains, and dropping a claim to zero *is*
+unclaiming — a zero-unit row is not representable. A per-claim unit count is
+visible only to the claim's holder and at the revealed tier; the claims tier
+keeps its bare presence flag. Claimed units are summed from the claims
+themselves, never kept as a separate running total
+([ADR-0016](docs/adr/0016-claimed-units-are-summed-not-stored.md)).
 
 **Occasion**:
 The free-text or picked label on a list, rendered as its eyebrow.
@@ -154,6 +162,8 @@ A claim with no identity at all, held only by a cookie
 
 **Master unclaim**:
 An item owner removing anyone's claim. The only removal route that needs admin.
+The owner may also move the units on a claim somebody else made — the same
+right, since dropping one to zero is removing it.
 
 **Circle**:
 The set of people eligible to be named as a purchaser — the owner's mutual

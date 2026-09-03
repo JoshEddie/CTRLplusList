@@ -1,7 +1,7 @@
 import { getMessage } from '@/lib/i18n/utils';
 import { priceAmount } from '@/lib/storeValidity';
 import { atLeast } from '@/lib/spoilers';
-import { PurchaseView, SpoilerTier } from '@/lib/types';
+import { EntryCapacity, PurchaseView, SpoilerTier } from '@/lib/types';
 
 // The owner-side claim pill: never below `claims`, and from `claims` up whenever
 // the item carries claims. One home so the card's `purchased` styling and the
@@ -18,6 +18,28 @@ export function showsSpoilerBanner(
 // line reports how many rather than who — names are the modal's reveal alone.
 export function claimSummaryOf(claims: PurchaseView[]): string {
   return getMessage('claim_summary', { count: claims.length });
+}
+
+// What the units field currently means as a unit count, clamped to what the
+// entry has room for — a number input's min/max bound its spinners, not what
+// can be typed into it. Null is "not a number at all", which is only ever an
+// empty field: the claim CTAs fall back to one unit and the Update button goes
+// inert, rather than either sending a number the capacity guard would refuse.
+export function clampUnits(value: string, max: number): number | null {
+  const parsed = Math.trunc(Number(value));
+  if (value.trim() === '' || Number.isNaN(parsed)) return null;
+  return Math.min(Math.max(parsed, 1), max);
+}
+
+// What an existing claim could be raised to: everything the entry has spare,
+// plus what the claim already holds — a claim does not compete with itself. A
+// ceiling of one is an entry asking for one, which is where every units control
+// disappears.
+export function claimUnitsCeiling(
+  capacity: EntryCapacity | null | undefined,
+  claim: PurchaseView
+): number {
+  return (capacity?.remaining ?? 0) + (claim.units ?? 1);
 }
 
 export function firstToken(name: string): string {

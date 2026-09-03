@@ -1,13 +1,11 @@
 'use server';
 
 import { db } from '@/db';
-import { items, list_items, purchases } from '@/db/schema';
+import { items, purchases } from '@/db/schema';
 import {
   canRemovePurchase,
-  duplicateClaimResponse,
   getEntryClaimSummary,
   getRevealedEntryClaims,
-  isEligiblePurchaser,
 } from '@/lib/data/purchase';
 import {
   forgetGuestClaim,
@@ -15,40 +13,47 @@ import {
   rememberGuestClaim,
   resolveClaimIdentity,
 } from '@/lib/data/purchase.identity';
+import {
+  attributionRefusal,
+  noRoomResponse,
+  recordEntryClaim,
+  updateClaimUnitsWithinCapacity,
+} from '@/lib/data/purchase.write';
+import { EntryQuantitySchema } from '@/lib/data/listItems.schema';
 import { writableMembership } from '@/lib/data/profile.gate';
 import { authedIdentity } from '@/lib/data/user.session';
 import { getMessage } from '@/lib/i18n/utils';
 import { isEntryViewable } from '@/lib/listAccess';
-import { sqlstateOf } from '@/lib/sqlstate';
 import { type ActionResponse, type PurchaseView } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
-import { and, eq, sql } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
+import { eq } from 'drizzle-orm';
 
-// Postgres unique-violation error code.
-const PG_UNIQUE_VIOLATION = '23505';
-
-// Every claim covers exactly one unit. Named rather than inlined so the
-// capacity guard below reads as the general statement it already is.
-const CLAIM_UNITS = 1;
-
-// What identifies one claim to the write path: who it is for, who asserted it,
-// and the entry it lands on.
-type ClaimInput = {
-  listId: string;
-  itemId: string;
-  purchaserProfileId: string | null;
-  callerProfileId: string | null;
-  guestName: string | null;
-};
+// A claim covers at least one unit and at most what an entry can ask for, so
+// the entry's own bound is the units bound too — a claim can never legitimately
+// exceed the quantity it is measured against. Capacity narrows it further per
+// entry; this only rejects what is not a unit count at all.
+function invalidUnitsRefusal(units: number): ActionResponse | null {
+  if (EntryQuantitySchema.safeParse(units).success) return null;
+  return {
+    success: false,
+    message: getMessage('claim_units_invalid'),
+    error: getMessage('claim_error_invalid_units'),
+  };
+}
 
 export async function createPurchase(data: {
   item_id: string;
   list_id: string;
   guest_name: string | null;
   purchased_by?: string | null;
+  /** Units this claim covers. Absent means one — Buy & Claim and every single-quantity entry. */
+  units?: number;
 }): Promise<ActionResponse> {
   try {
+    const units = data.units ?? 1;
+    const invalid = invalidUnitsRefusal(units);
+    if (invalid) return invalid;
+
     const identity = await resolveClaimIdentity(
       data.guest_name,
       data.purchased_by ?? null
@@ -109,6 +114,7 @@ export async function createPurchase(data: {
       {
         listId: data.list_id,
         itemId: data.item_id,
+        units,
         purchaserProfileId,
         callerProfileId,
         guestName,
@@ -146,130 +152,100 @@ export async function createPurchase(data: {
   }
 }
 
-// Re-verifies an attribution target against the live graph: must be an
-// owner-mutual, no block edge with the claimer, and not the owner. The client
-// picker is presentation only. A block or unfollow can land between this check
-// and the insert (neon-http: no transactions) — residual and harmless, since
-// removal rights are row-based and the at-claim gate is best-effort by design.
-async function attributionRefusal(
-  ownerProfileId: string,
-  claimerProfileId: string,
-  purchaserProfileId: string
-): Promise<ActionResponse | null> {
-  const eligible = await isEligiblePurchaser(
-    ownerProfileId,
-    claimerProfileId,
-    purchaserProfileId
-  );
-  if (eligible) return null;
-  return {
-    success: false,
-    message: getMessage('claim_ineligible_purchaser'),
-    error: getMessage('claim_error_ineligible_purchaser'),
-  };
-}
+type ClaimRow = {
+  id: string;
+  item_id: string | null;
+  list_id: string | null;
+  units: number;
+  profile_id: string | null;
+  claimed_by_profile_id: string | null;
+};
 
-// The claim write and every refusal it can answer with, in one place: the
-// duplicate a purchaser already holds, the capacity the entry has no room in,
-// and the duplicate that raced past the first check.
-async function recordEntryClaim(
-  claim: ClaimInput,
-  isAttributed: boolean
-): Promise<{ id: string } | { refusal: ActionResponse }> {
-  // Best-effort, for the message alone: the partial unique index on
-  // (list_id, item_id, profile_id) is the concurrency backstop, and the 23505
-  // catch below reports the same refusal. Asked first so a purchaser who
-  // already holds a claim reads "already claimed" rather than the capacity
-  // refusal their own claim provoked. There is no guest equivalent — two
-  // guests who both type "Josh" are two claims, and capacity is what limits
-  // them.
-  if (
-    claim.purchaserProfileId &&
-    (await entryHoldsClaimBy(
-      claim.listId,
-      claim.itemId,
-      claim.purchaserProfileId
-    ))
-  ) {
-    return { refusal: duplicateClaimResponse(isAttributed) };
-  }
+type AuthorizedClaim = {
+  row: ClaimRow;
+  ownerProfileId: string | null;
+  /** The signed-out caller's cookie, kept so a removal can prune it. Null for an authenticated caller. */
+  guestClaims: Awaited<ReturnType<typeof readGuestClaims>> | null;
+};
 
-  let insertedId: string | null;
-  try {
-    insertedId = await insertClaimWithinCapacity(claim);
-  } catch (insertError) {
-    // Partial unique index trip (purchases_list_item_profile_unique_idx): a
-    // duplicate purchaser slipped past the check above because two requests
-    // raced against distinct DB sessions.
-    if (sqlstateOf(insertError) === PG_UNIQUE_VIOLATION) {
-      return { refusal: duplicateClaimResponse(isAttributed) };
-    }
-    throw insertError;
-  }
-  if (!insertedId) {
+// One gate for both ways a claim can be changed: dropping it and moving its
+// units. Editing units is a new capability for the item's owner, but not a new
+// rights question — who may change somebody else's claim is who may remove it,
+// and dropping a claim to zero units IS removing it.
+async function authorizeClaimMutation(
+  purchaseId: string
+): Promise<AuthorizedClaim | { refusal: ActionResponse }> {
+  const actorIdentity = await authedIdentity();
+  const actorMembership = actorIdentity
+    ? await writableMembership(
+        actorIdentity.userId,
+        actorIdentity.activeProfile.id
+      )
+    : null;
+
+  const row = await db.query.purchases.findFirst({
+    where: eq(purchases.id, purchaseId),
+    columns: {
+      id: true,
+      item_id: true,
+      list_id: true,
+      units: true,
+      profile_id: true,
+      claimed_by_profile_id: true,
+    },
+  });
+  if (!row) {
     return {
       refusal: {
         success: false,
-        message: getMessage('claim_item_fully_claimed'),
-        error: getMessage('claim_error_fully_claimed'),
+        message: getMessage('claim_not_found'),
+        error: getMessage('claim_error_not_found'),
       },
     };
   }
-  return { id: insertedId };
-}
 
-async function entryHoldsClaimBy(
-  listId: string,
-  itemId: string,
-  purchaserProfileId: string
-): Promise<boolean> {
-  const [existing] = await db
-    .select({ id: purchases.id })
-    .from(purchases)
-    .where(
-      and(
-        eq(purchases.list_id, listId),
-        eq(purchases.item_id, itemId),
-        eq(purchases.profile_id, purchaserProfileId)
-      )
-    );
-  return !!existing;
-}
+  // A claim whose item was deleted keeps a null item reference, so there is
+  // no owner to compare against and no item tag to bump. The claim is still
+  // its holder's to drop.
+  const targetItem = row.item_id
+    ? await db.query.items.findFirst({
+        where: eq(items.id, row.item_id),
+        columns: { profile_id: true },
+      })
+    : undefined;
 
-// Capacity is a guard folded into the insert, not a read that precedes it:
-// this driver has no interactive transaction, so a count read then an insert
-// decides on state that has already moved. Selecting FROM the entry means a
-// missing entry inserts nothing either, so null answers both refusals — and
-// only capacity can be the reason, the entry's existence being proven by the
-// gate upstream. The residual race the sum leaves open is accepted
-// (ADR-0016): the guard takes no lock, and an over-claimed entry is a state
-// the app already tolerates.
-//
-// Written as a raw SELECT because drizzle builds the target column list from
-// the schema: the projection below is every `purchases` column in DECLARATION
-// ORDER, matched positionally. A column added without one here fails on arity,
-// but reordering two columns of the same type would not — what catches that is
-// the write-path suite, which pins a distinct value in every identity column
-// of a persisted row.
-async function insertClaimWithinCapacity(
-  claim: ClaimInput
-): Promise<string | null> {
-  const claimId = nanoid();
-  const [inserted] = await db
-    .insert(purchases)
-    .select(
-      sql`select ${claimId}::text, ${claim.itemId}::text, ${claim.listId}::text, ${CLAIM_UNITS}::integer,
-                 null::text, null::text, null::text,
-                 ${claim.purchaserProfileId}::text, ${claim.callerProfileId}::text, ${claim.guestName}::text, now()
-          from ${list_items}
-          where ${list_items.list_id} = ${claim.listId}
-            and ${list_items.item_id} = ${claim.itemId}
-            and ${CLAIM_UNITS} + coalesce((select sum(${purchases.units}) from ${purchases}
-                  where ${purchases.list_id} = ${claim.listId}
-                    and ${purchases.item_id} = ${claim.itemId}), 0) <= ${list_items.quantity}`
+  const guestClaims = actorIdentity ? null : await readGuestClaims();
+
+  if (
+    !canRemovePurchase(
+      row,
+      targetItem?.profile_id ?? null,
+      actorIdentity,
+      new Set(guestClaims?.purchases),
+      actorMembership?.role ?? null
     )
-    .returning({ id: purchases.id });
-  return inserted?.id ?? null;
+  ) {
+    return {
+      refusal: {
+        success: false,
+        message: getMessage('claim_not_yours'),
+        error: getMessage('claim_error_not_yours'),
+      },
+    };
+  }
+
+  return { row, ownerProfileId: targetItem?.profile_id ?? null, guestClaims };
+}
+
+function bumpClaimTags(claim: AuthorizedClaim) {
+  updateTags(
+    ...(claim.ownerProfileId
+      ? [cacheTags.itemsOfProfile(claim.ownerProfileId)]
+      : []),
+    ...(claim.row.profile_id
+      ? [cacheTags.purchasesOfProfile(claim.row.profile_id)]
+      : [])
+  );
 }
 
 type RemovePurchaseInput = { purchase_id: string };
@@ -286,67 +262,14 @@ export async function removePurchase(
       };
     }
 
-    const actorIdentity = await authedIdentity();
-    const actorMembership = actorIdentity
-      ? await writableMembership(
-          actorIdentity.userId,
-          actorIdentity.activeProfile.id
-        )
-      : null;
+    const authorized = await authorizeClaimMutation(data.purchase_id);
+    if ('refusal' in authorized) return authorized.refusal;
 
-    const row = await db.query.purchases.findFirst({
-      where: eq(purchases.id, data.purchase_id),
-      columns: {
-        id: true,
-        item_id: true,
-        profile_id: true,
-        claimed_by_profile_id: true,
-      },
-    });
-    if (!row) {
-      return {
-        success: false,
-        message: getMessage('claim_not_found'),
-        error: getMessage('claim_error_not_found'),
-      };
+    await db.delete(purchases).where(eq(purchases.id, authorized.row.id));
+    if (authorized.guestClaims) {
+      await forgetGuestClaim(authorized.guestClaims, authorized.row.id);
     }
-
-    // A claim whose item was deleted keeps a null item reference, so there is
-    // no owner to compare against and no item tag to bump. The claim is still
-    // its holder's to drop.
-    const targetItem = row.item_id
-      ? await db.query.items.findFirst({
-          where: eq(items.id, row.item_id),
-          columns: { profile_id: true },
-        })
-      : undefined;
-
-    const guestClaims = actorIdentity ? null : await readGuestClaims();
-
-    if (
-      !canRemovePurchase(
-        row,
-        targetItem?.profile_id ?? null,
-        actorIdentity,
-        new Set(guestClaims?.purchases),
-        actorMembership?.role ?? null
-      )
-    ) {
-      return {
-        success: false,
-        message: getMessage('claim_not_yours'),
-        error: getMessage('claim_error_not_yours'),
-      };
-    }
-
-    await db.delete(purchases).where(eq(purchases.id, row.id));
-    if (guestClaims) {
-      await forgetGuestClaim(guestClaims, row.id);
-    }
-    updateTags(
-      ...(targetItem ? [cacheTags.itemsOfProfile(targetItem.profile_id)] : []),
-      ...(row.profile_id ? [cacheTags.purchasesOfProfile(row.profile_id)] : [])
-    );
+    bumpClaimTags(authorized);
     return {
       success: true,
       message: getMessage('claim_delete_success'),
@@ -357,6 +280,50 @@ export async function removePurchase(
       success: false,
       message: getMessage('claim_delete_failed'),
       error: getMessage('claim_error_remove_failed'),
+    };
+  }
+}
+
+// Moves a claim within what its entry still has room for. Zero is not a unit
+// count a row can hold, so it routes to removal: dropping a claim to nothing IS
+// unclaiming, and leaving a zero-unit row would be a claim for nothing.
+export async function setPurchaseUnits(data: {
+  purchase_id: string;
+  units: number;
+}): Promise<ActionResponse> {
+  if (data.units === 0) return removePurchase({ purchase_id: data.purchase_id });
+  try {
+    const invalid = invalidUnitsRefusal(data.units);
+    if (invalid) return invalid;
+
+    const authorized = await authorizeClaimMutation(data.purchase_id);
+    if ('refusal' in authorized) return authorized.refusal;
+    const { row } = authorized;
+
+    // A claim detached from its entry — the item was deleted, or the list was
+    // — has no capacity to be measured against, so there is no number the edit
+    // could be checked for room in.
+    if (!row.list_id || !row.item_id) return noRoomResponse();
+
+    const moved = await updateClaimUnitsWithinCapacity({
+      id: row.id,
+      listId: row.list_id,
+      itemId: row.item_id,
+      units: data.units,
+    });
+    if (!moved) return noRoomResponse();
+
+    bumpClaimTags(authorized);
+    return {
+      success: true,
+      message: getMessage('claim_units_success'),
+    };
+  } catch (error) {
+    console.error('Error updating purchase units:', error);
+    return {
+      success: false,
+      message: getMessage('claim_units_failed'),
+      error: getMessage('claim_error_units_failed'),
     };
   }
 }

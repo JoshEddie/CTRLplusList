@@ -11,7 +11,11 @@ import ItemCard from './ItemCard';
 import OwnerActions from './OwnerActions';
 import PurchaseModalSlot from './PurchaseModalSlot';
 import { useItemClaims } from './useItemClaims';
-import { containerClasses, resolveModalView } from './utils';
+import {
+  claimUnitsCeiling,
+  containerClasses,
+  resolveModalView,
+} from './utils';
 
 export default function Item({
   item,
@@ -173,6 +177,7 @@ export default function Item({
         <PurchaseModalSlot
           view={modalView}
           claims={(!claimRoute && claim.revealedClaims) || claim.claims}
+          capacity={claim.capacity}
           viewerIsPurchaser={claim.viewerIsPurchaser}
           actor={actor}
           isOwner={isOwner}
@@ -183,6 +188,7 @@ export default function Item({
           onAttributedClaim={claim.handleAttributedClaim}
           onGuestClaim={claim.handleGuestClaim}
           onRemoveClaim={isOwner ? claim.removeClaim : claim.handleManageRemove}
+          onUpdateUnits={claim.updateClaimUnits}
         />
       )}
 
@@ -206,8 +212,10 @@ export default function Item({
       {!preview && undoClaim && (
         <ClaimUndoPopup
           isOpen
+          maxUnits={claimUnitsCeiling(claim.capacity, undoClaim)}
           onClose={claim.dismissUndo}
           onUndo={() => claim.removeClaim(undoClaim)}
+          onUpdateUnits={(units) => claim.updateClaimUnits(undoClaim, units)}
         />
       )}
     </>

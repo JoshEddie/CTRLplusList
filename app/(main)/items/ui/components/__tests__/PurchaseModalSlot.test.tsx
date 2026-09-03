@@ -55,6 +55,7 @@ function renderSlot(
   const props: React.ComponentProps<typeof PurchaseModalSlot> = {
     view: 'claim',
     claims: [],
+    capacity: { quantity: 1, remaining: 1 },
     viewerIsPurchaser: false,
     actor: undefined,
     isOwner: false,
@@ -65,6 +66,7 @@ function renderSlot(
     onAttributedClaim: vi.fn(),
     onGuestClaim: vi.fn(),
     onRemoveClaim: vi.fn(),
+    onUpdateUnits: vi.fn(),
     ...overrides,
   };
   return { props, ...render(<PurchaseModalSlot {...props} />) };

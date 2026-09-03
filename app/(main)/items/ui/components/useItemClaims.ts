@@ -4,6 +4,7 @@ import {
   createPurchase,
   removePurchase,
   revealedClaimsForEntry,
+  setPurchaseUnits,
 } from '@/lib/data/purchase.actions';
 import { getMessage } from '@/lib/i18n/utils';
 import { atLeast } from '@/lib/spoilers';
@@ -38,6 +39,13 @@ function entryLineOf(
   );
 }
 
+// A claim's own unit count where the viewer may see it, and one otherwise —
+// the claims-tier stub for another party's claim carries none. The fallback
+// only has to be stable, not true: the stubs are identical on both sides of
+// the delta this feeds, so whatever they contribute cancels.
+const sumUnits = (rows: PurchaseView[]) =>
+  rows.reduce((total, row) => total + (row.units ?? 1), 0);
+
 // The viewer's picture of one item's claims: the projected array the page
 // arrived with, everything derived from it, and the writes that change it.
 export function useItemClaims({
@@ -61,7 +69,10 @@ export function useItemClaims({
 }) {
   const propPurchases = item.purchases ?? [];
   const propPurchasesKey = propPurchases
-    .map((p) => `${p.id}:${p.name ?? ''}:${p.by}:${p.claimedByViewer}`)
+    .map(
+      (p) =>
+        `${p.id}:${p.units ?? ''}:${p.name ?? ''}:${p.by}:${p.claimedByViewer}`
+    )
     .join('|');
   const [claims, setClaims] = useState<PurchaseView[]>(propPurchases);
   const [prevPropKey, setPrevPropKey] = useState(propPurchasesKey);
@@ -86,14 +97,16 @@ export function useItemClaims({
   // `claimedUnits` is the entry's own number, never summed from the projected
   // claims — a per-claim unit count is not something the claims tier
   // discloses. The local delta keeps an optimistic claim visible until the
-  // page re-reads; each claim covers exactly one unit.
+  // page re-reads, and moves with the units a claim covers rather than by one
+  // per row.
   const entry =
     item.list_id !== undefined && item.quantity !== undefined
       ? {
           listId: item.list_id,
           quantity: item.quantity,
           claimedUnits:
-            (item.claimed_units ?? 0) + (claims.length - propPurchases.length),
+            (item.claimed_units ?? 0) +
+            (sumUnits(claims) - sumUnits(propPurchases)),
         }
       : null;
   const isFullyClaimed = !!entry && entry.claimedUnits >= entry.quantity;
@@ -134,6 +147,13 @@ export function useItemClaims({
     };
   }, [revealNames, namesWithheld, item.id, entryListId]);
 
+  // Both claim arrays the hook holds move together: the payload's set and the
+  // reveal's, when one has been fetched.
+  const applyLocally = (update: (rows: PurchaseView[]) => PurchaseView[]) => {
+    setClaims(update);
+    setRevealedClaims((prev) => (prev ? update(prev) : null));
+  };
+
   // One home for claim removal: dispatch, toast copy, and local-state filter.
   const removeClaim = async (claim: PurchaseView) => {
     try {
@@ -151,13 +171,38 @@ export function useItemClaims({
           error: getMessage('claim_remove_error'),
         }
       );
-      setClaims((prev) => prev.filter((p) => p.id !== claim.id));
-      setRevealedClaims(
-        (prev) => prev?.filter((p) => p.id !== claim.id) ?? null
-      );
+      applyLocally((rows) => rows.filter((p) => p.id !== claim.id));
       return true;
     } catch (error) {
       console.error('Failed to remove purchase:', error);
+      return false;
+    }
+  };
+
+  // Moving a claim's units, including to zero — which the action routes to
+  // removal, so the local state drops the row rather than showing a claim for
+  // nothing.
+  const updateClaimUnits = async (claim: PurchaseView, units: number) => {
+    try {
+      await toast.promise(
+        setPurchaseUnits({ purchase_id: claim.id, units }).then((response) => {
+          if (!response?.success) throw new Error(response?.message);
+          return response;
+        }),
+        {
+          loading: getMessage('claim_units_loading'),
+          success: getMessage('claim_units_success'),
+          error: (err: Error) => err?.message || getMessage('claim_units_error'),
+        }
+      );
+      applyLocally((rows) =>
+        units === 0
+          ? rows.filter((p) => p.id !== claim.id)
+          : rows.map((p) => (p.id === claim.id ? { ...p, units } : p))
+      );
+      return true;
+    } catch (error) {
+      console.error('Failed to update purchase units:', error);
       return false;
     }
   };
@@ -173,6 +218,7 @@ export function useItemClaims({
       item_id: string;
       guest_name: string | null;
       purchased_by?: string;
+      units?: number;
     },
     optimistic: Omit<PurchaseView, 'id'>,
     settle: (succeeded: boolean, claim?: PurchaseView) => void = onSettled
@@ -206,11 +252,13 @@ export function useItemClaims({
   };
 
   const recordSelfClaim = (
+    units: number,
     settle?: (succeeded: boolean, claim?: PurchaseView) => void
   ) =>
     recordClaim(
-      { item_id: item.id || '', guest_name: null },
+      { item_id: item.id || '', guest_name: null, units },
       {
+        units,
         by: 'self',
         name: userName || getMessage('viewer_name_placeholder'),
         claimedByViewer: true,
@@ -275,6 +323,14 @@ export function useItemClaims({
     // No entry, no claim: the library's items span every list and some sit on
     // none, so the affordance that creates a claim is not offered there.
     claimable,
+    // What a units control may offer. Null off a list, which is what withdraws
+    // the control entirely — the same discriminator the claim affordance uses.
+    capacity: entry
+      ? {
+          quantity: entry.quantity,
+          remaining: Math.max(0, entry.quantity - entry.claimedUnits),
+        }
+      : null,
     showBuyClaim:
       !!actor &&
       claimable &&
@@ -285,26 +341,37 @@ export function useItemClaims({
     undoClaim,
     dismissUndo: () => setUndoClaim(null),
     removeClaim,
+    updateClaimUnits,
     handleManageRemove,
-    handleSelfClaim: () => recordSelfClaim(),
+    handleSelfClaim: (units = 1) => recordSelfClaim(units),
+    // Buy & Claim stays one unit however many the entry wants: the fast path
+    // records a claim without asking anything. Its confirmation is where a
+    // purchaser who bought several raises the count.
     handleBuyClaim: () =>
-      recordSelfClaim((succeeded, claim) => {
+      recordSelfClaim(1, (succeeded, claim) => {
         if (succeeded && claim) setUndoClaim(claim);
       }),
-    handleAttributedClaim: (target: AttributedTarget) =>
+    handleAttributedClaim: (target: AttributedTarget, units = 1) =>
       recordClaim(
-        { item_id: item.id || '', guest_name: null, purchased_by: target.id },
         {
+          item_id: item.id || '',
+          guest_name: null,
+          purchased_by: target.id,
+          units,
+        },
+        {
+          units,
           by: target.id === actor?.id ? 'self' : 'other',
           name: target.name,
           claimedByViewer: true,
           purchasedAt: new Date(),
         }
       ),
-    handleGuestClaim: (name: string) =>
+    handleGuestClaim: (name: string, units = 1) =>
       recordClaim(
-        { item_id: item.id || '', guest_name: name },
+        { item_id: item.id || '', guest_name: name, units },
         {
+          units,
           // Signed-out guest: the cookie written by the action makes this the
           // viewer's own claim, matching the server overlay's by:'self' marking.
           by: actor ? 'other' : 'self',
