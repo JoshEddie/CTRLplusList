@@ -47,6 +47,7 @@ export default function ClaimsList({
   claims,
   canRemove,
   capacity,
+  unitsStatus,
   removalDisabled = false,
   onRemoveClaim,
   onUpdateUnits,
@@ -55,6 +56,8 @@ export default function ClaimsList({
   canRemove: (claim: PurchaseView) => boolean;
   /** What is left of the entry's ask, which bounds how far a claim on it can be raised. Null off a list. */
   capacity?: EntryCapacity | null;
+  /** What the entry already has spoken for. Passed rather than derived: capacity states a remainder at every tier, but below `claims` it is drawn from a withheld count and would read as a false zero. */
+  unitsStatus?: string;
   // Which removal a row offers depends on who is listed: the owner's list is
   // master unclaim and takes the owner floor, the manage view is the viewer's
   // own claims and takes none. The caller knows which it opened, so the floor
@@ -64,7 +67,7 @@ export default function ClaimsList({
   onUpdateUnits?: (claim: PurchaseView, units: number) => void;
 }) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
-  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [drafts, setDrafts] = useState<Record<string, number>>({});
   const ceilingFor = (claim: PurchaseView) =>
     claimUnitsCeiling(capacity, claim);
   if (claims.length === 0) return null;
@@ -122,8 +125,10 @@ export default function ClaimsList({
               ceilingFor(claim) > 1 && (
                 <UnitsField
                   label={getMessage('claim_units_row_label')}
-                  value={drafts[claim.id] ?? String(claim.units ?? 1)}
+                  status={unitsStatus}
+                  value={drafts[claim.id] ?? claim.units ?? 1}
                   max={ceilingFor(claim)}
+                  saved={claim.units ?? 1}
                   onChange={(next) =>
                     setDrafts((prev) => ({ ...prev, [claim.id]: next }))
                   }

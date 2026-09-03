@@ -27,12 +27,14 @@ test('ListPage_OneClaimerTakesEveryUnitThenLowersIt_CounterFollowsTheUnits', asy
   // The stepper caps at what is left, so the whole remainder is claimable and
   // nothing beyond it is.
   await card.getByRole('button', { name: 'Add Claim' }).click();
-  const units = page.getByLabel('How many?');
+  const units = page.getByRole('spinbutton');
   await expect(units).toHaveValue('1');
   await expect(units).toHaveAttribute('max', String(remaining));
 
   await units.fill(String(remaining));
-  await page.getByRole('button', { name: 'Claim this gift' }).click();
+  // The CTA states the number the stepper is holding, so it is the readback of
+  // what is about to be claimed.
+  await page.getByRole('button', { name: `Claim ${remaining} of these` }).click();
 
   // Every unit spoken for by one person: the entry reads as claimed rather than
   // still offering room.
@@ -50,10 +52,10 @@ test('ListPage_OneClaimerTakesEveryUnitThenLowersIt_CounterFollowsTheUnits', asy
 
   // Manage claim moves the count down without destroying the claim.
   await settled.getByRole('button', { name: 'Manage claim' }).click();
-  const rowUnits = page.getByLabel('Units');
+  const rowUnits = page.getByRole('spinbutton');
   await expect(rowUnits).toHaveValue(String(remaining));
   await rowUnits.fill('1');
-  await page.getByRole('button', { name: 'Update' }).click();
+  await page.getByRole('button', { name: 'Update to 1' }).click();
   await expect(page.getByText('Claim updated')).toBeVisible();
   await page.locator('.close-button').click();
 

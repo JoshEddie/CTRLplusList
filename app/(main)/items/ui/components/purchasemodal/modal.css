@@ -231,18 +231,12 @@
   color: var(--muted-text-color);
 }
 
-/* How many units a claim covers. Sits inline in a claim row and as its own
-   block in the claim flow; the field takes the slack either way, so the Update
-   button beside it never has to be measured. */
+/* How many units a claim covers. The stepper is five targets wide already, so
+   Update goes under it rather than competing for the same row. */
 .claim-units {
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
   gap: 8px;
-}
-
-.claim-units .form_field {
-  flex: 1;
-  min-width: 0;
 }
 
 .claim-row .claim-units {

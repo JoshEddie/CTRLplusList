@@ -21,7 +21,7 @@ export default function ClaimUndoPopup({
   onUndo: () => void;
   onUpdateUnits: (units: number) => void;
 }) {
-  const [unitsValue, setUnitsValue] = useState('1');
+  const [unitsValue, setUnitsValue] = useState(1);
   if (!isOpen) return null;
 
   return (
@@ -40,6 +40,7 @@ export default function ClaimUndoPopup({
             label={getMessage('claim_units_bought_label')}
             value={unitsValue}
             max={maxUnits}
+            saved={1}
             onChange={setUnitsValue}
             onSubmit={(units) => {
               onUpdateUnits(units);

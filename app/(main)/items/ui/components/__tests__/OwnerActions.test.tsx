@@ -247,22 +247,22 @@ describe('OwnerActions', () => {
       renderActions({ listId: 'l1' });
       await openKebab(user);
       await user.click(screen.getByRole('menuitem', { name: 'Quantity' }));
-      expect(screen.getByLabelText(/Quantity/)).toHaveValue(1);
+      expect(screen.getByRole('spinbutton')).toHaveValue(1);
     });
 
     it('ClickQuantity_ClosesMenu-OpensDialogSeededWithCurrentQuantity', async () => {
       const user = userEvent.setup();
       await openDialog(user, 4);
       expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-      expect(screen.getByLabelText(/Quantity/)).toHaveValue(4);
+      expect(screen.getByRole('spinbutton')).toHaveValue(4);
       expect(setListItemQuantity).not.toHaveBeenCalled();
     });
 
     it('SaveNewValue_CallsSetListItemQuantity-Notifies-ClosesDialog', async () => {
       const user = userEvent.setup();
       const { props } = await openDialog(user, 1);
-      await user.clear(screen.getByLabelText(/Quantity/));
-      await user.type(screen.getByLabelText(/Quantity/), '4');
+      await user.clear(screen.getByRole('spinbutton'));
+      await user.type(screen.getByRole('spinbutton'), '4');
       await user.click(screen.getByRole('button', { name: 'Save' }));
       expect(setListItemQuantity).toHaveBeenCalledWith('l1', 'i1', 4);
       await waitFor(() => expect(props.onChanged).toHaveBeenCalled());
@@ -293,18 +293,24 @@ describe('OwnerActions', () => {
       expect(props.onChanged).not.toHaveBeenCalled();
     });
 
-    describe('RejectedValues', () => {
-      it.each([['0'], ['1.5'], ['1000'], ['']])(
-        'Value%s_DisablesSave',
-        async (typed) => {
-          const user = userEvent.setup();
-          await openDialog(user, 2);
-          const field = screen.getByLabelText(/Quantity/);
-          await user.clear(field);
-          if (typed) await user.type(field, typed);
-          expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-        }
-      );
+    // The control admits no number the action would refuse, so there is no
+    // rejected value to disable Save over — out-of-range input lands on the
+    // nearest legal one instead.
+    describe('OutOfRangeValues', () => {
+      it.each([
+        ['0', 1],
+        ['1.5', 1],
+        ['1000', 99],
+        ['', 1],
+      ])('Value%s_SavesTheNearestLegalQuantity', async (typed, saved) => {
+        const user = userEvent.setup();
+        await openDialog(user, 2);
+        const field = screen.getByRole('spinbutton');
+        await user.clear(field);
+        if (typed) await user.type(field, typed);
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+        expect(setListItemQuantity).toHaveBeenCalledWith('l1', 'i1', saved);
+      });
     });
   });
 });

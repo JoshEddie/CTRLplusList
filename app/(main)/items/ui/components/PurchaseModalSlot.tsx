@@ -5,6 +5,8 @@ import {
   PurchaseView,
   SpoilerTier,
 } from '@/lib/types';
+import { atLeast } from '@/lib/spoilers';
+import { unitsClaimedLabel } from './utils';
 import ClaimsList from './purchasemodal/ClaimsList';
 import Modal from './purchasemodal/Modal';
 import ModalStoreRow from './purchasemodal/ModalStoreRow';
@@ -58,6 +60,11 @@ export default function PurchaseModalSlot({
             claims={claims}
             canRemove={(claim) => claim.by === 'self' || claim.claimedByViewer}
             capacity={capacity}
+            unitsStatus={
+              capacity && atLeast(tier, 'claims')
+                ? unitsClaimedLabel(capacity.quantity, capacity.remaining)
+                : undefined
+            }
             onRemoveClaim={onRemoveClaim}
             onUpdateUnits={onUpdateUnits}
           />

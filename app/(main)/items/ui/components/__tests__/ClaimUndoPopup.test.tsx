@@ -82,19 +82,22 @@ describe('ClaimUndoPopup', () => {
   // Buy & Claim records one unit to keep the fast path fast; somebody who
   // bought several raises the count here rather than unclaiming and restarting.
   describe('RaisingTheCount', () => {
-    const unitsField = () => screen.getByLabelText('How many did you buy?');
+    const unitsField = () => screen.getByRole('spinbutton');
 
     it('NothingToRaiseTo_RendersNoUnitsControl', () => {
       renderPopup({ maxUnits: 1 });
-      expect(
-        screen.queryByLabelText('How many did you buy?')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     });
 
     it('RoomToRaise_StartsAtTheOneUnitClaimedAndCapsAtTheCeiling', () => {
       renderPopup({ maxUnits: 3 });
       expect(unitsField()).toHaveValue(1);
       expect(unitsField()).toHaveAttribute('max', '3');
+    });
+
+    it('StillTheOneUnitRecorded_LeavesUpdateInert', () => {
+      renderPopup({ maxUnits: 3 });
+      expect(screen.getByRole('button', { name: 'Update' })).toBeDisabled();
     });
 
     it('RaisedCountThenUpdate_ReportsItThenCloses', async () => {
@@ -108,7 +111,7 @@ describe('ClaimUndoPopup', () => {
 
       await user.clear(unitsField());
       await user.type(unitsField(), '3');
-      await user.click(screen.getByRole('button', { name: 'Update' }));
+      await user.click(screen.getByRole('button', { name: 'Update to 3' }));
 
       expect(props.onUpdateUnits).toHaveBeenCalledWith(3);
       expect(calls).toEqual(['update', 'close']);

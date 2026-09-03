@@ -598,13 +598,13 @@ describe('PurchaseFlowContainer', () => {
   // Capacity is measured in units, so one purchaser can take some or all of
   // what is wanted. An entry asking for one is unchanged — no control at all.
   describe('UnitStepper', () => {
-    const unitsField = () => screen.getByLabelText('How many?');
+    const unitsField = () => screen.getByRole('spinbutton');
 
     it('EntryAskingForOne_RendersNoStepper', async () => {
       renderContainer({ capacity: { quantity: 1, remaining: 1 } });
       await screen.findByRole('button', { name: 'Claim this gift' });
 
-      expect(screen.queryByLabelText('How many?')).not.toBeInTheDocument();
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     });
 
     it('MultiUnitEntry_StepperCapsAtWhatRemains', async () => {
@@ -624,7 +624,7 @@ describe('PurchaseFlowContainer', () => {
 
       await user.clear(unitsField());
       await user.type(unitsField(), '3');
-      await user.click(screen.getByRole('button', { name: 'Claim this gift' }));
+      await user.click(screen.getByRole('button', { name: 'Claim 3 of these' }));
 
       expect(onSelfClaim).toHaveBeenCalledWith(3);
     });
@@ -638,7 +638,7 @@ describe('PurchaseFlowContainer', () => {
 
       await user.clear(unitsField());
       await user.type(unitsField(), '9');
-      await user.click(screen.getByRole('button', { name: 'Claim this gift' }));
+      await user.click(screen.getByRole('button', { name: 'Claim 2 of these' }));
 
       expect(onSelfClaim).toHaveBeenCalledWith(2);
     });
@@ -656,11 +656,23 @@ describe('PurchaseFlowContainer', () => {
       expect(onSelfClaim).toHaveBeenCalledWith(1);
     });
 
-    it('MultiUnitEntry_StepperNamesWhatIsStillFree', async () => {
+    it('MultiUnitEntry_StepperSaysWhatIsAlreadyClaimed', async () => {
       renderContainer({ capacity: { quantity: 4, remaining: 3 } });
       await screen.findByRole('button', { name: 'Claim this gift' });
 
-      expect(screen.getByText('3 left')).toBeInTheDocument();
+      expect(screen.getByText('1 of 4 claimed')).toBeInTheDocument();
+    });
+
+    it('MoreThanOneUnitChosen_TheClaimCtaStatesHowMany', async () => {
+      const user = userEvent.setup();
+      renderContainer({ capacity: { quantity: 4, remaining: 4 } });
+      await screen.findByRole('button', { name: 'Claim this gift' });
+
+      await user.click(screen.getByRole('button', { name: 'Increase' }));
+
+      expect(
+        screen.getByRole('button', { name: 'Claim 2 of these' })
+      ).toBeInTheDocument();
     });
 
     // Below `claims` the page's payload withholds what is claimed, so its
@@ -673,23 +685,29 @@ describe('PurchaseFlowContainer', () => {
         capacity: { quantity: 4, remaining: 4 },
       });
 
-      expect(screen.queryByLabelText('How many?')).not.toBeInTheDocument();
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     });
 
     it('BelowClaimsAfterTheReveal_StepperCapsAtTheRevealedRemainder', async () => {
       vi.mocked(claimSummaryForEntry).mockResolvedValue({
-        claimedUnits: 3,
-        remaining: 1,
+        claimedUnits: 2,
+        remaining: 2,
       });
       renderContainer({
         tier: 'surprise',
         capacity: { quantity: 4, remaining: 4 },
       });
 
-      expect(await screen.findByLabelText('How many?')).toHaveAttribute(
-        'max',
-        '1'
-      );
+      expect(await screen.findByRole('spinbutton')).toHaveAttribute('max', '2');
+    });
+
+    // A stepper offering one number is not a choice; the claim is the one unit
+    // that is left, exactly as it is on an entry asking for one.
+    it('OneUnitLeftOfMany_RendersNoStepper', async () => {
+      renderContainer({ capacity: { quantity: 4, remaining: 1 } });
+      await screen.findByRole('button', { name: 'Claim this gift' });
+
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
     });
 
     it('ChosenUnits_CarriedByAGuestClaim', async () => {

@@ -1,9 +1,16 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
-import { TextField } from '@/app/ui/components/field';
+import { Stepper } from '@/app/ui/components/stepper';
 import { getMessage } from '@/lib/i18n/utils';
-import { clampUnits } from '../utils';
+import type { ReactNode } from 'react';
+
+// An editor saves the number on its own, so it needs the number it would be
+// saving over; the claim flow's CTA carries the number instead and has nothing
+// to save over yet.
+type SaveVariant =
+  | { onSubmit: (units: number) => void; saved: number }
+  | { onSubmit?: never; saved?: never };
 
 // How many units a claim covers, wherever one is chosen: the claim flow before
 // the claim lands, and the two places it can be moved afterwards. Capped at
@@ -11,41 +18,38 @@ import { clampUnits } from '../utils';
 // capacity guard would refuse.
 export default function UnitsField({
   label,
-  description,
+  status,
   value,
   max,
   onChange,
   onSubmit,
+  saved,
 }: {
   label: string;
-  /** What is still free, where the cap IS the entry's remainder — so a viewer reads how much room there is before committing. Absent on an editor whose ceiling includes the claim's own units, which is not a remainder. */
-  description?: string;
-  value: string;
+  /** What the entry already has spoken for, where the surface may say. */
+  status?: ReactNode;
+  value: number;
   max: number;
-  onChange: (next: string) => void;
-  /** Present where the number is saved on its own; absent where a claim CTA carries it. */
-  onSubmit?: (units: number) => void;
-}) {
-  const units = clampUnits(value, max);
+  onChange: (next: number) => void;
+} & SaveVariant) {
   return (
     <div className="claim-units">
-      <TextField
+      <Stepper
         label={label}
-        description={description}
-        type="number"
-        inputMode="numeric"
-        min={1}
-        max={max}
+        status={status}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        max={max}
+        onChange={onChange}
       />
       {onSubmit && (
         <Button
-          variant="secondary"
-          disabled={units === null}
-          onClick={() => units !== null && onSubmit(units)}
+          variant="primary"
+          disabled={value === saved}
+          onClick={() => onSubmit(value)}
         >
-          {getMessage('claim_units_update_label')}
+          {value === saved
+            ? getMessage('claim_units_update_label')
+            : getMessage('claim_units_update_to_label', { units: value })}
         </Button>
       )}
     </div>

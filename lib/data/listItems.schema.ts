@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-// The ceiling is not a product rule about gift lists — it is where a number
-// stops being a quantity and starts being an integer overflow. The field and
-// the action read the same schema so neither can drift from the other.
-export const MAX_ENTRY_QUANTITY = 999;
+// Two digits is as far as an occasion's ask goes, so the stepper's jump-to-max
+// stays a number somebody would actually pick. The field and the action read
+// the same schema so neither can drift from the other.
+export const MAX_ENTRY_QUANTITY = 99;
 
 export const EntryQuantitySchema = z
   .number()

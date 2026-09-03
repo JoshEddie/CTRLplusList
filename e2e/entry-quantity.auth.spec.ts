@@ -26,8 +26,12 @@ test('ListPage_OwnerSetsEntryQuantityViaKebab_RowShowsItOnThatListOnly', async (
   await expect(
     modal.getByRole('heading', { name: 'How many do you want?' })
   ).toBeVisible();
-  const field = modal.getByLabel(/Quantity/);
+  const field = modal.getByRole('spinbutton');
   await expect(field).toHaveValue('1');
+  // The jump end lands on the ceiling the schema enforces, and stepping down
+  // from it proves the row is a control rather than a bare number field.
+  await modal.getByRole('button', { name: 'Set to maximum, 99' }).click();
+  await expect(field).toHaveValue('99');
   await field.fill('4');
   await modal.getByRole('button', { name: 'Save' }).click();
 
