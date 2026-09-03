@@ -7,6 +7,7 @@ import {
   user_follows,
 } from '@/db/schema';
 import { accountsOfProfiles } from '@/lib/data/profile';
+import { SHOWN_ENTRY } from '@/lib/data/listItems.presence';
 import { getMessage } from '@/lib/i18n/utils';
 import { primaryStore } from '@/lib/storeValidity';
 import { avatarViewOf, withProfileAvatar } from '@/lib/data/profileAvatar';
@@ -281,7 +282,13 @@ export async function getListClaimedCount(listId: string) {
         purchase_id: purchases.id,
       })
       .from(lists)
-      .leftJoin(list_items, eq(list_items.list_id, lists.id))
+      // Shown entries only: a soft-removed one is off the list, so its claim
+      // is no longer part of how much of THIS list is handled — and counting
+      // it could put the progress above the item count the bar runs to.
+      .leftJoin(
+        list_items,
+        and(eq(list_items.list_id, lists.id), SHOWN_ENTRY)
+      )
       // Both legs, not the item alone: a claim made on another list that
       // happens to share the item is not this list's progress.
       .leftJoin(

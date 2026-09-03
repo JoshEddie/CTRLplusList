@@ -6,7 +6,7 @@ import {
   setTestCookie,
 } from '@/test/helpers/next-headers';
 
-import { items, list_items, lists } from '@/db/schema';
+import { items, list_items, lists, purchases } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
@@ -210,6 +210,74 @@ describe('setListItems', () => {
     expect((await listItemRows('L')).map((r) => r.item_id)).toEqual(['A']);
   });
 
+  describe('SoftRemovedEntry', () => {
+    beforeEach(async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id });
+      await seedItem(db, { id: 'A', user_id: OWNER.id });
+      await seedItem(db, { id: 'B', user_id: OWNER.id });
+      await seedListItem(db, {
+        list_id: 'L',
+        item_id: 'A',
+        position: 65536,
+        quantity: 4,
+        shown: false,
+      });
+      await seedListItem(db, { list_id: 'L', item_id: 'B', position: 131072 });
+      await seedPurchase(db, {
+        id: 'P',
+        item_id: 'A',
+        list_id: 'L',
+        guest_name: 'Guest',
+      });
+    });
+
+    it('ItemReselected_RestoresAtEndOfList-KeepsQuantityAndClaim', async () => {
+      const res = await actions.setListItems('L', ['A', 'B']);
+      expect(res.message).toBe('Added 1');
+      const rows = await listItemRows('L');
+      expect(
+        rows.map((r) => ({
+          item_id: r.item_id,
+          shown: r.shown,
+          position: r.position,
+          quantity: r.quantity,
+        }))
+      ).toEqual(
+        expect.arrayContaining([
+          { item_id: 'A', shown: true, position: 196608, quantity: 4 },
+        ])
+      );
+      expect(
+        (await db.select().from(purchases).where(eq(purchases.id, 'P'))).length
+      ).toBe(1);
+    });
+
+    it('ItemLeftUnselected_ReportsNoChanges-LeavesRowUnshown', async () => {
+      const res = await actions.setListItems('L', ['B']);
+      expect(res.message).toBe('No changes');
+      expect(
+        (await listItemRows('L')).find((r) => r.item_id === 'A')?.shown
+      ).toBe(false);
+    });
+
+    it('ClaimedItemDeselected_SoftRemovesIt-ReportsRemovedOne', async () => {
+      await seedPurchase(db, {
+        id: 'P2',
+        item_id: 'B',
+        list_id: 'L',
+        guest_name: 'Guest',
+      });
+      const res = await actions.setListItems('L', []);
+      expect(res.message).toBe('removed 1');
+      expect(
+        (await listItemRows('L')).map((r) => [r.item_id, r.shown])
+      ).toEqual([
+        ['A', false],
+        ['B', false],
+      ]);
+    });
+  });
+
   describe('UpdateRecency', () => {
     const STALE = new Date('2020-01-01T00:00:00.000Z');
 
@@ -308,6 +376,52 @@ describe('removeListItem', () => {
     expect(res.error).toBe('Not found');
     expect(res.message).toBe('Item is not on this list');
     expect(contentTagCalls(updateTag)).toEqual([]);
+  });
+
+  describe('ClaimedEntry', () => {
+    beforeEach(async () => {
+      await seedPurchase(db, {
+        id: 'P',
+        item_id: 'A',
+        list_id: 'L',
+        guest_name: 'Guest',
+      });
+    });
+
+    it('Owner_KeepsRowUnshown-KeepsTheClaim', async () => {
+      const res = await actions.removeListItem('L', 'A');
+      expect(res.success).toBe(true);
+      expect(res.message).toBe('Removed from list');
+      const rows = await listItemRows('L');
+      expect(
+        rows.map((r) => ({ item_id: r.item_id, shown: r.shown }))
+      ).toEqual([
+        { item_id: 'A', shown: false },
+        { item_id: 'B', shown: true },
+      ]);
+      expect(
+        (await db.select().from(purchases).where(eq(purchases.id, 'P'))).length
+      ).toBe(1);
+    });
+
+    it('ClaimOnAnotherListsEntry_DeletesThisEntryOutright', async () => {
+      await seedList(db, { id: 'L2', user_id: OWNER.id });
+      await seedListItem(db, { list_id: 'L2', item_id: 'A', position: 65536 });
+
+      const res = await actions.removeListItem('L2', 'A');
+      expect(res.success).toBe(true);
+      expect((await listItemRows('L2')).length).toBe(0);
+    });
+
+    it('AlreadySoftRemoved_ReturnsRemovedFromList-LeavesRowUnshown', async () => {
+      await actions.removeListItem('L', 'A');
+      const res = await actions.removeListItem('L', 'A');
+      expect(res.success).toBe(true);
+      expect(res.message).toBe('Removed from list');
+      expect((await listItemRows('L')).find((r) => r.item_id === 'A')?.shown).toBe(
+        false
+      );
+    });
   });
 
   it('DeleteThrows_ReturnsFailedToRemoveItem', async () => {

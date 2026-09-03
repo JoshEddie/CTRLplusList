@@ -17,7 +17,7 @@ function renderActions(
     fullyClaimed: false,
     viewerClaimed: false,
     hasAnyClaim: false,
-    claimable: true,
+    acceptsClaims: true,
     tier: 'claims',
     store: STORE,
     onPurchaseClick: vi.fn(),
@@ -38,14 +38,14 @@ describe('ItemActions', () => {
   // untouched — removal is row-based and needs no entry.
   describe('NoEntry', () => {
     it('Unclaimed_RendersNoAddClaim', () => {
-      renderActions({ claimable: false });
+      renderActions({ acceptsClaims: false });
       expect(
         screen.queryByRole('button', { name: 'Add Claim' })
       ).not.toBeInTheDocument();
     });
 
     it('OwnerWithClaims_StillRendersManageClaims', () => {
-      renderActions({ claimable: false, isOwner: true, hasAnyClaim: true });
+      renderActions({ acceptsClaims: false, isOwner: true, hasAnyClaim: true });
       expect(
         screen.getByRole('button', { name: 'Manage claims' })
       ).toBeInTheDocument();
@@ -287,7 +287,7 @@ describe('ItemActions', () => {
             fullyClaimed={false}
             viewerClaimed={false}
             hasAnyClaim={false}
-            claimable
+            acceptsClaims
             tier="claims"
             store={STORE}
           />
@@ -319,7 +319,7 @@ describe('ItemActions', () => {
             fullyClaimed={false}
             viewerClaimed={false}
             hasAnyClaim={false}
-            claimable
+            acceptsClaims
             tier="claims"
             showBuyClaim
             store={STORE}

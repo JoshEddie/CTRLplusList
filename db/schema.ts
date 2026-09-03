@@ -107,7 +107,10 @@ export const items = pgTable('items', {
 // quantity of its own. Claimed units are NOT stored: they are
 // SUM(purchases.units) over the entry, and a stored copy would be a second
 // answer to the same question with nothing able to detect it going wrong
-// (ADR-0016). Nothing reads `shown`.
+// (ADR-0016). `shown` is soft removal: false means the owner took the item off
+// the list but claims already existed, so the entry survives for the people
+// holding them. Only a claimed entry ever reaches that state — an unclaimed
+// removal deletes the row.
 export const list_items = pgTable(
   'list_items',
   {

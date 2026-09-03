@@ -5,6 +5,7 @@ import {
   list_items,
   lists,
   profiles,
+  purchases,
   user_blocks,
   users,
 } from '@/db/schema';
@@ -100,6 +101,9 @@ const ITEM_NO_LISTS = 'item-with-no-list-membership';
 // the loop runs; the first iteration (Dave's OWNER list) does not grant access,
 // the second (viewer's own list) returns true via the in-loop owner branch.
 const ITEM_ON_VIEWERS_LIST_OTHER_OWNER = 'item-on-viewers-list-other-owner';
+// Alice's item, soft-removed from her public list: the entry is still there,
+// carrying claims, but the owner has dropped it.
+const ITEM_SOFT_REMOVED = 'item-soft-removed-from-alice-followers';
 
 beforeAll(async () => {
   const { db } = await bootPglite();
@@ -183,6 +187,7 @@ beforeAll(async () => {
     { id: ITEM_MULTI_LIST, name: 'M', profile_id: P(DAVE) },
     { id: ITEM_NO_LISTS, name: 'N', profile_id: P(DAVE) },
     { id: ITEM_ON_VIEWERS_LIST_OTHER_OWNER, name: 'O', profile_id: P(DAVE) },
+    { id: ITEM_SOFT_REMOVED, name: 'R', profile_id: P(ALICE) },
   ]);
 
   await db.insert(list_items).values([
@@ -219,6 +224,23 @@ beforeAll(async () => {
       list_id: LIST_VIEWER_OWNER,
       item_id: ITEM_ON_VIEWERS_LIST_OTHER_OWNER,
       position: 1,
+    },
+    {
+      list_id: LIST_ALICE_FOLLOWERS,
+      item_id: ITEM_SOFT_REMOVED,
+      position: 2,
+      shown: false,
+    },
+  ]);
+
+  // The claim that keeps the soft-removed entry alive, held by the viewer.
+  await db.insert(purchases).values([
+    {
+      id: 'purchase-on-soft-removed',
+      list_id: LIST_ALICE_FOLLOWERS,
+      item_id: ITEM_SOFT_REMOVED,
+      profile_id: P(VIEWER),
+      claimed_by_profile_id: P(VIEWER),
     },
   ]);
 });
@@ -415,6 +437,67 @@ describe('listAccess', () => {
       expect(
         await isEntryViewable(LIST_DAVE_OWNER, ITEM_NO_LISTS, V(DAVE))
       ).toBe(false);
+    });
+
+    // The claim gate: the owner dropped the item, so the entry admits no new
+    // claims even though the list it sits on is wide open.
+    describe('SoftRemovedEntry', () => {
+      it('OnAViewableList_ReturnsFalse', async () => {
+        expect(
+          await isEntryViewable(LIST_ALICE_FOLLOWERS, ITEM_SOFT_REMOVED, null)
+        ).toBe(false);
+      });
+
+      // `includeRemoved` opens the reveals reached from a ghost that is on
+      // somebody's screen, and no wider: the read path shows one only to its
+      // owner and to whoever holds a claim on it.
+      describe('IncludingRemoved', () => {
+        it('ListOwner_ReturnsTrue', async () => {
+          expect(
+            await isEntryViewable(
+              LIST_ALICE_FOLLOWERS,
+              ITEM_SOFT_REMOVED,
+              V(ALICE),
+              { includeRemoved: true }
+            )
+          ).toBe(true);
+        });
+
+        it('ClaimHolder_ReturnsTrue', async () => {
+          expect(
+            await isEntryViewable(
+              LIST_ALICE_FOLLOWERS,
+              ITEM_SOFT_REMOVED,
+              V(VIEWER),
+              { includeRemoved: true }
+            )
+          ).toBe(true);
+        });
+
+        it('ViewerOfTheListHoldingNoClaim_ReturnsFalse', async () => {
+          expect(
+            await isEntryViewable(
+              LIST_ALICE_FOLLOWERS,
+              ITEM_SOFT_REMOVED,
+              V(JACK),
+              { includeRemoved: true }
+            )
+          ).toBe(false);
+        });
+
+        it('AnonymousCaller_ReturnsFalse', async () => {
+          expect(
+            await isEntryViewable(
+              LIST_ALICE_FOLLOWERS,
+              ITEM_SOFT_REMOVED,
+              null,
+              {
+                includeRemoved: true,
+              }
+            )
+          ).toBe(false);
+        });
+      });
     });
 
     // An entry pairing someone else's item with your list is not a thing

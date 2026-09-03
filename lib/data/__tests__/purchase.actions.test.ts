@@ -392,6 +392,27 @@ describe('createPurchase', () => {
       ]);
     });
 
+    // A soft-removed entry admits no new claims, and says so the way a missing
+    // one does: the refusal may not become a channel for what the owner did.
+    it('SoftRemovedEntry_ReturnsItemNotFound-NoRow', async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
+      await seedItem(db, { id: 'I', user_id: OWNER.id });
+      await seedListItem(db, {
+        list_id: 'L',
+        item_id: 'I',
+        position: 65536,
+        shown: false,
+      });
+      asOther();
+      const res = await actions.createPurchase({
+        list_id: 'L',
+        item_id: 'I',
+        guest_name: null,
+      });
+      expect(res.error).toBe('Item not found');
+      expect(await purchaseRows('I')).toHaveLength(0);
+    });
+
     it('BlockedCallerOnPublicList_ReturnsItemNotFound-NoRow', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'public' });
       await seedItem(db, { id: 'I', user_id: OWNER.id });

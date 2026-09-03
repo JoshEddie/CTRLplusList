@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { items, purchases } from '@/db/schema';
+import { items, list_items, purchases } from '@/db/schema';
 import { ROLES } from '@/lib/data/profile.roles';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
@@ -624,6 +624,20 @@ describe('getListClaimedCount', () => {
       claimedItemCount: 2,
     });
     expect(await dal.getListClaimedCount('l2')).toEqual({
+      claimedItemCount: 1,
+    });
+  });
+
+  // A soft-removed entry is off the list, so its claim is no longer part of
+  // how much of THIS list is handled — and counting it could push the
+  // progress past the item count the bar runs to.
+  it('ClaimOnASoftRemovedEntry_IsNotCounted', async () => {
+    await db
+      .update(list_items)
+      .set({ shown: false })
+      .where(and(eq(list_items.list_id, 'l1'), eq(list_items.item_id, 'i1')));
+
+    expect(await dal.getListClaimedCount('l1')).toEqual({
       claimedItemCount: 1,
     });
   });

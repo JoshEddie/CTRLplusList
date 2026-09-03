@@ -209,6 +209,24 @@
   margin: 0;
 }
 
+/* Soft-removed entry: the card is on the page only because the viewer holds a
+   claim on it, or because its owner's tier already discloses claim state. Row 6
+   in the flattened row/card grids below — past every explicit row any layout
+   places — so the note always trails the card whatever else it carries. */
+.item-removed-note {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-text-color);
+  margin: 0 0 4px;
+}
+
+.item-list .item-removed-note,
+.sortable-item .item-removed-note {
+  grid-column: 1 / -1;
+  grid-row: 6;
+  margin: 0;
+}
+
 /* Multi-claim counter shown to viewers */
 .item-entry-line {
   font-size: 12px;
@@ -1206,6 +1224,12 @@
 
   .item-grid .item-entry-line {
     display: none;
+  }
+
+  .item-grid .item-removed-note {
+    grid-column: 1 / -1;
+    grid-row: 6;
+    margin: 0;
   }
 }
 

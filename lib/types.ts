@@ -128,6 +128,8 @@ export type ItemDisplay = ItemTable & {
   quantity?: number;
   /** Units already claimed on the entry, summed server-side (ADR-0016) so units never enter the claim projection. Withheld below the `claims` tier. */
   claimed_units?: number;
+  /** The entry was soft-removed and reaches this viewer only because they hold a claim on it — or because they own the list and their tier already discloses claim state. */
+  removed?: boolean;
 };
 
 export type SortKey =

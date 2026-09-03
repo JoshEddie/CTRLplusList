@@ -1,3 +1,4 @@
+import { getMessage } from '@/lib/i18n/utils';
 import { storeValid } from '@/lib/storeValidity';
 import { ItemDisplay, SpoilerTier } from '@/lib/types';
 import ItemActions from './ItemActions';
@@ -15,7 +16,7 @@ export default function ItemCard({
   fullyClaimed,
   entryLine,
   hasAnyClaim,
-  claimable,
+  acceptsClaims,
   tier,
   showBuyClaim,
   viewOnly,
@@ -35,8 +36,8 @@ export default function ItemCard({
   /** The entry's line under the row — claim progress or the bare ask. Empty renders nothing. */
   entryLine: string;
   hasAnyClaim: boolean;
-  /** A list entry exists to claim against; see ItemActions. */
-  claimable: boolean;
+  /** A list entry exists to claim against AND still takes new claims; see ItemActions. */
+  acceptsClaims: boolean;
   tier: SpoilerTier;
   /** Authed non-owner Buy & Claim signal; absent on view-only surfaces. */
   showBuyClaim?: boolean;
@@ -52,8 +53,23 @@ export default function ItemCard({
       className={`item ${className || ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''}`}
       title={item.name || ''}
     >
-      <ItemPhoto itemId={item.id} name={item.name || ''} url={item.image_url || ''} />
+      <ItemPhoto
+        itemId={item.id}
+        name={item.name || ''}
+        url={item.image_url || ''}
+      />
       <div className="item-info">
+        {item.removed && (
+          <p className="item-removed-note">
+            {/* Two readings of one state, and the card knows which viewer it
+                has: the owner is being told why a row they removed is still
+                here, the claim holder why one they can see is not on the list
+                any more. */}
+            {getMessage(
+              isOwner ? 'entry_removed_owner' : 'entry_removed_viewer'
+            )}
+          </p>
+        )}
         <div className="item-name-description">
           <h1 className="itemName">{item.name || ''}</h1>
           {item.description ? (
@@ -67,7 +83,7 @@ export default function ItemCard({
           viewerClaimed={viewerClaimed}
           guestViewer={guestViewer}
           hasAnyClaim={hasAnyClaim}
-          claimable={claimable}
+          acceptsClaims={acceptsClaims}
           tier={tier}
           showBuyClaim={showBuyClaim}
           store={storeValid(item.store) ? (item.store ?? null) : null}

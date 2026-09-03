@@ -334,7 +334,8 @@ export async function setPurchaseUnits(data: {
 // list's exact claim state at any tier.
 export async function claimSummaryForEntry(listId: string, itemId: string) {
   const viewer = await authedIdentity();
-  if (!(await isEntryViewable(listId, itemId, viewer))) return null;
+  if (!(await isEntryViewable(listId, itemId, viewer, { includeRemoved: true })))
+    return null;
   return getEntryClaimSummary(listId, itemId);
 }
 
@@ -346,6 +347,7 @@ export async function revealedClaimsForEntry(
   itemId: string
 ): Promise<PurchaseView[]> {
   const viewer = await authedIdentity();
-  if (!(await isEntryViewable(listId, itemId, viewer))) return [];
+  if (!(await isEntryViewable(listId, itemId, viewer, { includeRemoved: true })))
+    return [];
   return getRevealedEntryClaims(listId, itemId, viewer?.selfProfile.id);
 }

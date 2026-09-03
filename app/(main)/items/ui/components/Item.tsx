@@ -139,7 +139,7 @@ export default function Item({
           fullyClaimed={claim.isFullyClaimed}
           entryLine={claim.entryLine}
           hasAnyClaim={claim.hasAnyClaim}
-          claimable={claim.claimable}
+          acceptsClaims={claim.acceptsClaims}
           tier={tier}
           showBuyClaim={claim.showBuyClaim}
           viewOnly={preview}

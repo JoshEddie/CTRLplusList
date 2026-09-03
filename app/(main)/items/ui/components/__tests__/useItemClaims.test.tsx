@@ -428,7 +428,26 @@ describe('NoEntry', () => {
     expect(result.current.claims).toEqual([]);
   });
 
-  it('Render_IsNotClaimable-OffersNoBuyClaim', () => {
+  // The soft-removed entry: the owner has dropped the item, so it takes no new
+  // claims — but its capacity is still real (the spoiler banner's counter
+  // reports it) and the claim already on it is still the viewer's to manage.
+  it('SoftRemovedEntry_AcceptsNoClaims-OffersNoBuyClaim-StaysClaimableWithTheViewersClaim', () => {
+    const { result } = mount({
+      item: makeItem({
+        removed: true,
+        quantity: AMPLE_QUANTITY,
+        store: LINKED_STORE,
+        purchases: [ownClaim()],
+      }),
+      actor: actorOf(VIEWER),
+    });
+    expect(result.current.acceptsClaims).toBe(false);
+    expect(result.current.showBuyClaim).toBe(false);
+    expect(result.current.claimable).toBe(true);
+    expect(result.current.hasViewerClaim).toBe(true);
+  });
+
+  it('Render_IsNotClaimable-AcceptsNoClaims-OffersNoBuyClaim', () => {
     const { result } = mount({
       item: makeItem({
         list_id: undefined,
@@ -438,6 +457,7 @@ describe('NoEntry', () => {
       actor: actorOf(VIEWER),
     });
     expect(result.current.claimable).toBe(false);
+    expect(result.current.acceptsClaims).toBe(false);
     expect(result.current.showBuyClaim).toBe(false);
   });
 });

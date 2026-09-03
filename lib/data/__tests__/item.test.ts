@@ -207,6 +207,23 @@ describe('getItemById', () => {
     expect(byListId).toEqual({ l1: 5, l2: 9 });
   });
 
+  it('SoftRemovedEntry_OmittedFromListMemberships', async () => {
+    await seedUsers(db, [{ id: 'u' }]);
+    await seedItem(db, { id: 'i1', user_id: 'u' });
+    await seedList(db, { id: 'l1', user_id: 'u' });
+    await seedList(db, { id: 'l2', user_id: 'u' });
+    await seedListItem(db, { list_id: 'l1', item_id: 'i1', position: 5 });
+    await seedListItem(db, {
+      list_id: 'l2',
+      item_id: 'i1',
+      position: 9,
+      shown: false,
+    });
+
+    const item = await dal.getItemById('i1', selfProfileOf('u'));
+    expect((item?.lists ?? []).map((l) => l.id)).toEqual(['l1']);
+  });
+
   it('ItemWithImagePool_ReturnsCandidatesInInsertionOrder-ActiveAsImageUrl', async () => {
     await seedUsers(db, [{ id: 'u' }]);
     await seedItem(db, { id: 'i1', user_id: 'u' });
@@ -483,6 +500,87 @@ describe('getItemsByListId', () => {
         { id: 'pg', by: 'other', claimedByViewer: false },
       ]);
     });
+  });
+
+  describe('SoftRemovedEntry', () => {
+    // One list, one soft-removed entry, and one claim on it made by `claimer`.
+    // Everything below asks the same question of a different viewer: does the
+    // ghost reach them?
+    beforeEach(async () => {
+      await seedUsers(db, [{ id: 'owner' }, { id: 'claimer' }]);
+      await seedList(db, { id: 'l1', user_id: 'owner' });
+      await seedItem(db, { id: 'gone', user_id: 'owner' });
+      await seedItem(db, { id: 'kept', user_id: 'owner' });
+      await seedListItem(db, {
+        list_id: 'l1',
+        item_id: 'gone',
+        position: 1,
+        shown: false,
+      });
+      await seedListItem(db, { list_id: 'l1', item_id: 'kept', position: 2 });
+      await seedPurchase(db, {
+        id: 'pc',
+        item_id: 'gone',
+        list_id: 'l1',
+        profile_id: selfProfileOf('claimer'),
+        claimed_by_profile_id: selfProfileOf('claimer'),
+      });
+    });
+
+    it('StrangerAtMaximalTier_ExcludesIt', async () => {
+      const rows = await dal.getItemsByListId('l1');
+      expect(rows.map((r) => r.id)).toEqual(['kept']);
+    });
+
+    it('Purchaser_IncludesItMarkedRemoved', async () => {
+      const rows = await dal.getItemsByListId('l1', {
+        viewerSelfProfileId: selfProfileOf('claimer'),
+      });
+      expect(rows.map((r) => [r.id, r.removed])).toEqual([
+        ['gone', true],
+        ['kept', false],
+      ]);
+    });
+
+    it('GuestHoldingTheClaimByCookie_IncludesItMarkedRemoved', async () => {
+      const rows = await dal.getItemsByListId('l1', {
+        heldClaimIds: ['pc'],
+      });
+      expect(rows.map((r) => r.id)).toEqual(['gone', 'kept']);
+    });
+
+    it('GuestHoldingSomeOtherClaim_ExcludesIt', async () => {
+      const rows = await dal.getItemsByListId('l1', {
+        heldClaimIds: ['not-this-one'],
+      });
+      expect(rows.map((r) => r.id)).toEqual(['kept']);
+    });
+
+    it('OwnerAtClaimsTier_IncludesItMarkedRemoved', async () => {
+      const rows = await dal.getItemsByListId('l1', {
+        viewerSelfProfileId: selfProfileOf('owner'),
+        tier: 'claims',
+        isOwner: true,
+      });
+      expect(rows.map((r) => [r.id, r.removed])).toEqual([
+        ['gone', true],
+        ['kept', false],
+      ]);
+    });
+
+    // ADR-0015 at the read: below `claims` the ghost's presence would be the
+    // disclosure, so the owner sees exactly the list an unclaimed removal
+    // would have left them.
+    for (const tier of ['surprise', 'progress'] as const) {
+      it(`Owner${tier === 'surprise' ? 'AtProtected' : 'AtProgress'}Tier_ExcludesIt`, async () => {
+        const rows = await dal.getItemsByListId('l1', {
+          viewerSelfProfileId: selfProfileOf('owner'),
+          tier,
+          isOwner: true,
+        });
+        expect(rows.map((r) => r.id)).toEqual(['kept']);
+      });
+    }
   });
 
   it('QueryThrows_RejectsWithFetchItemsError', async () => {

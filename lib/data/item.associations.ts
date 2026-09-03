@@ -10,8 +10,13 @@ import {
   lists,
 } from '@/db/schema';
 import { touchLists } from '@/lib/data/list.touch';
+import {
+  attachEntries,
+  detachEntries,
+  presenceDiff,
+} from '@/lib/data/listItems.presence';
 import { ADMIN_OPTIONAL, authedWriter } from '@/lib/data/profile.gate';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 
@@ -197,56 +202,19 @@ export async function updateItemLists(
     }
 
     const currentAssociations = await db
-      .select({ list_id: list_items.list_id })
+      .select({ list_id: list_items.list_id, shown: list_items.shown })
       .from(list_items)
       .where(eq(list_items.item_id, itemId));
 
-    const currentListIds = new Set(currentAssociations.map((a) => a.list_id));
-    const selectedListIds = new Set(listIds);
-
-    const addedListIds = listIds.filter((id) => !currentListIds.has(id));
-
-    if (listIds && listIds.length > 0) {
-      await Promise.all(
-        listIds.map(async (listId) => {
-          if (currentListIds.has(listId)) return;
-
-          // Get the maximum position for the list and add 65536 for the new item
-          const result = await db
-            .select({
-              coalesce: sql<number>`COALESCE(MAX(${list_items.position}) + 65536, 65536)`,
-            })
-            .from(list_items)
-            .where(eq(list_items.list_id, listId))
-            .limit(1)
-            /* v8 ignore next -- the COALESCE in the query guarantees a row with a numeric value, so the ?. and ?? 65536 fallbacks are unreachable */
-            .then((result) => result[0]?.coalesce ?? 65536);
-
-          const maxPosition = Math.floor(result) as number;
-
-          await db.insert(list_items).values({
-            item_id: itemId,
-            list_id: listId,
-            position: maxPosition,
-          });
-        })
-      );
-    }
-
-    // Delete associations that are no longer selected
-    const listIdsToDelete = Array.from(currentListIds).filter(
-      (id) => !selectedListIds.has(id)
+    const { attach: addedListIds, detach: listIdsToDelete } = presenceDiff(
+      currentAssociations.filter((a) => a.shown).map((a) => a.list_id),
+      listIds
     );
-    if (listIdsToDelete.length > 0) {
-      await db
-        .delete(list_items)
-        .where(
-          and(
-            eq(list_items.item_id, itemId),
-            inArray(list_items.list_id, listIdsToDelete)
-          )
-        );
-    }
+
+    await Promise.all([
+      ...addedListIds.map((listId) => attachEntries(listId, [itemId])),
+      ...listIdsToDelete.map((listId) => detachEntries(listId, [itemId])),
+    ]);
 
     // Membership changed on exactly these lists — advance their update
     // recency and refresh cached list reads (list-update-recency).
@@ -254,6 +222,7 @@ export async function updateItemLists(
     if (changedListIds.length > 0) {
       await touchLists(changedListIds);
       updateTags(
+        cacheTags.item(itemId),
         ...changedListIds.flatMap((listId) => [
           cacheTags.list(listId),
           cacheTags.itemsOfList(listId),
