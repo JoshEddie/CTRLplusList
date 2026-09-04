@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ItemDisplay } from '@/lib/types';
 import {
-  chooseItemsSaveLabel,
   collectStoreOptions,
-  filterAndSortChooseItems,
-  parseChooseItemsFilters,
-} from '../utils';
+  filterAndSortEditModeItems,
+  parseEditModeFilters,
+} from '../editModeFilters';
 
 function item(overrides: Partial<ItemDisplay>): ItemDisplay {
   return {
@@ -23,21 +22,29 @@ const ITEMS = [
     id: 'a1',
     name: 'Apple',
     description: 'red fruit',
-    store: { name: 'Amazon', price: '5.00', link: 'https://a.example' } as never,
+    store: {
+      name: 'Amazon',
+      price: '5.00',
+      link: 'https://a.example',
+    } as never,
   }),
   item({
     id: 'a2',
     name: 'Banana',
-    store: { name: 'Target', price: '15.00', link: 'https://t.example' } as never,
+    store: {
+      name: 'Target',
+      price: '15.00',
+      link: 'https://t.example',
+    } as never,
   }),
   item({ id: 'a3', name: 'Cherry' }),
 ];
 
 const ids = (items: ItemDisplay[]) => items.map((i) => i.id);
 
-describe('parseChooseItemsFilters', () => {
+describe('parseEditModeFilters', () => {
   it('NullSearchParams_ReturnsDefaults', () => {
-    expect(parseChooseItemsFilters(null)).toEqual({
+    expect(parseEditModeFilters(null)).toEqual({
       q: '',
       sort: 'name_asc',
       show: 'all',
@@ -49,29 +56,31 @@ describe('parseChooseItemsFilters', () => {
   });
 
   it('ValidSort_IsPreserved', () => {
-    expect(parseChooseItemsFilters(new URLSearchParams('sort=price_desc')).sort).toBe(
-      'price_desc'
-    );
+    expect(
+      parseEditModeFilters(new URLSearchParams('sort=price_desc')).sort
+    ).toBe('price_desc');
   });
 
   it('InvalidSort_FallsBackToNameAsc', () => {
-    expect(parseChooseItemsFilters(new URLSearchParams('sort=bogus')).sort).toBe(
+    expect(parseEditModeFilters(new URLSearchParams('sort=bogus')).sort).toBe(
       'name_asc'
     );
   });
 
   it('ShowOnOrOff_IsPreserved-OtherFallsBackToAll', () => {
-    expect(parseChooseItemsFilters(new URLSearchParams('show=on')).show).toBe('on');
-    expect(parseChooseItemsFilters(new URLSearchParams('show=off')).show).toBe(
+    expect(parseEditModeFilters(new URLSearchParams('show=on')).show).toBe(
+      'on'
+    );
+    expect(parseEditModeFilters(new URLSearchParams('show=off')).show).toBe(
       'off'
     );
-    expect(parseChooseItemsFilters(new URLSearchParams('show=weird')).show).toBe(
+    expect(parseEditModeFilters(new URLSearchParams('show=weird')).show).toBe(
       'all'
     );
   });
 
   it('PriceParams_SetHasPriceFilterAndTrimsQuery', () => {
-    const parsed = parseChooseItemsFilters(
+    const parsed = parseEditModeFilters(
       new URLSearchParams('q=%20Hi%20&price_min=3&store=Amazon&store=Target')
     );
     expect(parsed.q).toBe('hi');
@@ -95,31 +104,83 @@ describe('collectStoreOptions', () => {
   });
 });
 
-describe('filterAndSortChooseItems', () => {
-  const base = parseChooseItemsFilters(null);
+describe('filterAndSortEditModeItems', () => {
+  const base = parseEditModeFilters(null);
 
   it('ShowOn_KeepsOnlySelected', () => {
     expect(
-      ids(filterAndSortChooseItems(ITEMS, new Set(['a1']), { ...base, show: 'on' }))
+      ids(
+        filterAndSortEditModeItems(ITEMS, new Set(['a1']), {
+          ...base,
+          show: 'on',
+        })
+      )
     ).toEqual(['a1']);
   });
 
   it('ShowOff_DropsSelected', () => {
     expect(
-      ids(filterAndSortChooseItems(ITEMS, new Set(['a1']), { ...base, show: 'off' }))
+      ids(
+        filterAndSortEditModeItems(ITEMS, new Set(['a1']), {
+          ...base,
+          show: 'off',
+        })
+      )
     ).toEqual(['a2', 'a3']);
   });
 
   it('Query_MatchesNameOrDescription', () => {
-    expect(ids(filterAndSortChooseItems(ITEMS, new Set(), { ...base, q: 'red' }))).toEqual(
-      ['a1']
-    );
+    expect(
+      ids(filterAndSortEditModeItems(ITEMS, new Set(), { ...base, q: 'red' }))
+    ).toEqual(['a1']);
+  });
+
+  it('QueryAgainstNamelessItem_TreatsMissingTextAsEmpty', () => {
+    const nameless = item({
+      id: 'z1',
+      name: null as never,
+      description: null as never,
+    });
+    expect(
+      ids(
+        filterAndSortEditModeItems([nameless, ...ITEMS], new Set(), {
+          ...base,
+          q: 'red',
+        })
+      )
+    ).toEqual(['a1']);
+  });
+
+  it('PriceMinOnly_LeavesTheUpperBoundOpen', () => {
+    expect(
+      ids(
+        filterAndSortEditModeItems(ITEMS, new Set(), {
+          ...base,
+          priceMin: 10,
+          priceMax: NaN,
+          hasPriceFilter: true,
+        })
+      )
+    ).toEqual(['a2']);
+  });
+
+  it('PriceMaxOnly_LeavesTheLowerBoundOpen', () => {
+    expect(
+      ids(
+        filterAndSortEditModeItems(ITEMS, new Set(), {
+          ...base,
+          priceMin: NaN,
+          priceMax: 10,
+          hasPriceFilter: true,
+        })
+      )
+    ).toEqual(['a1']);
   });
 
   it('SelectedStores_FilterByStoreName', () => {
     expect(
       ids(
-        filterAndSortChooseItems(ITEMS, new Set(), {
+        filterAndSortEditModeItems(ITEMS, new Set(), {
           ...base,
           selectedStores: ['Target'],
         })
@@ -132,7 +193,7 @@ describe('filterAndSortChooseItems', () => {
     // reaches the UI, so selecting it matches nothing.
     expect(
       ids(
-        filterAndSortChooseItems(ITEMS, new Set(), {
+        filterAndSortEditModeItems(ITEMS, new Set(), {
           ...base,
           selectedStores: ['LegacyEtsy'],
         })
@@ -148,7 +209,7 @@ describe('filterAndSortChooseItems', () => {
     });
     expect(
       ids(
-        filterAndSortChooseItems([...ITEMS, incomplete], new Set(), {
+        filterAndSortEditModeItems([...ITEMS, incomplete], new Set(), {
           ...base,
           priceMin: 1,
           priceMax: NaN,
@@ -161,7 +222,7 @@ describe('filterAndSortChooseItems', () => {
   it('PriceFilter_BoundsByDisplayPrice', () => {
     expect(
       ids(
-        filterAndSortChooseItems(ITEMS, new Set(), {
+        filterAndSortEditModeItems(ITEMS, new Set(), {
           ...base,
           priceMin: 10,
           priceMax: NaN,
@@ -173,22 +234,12 @@ describe('filterAndSortChooseItems', () => {
 
   it('Sort_OrdersByChosenKey', () => {
     expect(
-      ids(filterAndSortChooseItems(ITEMS, new Set(), { ...base, sort: 'name_desc' }))
+      ids(
+        filterAndSortEditModeItems(ITEMS, new Set(), {
+          ...base,
+          sort: 'name_desc',
+        })
+      )
     ).toEqual(['a3', 'a2', 'a1']);
-  });
-});
-
-describe('chooseItemsSaveLabel', () => {
-  it('ManageMode_AlwaysSaveChanges', () => {
-    expect(chooseItemsSaveLabel('manage', 5)).toBe('Save changes');
-  });
-
-  it('CreateModeNoSelection_ShowsSkip', () => {
-    expect(chooseItemsSaveLabel('create', 0)).toBe('Skip');
-  });
-
-  it('CreateMode_PluralizesItemCount', () => {
-    expect(chooseItemsSaveLabel('create', 1)).toBe('Add 1 item to list →');
-    expect(chooseItemsSaveLabel('create', 2)).toBe('Add 2 items to list →');
   });
 });

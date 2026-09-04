@@ -34,7 +34,9 @@ test('ListPage_OneClaimerTakesEveryUnitThenLowersIt_CounterFollowsTheUnits', asy
   await units.fill(String(remaining));
   // The CTA states the number the stepper is holding, so it is the readback of
   // what is about to be claimed.
-  await page.getByRole('button', { name: `Claim ${remaining} of these` }).click();
+  await page
+    .getByRole('button', { name: `Claim ${remaining} of these` })
+    .click();
 
   // Every unit spoken for by one person: the entry reads as claimed rather than
   // still offering room.

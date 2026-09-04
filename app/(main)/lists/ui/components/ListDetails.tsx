@@ -46,6 +46,7 @@ export default async function ListDetails({
   claimedCount,
   previewMode,
   itemCount,
+  editHref,
 }: {
   isOwner: boolean;
   list: ListWithVisibility;
@@ -61,6 +62,8 @@ export default async function ListDetails({
   claimedCount?: number;
   previewMode?: boolean;
   itemCount: number;
+  /** Built where the request's searchParams are known, so the tier and any filters ride into the mode. */
+  editHref: string;
 }) {
   const identity = await authedIdentity();
   const ownerFloorDisabled =
@@ -173,6 +176,7 @@ export default async function ListDetails({
       visibility={visibility}
       viewerUserId={viewer_user_id}
       kebab={heroKebab}
+      editHref={editHref}
     />
   );
 
@@ -282,18 +286,20 @@ function HeroActions({
   visibility,
   viewerUserId,
   kebab,
+  editHref,
 }: {
   mode: HeroMode;
   list: ListWithVisibility;
   visibility: ListVisibility;
   viewerUserId: string | undefined;
   kebab: React.ReactNode;
+  editHref: string;
 }) {
   if (mode === 'owner') {
     return (
       <div className="list-hero-actions">
         {visibility !== VISIBILITY.OWNER && <ShareButton list={list} />}
-        <LinkButton href={`/lists/${list.id}/choose-items`} variant="on-dark">
+        <LinkButton href={editHref} variant="on-dark">
           <MdChecklist />
           <span className="label">Choose items</span>
         </LinkButton>

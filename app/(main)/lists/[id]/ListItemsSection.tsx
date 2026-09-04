@@ -7,16 +7,12 @@ import { authedIdentity } from '@/lib/data/user.session';
 import { guardListViewable } from '@/lib/listAccess';
 import { resolveSpoilerTier } from '@/lib/spoilers';
 import { VISIBILITY } from '@/lib/visibility';
-
-type Props = {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-};
+import type { ListSectionProps } from './types';
 
 export default async function ListItemsSection({
   params,
   searchParams,
-}: Props) {
+}: ListSectionProps) {
   const identity = await authedIdentity();
 
   const { id } = await params;
@@ -26,6 +22,9 @@ export default async function ListItemsSection({
 
   const isOwner = identity?.activeProfile.id === list.profile_id;
   const previewMode = isOwner && sp.preview === 'viewer';
+
+  // Edit mode carries its own item surface; the default one steps aside.
+  if (isOwner && sp.edit === '1') return null;
 
   // Membership on the owning profile, never the ownership comparison above: a
   // viewer acting as another profile they also run is still the human the

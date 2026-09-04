@@ -80,10 +80,10 @@ export async function deleteItem(page: Page, name: string): Promise<void> {
   await expect(card).toHaveCount(0);
 }
 
-// Creates a list through the real flow and attaches the first library item the
-// choose-items step offers, returning that item's name. The seeded library is
-// stable, so two calls in one spec land on the same item — which is what lets a
-// spec assert that two entries of one item are independent. Leaves the list
+// Creates a list through the real flow and attaches the first library item edit
+// mode's create pass-through offers, returning that item's name. The seeded
+// library is stable, so two calls in one spec land on the same item — which is
+// what lets a spec assert that two entries of one item are independent. Leaves the list
 // behind: there is no delete-list affordance to clean up with.
 export async function createListWithFirstItem(
   page: Page,
@@ -97,12 +97,14 @@ export async function createListWithFirstItem(
     .fill('2030-06-01');
   await page.getByRole('button', { name: 'Create List' }).click();
 
-  await expect(page).toHaveURL(/\/lists\/[^/]+\/choose-items\?new=1$/);
-  const row = page.locator('ul.choose-items-list li').first();
+  await expect(page).toHaveURL(/\/lists\/[^/]+\?edit=1&new=1$/);
+  const row = page.locator('ul.edit-mode-list li').first();
   await row.getByRole('checkbox').check();
   const itemName = (await row.locator('.itemName').innerText()).trim();
-  await page.getByRole('button', { name: /Add 1 item to list/ }).click();
-  await expect(page).toHaveURL(/\/lists\/[^/]+$/);
+  await page.getByRole('button', { name: /Add 1 item/ }).click();
+  // Bulk Save confirms, in the create pass-through as anywhere else.
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page).toHaveURL(/\/lists\/[^/?]+$/);
   return itemName;
 }
 

@@ -1,4 +1,3 @@
-import { auth } from '@/lib/auth';
 import { db } from '@/db';
 import { list_items } from '@/db/schema';
 import { getItemsByProfile } from '@/lib/data/item';
@@ -7,31 +6,25 @@ import { actingAsName } from '@/lib/data/profile.active';
 import { authedIdentity } from '@/lib/data/user.session';
 import { ItemDisplay } from '@/lib/types';
 import { eq } from 'drizzle-orm';
-import { redirect } from 'next/navigation';
-import ChooseItemsForm from './ChooseItemsForm';
+import EditModeForm from './EditModeForm';
+import type { ListSectionProps } from './types';
 
-type Props = {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-};
-
-export default async function ChooseItemsBody({ params, searchParams }: Props) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    redirect('/');
-  }
-
+export default async function ListEditSection({
+  params,
+  searchParams,
+}: ListSectionProps) {
   const { id } = await params;
   const sp = await searchParams;
-  const isNew = sp.new === '1';
+
+  if (sp.edit !== '1') return null;
+
   const [identity, list] = await Promise.all([authedIdentity(), getList(id)]);
 
-  if (!identity || !list) {
-    redirect('/lists');
-  }
-
-  if (list.profile_id !== identity.activeProfile.id) {
-    redirect(`/lists/${id}`);
+  // A non-owner reaching `?edit=1` gets the ordinary page: the hero and items
+  // sections drop out only for the owner, so returning null here leaves them
+  // rendering rather than redirecting a legible URL away.
+  if (!identity || !list || list.profile_id !== identity.activeProfile.id) {
+    return null;
   }
 
   const [allItems, currentListItems, userLists] = await Promise.all([
@@ -45,11 +38,9 @@ export default async function ChooseItemsBody({ params, searchParams }: Props) {
 
   const currentListItemIds = new Set(currentListItems.map((r) => r.item_id));
 
-  // Claim data is dropped outright rather than projected through a tier: this
-  // surface asks one question — on the list or not — and claim chrome competes
-  // with the checkbox that answers it. A tier would still carry the owner's own
-  // claims, and ADR-0015 has nothing that would catch the claim-state branch
-  // they keep alive.
+  // Claim state is dropped outright rather than projected through a tier: a
+  // claim belongs to one list entry, not to an item, so a library row surfaced
+  // here carries none this list could judge.
   const displayItems = allItems
     .filter((item) => !item.archived_at || currentListItemIds.has(item.id))
     .map((item) => {
@@ -60,12 +51,11 @@ export default async function ChooseItemsBody({ params, searchParams }: Props) {
     });
 
   return (
-    <ChooseItemsForm
-      list_id={id}
-      list_name={list.name}
+    <EditModeForm
+      list={list}
       items={displayItems}
       initialSelectedIds={Array.from(currentListItemIds)}
-      isNew={isNew}
+      isNew={sp.new === '1'}
       actor={identity.activeProfile}
       lists={userLists}
       actingAs={await actingAsName(identity)}

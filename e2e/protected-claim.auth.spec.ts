@@ -52,12 +52,12 @@ test('ProtectedList_DeclineTheConfirmation_DisclosesNothing', async ({
     .first()
     .click();
   await expect(
-    page.getByRole('heading', { name: "This could spoil a surprise" })
+    page.getByRole('heading', { name: 'This could spoil a surprise' })
   ).toBeVisible();
 
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(
-    page.getByRole('heading', { name: "This could spoil a surprise" })
+    page.getByRole('heading', { name: 'This could spoil a surprise' })
   ).toHaveCount(0);
   await expect(page.getByText('Spoilers:')).toHaveCount(0);
 });

@@ -14,5 +14,7 @@ test('PublicList_GuestOpensLinkListByUrl_RendersWithoutSession', async ({
   await expect(
     page.getByRole('heading', { name: 'Anniversary Picks' }).first()
   ).toBeVisible();
-  await expect(page.getByText('Sign In', { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText('Sign In', { exact: true }).first()
+  ).toBeVisible();
 });

@@ -4,7 +4,7 @@ import {
 } from '@/app/(main)/items/ui/components/itemFilters';
 import { ItemDisplay, SortKey } from '@/lib/types';
 
-const VALID_SORT_CHOOSE: SortKey[] = [
+const VALID_SORT_KEYS: SortKey[] = [
   'created_desc',
   'created_asc',
   'name_asc',
@@ -17,7 +17,7 @@ const VALID_SORT_CHOOSE: SortKey[] = [
 
 export type ShowFilter = 'all' | 'on' | 'off';
 
-export interface ChooseItemsFilters {
+export interface EditModeFilters {
   q: string;
   sort: SortKey;
   show: ShowFilter;
@@ -27,13 +27,13 @@ export interface ChooseItemsFilters {
   hasPriceFilter: boolean;
 }
 
-export function parseChooseItemsFilters(
+export function parseEditModeFilters(
   searchParams: URLSearchParams | null
-): ChooseItemsFilters {
+): EditModeFilters {
   const q = (searchParams?.get('q') ?? '').toLowerCase().trim();
   const rawSort = searchParams?.get('sort') as SortKey | null;
   const sort: SortKey =
-    rawSort && VALID_SORT_CHOOSE.includes(rawSort) ? rawSort : 'name_asc';
+    rawSort && VALID_SORT_KEYS.includes(rawSort) ? rawSort : 'name_asc';
   const rawShow = searchParams?.get('show');
   const show: ShowFilter =
     rawShow === 'on' || rawShow === 'off' ? rawShow : 'all';
@@ -52,10 +52,10 @@ export function collectStoreOptions(items: ItemDisplay[]): string[] {
   return Array.from(names).sort((a, b) => a.localeCompare(b));
 }
 
-export function filterAndSortChooseItems(
+export function filterAndSortEditModeItems(
   items: ItemDisplay[],
-  selected: Set<string>,
-  filters: ChooseItemsFilters
+  selected: ReadonlySet<string>,
+  filters: EditModeFilters
 ): ItemDisplay[] {
   const { q, sort, show, selectedStores, priceMin, priceMax, hasPriceFilter } =
     filters;
@@ -85,14 +85,4 @@ export function filterAndSortChooseItems(
     });
   }
   return [...result].sort((a, b) => compareItems(a, b, sort));
-}
-
-export function chooseItemsSaveLabel(
-  mode: 'create' | 'manage',
-  totalSelected: number
-): string {
-  if (mode === 'manage') return 'Save changes';
-  return totalSelected > 0
-    ? `Add ${totalSelected} item${totalSelected !== 1 ? 's' : ''} to list →`
-    : 'Skip';
 }

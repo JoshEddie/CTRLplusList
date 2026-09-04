@@ -26,7 +26,8 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
 } from '@dnd-kit/sortable';
-import { useRouter } from 'next/navigation';
+import { enterEditHref } from '@/app/(main)/lists/[id]/editModeChanges';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useId, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MdOutlineDragHandle } from 'react-icons/md';
@@ -40,11 +41,15 @@ interface ItemsProps {
 }
 
 function EmptyListCTA({ listId }: { listId: string }) {
+  const searchParams = useSearchParams();
   return (
     <div className="empty-container">
       <h3>No items on this list yet</h3>
       <p>Pick from your item library or create a new one.</p>
-      <LinkButton href={`/lists/${listId}/choose-items`} variant="primary">
+      <LinkButton
+        href={enterEditHref(listId, searchParams)}
+        variant="primary"
+      >
         <MdChecklist size={18} />
         Choose items
       </LinkButton>

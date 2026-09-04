@@ -1,4 +1,5 @@
 import ListDetails from '@/app/(main)/lists/ui/components/ListDetails';
+import { enterEditHref } from './editModeChanges';
 import ListPrivate from '@/app/(main)/lists/ui/components/ListPrivate';
 import { db } from '@/db';
 import { list_visits } from '@/db/schema';
@@ -14,13 +15,12 @@ import { atLeast, resolveSpoilerTier } from '@/lib/spoilers';
 import { VISIBILITY } from '@/lib/visibility';
 import { sql } from 'drizzle-orm';
 import { after } from 'next/server';
+import type { ListSectionProps } from './types';
 
-type Props = {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-};
-
-export default async function ListHeroSection({ params, searchParams }: Props) {
+export default async function ListHeroSection({
+  params,
+  searchParams,
+}: ListSectionProps) {
   const identity = await authedIdentity();
 
   const { id } = await params;
@@ -34,6 +34,9 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
 
   const isOwner = identity?.activeProfile.id === list.profile_id;
   const previewMode = isOwner && sp.preview === 'viewer';
+
+  // Edit mode replaces the hero with its own band; the two never coexist.
+  if (isOwner && sp.edit === '1') return null;
 
   // Preview renders claim information at the OWNER's own resolved tier, not a
   // non-member's: a preview honest about claim data would show every claim with
@@ -102,6 +105,10 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
         }
         previewMode={previewMode}
         itemCount={list.item_count}
+        editHref={enterEditHref(
+          id,
+          new URLSearchParams(sp as Record<string, string>)
+        )}
       />
     </>
   );

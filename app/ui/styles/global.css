@@ -161,11 +161,11 @@ body {
   margin: 0;
 }
 
-/* Grouped: the choose-items checkbox label span is visually hidden but kept
+/* Grouped: the edit-mode row's checkbox label span is visually hidden but kept
    for assistive tech (its accessible name is the item name) — same clip
    block, one home. */
 .sr-only,
-.choose-items-select .checkbox_field > span {
+.edit-mode-row .checkbox_field > span {
   position: absolute;
   width: 1px;
   height: 1px;

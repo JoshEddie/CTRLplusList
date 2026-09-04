@@ -46,7 +46,9 @@ test('SignedInClaim_SelfClaimOneTap_ShowsOwnClaim', async ({ page }) => {
 
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
-  await expect(claimedAfter.getByText('You claimed this').first()).toBeVisible();
+  await expect(
+    claimedAfter.getByText('You claimed this').first()
+  ).toBeVisible();
 });
 
 test('SignedInClaim_ViewItemInEveryClaimState_ModalStillCarriesStoreRow', async ({

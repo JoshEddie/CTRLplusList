@@ -1,15 +1,15 @@
-import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { auth } from '@/lib/auth';
 import { getItemsByProfile } from '@/lib/data/item';
 import { getList, getListsByProfile } from '@/lib/data/list';
 import { getUserIdentity } from '@/lib/data/profile';
 import { getUserIdByEmail } from '@/lib/data/user';
-import ChooseItemsBody from '../ChooseItemsBody';
 import { makeProfile } from '@/test/helpers/profile';
+import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import ListEditSection from '../ListEditSection';
 
-vi.mock('@/lib/data/profile.active', () => ({ actingAsName: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
+vi.mock('@/lib/data/profile.active', () => ({ actingAsName: vi.fn() }));
 vi.mock('@/lib/data/item', () => ({ getItemsByProfile: vi.fn() }));
 vi.mock('@/lib/data/list', () => ({
   getList: vi.fn(),
@@ -17,13 +17,6 @@ vi.mock('@/lib/data/list', () => ({
 }));
 vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({ getUserIdByEmail: vi.fn() }));
-
-const redirectMock = vi.hoisted(() =>
-  vi.fn((url: string) => {
-    throw new Error(`REDIRECT:${url}`);
-  })
-);
-vi.mock('next/navigation', () => ({ redirect: redirectMock }));
 
 const membership = vi.hoisted(() => ({ rows: [] as { item_id: string }[] }));
 vi.mock('@/db', () => ({
@@ -34,10 +27,9 @@ vi.mock('@/db', () => ({
   },
 }));
 
-vi.mock('../ChooseItemsForm', () => ({
+vi.mock('../EditModeForm', () => ({
   default: (p: {
-    list_id: string;
-    list_name: string;
+    list: { id: string; name: string };
     items: Record<string, unknown>[];
     initialSelectedIds: string[];
     isNew: boolean;
@@ -45,9 +37,9 @@ vi.mock('../ChooseItemsForm', () => ({
     lists: unknown[];
   }) => (
     <div
-      data-testid="choose-form"
-      data-list-id={p.list_id}
-      data-list-name={p.list_name}
+      data-testid="edit-form"
+      data-list-id={p.list.id}
+      data-list-name={p.list.name}
       data-item-ids={p.items.map((i) => i.id).join(',')}
       data-claim-keys={p.items
         .flatMap((i) => Object.keys(i))
@@ -61,7 +53,7 @@ vi.mock('../ChooseItemsForm', () => ({
   ),
 }));
 
-function props(id = 'l1', sp: Record<string, string> = {}) {
+function props(id = 'l1', sp: Record<string, string> = { edit: '1' }) {
   return {
     params: Promise.resolve({ id }),
     searchParams: Promise.resolve(sp),
@@ -94,8 +86,6 @@ beforeEach(() => {
       name: 'Active',
       archived_at: null,
       hasPurchases: true,
-      // Both shapes the read can hand back: another party's claim, and one the
-      // owner holds themselves — which no tier would have withheld.
       purchases: [
         { id: 'c1', by: 'other', claimedByViewer: false },
         { id: 'c2', by: 'self', name: 'Owner', claimedByViewer: true },
@@ -116,49 +106,51 @@ beforeEach(() => {
   ] as never);
 });
 
-describe('ChooseItemsBody', () => {
-  describe('Guards', () => {
-    it('Unauthenticated_RedirectsToRoot', async () => {
-      vi.mocked(auth).mockResolvedValue({ user: {} } as never);
-      await expect(ChooseItemsBody(props())).rejects.toThrow('REDIRECT:/');
-      expect(redirectMock).toHaveBeenCalledWith('/');
-    });
-
-    it('NoUser_RedirectsToLists', async () => {
-      vi.mocked(getUserIdByEmail).mockResolvedValue(null as never);
-      await expect(ChooseItemsBody(props())).rejects.toThrow('REDIRECT:/lists');
-    });
-
-    it('NoProfile_RedirectsToLists', async () => {
-      vi.mocked(getUserIdentity).mockResolvedValue(null);
-      await expect(ChooseItemsBody(props())).rejects.toThrow('REDIRECT:/lists');
+describe('ListEditSection', () => {
+  describe('Gate', () => {
+    it('EditParamAbsent_RendersNothingWithoutReadingTheLibrary', async () => {
+      expect(await ListEditSection(props('l1', {}))).toBeNull();
       expect(getItemsByProfile).not.toHaveBeenCalled();
     });
 
-    it('NoList_RedirectsToLists', async () => {
-      vi.mocked(getList).mockResolvedValue(null as never);
-      await expect(ChooseItemsBody(props())).rejects.toThrow('REDIRECT:/lists');
+    it('EditParamNotOne_RendersNothing', async () => {
+      expect(await ListEditSection(props('l1', { edit: 'true' }))).toBeNull();
     });
 
-    it('NonOwner_RedirectsToListDetail', async () => {
+    it('Unauthenticated_RendersNothing', async () => {
+      vi.mocked(auth).mockResolvedValue({ user: {} } as never);
+      expect(await ListEditSection(props())).toBeNull();
+      expect(getItemsByProfile).not.toHaveBeenCalled();
+    });
+
+    it('NoIdentity_RendersNothing', async () => {
+      vi.mocked(getUserIdentity).mockResolvedValue(null);
+      expect(await ListEditSection(props())).toBeNull();
+      expect(getItemsByProfile).not.toHaveBeenCalled();
+    });
+
+    it('NoList_RendersNothing', async () => {
+      vi.mocked(getList).mockResolvedValue(null as never);
+      expect(await ListEditSection(props())).toBeNull();
+    });
+
+    it('NonOwner_RendersNothingSoTheOrdinaryPageStands', async () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
         name: 'My List',
         profile_id: 'someone-else',
       } as never);
-      await expect(ChooseItemsBody(props('l1'))).rejects.toThrow(
-        'REDIRECT:/lists/l1'
-      );
+      expect(await ListEditSection(props())).toBeNull();
+      expect(getItemsByProfile).not.toHaveBeenCalled();
     });
   });
 
   describe('Owner', () => {
     it('LoadsActiveAndArchivedOnList_ForwardsMembershipAndProps', async () => {
       membership.rows = [{ item_id: 'a3' }];
-      render(await ChooseItemsBody(props('l1')));
+      render(await ListEditSection(props('l1')));
       expect(getItemsByProfile).toHaveBeenCalledWith('p1', { filter: 'all' });
-      const form = screen.getByTestId('choose-form');
-      // a2 (archived, not on list) filtered out; a1 (active) + a3 (archived but on list) kept.
+      const form = screen.getByTestId('edit-form');
       expect(form).toHaveAttribute('data-item-ids', 'a1,a3');
       expect(form).toHaveAttribute('data-selected', 'a3');
       expect(form).toHaveAttribute('data-list-id', 'l1');
@@ -170,18 +162,15 @@ describe('ChooseItemsBody', () => {
 
     it('ItemsCarryingClaims_ForwardsNoPurchaseKeys', async () => {
       membership.rows = [{ item_id: 'a3' }];
-      render(await ChooseItemsBody(props('l1')));
-      const form = screen.getByTestId('choose-form');
-      // Anchors the empty claim keys below: no rows forwarded produces the
-      // same empty string, so the absence has to be read against a payload
-      // that carried the claims to begin with.
+      render(await ListEditSection(props('l1')));
+      const form = screen.getByTestId('edit-form');
       expect(form).toHaveAttribute('data-item-ids', 'a1,a3');
       expect(form).toHaveAttribute('data-claim-keys', '');
     });
 
     it('NewFlag_ForwardsIsNewTrue', async () => {
-      render(await ChooseItemsBody(props('l1', { new: '1' })));
-      expect(screen.getByTestId('choose-form')).toHaveAttribute(
+      render(await ListEditSection(props('l1', { edit: '1', new: '1' })));
+      expect(screen.getByTestId('edit-form')).toHaveAttribute(
         'data-is-new',
         'true'
       );

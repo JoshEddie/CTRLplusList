@@ -7,7 +7,13 @@ import SortItems, { SortableItem } from '../SortItems';
 vi.mock('@/lib/data/listItems.actions', () => ({ updatePriority: vi.fn() }));
 
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => router }));
+const spHolder = vi.hoisted(() => ({
+  value: new URLSearchParams() as URLSearchParams | null,
+}));
+vi.mock('next/navigation', () => ({
+  useRouter: () => router,
+  useSearchParams: () => spHolder.value,
+}));
 
 vi.mock('react-hot-toast', () => ({
   default: { error: vi.fn(), success: vi.fn() },
@@ -114,6 +120,7 @@ beforeEach(() => {
   sortableState.transform = null;
   sortableState.isDragging = false;
   vi.mocked(updatePriority).mockResolvedValue({ success: true } as never);
+  spHolder.value = new URLSearchParams();
 });
 
 afterEach(() => vi.restoreAllMocks());
@@ -124,7 +131,16 @@ describe('SortItems', () => {
     expect(screen.getByText('No items on this list yet')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Choose items/ })).toHaveAttribute(
       'href',
-      '/lists/l1/choose-items'
+      '/lists/l1?edit=1'
+    );
+  });
+
+  it('EmptyItemsUnderASpoilerParam_CarriesItIntoEditMode', () => {
+    spHolder.value = new URLSearchParams('spoiler=claims');
+    render(<SortItems items={[]} listId="l1" actor={ACTOR} />);
+    expect(screen.getByRole('link', { name: /Choose items/ })).toHaveAttribute(
+      'href',
+      '/lists/l1?spoiler=claims&edit=1'
     );
   });
 

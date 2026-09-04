@@ -582,66 +582,69 @@
   }
 }
 
-/* ===== Choose items page (Stage 5 redesign) ===== */
+/* ===== Edit mode (`?edit=1`) =====
+   The band replaces .list-hero on the same route, so it reuses the hero's
+   own sticky/collapsing surface and only re-dresses what sits inside it.
+   The item surface below keeps the row anatomy the retired picker route
+   defined, renamed to the mode that now owns it. */
 
-.choose-items-page {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* The mode's parts are direct children of the container, exactly as the hero
+   and the item grid are on the default view — no wrapper. A wrapper would
+   become the chrome's sticky containing block, and any gap it introduced
+   between ListHeroSurface's sentinel and the chrome would break the
+   `surface.top - sentinel.top` pin-depth reading the collapse turns on.
+   Clearance for the fixed footer therefore lands on the container itself. */
+.container--list-details:has(.edit-mode-footer) {
   padding-bottom: 84px;
 }
 
-.choose-items-pg-hd {
-  display: grid;
-  grid-template-columns: auto auto;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
-  padding: 4px 0 4px;
-}
-
-.choose-items-pg-hd-main {
-  grid-column: 1 / -1;
+.list-edit-items-actions {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+  justify-content: flex-end;
+  padding: 10px 28px;
 }
 
-.choose-items-pg-title {
-  font-family: var(--font-crimson-pro), Georgia, serif;
-  font-weight: 300;
-  font-size: 26px;
-  line-height: 1.15;
-  color: var(--heading-text-color);
-  margin: 0;
-}
-
-.choose-items-pg-title em {
-  font-style: italic;
-  color: var(--primary-color);
-}
-
-@media (max-width: 600px) {
-  .choose-items-pg-title {
-    font-size: 20px;
+@media (max-width: 800px) {
+  .list-edit-items-actions {
+    padding: 10px 16px;
   }
 }
 
-.choose-items-undo {
-  background: none;
-  border: none;
-  color: var(--primary-color);
-  font:
-    600 13px var(--font-roboto-condensed),
-    sans-serif;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  padding: 0;
+/* Mobile-first: one column of fields, widening to two where the band has the
+   room. Fields sit on the hero gradient, so their labels take the same
+   on-dark treatment the rest of the band already uses while the input boxes
+   stay on their own light surface. */
+.list-edit-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px 16px;
+  /* Side padding tracks .container--list-details .items-toolbar so the field
+     boxes line up with the search field directly beneath them. */
+  padding: 14px 28px 18px;
 }
 
-.choose-items-list {
+@media (min-width: 700px) {
+  .list-edit-hero {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .list-edit-hero {
+    padding: 12px 16px 16px;
+  }
+}
+
+.list-edit-hero .form_field_group .form_field_label,
+.list-edit-hero .form_field_group .form_field_description {
+  color: var(--light-color);
+}
+
+.list-edit-hero .form_field_group .form_field {
+  background-color: var(--light-color);
+}
+
+.edit-mode-list {
   list-style: none;
   display: flex;
   flex-direction: column;
@@ -650,7 +653,7 @@
   border-top: 1px solid var(--divider-color);
 }
 
-.choose-items-list > li {
+.edit-mode-list > li {
   border-bottom: 1px solid var(--divider-color);
 }
 
@@ -665,7 +668,7 @@
    Outer grid is 2-col (auto 1fr): col 1 is the checkbox; col 2 is the
    entire <Item /> (which internally renders its own shared 5-col grid).
    See design.md D1. */
-.choose-items-select {
+.edit-mode-row {
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
@@ -681,15 +684,15 @@
    "whole row is clickable" affordance. Buy-link <a> tags inside
    <StoreLinks> are already pointer by browser default and are
    unaffected by `cursor: inherit`. */
-.choose-items-select * {
+.edit-mode-row * {
   cursor: inherit;
 }
 
 /* Compact the inner <CheckboxField>'s <label> inside the picker leading
    slot. The form-field-system 44×44 floor is satisfied by the OUTER
-   .choose-items-select label (the full row width × row height) — the
+   .edit-mode-row label (the full row width × row height) — the
    inner box just needs the visible 24×24 checkbox. See design.md D2. */
-.choose-items-select .checkbox_field {
+.edit-mode-row .checkbox_field {
   padding: 0;
   min-height: unset;
   display: flex;
@@ -704,7 +707,7 @@
 /* Focus ring on the actual checkbox input. If form-field-system already
    provides a global rule on `.checkbox_field_box:focus-visible`, this
    override is a no-op — verify and prune at preview time. */
-.choose-items-select .checkbox_field_box:focus-visible {
+.edit-mode-row .checkbox_field_box:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
@@ -715,41 +718,45 @@
    cell. We also neutralize the shared `.item-list .item-container[:hover]`
    background inside picker rows so it doesn't compete (it would paint
    only col 2 and leave the checkbox cell unhighlighted). */
-.choose-items-list .item-container,
-.choose-items-list .item-container:hover {
+.edit-mode-list .item-container,
+.edit-mode-list .item-container:hover {
   background-color: transparent;
 }
 
-.choose-items-select:hover {
+.edit-mode-row:hover {
   background-color: var(--card-hover-background-color);
 }
 
 /* Selection tints — chained `:hover` so hovering an is-on / is-removing
    row keeps its brand tint instead of degrading to the neutral hover
    color. */
-.choose-items-select.is-on,
-.choose-items-select.is-on:hover {
+.edit-mode-row.is-on,
+.edit-mode-row.is-on:hover {
   background-color: var(--card-accent-background-color);
 }
 
-.choose-items-select.is-removing,
-.choose-items-select.is-removing:hover {
+.edit-mode-row.is-removing,
+.edit-mode-row.is-removing:hover {
   background-color: var(--secondary-background-color);
 }
 
 /* Strike-through on the removing-state item name. Page-scoped CSS
    reaches into <Item>'s `.itemName` class — documented cross-boundary
    coupling, see design.md D5. */
-.choose-items-select.is-removing .itemName {
+.edit-mode-row.is-removing .itemName {
   text-decoration: line-through;
   color: var(--muted-text-color);
 }
 
-.choose-items-sticky-ft {
+/* Inset to the app surface, not the viewport: .app-surface-bleed pads the
+   sides and .app-surface centres at 1700px, so a full-bleed bar would hang
+   over the gradient either side of the card. Same expression the nav's
+   corner notches use. */
+.edit-mode-footer {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  left: max(20px, calc((100% - 1700px) / 2));
+  right: max(20px, calc((100% - 1700px) / 2));
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -760,41 +767,48 @@
   z-index: 50;
 }
 
-.choose-items-count {
+.edit-mode-count {
   font-size: 14px;
   font-weight: 600;
   color: var(--heading-text-color);
+  white-space: nowrap;
 }
 
-.choose-items-count-muted {
+.edit-mode-count-muted {
   color: var(--muted-text-color);
   font-weight: 500;
 }
 
-.choose-items-count-diff {
+.edit-mode-count-diff {
   color: var(--primary-color);
   font-weight: 600;
 }
 
-.choose-items-count-added,
-.choose-items-count-removed {
+.edit-mode-count-added,
+.edit-mode-count-removed {
   color: var(--primary-color);
 }
 
 @media (max-width: 600px) {
-  .choose-items-count-diff {
+  .edit-mode-count-diff {
     display: none;
   }
 }
 
-.choose-items-sticky-actions {
+.edit-mode-footer-actions {
   display: flex;
   gap: 10px;
   align-items: center;
 }
 
+.edit-mode-footer-actions > .btn {
+  white-space: nowrap;
+}
+
 @media (max-width: 800px) {
-  .choose-items-sticky-ft {
+  .edit-mode-footer {
+    left: 12px;
+    right: 12px;
     padding: 12px 20px;
   }
 }

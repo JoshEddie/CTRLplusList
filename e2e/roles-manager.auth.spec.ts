@@ -40,7 +40,9 @@ async function createItem(page: Page, name: string): Promise<void> {
     .getByRole('textbox', { name: 'Product link' })
     .fill('https://example.com/e2e-roles');
   await page.getByRole('button', { name: 'Fetch Details' }).click();
-  await page.getByRole('button', { name: 'Fill in details manually →' }).click();
+  await page
+    .getByRole('button', { name: 'Fill in details manually →' })
+    .click();
 
   await page.getByRole('button', { name: /Item name/ }).click();
   await page.getByLabel('Item name').fill(name);
@@ -110,13 +112,14 @@ test('RolesManager_ManagerCreatesItemsAttachesAndArchives_EachStepReflected', as
     .getByRole('textbox', { name: 'Date', exact: true })
     .fill('2030-06-01');
   await page.getByRole('button', { name: 'Create List' }).click();
-  await expect(page).toHaveURL(/\/lists\/[^/]+\/choose-items\?new=1$/);
-  const listId = page.url().match(/\/lists\/([^/]+)\/choose-items/)?.[1];
+  await expect(page).toHaveURL(/\/lists\/[^/]+\?edit=1&new=1$/);
+  const listId = page.url().match(/\/lists\/([^/]+)\?edit=1/)?.[1];
 
-  const rows = page.locator('ul.choose-items-list li');
+  const rows = page.locator('ul.edit-mode-list li');
   await rows.filter({ hasText: renamed }).getByRole('checkbox').check();
   await rows.filter({ hasText: secondItem }).getByRole('checkbox').check();
-  await page.getByRole('button', { name: /Add 2 items to list/ }).click();
+  await page.getByRole('button', { name: /Add 2 items/ }).click();
+  await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page).toHaveURL(new RegExp(`/lists/${listId}$`));
 
   // The attach lands the viewer on the list page before its rows have
@@ -153,8 +156,8 @@ test('RolesManager_ManagerOpensAListTheyManage_VisibilityPillDisabledAndUnchange
     .getByRole('textbox', { name: 'Date', exact: true })
     .fill('2030-06-01');
   await page.getByRole('button', { name: 'Create List' }).click();
-  await expect(page).toHaveURL(/\/lists\/[^/]+\/choose-items\?new=1$/);
-  const listId = page.url().match(/\/lists\/([^/]+)\/choose-items/)?.[1];
+  await expect(page).toHaveURL(/\/lists\/[^/]+\?edit=1&new=1$/);
+  const listId = page.url().match(/\/lists\/([^/]+)\?edit=1/)?.[1];
   await page.goto(`/lists/${listId}`);
 
   const pill = page.getByRole('button', { name: /Visibility:/ });
@@ -203,7 +206,9 @@ test('RolesOwner_OwnerOpensTheEquivalentSurface_AffordancesOperable', async ({
 }) => {
   await page.goto(`/altvatar/${OWNED_PROFILE}`);
 
-  await expect(page.getByRole('button', { name: 'Edit Altvatar' })).toBeEnabled();
+  await expect(
+    page.getByRole('button', { name: 'Edit Altvatar' })
+  ).toBeEnabled();
   await expect(
     page.getByRole('button', { name: 'Invite someone' })
   ).not.toHaveAttribute('aria-disabled', 'true');
@@ -215,7 +220,9 @@ test('RolesOwner_OwnerOpensTheEquivalentSurface_AffordancesOperable', async ({
   // proved by editing rather than by the control's resting one. Nothing is
   // submitted, so the profile is left as the seed wrote it.
   await nameField.fill('Owned Profile edited');
-  await expect(page.getByRole('button', { name: 'Save Changes' })).toBeEnabled();
+  await expect(
+    page.getByRole('button', { name: 'Save Changes' })
+  ).toBeEnabled();
 
   // The roster's own controls are operable for an owner. Alice holds `manager`
   // on this profile per the seed, so a row other than the viewer's own is there

@@ -130,29 +130,29 @@ test('ListHero_MemberClaimsAtProgressTier_MovesTheHeroClaimedCount', async ({
   await expect(label).toHaveText(`${Number(before) + 1} / ${total} claimed`);
 });
 
-// Choose-items is claim-free by construction rather than by a low tier:
+// Edit mode is claim-free by construction rather than by a low tier:
 // nothing on it resolves one, so the payload carries no claim state for
 // `?spoiler=` to lift. The baseline leg alone would pass just as well against
 // a page that merely inherited the member's `surprise` — the raised leg is
 // what separates the two. Same list as the flow above, so the withheld guest
 // claim it reveals there is present in this profile's library here.
-test('ChooseItems_MemberRaisesTierInTheURL_StillDisclosesNoClaimState', async ({
+test('EditMode_MemberRaisesTierInTheURL_StillDisclosesNoClaimState', async ({
   page,
 }) => {
-  const CHOOSE_ITEMS = `${OWN_LIST}/choose-items`;
+  const EDIT_MODE = `${OWN_LIST}?edit=1`;
 
   // A row has to be on screen before absence means anything: the assertions
   // below are all counts of zero, which an unrendered list satisfies too.
   const expectNoClaimState = async () => {
-    await expect(page.locator('ul.choose-items-list li').first()).toBeVisible();
+    await expect(page.locator('ul.edit-mode-list li').first()).toBeVisible();
     await expect(page.locator('.purchased-banner--spoiler')).toHaveCount(0);
     await expect(page.locator('.item-container.purchased')).toHaveCount(0);
     await expect(page.locator('.item-container.has-my-claim')).toHaveCount(0);
   };
 
-  await page.goto(CHOOSE_ITEMS);
+  await page.goto(EDIT_MODE);
   await expectNoClaimState();
 
-  await page.goto(`${CHOOSE_ITEMS}?spoiler=claims`);
+  await page.goto(`${EDIT_MODE}&spoiler=claims`);
   await expectNoClaimState();
 });

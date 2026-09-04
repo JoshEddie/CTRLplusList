@@ -134,6 +134,7 @@ afterEach(() => {
 type Props = Parameters<typeof ListDetails>[0];
 
 const baseProps: Props = {
+  editHref: '/lists/list-7?edit=1',
   isOwner: true,
   list: makeList(),
   owner: {
@@ -222,7 +223,7 @@ describe('ListDetails', () => {
       const chooseItems = within(actions).getByRole('link', {
         name: 'Choose items',
       });
-      expect(chooseItems).toHaveAttribute('href', '/lists/list-7/choose-items');
+      expect(chooseItems).toHaveAttribute('href', '/lists/list-7?edit=1');
       // Edit is never a hero button; it lives in the kebab menu, which closes
       // the actions cluster.
       expect(

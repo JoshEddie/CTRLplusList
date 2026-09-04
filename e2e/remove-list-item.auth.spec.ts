@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { createListWithFirstItem } from '../test/helpers/e2e/utils';
 
 // Flow: owner removes an item from a list straight from the item card's kebab
-// menu (the single-item shortcut to the choose-items bulk flow). Build-own-
+// menu (the single-item shortcut to edit mode's bulk flow). Build-own-
 // state: create a list, attach one library item, remove it via kebab →
 // ConfirmDialog, then prove the unlink touched only the association — the
 // list shows its empty-state CTA while the item still exists in /items.
@@ -36,7 +36,9 @@ test('ListPage_OwnerRemovesItemViaKebab_ItemOffListButInLibrary', async ({
   // Still in the library: the unlink deleted the list_items row only.
   await page.goto('/items');
   // 200+ seeded items: search rather than trust the default page's slice.
-  await page.getByRole('searchbox', { name: 'Search items' }).fill(chosenItemName);
+  await page
+    .getByRole('searchbox', { name: 'Search items' })
+    .fill(chosenItemName);
   await expect(
     page.locator('.item-container', { hasText: chosenItemName }).first()
   ).toBeVisible();

@@ -1,17 +1,18 @@
 'use client';
 
 import { createList, updateList } from '@/lib/data/list.actions';
-import {
-  DatalistField,
-  DateField,
-  FieldError,
-  TextField,
-} from '@/app/ui/components/field';
+import { FieldError } from '@/app/ui/components/field';
 import { FormShell, FormShellFooter } from '@/app/ui/components/FormShell';
 import { ActionResponse, ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
-import { ChangeEvent, useActionState, useState } from 'react';
+import { useActionState, useState } from 'react';
 import DeleteListButton from './DeleteListButton';
+import ListDetailsFields from './ListDetailsFields';
+import {
+  detailsChanged,
+  type ListDetailsDraft,
+} from '../../[id]/editModeChanges';
+import { dateFieldError, dateInputValue } from './utils';
 
 interface ListFormProps {
   list?: ListTable;
@@ -29,15 +30,6 @@ interface ListFormProps {
   onSuccess?: () => void;
 }
 
-const commonOccasions = [
-  'Birthday',
-  'Christmas',
-  'Wedding',
-  'Anniversary',
-  'Baby Shower',
-  'Graduation',
-];
-
 const initialState: ActionResponse = {
   success: false,
   message: '',
@@ -53,32 +45,22 @@ export default function ListForm({
   onSuccess,
 }: ListFormProps) {
   const router = useRouter();
-  const [selectedOccasion, setSelectedOccasion] = useState<string>(
-    list?.occasion || ''
-  );
-  const [dateError, setDateError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<ListDetailsDraft>(() => ({
+    name: list?.name ?? '',
+    subtitle: list?.subtitle ?? '',
+    occasion: list?.occasion ?? '',
+    date: list?.date ? dateInputValue(list.date) : '',
+  }));
 
-  const validateDate = (dateString: string): boolean => {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      setDateError('Please enter a valid date');
-      return false;
-    }
-    if (date.getFullYear() < 1000) {
-      setDateError('Please enter a year of 1900 or later');
-      return false;
-    }
-    setDateError(null);
-    return true;
-  };
+  // Derived, not state: the field reports its own error as the value changes,
+  // and the action reads the same value rather than a second copy.
+  const dateError = dateFieldError(draft.date);
 
   const [state, formAction, isPending] = useActionState<
     ActionResponse,
     FormData
-  >(async (prevState: ActionResponse, formData: FormData) => {
-    const dateString = formData.get('date') as string;
-
-    if (!validateDate(dateString)) {
+  >(async () => {
+    if (dateError) {
       return {
         success: false,
         message: 'Please correct the errors below',
@@ -86,24 +68,18 @@ export default function ListForm({
       };
     }
 
-    const rawSubtitle =
-      (formData.get('subtitle') as string | null)?.trim() ?? '';
+    const rawSubtitle = draft.subtitle.trim();
     const data = {
-      name: formData.get('name') as string,
+      name: draft.name,
       subtitle: rawSubtitle === '' ? null : rawSubtitle,
-      occasion: selectedOccasion,
-      date: new Date(dateString),
+      occasion: draft.occasion,
+      date: new Date(draft.date),
     };
 
     // Pristine edit submits skip the round-trip entirely; the server-side
     // no-op guard in updateList remains the authority (list-update-recency).
     const pristine =
-      isEditing &&
-      list !== undefined &&
-      data.name === list.name &&
-      data.subtitle === (list.subtitle ?? null) &&
-      data.occasion === list.occasion &&
-      dateString === new Date(list.date).toISOString().split('T')[0];
+      isEditing && list !== undefined && !detailsChanged(draft, list);
 
     try {
       const result = pristine
@@ -122,7 +98,7 @@ export default function ListForm({
             router.push(`/lists/${result.id}`);
           }
         } else {
-          router.push(`/lists/${result.id}/choose-items?new=1`);
+          router.push(`/lists/${result.id}?edit=1&new=1`);
         }
       }
 
@@ -152,52 +128,11 @@ export default function ListForm({
               <FieldError>{state.message}</FieldError>
             </div>
           )}
-          <TextField
-            label="Name"
-            required
-            name="name"
-            defaultValue={list?.name}
+          <ListDetailsFields
+            draft={draft}
+            onChange={(patch) => setDraft((prev) => ({ ...prev, ...patch }))}
             disabled={isPending}
-          />
-
-          <TextField
-            label="Subtitle"
-            name="subtitle"
-            defaultValue={list?.subtitle ?? ''}
-            disabled={isPending}
-            placeholder="e.g. Brandy Family"
-            maxLength={120}
-          />
-
-          <DatalistField
-            label="Occasion"
-            name="occasion"
-            value={selectedOccasion}
-            onChange={(e) => setSelectedOccasion(e.target.value)}
-            disabled={isPending}
-            placeholder="Select or type an occasion"
-            autoComplete="off"
-            options={commonOccasions.map((o) => (
-              <option key={o} value={o} />
-            ))}
-          />
-
-          <DateField
-            label="Date"
-            required
-            name="date"
-            defaultValue={
-              list?.date
-                ? new Date(list.date).toISOString().split('T')[0]
-                : undefined
-            }
-            disabled={isPending}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              validateDate(e.target.value)
-            }
-            min="1900-01-01"
-            max="9999-12-31"
-            error={
+            dateError={
               dateError ??
               (state?.errors?.date ? state.errors.date.join(', ') : undefined)
             }

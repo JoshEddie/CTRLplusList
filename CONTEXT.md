@@ -84,6 +84,14 @@ no list is visible to its owner only.
 **Item library**:
 A profile's entire item set, independent of any list.
 
+**Edit mode**:
+The owner's one surface for changing a list, reached at `?edit=1` on the list's
+own route rather than through a page of its own. It replaces the hero with a
+band carrying the list's own details, swaps the item surface for one drawn from
+the whole item library, and commits everything it staged — the entries and the
+list row — through a single Save. Cancel is its only revert, and Save, Cancel and
+backing out of the mode all confirm while anything is staged.
+
 **List entry**:
 An item's presence on one list, carrying the position it holds there, the
 quantity wanted there, and the claims made against it. An item on several lists
