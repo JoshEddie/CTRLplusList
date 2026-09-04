@@ -1,44 +1,45 @@
-import { ROLES } from '@/lib/data/profile.roles';
-import { makeProfile } from '@/test/helpers/profile';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import EditModeItems from '../EditModeItems';
+import { entry } from './test-helpers';
 
-const router = vi.hoisted(() => ({
-  push: vi.fn(),
-  replace: vi.fn(),
-  refresh: vi.fn(),
-}));
 const spHolder = vi.hoisted(() => ({
   value: new URLSearchParams() as URLSearchParams | null,
 }));
 vi.mock('next/navigation', () => ({
-  useRouter: () => router,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
   usePathname: () => '/lists/l1',
   useSearchParams: () => spHolder.value,
 }));
 
-vi.mock('@/app/(main)/items/ui/components/Item', () => ({
-  default: (p: { item: { id: string }; preview?: boolean }) => (
+vi.mock('@/app/(main)/items/ui/components/itemsToolbar/ToolbarSlot', () => ({
+  default: (p: { mode: string; showGridToggle?: boolean }) => (
     <div
-      data-testid="item"
-      data-id={p.item.id}
-      data-preview={String(!!p.preview)}
+      data-testid="toolbar"
+      data-mode={p.mode}
+      data-grid-toggle={String(p.showGridToggle)}
     />
   ),
 }));
-vi.mock('@/app/(main)/items/ui/components/itemsToolbar', () => ({
-  default: () => <div data-testid="toolbar" />,
+vi.mock('@/app/(main)/items/ui/components/ItemPhoto', () => ({
+  default: () => <div data-testid="photo" />,
 }));
 vi.mock('@/app/(main)/items/ui/components/itemform/ItemFormContainer', () => ({
-  default: (p: { onClose: () => void; onSuccess?: () => void }) => (
-    <div data-testid="item-form-container">
+  default: (p: {
+    lists: { id: string }[];
+    onClose: () => void;
+    onSuccess?: (id?: string) => void;
+  }) => (
+    <div data-testid="item-form-container" data-lists={p.lists.length}>
       <button type="button" onClick={p.onClose}>
         close-form
       </button>
-      <button type="button" onClick={() => p.onSuccess?.()}>
+      <button type="button" onClick={() => p.onSuccess?.('new-1')}>
         success-form
+      </button>
+      <button type="button" onClick={() => p.onSuccess?.()}>
+        success-form-no-id
       </button>
     </div>
   ),
@@ -50,19 +51,18 @@ const ITEMS = [
     name: 'Apple',
     description: 'red fruit',
     store: { name: 'Amazon', price: '5.00', link: 'https://a.example' },
-    purchases: [],
   },
   {
     id: 'a2',
     name: 'Banana',
     description: '',
     store: { name: 'Target', price: '15.00', link: 'https://t.example' },
-    purchases: [],
   },
-  { id: 'a3', name: 'Cherry', description: '', store: null, purchases: [] },
+  { id: 'a3', name: 'Cherry', description: '', store: null },
 ] as never[];
 
 const onToggle = vi.fn();
+const onReorder = vi.fn();
 
 function renderItems(
   overrides: Partial<React.ComponentProps<typeof EditModeItems>> = {},
@@ -72,19 +72,21 @@ function renderItems(
   return render(
     <EditModeItems
       items={ITEMS}
-      selected={new Set(['a1'])}
-      initialSelected={new Set(['a1'])}
+      entries={[entry('a3'), entry('a1')]}
+      pending={new Set()}
       onToggle={onToggle}
-      actor={makeProfile('p1', 'p1', ROLES.owner)}
+      onReorder={onReorder}
       lists={[]}
       {...overrides}
     />
   );
 }
 
-const rowIds = () =>
-  screen.getAllByTestId('item').map((e) => e.getAttribute('data-id'));
-const checkboxes = () => screen.getAllByRole('checkbox');
+const section = (name: RegExp) => screen.getByRole('region', { name });
+const rowNames = (name: RegExp) =>
+  within(section(name))
+    .queryAllByRole('checkbox')
+    .map((box) => box.getAttribute('id')?.replace('edit-mode-item-', ''));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -92,110 +94,132 @@ beforeEach(() => {
 });
 
 describe('EditModeItems', () => {
-  describe('Rows', () => {
-    it('Render_ComposesItemPreviewAndCheckboxPerRow', () => {
+  describe('Partition', () => {
+    it('Render_SplitsMembersInStagedOrderFromTheRestByName', () => {
       renderItems();
-      expect(screen.getAllByTestId('item')).toHaveLength(3);
-      expect(screen.getAllByTestId('item')[0]).toHaveAttribute(
-        'data-preview',
-        'true'
-      );
-      expect(checkboxes()[0]).toBeChecked();
-      expect(checkboxes()[1]).not.toBeChecked();
+      expect(
+        screen.getByRole('heading', { name: 'In this list · 2' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Not in this list · 1' })
+      ).toBeInTheDocument();
+      expect(rowNames(/In this list/)).toEqual(['a3', 'a1']);
+      expect(rowNames(/Not in this list/)).toEqual(['a2']);
+    });
+
+    it('Render_MountsTheToolbarSlotInEditModeWithoutTheGridToggle', () => {
+      renderItems();
+      const toolbar = screen.getByTestId('toolbar');
+      expect(toolbar).toHaveAttribute('data-mode', 'edit');
+      expect(toolbar).toHaveAttribute('data-grid-toggle', 'false');
     });
 
     it('ClickCheckbox_CallsOnToggleWithItemId', async () => {
       const user = userEvent.setup();
       renderItems();
-      await user.click(checkboxes()[1]);
+      await user.click(
+        within(section(/Not in this list/)).getByRole('checkbox')
+      );
       expect(onToggle).toHaveBeenCalledWith('a2');
     });
 
-    it('NamelessItem_RendersARowWithABlankCheckboxLabel', () => {
-      renderItems({
-        items: [
-          {
-            id: 'n1',
-            name: null,
-            description: null,
-            store: null,
-            purchases: [],
-          },
-        ] as never,
-      });
-      expect(screen.getAllByTestId('item')).toHaveLength(1);
-      expect(screen.getByRole('checkbox')).toHaveAccessibleName('');
+    it('PendingIds_MarkTheirRowsInEitherSection', () => {
+      renderItems({ pending: new Set(['a1', 'a2']) });
+      expect(
+        within(section(/In this list/)).getAllByRole('img', {
+          name: 'Unsaved change',
+        })
+      ).toHaveLength(1);
+      expect(
+        within(section(/Not in this list/)).getAllByRole('img', {
+          name: 'Unsaved change',
+        })
+      ).toHaveLength(1);
     });
 
-    it('DeselectedInitialMember_MarksRowRemoving', () => {
-      renderItems({ selected: new Set(), initialSelected: new Set(['a1']) });
-      // eslint-disable-next-line testing-library/no-node-access -- the row's staged state is a class on the wrapping <label>, which carries no role or accessible name of its own
-      const row = screen.getAllByTestId('item')[0].closest('label');
-      expect(row).toHaveClass('is-removing');
-      expect(row).not.toHaveClass('is-on');
-    });
-  });
-
-  describe('Filters', () => {
-    it('Query_FiltersByNameOrDescription', () => {
-      renderItems({}, 'q=apple');
-      expect(rowIds()).toEqual(['a1']);
-    });
-
-    it('ShowOn_ShowsOnlySelected', () => {
-      renderItems({}, 'show=on');
-      expect(rowIds()).toEqual(['a1']);
-    });
-
-    it('Store_FiltersByStoreName', () => {
-      renderItems({}, 'store=Amazon');
-      expect(rowIds()).toEqual(['a1']);
-    });
-
-    it('PriceMin_FiltersLowerBound', () => {
-      renderItems({}, 'price_min=10');
-      expect(rowIds()).toEqual(['a2']);
-    });
-
-    it('SortNameDesc_OrdersDescending', () => {
-      renderItems({}, 'sort=name_desc');
-      expect(rowIds()).toEqual(['a3', 'a2', 'a1']);
-    });
-
-    it('SearchParamsNull_RendersEveryItem', () => {
+    it('SearchParamsNull_RendersEverySection', () => {
       spHolder.value = null;
       render(
         <EditModeItems
           items={ITEMS}
-          selected={new Set(['a1'])}
-          initialSelected={new Set(['a1'])}
+          entries={[entry('a1')]}
+          pending={new Set()}
           onToggle={onToggle}
-          actor={makeProfile('p1', 'p1', ROLES.owner)}
+          onReorder={onReorder}
           lists={[]}
         />
       );
-      expect(screen.getAllByTestId('item')).toHaveLength(3);
-    });
-
-    it('FilterMatchesNothing_ClearFiltersReplacesWithBarePath', async () => {
-      const user = userEvent.setup();
-      renderItems({}, 'q=zzz');
-      expect(
-        screen.getByText('No items match your filters.')
-      ).toBeInTheDocument();
-      await user.click(screen.getByRole('button', { name: 'Clear filters' }));
-      expect(router.replace).toHaveBeenCalledWith('/lists/l1');
-    });
-
-    it('ClearFilters_PreservesNonFilterParams', async () => {
-      const user = userEvent.setup();
-      renderItems({}, 'q=zzz&edit=1');
-      await user.click(screen.getByRole('button', { name: 'Clear filters' }));
-      expect(router.replace).toHaveBeenCalledWith('/lists/l1?edit=1');
+      expect(rowNames(/In this list/)).toEqual(['a1']);
+      expect(rowNames(/Not in this list/)).toEqual(['a2', 'a3']);
     });
   });
 
-  describe('NewItemModal', () => {
+  describe('Filters', () => {
+    it('Query_NarrowsBothSections-HeadingsCountShownOfTotal', () => {
+      renderItems({}, 'q=an');
+      expect(
+        screen.getByRole('heading', { name: 'In this list · 0 of 2' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Not in this list · 1 of 1' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('Nothing in your list matches.')
+      ).toBeInTheDocument();
+      expect(rowNames(/Not in this list/)).toEqual(['a2']);
+    });
+
+    it('Store_FiltersByStoreName', () => {
+      renderItems({}, 'store=Amazon');
+      expect(rowNames(/In this list/)).toEqual(['a1']);
+      expect(screen.getByText('No other items match.')).toBeInTheDocument();
+    });
+
+    it('PriceMin_FiltersLowerBound', () => {
+      renderItems({}, 'price_min=10');
+      expect(rowNames(/In this list/)).toEqual([]);
+      expect(rowNames(/Not in this list/)).toEqual(['a2']);
+    });
+
+    it('FilterActive_ShowsReorderHintAndDisablesHandles', () => {
+      renderItems({}, 'store=Amazon');
+      expect(screen.getByText('Clear search to reorder')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Drag to reorder' })
+      ).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('NoFilter_HandlesAreLive-NoHint', () => {
+      renderItems();
+      expect(
+        screen.queryByText('Clear search to reorder')
+      ).not.toBeInTheDocument();
+      for (const handle of screen.getAllByRole('button', {
+        name: 'Drag to reorder',
+      })) {
+        expect(handle).not.toHaveAttribute('aria-disabled', 'true');
+      }
+    });
+  });
+
+  describe('EmptySections', () => {
+    it('NoEntries_ShowsListEmptyCopy', () => {
+      renderItems({ entries: [] });
+      expect(
+        screen.getByText('Your list is empty. Add any item below.')
+      ).toBeInTheDocument();
+      expect(rowNames(/Not in this list/)).toEqual(['a1', 'a2', 'a3']);
+    });
+
+    it('WholeLibraryOnList_ShowsLibraryExhaustedCopy', () => {
+      renderItems({ entries: [entry('a1'), entry('a2'), entry('a3')] });
+      expect(
+        screen.getByText('Every item you own is already on this list.')
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('NewItem', () => {
     it('CreateNewItem_OpensThenClosesItemForm', async () => {
       const user = userEvent.setup();
       renderItems();
@@ -207,7 +231,18 @@ describe('EditModeItems', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('CreateNewItemSuccess_ClosesItemForm', async () => {
+    it('CreateRowInLibrarySection_OpensItemForm', async () => {
+      const user = userEvent.setup();
+      renderItems();
+      await user.click(
+        within(section(/Not in this list/)).getByRole('button', {
+          name: /Create new item/,
+        })
+      );
+      expect(screen.getByTestId('item-form-container')).toBeInTheDocument();
+    });
+
+    it('CreateSuccess_ClosesFormAndStagesTheNewItem', async () => {
       const user = userEvent.setup();
       renderItems();
       await user.click(screen.getByRole('button', { name: /Create new item/ }));
@@ -215,21 +250,38 @@ describe('EditModeItems', () => {
       expect(
         screen.queryByTestId('item-form-container')
       ).not.toBeInTheDocument();
+      expect(onToggle).toHaveBeenCalledWith('new-1');
+    });
+  });
+
+  describe('NewItemWithoutId', () => {
+    it('CreateSuccessWithoutId_ClosesFormAndStagesNothing', async () => {
+      const user = userEvent.setup();
+      renderItems();
+      await user.click(screen.getByRole('button', { name: /Create new item/ }));
+      await user.click(
+        screen.getByRole('button', { name: 'success-form-no-id' })
+      );
+      expect(
+        screen.queryByTestId('item-form-container')
+      ).not.toBeInTheDocument();
+      expect(onToggle).not.toHaveBeenCalled();
     });
   });
 
   describe('EmptyLibrary', () => {
-    it('NoItems_RendersEmptyState-HidesToolbar', () => {
-      renderItems({ items: [] });
+    it('NoItems_RendersEmptyState-HidesToolbarAndSections', () => {
+      renderItems({ items: [], entries: [] });
       expect(
         screen.getByText('No items in your library yet')
       ).toBeInTheDocument();
       expect(screen.queryByTestId('toolbar')).not.toBeInTheDocument();
+      expect(screen.queryByRole('region')).not.toBeInTheDocument();
     });
 
     it('NoItems_CreateNewItemOpensForm', async () => {
       const user = userEvent.setup();
-      renderItems({ items: [] });
+      renderItems({ items: [], entries: [] });
       await user.click(screen.getByRole('button', { name: /Create new item/ }));
       expect(screen.getByTestId('item-form-container')).toBeInTheDocument();
     });

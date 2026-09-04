@@ -88,7 +88,9 @@ vi.mock('@/app/(main)/lists/ui/components/ListDetails', () => ({
       data-tier={String(p.tier)}
       data-baseline={String(p.baseline)}
       data-viewer-is-member={String(p.viewerIsMember)}
-      data-claimed-count={p.claimedCount === undefined ? '' : String(p.claimedCount)}
+      data-claimed-count={
+        p.claimedCount === undefined ? '' : String(p.claimedCount)
+      }
       data-preview-mode={String(p.previewMode)}
       data-item-count={String(p.itemCount)}
       data-viewer-user-id={p.viewer_user_id ?? ''}

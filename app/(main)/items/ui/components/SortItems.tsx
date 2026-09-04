@@ -13,25 +13,16 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
   UniqueIdentifier,
-  useSensor,
-  useSensors,
 } from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from '@dnd-kit/sortable';
+import { arrayMove, SortableContext, useSortable } from '@dnd-kit/sortable';
 import { enterEditHref } from '@/app/(main)/lists/[id]/editModeChanges';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useId, useState } from 'react';
 import toast from 'react-hot-toast';
 import { MdOutlineDragHandle } from 'react-icons/md';
 import Item from './Item';
+import { useSortableSensors } from './useSortableSensors';
 
 interface ItemsProps {
   items: ItemDisplay[];
@@ -46,10 +37,7 @@ function EmptyListCTA({ listId }: { listId: string }) {
     <div className="empty-container">
       <h3>No items on this list yet</h3>
       <p>Pick from your item library or create a new one.</p>
-      <LinkButton
-        href={enterEditHref(listId, searchParams)}
-        variant="primary"
-      >
+      <LinkButton href={enterEditHref(listId, searchParams)} variant="primary">
         <MdChecklist size={18} />
         Choose items
       </LinkButton>
@@ -57,12 +45,7 @@ function EmptyListCTA({ listId }: { listId: string }) {
   );
 }
 
-export default function SortItems({
-  items,
-  listId,
-  actor,
-  tier,
-}: ItemsProps) {
+export default function SortItems({ items, listId, actor, tier }: ItemsProps) {
   const router = useRouter();
   // Re-sync key: changes whenever any card-visible field changes, so an edit
   // (image, name, quantity, store) or a claim/unclaim re-seeds itemsState.
@@ -88,22 +71,7 @@ export default function SortItems({
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 10,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 250,
-        tolerance: 5,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  const sensors = useSortableSensors();
 
   const getIndex = (id: UniqueIdentifier) =>
     itemsState.findIndex((item) => item.id === id);
@@ -249,12 +217,7 @@ export function SortableItem({
       >
         <MdOutlineDragHandle size={40} className="drag-handle-icon" />
       </button>
-      <Item
-        item={item}
-        listId={listId}
-        actor={actor}
-        tier={tier}
-      />
+      <Item item={item} listId={listId} actor={actor} tier={tier} />
     </div>
   );
 }

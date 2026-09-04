@@ -50,7 +50,8 @@ const ItemFormContainer = ({
   // the shell's heading and the submit control both say which.
   actingAs?: string;
   onClose?: () => void;
-  onSuccess?: () => void;
+  /** Receives the saved item's id. */
+  onSuccess?: (id?: string) => void;
 }) => {
   const isEditing = !!item;
   const [viewModel, setViewModel] = useState<ItemViewModel>(() =>

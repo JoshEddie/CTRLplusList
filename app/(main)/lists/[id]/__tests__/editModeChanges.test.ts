@@ -5,7 +5,11 @@ import {
   enterEditHref,
   entryDiff,
   exitEditHref,
+  moveEntry,
+  pendingChanges,
+  stagedUnits,
 } from '../editModeChanges';
+import { entry } from './test-helpers';
 
 describe('editModeSaveLabel', () => {
   it('ExistingList_AlwaysSave', () => {
@@ -59,25 +63,104 @@ describe('exitEditHref', () => {
 });
 
 describe('entryDiff', () => {
-  it('SelectionAddsAndRemoves_CountsBothDirections', () => {
-    expect(entryDiff(new Set(['a', 'b']), new Set(['b', 'c']))).toEqual({
+  it('AddsRemovesAndRequantifies_CountsEachAxis', () => {
+    const diff = entryDiff(
+      [entry('a'), entry('b'), entry('c', 2)],
+      [entry('a'), entry('c', 3), entry('d')]
+    );
+    expect(diff).toEqual({
       added: 1,
       removed: 1,
+      requantified: 1,
+      reordered: false,
     });
   });
 
-  it('SelectionUnchanged_ReturnsZeroes', () => {
-    expect(entryDiff(new Set(['a', 'b']), new Set(['b', 'a']))).toEqual({
+  it('EntriesUnchanged_ReturnsNoChange', () => {
+    const entries = [entry('a'), entry('b')];
+    expect(entryDiff(entries, [...entries])).toEqual({
       added: 0,
       removed: 0,
+      requantified: 0,
+      reordered: false,
     });
   });
 
-  it('SelectionEmptied_CountsEveryInitialAsRemoved', () => {
-    expect(entryDiff(new Set(['a', 'b']), new Set())).toEqual({
-      added: 0,
-      removed: 2,
-    });
+  it('EntriesEmptied_CountsEveryInitialAsRemoved', () => {
+    expect(entryDiff([entry('a'), entry('b')], []).removed).toBe(2);
+  });
+
+  it('SharedRowsSwapped_ReportsReordered', () => {
+    expect(
+      entryDiff([entry('a'), entry('b')], [entry('b'), entry('a')]).reordered
+    ).toBe(true);
+  });
+
+  it('OnlyAddsAndRemovalsBetweenSharedRows_IsNotReordered', () => {
+    expect(
+      entryDiff(
+        [entry('a'), entry('x'), entry('b')],
+        [entry('a'), entry('n'), entry('b')]
+      ).reordered
+    ).toBe(false);
+  });
+});
+
+describe('pendingChanges', () => {
+  const initial = [entry('a'), entry('b'), entry('c')];
+
+  it('Pristine_MarksNothing', () => {
+    expect(pendingChanges(initial, [...initial], new Set())).toEqual(new Set());
+  });
+
+  it('AddedRemovedRequantifiedAndMoved_MarksEachRowOnce', () => {
+    const staged = [entry('c'), entry('a', 4), entry('d')];
+    expect(pendingChanges(initial, staged, new Set(['c']))).toEqual(
+      new Set(['a', 'b', 'c', 'd'])
+    );
+  });
+
+  it('MovedRowOnly_LeavesDisplacedRowsUnmarked', () => {
+    const staged = [entry('c'), entry('a'), entry('b')];
+    expect(pendingChanges(initial, staged, new Set(['c']))).toEqual(
+      new Set(['c'])
+    );
+  });
+});
+
+describe('stagedUnits', () => {
+  it('MixedQuantities_SumsThem', () => {
+    expect(
+      stagedUnits([
+        { item_id: 'a', quantity: 1 },
+        { item_id: 'b', quantity: 4 },
+      ])
+    ).toBe(5);
+  });
+
+  it('NoEntries_ReturnsZero', () => {
+    expect(stagedUnits([])).toBe(0);
+  });
+});
+
+describe('moveEntry', () => {
+  const entries = ['a', 'b', 'c'].map((item_id) => ({ item_id, quantity: 1 }));
+  const ids = (list: { item_id: string }[]) => list.map((e) => e.item_id);
+
+  it('DragDown_PlacesTheRowAtTheTarget', () => {
+    expect(ids(moveEntry(entries, 'a', 'c'))).toEqual(['b', 'c', 'a']);
+  });
+
+  it('DragUp_PlacesTheRowAtTheTarget', () => {
+    expect(ids(moveEntry(entries, 'c', 'a'))).toEqual(['c', 'a', 'b']);
+  });
+
+  it('UnknownTarget_ReturnsTheSameArray', () => {
+    expect(moveEntry(entries, 'a', 'zz')).toBe(entries);
+  });
+
+  it('SameRow_ReturnsTheSameArray', () => {
+    expect(moveEntry(entries, 'b', 'b')).toBe(entries);
   });
 });
 

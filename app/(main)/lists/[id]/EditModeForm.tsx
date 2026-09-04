@@ -8,7 +8,7 @@ import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { updateList } from '@/lib/data/list.actions';
 import { setListItems } from '@/lib/data/listItems.actions';
 import { getMessage } from '@/lib/i18n/utils';
-import { ItemDisplay, ListTable, ProfileMembershipView } from '@/lib/types';
+import { ItemDisplay, ListTable } from '@/lib/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -19,7 +19,11 @@ import {
   detailsChanged,
   entryDiff,
   exitEditHref,
+  moveEntry,
+  pendingChanges,
+  stagedUnits,
   type ListDetailsDraft,
+  type StagedEntry,
 } from './editModeChanges';
 
 type Confirming = 'save' | 'discard' | null;
@@ -27,30 +31,26 @@ type Confirming = 'save' | 'discard' | null;
 export default function EditModeForm({
   list,
   items,
-  initialSelectedIds,
+  initialEntries,
   isNew,
-  actor,
   lists,
   actingAs,
 }: {
   list: ListTable;
   items: ItemDisplay[];
-  initialSelectedIds: string[];
+  /** The saved entries in position order — what every staged change is judged against. */
+  initialEntries: StagedEntry[];
   isNew: boolean;
-  actor: ProfileMembershipView;
   lists: ListTable[];
   actingAs?: string;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const initialSelected = useMemo(
-    () => new Set(initialSelectedIds),
-    [initialSelectedIds]
-  );
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(initialSelectedIds)
-  );
+  const [entries, setEntries] = useState<StagedEntry[]>(initialEntries);
+  // The rows whose drag is what put them where they are: a move displaces its
+  // neighbours on screen, but only the dragged row's saved position changes.
+  const [moved, setMoved] = useState<ReadonlySet<string>>(() => new Set());
   const [draft, setDraft] = useState<ListDetailsDraft>(() => ({
     name: list.name,
     subtitle: list.subtitle ?? '',
@@ -60,8 +60,16 @@ export default function EditModeForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirming, setConfirming] = useState<Confirming>(null);
 
-  const { added, removed } = entryDiff(initialSelected, selected);
-  const entriesDirty = added > 0 || removed > 0;
+  const { added, removed, requantified, reordered } = entryDiff(
+    initialEntries,
+    entries
+  );
+  const entriesDirty =
+    added > 0 || removed > 0 || requantified > 0 || reordered;
+  const pending = useMemo(
+    () => pendingChanges(initialEntries, entries, moved),
+    [initialEntries, entries, moved]
+  );
   const rowDirty = detailsChanged(draft, list);
   const isDirty = entriesDirty || rowDirty;
 
@@ -98,13 +106,23 @@ export default function EditModeForm({
     router.refresh();
   };
 
+  // Adding lands at the end at quantity 1, where a restore lands too.
   const toggle = (itemId: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(itemId)) next.delete(itemId);
-      else next.add(itemId);
-      return next;
-    });
+    setEntries((prev) =>
+      prev.some((entry) => entry.item_id === itemId)
+        ? prev.filter((entry) => entry.item_id !== itemId)
+        : [...prev, { item_id: itemId, quantity: 1 }]
+    );
+  };
+
+  const reorder = (activeId: string, overId: string) => {
+    const next = moveEntry(entries, activeId, overId);
+    setEntries(next);
+    setMoved((prev) =>
+      entryDiff(initialEntries, next).reordered
+        ? new Set(prev).add(activeId)
+        : new Set()
+    );
   };
 
   // Each concern is skipped when its own slice is unchanged, so a title-only
@@ -112,7 +130,7 @@ export default function EditModeForm({
   // list row. The two writes are sequenced, not atomic across each other.
   const commit = async () => {
     if (entriesDirty) {
-      const result = await setListItems(list.id, Array.from(selected));
+      const result = await setListItems(list.id, entries);
       if (!result.success) throw new Error(result.message);
     }
     if (rowDirty) {
@@ -173,18 +191,19 @@ export default function EditModeForm({
         draft={draft}
         onChange={(patch) => setDraft((prev) => ({ ...prev, ...patch }))}
         disabled={isSubmitting}
+        units={stagedUnits(entries)}
       />
       <EditModeItems
         items={items}
-        selected={selected}
-        initialSelected={initialSelected}
+        entries={entries}
+        pending={pending}
         onToggle={toggle}
-        actor={actor}
+        onReorder={reorder}
         lists={lists}
         actingAs={actingAs}
       />
       <EditModeFooter
-        totalSelected={selected.size}
+        totalSelected={entries.length}
         added={added}
         removed={removed}
         isNew={isNew}

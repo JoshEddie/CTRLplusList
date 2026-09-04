@@ -74,7 +74,7 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       cacheTags.listsOfProfile(identity.activeProfile.id)
     );
 
-    return { success: true, message: 'Item created successfully' };
+    return { success: true, message: 'Item created successfully', id };
   } catch (error) {
     console.error('Error creating item:', error);
     return {

@@ -520,7 +520,6 @@
   /* Drilled into a facet: the sheet shows that panel alone, so the root
      rows step aside rather than scrolling along underneath it. */
   .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--sort,
-  .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--purchases,
   .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--stores,
   .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--price {
     display: none;
@@ -548,7 +547,6 @@
 
   /* Inside the sheet, each filter cell stacks full-width. */
   .items-toolbar-filters-group > .items-toolbar-cell--sort,
-  .items-toolbar-filters-group > .items-toolbar-cell--purchases,
   .items-toolbar-filters-group > .items-toolbar-cell--stores,
   .items-toolbar-filters-group > .items-toolbar-cell--price {
     width: 100%;
@@ -691,10 +689,9 @@
   width: auto;
 }
 
-/* Toolbar selects (Sort / Purchases / Show) should shrink to fit their
-   currently-selected option's text, not stretch to fill the grid cell. */
-.items-toolbar-cell--sort .form_field,
-.items-toolbar-cell--purchases .form_field {
+/* The sort select shrinks to fit its selected option's text rather than
+   stretching to fill the grid cell. */
+.items-toolbar-cell--sort .form_field {
   width: auto;
   min-width: max-content;
 }

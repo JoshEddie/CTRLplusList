@@ -3,6 +3,7 @@
 import ListDetailsFields from '@/app/(main)/lists/ui/components/ListDetailsFields';
 import ListHeroSurface from '@/app/(main)/lists/ui/components/ListHeroSurface';
 import { dateFieldError } from '@/app/(main)/lists/ui/components/utils';
+import { getMessage } from '@/lib/i18n/utils';
 import type { ListDetailsDraft } from './editModeChanges';
 
 // The mode's band replaces the hero, so it reuses the hero's own surface: the
@@ -13,10 +14,13 @@ export default function EditModeHeader({
   draft,
   onChange,
   disabled,
+  units,
 }: {
   draft: ListDetailsDraft;
   onChange: (patch: Partial<ListDetailsDraft>) => void;
   disabled: boolean;
+  /** Staged units across every entry. Units only — a money total would be soft, since `displayPrice` picks one store of several. */
+  units: number;
 }) {
   return (
     <ListHeroSurface title={draft.name} kebab={null}>
@@ -27,6 +31,9 @@ export default function EditModeHeader({
           disabled={disabled}
           dateError={dateFieldError(draft.date) ?? undefined}
         />
+        <p className="list-edit-summary">
+          {getMessage('edit_mode_units', { count: units })}
+        </p>
       </div>
     </ListHeroSurface>
   );

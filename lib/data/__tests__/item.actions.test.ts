@@ -217,6 +217,7 @@ describe('createItem', () => {
       expect(res.success).toBe(true);
 
       const created = (await itemRows()).find((i) => i.name === 'New Gift')!;
+      expect(res.id).toBe(created.id);
       expect(created).toMatchObject({
         name: 'New Gift',
         description: '',

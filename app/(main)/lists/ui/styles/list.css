@@ -598,18 +598,6 @@
   padding-bottom: 84px;
 }
 
-.list-edit-items-actions {
-  display: flex;
-  justify-content: flex-end;
-  padding: 10px 28px;
-}
-
-@media (max-width: 800px) {
-  .list-edit-items-actions {
-    padding: 10px 16px;
-  }
-}
-
 /* Mobile-first: one column of fields, widening to two where the band has the
    room. Fields sit on the hero gradient, so their labels take the same
    on-dark treatment the rest of the band already uses while the input boxes
@@ -657,41 +645,149 @@
   border-bottom: 1px solid var(--divider-color);
 }
 
-/* ── CHOOSE-ITEMS ROW (consolidate-row-layouts) ──
-   Outer <label> wrapping a leading <CheckboxField> + <Item preview />.
-   Inner row anatomy (image, name, price, leader-dots, buy-link pill, +N)
-   is owned by the shared row primitive in item.css under
-   `.item-list .item-container` / `.sortable-item .item-container`. The
-   picker contributes only the leading checkbox column and the selection
-   state modifiers — everything else is inherited.
-
-   Outer grid is 2-col (auto 1fr): col 1 is the checkbox; col 2 is the
-   entire <Item /> (which internally renders its own shared 5-col grid).
-   See design.md D1. */
+/* ── EDIT-MODE ROW ──
+   handle | swatch | name / price · store · link / note | label | control.
+   The handle column is always laid out, empty below the divider, so both
+   halves share one set of column edges and a row crossing it shifts nothing
+   but its section. Mobile-first: narrower swatch and handle, no label. */
 .edit-mode-row {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: 28px 56px minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 12px;
-  padding: 0 14px;
+  padding: 12px 12px;
   cursor: pointer;
   position: relative;
 }
 
-/* Force the pointer cursor across the inner <Item /> subtree — without
-   this, text inside `.itemName` / `.itemDescription` gets the text
-   I-beam cursor and the image gets the default arrow, breaking the
-   "whole row is clickable" affordance. Buy-link <a> tags inside
-   <StoreLinks> are already pointer by browser default and are
-   unaffected by `cursor: inherit`. */
 .edit-mode-row * {
   cursor: inherit;
 }
 
-/* Compact the inner <CheckboxField>'s <label> inside the picker leading
-   slot. The form-field-system 44×44 floor is satisfied by the OUTER
-   .edit-mode-row label (the full row width × row height) — the
-   inner box just needs the visible 24×24 checkbox. See design.md D2. */
+.edit-mode-row-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+}
+
+.edit-mode-row .item-image-container {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: var(--secondary-background-color);
+}
+
+.edit-mode-row .item-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.edit-mode-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.edit-mode-row .itemName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--heading-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.edit-mode-row-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-width: 0;
+}
+
+/* The button primitive, as the list page's row draws it. Below the breakpoint
+   the row has no room for it or the note; both live in the row's sheet there. */
+.edit-mode-row .edit-mode-row-view {
+  display: none;
+}
+
+.edit-mode-row .item-price-row {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted-text-color);
+}
+
+.edit-mode-row .item-price {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.edit-mode-row-note {
+  display: none;
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--muted-text-color);
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Rows below the divider do not read as content yet: the swatch, price and
+   note dim, the name stays legible so the row can still be found. */
+.edit-mode-row.is-off .item-image-container {
+  opacity: 0.6;
+}
+
+.edit-mode-row.is-off .itemName {
+  font-weight: 500;
+}
+
+.edit-mode-row.is-off .item-price {
+  color: var(--muted-text-color);
+  font-weight: 600;
+}
+
+.edit-mode-row-label {
+  display: none;
+  font-size: 14px;
+  color: var(--muted-text-color);
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* The pending-change dot: any entry differing from what is saved. */
+.edit-mode-pending {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+}
+
+.edit-mode-handle {
+  width: 28px;
+  height: 44px;
+  justify-content: center;
+}
+
+.edit-mode-handle[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.35;
+}
+
+/* The control column; the outer .edit-mode-row label supplies the 44px tap
+   floor. */
 .edit-mode-row .checkbox_field {
   padding: 0;
   min-height: unset;
@@ -700,52 +796,114 @@
   justify-content: center;
 }
 
-/* The <CheckboxField> renders its label text in a <span>. In the picker,
-   the item name is already shown by <Item />; hide the label span
-   visually but keep it for assistive tech (the checkbox's accessible
-   name SHALL be the item name). See design.md D2. */
-/* Focus ring on the actual checkbox input. If form-field-system already
-   provides a global rule on `.checkbox_field_box:focus-visible`, this
-   override is a no-op — verify and prune at preview time. */
 .edit-mode-row .checkbox_field_box:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
 
-/* Hover + selection backgrounds paint the outer <label> so they span
-   BOTH the checkbox column and the .item-container column — hover
-   anywhere on the row highlights the whole row including the checkbox
-   cell. We also neutralize the shared `.item-list .item-container[:hover]`
-   background inside picker rows so it doesn't compete (it would paint
-   only col 2 and leave the checkbox cell unhighlighted). */
-.edit-mode-list .item-container,
-.edit-mode-list .item-container:hover {
-  background-color: transparent;
+.edit-mode-item.is-dragging {
+  position: relative;
+  z-index: 1;
+  background-color: var(--light-color);
+  box-shadow: var(--card-shadow-hover);
 }
 
-.edit-mode-row:hover {
-  background-color: var(--card-hover-background-color);
+@media (hover: hover) {
+  .edit-mode-row:hover {
+    background-color: var(--card-hover-background-color);
+  }
 }
 
-/* Selection tints — chained `:hover` so hovering an is-on / is-removing
-   row keeps its brand tint instead of degrading to the neutral hover
-   color. */
-.edit-mode-row.is-on,
-.edit-mode-row.is-on:hover {
-  background-color: var(--card-accent-background-color);
+.edit-mode-section {
+  padding: 0 0 12px;
 }
 
-.edit-mode-row.is-removing,
-.edit-mode-row.is-removing:hover {
-  background-color: var(--secondary-background-color);
+/* A centred rule-flanked heading is the divider between the two halves. */
+.edit-mode-section-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 20px 16px 8px;
 }
 
-/* Strike-through on the removing-state item name. Page-scoped CSS
-   reaches into <Item>'s `.itemName` class — documented cross-boundary
-   coupling, see design.md D5. */
-.edit-mode-row.is-removing .itemName {
-  text-decoration: line-through;
+.edit-mode-section-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted-text-color);
+}
+
+.edit-mode-section-title::before,
+.edit-mode-section-title::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--divider-color);
+}
+
+.edit-mode-section-hint,
+.edit-mode-section-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted-text-color);
+}
+
+.edit-mode-section-empty {
+  padding: 12px 16px 4px;
+  text-align: center;
+}
+
+.edit-mode-create {
+  display: flex;
+  justify-content: center;
+  padding: 4px 12px 12px;
+}
+
+.list-edit-summary {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--light-color);
+}
+
+@media (min-width: 801px) {
+  .edit-mode-row {
+    grid-template-columns: 36px 80px minmax(0, 1fr) auto auto;
+    column-gap: 16px;
+    padding: 14px 28px;
+  }
+
+  .edit-mode-row .item-image-container {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+  }
+
+  .edit-mode-row-label {
+    display: block;
+  }
+
+  .edit-mode-row .edit-mode-row-view {
+    display: inline-flex;
+  }
+
+  .edit-mode-row-note {
+    display: -webkit-box;
+  }
+
+  .edit-mode-section-head,
+  .edit-mode-section-empty {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
 }
 
 /* Inset to the app surface, not the viewport: .app-surface-bleed pads the

@@ -5,7 +5,7 @@ import { getList, getListsByProfile } from '@/lib/data/list';
 import { actingAsName } from '@/lib/data/profile.active';
 import { authedIdentity } from '@/lib/data/user.session';
 import { ItemDisplay } from '@/lib/types';
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import EditModeForm from './EditModeForm';
 import type { ListSectionProps } from './types';
 
@@ -30,13 +30,18 @@ export default async function ListEditSection({
   const [allItems, currentListItems, userLists] = await Promise.all([
     getItemsByProfile(identity.activeProfile.id, { filter: 'all' }),
     db
-      .select({ item_id: list_items.item_id })
+      .select({ item_id: list_items.item_id, quantity: list_items.quantity })
       .from(list_items)
-      .where(eq(list_items.list_id, id)),
+      .where(eq(list_items.list_id, id))
+      .orderBy(asc(list_items.position)),
     getListsByProfile(identity.activeProfile.id),
   ]);
 
   const currentListItemIds = new Set(currentListItems.map((r) => r.item_id));
+  const initialEntries = currentListItems.map(({ item_id, quantity }) => ({
+    item_id,
+    quantity,
+  }));
 
   // Claim state is dropped outright rather than projected through a tier: a
   // claim belongs to one list entry, not to an item, so a library row surfaced
@@ -54,10 +59,11 @@ export default async function ListEditSection({
     <EditModeForm
       list={list}
       items={displayItems}
-      initialSelectedIds={Array.from(currentListItemIds)}
+      initialEntries={initialEntries}
       isNew={sp.new === '1'}
-      actor={identity.activeProfile}
-      lists={userLists}
+      // This list is left out of the item form's list picker: membership here
+      // is staged behind Save, never written by the create.
+      lists={userLists.filter((list) => list.id !== id)}
       actingAs={await actingAsName(identity)}
     />
   );

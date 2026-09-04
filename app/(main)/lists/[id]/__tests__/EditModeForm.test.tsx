@@ -1,12 +1,11 @@
 import { updateList } from '@/lib/data/list.actions';
 import { setListItems } from '@/lib/data/listItems.actions';
-import { ROLES } from '@/lib/data/profile.roles';
 import { ListTable } from '@/lib/types';
-import { makeProfile } from '@/test/helpers/profile';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import EditModeForm from '../EditModeForm';
+import { entry } from './test-helpers';
 
 vi.mock('@/lib/data/listItems.actions', () => ({ setListItems: vi.fn() }));
 vi.mock('@/lib/data/list.actions', () => ({ updateList: vi.fn() }));
@@ -38,9 +37,11 @@ vi.mock('react-hot-toast', () => ({
 vi.mock('../EditModeHeader', () => ({
   default: (p: {
     draft: { name: string };
+    units: number;
     onChange: (patch: Record<string, string>) => void;
   }) => (
     <div>
+      <span data-testid="units">{p.units}</span>
       <button type="button" onClick={() => p.onChange({ name: 'Renamed' })}>
         rename
       </button>
@@ -56,7 +57,12 @@ vi.mock('../EditModeHeader', () => ({
 }));
 
 vi.mock('../EditModeItems', () => ({
-  default: (p: { onToggle: (id: string) => void }) => (
+  default: (p: {
+    entries: { item_id: string; quantity: number }[];
+    pending: ReadonlySet<string>;
+    onToggle: (id: string) => void;
+    onReorder: (activeId: string, overId: string) => void;
+  }) => (
     <div>
       <button type="button" onClick={() => p.onToggle('a2')}>
         toggle-a2
@@ -64,6 +70,16 @@ vi.mock('../EditModeItems', () => ({
       <button type="button" onClick={() => p.onToggle('a1')}>
         toggle-a1
       </button>
+      <button type="button" onClick={() => p.onReorder('a1', 'b1')}>
+        move-a1-to-b1
+      </button>
+      <button type="button" onClick={() => p.onReorder('b1', 'a1')}>
+        move-b1-to-a1
+      </button>
+      <span data-testid="order">
+        {p.entries.map((e) => e.item_id).join(',')}
+      </span>
+      <span data-testid="pending">{[...p.pending].sort().join(',')}</span>
     </div>
   ),
 }));
@@ -89,9 +105,8 @@ function renderForm(
     <EditModeForm
       list={LIST}
       items={[]}
-      initialSelectedIds={['a1']}
+      initialEntries={[entry('a1'), entry('b1', 2)]}
       isNew={false}
-      actor={makeProfile('p1', 'p1', ROLES.owner)}
       lists={[]}
       {...overrides}
     />
@@ -122,7 +137,11 @@ describe('EditModeForm', () => {
       await user.click(saveButton());
       await user.click(confirmSave());
       await waitFor(() =>
-        expect(setListItems).toHaveBeenCalledWith('l1', ['a1', 'a2'])
+        expect(setListItems).toHaveBeenCalledWith('l1', [
+          entry('a1'),
+          entry('b1', 2),
+          entry('a2'),
+        ])
       );
       expect(updateList).not.toHaveBeenCalled();
       await waitFor(() =>
@@ -154,7 +173,11 @@ describe('EditModeForm', () => {
       await user.click(saveButton());
       await user.click(confirmSave());
       await waitFor(() =>
-        expect(setListItems).toHaveBeenCalledWith('l1', ['a1', 'a2'])
+        expect(setListItems).toHaveBeenCalledWith('l1', [
+          entry('a1'),
+          entry('b1', 2),
+          entry('a2'),
+        ])
       );
       expect(updateList).toHaveBeenCalledWith(
         'l1',
@@ -255,10 +278,64 @@ describe('EditModeForm', () => {
 
     it('InvalidDateInCreateMode_SaveStillDisabled', async () => {
       const user = userEvent.setup();
-      renderForm({ isNew: true, initialSelectedIds: [] }, 'edit=1&new=1');
+      renderForm({ isNew: true, initialEntries: [] }, 'edit=1&new=1');
       await user.click(screen.getByRole('button', { name: 'break-date' }));
       const skips = screen.getAllByRole('button', { name: /Skip/ });
       expect(skips[skips.length - 1]).toBeDisabled();
+    });
+  });
+
+  describe('Reorder', () => {
+    it('Drag_StagesTheOrder-MarksOnlyTheDraggedRow-EnablesSave', async () => {
+      const user = userEvent.setup();
+      renderForm();
+      expect(saveButton()).toBeDisabled();
+      await user.click(screen.getByRole('button', { name: 'move-a1-to-b1' }));
+      expect(screen.getByTestId('order')).toHaveTextContent('b1,a1');
+      expect(screen.getByTestId('pending')).toHaveTextContent(/^a1$/);
+      expect(saveButton()).toBeEnabled();
+    });
+
+    it('DragBack_ClearsEveryMark-DisablesSave', async () => {
+      const user = userEvent.setup();
+      renderForm();
+      await user.click(screen.getByRole('button', { name: 'move-a1-to-b1' }));
+      await user.click(screen.getByRole('button', { name: 'move-b1-to-a1' }));
+      expect(screen.getByTestId('order')).toHaveTextContent('a1,b1');
+      expect(screen.getByTestId('pending')).toBeEmptyDOMElement();
+      expect(saveButton()).toBeDisabled();
+    });
+
+    it('DragThenSave_WritesTheStagedOrderWithQuantities', async () => {
+      const user = userEvent.setup();
+      renderForm();
+      await user.click(screen.getByRole('button', { name: 'move-a1-to-b1' }));
+      await user.click(saveButton());
+      await user.click(confirmSave());
+      await waitFor(() =>
+        expect(setListItems).toHaveBeenCalledWith('l1', [
+          entry('b1', 2),
+          entry('a1'),
+        ])
+      );
+    });
+
+    it('RemoveARow_MarksItPendingWhileItSitsBelowTheDivider', async () => {
+      const user = userEvent.setup();
+      renderForm();
+      await user.click(screen.getByRole('button', { name: 'toggle-a1' }));
+      expect(screen.getByTestId('order')).toHaveTextContent(/^b1$/);
+      expect(screen.getByTestId('pending')).toHaveTextContent(/^a1$/);
+    });
+  });
+
+  describe('Units', () => {
+    it('StagedEntries_SumTheirQuantitiesIntoTheHeader', async () => {
+      const user = userEvent.setup();
+      renderForm();
+      expect(screen.getByTestId('units')).toHaveTextContent('3');
+      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      expect(screen.getByTestId('units')).toHaveTextContent('4');
     });
   });
 
@@ -301,9 +378,8 @@ describe('EditModeForm', () => {
         <EditModeForm
           list={LIST}
           items={[]}
-          initialSelectedIds={['a1']}
+          initialEntries={[entry('a1'), entry('b1', 2)]}
           isNew={false}
-          actor={makeProfile('p1', 'p1', ROLES.owner)}
           lists={[]}
         />
       );
@@ -391,7 +467,7 @@ describe('EditModeForm', () => {
   describe('CreateMode', () => {
     it('NewWithSelection_ConfirmsLikeAnyOtherSave', async () => {
       const user = userEvent.setup();
-      renderForm({ isNew: true, initialSelectedIds: [] }, 'edit=1&new=1');
+      renderForm({ isNew: true, initialEntries: [] }, 'edit=1&new=1');
       await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
       await user.click(screen.getByRole('button', { name: /Add 1 item/ }));
       expect(
@@ -400,13 +476,13 @@ describe('EditModeForm', () => {
       expect(setListItems).not.toHaveBeenCalled();
       await user.click(confirmSave());
       await waitFor(() =>
-        expect(setListItems).toHaveBeenCalledWith('l1', ['a2'])
+        expect(setListItems).toHaveBeenCalledWith('l1', [entry('a2')])
       );
     });
 
     it('NewWithSelection_SkipConfirmsBeforeDiscarding', async () => {
       const user = userEvent.setup();
-      renderForm({ isNew: true, initialSelectedIds: [] }, 'edit=1&new=1');
+      renderForm({ isNew: true, initialEntries: [] }, 'edit=1&new=1');
       await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
       await user.click(screen.getByRole('button', { name: 'Skip' }));
       expect(screen.getByText('Discard changes?')).toBeInTheDocument();
@@ -418,7 +494,7 @@ describe('EditModeForm', () => {
 
     it('NewWithNoChanges_SkipExitsWithoutWriting', async () => {
       const user = userEvent.setup();
-      renderForm({ isNew: true, initialSelectedIds: [] }, 'edit=1&new=1');
+      renderForm({ isNew: true, initialEntries: [] }, 'edit=1&new=1');
       const skips = screen.getAllByRole('button', { name: /Skip/ });
       await user.click(skips[skips.length - 1]);
       expect(setListItems).not.toHaveBeenCalled();

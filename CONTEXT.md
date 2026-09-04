@@ -87,10 +87,24 @@ A profile's entire item set, independent of any list.
 **Edit mode**:
 The owner's one surface for changing a list, reached at `?edit=1` on the list's
 own route rather than through a page of its own. It replaces the hero with a
-band carrying the list's own details, swaps the item surface for one drawn from
-the whole item library, and commits everything it staged — the entries and the
-list row — through a single Save. Cancel is its only revert, and Save, Cancel and
-backing out of the mode all confirm while anything is staged.
+band carrying the list's own details and the staged unit total, swaps the item
+surface for the whole item library partitioned into _In this list_ (position
+order, reorderable by drag) and _Not in this list_ (by name), and commits
+everything it staged — the entries and the list row — through a single Save.
+Search, store and price filters narrow both halves; while any is active,
+reorder suspends. Cancel is its only revert, and Save, Cancel and backing out of
+the mode all confirm while anything is staged. No claim state renders here: a
+claim belongs to a list entry, not to an item, so a library row carries none
+this list could judge.
+
+**Pending change**:
+An entry, as edit mode stages it, whose membership, quantity, or position
+differs from what is saved — added, removed, re-quantified, or moved. Marked by
+a dot beside the item name; a removed entry keeps its dot below the divider,
+which is how the owner finds what they took off. A drag marks only the row
+dragged — the rows it displaces are still where the owner put them, even
+though Save rewrites their positions along with it
+([ADR-0010](docs/adr/0010-sparse-fractional-indexing-for-list-order.md)).
 
 **List entry**:
 An item's presence on one list, carrying the position it holds there, the

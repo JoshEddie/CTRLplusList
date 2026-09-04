@@ -19,11 +19,13 @@ export default function ToolbarSlot({
   mode,
   tier,
   baseline,
+  showGridToggle,
 }: {
   items: ItemDisplay[];
   mode: BrowserMode;
   tier?: SpoilerTier;
   baseline?: SpoilerTier;
+  showGridToggle?: boolean;
 }) {
   // On the list page the toolbar portals into the hero chrome's slot so it
   // rides the hero's shape changes in natural flow; anywhere without a slot
@@ -59,6 +61,7 @@ export default function ToolbarSlot({
       showPriceFilter={hasAnyPrice}
       tier={tier}
       baseline={baseline}
+      showGridToggle={showGridToggle}
     />
   );
 

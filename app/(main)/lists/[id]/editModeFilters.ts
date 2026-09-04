@@ -2,25 +2,11 @@ import {
   compareItems,
   displayPrice,
 } from '@/app/(main)/items/ui/components/itemFilters';
-import { ItemDisplay, SortKey } from '@/lib/types';
-
-const VALID_SORT_KEYS: SortKey[] = [
-  'created_desc',
-  'created_asc',
-  'name_asc',
-  'name_desc',
-  'store_asc',
-  'store_desc',
-  'price_asc',
-  'price_desc',
-];
-
-export type ShowFilter = 'all' | 'on' | 'off';
+import { ItemDisplay } from '@/lib/types';
+import type { StagedEntry } from './editModeChanges';
 
 export interface EditModeFilters {
   q: string;
-  sort: SortKey;
-  show: ShowFilter;
   selectedStores: string[];
   priceMin: number;
   priceMax: number;
@@ -31,40 +17,29 @@ export function parseEditModeFilters(
   searchParams: URLSearchParams | null
 ): EditModeFilters {
   const q = (searchParams?.get('q') ?? '').toLowerCase().trim();
-  const rawSort = searchParams?.get('sort') as SortKey | null;
-  const sort: SortKey =
-    rawSort && VALID_SORT_KEYS.includes(rawSort) ? rawSort : 'name_asc';
-  const rawShow = searchParams?.get('show');
-  const show: ShowFilter =
-    rawShow === 'on' || rawShow === 'off' ? rawShow : 'all';
   const selectedStores = searchParams?.getAll('store') ?? [];
   const priceMin = parseFloat(searchParams?.get('price_min') ?? '');
   const priceMax = parseFloat(searchParams?.get('price_max') ?? '');
   const hasPriceFilter = Number.isFinite(priceMin) || Number.isFinite(priceMax);
-  return { q, sort, show, selectedStores, priceMin, priceMax, hasPriceFilter };
+  return { q, selectedStores, priceMin, priceMax, hasPriceFilter };
 }
 
-export function collectStoreOptions(items: ItemDisplay[]): string[] {
-  const names = new Set<string>();
-  for (const item of items) {
-    if (item.store?.name) names.add(item.store.name);
-  }
-  return Array.from(names).sort((a, b) => a.localeCompare(b));
+// Client-side twin of `hasActiveFilter`: any narrowing suspends reorder,
+// because a drag across hidden rows would write a position nobody can see.
+export function hasEditModeFilter(filters: EditModeFilters): boolean {
+  return (
+    filters.q !== '' ||
+    filters.selectedStores.length > 0 ||
+    filters.hasPriceFilter
+  );
 }
 
-export function filterAndSortEditModeItems(
+export function filterEditModeItems(
   items: ItemDisplay[],
-  selected: ReadonlySet<string>,
   filters: EditModeFilters
 ): ItemDisplay[] {
-  const { q, sort, show, selectedStores, priceMin, priceMax, hasPriceFilter } =
-    filters;
+  const { q, selectedStores, priceMin, priceMax, hasPriceFilter } = filters;
   let result = items;
-  if (show === 'on') {
-    result = result.filter((item) => selected.has(item.id));
-  } else if (show === 'off') {
-    result = result.filter((item) => !selected.has(item.id));
-  }
   if (q) {
     result = result.filter((item) =>
       `${item.name ?? ''} ${item.description ?? ''}`.toLowerCase().includes(q)
@@ -84,5 +59,35 @@ export function filterAndSortEditModeItems(
       return Number.isFinite(p) && p >= lo && p <= hi;
     });
   }
-  return [...result].sort((a, b) => compareItems(a, b, sort));
+  return result;
+}
+
+export interface EditModePartition {
+  /** Members in staged position order, narrowed by the filters. */
+  inList: ItemDisplay[];
+  /** The rest of the library by name, narrowed by the filters. */
+  notInList: ItemDisplay[];
+  inListTotal: number;
+  notInListTotal: number;
+}
+
+// An entry naming an item the library has not delivered yet (one just created,
+// ahead of the refresh that carries it) is skipped rather than rendered blank.
+export function partitionEditModeItems(
+  items: ItemDisplay[],
+  entries: StagedEntry[],
+  filters: EditModeFilters
+): EditModePartition {
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const members = new Set(entries.map((entry) => entry.item_id));
+  const inList = entries.flatMap((entry) => byId.get(entry.item_id) ?? []);
+  const notInList = items
+    .filter((item) => !members.has(item.id))
+    .sort((a, b) => compareItems(a, b, 'name_asc'));
+  return {
+    inList: filterEditModeItems(inList, filters),
+    notInList: filterEditModeItems(notInList, filters),
+    inListTotal: inList.length,
+    notInListTotal: notInList.length,
+  };
 }

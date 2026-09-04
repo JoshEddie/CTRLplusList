@@ -37,6 +37,7 @@ function renderHeader(
       draft={{ ...DRAFT, ...overrides }}
       onChange={onChange}
       disabled={disabled}
+      units={13}
     />
   );
 }
@@ -50,6 +51,12 @@ describe('EditModeHeader', () => {
     expect(screen.getByLabelText('Subtitle')).toHaveValue('Brandy Family');
     expect(screen.getByLabelText('Occasion')).toHaveValue('Birthday');
     expect(screen.getByLabelText(/Date/)).toHaveValue('2026-03-04');
+  });
+
+  it('Render_ShowsTheStagedUnitsAndNoMoneyTotal', () => {
+    renderHeader();
+    expect(screen.getByText('13 units')).toBeInTheDocument();
+    expect(screen.queryByText(/\$/)).not.toBeInTheDocument();
   });
 
   it('Render_CarriesStagedNameOnCollapsedStrip', () => {

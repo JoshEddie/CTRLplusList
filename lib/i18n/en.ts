@@ -99,11 +99,17 @@ export const en = {
   edit_mode_count_selected: '{count, plural, one {1 item} other {# items}}',
   edit_mode_create_item_label: 'Create new item',
   edit_mode_discard_confirm_label: 'Discard',
+  edit_mode_drag_handle_label: 'Drag to reorder',
   edit_mode_library_empty_body:
     'Create items first, then come back here to add them to this list.',
   edit_mode_library_empty_title: 'No items in your library yet',
-  edit_mode_no_matches: 'No items match your filters.',
-  edit_mode_no_matches_clear_label: 'Clear filters',
+  edit_mode_library_exhausted: 'Every item you own is already on this list.',
+  edit_mode_library_no_matches: 'No other items match.',
+  edit_mode_list_empty: 'Your list is empty. Add any item below.',
+  edit_mode_list_no_matches: 'Nothing in your list matches.',
+  edit_mode_not_in_list_label: 'Not in list',
+  edit_mode_pending_change_label: 'Unsaved change',
+  edit_mode_reorder_hint: 'Clear search to reorder',
   edit_mode_save_confirm_label: 'Save changes',
   edit_mode_save_confirm_message:
     '{added, number} added and {removed, number} removed. Saving replaces what this list holds now.',
@@ -112,7 +118,14 @@ export const en = {
   edit_mode_save_label: 'Save',
   edit_mode_save_loading: 'Saving changes',
   edit_mode_save_success: 'Saved',
+  edit_mode_section_in_list: 'In this list · {count, number}',
+  edit_mode_section_in_list_filtered:
+    'In this list · {shown, number} of {total, number}',
+  edit_mode_section_not_in_list: 'Not in this list · {count, number}',
+  edit_mode_section_not_in_list_filtered:
+    'Not in this list · {shown, number} of {total, number}',
   edit_mode_skip_label: 'Skip',
+  edit_mode_units: '{count, plural, one {1 unit} other {# units}}',
   entry_quantity_cancel_label: 'Cancel',
   entry_quantity_description:
     'Just for this list — the same item can ask for a different number on another.',

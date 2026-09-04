@@ -27,7 +27,7 @@ test('ListLifecycle_OwnerCreatesAndShares_StepsReflected', async ({ page }) => {
   // Add items — select one library item and save; the arc returns to the list
   // page. Capture the chosen row's item name so the post-save assertion can
   // prove the attach itself round-tripped.
-  const chosenRow = page.locator('ul.edit-mode-list li').first();
+  const chosenRow = page.locator('li.edit-mode-item').first();
   await chosenRow.getByRole('checkbox').check();
   const chosenItemName = (
     await chosenRow.locator('.itemName').innerText()

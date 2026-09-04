@@ -15,6 +15,9 @@ type ListDetailsSaved = {
   date: Date;
 };
 
+/** One list entry as edit mode stages it: the array's order is the position. */
+export type StagedEntry = { item_id: string; quantity: number };
+
 // Entering and leaving the mode are one operation on one set of searchParams —
 // only `edit` differs. Everything else the page was reached with (the spoiler
 // tier, the filters) rides through in both directions, which is what makes the
@@ -56,15 +59,75 @@ export function editModeSaveLabel(
     : getMessage('edit_mode_skip_label');
 }
 
+const quantities = (entries: StagedEntry[]) =>
+  new Map(entries.map((entry) => [entry.item_id, entry.quantity]));
+
+// Reorder is judged on the rows both states share: an add lands at the end
+// and a removal drops out, and neither is a move.
 export function entryDiff(
-  initial: ReadonlySet<string>,
-  selected: ReadonlySet<string>
-): { added: number; removed: number } {
+  initial: StagedEntry[],
+  staged: StagedEntry[]
+): {
+  added: number;
+  removed: number;
+  requantified: number;
+  reordered: boolean;
+} {
+  const before = quantities(initial);
+  const after = quantities(staged);
   let added = 0;
   let removed = 0;
-  for (const id of selected) if (!initial.has(id)) added++;
-  for (const id of initial) if (!selected.has(id)) removed++;
-  return { added, removed };
+  let requantified = 0;
+  for (const [id, quantity] of after) {
+    if (!before.has(id)) added++;
+    else if (before.get(id) !== quantity) requantified++;
+  }
+  for (const id of before.keys()) if (!after.has(id)) removed++;
+  const shared = (entries: StagedEntry[], other: Map<string, number>) =>
+    entries
+      .filter((entry) => other.has(entry.item_id))
+      .map((entry) => entry.item_id)
+      .join('\n');
+  return {
+    added,
+    removed,
+    requantified,
+    reordered: shared(initial, after) !== shared(staged, before),
+  };
+}
+
+// A move displaces every row between its start and its end, but only the
+// dragged row's saved position changes (ADR-0010), so only it is pending.
+export function pendingChanges(
+  initial: StagedEntry[],
+  staged: StagedEntry[],
+  moved: ReadonlySet<string>
+): Set<string> {
+  const before = quantities(initial);
+  const after = quantities(staged);
+  const pending = new Set(moved);
+  for (const [id, quantity] of after) {
+    if (before.get(id) !== quantity) pending.add(id);
+  }
+  for (const id of before.keys()) if (!after.has(id)) pending.add(id);
+  return pending;
+}
+
+export function stagedUnits(staged: StagedEntry[]): number {
+  return staged.reduce((sum, entry) => sum + entry.quantity, 0);
+}
+
+export function moveEntry(
+  entries: StagedEntry[],
+  activeId: string,
+  overId: string
+): StagedEntry[] {
+  const from = entries.findIndex((entry) => entry.item_id === activeId);
+  const to = entries.findIndex((entry) => entry.item_id === overId);
+  if (from < 0 || to < 0 || from === to) return entries;
+  const next = [...entries];
+  next.splice(to, 0, ...next.splice(from, 1));
+  return next;
 }
 
 // A blank subtitle is stored as NULL, so the draft's empty string and the

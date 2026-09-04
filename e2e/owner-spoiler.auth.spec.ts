@@ -144,7 +144,7 @@ test('EditMode_MemberRaisesTierInTheURL_StillDisclosesNoClaimState', async ({
   // A row has to be on screen before absence means anything: the assertions
   // below are all counts of zero, which an unrendered list satisfies too.
   const expectNoClaimState = async () => {
-    await expect(page.locator('ul.edit-mode-list li').first()).toBeVisible();
+    await expect(page.locator('li.edit-mode-item').first()).toBeVisible();
     await expect(page.locator('.purchased-banner--spoiler')).toHaveCount(0);
     await expect(page.locator('.item-container.purchased')).toHaveCount(0);
     await expect(page.locator('.item-container.has-my-claim')).toHaveCount(0);

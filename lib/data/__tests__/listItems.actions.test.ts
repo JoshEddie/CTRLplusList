@@ -71,6 +71,9 @@ const listItemRows = (listId: string) =>
 
 const MANAGED = 'kiddo';
 
+const sel = (...ids: string[]) =>
+  ids.map((item_id) => ({ item_id, quantity: 1 }));
+
 beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
@@ -95,33 +98,33 @@ beforeEach(async () => {
 describe('setListItems', () => {
   it('NoSession_ReturnsUnauthorized', async () => {
     noSession();
-    const res = await actions.setListItems('L', ['I']);
+    const res = await actions.setListItems('L', sel('I'));
     expect(res.error).toBe('Unauthorized');
   });
 
   it('MissingList_ReturnsNotFound', async () => {
-    const res = await actions.setListItems('nope', ['I']);
+    const res = await actions.setListItems('nope', sel('I'));
     expect(res.error).toBe('Not found');
   });
 
   it('NonOwner_ReturnsForbidden', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     asOther();
-    const res = await actions.setListItems('L', ['I']);
+    const res = await actions.setListItems('L', sel('I'));
     expect(res.error).toBe('Forbidden');
   });
 
   it('UnknownEmail_ReturnsForbidden-NoRow', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     asGhost();
-    const res = await actions.setListItems('L', ['I']);
+    const res = await actions.setListItems('L', sel('I'));
     expect(res.error).toBe('Forbidden');
     expect(await listItemRows('L')).toHaveLength(0);
   });
 
   it('EmptyItemId_ReturnsInvalidInput', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
-    const res = await actions.setListItems('L', ['']);
+    const res = await actions.setListItems('L', sel(''));
     expect(res.error).toBe('Invalid input');
   });
 
@@ -129,7 +132,7 @@ describe('setListItems', () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     await seedItem(db, { id: 'MINE', user_id: OWNER.id });
     await seedItem(db, { id: 'THEIRS', user_id: OTHER.id });
-    const res = await actions.setListItems('L', ['MINE', 'THEIRS']);
+    const res = await actions.setListItems('L', sel('MINE', 'THEIRS'));
     expect(res.error).toBe('Forbidden');
     expect(await listItemRows('L')).toHaveLength(0);
     expect(contentTagCalls(updateTag)).toEqual([]);
@@ -138,7 +141,7 @@ describe('setListItems', () => {
   it('NonexistentItemInSelection_ReturnsForbidden-NoWrite', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     await seedItem(db, { id: 'MINE', user_id: OWNER.id });
-    const res = await actions.setListItems('L', ['MINE', 'ghost']);
+    const res = await actions.setListItems('L', sel('MINE', 'ghost'));
     expect(res.error).toBe('Forbidden');
     expect(await listItemRows('L')).toHaveLength(0);
   });
@@ -148,7 +151,7 @@ describe('setListItems', () => {
     await seedItem(db, { id: 'A', user_id: OWNER.id });
     await seedItem(db, { id: 'THEIRS', user_id: OTHER.id });
     await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
-    const res = await actions.setListItems('L', ['THEIRS']);
+    const res = await actions.setListItems('L', sel('THEIRS'));
     expect(res.error).toBe('Forbidden');
     expect((await listItemRows('L')).map((r) => r.item_id)).toEqual(['A']);
   });
@@ -157,7 +160,7 @@ describe('setListItems', () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     await seedItem(db, { id: 'I', user_id: OWNER.id });
     await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
-    const res = await actions.setListItems('L', ['I']);
+    const res = await actions.setListItems('L', sel('I'));
     expect(res.message).toBe('No changes');
   });
 
@@ -169,7 +172,7 @@ describe('setListItems', () => {
     await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
     await seedListItem(db, { list_id: 'L', item_id: 'B', position: 131072 });
 
-    const res = await actions.setListItems('L', ['A', 'C']);
+    const res = await actions.setListItems('L', sel('A', 'C'));
     expect(res.success).toBe(true);
     expect(res.message).toBe('Added 1, removed 1');
 
@@ -188,13 +191,124 @@ describe('setListItems', () => {
     await seedItem(db, { id: 'B', user_id: OWNER.id });
     await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
 
-    const res = await actions.setListItems('L', ['A', 'B']);
+    const res = await actions.setListItems('L', sel('A', 'B'));
     expect(res.success).toBe(true);
     expect(res.message).toBe('Added 1');
     const byItem = Object.fromEntries(
       (await listItemRows('L')).map((r) => [r.item_id, r.position])
     );
     expect(byItem).toEqual({ A: 65536, B: 131072 });
+  });
+
+  it('DuplicateItemIds_ReturnsInvalidInput', async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id });
+    const res = await actions.setListItems('L', sel('A', 'A'));
+    expect(res.error).toBe('Invalid input');
+  });
+
+  it('QuantityZero_ReturnsInvalidInput-NoWrite', async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id });
+    await seedItem(db, { id: 'A', user_id: OWNER.id });
+    const res = await actions.setListItems('L', [
+      { item_id: 'A', quantity: 0 },
+    ]);
+    expect(res.error).toBe('Invalid input');
+    expect(await listItemRows('L')).toHaveLength(0);
+  });
+
+  it('AddedWithQuantity_InsertsTheQuantity', async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id });
+    await seedItem(db, { id: 'A', user_id: OWNER.id });
+    await actions.setListItems('L', [{ item_id: 'A', quantity: 4 }]);
+    expect((await listItemRows('L'))[0]).toMatchObject({
+      item_id: 'A',
+      quantity: 4,
+      position: 65536,
+    });
+  });
+
+  describe('SavedOrderKept', () => {
+    beforeEach(async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id });
+      await seedItem(db, { id: 'A', user_id: OWNER.id });
+      await seedItem(db, { id: 'B', user_id: OWNER.id });
+      await seedItem(db, { id: 'C', user_id: OWNER.id });
+      // Midpoint positions from earlier live drags: an unchanged order must
+      // leave them exactly as they are.
+      await seedListItem(db, { list_id: 'L', item_id: 'A', position: 100 });
+      await seedListItem(db, { list_id: 'L', item_id: 'B', position: 150 });
+    });
+
+    it('SameOrderSameQuantities_ReturnsNoChanges-LeavesPositions', async () => {
+      const res = await actions.setListItems('L', sel('A', 'B'));
+      expect(res.message).toBe('No changes');
+      const byItem = Object.fromEntries(
+        (await listItemRows('L')).map((r) => [r.item_id, r.position])
+      );
+      expect(byItem).toEqual({ A: 100, B: 150 });
+      expect(updateTag).not.toHaveBeenCalledWith('list_items:list:L');
+    });
+
+    it('QuantityChanged_UpdatesThatRowOnly-ReportsUpdated', async () => {
+      const res = await actions.setListItems('L', [
+        { item_id: 'A', quantity: 1 },
+        { item_id: 'B', quantity: 3 },
+      ]);
+      expect(res.message).toBe('updated 1');
+      const rows = (await listItemRows('L')).map(
+        ({ item_id, position, quantity }) => ({ item_id, position, quantity })
+      );
+      expect(rows).toEqual(
+        expect.arrayContaining([
+          { item_id: 'A', position: 100, quantity: 1 },
+          { item_id: 'B', position: 150, quantity: 3 },
+        ])
+      );
+      expect(updateTag).toHaveBeenCalledWith('list_items:list:L');
+    });
+
+    it('AddTrailing_AppendsAfterMaxWithoutMovingSurvivors', async () => {
+      await actions.setListItems('L', sel('A', 'B', 'C'));
+      const byItem = Object.fromEntries(
+        (await listItemRows('L')).map((r) => [r.item_id, r.position])
+      );
+      expect(byItem).toEqual({ A: 100, B: 150, C: 150 + 65536 });
+    });
+  });
+
+  describe('OrderChanged', () => {
+    beforeEach(async () => {
+      await seedList(db, { id: 'L', user_id: OWNER.id });
+      await seedItem(db, { id: 'A', user_id: OWNER.id });
+      await seedItem(db, { id: 'B', user_id: OWNER.id });
+      await seedItem(db, { id: 'C', user_id: OWNER.id });
+      await seedListItem(db, { list_id: 'L', item_id: 'A', position: 100 });
+      await seedListItem(db, { list_id: 'L', item_id: 'B', position: 150 });
+    });
+
+    const positions = async () =>
+      Object.fromEntries(
+        (await listItemRows('L')).map((r) => [r.item_id, r.position])
+      );
+
+    it('SurvivorsSwapped_RewritesEveryPositionAsCleanMultiples', async () => {
+      const res = await actions.setListItems('L', sel('B', 'A'));
+      expect(res.message).toBe('updated 2');
+      expect(await positions()).toEqual({ B: 65536, A: 131072 });
+    });
+
+    it('AddedBetweenSurvivors_RewritesTheWholeOrder', async () => {
+      const res = await actions.setListItems('L', sel('A', 'C', 'B'));
+      expect(res.message).toBe('Added 1, updated 2');
+      expect(await positions()).toEqual({ A: 65536, C: 131072, B: 196608 });
+    });
+
+    it('MoveAndRemoveTogether_RewritesAndDeletes', async () => {
+      await seedListItem(db, { list_id: 'L', item_id: 'C', position: 200 });
+      const res = await actions.setListItems('L', sel('C', 'A'));
+      expect(res.message).toBe('removed 1, updated 2');
+      expect(await positions()).toEqual({ C: 65536, A: 131072 });
+    });
   });
 
   it('PureRemove_ReportsRemovedOnly', async () => {
@@ -204,7 +318,7 @@ describe('setListItems', () => {
     await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
     await seedListItem(db, { list_id: 'L', item_id: 'B', position: 131072 });
 
-    const res = await actions.setListItems('L', ['A']);
+    const res = await actions.setListItems('L', sel('A'));
     expect(res.success).toBe(true);
     expect(res.message).toBe('removed 1');
     expect((await listItemRows('L')).map((r) => r.item_id)).toEqual(['A']);
@@ -225,7 +339,7 @@ describe('setListItems', () => {
 
     it('NonEmptyDiff_BumpsUpdatedAt', async () => {
       const before = Date.now();
-      const res = await actions.setListItems('L', ['A', 'B']);
+      const res = await actions.setListItems('L', sel('A', 'B'));
       const after = Date.now();
 
       expect(res.success).toBe(true);
@@ -235,7 +349,7 @@ describe('setListItems', () => {
     });
 
     it('NoChanges_LeavesUpdatedAtUnchanged', async () => {
-      const res = await actions.setListItems('L', ['A']);
+      const res = await actions.setListItems('L', sel('A'));
 
       expect(res.message).toBe('No changes');
       expect((await updatedAtOfL()).toISOString()).toBe(STALE.toISOString());
@@ -260,7 +374,7 @@ describe('setListItems', () => {
     vi.spyOn(db, 'delete').mockImplementation(() => {
       throw new Error('boom');
     });
-    const res = await actions.setListItems('L', []);
+    const res = await actions.setListItems('L', sel());
     expect(res.error).toBe('Failed to save items');
   });
 });

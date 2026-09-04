@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { ItemDisplay } from '@/lib/types';
 import {
-  collectStoreOptions,
-  filterAndSortEditModeItems,
+  filterEditModeItems,
+  hasEditModeFilter,
   parseEditModeFilters,
+  partitionEditModeItems,
 } from '../editModeFilters';
+import { entry } from './test-helpers';
 
 function item(overrides: Partial<ItemDisplay>): ItemDisplay {
   return {
@@ -41,13 +43,13 @@ const ITEMS = [
 ];
 
 const ids = (items: ItemDisplay[]) => items.map((i) => i.id);
+const filters = (query = '') =>
+  parseEditModeFilters(new URLSearchParams(query));
 
 describe('parseEditModeFilters', () => {
   it('NullSearchParams_ReturnsDefaults', () => {
     expect(parseEditModeFilters(null)).toEqual({
       q: '',
-      sort: 'name_asc',
-      show: 'all',
       selectedStores: [],
       priceMin: NaN,
       priceMax: NaN,
@@ -55,191 +57,119 @@ describe('parseEditModeFilters', () => {
     });
   });
 
-  it('ValidSort_IsPreserved', () => {
-    expect(
-      parseEditModeFilters(new URLSearchParams('sort=price_desc')).sort
-    ).toBe('price_desc');
-  });
-
-  it('InvalidSort_FallsBackToNameAsc', () => {
-    expect(parseEditModeFilters(new URLSearchParams('sort=bogus')).sort).toBe(
-      'name_asc'
-    );
-  });
-
-  it('ShowOnOrOff_IsPreserved-OtherFallsBackToAll', () => {
-    expect(parseEditModeFilters(new URLSearchParams('show=on')).show).toBe(
-      'on'
-    );
-    expect(parseEditModeFilters(new URLSearchParams('show=off')).show).toBe(
-      'off'
-    );
-    expect(parseEditModeFilters(new URLSearchParams('show=weird')).show).toBe(
-      'all'
-    );
-  });
-
   it('PriceParams_SetHasPriceFilterAndTrimsQuery', () => {
-    const parsed = parseEditModeFilters(
-      new URLSearchParams('q=%20Hi%20&price_min=3&store=Amazon&store=Target')
-    );
-    expect(parsed.q).toBe('hi');
-    expect(parsed.priceMin).toBe(3);
+    const parsed = filters('q=%20Apple%20&price_min=1&price_max=9&store=A');
+    expect(parsed.q).toBe('apple');
+    expect(parsed.priceMin).toBe(1);
+    expect(parsed.priceMax).toBe(9);
     expect(parsed.hasPriceFilter).toBe(true);
-    expect(parsed.selectedStores).toEqual(['Amazon', 'Target']);
+    expect(parsed.selectedStores).toEqual(['A']);
   });
 });
 
-describe('collectStoreOptions', () => {
-  it('CollectsDistinctNames_SortedAndSkipsBlankAndMissing', () => {
-    expect(
-      collectStoreOptions([
-        item({ store: { name: 'Zebra' } as never }),
-        item({ store: { name: 'Apple' } as never }),
-        item({ store: { name: '' } as never }),
-        item({ store: { name: 'Zebra' } as never }),
-        item({ store: undefined as never }),
-      ])
-    ).toEqual(['Apple', 'Zebra']);
+describe('hasEditModeFilter', () => {
+  it('Defaults_ReturnsFalse', () => {
+    expect(hasEditModeFilter(filters())).toBe(false);
   });
+
+  it.each(['q=a', 'store=Amazon', 'price_min=1', 'price_max=1'])(
+    'Param%s_ReturnsTrue',
+    (query) => {
+      expect(hasEditModeFilter(filters(query))).toBe(true);
+    }
+  );
 });
 
-describe('filterAndSortEditModeItems', () => {
-  const base = parseEditModeFilters(null);
-
-  it('ShowOn_KeepsOnlySelected', () => {
-    expect(
-      ids(
-        filterAndSortEditModeItems(ITEMS, new Set(['a1']), {
-          ...base,
-          show: 'on',
-        })
-      )
-    ).toEqual(['a1']);
-  });
-
-  it('ShowOff_DropsSelected', () => {
-    expect(
-      ids(
-        filterAndSortEditModeItems(ITEMS, new Set(['a1']), {
-          ...base,
-          show: 'off',
-        })
-      )
-    ).toEqual(['a2', 'a3']);
-  });
-
+describe('filterEditModeItems', () => {
   it('Query_MatchesNameOrDescription', () => {
-    expect(
-      ids(filterAndSortEditModeItems(ITEMS, new Set(), { ...base, q: 'red' }))
-    ).toEqual(['a1']);
+    expect(ids(filterEditModeItems(ITEMS, filters('q=red')))).toEqual(['a1']);
   });
 
   it('QueryAgainstNamelessItem_TreatsMissingTextAsEmpty', () => {
     const nameless = item({
-      id: 'z1',
+      id: 'n1',
       name: null as never,
       description: null as never,
     });
-    expect(
-      ids(
-        filterAndSortEditModeItems([nameless, ...ITEMS], new Set(), {
-          ...base,
-          q: 'red',
-        })
-      )
-    ).toEqual(['a1']);
+    expect(filterEditModeItems([nameless], filters('q=x'))).toEqual([]);
+    expect(filterEditModeItems([nameless], filters())).toEqual([nameless]);
   });
 
   it('PriceMinOnly_LeavesTheUpperBoundOpen', () => {
-    expect(
-      ids(
-        filterAndSortEditModeItems(ITEMS, new Set(), {
-          ...base,
-          priceMin: 10,
-          priceMax: NaN,
-          hasPriceFilter: true,
-        })
-      )
-    ).toEqual(['a2']);
+    expect(ids(filterEditModeItems(ITEMS, filters('price_min=10')))).toEqual([
+      'a2',
+    ]);
   });
 
   it('PriceMaxOnly_LeavesTheLowerBoundOpen', () => {
-    expect(
-      ids(
-        filterAndSortEditModeItems(ITEMS, new Set(), {
-          ...base,
-          priceMin: NaN,
-          priceMax: 10,
-          hasPriceFilter: true,
-        })
-      )
-    ).toEqual(['a1']);
+    expect(ids(filterEditModeItems(ITEMS, filters('price_max=10')))).toEqual([
+      'a1',
+    ]);
   });
 
   it('SelectedStores_FilterByStoreName', () => {
-    expect(
-      ids(
-        filterAndSortEditModeItems(ITEMS, new Set(), {
-          ...base,
-          selectedStores: ['Target'],
-        })
-      )
-    ).toEqual(['a2']);
+    expect(ids(filterEditModeItems(ITEMS, filters('store=Target')))).toEqual([
+      'a2',
+    ]);
   });
 
   it('DormantLegacyStoreName_DoesNotMatch', () => {
-    // The DAL-selected store is Amazon; a legacy second row's name never
-    // reaches the UI, so selecting it matches nothing.
+    const dormant = item({
+      id: 'd1',
+      store: { name: 'Target', price: '', link: '' } as never,
+    });
     expect(
-      ids(
-        filterAndSortEditModeItems(ITEMS, new Set(), {
-          ...base,
-          selectedStores: ['LegacyEtsy'],
-        })
-      )
-    ).toEqual([]);
+      ids(filterEditModeItems([dormant, ...ITEMS], filters('store=Target')))
+    ).toEqual(['d1', 'a2']);
   });
 
   it('PriceFilterActive_ExcludesIncompleteStoreItem', () => {
     const incomplete = item({
-      id: 'a4',
-      name: 'Durian',
-      store: { name: 'Shop', price: '20.00', link: 'not-a-url' } as never,
+      id: 'i1',
+      store: { name: 'Shop', price: '', link: '' } as never,
     });
     expect(
-      ids(
-        filterAndSortEditModeItems([...ITEMS, incomplete], new Set(), {
-          ...base,
-          priceMin: 1,
-          priceMax: NaN,
-          hasPriceFilter: true,
-        })
-      )
+      ids(filterEditModeItems([incomplete, ...ITEMS], filters('price_min=0')))
     ).toEqual(['a1', 'a2']);
   });
+});
 
-  it('PriceFilter_BoundsByDisplayPrice', () => {
-    expect(
-      ids(
-        filterAndSortEditModeItems(ITEMS, new Set(), {
-          ...base,
-          priceMin: 10,
-          priceMax: NaN,
-          hasPriceFilter: true,
-        })
-      )
-    ).toEqual(['a2']);
+describe('partitionEditModeItems', () => {
+  it('Entries_KeepStagedOrderAboveAndNameOrderBelow', () => {
+    const result = partitionEditModeItems(
+      ITEMS,
+      [entry('a3'), entry('a1')],
+      filters()
+    );
+    expect(ids(result.inList)).toEqual(['a3', 'a1']);
+    expect(ids(result.notInList)).toEqual(['a2']);
+    expect(result.inListTotal).toBe(2);
+    expect(result.notInListTotal).toBe(1);
   });
 
-  it('Sort_OrdersByChosenKey', () => {
+  it('Filtered_NarrowsBothSectionsAndKeepsUnfilteredTotals', () => {
+    const result = partitionEditModeItems(
+      ITEMS,
+      [entry('a1')],
+      filters('q=an')
+    );
+    expect(ids(result.inList)).toEqual([]);
+    expect(ids(result.notInList)).toEqual(['a2']);
+    expect(result.inListTotal).toBe(1);
+    expect(result.notInListTotal).toBe(2);
+  });
+
+  it('EntryForUnknownItem_IsSkipped', () => {
+    const result = partitionEditModeItems(ITEMS, [entry('ghost')], filters());
+    expect(result.inList).toEqual([]);
+    expect(result.inListTotal).toBe(0);
+    expect(ids(result.notInList)).toEqual(['a1', 'a2', 'a3']);
+  });
+
+  it('NoEntries_PutsTheWholeLibraryBelowByName', () => {
+    const shuffled = [ITEMS[2], ITEMS[0], ITEMS[1]];
     expect(
-      ids(
-        filterAndSortEditModeItems(ITEMS, new Set(), {
-          ...base,
-          sort: 'name_desc',
-        })
-      )
-    ).toEqual(['a3', 'a2', 'a1']);
+      ids(partitionEditModeItems(shuffled, [], filters()).notInList)
+    ).toEqual(['a1', 'a2', 'a3']);
   });
 });

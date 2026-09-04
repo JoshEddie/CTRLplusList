@@ -18,11 +18,15 @@ vi.mock('@/lib/data/list', () => ({
 vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({ getUserIdByEmail: vi.fn() }));
 
-const membership = vi.hoisted(() => ({ rows: [] as { item_id: string }[] }));
+const membership = vi.hoisted(() => ({
+  rows: [] as { item_id: string; quantity: number }[],
+}));
 vi.mock('@/db', () => ({
   db: {
     select: () => ({
-      from: () => ({ where: () => Promise.resolve(membership.rows) }),
+      from: () => ({
+        where: () => ({ orderBy: () => Promise.resolve(membership.rows) }),
+      }),
     }),
   },
 }));
@@ -31,10 +35,9 @@ vi.mock('../EditModeForm', () => ({
   default: (p: {
     list: { id: string; name: string };
     items: Record<string, unknown>[];
-    initialSelectedIds: string[];
+    initialEntries: { item_id: string; quantity: number }[];
     isNew: boolean;
-    actor: { id: string };
-    lists: unknown[];
+    lists: { id: string }[];
   }) => (
     <div
       data-testid="edit-form"
@@ -45,10 +48,11 @@ vi.mock('../EditModeForm', () => ({
         .flatMap((i) => Object.keys(i))
         .filter((k) => k === 'purchases' || k === 'hasPurchases')
         .join(',')}
-      data-selected={p.initialSelectedIds.join(',')}
+      data-entries={p.initialEntries
+        .map((e) => `${e.item_id}:${e.quantity}`)
+        .join(',')}
       data-is-new={String(p.isNew)}
-      data-profile-id={p.actor.id}
-      data-lists-count={String(p.lists.length)}
+      data-lists={p.lists.map((l) => l.id).join(',')}
     />
   ),
 }));
@@ -147,21 +151,21 @@ describe('ListEditSection', () => {
 
   describe('Owner', () => {
     it('LoadsActiveAndArchivedOnList_ForwardsMembershipAndProps', async () => {
-      membership.rows = [{ item_id: 'a3' }];
+      membership.rows = [{ item_id: 'a3', quantity: 2 }];
       render(await ListEditSection(props('l1')));
       expect(getItemsByProfile).toHaveBeenCalledWith('p1', { filter: 'all' });
       const form = screen.getByTestId('edit-form');
       expect(form).toHaveAttribute('data-item-ids', 'a1,a3');
-      expect(form).toHaveAttribute('data-selected', 'a3');
+      expect(form).toHaveAttribute('data-entries', 'a3:2');
       expect(form).toHaveAttribute('data-list-id', 'l1');
       expect(form).toHaveAttribute('data-list-name', 'My List');
-      expect(form).toHaveAttribute('data-profile-id', 'p1');
-      expect(form).toHaveAttribute('data-lists-count', '2');
+      // The list being edited stays out of the item form's picker.
+      expect(form).toHaveAttribute('data-lists', 'l2');
       expect(form).toHaveAttribute('data-is-new', 'false');
     });
 
     it('ItemsCarryingClaims_ForwardsNoPurchaseKeys', async () => {
-      membership.rows = [{ item_id: 'a3' }];
+      membership.rows = [{ item_id: 'a3', quantity: 1 }];
       render(await ListEditSection(props('l1')));
       const form = screen.getByTestId('edit-form');
       expect(form).toHaveAttribute('data-item-ids', 'a1,a3');

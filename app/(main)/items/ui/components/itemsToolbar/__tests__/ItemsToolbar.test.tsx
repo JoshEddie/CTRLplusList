@@ -4,13 +4,7 @@
  * (`.popover-trigger-count`) are asserted structurally where no stable role or
  * accessible name exists.
  */
-import {
-  act,
-  render,
-  screen,
-  fireEvent,
-  within,
-} from '@testing-library/react';
+import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ItemsToolbar from '../ItemsToolbar';
 
@@ -162,9 +156,9 @@ describe('ItemsToolbar', () => {
     it('ActiveFilters_CountBadgeEqualsActiveFilterCount', () => {
       nav.search = 'sort=name_asc&store=Amazon&price_min=5';
       const { container } = renderToolbar({ storeOptions: ['Amazon'] });
-      expect(container.querySelector('.popover-trigger-count')).toHaveTextContent(
-        '3'
-      );
+      expect(
+        container.querySelector('.popover-trigger-count')
+      ).toHaveTextContent('3');
     });
 
     it('Click_OpensSheetWithDialogRole', () => {
@@ -263,14 +257,19 @@ describe('ItemsToolbar', () => {
       renderToolbar();
       openSheet();
       fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-      expect(screen.getByRole('button', { name: 'Open filters' })).toHaveFocus();
+      expect(
+        screen.getByRole('button', { name: 'Open filters' })
+      ).toHaveFocus();
     });
 
     it('SheetReopened_StartsAtTheRootLevel', () => {
       renderToolbar({ storeOptions: ['Amazon'] });
       openSheet();
       fireEvent.click(screen.getByRole('button', { name: 'Filter by store' }));
-      expect(screen.getByRole('dialog')).toHaveAttribute('aria-label', 'Stores');
+      expect(screen.getByRole('dialog')).toHaveAttribute(
+        'aria-label',
+        'Stores'
+      );
       fireEvent.click(screen.getByRole('button', { name: 'Done' }));
       openSheet();
       expect(screen.getByRole('dialog')).toHaveAttribute(
@@ -299,28 +298,11 @@ describe('ItemsToolbar', () => {
       expect(nav.replace).toHaveBeenCalledWith('/items');
     });
 
-    it('ShowNonDefault_ReplaceSetsShowRemovesPage', () => {
-      nav.search = 'page=2';
-      renderToolbar({ mode: 'choose' });
-      fireEvent.change(
-        screen.getByRole('combobox', {
-          name: 'Show items by list membership',
-        }),
-        { target: { value: 'on' } }
-      );
-      expect(nav.replace).toHaveBeenCalledWith('/items?show=on');
-    });
-
-    it('ShowAll_ReplaceRemovesShowParam', () => {
-      nav.search = 'show=on';
-      renderToolbar({ mode: 'choose' });
-      fireEvent.change(
-        screen.getByRole('combobox', {
-          name: 'Show items by list membership',
-        }),
-        { target: { value: 'all' } }
-      );
-      expect(nav.replace).toHaveBeenCalledWith('/items');
+    it('ModeEdit_RendersNoSortSelect', () => {
+      renderToolbar({ mode: 'edit' });
+      expect(
+        screen.queryByRole('combobox', { name: 'Sort items' })
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -368,13 +350,6 @@ describe('ItemsToolbar', () => {
         search: 'sort=name_asc',
         labels: ['Name A–Z'],
         removeParamGone: 'sort',
-      },
-      {
-        name: 'ModeChooseShowOn',
-        mode: 'choose',
-        search: 'show=on',
-        labels: ['On the list'],
-        removeParamGone: 'show',
       },
       {
         name: 'ModeItemsStore',
@@ -432,30 +407,28 @@ describe('ItemsToolbar', () => {
         screen.queryByRole('region', { name: 'Active filters' })
       ).not.toBeInTheDocument();
     });
-
-    it('ModeChooseShowUnlabeledValue_RendersNoChipRow', () => {
-      nav.search = 'show=bogus';
-      renderToolbar({ mode: 'choose' });
-      expect(
-        screen.queryByRole('region', { name: 'Active filters' })
-      ).not.toBeInTheDocument();
-    });
   });
 
   describe('DefaultsAndOptions', () => {
     it('ModeList_DefaultSortListOrder', () => {
       renderToolbar({ mode: 'list' });
       expect(
-        (screen.getByRole('combobox', { name: 'Sort items' }) as HTMLSelectElement)
-          .value
+        (
+          screen.getByRole('combobox', {
+            name: 'Sort items',
+          }) as HTMLSelectElement
+        ).value
       ).toBe('list_order');
     });
 
     it('ModeItems_DefaultSortCreatedDesc', () => {
       renderToolbar({ mode: 'items' });
       expect(
-        (screen.getByRole('combobox', { name: 'Sort items' }) as HTMLSelectElement)
-          .value
+        (
+          screen.getByRole('combobox', {
+            name: 'Sort items',
+          }) as HTMLSelectElement
+        ).value
       ).toBe('created_desc');
     });
 

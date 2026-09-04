@@ -98,7 +98,7 @@ export async function createListWithFirstItem(
   await page.getByRole('button', { name: 'Create List' }).click();
 
   await expect(page).toHaveURL(/\/lists\/[^/]+\?edit=1&new=1$/);
-  const row = page.locator('ul.edit-mode-list li').first();
+  const row = page.locator('li.edit-mode-item').first();
   await row.getByRole('checkbox').check();
   const itemName = (await row.locator('.itemName').innerText()).trim();
   await page.getByRole('button', { name: /Add 1 item/ }).click();
