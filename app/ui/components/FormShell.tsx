@@ -5,6 +5,7 @@
 
 import { Button, CloseButton } from '@/app/ui/components/button';
 import { useDismiss } from '@/app/ui/components/use-dismiss';
+import { useScrollLock } from '@/app/ui/hooks/useScrollLock';
 import '@/app/ui/styles/form-shell.css';
 
 type Variant = 'default' | 'wide';
@@ -28,6 +29,7 @@ export function FormShell({
   children: React.ReactNode;
 }) {
   const dismiss = useDismiss(onClose, closeHref);
+  useScrollLock();
 
   const cls =
     variant === 'wide'
