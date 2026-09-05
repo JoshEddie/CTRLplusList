@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, LinkButton } from '@/app/ui/components/button';
+import ViewItemLink, { storeLink } from './ViewItemLink';
 import { getMessage } from '@/lib/i18n/utils';
 import { atLeast } from '@/lib/spoilers';
 import type { ItemStoreTable, SpoilerTier } from '@/lib/types';
@@ -75,7 +76,7 @@ export default function ItemActions({
   const showBuy = !viewOnly && revealed && !!showBuyClaim && !!store?.link;
   // Keyed on a navigable link, never mere store presence — a PRICED/linkless
   // store carries a price line but no View item link (item-actions spec).
-  const showView = !!store?.link;
+  const showView = !!storeLink(store);
   // When View item is the card's only action (owner spoilers off, view-only)
   // it is the primary intent — promote it from the subordinate secondary look.
   const viewIsOnlyAction = showView && !showManage && !showStatus && !showAdd;
@@ -130,27 +131,12 @@ export default function ItemActions({
           {getMessage('claim_add_label')}
         </Button>
       )}
-      {showView && (
-        <LinkButton
-          variant={viewIsOnlyAction ? 'primary' : 'secondary'}
-          className="item-actions-view"
-          href={store.link}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={getMessage('view_item_aria_label')}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <span>
-            <span className="item-actions-view-label">
-              {getMessage('view_item_label')}
-            </span>
-            <span className="item-actions-view-short">
-              {getMessage('view_item_label_short')}
-            </span>
-          </span>
-          <MdOpenInNew aria-hidden />
-        </LinkButton>
-      )}
+      <ViewItemLink
+        store={store}
+        variant={viewIsOnlyAction ? 'primary' : 'secondary'}
+        className="item-actions-view"
+        onClick={(e) => e.stopPropagation()}
+      />
     </div>
   );
 }

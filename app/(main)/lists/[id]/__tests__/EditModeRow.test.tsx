@@ -17,7 +17,8 @@ const ITEM = {
   store: { name: 'Amazon', price: '5.00', link: 'https://a.example' },
 } as never;
 
-const onToggle = vi.fn();
+const onQuantityChange = vi.fn();
+const onOpen = vi.fn();
 
 function renderRow(
   overrides: Partial<React.ComponentProps<typeof EditModeRow>> = {}
@@ -25,9 +26,10 @@ function renderRow(
   return render(
     <EditModeRow
       item={ITEM}
-      inList
+      quantity={1}
       pending={false}
-      onToggle={onToggle}
+      onQuantityChange={onQuantityChange}
+      onOpen={onOpen}
       {...overrides}
     />
   );
@@ -36,30 +38,70 @@ function renderRow(
 beforeEach(() => vi.clearAllMocks());
 
 describe('EditModeRow', () => {
-  it('InList_RendersSwatchNamePriceAndCheckedBox-NoLabel', () => {
-    renderRow();
+  it('InList_RendersSwatchNamePriceAndTheQuantityChip', () => {
+    renderRow({ quantity: 4 });
     expect(screen.getByTestId('photo')).toHaveAttribute(
       'data-url',
       'https://img.example/a.png'
     );
     expect(
-      screen.getByText('Apple', { selector: '.itemName' })
-    ).toBeInTheDocument();
+      screen.getAllByText('Apple', { selector: '.itemName' })
+    ).toHaveLength(2);
     expect(screen.getByText('$5.00')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: 'Apple' })).toBeChecked();
-    expect(screen.queryByText('Not in list')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Change quantity for Apple' })
+    ).toHaveTextContent('×4');
     expect(
       screen.queryByRole('img', { name: 'Unsaved change' })
     ).not.toBeInTheDocument();
   });
 
-  it('NotInList_RendersTheLabelAndAnUncheckedBox', () => {
-    renderRow({ inList: false });
-    expect(screen.getByText('Not in list')).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: 'Apple' })).not.toBeChecked();
-    // eslint-disable-next-line testing-library/no-node-access -- the section state is a class on the wrapping <label>, which carries no role of its own
-    const row = screen.getByRole('checkbox').closest('label.edit-mode-row');
+  it('InList_NamesTheStepperWithWhatIsWanted', () => {
+    renderRow({ quantity: 4 });
+    expect(screen.getByRole('group', { name: 'Wants 4' })).toBeInTheDocument();
+  });
+
+  it('NotInList_NamesTheStepperNotInList', () => {
+    renderRow({ quantity: 0 });
+    expect(
+      screen.getByRole('group', { name: 'Not in list' })
+    ).toBeInTheDocument();
+  });
+
+  it('NotInList_MarksTheRowOffAndOffersTheAddChip', () => {
+    renderRow({ quantity: 0 });
+    expect(
+      screen.getByRole('button', { name: 'Add Apple to this list' })
+    ).toHaveTextContent('+ Add');
+    // eslint-disable-next-line testing-library/no-node-access -- the section state is a class on the row wrapper, which carries no role of its own
+    const row = screen.getByTestId('photo').closest('.edit-mode-row');
     expect(row).toHaveClass('is-off');
+  });
+
+  it('Stepper_ReportsTheNumberItReachedAgainstTheItemId', async () => {
+    const user = userEvent.setup();
+    renderRow({ quantity: 4 });
+    await user.click(screen.getByRole('button', { name: 'Increase' }));
+    expect(onQuantityChange).toHaveBeenCalledExactlyOnceWith('a1', 5);
+  });
+
+  it('NotInList_LeavesOnlyTheAddEndOfTheStepperLive', () => {
+    renderRow({ quantity: 0 });
+    expect(screen.getByRole('button', { name: 'Decrease' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Set to minimum, 0' })
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Increase' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Set to maximum, 99' })
+    ).toBeEnabled();
+  });
+
+  it('StepperToZero_ReportsTheRemoval', async () => {
+    const user = userEvent.setup();
+    renderRow({ quantity: 1 });
+    await user.click(screen.getByRole('button', { name: 'Set to minimum, 0' }));
+    expect(onQuantityChange).toHaveBeenCalledExactlyOnceWith('a1', 0);
   });
 
   it('LinkedStore_RendersViewItemLinkInANewTab', () => {
@@ -78,7 +120,7 @@ describe('EditModeRow', () => {
     expect(screen.getByText('Cream or sage')).toHaveClass('edit-mode-row-note');
   });
 
-  it('Pending_ShowsTheDotBesideTheName', () => {
+  it('Pending_ShowsOneDotBesideTheName', () => {
     renderRow({ pending: true });
     expect(
       screen.getByRole('img', { name: 'Unsaved change' })
@@ -94,18 +136,31 @@ describe('EditModeRow', () => {
     ).toBeTruthy();
   });
 
-  it('ClickBox_CallsOnToggleWithTheItemId', async () => {
+  it('ClickName_OpensTheSheetWithoutTouchingTheQuantity', async () => {
     const user = userEvent.setup();
-    renderRow();
-    await user.click(screen.getByRole('checkbox'));
-    expect(onToggle).toHaveBeenCalledWith('a1');
+    renderRow({ quantity: 0 });
+    await user.click(screen.getByRole('button', { name: 'Apple' }));
+    expect(onOpen).toHaveBeenCalledExactlyOnceWith(ITEM);
+    expect(onQuantityChange).not.toHaveBeenCalled();
   });
 
-  it('NamelessItem_RendersABlankNameAndLabel', () => {
+  it('ClickChip_OpensTheSheetWithoutTouchingTheQuantity', async () => {
+    const user = userEvent.setup();
+    renderRow({ quantity: 0 });
+    await user.click(
+      screen.getByRole('button', { name: 'Add Apple to this list' })
+    );
+    expect(onOpen).toHaveBeenCalledExactlyOnceWith(ITEM);
+    expect(onQuantityChange).not.toHaveBeenCalled();
+  });
+
+  it('NamelessItem_RendersABlankName', () => {
     renderRow({
       item: { ...(ITEM as object), name: null, store: null } as never,
     });
-    expect(screen.getByRole('checkbox')).toHaveAccessibleName('');
     expect(screen.getByTestId('photo')).toHaveAttribute('data-name', '');
+    expect(
+      screen.getByRole('button', { name: 'Change quantity for' })
+    ).toBeInTheDocument();
   });
 });

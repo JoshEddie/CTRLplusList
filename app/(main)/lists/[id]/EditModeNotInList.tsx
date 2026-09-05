@@ -12,7 +12,8 @@ export default function EditModeNotInList({
   total,
   filtered,
   pending,
-  onToggle,
+  onQuantityChange,
+  onOpen,
   onCreate,
 }: {
   /** The rest of the library that survives the filters, by name. */
@@ -20,7 +21,8 @@ export default function EditModeNotInList({
   total: number;
   filtered: boolean;
   pending: ReadonlySet<string>;
-  onToggle: (itemId: string) => void;
+  onQuantityChange: (itemId: string, quantity: number) => void;
+  onOpen: (item: ItemDisplay) => void;
   onCreate: () => void;
 }) {
   const title = filtered
@@ -51,9 +53,10 @@ export default function EditModeNotInList({
           <li key={item.id} className="edit-mode-item">
             <EditModeRow
               item={item}
-              inList={false}
+              quantity={0}
               pending={pending.has(item.id)}
-              onToggle={onToggle}
+              onQuantityChange={onQuantityChange}
+              onOpen={onOpen}
             />
           </li>
         ))}

@@ -99,8 +99,10 @@ export async function createListWithFirstItem(
 
   await expect(page).toHaveURL(/\/lists\/[^/]+\?edit=1&new=1$/);
   const row = page.locator('li.edit-mode-item').first();
-  await row.getByRole('checkbox').check();
-  const itemName = (await row.locator('.itemName').innerText()).trim();
+  await row.getByRole('button', { name: 'Increase' }).click();
+  const itemName = (
+    await row.locator('.edit-mode-row-name-static').innerText()
+  ).trim();
   await page.getByRole('button', { name: /Add 1 item/ }).click();
   // Bulk Save confirms, in the create pass-through as anywhere else.
   await page.getByRole('button', { name: 'Save changes' }).click();

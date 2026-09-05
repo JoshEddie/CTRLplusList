@@ -55,7 +55,10 @@ const ITEMS = [
   { id: 'a2', name: 'Banana', description: '', store: null },
 ] as never[];
 
-const onToggle = vi.fn();
+const QUANTITIES: Record<string, number> = { a1: 1, a2: 3 };
+
+const onQuantityChange = vi.fn();
+const onOpen = vi.fn();
 const onReorder = vi.fn();
 
 function renderSection(
@@ -66,8 +69,10 @@ function renderSection(
       rows={ITEMS}
       total={2}
       filtered={false}
+      quantityOf={(itemId) => QUANTITIES[itemId]}
       pending={new Set()}
-      onToggle={onToggle}
+      onQuantityChange={onQuantityChange}
+      onOpen={onOpen}
       onReorder={onReorder}
       {...overrides}
     />
@@ -83,8 +88,10 @@ describe('EditModeInList', () => {
       screen.getByRole('heading', { name: 'In this list · 2' })
     ).toBeInTheDocument();
     expect(
-      screen.getAllByRole('checkbox').map((box) => box.getAttribute('id'))
-    ).toEqual(['edit-mode-item-a1', 'edit-mode-item-a2']);
+      screen
+        .getAllByRole('button', { name: /^Change quantity for/ })
+        .map((chip) => chip.textContent)
+    ).toEqual(['×1', '×3']);
     for (const handle of screen.getAllByRole('button', {
       name: 'Drag to reorder',
     })) {

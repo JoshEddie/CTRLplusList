@@ -61,7 +61,7 @@ const ITEMS = [
   { id: 'a3', name: 'Cherry', description: '', store: null },
 ] as never[];
 
-const onToggle = vi.fn();
+const onQuantityChange = vi.fn();
 const onReorder = vi.fn();
 
 function renderItems(
@@ -74,7 +74,7 @@ function renderItems(
       items={ITEMS}
       entries={[entry('a3'), entry('a1')]}
       pending={new Set()}
-      onToggle={onToggle}
+      onQuantityChange={onQuantityChange}
       onReorder={onReorder}
       lists={[]}
       {...overrides}
@@ -83,10 +83,13 @@ function renderItems(
 }
 
 const section = (name: RegExp) => screen.getByRole('region', { name });
+// The row's name button is the only control whose accessible name is the item's
+// own, which is what makes it the row's identity here.
+const ITEM_NAMES = /^(Apple|Banana|Cherry)$/;
 const rowNames = (name: RegExp) =>
   within(section(name))
-    .queryAllByRole('checkbox')
-    .map((box) => box.getAttribute('id')?.replace('edit-mode-item-', ''));
+    .queryAllByRole('button', { name: ITEM_NAMES })
+    .map((button) => button.textContent);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -103,8 +106,8 @@ describe('EditModeItems', () => {
       expect(
         screen.getByRole('heading', { name: 'Not in this list · 1' })
       ).toBeInTheDocument();
-      expect(rowNames(/In this list/)).toEqual(['a3', 'a1']);
-      expect(rowNames(/Not in this list/)).toEqual(['a2']);
+      expect(rowNames(/In this list/)).toEqual(['Cherry', 'Apple']);
+      expect(rowNames(/Not in this list/)).toEqual(['Banana']);
     });
 
     it('Render_MountsTheToolbarSlotInEditModeWithoutTheGridToggle', () => {
@@ -114,13 +117,37 @@ describe('EditModeItems', () => {
       expect(toolbar).toHaveAttribute('data-grid-toggle', 'false');
     });
 
-    it('ClickCheckbox_CallsOnToggleWithItemId', async () => {
+    it('StepUpANotInListRow_StagesItAtTheNumberReached', async () => {
       const user = userEvent.setup();
       renderItems();
       await user.click(
-        within(section(/Not in this list/)).getByRole('checkbox')
+        within(section(/Not in this list/)).getByRole('button', {
+          name: 'Increase',
+        })
       );
-      expect(onToggle).toHaveBeenCalledWith('a2');
+      expect(onQuantityChange).toHaveBeenCalledExactlyOnceWith('a2', 1);
+    });
+
+    it('OpenARowsSheet_ShowsItAtItsStagedQuantity-ClosesOnDone', async () => {
+      const user = userEvent.setup();
+      renderItems({ entries: [entry('a3'), entry('a1', 4)] });
+      // The row carries a stepper of its own under the same name, so the
+      // sheet's is the second one to appear and the first one to go.
+      expect(screen.getAllByRole('group', { name: 'Wants 4' })).toHaveLength(1);
+      await user.click(screen.getByRole('button', { name: 'Apple' }));
+      expect(screen.getAllByRole('group', { name: 'Wants 4' })).toHaveLength(2);
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+      expect(screen.getAllByRole('group', { name: 'Wants 4' })).toHaveLength(1);
+    });
+
+    it('OpenANotInListRowsSheet_PromptsToBumpWithoutAdding', async () => {
+      const user = userEvent.setup();
+      renderItems();
+      await user.click(screen.getByRole('button', { name: 'Banana' }));
+      expect(
+        screen.getByRole('group', { name: 'Not in list · bump to add' })
+      ).toBeInTheDocument();
+      expect(onQuantityChange).not.toHaveBeenCalled();
     });
 
     it('PendingIds_MarkTheirRowsInEitherSection', () => {
@@ -144,13 +171,13 @@ describe('EditModeItems', () => {
           items={ITEMS}
           entries={[entry('a1')]}
           pending={new Set()}
-          onToggle={onToggle}
+          onQuantityChange={onQuantityChange}
           onReorder={onReorder}
           lists={[]}
         />
       );
-      expect(rowNames(/In this list/)).toEqual(['a1']);
-      expect(rowNames(/Not in this list/)).toEqual(['a2', 'a3']);
+      expect(rowNames(/In this list/)).toEqual(['Apple']);
+      expect(rowNames(/Not in this list/)).toEqual(['Banana', 'Cherry']);
     });
   });
 
@@ -166,19 +193,19 @@ describe('EditModeItems', () => {
       expect(
         screen.getByText('Nothing in your list matches.')
       ).toBeInTheDocument();
-      expect(rowNames(/Not in this list/)).toEqual(['a2']);
+      expect(rowNames(/Not in this list/)).toEqual(['Banana']);
     });
 
     it('Store_FiltersByStoreName', () => {
       renderItems({}, 'store=Amazon');
-      expect(rowNames(/In this list/)).toEqual(['a1']);
+      expect(rowNames(/In this list/)).toEqual(['Apple']);
       expect(screen.getByText('No other items match.')).toBeInTheDocument();
     });
 
     it('PriceMin_FiltersLowerBound', () => {
       renderItems({}, 'price_min=10');
       expect(rowNames(/In this list/)).toEqual([]);
-      expect(rowNames(/Not in this list/)).toEqual(['a2']);
+      expect(rowNames(/Not in this list/)).toEqual(['Banana']);
     });
 
     it('FilterActive_ShowsReorderHintAndDisablesHandles', () => {
@@ -208,7 +235,11 @@ describe('EditModeItems', () => {
       expect(
         screen.getByText('Your list is empty. Add any item below.')
       ).toBeInTheDocument();
-      expect(rowNames(/Not in this list/)).toEqual(['a1', 'a2', 'a3']);
+      expect(rowNames(/Not in this list/)).toEqual([
+        'Apple',
+        'Banana',
+        'Cherry',
+      ]);
     });
 
     it('WholeLibraryOnList_ShowsLibraryExhaustedCopy', () => {
@@ -250,7 +281,7 @@ describe('EditModeItems', () => {
       expect(
         screen.queryByTestId('item-form-container')
       ).not.toBeInTheDocument();
-      expect(onToggle).toHaveBeenCalledWith('new-1');
+      expect(onQuantityChange).toHaveBeenCalledWith('new-1', 1);
     });
   });
 
@@ -265,7 +296,7 @@ describe('EditModeItems', () => {
       expect(
         screen.queryByTestId('item-form-container')
       ).not.toBeInTheDocument();
-      expect(onToggle).not.toHaveBeenCalled();
+      expect(onQuantityChange).not.toHaveBeenCalled();
     });
   });
 

@@ -16,12 +16,13 @@ import {
 } from './editModeFilters';
 import EditModeInList from './EditModeInList';
 import EditModeNotInList from './EditModeNotInList';
+import EditModeQuantitySheet from './EditModeQuantitySheet';
 
 export default function EditModeItems({
   items,
   entries,
   pending,
-  onToggle,
+  onQuantityChange,
   onReorder,
   lists,
   actingAs,
@@ -29,13 +30,22 @@ export default function EditModeItems({
   items: ItemDisplay[];
   entries: StagedEntry[];
   pending: ReadonlySet<string>;
-  onToggle: (itemId: string) => void;
+  onQuantityChange: (itemId: string, quantity: number) => void;
   onReorder: (activeId: string, overId: string) => void;
   lists: ListTable[];
   actingAs?: string;
 }) {
   const searchParams = useSearchParams();
   const [showNewItem, setShowNewItem] = useState(false);
+  // The row whose sheet is open, held as the item so the sheet keeps rendering
+  // an item a filter has since dropped out from under it.
+  const [sheetItem, setSheetItem] = useState<ItemDisplay | null>(null);
+
+  const quantities = useMemo(
+    () => new Map(entries.map((entry) => [entry.item_id, entry.quantity])),
+    [entries]
+  );
+  const quantityOf = (itemId: string) => quantities.get(itemId) ?? 0;
 
   const filters = parseEditModeFilters(searchParams);
   const filtered = hasEditModeFilter(filters);
@@ -53,7 +63,7 @@ export default function EditModeItems({
   // add. The row itself arrives with the refresh the form triggers.
   const handleCreated = (id?: string) => {
     setShowNewItem(false);
-    if (id) onToggle(id);
+    if (id) onQuantityChange(id, 1);
   };
 
   const newItemButton = (
@@ -80,8 +90,10 @@ export default function EditModeItems({
             rows={partition.inList}
             total={partition.inListTotal}
             filtered={filtered}
+            quantityOf={quantityOf}
             pending={pending}
-            onToggle={onToggle}
+            onQuantityChange={onQuantityChange}
+            onOpen={setSheetItem}
             onReorder={onReorder}
           />
           <EditModeNotInList
@@ -89,10 +101,19 @@ export default function EditModeItems({
             total={partition.notInListTotal}
             filtered={filtered}
             pending={pending}
-            onToggle={onToggle}
+            onQuantityChange={onQuantityChange}
+            onOpen={setSheetItem}
             onCreate={() => setShowNewItem(true)}
           />
         </>
+      )}
+      {sheetItem && (
+        <EditModeQuantitySheet
+          item={sheetItem}
+          quantity={quantityOf(sheetItem.id)}
+          onQuantityChange={onQuantityChange}
+          onClose={() => setSheetItem(null)}
+        />
       )}
       {showNewItem && (
         <ItemFormContainer

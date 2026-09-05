@@ -116,8 +116,14 @@ test('RolesManager_ManagerCreatesItemsAttachesAndArchives_EachStepReflected', as
   const listId = page.url().match(/\/lists\/([^/]+)\?edit=1/)?.[1];
 
   const rows = page.locator('ul.edit-mode-list li');
-  await rows.filter({ hasText: renamed }).getByRole('checkbox').check();
-  await rows.filter({ hasText: secondItem }).getByRole('checkbox').check();
+  await rows
+    .filter({ hasText: renamed })
+    .getByRole('button', { name: 'Increase' })
+    .click();
+  await rows
+    .filter({ hasText: secondItem })
+    .getByRole('button', { name: 'Increase' })
+    .click();
   await page.getByRole('button', { name: /Add 2 items/ }).click();
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page).toHaveURL(new RegExp(`/lists/${listId}$`));

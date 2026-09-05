@@ -72,12 +72,13 @@ describe('Stepper', () => {
     expect(onChange).toHaveBeenCalledWith(4);
   });
 
-  it('FieldCleared_ValueFallsBackToOne', () => {
+  it('FieldCleared_ReportsNothingUntilANumberIsTyped', () => {
     const onChange = mountStepper();
-    fireEvent.change(screen.getByRole('spinbutton'), {
-      target: { value: '' },
-    });
-    expect(onChange).toHaveBeenCalledWith(1);
+    const input = screen.getByRole('spinbutton');
+    fireEvent.change(input, { target: { value: '' } });
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: '3' } });
+    expect(onChange).toHaveBeenCalledExactlyOnceWith(3);
   });
 
   it('FractionTyped_ValueIsAWholeNumber', () => {
@@ -138,5 +139,25 @@ describe('Stepper', () => {
     expect(
       screen.getByRole('button', { name: 'Set to minimum, 1' })
     ).toHaveTextContent('1');
+  });
+
+  it('MinZero_TheFloorIsReachableFromBothLoweringEnds', () => {
+    const onChange = mountStepper({ min: 0, value: 1 });
+    fireEvent.click(screen.getByRole('button', { name: 'Decrease' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Set to minimum, 0' }));
+    expect(onChange).toHaveBeenNthCalledWith(1, 0);
+    expect(onChange).toHaveBeenNthCalledWith(2, 0);
+  });
+
+  it('MinZeroAtZero_OnlyTheRaisingEndsStayLive', () => {
+    mountStepper({ min: 0, value: 0 });
+    expect(screen.getByRole('button', { name: 'Decrease' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Set to minimum, 0' })
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Increase' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Set to maximum, 4' })
+    ).toBeEnabled();
   });
 });

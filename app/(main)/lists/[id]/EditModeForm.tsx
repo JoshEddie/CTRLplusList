@@ -106,13 +106,18 @@ export default function EditModeForm({
     router.refresh();
   };
 
-  // Adding lands at the end at quantity 1, where a restore lands too.
-  const toggle = (itemId: string) => {
-    setEntries((prev) =>
-      prev.some((entry) => entry.item_id === itemId)
-        ? prev.filter((entry) => entry.item_id !== itemId)
-        : [...prev, { item_id: itemId, quantity: 1 }]
-    );
+  // The one membership control: 0 removes, and an item without an entry gets
+  // one at the end, where a restore lands too.
+  const setQuantity = (itemId: string, quantity: number) => {
+    setEntries((prev) => {
+      if (quantity <= 0)
+        return prev.filter((entry) => entry.item_id !== itemId);
+      if (prev.some((entry) => entry.item_id === itemId))
+        return prev.map((entry) =>
+          entry.item_id === itemId ? { ...entry, quantity } : entry
+        );
+      return [...prev, { item_id: itemId, quantity }];
+    });
   };
 
   const reorder = (activeId: string, overId: string) => {
@@ -197,7 +202,7 @@ export default function EditModeForm({
         items={items}
         entries={entries}
         pending={pending}
-        onToggle={toggle}
+        onQuantityChange={setQuantity}
         onReorder={reorder}
         lists={lists}
         actingAs={actingAs}

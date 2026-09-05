@@ -36,23 +36,17 @@
   order: 2;
 }
 
-/* The half-width pair slot can't fit "View item", so the two labels swap and
-   the aria-label keeps the full phrase for AT. Two complete phrases rather than
-   one with a word hidden out of it: a translation shortens where its own
-   grammar allows, which is not always by dropping the last word. */
-.item-actions-view .item-actions-view-short {
-  display: none;
-}
-
+/* The half-width pair slot can't fit "View item", so the two labels the link
+   carries swap; the aria-label keeps the full phrase for AT either way. */
 .item-actions:has(.item-actions-add):has(.item-actions-view)
   > .item-actions-view
-  .item-actions-view-short {
+  .view-item-link-short {
   display: inline;
 }
 
 .item-actions:has(.item-actions-add):has(.item-actions-view)
   > .item-actions-view
-  .item-actions-view-label {
+  .view-item-link-label {
   display: none;
 }
 

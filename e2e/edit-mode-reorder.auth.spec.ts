@@ -18,10 +18,15 @@ test('EditMode_OwnerReordersByKeyboardAndSaves_ListRendersTheStagedOrder', async
 
   // A second item crosses the divider at the end of the list.
   const secondRow = notInList.locator('li.edit-mode-item').first();
-  const secondItem = (await secondRow.locator('.itemName').innerText()).trim();
-  await secondRow.getByRole('checkbox').check();
+  const secondItem = (
+    await secondRow.locator('.edit-mode-row-name-static').innerText()
+  ).trim();
+  await secondRow.getByRole('button', { name: 'Increase' }).click();
   await expect(inList.getByRole('heading')).toHaveText('In this list · 2');
-  await expect(inList.locator('.itemName')).toHaveText([firstItem, secondItem]);
+  await expect(inList.locator('.edit-mode-row-name-static')).toHaveText([
+    firstItem,
+    secondItem,
+  ]);
 
   // Drag the first row down with the keyboard: only it carries the dot.
   const handles = inList.getByRole('button', { name: 'Drag to reorder' });
@@ -29,7 +34,10 @@ test('EditMode_OwnerReordersByKeyboardAndSaves_ListRendersTheStagedOrder', async
   await page.keyboard.press('Space');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('Space');
-  await expect(inList.locator('.itemName')).toHaveText([secondItem, firstItem]);
+  await expect(inList.locator('.edit-mode-row-name-static')).toHaveText([
+    secondItem,
+    firstItem,
+  ]);
   await expect(
     inList
       .locator('li.edit-mode-item')

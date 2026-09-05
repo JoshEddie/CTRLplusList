@@ -301,7 +301,6 @@ describe('OwnerActions', () => {
         ['0', 1],
         ['1.5', 1],
         ['1000', 99],
-        ['', 1],
       ])('Value%s_SavesTheNearestLegalQuantity', async (typed, saved) => {
         const user = userEvent.setup();
         await openDialog(user, 2);
@@ -310,6 +309,14 @@ describe('OwnerActions', () => {
         if (typed) await user.type(field, typed);
         await user.click(screen.getByRole('button', { name: 'Save' }));
         expect(setListItemQuantity).toHaveBeenCalledWith('l1', 'i1', saved);
+      });
+
+      it('ValueCleared_SavesTheQuantityItOpenedAt', async () => {
+        const user = userEvent.setup();
+        await openDialog(user, 2);
+        await user.clear(screen.getByRole('spinbutton'));
+        await user.click(screen.getByRole('button', { name: 'Save' }));
+        expect(setListItemQuantity).toHaveBeenCalledWith('l1', 'i1', 2);
       });
     });
   });

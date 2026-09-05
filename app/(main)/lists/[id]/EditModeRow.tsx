@@ -2,37 +2,45 @@
 
 import ItemPhoto from '@/app/(main)/items/ui/components/ItemPhoto';
 import PriceLine from '@/app/(main)/items/ui/components/PriceLine';
-import { LinkButton } from '@/app/ui/components/button';
-import { CheckboxField } from '@/app/ui/components/field/CheckboxField';
+import ViewItemLink from '@/app/(main)/items/ui/components/ViewItemLink';
+import { Button } from '@/app/ui/components/button';
+import { Stepper } from '@/app/ui/components/stepper';
+import { MAX_ENTRY_QUANTITY } from '@/lib/data/listItems.schema';
 import { getMessage } from '@/lib/i18n/utils';
-import { storeValid } from '@/lib/storeValidity';
 import { ItemDisplay } from '@/lib/types';
 import type { ReactNode } from 'react';
-import { MdOpenInNew } from 'react-icons/md';
 
 // No claim state on purpose: a claim belongs to a list entry, not to an item,
 // so a library row surfaced here carries none this list could judge.
+//
+// Two affordances per row, one of each pair always `display: none`: the inline
+// stepper the desktop row has the width for against the chip that opens the
+// row's sheet where it does not, and with them the name — a sheet trigger only
+// below the breakpoint, where the note and the store link have nowhere else to
+// live. A hidden element leaves the accessibility tree with it, so each pair
+// offers exactly one control.
 export default function EditModeRow({
   item,
-  inList,
+  quantity,
   pending,
-  onToggle,
+  onQuantityChange,
+  onOpen,
   handle,
 }: {
   item: ItemDisplay;
-  inList: boolean;
+  /** Staged units wanted here; 0 is not in the list at all. */
+  quantity: number;
   /** Differs from what is saved — added, removed, re-quantified, or moved. */
   pending: boolean;
-  onToggle: (itemId: string) => void;
+  onQuantityChange: (itemId: string, quantity: number) => void;
+  onOpen: (item: ItemDisplay) => void;
   /** The drag handle, supplied only by the sortable wrapper. */
   handle?: ReactNode;
 }) {
-  const checkboxId = `edit-mode-item-${item.id}`;
+  const inList = quantity > 0;
   const name = item.name ?? '';
-  const link = storeValid(item.store) ? item.store?.link : undefined;
   return (
-    <label
-      htmlFor={checkboxId}
+    <div
       className={`edit-mode-row ${inList ? 'is-on' : 'is-off'}${
         pending ? ' is-pending' : ''
       }`}
@@ -40,8 +48,18 @@ export default function EditModeRow({
       <div className="edit-mode-row-handle">{handle}</div>
       <ItemPhoto itemId={item.id} name={name} url={item.image_url || ''} />
       <div className="edit-mode-row-main">
-        <span className="itemName">
-          {name}
+        {/* The dot is outside the pair so it is stated once however the name
+            is rendered. Reading, never adding: the sheet opens at whatever is
+            staged, including 0, and only its stepper adds the item. */}
+        <div className="edit-mode-row-nameline">
+          <button
+            type="button"
+            className="itemName edit-mode-row-name"
+            onClick={() => onOpen(item)}
+          >
+            {name}
+          </button>
+          <span className="itemName edit-mode-row-name-static">{name}</span>
           {pending && (
             <span
               className="edit-mode-pending"
@@ -49,40 +67,45 @@ export default function EditModeRow({
               aria-label={getMessage('edit_mode_pending_change_label')}
             />
           )}
-        </span>
+        </div>
         <div className="edit-mode-row-meta">
           <PriceLine item={item} />
-          {link && (
-            <LinkButton
-              variant="secondary"
-              size="sm"
-              className="edit-mode-row-view"
-              href={link}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={getMessage('view_item_aria_label')}
-            >
-              {getMessage('view_item_label')}
-              <MdOpenInNew aria-hidden />
-            </LinkButton>
-          )}
+          <ViewItemLink
+            store={item.store}
+            size="sm"
+            className="edit-mode-row-view"
+          />
         </div>
         {item.description && (
           <p className="edit-mode-row-note">{item.description}</p>
         )}
       </div>
-      <span className="edit-mode-row-label">
-        {inList ? '' : getMessage('edit_mode_not_in_list_label')}
-      </span>
-      {/* The outer label would otherwise read the whole row into the box's
-          accessible name, price and section label included. */}
-      <CheckboxField
-        id={checkboxId}
-        label={name}
-        aria-label={name}
-        checked={inList}
-        onChange={() => onToggle(item.id)}
-      />
-    </label>
+      <div className="edit-mode-row-stepper">
+        <Stepper
+          label={
+            inList
+              ? getMessage('edit_mode_wants_label', { count: quantity })
+              : getMessage('edit_mode_not_in_list_label')
+          }
+          value={quantity}
+          min={0}
+          max={MAX_ENTRY_QUANTITY}
+          onChange={(next) => onQuantityChange(item.id, next)}
+        />
+      </div>
+      <Button
+        variant={inList ? 'primary' : 'secondary'}
+        className="edit-mode-row-chip"
+        aria-label={getMessage(
+          inList ? 'edit_mode_quantity_chip_label' : 'edit_mode_add_chip_label',
+          { name }
+        )}
+        onClick={() => onOpen(item)}
+      >
+        {inList
+          ? getMessage('edit_mode_quantity_chip_text', { count: quantity })
+          : getMessage('edit_mode_add_chip_text')}
+      </Button>
+    </div>
   );
 }

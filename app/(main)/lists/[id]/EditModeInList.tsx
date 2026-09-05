@@ -16,16 +16,20 @@ export default function EditModeInList({
   rows,
   total,
   filtered,
+  quantityOf,
   pending,
-  onToggle,
+  onQuantityChange,
+  onOpen,
   onReorder,
 }: {
   /** The members that survive the filters, in staged position order. */
   rows: ItemDisplay[];
   total: number;
   filtered: boolean;
+  quantityOf: (itemId: string) => number;
   pending: ReadonlySet<string>;
-  onToggle: (itemId: string) => void;
+  onQuantityChange: (itemId: string, quantity: number) => void;
+  onOpen: (item: ItemDisplay) => void;
   onReorder: (activeId: string, overId: string) => void;
 }) {
   const dndId = useId();
@@ -74,9 +78,11 @@ export default function EditModeInList({
                 <SortableEditModeRow
                   key={item.id}
                   item={item}
+                  quantity={quantityOf(item.id)}
                   pending={pending.has(item.id)}
                   disabled={filtered}
-                  onToggle={onToggle}
+                  onQuantityChange={onQuantityChange}
+                  onOpen={onOpen}
                 />
               ))}
             </ul>

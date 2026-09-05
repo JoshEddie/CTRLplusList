@@ -87,6 +87,8 @@ export const en = {
     '{count, plural, one {1 other claim} other {# other claims}}',
   date_invalid: 'Please enter a valid date',
   date_year_floor: 'Please enter a year of 1900 or later',
+  edit_mode_add_chip_label: 'Add {name} to this list',
+  edit_mode_add_chip_text: '+ Add',
   edit_mode_add_label: '{count, plural, one {Add 1 item} other {Add # items}}',
   edit_mode_cancel_confirm_message:
     'Your changes to this list haven’t been saved. Leaving edit mode discards them.',
@@ -108,7 +110,10 @@ export const en = {
   edit_mode_list_empty: 'Your list is empty. Add any item below.',
   edit_mode_list_no_matches: 'Nothing in your list matches.',
   edit_mode_not_in_list_label: 'Not in list',
+  edit_mode_not_in_list_sheet_heading: 'Not in list · bump to add',
   edit_mode_pending_change_label: 'Unsaved change',
+  edit_mode_quantity_chip_label: 'Change quantity for {name}',
+  edit_mode_quantity_chip_text: '×{count, number}',
   edit_mode_reorder_hint: 'Clear search to reorder',
   edit_mode_save_confirm_label: 'Save changes',
   edit_mode_save_confirm_message:
@@ -124,8 +129,10 @@ export const en = {
   edit_mode_section_not_in_list: 'Not in this list · {count, number}',
   edit_mode_section_not_in_list_filtered:
     'Not in this list · {shown, number} of {total, number}',
+  edit_mode_sheet_done_label: 'Done',
   edit_mode_skip_label: 'Skip',
   edit_mode_units: '{count, plural, one {1 unit} other {# units}}',
+  edit_mode_wants_label: 'Wants {count, number}',
   entry_quantity_cancel_label: 'Cancel',
   entry_quantity_description:
     'Just for this list — the same item can ask for a different number on another.',

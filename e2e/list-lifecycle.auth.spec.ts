@@ -28,9 +28,9 @@ test('ListLifecycle_OwnerCreatesAndShares_StepsReflected', async ({ page }) => {
   // page. Capture the chosen row's item name so the post-save assertion can
   // prove the attach itself round-tripped.
   const chosenRow = page.locator('li.edit-mode-item').first();
-  await chosenRow.getByRole('checkbox').check();
+  await chosenRow.getByRole('button', { name: 'Increase' }).click();
   const chosenItemName = (
-    await chosenRow.locator('.itemName').innerText()
+    await chosenRow.locator('.edit-mode-row-name-static').innerText()
   ).trim();
   await expect(page.locator('.edit-mode-count')).toHaveText('1 item');
   await page.getByRole('button', { name: /Add 1 item/ }).click();

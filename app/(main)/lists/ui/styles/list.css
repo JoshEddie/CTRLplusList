@@ -646,22 +646,19 @@
 }
 
 /* ── EDIT-MODE ROW ──
-   handle | swatch | name / price · store · link / note | label | control.
+   handle | swatch | name / price · store · link / note | quantity.
    The handle column is always laid out, empty below the divider, so both
    halves share one set of column edges and a row crossing it shifts nothing
-   but its section. Mobile-first: narrower swatch and handle, no label. */
+   but its section. The stepper states the quantity itself, 0 for a row below
+   the divider included, so no cell restates it. Mobile-first: narrower swatch
+   and handle, and the quantity cell is the chip rather than the stepper. */
 .edit-mode-row {
   display: grid;
   grid-template-columns: 28px 56px minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 12px;
   padding: 12px 12px;
-  cursor: pointer;
   position: relative;
-}
-
-.edit-mode-row * {
-  cursor: inherit;
 }
 
 .edit-mode-row-handle {
@@ -690,6 +687,24 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+
+.edit-mode-row-nameline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* The name is the sheet's trigger, not just a label — reset to the text it
+   was before it became a button. */
+.edit-mode-row-name {
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .edit-mode-row .itemName {
@@ -758,14 +773,6 @@
   font-weight: 600;
 }
 
-.edit-mode-row-label {
-  display: none;
-  font-size: 14px;
-  color: var(--muted-text-color);
-  white-space: nowrap;
-  text-align: right;
-}
-
 /* The pending-change dot: any entry differing from what is saved. */
 .edit-mode-pending {
   flex: none;
@@ -786,17 +793,29 @@
   opacity: 0.35;
 }
 
-/* The control column; the outer .edit-mode-row label supplies the 44px tap
-   floor. */
-.edit-mode-row .checkbox_field {
-  padding: 0;
-  min-height: unset;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* The two quantity affordances. Exactly one is laid out at any width, so the
+   accessibility tree only ever carries the one on offer. */
+.edit-mode-row-stepper {
+  display: none;
+  width: 260px;
 }
 
-.edit-mode-row .checkbox_field_box:focus-visible {
+/* The five cells share one row, and MIN/MAX carry two digits each — without a
+   floor the 1fr number cell is what collapses. */
+.edit-mode-row-stepper .stepper_input {
+  min-width: 3ch;
+  font-size: 18px;
+}
+
+/* The name is the sheet's trigger below the breakpoint and inert text above
+   it, where the stepper, the note and the store link are all already in the
+   row. Two elements rather than one, because only `display: none` takes a
+   control out of the tab order as well as off the screen. */
+.edit-mode-row .edit-mode-row-name-static {
+  display: none;
+}
+
+.edit-mode-row-name:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
@@ -875,7 +894,7 @@
 
 @media (min-width: 801px) {
   .edit-mode-row {
-    grid-template-columns: 36px 80px minmax(0, 1fr) auto auto;
+    grid-template-columns: 36px 80px minmax(0, 1fr) auto;
     column-gap: 16px;
     padding: 14px 28px;
   }
@@ -886,10 +905,6 @@
     border-radius: 12px;
   }
 
-  .edit-mode-row-label {
-    display: block;
-  }
-
   .edit-mode-row .edit-mode-row-view {
     display: inline-flex;
   }
@@ -898,12 +913,108 @@
     display: -webkit-box;
   }
 
+  .edit-mode-row-stepper {
+    display: block;
+  }
+
+  .edit-mode-row .edit-mode-row-chip,
+  .edit-mode-row .edit-mode-row-name {
+    display: none;
+  }
+
+  .edit-mode-row .edit-mode-row-name-static {
+    display: flex;
+  }
+
   .edit-mode-section-head,
   .edit-mode-section-empty {
     padding-left: 28px;
     padding-right: 28px;
   }
 
+}
+
+/* ── EDIT-MODE ROW SHEET ──
+   The Modal primitive, pinned to the bottom edge: below the row breakpoint
+   this is where the note, the store link and a full-size stepper live. */
+.edit-mode-sheet {
+  align-items: flex-end;
+  padding: 0;
+}
+
+.edit-mode-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.edit-mode-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.edit-mode-sheet .item-image-container {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: var(--secondary-background-color);
+}
+
+.edit-mode-sheet .item-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.edit-mode-sheet-heading {
+  min-width: 0;
+}
+
+.edit-mode-sheet-name {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--heading-text-color);
+}
+
+.edit-mode-sheet .item-price-row {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--muted-text-color);
+}
+
+.edit-mode-sheet .item-price {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.edit-mode-sheet-note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted-text-color);
+}
+
+/* Thumb-sized: the sheet exists because the row could not give the control
+   this much height. */
+.edit-mode-sheet .stepper_jump,
+.edit-mode-sheet .stepper_step {
+  min-height: 52px;
+}
+
+.edit-mode-sheet-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.edit-mode-sheet-actions > * {
+  flex: 1 1 0;
+  justify-content: center;
 }
 
 /* Inset to the app surface, not the viewport: .app-surface-bleed pads the

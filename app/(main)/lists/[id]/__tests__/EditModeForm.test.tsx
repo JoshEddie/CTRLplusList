@@ -60,15 +60,21 @@ vi.mock('../EditModeItems', () => ({
   default: (p: {
     entries: { item_id: string; quantity: number }[];
     pending: ReadonlySet<string>;
-    onToggle: (id: string) => void;
+    onQuantityChange: (id: string, quantity: number) => void;
     onReorder: (activeId: string, overId: string) => void;
   }) => (
     <div>
-      <button type="button" onClick={() => p.onToggle('a2')}>
-        toggle-a2
+      <button type="button" onClick={() => p.onQuantityChange('a2', 1)}>
+        add-a2
       </button>
-      <button type="button" onClick={() => p.onToggle('a1')}>
-        toggle-a1
+      <button type="button" onClick={() => p.onQuantityChange('a2', 0)}>
+        remove-a2
+      </button>
+      <button type="button" onClick={() => p.onQuantityChange('a1', 0)}>
+        remove-a1
+      </button>
+      <button type="button" onClick={() => p.onQuantityChange('b1', 5)}>
+        requantify-b1
       </button>
       <button type="button" onClick={() => p.onReorder('a1', 'b1')}>
         move-a1-to-b1
@@ -77,7 +83,7 @@ vi.mock('../EditModeItems', () => ({
         move-b1-to-a1
       </button>
       <span data-testid="order">
-        {p.entries.map((e) => e.item_id).join(',')}
+        {p.entries.map((e) => `${e.item_id}:${e.quantity}`).join(',')}
       </span>
       <span data-testid="pending">{[...p.pending].sort().join(',')}</span>
     </div>
@@ -133,7 +139,7 @@ describe('EditModeForm', () => {
     it('EntriesChanged_ConfirmWritesEntriesOnly-ExitsToList', async () => {
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       await user.click(saveButton());
       await user.click(confirmSave());
       await waitFor(() =>
@@ -168,7 +174,7 @@ describe('EditModeForm', () => {
     it('BothSlicesChanged_ConfirmWritesEntriesAndListRow', async () => {
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       await user.click(screen.getByRole('button', { name: 'rename' }));
       await user.click(saveButton());
       await user.click(confirmSave());
@@ -202,7 +208,7 @@ describe('EditModeForm', () => {
     it('ClickSave_ConfirmsBeforeWriting', async () => {
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       await user.click(saveButton());
       expect(
         screen.getByText('Save changes to this list?')
@@ -213,7 +219,7 @@ describe('EditModeForm', () => {
     it('DismissSaveConfirm_WritesNothing', async () => {
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       await user.click(saveButton());
       await user.click(screen.getByRole('button', { name: 'Keep editing' }));
       expect(setListItems).not.toHaveBeenCalled();
@@ -227,7 +233,7 @@ describe('EditModeForm', () => {
       } as never);
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       await user.click(screen.getByRole('button', { name: 'rename' }));
       await user.click(saveButton());
       await user.click(confirmSave());
@@ -243,7 +249,7 @@ describe('EditModeForm', () => {
       } as never);
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       await user.click(saveButton());
       await user.click(confirmSave());
       await waitFor(() => expect(setListItems).toHaveBeenCalled());
@@ -259,7 +265,7 @@ describe('EditModeForm', () => {
       } as never);
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       await user.click(screen.getByRole('button', { name: 'rename' }));
       await user.click(saveButton());
       await user.click(confirmSave());
@@ -291,7 +297,7 @@ describe('EditModeForm', () => {
       renderForm();
       expect(saveButton()).toBeDisabled();
       await user.click(screen.getByRole('button', { name: 'move-a1-to-b1' }));
-      expect(screen.getByTestId('order')).toHaveTextContent('b1,a1');
+      expect(screen.getByTestId('order')).toHaveTextContent('b1:2,a1:1');
       expect(screen.getByTestId('pending')).toHaveTextContent(/^a1$/);
       expect(saveButton()).toBeEnabled();
     });
@@ -301,7 +307,7 @@ describe('EditModeForm', () => {
       renderForm();
       await user.click(screen.getByRole('button', { name: 'move-a1-to-b1' }));
       await user.click(screen.getByRole('button', { name: 'move-b1-to-a1' }));
-      expect(screen.getByTestId('order')).toHaveTextContent('a1,b1');
+      expect(screen.getByTestId('order')).toHaveTextContent('a1:1,b1:2');
       expect(screen.getByTestId('pending')).toBeEmptyDOMElement();
       expect(saveButton()).toBeDisabled();
     });
@@ -323,8 +329,8 @@ describe('EditModeForm', () => {
     it('RemoveARow_MarksItPendingWhileItSitsBelowTheDivider', async () => {
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a1' }));
-      expect(screen.getByTestId('order')).toHaveTextContent(/^b1$/);
+      await user.click(screen.getByRole('button', { name: 'remove-a1' }));
+      expect(screen.getByTestId('order')).toHaveTextContent(/^b1:2$/);
       expect(screen.getByTestId('pending')).toHaveTextContent(/^a1$/);
     });
   });
@@ -334,8 +340,17 @@ describe('EditModeForm', () => {
       const user = userEvent.setup();
       renderForm();
       expect(screen.getByTestId('units')).toHaveTextContent('3');
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       expect(screen.getByTestId('units')).toHaveTextContent('4');
+    });
+
+    it('RequantifyARow_KeepsItsPlaceAndMarksItPending', async () => {
+      const user = userEvent.setup();
+      renderForm();
+      await user.click(screen.getByRole('button', { name: 'requantify-b1' }));
+      expect(screen.getByTestId('order')).toHaveTextContent(/^a1:1,b1:5$/);
+      expect(screen.getByTestId('pending')).toHaveTextContent(/^b1$/);
+      expect(screen.getByTestId('units')).toHaveTextContent('6');
     });
   });
 
@@ -343,7 +358,7 @@ describe('EditModeForm', () => {
     it('Dirty_ConfirmsThenDiscardsAndExits', async () => {
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(screen.getByText('Discard changes?')).toBeInTheDocument();
       expect(router.push).not.toHaveBeenCalled();
@@ -399,7 +414,7 @@ describe('EditModeForm', () => {
     it('DirtyThenBack_ConfirmsInsteadOfLeaving', async () => {
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       window.dispatchEvent(new PopStateEvent('popstate'));
       expect(await screen.findByText('Discard changes?')).toBeInTheDocument();
       expect(router.push).not.toHaveBeenCalled();
@@ -408,7 +423,7 @@ describe('EditModeForm', () => {
     it('DirtyThenBackThenDiscard_LeavesTheMode', async () => {
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       window.dispatchEvent(new PopStateEvent('popstate'));
       await user.click(await screen.findByRole('button', { name: 'Discard' }));
       expect(router.push).toHaveBeenCalledWith('/lists/l1');
@@ -418,7 +433,7 @@ describe('EditModeForm', () => {
       const pushState = vi.spyOn(window.history, 'pushState');
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       const armed = pushState.mock.calls.length;
       window.dispatchEvent(new PopStateEvent('popstate'));
       await user.click(
@@ -440,7 +455,7 @@ describe('EditModeForm', () => {
     it('Dirty_BeforeUnloadIsCancelled', async () => {
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       const event = new Event('beforeunload', { cancelable: true });
       window.dispatchEvent(event);
       expect(event.defaultPrevented).toBe(true);
@@ -456,8 +471,8 @@ describe('EditModeForm', () => {
     it('ChangeReverted_BeforeUnloadPassesThroughAgain', async () => {
       const user = userEvent.setup();
       renderForm();
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
+      await user.click(screen.getByRole('button', { name: 'remove-a2' }));
       const event = new Event('beforeunload', { cancelable: true });
       window.dispatchEvent(event);
       expect(event.defaultPrevented).toBe(false);
@@ -468,7 +483,7 @@ describe('EditModeForm', () => {
     it('NewWithSelection_ConfirmsLikeAnyOtherSave', async () => {
       const user = userEvent.setup();
       renderForm({ isNew: true, initialEntries: [] }, 'edit=1&new=1');
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       await user.click(screen.getByRole('button', { name: /Add 1 item/ }));
       expect(
         screen.getByText('Save changes to this list?')
@@ -483,7 +498,7 @@ describe('EditModeForm', () => {
     it('NewWithSelection_SkipConfirmsBeforeDiscarding', async () => {
       const user = userEvent.setup();
       renderForm({ isNew: true, initialEntries: [] }, 'edit=1&new=1');
-      await user.click(screen.getByRole('button', { name: 'toggle-a2' }));
+      await user.click(screen.getByRole('button', { name: 'add-a2' }));
       await user.click(screen.getByRole('button', { name: 'Skip' }));
       expect(screen.getByText('Discard changes?')).toBeInTheDocument();
       expect(router.push).not.toHaveBeenCalled();

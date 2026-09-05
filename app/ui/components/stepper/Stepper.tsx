@@ -4,13 +4,11 @@ import { getMessage } from '@/lib/i18n/utils';
 import { useId, useState, type ReactNode } from 'react';
 import './stepper.css';
 
-const MIN = 1;
-
 // Every route the control offers goes through here, so a value it produced is
 // always one a button could have reached — which is what lets the callers drop
 // their own validation and their inert-until-valid buttons.
-function clamp(value: number, max: number): number {
-  return Math.min(Math.max(Math.trunc(value) || MIN, MIN), max);
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(Math.trunc(value) || min, min), max);
 }
 
 export function Stepper({
@@ -18,6 +16,7 @@ export function Stepper({
   status,
   description,
   value,
+  min = 1,
   max,
   onChange,
 }: {
@@ -26,6 +25,8 @@ export function Stepper({
   status?: ReactNode;
   description?: ReactNode;
   value: number;
+  /** The floor a button can reach. 0 makes the bottom of the range a removal. */
+  min?: number;
   max: number;
   onChange: (next: number) => void;
 }) {
@@ -41,7 +42,7 @@ export function Stepper({
   const id = useId();
   const inputId = `${id}-input`;
   const descriptionId = description ? `${id}-description` : undefined;
-  const atMin = value <= MIN;
+  const atMin = value <= min;
   const atMax = value >= max;
 
   return (
@@ -66,20 +67,20 @@ export function Stepper({
           type="button"
           className="stepper_jump"
           disabled={atMin}
-          aria-label={getMessage('stepper_min_label', { value: MIN })}
-          onClick={() => commit(MIN)}
+          aria-label={getMessage('stepper_min_label', { value: min })}
+          onClick={() => commit(min)}
         >
           <span className="stepper_caption">
             {getMessage('stepper_min_caption')}
           </span>
-          {MIN}
+          {min}
         </button>
         <button
           type="button"
           className="stepper_step"
           disabled={atMin}
           aria-label={getMessage('stepper_decrease_label')}
-          onClick={() => commit(clamp(value - 1, max))}
+          onClick={() => commit(clamp(value - 1, min, max))}
         >
           −
         </button>
@@ -88,13 +89,18 @@ export function Stepper({
           className="stepper_input"
           type="number"
           inputMode="numeric"
-          min={MIN}
+          min={min}
           max={max}
           value={draft ?? value}
           aria-describedby={descriptionId}
           onChange={(e) => {
-            setDraft(e.target.value);
-            onChange(clamp(Number(e.target.value), max));
+            const typed = e.target.value;
+            setDraft(typed);
+            // An empty field is mid-edit, not a value. Reporting it would
+            // settle the floor on the way to a two-digit number — and where
+            // the floor is 0 that floor is a removal, so the control clearing
+            // itself would delete what the caller is standing in.
+            if (typed !== '') onChange(clamp(Number(typed), min, max));
           }}
           onBlur={() => setDraft(null)}
         />
@@ -103,7 +109,7 @@ export function Stepper({
           className="stepper_step"
           disabled={atMax}
           aria-label={getMessage('stepper_increase_label')}
-          onClick={() => commit(clamp(value + 1, max))}
+          onClick={() => commit(clamp(value + 1, min, max))}
         >
           +
         </button>

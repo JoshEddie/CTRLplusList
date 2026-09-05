@@ -11,7 +11,8 @@ const ITEMS = [
   { id: 'a1', name: 'Apple', description: '', store: null },
 ] as never[];
 
-const onToggle = vi.fn();
+const onQuantityChange = vi.fn();
+const onOpen = vi.fn();
 const onCreate = vi.fn();
 
 function renderSection(
@@ -23,7 +24,8 @@ function renderSection(
       total={1}
       filtered={false}
       pending={new Set()}
-      onToggle={onToggle}
+      onQuantityChange={onQuantityChange}
+      onOpen={onOpen}
       onCreate={onCreate}
       {...overrides}
     />
@@ -33,7 +35,7 @@ function renderSection(
 beforeEach(() => vi.clearAllMocks());
 
 describe('EditModeNotInList', () => {
-  it('Rows_RenderAfterTheCreateControlWithTheNotInListLabel', () => {
+  it('Rows_RenderAfterTheCreateControlWithoutAHandle', () => {
     renderSection();
     expect(
       screen.getByRole('heading', { name: 'Not in this list · 1' })
@@ -44,7 +46,6 @@ describe('EditModeNotInList', () => {
       create.compareDocumentPosition(screen.getByRole('list')) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
-    expect(screen.getByText('Not in list')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Drag to reorder' })
     ).not.toBeInTheDocument();

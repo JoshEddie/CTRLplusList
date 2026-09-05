@@ -33,9 +33,11 @@ function renderRow(disabled = false) {
   return render(
     <SortableEditModeRow
       item={ITEM}
+      quantity={1}
       pending={false}
       disabled={disabled}
-      onToggle={vi.fn()}
+      onQuantityChange={vi.fn()}
+      onOpen={vi.fn()}
     />
   );
 }

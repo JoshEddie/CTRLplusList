@@ -91,6 +91,11 @@ band carrying the list's own details and the staged unit total, swaps the item
 surface for the whole item library partitioned into _In this list_ (position
 order, reorderable by drag) and _Not in this list_ (by name), and commits
 everything it staged — the entries and the list row — through a single Save.
+Quantity is the membership control: a row's stepper reaches 0, which is the
+removal, and any number above it is the add. The stepper sits in the row where
+there is width for it and in the row's own sheet — swatch, name, price, note,
+store link — where there is not; the name opens that sheet at whatever is
+staged, 0 included, so reading an item never adds it.
 Search, store and price filters narrow both halves; while any is active,
 reorder suspends. Cancel is its only revert, and Save, Cancel and backing out of
 the mode all confirm while anything is staged. No claim state renders here: a

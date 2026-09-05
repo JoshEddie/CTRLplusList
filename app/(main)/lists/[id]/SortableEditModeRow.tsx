@@ -10,14 +10,18 @@ import EditModeRow from './EditModeRow';
 // would shift the row's layout for the length of a search.
 export default function SortableEditModeRow({
   item,
+  quantity,
   pending,
   disabled,
-  onToggle,
+  onQuantityChange,
+  onOpen,
 }: {
   item: ItemDisplay;
+  quantity: number;
   pending: boolean;
   disabled: boolean;
-  onToggle: (itemId: string) => void;
+  onQuantityChange: (itemId: string, quantity: number) => void;
+  onOpen: (item: ItemDisplay) => void;
 }) {
   const {
     attributes,
@@ -41,9 +45,10 @@ export default function SortableEditModeRow({
     >
       <EditModeRow
         item={item}
-        inList
+        quantity={quantity}
         pending={pending}
-        onToggle={onToggle}
+        onQuantityChange={onQuantityChange}
+        onOpen={onOpen}
         handle={
           <button
             type="button"
