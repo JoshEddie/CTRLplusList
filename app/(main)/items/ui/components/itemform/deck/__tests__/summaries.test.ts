@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { listsQtySubtext, storeSubtext } from '../summaries';
+import { listsSubtext, storeSubtext } from '../summaries';
 import type { ItemViewModel } from '../viewModel';
 import { makeItem } from './test-helpers';
 
@@ -8,31 +8,28 @@ function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
 }
 
 describe('summaries', () => {
-  describe('listsQtySubtext', () => {
-    it('NoListLimitOne_NotOnAListQtyOne', () => {
-      expect(listsQtySubtext(vm())).toBe('Not on a list · Qty 1');
+  describe('listsSubtext', () => {
+    it('NoList_NotOnAList', () => {
+      expect(listsSubtext(vm())).toBe('Not on a list');
     });
 
-    it('OneListUnlimited_NameUnlimited', () => {
+    it('OneList_ItsLabel', () => {
       expect(
-        listsQtySubtext(
-          vm({ lists: [{ value: '1', label: 'Birthday' }], qty: null })
-        )
-      ).toBe('Birthday · Unlimited');
+        listsSubtext(vm({ lists: [{ value: '1', label: 'Birthday' }] }))
+      ).toBe('Birthday');
     });
 
     it('MultipleLists_JoinsLabels', () => {
       expect(
-        listsQtySubtext(
+        listsSubtext(
           vm({
             lists: [
               { value: '1', label: 'Birthday' },
               { value: '2', label: 'Wedding' },
             ],
-            qty: 2,
           })
         )
-      ).toBe('Birthday, Wedding · Qty 2');
+      ).toBe('Birthday, Wedding');
     });
   });
 

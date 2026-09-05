@@ -1,6 +1,5 @@
 import { db } from '@/db';
 import {
-  items,
   list_items,
   lists,
   purchases,
@@ -8,6 +7,7 @@ import {
   user_follows,
 } from '@/db/schema';
 import { accountsOfProfiles } from '@/lib/data/profile';
+import { getMessage } from '@/lib/i18n/utils';
 import { primaryStore } from '@/lib/storeValidity';
 import { avatarViewOf, withProfileAvatar } from '@/lib/data/profileAvatar';
 import { MAXIMAL_TIER, type ClaimProjection } from '@/lib/spoilers';
@@ -18,11 +18,12 @@ import {
   UserIdentity,
 } from '@/lib/types';
 import { cacheTags, itemRowTags } from '@/lib/cacheTags';
-import { and, eq, or } from 'drizzle-orm';
+import { and, eq, or, sum } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
 type RawPurchase = {
   id: string;
+  units: number;
   profile_id: string | null;
   claimed_by_profile_id: string | null;
   guest_name: string | null;
@@ -60,14 +61,21 @@ export function sanitizePurchases(
     if (!held && (projection === 'surprise' || projection === 'progress'))
       return views;
     if (!held && projection === 'claims') {
-      // The entry survives so the count and the remaining capacity stay
-      // derivable; everything identifying is gone with it.
+      // A bare presence flag: one stub per claim, so the person count survives,
+      // and no unit count on it. Capacity is read off the entry instead — a
+      // per-row unit count here would turn "three people claimed" into "one
+      // person claimed three", which is more than this tier ever disclosed.
       views.push({ id: p.id, by: 'other', claimedByViewer: false });
       return views;
     }
 
+    // Units ride only on a claim that is named: the holder's own, and every
+    // claim once a reveal is confirmed. The stub above carries none, so the
+    // claims tier keeps saying "three people claimed" rather than gaining the
+    // "one person claimed three" it never disclosed.
     const view: PurchaseView = {
       id: p.id,
+      units: p.units,
       by: isSelf ? ('self' as const) : ('other' as const),
       name: p.purchaserProfile?.name ?? p.guest_name ?? undefined,
       claimedByViewer,
@@ -144,40 +152,15 @@ export async function isEligiblePurchaser(
 export function duplicateClaimResponse(isAttributed: boolean): ActionResponse {
   return {
     success: false,
-    message: isAttributed
-      ? 'Already marked as the purchaser'
-      : 'You have already claimed this item',
-    error: 'Duplicate claim',
+    message: getMessage(
+      isAttributed ? 'claim_duplicate_attributed' : 'claim_duplicate_own'
+    ),
+    error: getMessage('claim_error_duplicate'),
   };
 }
 
-// Best-effort pre-insert checks; the partial unique index on
-// purchases (item_id, profile_id) is the concurrency backstop for purchaser
-// duplicates (createPurchase catches the unique violation on insert).
-export function claimConflictResponse(
-  existing: { profile_id: string | null; guest_name: string | null }[],
-  purchaserProfileId: string | null,
-  guestName: string | null,
-  quantityLimit: number | null,
-  isAttributed: boolean
-): ActionResponse | null {
-  const isDuplicate = existing.some((p) =>
-    purchaserProfileId
-      ? p.profile_id === purchaserProfileId
-      : !!guestName && p.guest_name === guestName
-  );
-  if (isDuplicate) return duplicateClaimResponse(isAttributed);
-  if (quantityLimit !== null && existing.length >= quantityLimit) {
-    return {
-      success: false,
-      message: 'This item is fully claimed',
-      error: 'Fully claimed',
-    };
-  }
-  return null;
-}
-
-// Removal rights matrix: the claimer (claimed_by_profile_id), the purchaser
+// Removal rights matrix — and, since dropping a claim to zero units is
+// unclaiming, the rights matrix for moving its units too: the claimer (claimed_by_profile_id), the purchaser
 // (profile_id), or the item's owning profile (master unclaim) — all profile-id
 // comparisons. Unauthenticated callers are authorized only on
 // all-NULL-identity rows whose id their guest_claims cookie lists — the cookie
@@ -249,9 +232,14 @@ export async function getItemsByPurchased(profileId?: string) {
       orderBy: (purchases, { desc }) => [desc(purchases.purchased_at)],
     });
 
-    cacheTag(...itemRowTags(result.map((row) => row.item)));
+    // A claim whose item was deleted has no live item to render. Dropping it
+    // here keeps this page reading exactly as it did when deleting an item
+    // destroyed the claim outright; the record view that gives an orphan
+    // something to show is a later ticket.
+    const claimedItems = result.flatMap((row) => (row.item ? [row.item] : []));
+    cacheTag(...itemRowTags(claimedItems));
 
-    return result.map(({ item: { stores, ...item } }) => ({
+    return claimedItems.map(({ stores, ...item }) => ({
       ...item,
       store: primaryStore(stores),
       // A constant, not a resolved tier: the rows this read selects are ones
@@ -294,7 +282,15 @@ export async function getListClaimedCount(listId: string) {
       })
       .from(lists)
       .leftJoin(list_items, eq(list_items.list_id, lists.id))
-      .leftJoin(purchases, eq(purchases.item_id, list_items.item_id))
+      // Both legs, not the item alone: a claim made on another list that
+      // happens to share the item is not this list's progress.
+      .leftJoin(
+        purchases,
+        and(
+          eq(purchases.item_id, list_items.item_id),
+          eq(purchases.list_id, list_items.list_id)
+        )
+      )
       .where(eq(lists.id, listId));
 
     // Claims land on items the list's own profile owns (setListItems refuses
@@ -316,18 +312,20 @@ export async function getListClaimedCount(listId: string) {
   }
 }
 
-// The `revealed` projection of one item's claims, for the owner's claim list to
-// fetch once they have confirmed the reveal. Scoped to the item: it re-resolves
-// no spoiler state and changes nothing the page's own payload carries.
-// Uncached, like the claim picker it sits beside — it is fetched in response to
-// an act, and a stale set would name a claim that has since been removed.
-export async function getRevealedItemClaims(
+// The `revealed` projection of one entry's claims, for the owner's claim list
+// to fetch once they have confirmed the reveal. Scoped to the entry, matching
+// the set the page already showed as nameless stubs; it re-resolves no spoiler
+// state and changes nothing the page's own payload carries. Uncached, like the
+// claim picker it sits beside — it is fetched in response to an act, and a
+// stale set would name a claim that has since been removed.
+export async function getRevealedEntryClaims(
+  listId: string,
   itemId: string,
   viewerSelfProfileId: string | undefined
 ): Promise<PurchaseView[]> {
   try {
     const rows = await db.query.purchases.findMany({
-      where: eq(purchases.item_id, itemId),
+      where: and(eq(purchases.list_id, listId), eq(purchases.item_id, itemId)),
       with: {
         purchaserProfile: {
           columns: { name: true },
@@ -338,34 +336,39 @@ export async function getRevealedItemClaims(
     });
     return sanitizePurchases(rows, viewerSelfProfileId, 'revealed');
   } catch (error) {
-    console.error('Error fetching revealed item claims:', error);
-    throw new Error('Failed to fetch revealed item claims');
+    console.error('Error fetching revealed entry claims:', error);
+    throw new Error('Failed to fetch revealed entry claims');
   }
 }
 
-// One item's badge-level state, for the count-only reveal the claim affordance
-// leads to. It names nobody: a viewer deciding whether to claim needs to know
-// that the item is spoken for and what capacity remains, and no more.
-export async function getItemClaimSummary(itemId: string) {
+// One entry's badge-level state, for the count-only reveal the claim
+// affordance leads to. It names nobody: a viewer deciding whether to claim
+// needs to know that the entry is spoken for and what capacity remains, and no
+// more. Both numbers are units, so nothing here puts a unit count beside a
+// person count and invites them to be read as one another.
+export async function getEntryClaimSummary(listId: string, itemId: string) {
   try {
-    const [item] = await db
-      .select({ quantity_limit: items.quantity_limit })
-      .from(items)
-      .where(eq(items.id, itemId));
-    if (!item) return null;
-    const claims = await db
-      .select({ id: purchases.id })
+    const [entry] = await db
+      .select({ quantity: list_items.quantity })
+      .from(list_items)
+      .where(
+        and(eq(list_items.list_id, listId), eq(list_items.item_id, itemId))
+      );
+    if (!entry) return null;
+    // Summed rather than read off a counter: a stored copy would be a second
+    // answer to what the claim rows already say, and this driver has nothing
+    // that holds the two equal (ADR-0016).
+    const [summed] = await db
+      .select({ units: sum(purchases.units) })
       .from(purchases)
-      .where(eq(purchases.item_id, itemId));
+      .where(and(eq(purchases.list_id, listId), eq(purchases.item_id, itemId)));
+    const claimedUnits = Number(summed?.units ?? 0);
     return {
-      claimCount: claims.length,
-      remaining:
-        item.quantity_limit === null
-          ? null
-          : Math.max(0, item.quantity_limit - claims.length),
+      claimedUnits,
+      remaining: Math.max(0, entry.quantity - claimedUnits),
     };
   } catch (error) {
-    console.error('Error fetching item claim summary:', error);
-    throw new Error('Failed to fetch item claim summary');
+    console.error('Error fetching entry claim summary:', error);
+    throw new Error('Failed to fetch entry claim summary');
   }
 }

@@ -14,7 +14,7 @@ import {
 import PriceFilterPopover from '../PriceFilterPopover';
 import { StoreFilterPanel } from '../StoreFilterPanel';
 import StoreFilterPopover from '../StoreFilterPopover';
-import { BrowserMode, ParamPatch } from './types';
+import { ParamPatch } from './types';
 
 type Facet = 'stores' | 'price';
 
@@ -26,11 +26,9 @@ const FACET_TITLES: Record<Facet, string> = {
 interface FiltersSheetProps {
   open: boolean;
   onClose: () => void;
-  mode: BrowserMode;
   sort: SortKey;
   defaultSort: SortKey;
   sortOptions: Array<{ value: SortKey; label: string }>;
-  show: string;
   storeOptions: string[];
   selectedStores: string[];
   showPriceFilter: boolean;
@@ -48,11 +46,9 @@ interface FiltersSheetProps {
 export function FiltersSheet({
   open,
   onClose,
-  mode,
   sort,
   defaultSort,
   sortOptions,
-  show,
   storeOptions,
   selectedStores,
   showPriceFilter,
@@ -157,36 +153,21 @@ export function FiltersSheet({
 
       {/* Toolbar selects render as bare SelectField with aria-label only
           (labels are implied by the option text itself). */}
-      <div className="items-toolbar-cell--sort">
-        <SelectField
-          value={sort}
-          onChange={(e) =>
-            updateParams({
-              sort: e.target.value === defaultSort ? null : e.target.value,
-              page: null,
-            })
-          }
-          aria-label="Sort items"
-          options={sortOptions.map((o) => ({ value: o.value, label: o.label }))}
-        />
-      </div>
-
-      {mode === 'choose' && (
-        <div className="items-toolbar-cell--purchases">
+      {sortOptions.length > 0 && (
+        <div className="items-toolbar-cell--sort">
           <SelectField
-            value={show}
+            value={sort}
             onChange={(e) =>
               updateParams({
-                show: e.target.value === 'all' ? null : e.target.value,
+                sort: e.target.value === defaultSort ? null : e.target.value,
                 page: null,
               })
             }
-            aria-label="Show items by list membership"
-            options={[
-              { value: 'all', label: 'All' },
-              { value: 'on', label: 'Only on the list' },
-              { value: 'off', label: 'Only not on the list' },
-            ]}
+            aria-label="Sort items"
+            options={sortOptions.map((o) => ({
+              value: o.value,
+              label: o.label,
+            }))}
           />
         </div>
       )}
@@ -256,7 +237,7 @@ export function FiltersSheet({
       )}
 
       <div className="items-toolbar-filters-sheet-actions">
-                {activeFacet ? (
+        {activeFacet ? (
           <Button
             variant="ghost"
             onClick={handleBack}
@@ -268,13 +249,13 @@ export function FiltersSheet({
             Back
           </Button>
         ) : (
-        <Button
-          variant="ghost"
-          onClick={handleClearAll}
-          disabled={filterCount === 0}
-        >
-          Clear
-        </Button>
+          <Button
+            variant="ghost"
+            onClick={handleClearAll}
+            disabled={filterCount === 0}
+          >
+            Clear
+          </Button>
         )}
         <Button
           variant="primary"

@@ -88,7 +88,9 @@ vi.mock('@/app/(main)/lists/ui/components/ListDetails', () => ({
       data-tier={String(p.tier)}
       data-baseline={String(p.baseline)}
       data-viewer-is-member={String(p.viewerIsMember)}
-      data-claimed-count={p.claimedCount === undefined ? '' : String(p.claimedCount)}
+      data-claimed-count={
+        p.claimedCount === undefined ? '' : String(p.claimedCount)
+      }
       data-preview-mode={String(p.previewMode)}
       data-item-count={String(p.itemCount)}
       data-viewer-user-id={p.viewer_user_id ?? ''}
@@ -131,6 +133,30 @@ beforeEach(() => {
 });
 
 describe('ListHeroSection', () => {
+  describe('EditMode', () => {
+    it('Owner_RendersNothingSoTheModeBandReplacesTheHero', async () => {
+      vi.mocked(getList).mockResolvedValue({
+        id: 'l1',
+        profile_id: 'self-u-viewer',
+        visibility: 'public',
+        item_count: 2,
+        profile: { id: 'self-u-viewer', name: 'Owner' },
+      } as never);
+      const { container } = render(
+        await ListHeroSection(props('l1', { edit: '1' }))
+      );
+      expect(container).toBeEmptyDOMElement();
+    });
+
+    it('NonOwner_StillRendersTheHero', async () => {
+      render(await ListHeroSection(props('l1', { edit: '1' })));
+      expect(screen.getByTestId('list-details')).toHaveAttribute(
+        'data-is-owner',
+        'false'
+      );
+    });
+  });
+
   describe('Projection', () => {
     it('OwnerPreview_RendersListDetailsWithDerivedProps', async () => {
       vi.mocked(getList).mockResolvedValue({

@@ -154,6 +154,22 @@ describe('ConfirmDialog', () => {
       );
     });
 
+    it('ConfirmVariantPrimary_OverridesTheDestructiveDefault', () => {
+      render(
+        <ConfirmDialog
+          isOpen
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+          title="t"
+          message="m"
+          confirmVariant="primary"
+        />
+      );
+      const confirm = screen.getByRole('button', { name: 'Confirm' });
+      expect(confirm).toHaveClass('btn', 'primary');
+      expect(confirm).not.toHaveClass('danger');
+    });
+
     it('TertiaryDefaultVariant_Primary', () => {
       render(
         <ConfirmDialog

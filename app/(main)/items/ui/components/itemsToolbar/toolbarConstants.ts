@@ -25,10 +25,6 @@ export const SHARED_SORT_KEYS: SortKey[] = [
 export const SORT_KEYS_BY_MODE: Record<BrowserMode, SortKey[]> = {
   items: ['created_desc', 'created_asc', ...SHARED_SORT_KEYS],
   list: ['list_order', ...SHARED_SORT_KEYS],
-  choose: ['created_desc', 'created_asc', ...SHARED_SORT_KEYS],
-};
-
-export const SHOW_LABELS: Record<string, string> = {
-  on: 'On the list',
-  off: 'Not on the list',
+  // Edit mode's order is fixed — position above the divider, name below.
+  edit: [],
 };

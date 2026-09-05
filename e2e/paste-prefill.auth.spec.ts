@@ -89,10 +89,10 @@ test('Deck_CleanFetch_IntroPhotoNoteThenCreate', async ({ page }) => {
   await expect(page.getByText('Add a note')).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  // Preview: quantity defaults to 1 in the subtext; create flows through the
-  // unchanged action.
+  // Preview: the Lists row reads the empty membership; create flows through
+  // the unchanged action.
   await expect(page.getByText('Last look')).toBeVisible();
-  await expect(page.getByText('Not on a list · Qty 1')).toBeVisible();
+  await expect(page.getByText('Not on a list')).toBeVisible();
   await page.getByRole('button', { name: 'Create item' }).click();
   await expect(page.getByText('Item created successfully')).toBeVisible();
   // The form modal closes itself on successful create.
@@ -157,7 +157,9 @@ test('Deck_ZeroImages_SeedsAllPlaceholderStrip', async ({ page }) => {
   await expect(
     page.getByRole('heading', { name: 'Pick some art' })
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: /Use artwork/ })).toHaveCount(4);
+  await expect(page.getByRole('button', { name: /Use artwork/ })).toHaveCount(
+    4
+  );
   await expect(page.getByLabel('Add an image by URL')).toBeVisible();
 });
 
@@ -166,11 +168,12 @@ test('Deck_SingleImage_StillShowsPhotoCardPreSelected', async ({ page }) => {
   await page.getByRole('button', { name: "Let's go" }).click();
   await expect(page.getByText('Pick the best photo')).toBeVisible();
   // One real thumb pre-selected plus three placeholder thumbs.
-  await expect(page.getByRole('button', { name: 'Use image 1' })).toHaveAttribute(
-    'aria-pressed',
-    'true'
+  await expect(
+    page.getByRole('button', { name: 'Use image 1' })
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: /Use artwork/ })).toHaveCount(
+    3
   );
-  await expect(page.getByRole('button', { name: /Use artwork/ })).toHaveCount(3);
   await page.getByRole('button', { name: 'Continue' }).click();
   await expect(page.getByText('Add a note')).toBeVisible();
 });
@@ -180,7 +183,9 @@ test('Deck_FetchFails_TimeoutThenManualEntrySeedsUrl', async ({ page }) => {
   await expect(
     page.getByText('This is taking longer than expected')
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Fill in details manually →' }).click();
+  await page
+    .getByRole('button', { name: 'Fill in details manually →' })
+    .click();
   await expect(
     page.getByRole('heading', { name: 'Add the details' })
   ).toBeVisible();

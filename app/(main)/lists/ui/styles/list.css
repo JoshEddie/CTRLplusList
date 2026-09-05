@@ -582,66 +582,57 @@
   }
 }
 
-/* ===== Choose items page (Stage 5 redesign) ===== */
+/* ===== Edit mode (`?edit=1`) =====
+   The band replaces .list-hero on the same route, so it reuses the hero's
+   own sticky/collapsing surface and only re-dresses what sits inside it.
+   The item surface below keeps the row anatomy the retired picker route
+   defined, renamed to the mode that now owns it. */
 
-.choose-items-page {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* The mode's parts are direct children of the container, exactly as the hero
+   and the item grid are on the default view — no wrapper. A wrapper would
+   become the chrome's sticky containing block, and any gap it introduced
+   between ListHeroSurface's sentinel and the chrome would break the
+   `surface.top - sentinel.top` pin-depth reading the collapse turns on.
+   Clearance for the fixed footer therefore lands on the container itself. */
+.container--list-details:has(.edit-mode-footer) {
   padding-bottom: 84px;
 }
 
-.choose-items-pg-hd {
+/* Mobile-first: one column of fields, widening to two where the band has the
+   room. Fields sit on the hero gradient, so their labels take the same
+   on-dark treatment the rest of the band already uses while the input boxes
+   stay on their own light surface. */
+.list-edit-hero {
   display: grid;
-  grid-template-columns: auto auto;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
-  padding: 4px 0 4px;
+  grid-template-columns: 1fr;
+  gap: 10px 16px;
+  /* Side padding tracks .container--list-details .items-toolbar so the field
+     boxes line up with the search field directly beneath them. */
+  padding: 14px 28px 18px;
 }
 
-.choose-items-pg-hd-main {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.choose-items-pg-title {
-  font-family: var(--font-crimson-pro), Georgia, serif;
-  font-weight: 300;
-  font-size: 26px;
-  line-height: 1.15;
-  color: var(--heading-text-color);
-  margin: 0;
-}
-
-.choose-items-pg-title em {
-  font-style: italic;
-  color: var(--primary-color);
-}
-
-@media (max-width: 600px) {
-  .choose-items-pg-title {
-    font-size: 20px;
+@media (min-width: 700px) {
+  .list-edit-hero {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
-.choose-items-undo {
-  background: none;
-  border: none;
-  color: var(--primary-color);
-  font:
-    600 13px var(--font-roboto-condensed),
-    sans-serif;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  padding: 0;
+@media (max-width: 800px) {
+  .list-edit-hero {
+    padding: 12px 16px 16px;
+  }
 }
 
-.choose-items-list {
+.list-edit-hero .form_field_group .form_field_label,
+.list-edit-hero .form_field_group .form_field_description {
+  color: var(--light-color);
+}
+
+.list-edit-hero .form_field_group .form_field {
+  background-color: var(--light-color);
+}
+
+.edit-mode-list {
   list-style: none;
   display: flex;
   flex-direction: column;
@@ -650,106 +641,391 @@
   border-top: 1px solid var(--divider-color);
 }
 
-.choose-items-list > li {
+.edit-mode-list > li {
   border-bottom: 1px solid var(--divider-color);
 }
 
-/* ── CHOOSE-ITEMS ROW (consolidate-row-layouts) ──
-   Outer <label> wrapping a leading <CheckboxField> + <Item preview />.
-   Inner row anatomy (image, name, price, leader-dots, buy-link pill, +N)
-   is owned by the shared row primitive in item.css under
-   `.item-list .item-container` / `.sortable-item .item-container`. The
-   picker contributes only the leading checkbox column and the selection
-   state modifiers — everything else is inherited.
-
-   Outer grid is 2-col (auto 1fr): col 1 is the checkbox; col 2 is the
-   entire <Item /> (which internally renders its own shared 5-col grid).
-   See design.md D1. */
-.choose-items-select {
+/* ── EDIT-MODE ROW ──
+   handle | swatch | name / price · store · link / note | quantity.
+   The handle column is always laid out, empty below the divider, so both
+   halves share one set of column edges and a row crossing it shifts nothing
+   but its section. The stepper states the quantity itself, 0 for a row below
+   the divider included, so no cell restates it. Mobile-first: narrower swatch
+   and handle, and the quantity cell is the chip rather than the stepper. */
+.edit-mode-row {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: 28px 56px minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 12px;
-  padding: 0 14px;
-  cursor: pointer;
+  padding: 12px 12px;
   position: relative;
 }
 
-/* Force the pointer cursor across the inner <Item /> subtree — without
-   this, text inside `.itemName` / `.itemDescription` gets the text
-   I-beam cursor and the image gets the default arrow, breaking the
-   "whole row is clickable" affordance. Buy-link <a> tags inside
-   <StoreLinks> are already pointer by browser default and are
-   unaffected by `cursor: inherit`. */
-.choose-items-select * {
-  cursor: inherit;
-}
-
-/* Compact the inner <CheckboxField>'s <label> inside the picker leading
-   slot. The form-field-system 44×44 floor is satisfied by the OUTER
-   .choose-items-select label (the full row width × row height) — the
-   inner box just needs the visible 24×24 checkbox. See design.md D2. */
-.choose-items-select .checkbox_field {
-  padding: 0;
-  min-height: unset;
+.edit-mode-row-handle {
   display: flex;
   align-items: center;
   justify-content: center;
+  align-self: stretch;
 }
 
-/* The <CheckboxField> renders its label text in a <span>. In the picker,
-   the item name is already shown by <Item />; hide the label span
-   visually but keep it for assistive tech (the checkbox's accessible
-   name SHALL be the item name). See design.md D2. */
-/* Focus ring on the actual checkbox input. If form-field-system already
-   provides a global rule on `.checkbox_field_box:focus-visible`, this
-   override is a no-op — verify and prune at preview time. */
-.choose-items-select .checkbox_field_box:focus-visible {
+.edit-mode-row .item-image-container {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: var(--secondary-background-color);
+}
+
+.edit-mode-row .item-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.edit-mode-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.edit-mode-row-nameline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* The name is the sheet's trigger, not just a label — reset to the text it
+   was before it became a button. */
+.edit-mode-row-name {
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.edit-mode-row .itemName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--heading-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.edit-mode-row-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  min-width: 0;
+}
+
+/* The button primitive, as the list page's row draws it. Below the breakpoint
+   the row has no room for it or the note; both live in the row's sheet there. */
+.edit-mode-row .edit-mode-row-view {
+  display: none;
+}
+
+.edit-mode-row .item-price-row {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted-text-color);
+}
+
+.edit-mode-row .item-price {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.edit-mode-row-note {
+  display: none;
+  margin: 2px 0 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--muted-text-color);
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Rows below the divider do not read as content yet: the swatch, price and
+   note dim, the name stays legible so the row can still be found. */
+.edit-mode-row.is-off .item-image-container {
+  opacity: 0.6;
+}
+
+.edit-mode-row.is-off .itemName {
+  font-weight: 500;
+}
+
+.edit-mode-row.is-off .item-price {
+  color: var(--muted-text-color);
+  font-weight: 600;
+}
+
+/* The pending-change dot: any entry differing from what is saved. */
+.edit-mode-pending {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+}
+
+.edit-mode-handle {
+  width: 28px;
+  height: 44px;
+  justify-content: center;
+}
+
+.edit-mode-handle[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.35;
+}
+
+/* The two quantity affordances. Exactly one is laid out at any width, so the
+   accessibility tree only ever carries the one on offer. */
+.edit-mode-row-stepper {
+  display: none;
+  width: 260px;
+}
+
+/* The five cells share one row, and MIN/MAX carry two digits each — without a
+   floor the 1fr number cell is what collapses. */
+.edit-mode-row-stepper .stepper_input {
+  min-width: 3ch;
+  font-size: 18px;
+}
+
+/* The name is the sheet's trigger below the breakpoint and inert text above
+   it, where the stepper, the note and the store link are all already in the
+   row. Two elements rather than one, because only `display: none` takes a
+   control out of the tab order as well as off the screen. */
+.edit-mode-row .edit-mode-row-name-static {
+  display: none;
+}
+
+.edit-mode-row-name:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
 }
 
-/* Hover + selection backgrounds paint the outer <label> so they span
-   BOTH the checkbox column and the .item-container column — hover
-   anywhere on the row highlights the whole row including the checkbox
-   cell. We also neutralize the shared `.item-list .item-container[:hover]`
-   background inside picker rows so it doesn't compete (it would paint
-   only col 2 and leave the checkbox cell unhighlighted). */
-.choose-items-list .item-container,
-.choose-items-list .item-container:hover {
-  background-color: transparent;
+.edit-mode-item.is-dragging {
+  position: relative;
+  z-index: 1;
+  background-color: var(--light-color);
+  box-shadow: var(--card-shadow-hover);
 }
 
-.choose-items-select:hover {
-  background-color: var(--card-hover-background-color);
+@media (hover: hover) {
+  .edit-mode-row:hover {
+    background-color: var(--card-hover-background-color);
+  }
 }
 
-/* Selection tints — chained `:hover` so hovering an is-on / is-removing
-   row keeps its brand tint instead of degrading to the neutral hover
-   color. */
-.choose-items-select.is-on,
-.choose-items-select.is-on:hover {
-  background-color: var(--card-accent-background-color);
+.edit-mode-section {
+  padding: 0 0 12px;
 }
 
-.choose-items-select.is-removing,
-.choose-items-select.is-removing:hover {
-  background-color: var(--secondary-background-color);
+/* A centred rule-flanked heading is the divider between the two halves. */
+.edit-mode-section-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 20px 16px 8px;
 }
 
-/* Strike-through on the removing-state item name. Page-scoped CSS
-   reaches into <Item>'s `.itemName` class — documented cross-boundary
-   coupling, see design.md D5. */
-.choose-items-select.is-removing .itemName {
-  text-decoration: line-through;
+.edit-mode-section-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted-text-color);
 }
 
-.choose-items-sticky-ft {
+.edit-mode-section-title::before,
+.edit-mode-section-title::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--divider-color);
+}
+
+.edit-mode-section-hint,
+.edit-mode-section-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted-text-color);
+}
+
+.edit-mode-section-empty {
+  padding: 12px 16px 4px;
+  text-align: center;
+}
+
+.edit-mode-create {
+  display: flex;
+  justify-content: center;
+  padding: 4px 12px 12px;
+}
+
+.list-edit-summary {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--light-color);
+}
+
+@media (min-width: 801px) {
+  .edit-mode-row {
+    grid-template-columns: 36px 80px minmax(0, 1fr) auto;
+    column-gap: 16px;
+    padding: 14px 28px;
+  }
+
+  .edit-mode-row .item-image-container {
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+  }
+
+  .edit-mode-row .edit-mode-row-view {
+    display: inline-flex;
+  }
+
+  .edit-mode-row-note {
+    display: -webkit-box;
+  }
+
+  .edit-mode-row-stepper {
+    display: block;
+  }
+
+  .edit-mode-row .edit-mode-row-chip,
+  .edit-mode-row .edit-mode-row-name {
+    display: none;
+  }
+
+  .edit-mode-row .edit-mode-row-name-static {
+    display: flex;
+  }
+
+  .edit-mode-section-head,
+  .edit-mode-section-empty {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+}
+
+/* ── EDIT-MODE ROW SHEET ──
+   The Modal primitive, pinned to the bottom edge: below the row breakpoint
+   this is where the note, the store link and a full-size stepper live. */
+.edit-mode-sheet {
+  align-items: flex-end;
+  padding: 0;
+}
+
+.edit-mode-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.edit-mode-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.edit-mode-sheet .item-image-container {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: var(--secondary-background-color);
+}
+
+.edit-mode-sheet .item-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.edit-mode-sheet-heading {
+  min-width: 0;
+}
+
+.edit-mode-sheet-name {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--heading-text-color);
+}
+
+.edit-mode-sheet .item-price-row {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--muted-text-color);
+}
+
+.edit-mode-sheet .item-price {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.edit-mode-sheet-note {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--muted-text-color);
+}
+
+/* Thumb-sized: the sheet exists because the row could not give the control
+   this much height. */
+.edit-mode-sheet .stepper_jump,
+.edit-mode-sheet .stepper_step {
+  min-height: 52px;
+}
+
+.edit-mode-sheet-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.edit-mode-sheet-actions > * {
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+/* Inset to the app surface, not the viewport: .app-surface-bleed pads the
+   sides and .app-surface centres at 1700px, so a full-bleed bar would hang
+   over the gradient either side of the card. Same expression the nav's
+   corner notches use. */
+.edit-mode-footer {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  left: max(20px, calc((100% - 1700px) / 2));
+  right: max(20px, calc((100% - 1700px) / 2));
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -760,41 +1036,48 @@
   z-index: 50;
 }
 
-.choose-items-count {
+.edit-mode-count {
   font-size: 14px;
   font-weight: 600;
   color: var(--heading-text-color);
+  white-space: nowrap;
 }
 
-.choose-items-count-muted {
+.edit-mode-count-muted {
   color: var(--muted-text-color);
   font-weight: 500;
 }
 
-.choose-items-count-diff {
+.edit-mode-count-diff {
   color: var(--primary-color);
   font-weight: 600;
 }
 
-.choose-items-count-added,
-.choose-items-count-removed {
+.edit-mode-count-added,
+.edit-mode-count-removed {
   color: var(--primary-color);
 }
 
 @media (max-width: 600px) {
-  .choose-items-count-diff {
+  .edit-mode-count-diff {
     display: none;
   }
 }
 
-.choose-items-sticky-actions {
+.edit-mode-footer-actions {
   display: flex;
   gap: 10px;
   align-items: center;
 }
 
+.edit-mode-footer-actions > .btn {
+  white-space: nowrap;
+}
+
 @media (max-width: 800px) {
-  .choose-items-sticky-ft {
+  .edit-mode-footer {
+    left: 12px;
+    right: 12px;
     padding: 12px 20px;
   }
 }

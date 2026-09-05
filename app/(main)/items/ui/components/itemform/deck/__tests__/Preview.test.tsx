@@ -107,9 +107,9 @@ describe('Preview', () => {
     expect(onOpenTriage).toHaveBeenCalledOnce();
   });
 
-  it('DefaultQty_ListsRowShowsNotOnAListQtyOne', () => {
+  it('NoLists_ListsRowShowsNotOnAList', () => {
     setup();
-    expect(screen.getByText('Not on a list · Qty 1')).toBeInTheDocument();
+    expect(screen.getByText('Not on a list')).toBeInTheDocument();
   });
 
   it('EmptyDescription_ShowsAddANoteRow', () => {

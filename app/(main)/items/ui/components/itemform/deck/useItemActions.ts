@@ -42,7 +42,6 @@ export function useItemActions(setItem: SetItem) {
           store: setStoreField(p.store, field, value),
         })),
       setLists: (lists: OptionType[]) => setItem((p) => ({ ...p, lists })),
-      setQty: (qty: number | null) => setItem((p) => ({ ...p, qty })),
     }),
     [setItem]
   );

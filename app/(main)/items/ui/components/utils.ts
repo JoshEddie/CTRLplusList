@@ -1,6 +1,7 @@
+import { getMessage } from '@/lib/i18n/utils';
 import { priceAmount } from '@/lib/storeValidity';
 import { atLeast } from '@/lib/spoilers';
-import { PurchaseView, SpoilerTier } from '@/lib/types';
+import { EntryCapacity, PurchaseView, SpoilerTier } from '@/lib/types';
 
 // The owner-side claim pill: never below `claims`, and from `claims` up whenever
 // the item carries claims. One home so the card's `purchased` styling and the
@@ -16,8 +17,28 @@ export function showsSpoilerBanner(
 // The card's "Claimed by …" line. No tier names another party's claim, so the
 // line reports how many rather than who — names are the modal's reveal alone.
 export function claimSummaryOf(claims: PurchaseView[]): string {
-  if (claims.length === 0) return '';
-  return claims.length === 1 ? '1 person' : `${claims.length} people`;
+  return getMessage('claim_summary', { count: claims.length });
+}
+
+// What the entry already has spoken for, phrased for the label row beside a
+// units control. Derived from capacity rather than from the projected claims,
+// which carry no unit counts below the revealed tier.
+export function unitsClaimedLabel(quantity: number, remaining: number): string {
+  return getMessage('claim_units_status', {
+    claimed: quantity - remaining,
+    quantity,
+  });
+}
+
+// What an existing claim could be raised to: everything the entry has spare,
+// plus what the claim already holds — a claim does not compete with itself. A
+// ceiling of one is an entry asking for one, which is where every units control
+// disappears.
+export function claimUnitsCeiling(
+  capacity: EntryCapacity | null | undefined,
+  claim: PurchaseView
+): number {
+  return (capacity?.remaining ?? 0) + (claim.units ?? 1);
 }
 
 export function firstToken(name: string): string {
@@ -61,4 +82,3 @@ export function containerClasses(flags: {
     .filter(Boolean)
     .join(' ');
 }
-

@@ -18,11 +18,11 @@ export function PreviewCard({ item }: { item: ItemViewModel }) {
         showSpoilerInfo={false}
         viewerClaimed={false}
         fullyClaimed={false}
-        showCounter={false}
-        counterText=""
+        entryLine=""
         hasAnyClaim={false}
         tier="surprise"
         viewOnly
+        claimable={false}
       />
     </div>
   );

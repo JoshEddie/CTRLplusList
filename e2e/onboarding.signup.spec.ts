@@ -71,7 +71,9 @@ test('Onboarding_ReloadBackdropAndEscape_LeaveTheGateStanding', async ({
 
   // The backdrop is the element the gate sits on; clicking its own corner
   // lands on it rather than on any descendant.
-  await page.getByTestId('onboarding-backdrop').click({ position: { x: 4, y: 4 } });
+  await page
+    .getByTestId('onboarding-backdrop')
+    .click({ position: { x: 4, y: 4 } });
   await expect(gate).toBeVisible();
 
   await page.keyboard.press('Escape');

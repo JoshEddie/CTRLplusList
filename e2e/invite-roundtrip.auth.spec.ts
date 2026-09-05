@@ -91,7 +91,7 @@ test('InviteRoundTrip_OwnerMintsRecipientRedeemsThenRetries_AdmittedThenRefused'
   await expect(
     page.getByRole('heading', { name: 'This invite link is no longer valid' })
   ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Accept invite' })
-  ).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Accept invite' })).toHaveCount(
+    0
+  );
 });

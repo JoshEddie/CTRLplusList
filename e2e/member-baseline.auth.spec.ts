@@ -64,7 +64,9 @@ async function setAdministeredLevel(
   level: string
 ) {
   await openAdministeredRow(page, member);
-  await levelControl(page, `Claim visibility for ${member}`).selectOption(level);
+  await levelControl(page, `Claim visibility for ${member}`).selectOption(
+    level
+  );
   await expect(page.getByText('Claim visibility updated')).toBeVisible();
 }
 

@@ -84,16 +84,64 @@ no list is visible to its owner only.
 **Item library**:
 A profile's entire item set, independent of any list.
 
+**Edit mode**:
+The owner's one surface for changing a list, reached at `?edit=1` on the list's
+own route rather than through a page of its own. It replaces the hero with a
+band carrying the list's own details and the staged unit total, swaps the item
+surface for the whole item library partitioned into _In this list_ (position
+order, reorderable by drag) and _Not in this list_ (by name), and commits
+everything it staged — the entries and the list row — through a single Save.
+Quantity is the membership control: a row's stepper reaches 0, which is the
+removal, and any number above it is the add. The stepper sits in the row where
+there is width for it and in the row's own sheet — swatch, name, price, note,
+store link — where there is not; the name opens that sheet at whatever is
+staged, 0 included, so reading an item never adds it.
+Search, store and price filters narrow both halves; while any is active,
+reorder suspends. Cancel is its only revert, and Save, Cancel and backing out of
+the mode all confirm while anything is staged. No claim state renders here: a
+claim belongs to a list entry, not to an item, so a library row carries none
+this list could judge.
+
+**Pending change**:
+An entry, as edit mode stages it, whose membership, quantity, or position
+differs from what is saved — added, removed, re-quantified, or moved. Marked by
+a dot beside the item name; a removed entry keeps its dot below the divider,
+which is how the owner finds what they took off. A drag marks only the row
+dragged — the rows it displaces are still where the owner put them, even
+though Save rewrites their positions along with it
+([ADR-0010](docs/adr/0010-sparse-fractional-indexing-for-list-order.md)).
+
 **List entry**:
-An item's presence on one list, carrying the position it holds there. An item on
-several lists has one entry per list. Stored as `list_items`, whose name reads
-like a pure join table even though the position it carries belongs to the entry
-rather than to the item or the list.
+An item's presence on one list, carrying the position it holds there, the
+quantity wanted there, and the claims made against it. An item on several lists
+has one entry per list, and the entries share nothing — adding an item to a list
+creates its entry at quantity 1. Stored as `list_items`, whose name reads like a
+pure join table even though what it carries belongs to the entry rather than to
+the item or the list.
 
 **Quantity**:
-How many of an item its owner wants. Currently held on the **item**, so it is one
-value across every list the item appears on, and null means unlimited. Claims
-fill it one per claim, so it also caps how many separate people may claim.
+How many of an item its owner wants **on one list** — the only quantity there
+is, since an item carries none of its own. The same item asked for once at a
+birthday and four times at Christmas is two entries with two quantities. Set
+from the list being looked at, through the row's kebab menu, and shown on the
+row only when it is above 1. There is no unlimited quantity, and none above 99.
+Lowering it below what is already claimed succeeds quietly: refusing would tell
+an owner held below the claims tier that somebody has bought something
+([ADR-0015](docs/adr/0015-behaviour-may-not-vary-on-spoiler-hidden-state.md)).
+
+**Units**:
+What a claim covers, and what quantity is counted in — capacity is measured in
+units rather than in people, so four towels is satisfied by one person buying
+four, by four people buying one each, or by any split between. A claim covers
+one unit unless its claimer says otherwise; the stepper that says otherwise is
+capped at what remains, and hidden wherever that leaves one number to pick — an
+entry asking for one, or one unit left of many. Units move up and down within
+what remains, and dropping a claim to zero *is* unclaiming — a zero-unit row is
+not representable. A per-claim unit count is visible only to the claim's holder
+and at the revealed tier; the claims tier
+keeps its bare presence flag. Claimed units are summed from the claims
+themselves, never kept as a separate running total
+([ADR-0016](docs/adr/0016-claimed-units-are-summed-not-stored.md)).
 
 **Occasion**:
 The free-text or picked label on a list, rendered as its eyebrow.
@@ -117,10 +165,12 @@ look ([ADR-0009](docs/adr/0009-generated-art-is-baked-and-persisted.md)).
 ## Claims
 
 **Claim**:
-A statement that someone is getting an item for its owner. The app cannot make
-a purchase, cannot track one, and cannot verify that one happened — only that
-somebody said they would. "Claim" is the strongest true word, which is why it is
-used everywhere a person can see, over the `purchases` table it is stored in.
+A statement that someone is getting an item for its owner, made against one
+**list entry**. A claim on one list consumes nothing on another, and an item on
+no list cannot be claimed at all. The app cannot make a purchase, cannot track
+one, and cannot verify that one happened — only that somebody said they would.
+"Claim" is the strongest true word, which is why it is used everywhere a person
+can see, over the `purchases` table it is stored in.
 _Avoid_: purchase, buy — accurate for neither what the app does nor what it knows
 
 **Purchaser**:
@@ -140,6 +190,8 @@ A claim with no identity at all, held only by a cookie
 
 **Master unclaim**:
 An item owner removing anyone's claim. The only removal route that needs admin.
+The owner may also move the units on a claim somebody else made — the same
+right, since dropping one to zero is removing it.
 
 **Circle**:
 The set of people eligible to be named as a purchaser — the owner's mutual

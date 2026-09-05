@@ -9,15 +9,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createPurchase,
   removePurchase,
-  revealedClaimsForItem,
+  setPurchaseUnits,
+  revealedClaimsForEntry,
 } from '@/lib/data/purchase.actions';
 import Item from '../Item';
 import { makeProfile } from '@/test/helpers/profile';
+import { AMPLE_QUANTITY, LINKED_STORE, makeItem } from './test-helpers';
 
 vi.mock('@/lib/data/purchase.actions', () => ({
   createPurchase: vi.fn(),
   removePurchase: vi.fn(),
-  revealedClaimsForItem: vi.fn(async () => []),
+  revealedClaimsForEntry: vi.fn(async () => []),
+  setPurchaseUnits: vi.fn(),
 }));
 
 const router = vi.hoisted(() => ({
@@ -74,8 +77,7 @@ vi.mock('../ItemCard', () => ({
       data-show-purchased={String(p.showPurchased)}
       data-show-spoiler={String(p.showSpoilerInfo)}
       data-fully-claimed={String(p.fullyClaimed)}
-      data-show-counter={String(p.showCounter)}
-      data-counter={p.counterText as string}
+      data-entry-line={p.entryLine as string}
       data-is-owner={String(p.isOwner)}
       data-viewer-claimed={String(p.viewerClaimed)}
       data-has-any-claim={String(p.hasAnyClaim)}
@@ -112,6 +114,13 @@ vi.mock('../ClaimUndoPopup', () => ({
         <button type="button" onClick={p.onClose as () => void}>
           popup-keep
         </button>
+        <button
+          type="button"
+          onClick={() => (p.onUpdateUnits as (units: number) => void)(3)}
+        >
+          popup-raise
+        </button>
+        <span data-testid="undo-max-units">{String(p.maxUnits)}</span>
       </div>
     ) : null,
 }));
@@ -138,8 +147,8 @@ vi.mock('../OwnerActions', () => ({
       data-archived={String(p.archivedView)}
       data-show-archive={String(p.showArchiveAction)}
     >
-      <button type="button" onClick={p.onArchived as () => void}>
-        owner-archived
+      <button type="button" onClick={p.onChanged as () => void}>
+        owner-changed
       </button>
     </div>
   ),
@@ -158,7 +167,10 @@ vi.mock('../PurchaseModalSlot', () => ({
       data-tier={String(p.tier)}
       data-item-name={String((p.item as { name?: string | null })?.name ?? '')}
     >
-      <button type="button" onClick={p.onSelfClaim as () => void}>
+      <button
+        type="button"
+        onClick={() => (p.onSelfClaim as (units: number) => void)(1)}
+      >
         claim-self
       </button>
       <button
@@ -189,9 +201,7 @@ vi.mock('../PurchaseModalSlot', () => ({
       <button
         type="button"
         onClick={() =>
-          (p.onRemoveClaim as (c: unknown) => void)(
-            (p.claims as unknown[])[0]
-          )
+          (p.onRemoveClaim as (c: unknown) => void)((p.claims as unknown[])[0])
         }
       >
         modal-remove-first
@@ -206,22 +216,6 @@ vi.mock('../PurchaseModalSlot', () => ({
 const OWNER = 'owner';
 
 const actorOf = (id: string) => makeProfile(id, id, ROLES.owner);
-
-function makeItem(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 'i1',
-    name: 'Gift',
-    description: '',
-    image_url: '',
-    profile_id: OWNER,
-    quantity_limit: 1,
-    store: null,
-    purchases: [],
-    created_at: new Date(),
-    updated_at: new Date(),
-    ...overrides,
-  } as never;
-}
 
 function renderItem(
   props: Omit<Partial<React.ComponentProps<typeof Item>>, 'item'> & {
@@ -268,10 +262,10 @@ describe('Item', () => {
       expect(screen.queryByTestId('owner-actions')).not.toBeInTheDocument();
     });
 
-    it('OwnerArchivedCallback_Refreshes', async () => {
+    it('OwnerChangedCallback_Refreshes', async () => {
       const user = userEvent.setup();
       renderItem({ actor: actorOf(OWNER), showArchiveAction: true });
-      await user.click(screen.getByRole('button', { name: 'owner-archived' }));
+      await user.click(screen.getByRole('button', { name: 'owner-changed' }));
       expect(router.refresh).toHaveBeenCalled();
     });
   });
@@ -281,7 +275,7 @@ describe('Item', () => {
       renderItem({
         item: {
           profile_id: OWNER,
-          quantity_limit: 1,
+          quantity: 1,
           purchases: [
             { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
           ],
@@ -293,31 +287,35 @@ describe('Item', () => {
       expect(banners()).toHaveAttribute('data-claims', 'Sam');
     });
 
-    it('UnlimitedQuantity_ForwardsInfinityCounter', () => {
+    it('QuantityAboveOne_ForwardsTheFractionEntryLine', () => {
       renderItem({
-        item: { profile_id: OWNER, quantity_limit: null },
+        item: { profile_id: OWNER, quantity: AMPLE_QUANTITY },
         actor: actorOf('viewer'),
       });
-      expect(card()).toHaveAttribute('data-counter', '0/∞ claimed');
-      expect(card()).toHaveAttribute('data-show-counter', 'true');
+      expect(card()).toHaveAttribute(
+        'data-entry-line',
+        `0/${AMPLE_QUANTITY} claimed`
+      );
     });
 
-    it('BelowClaims_HidesCounter', () => {
+    it('BelowClaims_ForwardsTheBareAskEntryLine', () => {
       renderItem({
-        item: { profile_id: OWNER, quantity_limit: null },
+        item: { profile_id: OWNER, quantity: AMPLE_QUANTITY },
         actor: actorOf('viewer'),
         tier: 'surprise',
       });
-      expect(card()).toHaveAttribute('data-show-counter', 'false');
+      expect(card()).toHaveAttribute(
+        'data-entry-line',
+        `${AMPLE_QUANTITY} wanted`
+      );
     });
 
-    it('QuantityLimitOne_HidesCounter', () => {
+    it('QuantityOne_ForwardsEmptyEntryLine', () => {
       renderItem({
-        item: { profile_id: OWNER, quantity_limit: 1 },
+        item: { profile_id: OWNER, quantity: 1 },
         actor: actorOf('viewer'),
       });
-      expect(card()).toHaveAttribute('data-show-counter', 'false');
-      expect(card()).toHaveAttribute('data-counter', '0/1 claimed');
+      expect(card()).toHaveAttribute('data-entry-line', '');
     });
 
     it('OwnerWithClaimsAtIdentity_ForwardsSpoilerPillTrue', () => {
@@ -325,7 +323,7 @@ describe('Item', () => {
         actor: actorOf(OWNER),
         item: {
           profile_id: OWNER,
-          quantity_limit: 3,
+          quantity: 3,
           purchases: [
             { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
           ],
@@ -357,7 +355,7 @@ describe('Item', () => {
       renderItem({
         item: {
           profile_id: OWNER,
-          quantity_limit: null,
+          quantity: AMPLE_QUANTITY,
           purchases: [
             { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
             { id: 'pm', by: 'self', name: 'You', claimedByViewer: true },
@@ -421,7 +419,7 @@ describe('Item', () => {
       actor: actorOf(OWNER),
       item: {
         profile_id: OWNER,
-        quantity_limit: 3,
+        quantity: 3,
         purchases: [
           { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
         ],
@@ -447,7 +445,7 @@ describe('Item', () => {
         tier: 'surprise',
         item: {
           profile_id: OWNER,
-          quantity_limit: 3,
+          quantity: 3,
           purchases: [
             { id: 'po', by: 'self', name: 'You', claimedByViewer: true },
           ],
@@ -478,7 +476,11 @@ describe('Item', () => {
 
     it('Preview_NeverMountsModalSlot', () => {
       renderItem(
-        { item: { profile_id: 'viewer' }, actor: actorOf('viewer'), preview: true },
+        {
+          item: { profile_id: 'viewer' },
+          actor: actorOf('viewer'),
+          preview: true,
+        },
         'purchaseItem=i1'
       );
       expect(screen.queryByTestId('modal-slot')).not.toBeInTheDocument();
@@ -571,7 +573,9 @@ describe('Item', () => {
       await user.click(screen.getByRole('button', { name: 'claim-self' }));
       expect(createPurchase).toHaveBeenCalledWith({
         item_id: 'i1',
+        list_id: 'l1',
         guest_name: null,
+        units: 1,
       });
       await waitFor(() =>
         expect(screen.getByTestId('claim-banners')).toHaveAttribute(
@@ -589,8 +593,10 @@ describe('Item', () => {
       );
       expect(createPurchase).toHaveBeenCalledWith({
         item_id: 'i1',
+        list_id: 'l1',
         guest_name: null,
         purchased_by: 'u9',
+        units: 1,
       });
       // The optimistic row carries the name in full, as the server render
       // will; the viewer asserted the claim, so the undo affordance unlocks.
@@ -612,7 +618,9 @@ describe('Item', () => {
       await user.click(screen.getByRole('button', { name: 'claim-guest' }));
       expect(createPurchase).toHaveBeenCalledWith({
         item_id: 'i1',
+        list_id: 'l1',
         guest_name: 'Sam Lee',
+        units: 1,
       });
       await waitFor(() =>
         expect(screen.getByTestId('claim-banners')).toHaveAttribute(
@@ -635,26 +643,36 @@ describe('Item', () => {
     it('EmptyItemId_PayloadCarriesEmptyId', async () => {
       const user = userEvent.setup();
       renderItem(
-        { item: { profile_id: OWNER, id: '' }, actor: actorOf('viewer'), user_name: 'V' },
+        {
+          item: { profile_id: OWNER, id: '' },
+          actor: actorOf('viewer'),
+          user_name: 'V',
+        },
         'purchaseItem='
       );
       await user.click(screen.getByRole('button', { name: 'claim-self' }));
       expect(createPurchase).toHaveBeenCalledWith({
         item_id: '',
+        list_id: 'l1',
         guest_name: null,
+        units: 1,
       });
       await user.click(
         screen.getByRole('button', { name: 'claim-attributed' })
       );
       expect(createPurchase).toHaveBeenCalledWith({
         item_id: '',
+        list_id: 'l1',
         guest_name: null,
         purchased_by: 'u9',
+        units: 1,
       });
       await user.click(screen.getByRole('button', { name: 'claim-guest' }));
       expect(createPurchase).toHaveBeenCalledWith({
         item_id: '',
+        list_id: 'l1',
         guest_name: 'Sam Lee',
+        units: 1,
       });
     });
 
@@ -764,11 +782,6 @@ describe('Item', () => {
   });
 
   describe('BuyClaim', () => {
-    const LINKED_STORE = {
-      name: 'Amazon',
-      link: 'https://a.example',
-      price: '35.50',
-    };
     const buyable = {
       item: { profile_id: OWNER, store: LINKED_STORE },
       actor: actorOf('viewer'),
@@ -799,7 +812,7 @@ describe('Item', () => {
         item: {
           profile_id: OWNER,
           store: LINKED_STORE,
-          quantity_limit: 1,
+          quantity: 1,
           purchases: [
             { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
           ],
@@ -814,7 +827,7 @@ describe('Item', () => {
         item: {
           profile_id: OWNER,
           store: LINKED_STORE,
-          quantity_limit: 3,
+          quantity: 3,
           purchases: [
             { id: 'pm', by: 'self', name: 'You', claimedByViewer: true },
           ],
@@ -825,7 +838,10 @@ describe('Item', () => {
     });
 
     it('NoCompleteStore_ForwardsShowBuyClaimFalse', () => {
-      renderItem({ item: { profile_id: OWNER, store: null }, actor: actorOf('viewer') });
+      renderItem({
+        item: { profile_id: OWNER, store: null },
+        actor: actorOf('viewer'),
+      });
       expect(card()).toHaveAttribute('data-show-buy-claim', 'false');
     });
 
@@ -836,7 +852,9 @@ describe('Item', () => {
       await user.click(screen.getByRole('button', { name: 'card-buy-claim' }));
       expect(createPurchase).toHaveBeenCalledWith({
         item_id: 'i1',
+        list_id: 'l1',
         guest_name: null,
+        units: 1,
       });
       await waitFor(() => expect(popup()).toBeInTheDocument());
       expect(banners()).toHaveAttribute('data-my-claim', 'true');
@@ -874,6 +892,47 @@ describe('Item', () => {
       expect(popup()).not.toBeInTheDocument();
     });
 
+    // Buy & Claim records one unit whatever the entry asks for; the
+    // confirmation is where somebody who bought several raises the count.
+    it('SingleUnitEntry_PopupOffersNoRaise', async () => {
+      const user = userEvent.setup();
+      renderItem(buyable);
+      await user.click(screen.getByRole('button', { name: 'card-buy-claim' }));
+      await waitFor(() => expect(popup()).toBeInTheDocument());
+      expect(screen.getByTestId('undo-max-units')).toHaveTextContent('1');
+    });
+
+    it('MultiUnitEntry_PopupCeilingIsTheRemainderPlusTheClaimedUnit', async () => {
+      const user = userEvent.setup();
+      renderItem({
+        ...buyable,
+        item: { ...buyable.item, quantity: 4, claimed_units: 0 },
+      });
+      await user.click(screen.getByRole('button', { name: 'card-buy-claim' }));
+      await waitFor(() => expect(popup()).toBeInTheDocument());
+      expect(screen.getByTestId('undo-max-units')).toHaveTextContent('4');
+    });
+
+    it('PopupRaise_MovesTheJustRecordedClaimToThatCount', async () => {
+      vi.mocked(setPurchaseUnits).mockResolvedValue({
+        success: true,
+      } as never);
+      const user = userEvent.setup();
+      renderItem({
+        ...buyable,
+        item: { ...buyable.item, quantity: 4, claimed_units: 0 },
+      });
+      await user.click(screen.getByRole('button', { name: 'card-buy-claim' }));
+      await waitFor(() => expect(popup()).toBeInTheDocument());
+
+      await user.click(screen.getByRole('button', { name: 'popup-raise' }));
+
+      expect(setPurchaseUnits).toHaveBeenCalledWith({
+        purchase_id: 'srv-1',
+        units: 3,
+      });
+    });
+
     it('PopupKeep_DismissesWithClaimIntact', async () => {
       const user = userEvent.setup();
       renderItem(buyable);
@@ -891,7 +950,7 @@ describe('Item', () => {
         item: {
           profile_id: OWNER,
           store: LINKED_STORE,
-          quantity_limit: 3,
+          quantity: 3,
           purchases: [
             {
               id: 'pa',
@@ -919,7 +978,7 @@ describe('Item', () => {
     const slot = () => screen.getByTestId('modal-slot');
     const claimedItem = {
       profile_id: OWNER,
-      quantity_limit: 3,
+      quantity: 3,
       purchases: [
         { id: 'pm', by: 'self', name: 'You', claimedByViewer: true },
         { id: 'pa', by: 'other', name: 'Grandma', claimedByViewer: true },
@@ -950,7 +1009,7 @@ describe('Item', () => {
         {
           item: {
             profile_id: OWNER,
-            quantity_limit: 3,
+            quantity: 3,
             purchases: [
               {
                 id: 'pa',
@@ -972,7 +1031,7 @@ describe('Item', () => {
         {
           item: {
             profile_id: OWNER,
-            quantity_limit: 3,
+            quantity: 3,
             purchases: [
               { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
             ],
@@ -990,7 +1049,7 @@ describe('Item', () => {
         {
           item: {
             profile_id: OWNER,
-            quantity_limit: 3,
+            quantity: 3,
             purchases: [
               { id: 'po', by: 'self', name: 'You', claimedByViewer: true },
             ],
@@ -1116,13 +1175,17 @@ describe('Item', () => {
    */
   describe('OwnerNameReveal', () => {
     // What the `claims` projection leaves of another party's claim.
-    const withheldClaim = { id: 'px', by: 'other' as const, claimedByViewer: false };
+    const withheldClaim = {
+      id: 'px',
+      by: 'other' as const,
+      claimedByViewer: false,
+    };
     const ownerAtClaims = {
       tier: 'claims' as const,
       actor: actorOf(OWNER),
       item: {
         profile_id: OWNER,
-        quantity_limit: 3,
+        quantity: 3,
         purchases: [withheldClaim],
       },
     };
@@ -1148,9 +1211,14 @@ describe('Item', () => {
         ...ownerAtClaims,
         item: {
           profile_id: OWNER,
-          quantity_limit: 3,
+          quantity: 3,
           purchases: [
-            { id: 'po', by: 'self' as const, name: 'You', claimedByViewer: true },
+            {
+              id: 'po',
+              by: 'self' as const,
+              name: 'You',
+              claimedByViewer: true,
+            },
           ],
         },
       });
@@ -1161,7 +1229,7 @@ describe('Item', () => {
     });
 
     it('OpenModal_HandsTheModalTheNamedClaimsRatherThanTheWithheldOnes', async () => {
-      vi.mocked(revealedClaimsForItem).mockResolvedValue([
+      vi.mocked(revealedClaimsForEntry).mockResolvedValue([
         { id: 'px', by: 'other', name: 'Grandma', claimedByViewer: false },
       ]);
       renderItem(ownerAtClaims, 'purchaseItem=i1');
@@ -1176,7 +1244,7 @@ describe('Item', () => {
 
     it('RemovalAfterAReveal_DropsTheRowFromTheRevealedListRatherThanTheProjectedOne', async () => {
       const user = userEvent.setup();
-      vi.mocked(revealedClaimsForItem).mockResolvedValue([
+      vi.mocked(revealedClaimsForEntry).mockResolvedValue([
         { id: 'px', by: 'other', name: 'Grandma', claimedByViewer: false },
         { id: 'py', by: 'other', name: 'Uncle', claimedByViewer: false },
       ]);
@@ -1188,7 +1256,9 @@ describe('Item', () => {
         )
       );
 
-      await user.click(screen.getByRole('button', { name: 'modal-remove-first' }));
+      await user.click(
+        screen.getByRole('button', { name: 'modal-remove-first' })
+      );
 
       await waitFor(() =>
         expect(screen.getByTestId('modal-slot')).toHaveAttribute(
@@ -1208,7 +1278,7 @@ describe('Item', () => {
         'data-claim-names',
         ''
       );
-      expect(revealedClaimsForItem).not.toHaveBeenCalled();
+      expect(revealedClaimsForEntry).not.toHaveBeenCalled();
     });
 
     // The claim affordance stays at the minimum: whether the item is claimed,
@@ -1220,14 +1290,14 @@ describe('Item', () => {
         actor: actorOf('viewer'),
         item: {
           profile_id: OWNER,
-          quantity_limit: 3,
+          quantity: 3,
           purchases: [withheldClaim],
         },
       });
       await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
 
       expect(confirmation()).not.toBeInTheDocument();
-      expect(revealedClaimsForItem).not.toHaveBeenCalled();
+      expect(revealedClaimsForEntry).not.toHaveBeenCalled();
     });
 
     it('NonOwnerModalWithAWithheldClaim_KeepsTheProjectedClaims', () => {
@@ -1237,7 +1307,7 @@ describe('Item', () => {
           actor: actorOf('viewer'),
           item: {
             profile_id: OWNER,
-            quantity_limit: 3,
+            quantity: 3,
             purchases: [withheldClaim],
           },
         },
@@ -1248,7 +1318,7 @@ describe('Item', () => {
         'data-claim-names',
         ''
       );
-      expect(revealedClaimsForItem).not.toHaveBeenCalled();
+      expect(revealedClaimsForEntry).not.toHaveBeenCalled();
     });
   });
 
@@ -1259,7 +1329,7 @@ describe('Item', () => {
       actor: actorOf(OWNER),
       item: {
         profile_id: OWNER,
-        quantity_limit: 3,
+        quantity: 3,
         purchases: [
           { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
         ],
@@ -1350,7 +1420,7 @@ describe('Item', () => {
         {
           item: {
             profile_id: OWNER,
-            quantity_limit: 3,
+            quantity: 3,
             purchases: [
               { id: 'pm', by: 'self', name: 'You', claimedByViewer: true },
               {

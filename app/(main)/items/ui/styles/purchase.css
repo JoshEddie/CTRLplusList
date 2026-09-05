@@ -36,11 +36,17 @@
   order: 2;
 }
 
-/* The half-width pair slot can't fit "View item" — the visible label drops
-   to "View". The aria-label keeps the full phrase for AT. */
+/* The half-width pair slot can't fit "View item", so the two labels the link
+   carries swap; the aria-label keeps the full phrase for AT either way. */
 .item-actions:has(.item-actions-add):has(.item-actions-view)
   > .item-actions-view
-  .item-actions-view-label {
+  .view-item-link-short {
+  display: inline;
+}
+
+.item-actions:has(.item-actions-add):has(.item-actions-view)
+  > .item-actions-view
+  .view-item-link-label {
   display: none;
 }
 

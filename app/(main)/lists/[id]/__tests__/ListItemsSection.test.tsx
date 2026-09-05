@@ -156,6 +156,24 @@ describe('ListItemsSection', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  describe('EditMode', () => {
+    it('Owner_RendersNothingSoTheModeOwnsTheItemSurface', async () => {
+      const { container } = render(
+        await ListItemsSection(props('l1', { edit: '1' }))
+      );
+      expect(container).toBeEmptyDOMElement();
+    });
+
+    it('NonOwner_StillRendersTheOrdinaryItemsContainer', async () => {
+      vi.mocked(getUserIdByEmail).mockResolvedValue({
+        id: 'u2',
+        name: 'Viewer',
+      } as never);
+      render(await ListItemsSection(props('l1', { edit: '1' })));
+      expect(screen.getByTestId('items-container')).toBeInTheDocument();
+    });
+  });
+
   describe('GuardRedirects', () => {
     it('MissingListAuthedViewer_RedirectsToLists', async () => {
       vi.mocked(getList).mockResolvedValue(null as never);

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { multiUnitEntryWithRoom, openList } from '../test/helpers/e2e/utils';
 
 // Consolidated e2e coverage for the #234/#235/#260 surface (deferred from the
 // buy-and-claim-authed change): the ItemActions matrix spot-check, Buy & Claim's
@@ -12,23 +13,7 @@ const LIST_HEADING = "Bob's Holiday List";
 const BUY_CLAIM = 'Buy & Claim — opens in new tab';
 const VIEW_ITEM = 'View item — opens in new tab';
 
-async function gotoList(page: Page) {
-  await page.goto(LIST);
-  await expect(
-    page.getByRole('heading', { name: LIST_HEADING }).first()
-  ).toBeVisible();
-}
-
-// A multi-quantity item (claim counter rendered) the viewer can still claim
-// and has not already claimed — the slots-remain state #260 routes.
-function multiQuantityClaimable(page: Page) {
-  return page
-    .locator('.item-container')
-    .filter({ has: page.getByRole('button', { name: 'Add Claim' }) })
-    .filter({ has: page.locator('.claim-counter') })
-    .filter({ hasNotText: 'You claimed this' })
-    .first();
-}
+const gotoList = (page: Page) => openList(page, LIST, LIST_HEADING);
 
 // A claimable linked item without a viewer claim — the Buy & Claim state.
 function buyClaimable(page: Page) {
@@ -46,7 +31,7 @@ test('AddClaimWhileClaimed_RoutesToClaimFlow_ManageListRemovesPerClaim', async (
 }) => {
   await gotoList(page);
 
-  const item = multiQuantityClaimable(page);
+  const { card: item } = await multiUnitEntryWithRoom(page, 2);
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
   // First claim: the ordinary one-tap self-claim.
@@ -109,7 +94,9 @@ test('AddClaimWhileClaimed_RoutesToClaimFlow_ManageListRemovesPerClaim', async (
   // A fresh server render agrees: self-claim kept, additional claim gone.
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
-  await expect(claimedAfter.getByText('You claimed this').first()).toBeVisible();
+  await expect(
+    claimedAfter.getByText('You claimed this').first()
+  ).toBeVisible();
   await expect(page.getByText(`for ${purchaser}`)).toHaveCount(0);
 });
 
@@ -153,7 +140,9 @@ test('BuyClaim_MatrixSpotCheck_KeptPathPersistsClaim', async ({
 
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
-  await expect(claimedAfter.getByText('You claimed this').first()).toBeVisible();
+  await expect(
+    claimedAfter.getByText('You claimed this').first()
+  ).toBeVisible();
 });
 
 test('BuyClaim_UndoPath_ReleasesClaim', async ({ page, context }) => {

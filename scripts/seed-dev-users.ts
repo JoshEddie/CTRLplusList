@@ -369,21 +369,28 @@ function itemsForList(listId: string): string[] {
   return out;
 }
 
-// Purchase fan-out per item:
-//   qty_limit = 3:       1 (partial) or 3 (fully-claimed), per listIdx parity
-//   qty_limit = null:    1 (single buyer) or 4 (many buyers), per listIdx parity
-//   qty_limit = 1:       0 or 1 via stride derived from the target ratio —
+// Purchase fan-out per item, keyed off the entry's quantity:
+//   quantity = 3:        1 (partial) or 3 (fully-claimed), per listIdx parity
+//   quantity = 4:        1 (single buyer) or 2 (several buyers), per listIdx
+//                        parity — two units short on purpose, so every list
+//                        carrying this seat has a multi-unit card that still
+//                        accepts two more claims. Capacity is enforced, so a
+//                        seat can no longer be both busy and open by accident.
+//   quantity = 1:        0 or 1 via stride derived from the target ratio —
 //                        viewer's archived items run hotter (~70%) since
 //                        archived often means purchased.
+// Never exceeds the quantity: capacity is now enforced, so a seed that
+// over-claims an entry would seed a state the app refuses to reach.
 function purchaseCountFor(
-  item: { archived_at: Date | null; quantity_limit: number | null },
+  item: { archived_at: Date | null },
+  quantity: number,
   ownerId: string,
   listIdx: number,
   itemIdx: number,
   baseRatio: number
 ): number {
-  if (item.quantity_limit === 3) return listIdx % 2 === 0 ? 1 : 3;
-  if (item.quantity_limit === null) return listIdx % 2 === 0 ? 1 : 4;
+  if (quantity === 3) return listIdx % 2 === 0 ? 1 : 3;
+  if (quantity === 4) return listIdx % 2 === 0 ? 1 : 2;
   const effectiveRatio =
     ownerId === VIEWER_ID && item.archived_at ? 0.7 : baseRatio;
   const stride = Math.max(1, Math.round(1 / effectiveRatio));
@@ -787,9 +794,14 @@ function appendLinklessExtras(
     profile_id: string;
     image_url: string;
     archived_at: Date | null;
-    quantity_limit: number | null;
   }[],
-  listItemRows: { list_id: string; item_id: string; position: number }[]
+  listItemRows: {
+    list_id: string;
+    item_id: string;
+    position: number;
+    quantity: number;
+    shown: boolean;
+  }[]
 ): Map<string, string> {
   const pricedByItem = new Map<string, string>();
   LINKLESS_EXTRAS.forEach((extra, i) => {
@@ -802,12 +814,13 @@ function appendLinklessExtras(
       profile_id: listProfileOf(list),
       image_url: '',
       archived_at: null,
-      quantity_limit: 1,
     });
     listItemRows.push({
       list_id: extra.list_id,
       item_id: itemId,
       position: list.itemNames.length + i,
+      quantity: 1,
+      shown: true,
     });
     if (extra.price !== '') pricedByItem.set(itemId, extra.price);
   });
@@ -1110,14 +1123,14 @@ async function main() {
   // Archive ~20% of viewer-owned items so the /items archived filter has
   // content. Fixed reference epoch keeps archived_at stable across reseeds.
   const ARCHIVE_EPOCH = new Date('2026-04-01T00:00:00Z').getTime();
-  // Rotate quantity_limit across positions [0, 1, last] on a 3-list cycle so
-  // every position renders every value (3, null, 1) once per cycle. Lets the
-  // preview surface multi-claim, unlimited, and single-claim layouts at known
+  // Rotate quantity across positions [0, 1, last] on a 3-list cycle so every
+  // position renders every value (3, 4, 1) once per cycle. Lets the preview
+  // surface the partial, many-buyer, and single-claim layouts at known
   // positions without manual UI clicking.
-  const QTY_ROTATION: (number | null)[][] = [
-    [3, null, 1], // listIdx % 3 === 0
-    [null, 1, 3], // listIdx % 3 === 1
-    [1, 3, null], // listIdx % 3 === 2
+  const QTY_ROTATION: number[][] = [
+    [3, 4, 1], // listIdx % 3 === 0
+    [4, 1, 3], // listIdx % 3 === 1
+    [1, 3, 4], // listIdx % 3 === 2
   ];
   const itemRows: {
     id: string;
@@ -1126,10 +1139,16 @@ async function main() {
     profile_id: string;
     image_url: string;
     archived_at: Date | null;
-    quantity_limit: number | null;
   }[] = [];
-  const listItemRows: { list_id: string; item_id: string; position: number }[] =
-    [];
+  // `quantity` is the entry's capacity and the number every claim is measured
+  // against; an item carries no quantity of its own.
+  const listItemRows: {
+    list_id: string;
+    item_id: string;
+    position: number;
+    quantity: number;
+    shown: boolean;
+  }[] = [];
   seedLists.forEach((list, listIdx) => {
     const rotation = QTY_ROTATION[listIdx % QTY_ROTATION.length];
     const lastIdx = list.itemNames.length - 1;
@@ -1137,16 +1156,16 @@ async function main() {
       const itemId = `${list.id}-item-${idx + 1}`;
       const h = hash(itemId);
       const archive = list.user_id === VIEWER_ID && h % 5 === 0; // ~20% of viewer items
-      let quantity_limit: number | null = 1;
-      if (idx === 0) quantity_limit = rotation[0];
-      else if (idx === 1) quantity_limit = rotation[1];
-      else if (idx === lastIdx) quantity_limit = rotation[2];
+      let quantity = 1;
+      if (idx === 0) quantity = rotation[0];
+      else if (idx === 1) quantity = rotation[1];
+      else if (idx === lastIdx) quantity = rotation[2];
       // The claim-visibility seat's first item is pinned to a single claim so
       // its seeded claim fills it: what a raised baseline discloses on a
       // non-owner's card is the fully-claimed treatment, and the rotation
       // would otherwise decide that per run position.
       if (list.id === 'dev-list-visibility-wishlist' && idx === 0) {
-        quantity_limit = 1;
+        quantity = 1;
       }
       // Every third item on every fourth list seeds imageless so the lazy
       // placeholder-mint path (empty container -> generated art on first view)
@@ -1163,14 +1182,22 @@ async function main() {
         archived_at: archive
           ? new Date(ARCHIVE_EPOCH - (h % 30) * 86400000)
           : null,
-        quantity_limit,
       });
-      listItemRows.push({ list_id: list.id, item_id: itemId, position: idx });
+      listItemRows.push({
+        list_id: list.id,
+        item_id: itemId,
+        position: idx,
+        quantity,
+        shown: true,
+      });
     });
   });
   const linklessPricedByItem = appendLinklessExtras(itemRows, listItemRows);
-  // onConflictDoUpdate so re-runs apply new image_url, archived_at, and
-  // quantity_limit to previously-seeded rows.
+  const quantityOf = new Map(
+    listItemRows.map((row) => [row.item_id, row.quantity])
+  );
+  // onConflictDoUpdate so re-runs apply new image_url and archived_at to
+  // previously-seeded rows.
   await db
     .insert(items)
     .values(itemRows)
@@ -1180,10 +1207,15 @@ async function main() {
         description: sql`excluded.description`,
         image_url: sql`excluded.image_url`,
         archived_at: sql`excluded.archived_at`,
-        quantity_limit: sql`excluded.quantity_limit`,
       },
     });
-  await db.insert(list_items).values(listItemRows).onConflictDoNothing();
+  await db
+    .insert(list_items)
+    .values(listItemRows)
+    .onConflictDoUpdate({
+      target: [list_items.list_id, list_items.item_id],
+      set: { quantity: sql`excluded.quantity`, shown: sql`excluded.shown` },
+    });
   console.log(
     `  items: ${itemRows.length} upserted, list_items: ${listItemRows.length} upserted`
   );
@@ -1348,6 +1380,13 @@ async function main() {
   const friendIds = FRIENDS.map((f) => friendId(f.slug));
   const GUEST_NAMES = ['Grandma', 'Uncle Mike', 'A friend', 'Neighbor Pat'];
   const PURCHASE_EPOCH = new Date('2026-05-01T00:00:00Z').getTime();
+  // Every seeded item sits on exactly one list, so a claim's list is its item's
+  // only entry. Snapshot columns are left null on purpose: null falls back to
+  // the live item, and seeding a copy of a row that is right there would be
+  // fabricating a record of an edit that never happened.
+  const listOfItem = new Map(
+    listItemRows.map((row) => [row.item_id, row.list_id])
+  );
   const purchaseRows: {
     id: string;
     item_id: string;
@@ -1384,7 +1423,7 @@ async function main() {
       purchased_at: ATTRIBUTION_EPOCH,
     },
     {
-      // Owner self-claim (unlimited item): claimer and purchaser are both the
+      // Owner self-claim: claimer and purchaser are both the
       // owner — the spoiler-view "I bought this myself" state.
       id: 'dev-purchase-owner-self',
       item_id: 'dev-list-viewer-birthday-item-2',
@@ -1448,9 +1487,9 @@ async function main() {
   const specialClaimItems = new Set(specialClaimRows.map((r) => r.item_id));
   // Position-based selection per list (rather than global hash) so every list
   // — including small friend lists — gets a guaranteed share. For each list,
-  // mark every Nth item as purchased. Multi-claim and unlimited items receive
-  // multiple purchase rows (fan-out) so partial- and fully-claimed UI states
-  // are reachable from seeded data alone.
+  // mark every Nth item as purchased. Multi-unit entries receive multiple
+  // purchase rows (fan-out) so partial- and fully-claimed UI states are
+  // reachable from seeded data alone.
   seedLists.forEach((list, listIdx) => {
     const listItemIds = list.itemNames.map(
       (_, idx) => `${list.id}-item-${idx + 1}`
@@ -1468,6 +1507,7 @@ async function main() {
 
       const purchaseCount = purchaseCountFor(
         item,
+        quantityOf.get(itemId) ?? 1,
         list.user_id,
         listIdx,
         idx,
@@ -1511,7 +1551,13 @@ async function main() {
   if (purchaseRows.length > 0) {
     await db
       .insert(purchases)
-      .values(purchaseRows)
+      .values(
+        purchaseRows.map((row) => ({
+          ...row,
+          list_id: listOfItem.get(row.item_id)!,
+          units: 1,
+        }))
+      )
       .onConflictDoUpdate({
         target: purchases.id,
         set: {
@@ -1519,6 +1565,8 @@ async function main() {
           claimed_by_profile_id: sql`excluded.claimed_by_profile_id`,
           guest_name: sql`excluded.guest_name`,
           purchased_at: sql`excluded.purchased_at`,
+          list_id: sql`excluded.list_id`,
+          units: sql`excluded.units`,
         },
       });
   }

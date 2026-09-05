@@ -127,6 +127,27 @@
       "when": 1788277228687,
       "tag": "0017_familiar_changeling",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788365086886,
+      "tag": "0018_quantity_units_expand",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788368304004,
+      "tag": "0019_claims_belong_to_entries",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1788380358590,
+      "tag": "0020_quantity_belongs_to_the_entry",
+      "breakpoints": true
     }
   ]
 }

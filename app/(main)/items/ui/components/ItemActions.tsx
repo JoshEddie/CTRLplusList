@@ -1,6 +1,8 @@
 'use client';
 
 import { Button, LinkButton } from '@/app/ui/components/button';
+import ViewItemLink, { storeLink } from './ViewItemLink';
+import { getMessage } from '@/lib/i18n/utils';
 import { atLeast } from '@/lib/spoilers';
 import type { ItemStoreTable, SpoilerTier } from '@/lib/types';
 import { MdCheck, MdOpenInNew } from 'react-icons/md';
@@ -15,6 +17,8 @@ type ItemActionsProps = {
   guestViewer?: boolean;
   /** The item carries claims the viewer's resolved tier discloses. */
   hasAnyClaim: boolean;
+  /** A list entry exists to claim against. False on the item library, which spans every list and so names none. */
+  claimable: boolean;
   /** The viewer's resolved tier (`spoiler-visibility`). */
   tier: SpoilerTier;
   /** Authed non-owner Buy & Claim signal. */
@@ -39,6 +43,7 @@ export default function ItemActions({
   viewerClaimed,
   guestViewer,
   hasAnyClaim,
+  claimable,
   tier,
   showBuyClaim,
   store,
@@ -59,17 +64,19 @@ export default function ItemActions({
     !viewOnly && (viewerClaimed || (isOwner && revealed && hasAnyClaim));
   const showStatus =
     !viewOnly && revealed && !isOwner && fullyClaimed && !viewerClaimed;
-  const ownerCanAdd = revealed
-    ? !fullyClaimed && !hasAnyClaim
-    : !viewerClaimed;
+  const ownerCanAdd = revealed ? !fullyClaimed && !hasAnyClaim : !viewerClaimed;
   const nonOwnerCanAdd = !claimedGuest && (!revealed || !fullyClaimed);
-  const showAdd = !viewOnly && (isOwner ? ownerCanAdd : nonOwnerCanAdd);
+  // No entry, no claim: a claim is made against an item's presence on a list,
+  // so a surface that names no list offers no way to create one. Managing a
+  // claim that already exists is unaffected — removal is row-based.
+  const showAdd =
+    !viewOnly && claimable && (isOwner ? ownerCanAdd : nonOwnerCanAdd);
   // Keyed on a navigable link, never mere store presence — a PRICED/linkless
   // item must keep its Add Claim-only action set (design D-Linkless-256).
   const showBuy = !viewOnly && revealed && !!showBuyClaim && !!store?.link;
   // Keyed on a navigable link, never mere store presence — a PRICED/linkless
   // store carries a price line but no View item link (item-actions spec).
-  const showView = !!store?.link;
+  const showView = !!storeLink(store);
   // When View item is the card's only action (owner spoilers off, view-only)
   // it is the primary intent — promote it from the subordinate secondary look.
   const viewIsOnlyAction = showView && !showManage && !showStatus && !showAdd;
@@ -85,13 +92,13 @@ export default function ItemActions({
           href={store.link}
           target="_blank"
           rel="noreferrer"
-          aria-label="Buy & Claim — opens in new tab"
+          aria-label={getMessage('buy_claim_aria_label')}
           onClick={(e) => {
             e.stopPropagation();
             onBuyClaimClick?.();
           }}
         >
-          <span>Buy &amp; Claim</span>
+          <span>{getMessage('buy_claim_label')}</span>
           <MdOpenInNew aria-hidden />
         </LinkButton>
       )}
@@ -101,7 +108,7 @@ export default function ItemActions({
           className="item-actions-claim"
           onClick={onPurchaseClick}
         >
-          {isOwner ? 'Manage claims' : 'Manage claim'}
+          {getMessage(isOwner ? 'claim_manage_owner' : 'claim_manage_viewer')}
         </Button>
       )}
       {showStatus && (
@@ -111,7 +118,7 @@ export default function ItemActions({
         >
           <span className="claimed-state-label">
             <MdCheck aria-hidden />
-            Fully claimed
+            {getMessage('claim_fully_claimed')}
           </span>
         </div>
       )}
@@ -121,25 +128,15 @@ export default function ItemActions({
           className="item-actions-add"
           onClick={onAddClaimClick}
         >
-          Add Claim
+          {getMessage('claim_add_label')}
         </Button>
       )}
-      {showView && (
-        <LinkButton
-          variant={viewIsOnlyAction ? 'primary' : 'secondary'}
-          className="item-actions-view"
-          href={store.link}
-          target="_blank"
-          rel="noreferrer"
-          aria-label="View item — opens in new tab"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <span>
-            View <span className="item-actions-view-label">item</span>
-          </span>
-          <MdOpenInNew aria-hidden />
-        </LinkButton>
-      )}
+      <ViewItemLink
+        store={store}
+        variant={viewIsOnlyAction ? 'primary' : 'secondary'}
+        className="item-actions-view"
+        onClick={(e) => e.stopPropagation()}
+      />
     </div>
   );
 }

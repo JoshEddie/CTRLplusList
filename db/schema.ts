@@ -99,10 +99,15 @@ export const items = pgTable('items', {
   updated_by_user_id: text('updated_by_user_id').references(() => users.id, {
     onDelete: 'set null',
   }),
-  quantity_limit: integer('quantity_limit').default(1),
   archived_at: timestamp('archived_at'),
 });
 
+// The list entry: an item's presence on one list, and what claims are made
+// against. `quantity` is the only capacity there is — an item carries no
+// quantity of its own. Claimed units are NOT stored: they are
+// SUM(purchases.units) over the entry, and a stored copy would be a second
+// answer to the same question with nothing able to detect it going wrong
+// (ADR-0016). Nothing reads `shown`.
 export const list_items = pgTable(
   'list_items',
   {
@@ -113,6 +118,8 @@ export const list_items = pgTable(
       .references(() => items.id, { onDelete: 'cascade' })
       .notNull(),
     position: integer('position').notNull(),
+    quantity: integer('quantity').notNull().default(1),
+    shown: boolean('shown').notNull().default(true),
   },
   (table) => [primaryKey({ columns: [table.list_id, table.item_id] })]
 );
@@ -204,9 +211,22 @@ export const purchases = pgTable(
   'purchases',
   {
     id: text('id').primaryKey(),
-    item_id: text('item_id')
-      .references(() => items.id, { onDelete: 'cascade' })
-      .notNull(),
+    // Nullable on both references so a claim outlives the thing it was made
+    // against: deleting an item, or a list, detaches the claim rather than
+    // destroying somebody's record of a real purchase.
+    item_id: text('item_id').references(() => items.id, {
+      onDelete: 'set null',
+    }),
+    list_id: text('list_id').references(() => lists.id, {
+      onDelete: 'set null',
+    }),
+    units: integer('units').notNull().default(1),
+    // Snapshot of what was claimed, as it was at claim time. Null falls back
+    // to the live item, so rows written before the snapshot existed render
+    // exactly as they always have.
+    item_name: text('item_name'),
+    item_price: text('item_price'),
+    store_name: text('store_name'),
     profile_id: text('profile_id').references(() => profiles.id, {
       onDelete: 'cascade',
     }),
@@ -218,8 +238,11 @@ export const purchases = pgTable(
     purchased_at: timestamp('purchased_at').defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex('purchases_item_profile_unique_idx')
-      .on(table.item_id, table.profile_id)
+    // One claim per purchaser per ENTRY. An item-scoped predecessor stood here
+    // and was dropped: it refused a purchaser claiming the same item on two
+    // lists, which is exactly what independent per-entry pools permit.
+    uniqueIndex('purchases_list_item_profile_unique_idx')
+      .on(table.list_id, table.item_id, table.profile_id)
       .where(sql`${table.profile_id} IS NOT NULL`),
   ]
 );

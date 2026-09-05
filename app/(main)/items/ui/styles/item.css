@@ -195,8 +195,22 @@
   display: none;
 }
 
+/* Owner's entry-quantity dialog, inside the shared Modal shell. A plain
+   stack — the field and the button group bring their own spacing. */
+.entry-quantity {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.entry-quantity-title {
+  font-size: 20px;
+  text-align: center;
+  margin: 0;
+}
+
 /* Multi-claim counter shown to viewers */
-.claim-counter {
+.item-entry-line {
   font-size: 12px;
   color: var(--muted-text-color);
   font-weight: 500;
@@ -506,7 +520,6 @@
   /* Drilled into a facet: the sheet shows that panel alone, so the root
      rows step aside rather than scrolling along underneath it. */
   .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--sort,
-  .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--purchases,
   .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--stores,
   .items-toolbar-filters-group[data-facet] > .items-toolbar-cell--price {
     display: none;
@@ -534,7 +547,6 @@
 
   /* Inside the sheet, each filter cell stacks full-width. */
   .items-toolbar-filters-group > .items-toolbar-cell--sort,
-  .items-toolbar-filters-group > .items-toolbar-cell--purchases,
   .items-toolbar-filters-group > .items-toolbar-cell--stores,
   .items-toolbar-filters-group > .items-toolbar-cell--price {
     width: 100%;
@@ -677,10 +689,9 @@
   width: auto;
 }
 
-/* Toolbar selects (Sort / Purchases / Show) should shrink to fit their
-   currently-selected option's text, not stretch to fill the grid cell. */
-.items-toolbar-cell--sort .form_field,
-.items-toolbar-cell--purchases .form_field {
+/* The sort select shrinks to fit its selected option's text rather than
+   stretching to fill the grid cell. */
+.items-toolbar-cell--sort .form_field {
   width: auto;
   min-width: max-content;
 }
@@ -735,7 +746,7 @@
    col4: ItemActions block (spans rows 1-2; contents owned by item-actions)
    col5: owner-actions kebab (final column, owner only)
    row3: description (spans cols 1/-1, full-width footer line)
-   row4: claim-counter if present (spans cols 1/-1) */
+   row4: item-entry-line if present (spans cols 1/-1) */
 .item-list .item-container,
 .sortable-item .item-container {
   display: grid;
@@ -936,8 +947,8 @@
   font-size: 13px;
 }
 
-.item-list .claim-counter,
-.sortable-item .claim-counter {
+.item-list .item-entry-line,
+.sortable-item .item-entry-line {
   grid-column: 1 / -1;
   grid-row: 4;
   margin-top: 0;
@@ -981,7 +992,7 @@
     margin-bottom: 10px;
   }
 
-  .choose-items-select .item-container {
+  .edit-mode-row .item-container {
     border: none;
   }
 
@@ -1077,8 +1088,8 @@
     padding: 6px 10px;
   }
 
-  .item-list .claim-counter,
-  .sortable-item .claim-counter {
+  .item-list .item-entry-line,
+  .sortable-item .item-entry-line {
     display: none;
   }
 }
@@ -1190,7 +1201,7 @@
     min-height: 36px;
   }
 
-  .item-grid .claim-counter {
+  .item-grid .item-entry-line {
     display: none;
   }
 }

@@ -5,6 +5,7 @@
  * profile renders its art on the same terms as a self-profile does.
  */
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { PurchaseView } from '@/lib/types';
@@ -213,5 +214,110 @@ describe('WithheldClaims', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(3);
     expect(screen.getByText('Grace')).toBeInTheDocument();
     expect(screen.queryByText(/other claim/)).not.toBeInTheDocument();
+  });
+
+  // A claim's units are editable wherever it is removable — the viewer's own
+  // claim, one they asserted, and (in the owner's master list) somebody else's.
+  // An entry asking for one has nothing to edit.
+  describe('UnitEditing', () => {
+    const mountEditable = (
+      over: Partial<React.ComponentProps<typeof ClaimsList>> = {}
+    ) => {
+      const onUpdateUnits = vi.fn();
+      render(
+        <ClaimsList
+          claims={[claim({ by: 'self', name: 'You', units: 2 })]}
+          canRemove={() => true}
+          capacity={{ quantity: 4, remaining: 2 }}
+          onRemoveClaim={vi.fn()}
+          onUpdateUnits={onUpdateUnits}
+          {...over}
+        />
+      );
+      return onUpdateUnits;
+    };
+
+    it('EntryWithRoomToGrow_ShowsTheClaimsCurrentUnits', () => {
+      mountEditable();
+
+      expect(screen.getByRole('spinbutton')).toHaveValue(2);
+      expect(screen.getByRole('spinbutton')).toHaveAttribute('max', '4');
+    });
+
+    it('StatusGiven_ItSitsBesideTheUnitsControl', () => {
+      mountEditable({ unitsStatus: '2 of 4 claimed' });
+
+      expect(screen.getByText('2 of 4 claimed')).toBeInTheDocument();
+    });
+
+    it('NoStatusGiven_TheRowSaysNothingAboutWhatIsClaimed', () => {
+      mountEditable();
+
+      expect(screen.queryByText(/of 4 claimed/)).not.toBeInTheDocument();
+    });
+
+    it('UntouchedCount_LeavesUpdateInert', () => {
+      const onUpdateUnits = mountEditable();
+
+      expect(screen.getByRole('button', { name: 'Update' })).toBeDisabled();
+      expect(onUpdateUnits).not.toHaveBeenCalled();
+    });
+
+    it('SingleUnitEntry_RendersNoUnitsControl', () => {
+      mountEditable({
+        claims: [claim({ by: 'self', name: 'You', units: 1 })],
+        capacity: { quantity: 1, remaining: 0 },
+      });
+
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+    });
+
+    it('RowTheViewerCannotRemove_RendersNoUnitsControl', () => {
+      mountEditable({ canRemove: () => false });
+
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+    });
+
+    it('MasterUnclaimBelowTheOwnerFloor_RendersNoUnitsControl', () => {
+      mountEditable({ removalDisabled: true });
+
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+    });
+
+    it('NewCountThenUpdate_ReportsTheClaimAndItsUnits', async () => {
+      const user = userEvent.setup();
+      const onUpdateUnits = mountEditable();
+
+      await user.clear(screen.getByRole('spinbutton'));
+      await user.type(screen.getByRole('spinbutton'), '4');
+      await user.click(screen.getByRole('button', { name: 'Update to 4' }));
+
+      expect(onUpdateUnits).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'p1' }),
+        4
+      );
+    });
+
+    it('CountBeyondTheCeiling_ClampedToIt', async () => {
+      const user = userEvent.setup();
+      const onUpdateUnits = mountEditable();
+
+      await user.clear(screen.getByRole('spinbutton'));
+      await user.type(screen.getByRole('spinbutton'), '9');
+      await user.click(screen.getByRole('button', { name: 'Update to 4' }));
+
+      expect(onUpdateUnits).toHaveBeenCalledWith(expect.anything(), 4);
+    });
+
+    it('CountMovedThenBack_LeavesUpdateInertAgain', async () => {
+      const user = userEvent.setup();
+      const onUpdateUnits = mountEditable();
+
+      await user.click(screen.getByRole('button', { name: 'Increase' }));
+      await user.click(screen.getByRole('button', { name: 'Decrease' }));
+
+      expect(screen.getByRole('button', { name: 'Update' })).toBeDisabled();
+      expect(onUpdateUnits).not.toHaveBeenCalled();
+    });
   });
 });

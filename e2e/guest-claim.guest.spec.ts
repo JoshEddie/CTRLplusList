@@ -21,7 +21,9 @@ test('GuestClaim_PublicList_RecordsGuestPurchase', async ({ page }) => {
   await expect(
     page.getByRole('heading', { name: "Grace's Birthday" }).first()
   ).toBeVisible();
-  await expect(page.getByText('Sign In', { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText('Sign In', { exact: true }).first()
+  ).toBeVisible();
 
   // Open the purchase modal on a claimable item and take the "continue as
   // guest" branch. A per-run-unique name makes the recorded claim

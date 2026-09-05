@@ -13,7 +13,6 @@ export function mockActions(): ItemActions {
     addPhoto: vi.fn(),
     setStore: vi.fn(),
     setLists: vi.fn(),
-    setQty: vi.fn(),
   };
 }
 
@@ -27,7 +26,6 @@ export function makeItem(over: Partial<ItemViewModel> = {}): ItemViewModel {
     description: '',
     store: { name: 'Lodge', link: 'https://lodge', price: '29.99' },
     lists: [],
-    qty: 1,
     ...over,
   };
 }

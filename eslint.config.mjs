@@ -34,6 +34,10 @@ const eslintConfig = [
       // A Drizzle schema is one flat cohort of table declarations — no
       // domain seam to split on, so the size bands don't apply.
       'db/schema.ts',
+      // Same shape: one flat alphabetical cohort of message strings. Splitting
+      // it would move "which file does this string go in?" from nowhere to
+      // everywhere.
+      'lib/i18n/en.ts',
     ],
     plugins: { sonarjs },
     rules: {

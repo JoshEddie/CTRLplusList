@@ -54,7 +54,6 @@ export default function ItemsToolbar({
   const q = searchParams?.get('q') ?? '';
   const sort = (searchParams?.get('sort') as SortKey | null) ?? defaultSort;
   const selectedStores = searchParams?.getAll('store') ?? [];
-  const show = searchParams?.get('show') ?? 'all';
   const priceMin = searchParams?.get('price_min') ?? '';
   const priceMax = searchParams?.get('price_max') ?? '';
   const view = searchParams?.get('view') === 'list' ? 'list' : 'grid';
@@ -121,7 +120,6 @@ export default function ItemsToolbar({
   const clearAll = () =>
     updateParams({
       sort: null,
-      show: null,
       store: null,
       price_min: null,
       price_max: null,
@@ -137,7 +135,6 @@ export default function ItemsToolbar({
     mode,
     sort,
     defaultSort,
-    show,
     selectedStores,
     priceMin,
     priceMax,
@@ -189,11 +186,9 @@ export default function ItemsToolbar({
           key={String(filtersOpen)}
           open={filtersOpen}
           onClose={closeFilters}
-          mode={mode}
           sort={sort}
           defaultSort={defaultSort}
           sortOptions={sortOptions}
-          show={show}
           storeOptions={storeOptions}
           selectedStores={selectedStores}
           showPriceFilter={showPriceFilter}

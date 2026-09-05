@@ -4,7 +4,10 @@ import { Button } from '@/app/ui/components/button';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
 import { archiveItem } from '@/lib/data/item.actions';
-import { removeListItem } from '@/lib/data/listItems.actions';
+import {
+  removeListItem,
+  setListItemQuantity,
+} from '@/lib/data/listItems.actions';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -12,30 +15,36 @@ import {
   MdArchive,
   MdModeEdit,
   MdMoreHoriz,
+  MdNumbers,
   MdRemoveCircleOutline,
   MdUnarchive,
 } from 'react-icons/md';
+import QuantityDialog from './QuantityDialog';
 
 export default function OwnerActions({
   itemId,
   showArchiveAction,
   archivedView,
   listId,
+  quantity,
   pathname,
   searchParams,
-  onArchived,
+  onChanged,
 }: {
   itemId: string;
   showArchiveAction?: boolean;
   archivedView?: boolean;
   listId?: string;
+  /** The entry's quantity, present with `listId` — the only place it is set. */
+  quantity?: number;
   pathname: string;
   searchParams: ReadonlyURLSearchParams | null;
-  onArchived: () => void;
+  onChanged: () => void;
 }) {
   const kebabRef = useRef<HTMLButtonElement>(null);
   const [kebabOpen, setKebabOpen] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [showQuantity, setShowQuantity] = useState(false);
 
   const toggleArchive = async () => {
     const nextArchived = !archivedView;
@@ -44,7 +53,7 @@ export default function OwnerActions({
       success: nextArchived ? 'Archived' : 'Unarchived',
       error: 'Failed',
     });
-    if (result?.success) onArchived();
+    if (result?.success) onChanged();
   };
 
   const handleRemoveConfirm = async () => {
@@ -56,7 +65,21 @@ export default function OwnerActions({
       success: 'Removed from list',
       error: 'Failed to remove',
     });
-    if (result?.success) onArchived();
+    if (result?.success) onChanged();
+  };
+
+  const handleQuantitySave = async (next: number) => {
+    /* v8 ignore next -- defensive: the Quantity menu entry and its dialog only render when listId is present. */
+    if (!listId) return;
+    const result = await toast.promise(
+      setListItemQuantity(listId, itemId, next),
+      {
+        loading: 'Saving',
+        success: 'Quantity updated',
+        error: 'Failed to update quantity',
+      }
+    );
+    if (result?.success) onChanged();
   };
 
   return (
@@ -103,6 +126,17 @@ export default function OwnerActions({
         )}
         {listId && (
           <MenuItem
+            icon={<MdNumbers size={18} />}
+            onClick={() => {
+              setKebabOpen(false);
+              setShowQuantity(true);
+            }}
+          >
+            Quantity
+          </MenuItem>
+        )}
+        {listId && (
+          <MenuItem
             tone="danger"
             icon={<MdRemoveCircleOutline size={18} />}
             onClick={() => {
@@ -114,6 +148,13 @@ export default function OwnerActions({
           </MenuItem>
         )}
       </Menu>
+      {showQuantity && (
+        <QuantityDialog
+          quantity={quantity ?? 1}
+          onClose={() => setShowQuantity(false)}
+          onSave={handleQuantitySave}
+        />
+      )}
       {listId && (
         <ConfirmDialog
           isOpen={showRemoveConfirm}
