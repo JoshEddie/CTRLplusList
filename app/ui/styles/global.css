@@ -127,9 +127,11 @@ body {
 
 /* While a fixed overlay sheet owns the screen, the document behind it must
    not scroll. On <html> rather than <body> so the scroll position survives
-   (the position:fixed body trick loses it). */
-html.has-open-sheet,
-html:has(.modal-overlay-scrim) {
+   (the position:fixed body trick loses it). The class is owned by
+   useScrollLock, not a `:has(.modal-overlay-scrim)` selector: the App Router
+   keeps the route you navigated back from mounted-but-hidden, so a structural
+   selector goes on matching a scrim nobody can see and never unlocks. */
+html.has-open-sheet {
   overflow: hidden;
   /* overflow: hidden stops scrolling but not the iOS rubber-band, and the
      bounce carries position:fixed chrome with it (the nav-jump on input
