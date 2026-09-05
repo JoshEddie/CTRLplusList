@@ -7,6 +7,7 @@ import AltvatarPreview from '@/app/ui/components/altvatar/AltvatarPreview';
 import ThingPicker from '@/app/ui/components/altvatar/ThingPicker';
 import { Button, CloseButton } from '@/app/ui/components/button';
 import { useIsClient } from '@/app/ui/hooks/useIsClient';
+import { useScrollLock } from '@/app/ui/hooks/useScrollLock';
 import '@/app/ui/styles/altvatar.css';
 import { accentVars, randomAccentName } from '@/lib/accent';
 import {
@@ -54,6 +55,7 @@ export default function AltvatarCustomizer({
   onCancel: () => void;
 }) {
   const mounted = useIsClient();
+  useScrollLock(mounted);
   const [draft, setDraft] = useState(value);
   const [tab, setTab] = useState<AxisTab>('Basics');
   const panelRef = useRef<HTMLDivElement>(null);

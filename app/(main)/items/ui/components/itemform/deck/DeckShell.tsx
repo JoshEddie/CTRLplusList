@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { CloseButton } from '@/app/ui/components/button';
 import { useDismiss } from '@/app/ui/components/use-dismiss';
+import { useScrollLock } from '@/app/ui/hooks/useScrollLock';
 import './deck-screen.css';
 
 type Variant = 'default' | 'wide';
@@ -24,6 +25,7 @@ export function DeckShell({
   children: ReactNode;
 }) {
   const dismiss = useDismiss(onClose, closeHref);
+  useScrollLock();
 
   const cls =
     variant === 'wide'

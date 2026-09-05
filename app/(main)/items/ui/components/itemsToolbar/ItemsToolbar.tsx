@@ -8,6 +8,7 @@ import {
 } from '@/app/ui/components/segmented-control';
 import SpoilerPicker from '@/app/ui/components/SpoilerPicker';
 import { LIBRARY_TIER_ROWS } from '@/app/ui/components/spoiler-tier-rows';
+import { useScrollLock } from '@/app/ui/hooks/useScrollLock';
 import { SortKey, SpoilerTier } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -81,20 +82,17 @@ export default function ItemsToolbar({
     [updateParams]
   );
 
+  // The sheet is a fixed overlay over a document that scrolls; without this
+  // the page scrolls behind it.
+  useScrollLock(filtersOpen);
+
   useEffect(() => {
     if (!filtersOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeFilters();
     };
     document.addEventListener('keydown', onKey);
-    // The sheet is a fixed overlay over a document that scrolls; without this
-    // the page scrolls behind it. On <html> rather than <body> so the current
-    // scroll position survives (the position:fixed body trick loses it).
-    document.documentElement.classList.add('has-open-sheet');
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.documentElement.classList.remove('has-open-sheet');
-    };
+    return () => document.removeEventListener('keydown', onKey);
   }, [filtersOpen, closeFilters]);
 
   const toggleStore = useCallback(
