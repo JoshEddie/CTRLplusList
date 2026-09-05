@@ -1,15 +1,27 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearTestCookies,
+  mockNextHeaders,
+  readTestCookie,
+  setTestCookie,
+} from '@/test/helpers/next-headers';
+import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
 
-import { lists, user_blocks, user_follows } from '@/db/schema';
+import { lists, user_follows } from '@/db/schema';
 import { auth, signIn, signOut } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedBlock, seedFollow, seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedFollow,
+  seedUsers,
+  selfProfileOf,
+} from '@/test/helpers/seedFollowGraph';
 import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import { seedItem, seedList, seedListItem } from './test-helpers';
 
 mockNextCache();
+mockNextHeaders();
 
 type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
 
@@ -52,18 +64,12 @@ let updateTag: ReturnType<typeof vi.fn>;
 function asViewer() {
   vi.mocked(auth).mockResolvedValue({ user: { email: VIEWER.email } } as never);
 }
-function asTarget() {
-  vi.mocked(auth).mockResolvedValue({ user: { email: TARGET.email } } as never);
-}
 function noSession() {
   vi.mocked(auth).mockResolvedValue(null as never);
 }
 
 async function followRows() {
   return db.select().from(user_follows);
-}
-async function blockRows() {
-  return db.select().from(user_blocks);
 }
 
 beforeAll(async () => {
@@ -87,12 +93,48 @@ beforeEach(async () => {
   vi.mocked(signIn).mockReset();
   vi.mocked(signOut).mockReset();
   vi.mocked(redirect).mockClear();
+  clearTestCookies();
 });
 
 describe('signInUser', () => {
-  it('Invoked_DelegatesToSignInWithGoogleProvider', async () => {
+  it('NoDestination_DelegatesToSignInWithGoogleProviderAndNoRedirect', async () => {
     await signInUser();
-    expect(signIn).toHaveBeenCalledExactlyOnceWith('google');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
+  });
+
+  it('SameOriginPath_ThreadsItAsRedirectTo', async () => {
+    await signInUser('/invite/tok-123');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', {
+      redirectTo: '/invite/tok-123',
+    });
+  });
+
+  it('AbsoluteUrl_IsDiscardedRatherThanRedirectedTo', async () => {
+    await signInUser('https://evil.test/steal');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
+  });
+
+  it('ProtocolRelativeUrl_IsDiscardedRatherThanRedirectedTo', async () => {
+    await signInUser('//evil.test/steal');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
+  });
+
+  // URL parsing folds a leading backslash to a slash and strips tab, LF and CR
+  // before it parses, so both of these begin an authority once resolved —
+  // `new URL('/\\evil.test', origin).href` is `https://evil.test/`.
+  it('BackslashAuthority_IsDiscardedRatherThanRedirectedTo', async () => {
+    await signInUser('/\\evil.test/steal');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
+  });
+
+  it('TabHiddenProtocolRelativeUrl_IsDiscardedRatherThanRedirectedTo', async () => {
+    await signInUser('/\t/evil.test/steal');
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
+  });
+
+  it('FormDataFromABareFormAction_IsNotTreatedAsADestination', async () => {
+    await signInUser(new FormData());
+    expect(signIn).toHaveBeenCalledExactlyOnceWith('google', undefined);
   });
 
   it('Invoked_DoesNotCallSignOutOrRedirect', async () => {
@@ -116,7 +158,7 @@ describe('signOutUser', () => {
   it('Invoked_ClearsSessionBeforeRedirect', async () => {
     await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
     expect(vi.mocked(signOut).mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(redirect).mock.invocationCallOrder[0],
+      vi.mocked(redirect).mock.invocationCallOrder[0]
     );
   });
 
@@ -124,116 +166,13 @@ describe('signOutUser', () => {
     await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
     expect(signIn).not.toHaveBeenCalled();
   });
-});
 
-describe('followUser', () => {
-  it('AuthedNewTarget_InsertsFollowRow', async () => {
-    const res = await actions.followUser(TARGET.id);
-    expect(res.success).toBe(true);
-    const rows = await followRows();
-    expect(rows).toEqual([
-      expect.objectContaining({
-        follower_id: VIEWER.id,
-        followee_id: TARGET.id,
-      }),
-    ]);
-  });
+  it('SelectionPinnedToAManagedProfile_DiscardsItWithTheSession', async () => {
+    setTestCookie(ACTIVE_PROFILE_COOKIE, 'kiddo');
 
-  it('AlreadyFollowing_NoDuplicateRowNoError', async () => {
-    await actions.followUser(TARGET.id);
-    const res = await actions.followUser(TARGET.id);
-    expect(res.success).toBe(true);
-    expect(await followRows()).toHaveLength(1);
-  });
+    await expect(signOutUser()).rejects.toThrow(/__redirect:\/sign-in__/);
 
-  it('SelfFollow_ReturnsInvalid-NoRow', async () => {
-    const res = await actions.followUser(VIEWER.id);
-    expect(res.error).toBe('Invalid');
-    expect(await followRows()).toHaveLength(0);
-  });
-
-  it('BlockedByTarget_ReturnsBlocked-NoRow', async () => {
-    await seedBlock(db, TARGET.id, VIEWER.id);
-    const res = await actions.followUser(TARGET.id);
-    expect(res.error).toBe('Blocked');
-    expect(await followRows()).toHaveLength(0);
-  });
-
-  it('BlockedViewer_ReturnsBlocked-NoRow', async () => {
-    await seedBlock(db, VIEWER.id, TARGET.id);
-    const res = await actions.followUser(TARGET.id);
-    expect(res.error).toBe('Blocked');
-    expect(await followRows()).toHaveLength(0);
-  });
-
-  it('NoSession_ReturnsUnauthorized-NoRow', async () => {
-    noSession();
-    const res = await actions.followUser(TARGET.id);
-    expect(res.error).toBe('Unauthorized');
-    expect(await followRows()).toHaveLength(0);
-  });
-
-  it('Success_CallsUpdateTagUserFollowsOnce', async () => {
-    await actions.followUser(TARGET.id);
-    expect(updateTag.mock.calls).toEqual([['user_follows']]);
-  });
-
-  it('EarlyReturns_DoNotCallUpdateTag', async () => {
-    noSession();
-    await actions.followUser(TARGET.id);
-    asViewer();
-    await actions.followUser(VIEWER.id);
-    await seedBlock(db, VIEWER.id, TARGET.id);
-    await actions.followUser(TARGET.id);
-    expect(updateTag).not.toHaveBeenCalled();
-  });
-
-  it('InsertThrows_ReturnsFailed-NoUpdateTag', async () => {
-    const res = await actions.followUser('ghost-user-id');
-    expect(res.error).toBe('Failed');
-    expect(await followRows()).toHaveLength(0);
-    expect(updateTag).not.toHaveBeenCalled();
-  });
-});
-
-describe('unfollowUser', () => {
-  it('Following_DeletesRow', async () => {
-    await seedFollow(db, VIEWER.id, TARGET.id);
-    const res = await actions.unfollowUser(TARGET.id);
-    expect(res.success).toBe(true);
-    expect(await followRows()).toHaveLength(0);
-  });
-
-  it('NotFollowing_NoOpSuccess', async () => {
-    const res = await actions.unfollowUser(TARGET.id);
-    expect(res.success).toBe(true);
-    expect(await followRows()).toHaveLength(0);
-  });
-
-  it('NoSession_ReturnsUnauthorized', async () => {
-    noSession();
-    const res = await actions.unfollowUser(TARGET.id);
-    expect(res.error).toBe('Unauthorized');
-  });
-
-  it('Success_CallsUpdateTagUserFollowsOnce', async () => {
-    await actions.unfollowUser(TARGET.id);
-    expect(updateTag.mock.calls).toEqual([['user_follows']]);
-  });
-
-  it('EarlyReturns_DoNotCallUpdateTag', async () => {
-    noSession();
-    await actions.unfollowUser(TARGET.id);
-    expect(updateTag).not.toHaveBeenCalled();
-  });
-
-  it('DeleteThrows_ReturnsFailed-NoUpdateTag', async () => {
-    vi.spyOn(db, 'delete').mockImplementation(() => {
-      throw new Error('boom');
-    });
-    const res = await actions.unfollowUser(TARGET.id);
-    expect(res.error).toBe('Failed');
-    expect(updateTag).not.toHaveBeenCalled();
+    expect(readTestCookie(ACTIVE_PROFILE_COOKIE)).toBeUndefined();
   });
 });
 
@@ -247,7 +186,7 @@ describe('removeFollower', () => {
     expect(rows).toEqual([
       expect.objectContaining({
         follower_id: VIEWER.id,
-        followee_id: TARGET.id,
+        followee_profile_id: selfProfileOf(TARGET.id),
       }),
     ]);
   });
@@ -259,7 +198,7 @@ describe('removeFollower', () => {
   });
 
   it('OnlySeversEdgeWhereActorIsFollowee_LeavesThirdPartyEdgeIntact', async () => {
-    // server-endpoint-authorization SHALL: removeFollower(B) deletes only the
+    // removeFollower(B) deletes only the
     // (follower=B, followee=actor) edge. An edge from B to a third user C —
     // where the actor is not the followee — must survive, so a caller cannot
     // sever follow relationships between two other users.
@@ -270,7 +209,7 @@ describe('removeFollower', () => {
     expect(await followRows()).toEqual([
       expect.objectContaining({
         follower_id: TARGET.id,
-        followee_id: THIRD.id,
+        followee_profile_id: selfProfileOf(THIRD.id),
       }),
     ]);
   });
@@ -281,9 +220,12 @@ describe('removeFollower', () => {
     expect(res.error).toBe('Unauthorized');
   });
 
-  it('Success_CallsUpdateTag', async () => {
+  it('Success_BumpsFollowerAndFolloweeFollowTags', async () => {
     await actions.removeFollower(TARGET.id);
-    expect(updateTag.mock.calls).toEqual([['user_follows']]);
+    expect(updateTag.mock.calls).toEqual([
+      [`user_follows:follower:${TARGET.id}`],
+      [`user_follows:followee:${selfProfileOf(VIEWER.id)}`],
+    ]);
   });
 
   it('DeleteThrows_ReturnsFailed-NoUpdateTag', async () => {
@@ -291,97 +233,6 @@ describe('removeFollower', () => {
       throw new Error('boom');
     });
     const res = await actions.removeFollower(TARGET.id);
-    expect(res.error).toBe('Failed');
-    expect(updateTag).not.toHaveBeenCalled();
-  });
-});
-
-describe('blockUser', () => {
-  it('Authed_InsertsBlockRow-DeletesBothFollowDirections', async () => {
-    await seedFollow(db, VIEWER.id, TARGET.id);
-    await seedFollow(db, TARGET.id, VIEWER.id);
-    const res = await actions.blockUser(TARGET.id);
-    expect(res.success).toBe(true);
-    expect(await blockRows()).toEqual([
-      expect.objectContaining({
-        blocker_id: VIEWER.id,
-        blocked_id: TARGET.id,
-      }),
-    ]);
-    expect(await followRows()).toHaveLength(0);
-  });
-
-  it('BlockFirstOrdering_RacingFollowStillGated', async () => {
-    await actions.blockUser(TARGET.id);
-    asTarget();
-    const res = await actions.followUser(VIEWER.id);
-    expect(res.error).toBe('Blocked');
-    expect(await followRows()).toHaveLength(0);
-  });
-
-  it('Reblock_CleansLeftoverFollowRowIdempotently', async () => {
-    await actions.blockUser(TARGET.id);
-    await seedFollow(db, TARGET.id, VIEWER.id);
-    const res = await actions.blockUser(TARGET.id);
-    expect(res.success).toBe(true);
-    expect(await followRows()).toHaveLength(0);
-    expect(await blockRows()).toHaveLength(1);
-  });
-
-  it('SelfBlock_ReturnsInvalid-NoRows', async () => {
-    const res = await actions.blockUser(VIEWER.id);
-    expect(res.error).toBe('Invalid');
-    expect(await blockRows()).toHaveLength(0);
-  });
-
-  it('NoSession_ReturnsUnauthorized', async () => {
-    noSession();
-    const res = await actions.blockUser(TARGET.id);
-    expect(res.error).toBe('Unauthorized');
-  });
-
-  it('Success_CallsUpdateTagUserFollowsAndUserBlocksOnceEach', async () => {
-    await actions.blockUser(TARGET.id);
-    expect(updateTag.mock.calls).toEqual([['user_follows'], ['user_blocks']]);
-  });
-
-  it('StatementThrows_NeitherUpdateTagFires', async () => {
-    const res = await actions.blockUser('ghost-user-id');
-    expect(res.error).toBe('Failed');
-    expect(updateTag).not.toHaveBeenCalled();
-  });
-});
-
-describe('unblockUser', () => {
-  it('Blocked_DeletesBlockRow', async () => {
-    await seedBlock(db, VIEWER.id, TARGET.id);
-    const res = await actions.unblockUser(TARGET.id);
-    expect(res.success).toBe(true);
-    expect(await blockRows()).toHaveLength(0);
-  });
-
-  it('NotBlocked_NoOpSuccess', async () => {
-    const res = await actions.unblockUser(TARGET.id);
-    expect(res.success).toBe(true);
-    expect(await blockRows()).toHaveLength(0);
-  });
-
-  it('NoSession_ReturnsUnauthorized', async () => {
-    noSession();
-    const res = await actions.unblockUser(TARGET.id);
-    expect(res.error).toBe('Unauthorized');
-  });
-
-  it('Success_CallsUpdateTagUserBlocksOnly', async () => {
-    await actions.unblockUser(TARGET.id);
-    expect(updateTag.mock.calls).toEqual([['user_blocks']]);
-  });
-
-  it('DeleteThrows_ReturnsFailed-NoUpdateTag', async () => {
-    vi.spyOn(db, 'delete').mockImplementation(() => {
-      throw new Error('boom');
-    });
-    const res = await actions.unblockUser(TARGET.id);
     expect(res.error).toBe('Failed');
     expect(updateTag).not.toHaveBeenCalled();
   });
@@ -392,11 +243,7 @@ describe('NoInteractiveTransactions', () => {
     const txSpy = vi.fn();
     (db as unknown as { transaction: unknown }).transaction = txSpy;
     await seedFollow(db, TARGET.id, VIEWER.id);
-    await actions.followUser(TARGET.id);
-    await actions.unfollowUser(TARGET.id);
     await actions.removeFollower(TARGET.id);
-    await actions.blockUser(TARGET.id);
-    await actions.unblockUser(TARGET.id);
     expect(txSpy).not.toHaveBeenCalled();
   });
 });
@@ -416,7 +263,15 @@ describe('getClaimPickerForItem', () => {
     const picker = await actions.getClaimPickerForItem('I');
     expect(picker).toEqual({
       ownerName: 'target',
-      pool: [{ id: THIRD.id, name: 'third', image: null }],
+      pool: [
+        {
+          id: selfProfileOf(THIRD.id),
+          name: 'third',
+          accent: null,
+          art: null,
+          avatarStyle: null,
+        },
+      ],
     });
   });
 

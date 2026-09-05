@@ -1,6 +1,6 @@
 import { PLACEHOLDER_URI_PREFIX } from '@/lib/placeholderArt.shared';
-import { createAvatar } from '@dicebear/core';
-import * as shapes from '@dicebear/shapes';
+import { Avatar, Style } from '@dicebear/core';
+import shapes from '@dicebear/styles/shapes.json';
 
 export { PLACEHOLDER_URI_PREFIX };
 
@@ -43,11 +43,17 @@ function hashSeed(seed: string): number {
   return hash >>> 0;
 }
 
+// Validated and cloned once on construction rather than per mint.
+const shapesStyle = new Style(shapes);
+
 export function generatePlaceholderArt(seed: string): string {
   const palette = PLACEHOLDER_PALETTES[hashSeed(seed) % PLACEHOLDER_PALETTES.length];
   const shapeColors = [...palette.shapes];
-  const svg = createAvatar(shapes, {
+  const svg = new Avatar(shapesStyle, {
     seed,
+    // The style ships an animation axis with no probability gate, so five of
+    // its six variants would set a still placeholder moving.
+    animationVariant: ['none'],
     backgroundColor: [palette.background],
     shape1Color: shapeColors,
     shape2Color: shapeColors,

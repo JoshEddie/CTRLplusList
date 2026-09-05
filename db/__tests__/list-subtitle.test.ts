@@ -2,12 +2,13 @@ import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { bootPglite, resetDb } from '../../test/helpers/db';
-import { lists, users } from '../schema';
+import { lists, profiles, users } from '../schema';
 
 let db: Awaited<ReturnType<typeof bootPglite>>['db'];
 
 async function seedOwner() {
   await db.insert(users).values({ id: 'u1', name: 'Owner' });
+  await db.insert(profiles).values({ id: 'pr1', name: 'Owner' });
 }
 
 async function readSubtitle(id: string) {
@@ -32,7 +33,12 @@ describe('subtitle', () => {
     it('InsertOmittingSubtitle_ColumnIsNull', async () => {
       await db
         .insert(lists)
-        .values({ id: 'l1', name: 'Christmas', occasion: 'Christmas', user_id: 'u1' });
+        .values({
+          id: 'l1',
+          name: 'Christmas',
+          occasion: 'Christmas',
+          profile_id: 'pr1',
+        });
 
       expect(await readSubtitle('l1')).toBeNull();
     });
@@ -44,7 +50,7 @@ describe('subtitle', () => {
         id: 'l1',
         name: 'Christmas',
         occasion: 'Christmas',
-        user_id: 'u1',
+        profile_id: 'pr1',
         subtitle: 'Brandy Family',
       });
 
@@ -56,7 +62,7 @@ describe('subtitle', () => {
         id: 'l1',
         name: 'Christmas',
         occasion: 'Christmas',
-        user_id: 'u1',
+        profile_id: 'pr1',
         subtitle: 'Brandy Family',
       });
 
@@ -75,7 +81,7 @@ describe('subtitle', () => {
         id: 'l1',
         name: 'Christmas',
         occasion: 'Christmas',
-        user_id: 'u1',
+        profile_id: 'pr1',
         subtitle: 'Brandy Family',
       });
 

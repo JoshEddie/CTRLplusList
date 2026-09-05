@@ -54,6 +54,16 @@ describe('touchLists', () => {
     expect(byId.C.updated_at.toISOString()).toBe(STALE.toISOString());
   });
 
+  it('TouchedRows_LeaveUpdatedByUserIdUnstamped', async () => {
+    // Recency is a follower-notification signal, not a content edit, so a
+    // touch names no editor on the rows it bumps.
+    await touch.touchLists(['A', 'B']);
+    const rows = await listRows();
+    for (const row of rows) {
+      expect(row.updated_by_user_id).toBeNull();
+    }
+  });
+
   it('EmptyArray_IssuesNoQuery', async () => {
     const updateSpy = vi.spyOn(db, 'update');
     await touch.touchLists([]);

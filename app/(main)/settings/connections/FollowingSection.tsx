@@ -1,17 +1,15 @@
-import { auth } from '@/lib/auth';
-import { getFollowingByUser, getUserIdByEmail } from '@/lib/data/user';
+import { getFollowingByUser } from '@/lib/data/user';
+import { authedUserId } from '@/lib/data/user.session';
 import { redirect } from 'next/navigation';
 import ConnectionRow from './ConnectionRow';
 import ConnectionsAction from './ConnectionsActions';
 import ConnectionsSection from './ConnectionsSection';
 
 export default async function FollowingSection() {
-  const session = await auth();
-  if (!session?.user?.email) redirect('/');
-  const viewer = await getUserIdByEmail(session.user.email);
-  if (!viewer) redirect('/');
+  const viewerId = await authedUserId();
+  if (!viewerId) redirect('/');
 
-  const following = await getFollowingByUser(viewer.id);
+  const following = await getFollowingByUser(viewerId);
 
   return (
     <ConnectionsSection
@@ -21,12 +19,15 @@ export default async function FollowingSection() {
     >
       {following.map((f) => (
         <ConnectionRow
-          key={f.followee_id}
-          userId={f.followee_id}
+          key={f.followee_profile_id}
+          profileId={f.followee_profile_id}
           name={f.followee?.name ?? null}
           since={f.created_at}
           actions={
-            <ConnectionsAction action="unfollow" targetId={f.followee_id} />
+            <ConnectionsAction
+              action="unfollow"
+              targetProfileId={f.followee_profile_id}
+            />
           }
         />
       ))}

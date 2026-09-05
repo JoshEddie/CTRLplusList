@@ -32,7 +32,7 @@ afterEach(() => {
 
 describe('EditListAction', () => {
   it('Default_RendersEditButtonOnDark-NoFormOpen', () => {
-    render(<EditListAction list={makeList()} />);
+    render(<EditListAction list={makeList()} deleteDisabled={false} />);
     const button = screen.getByRole('button', { name: 'Edit list' });
     expect(button).toHaveClass('btn', 'on-dark');
     // eslint-disable-next-line testing-library/no-node-access -- react-icons renders an unlabeled <svg>; querySelector is the only way to assert the icon is present.
@@ -41,7 +41,7 @@ describe('EditListAction', () => {
   });
 
   it('Click_OpensListFormContainer-WithIsEditingAndList', async () => {
-    render(<EditListAction list={makeList({ id: 'list-42' })} />);
+    render(<EditListAction list={makeList({ id: 'list-42' })} deleteDisabled={false} />);
     await userEvent.click(screen.getByRole('button', { name: 'Edit list' }));
     const container = screen.getByTestId('list-form-container');
     expect(container).toHaveAttribute('data-editing', 'true');
@@ -49,7 +49,7 @@ describe('EditListAction', () => {
   });
 
   it('FormOnClose_UnmountsContainer', async () => {
-    render(<EditListAction list={makeList()} />);
+    render(<EditListAction list={makeList()} deleteDisabled={false} />);
     await userEvent.click(screen.getByRole('button', { name: 'Edit list' }));
     await userEvent.click(screen.getByRole('button', { name: 'close-form' }));
     expect(screen.queryByTestId('list-form-container')).not.toBeInTheDocument();

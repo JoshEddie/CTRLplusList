@@ -5,10 +5,14 @@
  * the link and the labeled bookmark icon but cannot read class-named spans or
  * assert element absence by class; classed `document` queries are required.
  */
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ListCard from '../ListCard';
 import { makeList } from './test-helpers';
+import { makeProfile } from '@/test/helpers/profile';
+import { ACCENT_PRESETS } from '@/lib/accent';
+
+const ART = 'data:image/svg+xml;utf8,%3Csvg%2F%3E';
 
 vi.mock('next/link', async () => ({
   default: (await import('./test-helpers')).MockNextLink,
@@ -52,7 +56,9 @@ describe('ListCard', () => {
 
   describe('Subtitle', () => {
     it('SubtitlePresent_RendersSubtitleDiv-NoPlaceholder', () => {
-      render(<ListCard list={makeList({ subtitle: 'For the whole family' })} />);
+      render(
+        <ListCard list={makeList({ subtitle: 'For the whole family' })} />
+      );
       expect(document.querySelector('.list-card-subtitle')).toHaveTextContent(
         'For the whole family'
       );
@@ -89,26 +95,83 @@ describe('ListCard', () => {
   });
 
   describe('OwnerByline', () => {
-    it('ShowOwnerTrueWithName_RendersByline', () => {
-      render(<ListCard list={makeList({ user: { name: 'Alice' } })} showOwner />);
-      expect(document.querySelector('.list-card-byline')).toHaveTextContent(
-        'Alice'
+    it('ShowOwnerTrueWithName_RendersBylineWithOwnerDisc', () => {
+      render(
+        <ListCard list={makeList({ profile: makeProfile('p1', 'Alice') })} showOwner />
       );
+      const byline = document.querySelector('.list-card-byline');
+      expect(byline).toHaveTextContent('Alice');
+      expect(byline?.querySelector('.list-card-byline-avatar')).not.toBeNull();
     });
 
     it('ShowOwnerFalse_NoByline-EvenWithName', () => {
-      render(<ListCard list={makeList({ user: { name: 'Alice' } })} />);
+      render(
+        <ListCard list={makeList({ profile: makeProfile('p1', 'Alice') })} />
+      );
       expect(document.querySelector('.list-card-byline')).toBeNull();
     });
 
-    it('ShowOwnerTrueButNullUser_NoByline', () => {
-      render(<ListCard list={makeList({ user: null })} showOwner />);
+    it('ShowOwnerTrueButNullProfile_NoByline', () => {
+      render(<ListCard list={makeList({ profile: null })} showOwner />);
       expect(document.querySelector('.list-card-byline')).toBeNull();
     });
 
-    it('ShowOwnerTrueButNullName_NoByline', () => {
-      render(<ListCard list={makeList({ user: { name: null } })} showOwner />);
-      expect(document.querySelector('.list-card-byline')).toBeNull();
+    it('OwnerProfileWithArt_BylineRendersThatProfilesArt', () => {
+      render(
+        <ListCard
+          list={makeList({
+            profile: {
+              ...makeProfile('p1', 'Alice'),
+              art: ART,
+              avatarStyle: 'avataaars',
+            },
+          })}
+          showOwner
+        />
+      );
+      expect(screen.getByTestId('altvatar-art')).toHaveAttribute('src', ART);
+    });
+
+    it('OwnerProfileWithNoArt_BylineRendersInitials', () => {
+      // The byline reads the profile and only the profile. There is no account
+      // hop behind it, so nothing here can branch on whether one exists.
+      render(
+        <ListCard list={makeList({ profile: makeProfile('p1', 'Alice') })} showOwner />
+      );
+      expect(screen.getByText('A')).toBeInTheDocument();
+      expect(screen.queryByTestId('altvatar-art')).toBeNull();
+    });
+  });
+
+  describe('AccentPill', () => {
+    it('OwnerHasAccent_CardCarriesAccentVars', () => {
+      render(
+        <ListCard
+          list={makeList({
+            profile: { ...makeProfile('p1', 'Alice'), accent: 'rose' },
+          })}
+        />
+      );
+      // The byline pill is painted from --accent-disc/--accent-ink, so the
+      // custom properties on the root are what carry the owner's colour to it.
+      const card = document.querySelector<HTMLElement>('a.list-card');
+      expect(card?.style.getPropertyValue('--accent-disc')).toBe(
+        ACCENT_PRESETS.rose.light
+      );
+      expect(card?.style.getPropertyValue('--accent-ink')).toBe(
+        ACCENT_PRESETS.rose.ink
+      );
+    });
+
+    it('NoOwnerAccent_PillFallsBackToTheIrisPreset', () => {
+      render(<ListCard list={makeList({ profile: null })} />);
+      const card = document.querySelector<HTMLElement>('a.list-card');
+      expect(card?.style.getPropertyValue('--accent-disc')).toBe(
+        ACCENT_PRESETS.iris.light
+      );
+      expect(card?.style.getPropertyValue('--accent-ink')).toBe(
+        ACCENT_PRESETS.iris.ink
+      );
     });
   });
 });

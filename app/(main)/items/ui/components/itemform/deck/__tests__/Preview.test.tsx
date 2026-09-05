@@ -46,6 +46,22 @@ describe('Preview', () => {
     ).toBeInTheDocument();
   });
 
+  it('MultiProfileViewer_PrimaryActionNamesTheProfile', () => {
+    setup({}, { actingAs: 'Owned Profile' });
+    expect(
+      screen.getByRole('button', { name: 'Create item for Owned Profile' })
+    ).toBeInTheDocument();
+  });
+
+  it('EditingMultiProfileViewer_PrimaryActionNamesNoProfile', () => {
+    // Editing does not move an item between profiles, so there is nothing to
+    // state.
+    setup({}, { isEditing: true, actingAs: 'Owned Profile' });
+    expect(
+      screen.getByRole('button', { name: 'Save changes' })
+    ).toBeInTheDocument();
+  });
+
   it('Editing_PrimaryActionIsSaveChanges', () => {
     setup({}, { isEditing: true });
     expect(
@@ -62,9 +78,7 @@ describe('Preview', () => {
 
   it('LinkedItem_ShowsStoreActionRow', () => {
     setup();
-    expect(
-      screen.getByRole('button', { name: /^Store/ })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Store/ })).toBeInTheDocument();
   });
 
   it('TriageEntry_IsAccentInvitationNotAlarm', () => {
@@ -192,16 +206,12 @@ describe('Preview', () => {
   describe('LinklessStore', () => {
     it('BareStore_EnablesCreate', () => {
       setup({ store: { name: '', link: '', price: '' } });
-      expect(
-        screen.getByRole('button', { name: 'Create item' })
-      ).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Create item' })).toBeEnabled();
     });
 
     it('PricedStore_EnablesCreate', () => {
       setup({ store: { name: '', link: '', price: '12.00' } });
-      expect(
-        screen.getByRole('button', { name: 'Create item' })
-      ).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Create item' })).toBeEnabled();
     });
   });
 

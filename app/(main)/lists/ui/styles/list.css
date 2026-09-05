@@ -15,7 +15,6 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  flex-shrink: 0;
   color: var(--light-color);
 }
 
@@ -23,18 +22,17 @@
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  background-image: var(--hero-gradient);
-  /* Top-only rounding — the items toolbar sits flush directly below the
-     hero, so bottom corners stay square to merge cleanly with it.
-     `overflow` deliberately left as `visible` so the kebab dropdown menu
-     can extend past the hero's bottom edge into the items area. */
-  border-radius: 14px 14px 0 0;
+  padding: 22px;
+  gap: 22px;
 }
 
 @media (max-width: 800px) {
   .list-hero-grid {
     flex-direction: column;
-    border-radius: 12px 12px 0 0;
+    /* Tighter padding on mobile — without this the hero eats >50% of the
+       viewport, which is too much for a header on a content-first page. */
+    padding: 16px;
+    gap: 8px;
   }
 }
 
@@ -43,18 +41,7 @@
    identity card and controls card are siblings; the controls card carries
    the divider on its leading edge (left on desktop, top on mobile). */
 .list-hero-card {
-  padding: 22px 24px;
-  padding-bottom: 6px;
   min-width: 0;
-}
-
-@media (max-width: 800px) {
-  .list-hero-card {
-    /* Tighter padding on mobile — without this the hero eats >50% of the
-       viewport, which is too much for a header on a content-first page. */
-    padding: 12px 14px;
-    padding-bottom: 6px;
-  }
 }
 
 .list-hero-card-identity {
@@ -85,6 +72,7 @@
     max-width: none;
     gap: 8px;
     border-top: 1px solid rgba(255, 255, 255, 0.22);
+    padding-top: 8px;
   }
 }
 
@@ -155,6 +143,119 @@
      .list-hero-subtitle. */
   color: var(--light-color);
   line-height: 1.3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* The shopper names never render inline — the footer line is clamped and
+   cannot hold more than one or two before truncating. */
+.list-hero-shoppers {
+  position: relative;
+  display: inline-block;
+}
+
+.list-hero-shoppers-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 160px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 8px 12px;
+  background-color: var(--light-color);
+  color: var(--neutral-text-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.list-hero-shoppers-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+}
+
+.list-hero-shoppers-list li {
+  padding: 8px 4px;
+}
+
+.list-hero-shoppers-list li + li {
+  border-top: 1px solid var(--card-border-color);
+}
+
+/* Floating, dismissible "Managing as …" card (2026-09-01 mockup): fixed to the
+   viewport's bottom-right over the list, above the sticky pagination. Dismiss
+   collapses it to a chip that restores it. */
+.switch-offer-card {
+  position: fixed;
+  right: 24px;
+  bottom: 88px;
+  z-index: 40;
+  width: 260px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--light-color);
+  color: var(--neutral-text-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+
+.switch-offer-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.switch-offer-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.switch-offer-dismiss {
+  background: none;
+  border: none;
+  color: var(--neutral-text-color);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.switch-offer-card > .btn {
+  width: 100%;
+}
+
+.switch-offer-chip {
+  position: fixed;
+  right: 24px;
+  bottom: 88px;
+  z-index: 40;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--neutral-text-color);
+  background: var(--light-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 99px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+@media (max-width: 800px) {
+  .switch-offer-card,
+  .switch-offer-chip {
+    right: 12px;
+    bottom: 76px;
+  }
 }
 
 /* ── Controls card content ───────────────────────────────────────────── */
@@ -187,11 +288,15 @@
   min-width: 0;
 }
 
+.list-hero-byline-group .altvatar-disc {
+  width: 44px;
+  height: 44px;
+}
+
 .list-hero-byline-text {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  gap: 12px;
   min-width: 0;
   flex: 1 1 auto;
 }
@@ -300,13 +405,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
-  font-size: 40px;
-}
-
-.list-private p {
-  font-size: 18px;
 }
 
 /* Wrapper for the kebab + menu primitive. .menu-popover and its rows
@@ -316,45 +414,102 @@
   display: inline-block;
 }
 
-/* ── HERO COLLAPSE ─────────────────────────────────────────────────────
-   The shell wraps either the full expanded hero or a one-line strip.
-   The chevron handle sits in a fixed-height row below the hero panel
-   so it never overlaps the gradient and never participates in the
-   gradient's rounded-corner clipping. */
-.list-hero-shell {
-  display: flex;
-  flex-direction: column;
+/* ── Single always-present hero surface ─────────────────────────────────
+   One sticky element whose CONTENT swaps between the full details and a
+   collapsed title+kebab row. Height is pure content sizing — the full
+   layer's grid row interpolates 1fr <-> 0fr so the shape change is an
+   animated reflow, never a flash. .is-chrome/.is-collapsed come from
+   ListHeroSurface's scroll handler — without JS the page keeps the plain
+   in-flow hero. */
+.list-hero-strip-sentinel {
+  height: 1px;
+  margin-bottom: -1px;
 }
 
-/* Collapsed strip: the WHOLE strip is the expand trigger. Chevron +
-   title sit on the leading edge; the kebab is on the trailing edge
-   inside an exclusion zone (`.list-hero-collapsed-trailing` stops
-   click propagation so kebab interactions don't fire the expand).
-   No bottom handle reserve — the strip itself IS the expand
-   affordance. */
-.list-hero-grid.list-hero-collapsed-strip {
-  flex-direction: row;
+/* Full-bleed child sitting on the surface's own top edge, so it rounds its
+   top corners to the same radius: pinned, its curve lands exactly on the
+   card's, and the corner notches show the canvas behind both. */
+.list-hero-chrome {
+  position: relative;
+  background-image: var(--hero-gradient);
+  border-radius: calc(var(--app-surface-radius) - 1px)
+    calc(var(--app-surface-radius) - 1px) 0 0;
+  z-index: 5;
+}
+
+.list-hero-chrome.is-chrome {
+  position: sticky;
+  top: var(--app-sticky-top);
+}
+
+/* Animated shape change, no measurements: the shape is a grid whose single
+   row interpolates 1fr -> 0fr; the collapsed layer is absolute, so it sits
+   outside that row. The clip wrapper's overflow must clip during the
+   transition but be visible at expanded rest so the hero's kebab dropdown
+   can overflow the surface. That asymmetry is a discrete overflow
+   transition: collapsing clips immediately (0s delay on the collapsed
+   rule), expanding unclips only after the row finishes (delay = duration
+   on the base rule). Pre-allow-discrete engines unclip at expand start —
+   a one-transition content spill, cosmetic only. visibility rides the
+   clip rather than the grid — on the grid it would hide the collapsed
+   layer too — and flips at the end when hiding, at the start when
+   showing, removing the hidden layer from focus order and the
+   accessibility tree. */
+.list-hero-shape {
+  position: relative;
+  min-height: var(--list-hero-strip-height);
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--hero-collapse-duration) ease;
+}
+
+.list-hero-layer-clip {
+  min-height: 0;
+  transition:
+    visibility var(--hero-collapse-duration),
+    overflow 0s var(--hero-collapse-duration) allow-discrete;
+}
+
+.list-hero-chrome.is-collapsed .list-hero-shape {
+  grid-template-rows: 0fr;
+}
+
+.list-hero-chrome.is-collapsed .list-hero-layer-clip {
+  overflow: hidden;
+  visibility: hidden;
+  transition:
+    visibility var(--hero-collapse-duration),
+    overflow 0s allow-discrete;
+}
+
+.list-hero-layer-collapsed {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--list-hero-strip-height);
+  display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 14px;
-  cursor: pointer;
-  min-height: 44px;
+  padding: 4px 14px;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--hero-collapse-duration) ease,
+    visibility var(--hero-collapse-duration);
 }
 
-.list-hero-grid.list-hero-collapsed-strip:hover,
-.list-hero-grid.list-hero-collapsed-strip:focus-visible {
-  background-color: rgba(255, 255, 255, 0.08);
-  outline: none;
+.list-hero-chrome.is-collapsed .list-hero-layer-collapsed {
+  opacity: 1;
+  visibility: visible;
 }
 
-.list-hero-grid.list-hero-collapsed-strip:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--btn-focus-ring-color);
-}
-
-.list-hero-collapsed-chevron {
-  flex: 0 0 auto;
-  font-size: 16px;
-  color: var(--light-color);
+@media (prefers-reduced-motion: reduce) {
+  .list-hero-shape,
+  .list-hero-layer-clip,
+  .list-hero-layer-collapsed {
+    transition: none;
+  }
 }
 
 .list-hero-collapsed-title {
@@ -371,152 +526,59 @@
   text-overflow: ellipsis;
 }
 
-/* Kebab exclusion zone — the kebab and its menu live in here. The
-   element's onClick stopPropagation (set in the TSX) is the seam that
-   keeps kebab interactions from firing the expand. */
+/* Kebab landing zone on the strip's trailing edge. */
 .list-hero-collapsed-trailing {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  /* `cursor: default` overrides the strip's `cursor: pointer` so the
-     pointer doesn't lie about expandability while over the kebab. */
-  cursor: default;
+  margin-left: auto;
 }
 
-/* Shell is the new gradient surface owner — the gradient is hoisted
-   from `.list-hero-grid` up to here so it spans BOTH the hero panel
-   AND the handle strip at the bottom. This keeps the surface visually
-   continuous (single linear gradient covering everything) without
-   color-matching tricks on a separate tab element.
-
-   The shell also handles the top-rounded / bottom-square border-radius
-   that previously lived on `.list-hero-grid`. The grid itself becomes
-   transparent. */
-.list-hero-shell {
-  position: relative;
-  background-image: var(--hero-gradient);
-  border-radius: 14px 14px 0 0;
-}
-
-@media (max-width: 800px) {
-  .list-hero-shell {
-    border-radius: 12px 12px 0 0;
-  }
-}
-
-/* Strip the gradient + radius from the inner grid since the shell
-   now owns them. Cards inside continue to be transparent zones. */
-.list-hero-shell .list-hero-grid {
-  background-image: none;
-  border-radius: 0;
-}
-
-/* Reserve room at the bottom of the hero for the handle strip. The
-   strip is 44px tall to satisfy WCAG 2.5.5 (44×44 CSS px touch
-   target) — the chevron glyph itself is small but the clickable
-   strip spans the full width and 44px height. */
-.list-hero-shell .list-hero {
-  padding-bottom: 44px;
-}
-
-/* Chevron handle — full-width clickable strip across the bottom of
-   the hero. Transparent so the shell gradient shows through. */
-.list-hero-collapse-handle {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 44px;
-  background: transparent;
-  border: none;
-  color: var(--light-color);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  line-height: 1;
-  z-index: 1;
-}
-
-.list-hero-collapse-handle:hover,
-.list-hero-collapse-handle:focus-visible {
-  background-color: rgba(255, 255, 255, 0.08);
-  outline: none;
-}
-
-.list-hero-collapse-handle:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--btn-focus-ring-color);
-}
-
-/* ── List-detail container: fixed-height flex column.
-   The hero + toolbar stay at the top; only the items grid scrolls.
-   This replaces the old 2-column-sidebar layout entirely. */
+/* ── List-detail page: normal document flow — the document scrolls.
+   The hero is plain content that scrolls away; the sticky strip and
+   the sort toolbar pin below the app nav. */
 .container--list-details {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - var(--app-sticky-top));
-  overflow: hidden;
+  --list-hero-strip-height: 52px;
+  --hero-collapse-duration: 0.3s;
   padding: 0;
-  gap: 0;
-  position: relative;
+  /* Scroll anchoring compensates for the hero's expand by bumping
+     scrollTop, which pushes the sentinel back out of view and instantly
+     re-collapses it — an expand/collapse feedback loop at the boundary.
+     Excluding the page from anchor selection keeps scrollTop stable, so
+     the swap settles in one step. */
+  overflow-anchor: none;
 }
 
-.container--list-details .items-browser {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
+/* The toolbar lives INSIDE the hero chrome (portaled into its slot), so
+   it pins with the chrome and follows the shape change in natural flow —
+   no offset coupling. Without a slot (pre-hydration, no-JS) it renders
+   inline in the items section, which sits at the same position at rest. */
 .container--list-details .items-toolbar {
-  margin: 12px 28px;
-}
-
-.container--list-details .item-grid-container {
-  padding: 16px 28px 0;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* Floating pagination overlay (all viewports). Mirrors the items-library
-   treatment — anchored to .container--list-details so it spans the
-   container's full width and sits flush against its bottom edge.
-   Items scroll under the 90%-alpha background. The desktop
-   `padding: 16px 28px 0` on .item-grid-container above zeroes
-   padding-bottom; this rule re-adds the overlay clearance. */
-.container--list-details .items-pagination {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
   margin: 0;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  background-color: color-mix(in srgb, var(--light-color) 90%, transparent);
-  border-top: none;
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
-  z-index: 2;
-  backdrop-filter: blur(5px);
+  padding: 12px 28px;
+  background-color: var(--light-color);
 }
 
 .container--list-details .item-grid-container {
-  padding-bottom: var(--items-pagination-overlay-height, 96px);
+  padding: 16px 28px;
 }
 
 .container--list-details > .item-grid.sortable {
   padding: 16px 28px 28px;
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
 }
 
 @media (max-width: 800px) {
+  .container--list-details .items-toolbar {
+    padding: 12px 16px;
+  }
+
   .container--list-details .item-grid-container {
     padding-left: 16px;
     padding-right: 16px;
+  }
+
+  .container--list-details > .item-grid.sortable {
+    padding: 16px 16px 28px;
   }
 }
 
@@ -544,26 +606,6 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-}
-
-.choose-items-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  color: var(--muted-text-color);
-  font:
-    500 12px var(--font-roboto-condensed),
-    sans-serif;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: none;
-  width: fit-content;
-}
-
-.choose-items-back:hover {
-  color: var(--primary-color);
 }
 
 .choose-items-pg-title {
@@ -659,18 +701,6 @@
    the item name is already shown by <Item />; hide the label span
    visually but keep it for assistive tech (the checkbox's accessible
    name SHALL be the item name). See design.md D2. */
-.choose-items-select .checkbox_field > span {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
 /* Focus ring on the actual checkbox input. If form-field-system already
    provides a global rule on `.checkbox_field_box:focus-visible`, this
    override is a no-op — verify and prune at preview time. */
@@ -712,44 +742,6 @@
    coupling, see design.md D5. */
 .choose-items-select.is-removing .itemName {
   text-decoration: line-through;
-  color: var(--muted-text-color);
-}
-
-/* IN-LIST + archived badges, absolutely positioned over the row's
-   top-right corner so they don't disturb the shared row's grid. See
-   design.md D5 Option A (OQ1: revisit placement at preview time). */
-.choose-items-badges {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  display: inline-flex;
-  gap: 6px;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.choose-items-in-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 8px;
-  background: rgba(115, 36, 206, 0.12);
-  border-radius: 99px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--primary-color);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.choose-items-archived-badge {
-  display: inline-block;
-  padding: 1px 8px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-radius: 999px;
-  background: var(--third-background-color);
   color: var(--muted-text-color);
 }
 
@@ -805,4 +797,278 @@
   .choose-items-sticky-ft {
     padding: 12px 20px;
   }
+}
+
+/* ══ 2026-09-01 hero composition ══════════════════════════════════════════
+   Two rows (mockup): title | actions, then lead | meta | spoilers. The rows
+   share no columns, so desktop lays each out with flex. Mobile-first: the
+   rows dissolve (display: contents) into one two-column stack — everything
+   spans both columns except the two tiles, which pair up — and the kebab is
+   pinned to the top-right corner so an absent one reserves nothing. */
+.list-hero-main {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px;
+}
+
+.list-hero-row {
+  display: contents;
+}
+
+.list-hero-titleblock,
+.list-hero-byline-group,
+.list-hero-meta,
+.list-hero-actions {
+  grid-column: 1 / -1;
+}
+
+.list-hero-titleblock {
+  order: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.list-hero-main:has(.list-hero-kebab) .list-hero-titleblock {
+  padding-right: 56px;
+}
+
+.list-hero-byline-group {
+  order: 1;
+}
+
+.list-hero-meta {
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--light-color);
+}
+
+.list-hero-actions {
+  order: 3;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.list-hero-actions > .btn {
+  width: 100%;
+}
+
+.list-hero-kebab {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.list-hero-row > .visibility-picker,
+.list-hero-row > .spoiler-picker {
+  order: 4;
+  min-width: 0;
+}
+
+.list-hero-row .hero-tile {
+  width: 100%;
+}
+
+@media (min-width: 801px) {
+  .list-hero-main {
+    display: flex;
+    flex-direction: column;
+    padding: 22px 24px 18px;
+  }
+  /* Row 1 hangs from the top (actions level with the title); row 2 sits on
+     the bottom (byline / bar / tile bottoms flush), as the grid's per-area
+     align-self did before. */
+  .list-hero-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .list-hero-row:last-child {
+    align-items: flex-end;
+  }
+  .list-hero-row > *,
+  .list-hero-row > .visibility-picker,
+  .list-hero-row > .spoiler-picker {
+    order: 0;
+  }
+  .list-hero-row > .visibility-picker {
+    width: auto;
+  }
+  .list-hero-main:has(.list-hero-kebab) .list-hero-titleblock {
+    padding-right: 0;
+  }
+  .list-hero-titleblock {
+    flex: 1 1 auto;
+  }
+  .list-hero-actions,
+  .list-hero-row > .list-hero-kebab {
+    margin-left: auto;
+  }
+  .list-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .list-hero-actions > .btn {
+    width: auto;
+  }
+  .list-hero-kebab {
+    position: static;
+  }
+  /* Row 2 at the 801px floor is ~713px: byline (~276) + tile (~148) + gaps
+     leaves ~265, so the meta floors at 200 (label + a usable bar) and takes
+     the remainder up to the mockup's bar width; the auto margin absorbs the
+     rest on wide screens. */
+  .list-hero-meta {
+    flex: 1 1 auto;
+    margin-left: auto;
+    align-items: flex-end;
+    min-width: 200px;
+    max-width: 360px;
+  }
+  .list-hero-row .hero-tile {
+    width: auto;
+  }
+}
+
+/* ── Hero tiles (Visibility + Spoilers) ─────────────────────────────────────
+   The two-line tile shared by both pickers: an uppercase eyebrow over a value
+   line. Visibility is translucent-white on the gradient; Spoilers is filled
+   with its tier tint (set inline) over dark ink. */
+.hero-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.hero-tile:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.hero-tile-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.hero-tile-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.hero-tile-caret {
+  margin-left: 2px;
+}
+
+.visibility-tile {
+  background: rgb(255 255 255 / 0.12);
+  border-color: rgb(255 255 255 / 0.45);
+  color: var(--light-color);
+}
+
+.visibility-tile:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.22);
+}
+
+.spoiler-tile {
+  border-color: rgb(42 32 96 / 0.25);
+  color: var(--primary-color-dark);
+}
+
+/* Anchor for each picker's popover menu. */
+.visibility-picker,
+.spoiler-picker {
+  position: relative;
+}
+
+.spoiler-picker .menu-popover.spoiler-menu {
+  left: 0;
+  right: auto;
+  min-width: min(280px, 90vw);
+}
+
+/* The hero's Spoilers tile sits in the right cell on mobile (beside
+   Visibility) and at the row's end on desktop, so its menu hangs left from
+   the tile's right edge. The items toolbar keeps the left anchor above. */
+.list-hero-row > .visibility-picker ~ .spoiler-picker .spoiler-menu {
+  left: auto;
+  right: 0;
+}
+
+@media (min-width: 801px) {
+  .list-hero-row > .spoiler-picker .spoiler-menu {
+    left: auto;
+    right: 0;
+  }
+}
+
+/* The tinted tier chip leading each Spoilers menu row (fill set inline),
+   carrying that tier's glyph. */
+.spoiler-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgb(42 32 96 / 0.3);
+  color: var(--primary-color-dark);
+  font-size: 14px;
+  flex: none;
+}
+
+/* ── Claimed-count progress ────────────────────────────────────────────────
+   The meta column's bar + "N / M claimed", shown from the `progress` tier up.
+   White over the gradient for AA. Full width of the right-aligned meta column. */
+.list-hero-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.list-hero-progress-track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 10px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.25);
+  overflow: hidden;
+}
+
+.list-hero-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--light-color);
+  transition: width 0.3s ease;
+}
+
+.list-hero-progress-label {
+  font-size: 14px;
+  color: var(--light-color);
+  white-space: nowrap;
 }

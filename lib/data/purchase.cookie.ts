@@ -48,10 +48,6 @@ export function parseGuestClaims(
   return { id, name, purchases: purchases as string[] };
 }
 
-export function serializeGuestClaims(claims: GuestClaims): string {
-  return JSON.stringify(claims);
-}
-
 export function appendGuestClaim(
   existing: GuestClaims | null,
   purchaseId: string,
@@ -65,8 +61,10 @@ export function appendGuestClaim(
   return {
     id: base.id,
     name: guestName,
-    purchases: [purchaseId, ...base.purchases.filter((p) => p !== purchaseId)]
-      .slice(0, GUEST_CLAIMS_MAX_IDS),
+    purchases: [
+      purchaseId,
+      ...base.purchases.filter((p) => p !== purchaseId),
+    ].slice(0, GUEST_CLAIMS_MAX_IDS),
   };
 }
 
@@ -80,17 +78,27 @@ export function pruneGuestClaim(
   };
 }
 
-export function overlayGuestClaims<
-  T extends { purchases?: PurchaseView[] },
->(items: T[], cookiePurchaseIds: ReadonlySet<string>): T[] {
-  if (cookiePurchaseIds.size === 0) return items;
+// The cached read cannot see the cookie, so a guest's own claim arrives
+// projected away with every other party's — nameless. The name they typed is
+// the one thing the cookie can hand back with it.
+export function overlayGuestClaims<T extends { purchases?: PurchaseView[] }>(
+  items: T[],
+  claims: GuestClaims | null
+): T[] {
+  const ids = new Set(claims?.purchases);
+  if (ids.size === 0) return items;
   return items.map((item) => {
-    if (!item.purchases?.some((p) => cookiePurchaseIds.has(p.id))) return item;
+    if (!item.purchases?.some((p) => ids.has(p.id))) return item;
     return {
       ...item,
       purchases: item.purchases.map((p) =>
-        cookiePurchaseIds.has(p.id)
-          ? { ...p, claimedByViewer: true, by: 'self' as const }
+        ids.has(p.id)
+          ? {
+              ...p,
+              claimedByViewer: true,
+              by: 'self' as const,
+              name: p.name ?? claims?.name,
+            }
           : p
       ),
     };

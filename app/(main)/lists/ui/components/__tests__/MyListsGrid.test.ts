@@ -1,9 +1,15 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import Empty from '@/app/ui/components/Empty';
 import ListCard from '@/app/ui/components/ListCard';
+import { SWITCH_PROFILE_ACTION } from '@/lib/activeProfile';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedPublicList, seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedPublicList,
+  seedUsers,
+  selfProfileOf,
+} from '@/test/helpers/seedFollowGraph';
 
 mockNextCache();
 
@@ -38,7 +44,9 @@ describe('MyListsGrid', () => {
     await seedPublicList(db, { id: 'l0', user_id: 'viewer' });
     await seedPublicList(db, { id: 'l1', user_id: 'viewer' });
 
-    const tree = (await MyListsGrid({ userId: 'viewer' })) as unknown as El;
+    const tree = (await MyListsGrid({
+      profileId: selfProfileOf('viewer'),
+    })) as unknown as El;
     expect(tree.type).toBe('ul');
     expect(tree.props.className).toBe('list-card-grid');
 
@@ -51,10 +59,21 @@ describe('MyListsGrid', () => {
     expect(new Set(cardListIds)).toEqual(new Set(['l0', 'l1']));
   });
 
-  it('NoLists_RendersEmptyMessageParagraph', async () => {
-    const tree = (await MyListsGrid({ userId: 'viewer' })) as unknown as El;
-    expect(tree.type).toBe('p');
-    expect(tree.props.className).toBe('my-lists-empty');
-    expect(tree.props.children).toBe('No lists yet. Create your first one.');
+  it('NoListsSingleProfileViewer_RendersEmptyWithNoSwitchRoute', async () => {
+    const tree = (await MyListsGrid({
+      profileId: selfProfileOf('viewer'),
+    })) as unknown as El;
+    expect(tree.type).toBe(Empty);
+    expect(tree.props.type).toBe('list');
+    expect(tree.props.secondaryAction).toBeUndefined();
+  });
+
+  it('NoListsMultiProfileViewer_RendersEmptyWithTheProfilesRoute', async () => {
+    const tree = (await MyListsGrid({
+      profileId: selfProfileOf('viewer'),
+      actingAs: 'Kiddo',
+    })) as unknown as El;
+    expect(tree.type).toBe(Empty);
+    expect(tree.props.secondaryAction).toEqual(SWITCH_PROFILE_ACTION);
   });
 });

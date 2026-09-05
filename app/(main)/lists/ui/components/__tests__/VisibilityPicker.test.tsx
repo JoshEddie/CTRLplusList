@@ -33,6 +33,20 @@ beforeEach(() => {
 });
 
 describe('VisibilityPicker', () => {
+  it('BelowTheOwnerFloor_RendersThePillDisabledRatherThanAbsent', () => {
+    render(
+      <VisibilityPicker
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled
+      />
+    );
+
+    expect(
+      screen.getByRole('button', { name: /Visibility: Hidden/ })
+    ).toBeDisabled();
+  });
+
   it('SelectDifferentRow_CallsSetVisibility-OptimisticLabel-ToastSuccess-RouterRefresh', async () => {
     vi.mocked(setListVisibility).mockResolvedValue({
       success: true,
@@ -40,7 +54,11 @@ describe('VisibilityPicker', () => {
     });
     const user = userEvent.setup();
     render(
-      <VisibilityPicker listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityPicker
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
+      />
     );
     expect(
       screen.getByRole('button', { name: /Visibility: Hidden/ })
@@ -71,7 +89,11 @@ describe('VisibilityPicker', () => {
     });
     const user = userEvent.setup();
     render(
-      <VisibilityPicker listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityPicker
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
+      />
     );
 
     await openAndSelect(user, /Shared/);
@@ -87,7 +109,11 @@ describe('VisibilityPicker', () => {
   it('ReselectCurrentRow_NoSetVisibilityCall', async () => {
     const user = userEvent.setup();
     render(
-      <VisibilityPicker listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityPicker
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
+      />
     );
 
     await openAndSelect(user, /Hidden/);
@@ -99,7 +125,11 @@ describe('VisibilityPicker', () => {
   it('EscapeKey_ClosesMenu', async () => {
     const user = userEvent.setup();
     render(
-      <VisibilityPicker listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityPicker
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
+      />
     );
     await user.click(trigger());
     expect(screen.getByRole('menu')).toBeInTheDocument();
@@ -121,7 +151,11 @@ describe('VisibilityPicker', () => {
     );
     const user = userEvent.setup();
     render(
-      <VisibilityPicker listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityPicker
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
+      />
     );
 
     await openAndSelect(user, /Shared/);

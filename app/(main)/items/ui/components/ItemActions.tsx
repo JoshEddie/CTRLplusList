@@ -1,7 +1,8 @@
 'use client';
 
 import { Button, LinkButton } from '@/app/ui/components/button';
-import type { ItemStoreTable } from '@/lib/types';
+import { atLeast } from '@/lib/spoilers';
+import type { ItemStoreTable, SpoilerTier } from '@/lib/types';
 import { MdCheck, MdOpenInNew } from 'react-icons/md';
 import '../styles/purchase.css';
 
@@ -12,10 +13,10 @@ type ItemActionsProps = {
   viewerClaimed: boolean;
   /** Signed-out viewer — a claimed guest is never offered Add Claim (cannot attribute, no repeat self-claim). */
   guestViewer?: boolean;
-  /** Owner's spoiler-gated claim entry — same modal, purchase-recording copy. */
-  showOwnerClaimAction: boolean;
-  /** Owner's spoiler-gated claim management — the modal lists removable claims. */
-  showOwnerManageAction: boolean;
+  /** The item carries claims the viewer's resolved tier discloses. */
+  hasAnyClaim: boolean;
+  /** The viewer's resolved tier (`spoiler-visibility`). */
+  tier: SpoilerTier;
   /** Authed non-owner Buy & Claim signal. */
   showBuyClaim?: boolean;
   /** The primary (lowest-priced complete) store, or null when none exists. */
@@ -37,8 +38,8 @@ export default function ItemActions({
   fullyClaimed,
   viewerClaimed,
   guestViewer,
-  showOwnerClaimAction,
-  showOwnerManageAction,
+  hasAnyClaim,
+  tier,
   showBuyClaim,
   store,
   viewOnly,
@@ -46,16 +47,26 @@ export default function ItemActions({
   onAddClaimClick,
   onBuyClaimClick,
 }: ItemActionsProps) {
-  const showManage =
-    !viewOnly && (isOwner ? showOwnerManageAction : viewerClaimed);
-  const showStatus = !viewOnly && !isOwner && fullyClaimed && !viewerClaimed;
-  const ownerCanAdd = showOwnerClaimAction && !showOwnerManageAction;
+  // Below `claims` the action set may not vary with another party's claim:
+  // `Fully claimed`, `Manage claims` and the absence of `Buy & Claim` each
+  // state that an item carries claims, which is exactly what the tier
+  // withholds. A claim the VIEWER holds is no surprise to them, so it still
+  // reaches `Manage claim`.
+  const revealed = atLeast(tier, 'claims');
   const claimedGuest = !!guestViewer && viewerClaimed;
-  const nonOwnerCanAdd = !fullyClaimed && !claimedGuest;
+
+  const showManage =
+    !viewOnly && (viewerClaimed || (isOwner && revealed && hasAnyClaim));
+  const showStatus =
+    !viewOnly && revealed && !isOwner && fullyClaimed && !viewerClaimed;
+  const ownerCanAdd = revealed
+    ? !fullyClaimed && !hasAnyClaim
+    : !viewerClaimed;
+  const nonOwnerCanAdd = !claimedGuest && (!revealed || !fullyClaimed);
   const showAdd = !viewOnly && (isOwner ? ownerCanAdd : nonOwnerCanAdd);
   // Keyed on a navigable link, never mere store presence — a PRICED/linkless
   // item must keep its Add Claim-only action set (design D-Linkless-256).
-  const showBuy = !viewOnly && !!showBuyClaim && !!store?.link;
+  const showBuy = !viewOnly && revealed && !!showBuyClaim && !!store?.link;
   // Keyed on a navigable link, never mere store presence — a PRICED/linkless
   // store carries a price line but no View item link (item-actions spec).
   const showView = !!store?.link;

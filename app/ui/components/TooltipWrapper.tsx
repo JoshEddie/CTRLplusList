@@ -1,3 +1,5 @@
+import './tooltip.css';
+
 export default function TooltipWrapper({
   children,
   tooltip,
@@ -11,7 +13,9 @@ export default function TooltipWrapper({
 }) {
   return (
     <>
-      <div className={['tooltip-container', className].filter(Boolean).join(' ')}>
+      <div
+        className={['tooltip-container', className].filter(Boolean).join(' ')}
+      >
         {children}
         {showTooltip && <span className="tooltip">{tooltip}</span>}
       </div>

@@ -4,21 +4,21 @@
  */
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import UserCardGrid, { type FollowingFeedUser } from '../UserCardGrid';
+import UserCardGrid, { type FollowingFeedProfile } from '../UserCardGrid';
 
 vi.mock('../UserCard', () => ({
   default: ({
-    user,
+    profile,
     newCount,
     latestSharedAt,
   }: {
-    user: { id: string };
+    profile: { id: string };
     newCount?: number;
     latestSharedAt?: Date | null;
   }) => (
     <div
       data-testid="user-card"
-      data-id={user.id}
+      data-id={profile.id}
       data-new-count={newCount}
       data-latest={latestSharedAt ? 'set' : 'null'}
     />
@@ -31,29 +31,30 @@ vi.mock('@/app/ui/components/MoreCard', () => ({
   ),
 }));
 
-const users: FollowingFeedUser[] = [
+const face = { accent: null, art: null, avatarStyle: null };
+const profiles: FollowingFeedProfile[] = [
   {
     id: 'a',
     name: 'Alice',
-    image: null,
+    ...face,
     new_count: 2,
     latest_shared_at: new Date(),
   },
-  { id: 'b', name: 'Bob', image: null, new_count: 0, latest_shared_at: null },
+  { id: 'b', name: 'Bob', ...face, new_count: 0, latest_shared_at: null },
 ];
 
 describe('UserCardGrid', () => {
-  it('EmptyUsers_RendersFollowingEmptyWithMessage', () => {
+  it('EmptyProfiles_RendersFollowingEmptyWithMessage', () => {
     const { container } = render(
-      <UserCardGrid users={[]} emptyMessage="Nobody here" />
+      <UserCardGrid profiles={[]} emptyMessage="Nobody here" />
     );
     const empty = container.querySelector('.following-empty');
     expect(empty).toHaveTextContent('Nobody here');
     expect(screen.queryByTestId('user-card')).not.toBeInTheDocument();
   });
 
-  it('NonEmpty_RendersUserCardPerUser-MapsNewCountAndLatestShared', () => {
-    render(<UserCardGrid users={users} emptyMessage="x" />);
+  it('NonEmpty_RendersUserCardPerProfile-MapsNewCountAndLatestShared', () => {
+    render(<UserCardGrid profiles={profiles} emptyMessage="x" />);
     const cards = screen.getAllByTestId('user-card');
     expect(cards).toHaveLength(2);
     expect(cards[0]).toHaveAttribute('data-id', 'a');
@@ -66,7 +67,7 @@ describe('UserCardGrid', () => {
   it('MoreCountPositiveAndHref_RendersMoreCard', () => {
     render(
       <UserCardGrid
-        users={users}
+        profiles={profiles}
         emptyMessage="x"
         moreCount={5}
         seeAllHref="/following"
@@ -79,13 +80,13 @@ describe('UserCardGrid', () => {
 
   it('NoMoreCount_NoMoreCard', () => {
     render(
-      <UserCardGrid users={users} emptyMessage="x" seeAllHref="/following" />
+      <UserCardGrid profiles={profiles} emptyMessage="x" seeAllHref="/following" />
     );
     expect(screen.queryByTestId('more-card')).not.toBeInTheDocument();
   });
 
   it('MoreCountWithoutHref_NoMoreCard', () => {
-    render(<UserCardGrid users={users} emptyMessage="x" moreCount={5} />);
+    render(<UserCardGrid profiles={profiles} emptyMessage="x" moreCount={5} />);
     expect(screen.queryByTestId('more-card')).not.toBeInTheDocument();
   });
 });

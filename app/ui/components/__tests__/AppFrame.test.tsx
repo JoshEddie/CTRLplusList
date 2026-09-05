@@ -108,6 +108,28 @@ describe('AppFrame', () => {
     });
   });
 
+  describe('Gated', () => {
+    it('Gated_SetsDataGatedOnRoot', () => {
+      const { container } = render(
+        <AppFrame gated>
+          <div />
+        </AppFrame>
+      );
+      const root = container.firstElementChild as HTMLElement;
+      expect(root).toHaveAttribute('data-gated');
+    });
+
+    it('Default_NoDataGatedOnRoot', () => {
+      const { container } = render(
+        <AppFrame>
+          <div />
+        </AppFrame>
+      );
+      const root = container.firstElementChild as HTMLElement;
+      expect(root).not.toHaveAttribute('data-gated');
+    });
+  });
+
   describe('ChildrenPassthrough', () => {
     it('Children_RenderInsideAppSurface', () => {
       const { container } = render(

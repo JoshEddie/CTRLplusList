@@ -2,13 +2,17 @@ import ListDetails from '@/app/(main)/lists/ui/components/ListDetails';
 import ListPrivate from '@/app/(main)/lists/ui/components/ListPrivate';
 import { db } from '@/db';
 import { list_visits } from '@/db/schema';
-import { auth } from '@/lib/auth';
 import { getList } from '@/lib/data/list';
-import { getUserById, getUserIdByEmail } from '@/lib/data/user';
+import {
+  getSpoilerBaseline,
+  viewerIsProfileMember,
+} from '@/lib/data/profile.members';
+import { getListClaimedCount } from '@/lib/data/purchase';
+import { authedIdentity } from '@/lib/data/user.session';
 import { guardListViewable } from '@/lib/listAccess';
+import { atLeast, resolveSpoilerTier } from '@/lib/spoilers';
 import { VISIBILITY } from '@/lib/visibility';
 import { sql } from 'drizzle-orm';
-import { updateTag } from 'next/cache';
 import { after } from 'next/server';
 
 type Props = {
@@ -17,30 +21,44 @@ type Props = {
 };
 
 export default async function ListHeroSection({ params, searchParams }: Props) {
-  const session = await auth();
-  const user = session?.user?.email
-    ? await getUserIdByEmail(session.user.email)
-    : null;
+  const identity = await authedIdentity();
 
   const { id } = await params;
   const sp = await searchParams;
 
-  const list = await guardListViewable(await getList(id), user?.id ?? null);
+  // The guard's block check is the human's, so it takes the whole identity
+  // and compares the self-profile; `isOwner` is an ownership comparison and
+  // takes the profile the request acts as. The Follow affordance downstream
+  // needs both, which is why neither is folded into one viewer id.
+  const list = await guardListViewable(await getList(id), identity);
 
-  const isOwner = user?.id === list.user_id;
+  const isOwner = identity?.activeProfile.id === list.profile_id;
   const previewMode = isOwner && sp.preview === 'viewer';
-  const showSpoilers = isOwner && sp.spoilers === '1';
+
+  // Preview renders claim information at the OWNER's own resolved tier, not a
+  // non-member's: a preview honest about claim data would show every claim with
+  // names and spoil the person who opened it.
+  const baseline = await getSpoilerBaseline(identity?.userId, list.profile_id);
+  const tier = resolveSpoilerTier(baseline, sp);
+  const viewerIsMember = await viewerIsProfileMember(
+    identity?.userId,
+    list.profile_id
+  );
 
   if (list.visibility === VISIBILITY.OWNER && !isOwner) {
-    return <ListPrivate loggedIn={!!user} />;
+    return <ListPrivate loggedIn={!!identity} />;
   }
 
   // Record the visit for authenticated non-owner viewers of non-private lists.
   // Inlined (not a server action) because the deferred work cannot call auth()
   // — Next 16 disallows headers()/cookies() inside after(). Viewer id is
   // captured into a local here so the closure never touches request state.
-  if (user && !isOwner && list.visibility !== VISIBILITY.OWNER) {
-    const viewerId = user.id;
+  // No tag fires here: updateTag throws in after(), and every read of
+  // last_visited_at/visit_count is uncached — the one cached list_visits read,
+  // getBookmarkStatus, keys on favorited_at, which this write never touches
+  // (#305).
+  if (identity && !isOwner && list.visibility !== VISIBILITY.OWNER) {
+    const viewerId = identity.userId;
     const listId = id;
     after(async () => {
       try {
@@ -59,27 +77,31 @@ export default async function ListHeroSection({ params, searchParams }: Props) {
               visit_count: sql`${list_visits.visit_count} + 1`,
             },
           });
-        updateTag('list_visits');
       } catch (error) {
         console.error('Error recording visit:', error);
       }
     });
   }
 
-  const listOwner = await getUserById(list.user_id);
-
   return (
     <>
-      {!user && <div className="no-user" hidden />}
+      {!identity && <div className="no-user" hidden />}
       <ListDetails
         isOwner={isOwner}
         list={list}
-        owner_name={listOwner?.name || undefined}
-        owner_image={listOwner?.image || undefined}
-        viewer_id={user?.id || undefined}
-        showSpoilers={showSpoilers}
+        owner={list.profile}
+        viewer_user_id={identity?.userId || undefined}
+        viewer_self_profile_id={identity?.selfProfile.id || undefined}
+        tier={tier}
+        viewerIsMember={viewerIsMember}
+        baseline={baseline}
+        claimedCount={
+          atLeast(tier, 'progress')
+            ? (await getListClaimedCount(id)).claimedItemCount
+            : undefined
+        }
         previewMode={previewMode}
-        itemCount={list.items?.length ?? 0}
+        itemCount={list.item_count}
       />
     </>
   );

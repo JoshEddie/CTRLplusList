@@ -1,8 +1,10 @@
+import { ROLES } from '@/lib/data/profile.roles';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ItemDisplay, ListTable } from '@/lib/types';
 import ItemsPage from '../ItemsPage';
+import { makeProfile } from '@/test/helpers/profile';
 
 const nav = vi.hoisted(() => ({
   replace: vi.fn(),
@@ -34,11 +36,16 @@ vi.mock('../ItemsBrowser', () => ({
 }));
 vi.mock('../itemform/ItemFormContainer', () => ({
   default: (props: {
+    actingAs?: string;
     lists: unknown[];
     onClose: () => void;
     onSuccess: () => void;
   }) => (
-    <div data-testid="item-form" data-lists-count={props.lists.length}>
+    <div
+      data-testid="item-form"
+      data-lists-count={props.lists.length}
+      data-acting-as={props.actingAs ?? ''}
+    >
       <button type="button" onClick={props.onClose}>
         close-form
       </button>
@@ -60,7 +67,7 @@ function renderPage(
     <ItemsPage
       items={ACTIVE}
       archivedItems={ARCHIVED}
-      user_id="viewer"
+      actor={makeProfile('viewer-profile', 'viewer-profile', ROLES.owner)}
       user_name="Test V"
       lists={LISTS}
       initialPageSize={24}
@@ -134,6 +141,23 @@ describe('ItemsPage', () => {
       expect(screen.queryByTestId('items-browser')).not.toBeInTheDocument();
     });
 
+    it('MultiProfileViewerEmpty_OffersTheProfilesRouteBesideCreate', () => {
+      renderPage({ items: [], actingAs: 'Kiddo' });
+      expect(
+        screen.getByRole('button', { name: /Create Item/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'Go to Altvatars' })
+      ).toHaveAttribute('href', '/altvatar');
+    });
+
+    it('SingleProfileViewerEmpty_OffersNoSwitchRoute', () => {
+      renderPage({ items: [] });
+      expect(
+        screen.queryByRole('link', { name: 'Go to Altvatars' })
+      ).not.toBeInTheDocument();
+    });
+
     it('ArchivedEmpty_RendersDistinctMessageWithoutNewItemAffordance', () => {
       nav.search = 'tab=archived';
       renderPage({ archivedItems: [] });
@@ -179,8 +203,26 @@ describe('ItemsPage', () => {
       expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
     });
 
+    it('ActingAsAManagedProfile_ForwardsItsNameToTheItemForm', () => {
+      renderPage({ actingAs: 'Kiddo' });
+      fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
+      expect(screen.getByTestId('item-form')).toHaveAttribute(
+        'data-acting-as',
+        'Kiddo'
+      );
+    });
+
+    it('SingleProfileViewer_ForwardsNoActingProfileToTheItemForm', () => {
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
+      expect(screen.getByTestId('item-form')).toHaveAttribute(
+        'data-acting-as',
+        ''
+      );
+    });
+
     it('MissingLists_FormDefaultsToEmptyListCount', () => {
-      renderPage({ lists: undefined, user_id: undefined });
+      renderPage({ lists: undefined, actor: undefined });
       fireEvent.click(screen.getByRole('button', { name: 'New Item' }));
       const form = screen.getByTestId('item-form');
       expect(form).toHaveAttribute('data-lists-count', '0');

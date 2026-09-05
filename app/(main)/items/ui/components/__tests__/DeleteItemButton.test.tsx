@@ -43,12 +43,22 @@ async function openDialog(
   props: Partial<React.ComponentProps<typeof DeleteItemButton>> = {}
 ) {
   const user = userEvent.setup();
-  render(<DeleteItemButton id="i1" {...props} />);
+  render(<DeleteItemButton id="i1" disabled={false} {...props} />);
   await user.click(screen.getByRole('button', { name: 'Delete' }));
   return user;
 }
 
 describe('DeleteItemButton', () => {
+  it('BelowTheOwnerFloor_RendersDisabledAndOpensNoDialog', async () => {
+    const user = userEvent.setup();
+    render(<DeleteItemButton id="item-1" disabled />);
+
+    const trigger = screen.getByRole('button', { name: 'Delete' });
+    expect(trigger).toBeDisabled();
+    await user.click(trigger);
+    expect(screen.queryByText('Delete this item?')).not.toBeInTheDocument();
+  });
+
   describe('ActiveItem', () => {
     it('Open_RendersThreeButtonDialogWithHistoryCopy', async () => {
       await openDialog({ archived: false });

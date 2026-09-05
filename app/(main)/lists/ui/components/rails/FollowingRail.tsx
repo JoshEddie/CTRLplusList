@@ -1,25 +1,24 @@
 import UserCard from '@/app/(main)/users/ui/components/UserCard';
 import MoreCard from '@/app/ui/components/MoreCard';
-import { getFollowingFeedUsers } from '@/lib/data/user';
+import { getFollowingFeedProfiles } from '@/lib/data/user';
 import { capRail } from './utils';
 
 export default async function FollowingRail({ userId }: { userId: string }) {
-  const all = await getFollowingFeedUsers(userId);
-  const { shown: users, moreCount } = capRail(all);
+  const all = await getFollowingFeedProfiles(userId);
+  const { shown: profiles, moreCount } = capRail(all);
 
-  if (users.length === 0) {
+  if (profiles.length === 0) {
     return <div className="list-card-row-empty">Not following anyone yet.</div>;
   }
 
   return (
     <div className="list-card-row" role="list">
-      {users.map((u) => (
-        <div className="list-card-row-item" role="listitem" key={u.id}>
+      {profiles.map((p) => (
+        <div className="list-card-row-item" role="listitem" key={p.id}>
           <UserCard
-            user={{ id: u.id, name: u.name, image: u.image }}
-            newCount={u.new_count}
-            latestSharedAt={u.latest_shared_at}
-            compact
+            profile={p}
+            newCount={p.new_count}
+            latestSharedAt={p.latest_shared_at}
           />
         </div>
       ))}

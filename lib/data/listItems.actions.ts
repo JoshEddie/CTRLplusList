@@ -1,7 +1,10 @@
 'use server';
 
+// TODO(#343): extract the duplicated literal to a constant, then drop this disable
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import { db } from '@/db';
-import { list_items, lists, users } from '@/db/schema';
+import { items, list_items, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { touchLists } from '@/lib/data/list.touch';
 import {
@@ -9,10 +12,10 @@ import {
   rebalanceList,
   reorderPosition,
 } from '@/lib/data/listItems.positions';
-import { authedUserId } from '@/lib/data/user.session';
+import { ADMIN_OPTIONAL, authedWriter } from '@/lib/data/profile.gate';
 import { type ActionResponse } from '@/lib/types';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { updateTag } from 'next/cache';
 import { z } from 'zod';
 
 export async function setListItems(
@@ -31,17 +34,21 @@ export async function setListItems(
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, list_id),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
 
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser || sessionUser.id !== list.user_id) {
+    // The gate's own rejection collapses into this one: the session-presence
+    // check above already refused the no-session cause, so a stale session and
+    // a revoked membership both fall to the ownership comparison a null actor
+    // can never pass, and all three keep the endpoint's own 'Forbidden' code.
+    const actor = await authedWriter(ADMIN_OPTIONAL);
+    if (
+      'error' in actor ||
+      actor.identity.activeProfile.id !== list.profile_id
+    ) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -70,6 +77,23 @@ export async function setListItems(
 
     if (toRemove.length === 0 && toInsert.length === 0) {
       return { success: true, message: 'No changes' };
+    }
+
+    if (toInsert.length > 0) {
+      const targetItems = await db
+        .select({ profile_id: items.profile_id })
+        .from(items)
+        .where(inArray(items.id, toInsert));
+      if (
+        targetItems.length !== toInsert.length ||
+        targetItems.some((i) => i.profile_id !== list.profile_id)
+      ) {
+        return {
+          success: false,
+          message: 'Unauthorized - items do not belong to you',
+          error: 'Forbidden',
+        };
+      }
     }
 
     if (toRemove.length > 0) {
@@ -105,8 +129,15 @@ export async function setListItems(
 
     await touchLists([list_id]);
 
-    updateTag('items');
-    updateTag('lists');
+    // Per-item tags alongside the list tags: getItemById is keyed by item and
+    // carries membership tags only for the lists the item was already on, so an
+    // added item's cached entry names no tag this write would otherwise fire.
+    updateTags(
+      cacheTags.list(list_id),
+      cacheTags.itemsOfList(list_id),
+      cacheTags.listsOfProfile(list.profile_id),
+      ...[...toInsert, ...toRemove].map((itemId) => cacheTags.item(itemId))
+    );
 
     const parts: string[] = [];
     if (toInsert.length > 0) parts.push(`Added ${toInsert.length}`);
@@ -131,23 +162,20 @@ export async function removeListItem(
   item_id: string
 ): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
+    const actor = await authedWriter(ADMIN_OPTIONAL);
+    if ('error' in actor) {
+      return actor.error;
     }
+    const { identity } = actor;
 
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, list_id),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
     if (!list) {
       return { success: false, message: 'List not found', error: 'Not found' };
     }
-    if (list.user_id !== userId) {
+    if (list.profile_id !== identity.activeProfile.id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -171,8 +199,12 @@ export async function removeListItem(
 
     await touchLists([list_id]);
 
-    updateTag('items');
-    updateTag('lists');
+    updateTags(
+      cacheTags.list(list_id),
+      cacheTags.itemsOfList(list_id),
+      cacheTags.listsOfProfile(list.profile_id),
+      cacheTags.item(item_id)
+    );
 
     return { success: true, message: 'Removed from list' };
   } catch (error) {
@@ -191,19 +223,16 @@ export async function updatePriority(
   listId: string
 ): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
-      return {
-        success: false,
-        message: 'Unauthorized',
-        error: 'Unauthorized',
-      };
+    const actor = await authedWriter(ADMIN_OPTIONAL);
+    if ('error' in actor) {
+      return actor.error;
     }
+    const { identity } = actor;
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, listId),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
-    if (!list || list.user_id !== userId) {
+    if (!list || list.profile_id !== identity.activeProfile.id) {
       return {
         success: false,
         message: 'Unauthorized - list does not belong to you',
@@ -211,23 +240,20 @@ export async function updatePriority(
       };
     }
 
-    const itemPositionResult = await db
-      .select({ position: list_items.position })
+    const positionRows = await db
+      .select({ item_id: list_items.item_id, position: list_items.position })
       .from(list_items)
       .where(
-        and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
-      )
-      .limit(1);
+        and(
+          eq(list_items.list_id, listId),
+          inArray(list_items.item_id, [item_id, target_id])
+        )
+      );
 
-    const targetPositionResult = await db
-      .select({ position: list_items.position })
-      .from(list_items)
-      .where(
-        and(eq(list_items.list_id, listId), eq(list_items.item_id, target_id))
-      )
-      .limit(1);
+    const itemRow = positionRows.find((row) => row.item_id === item_id);
+    const targetRow = positionRows.find((row) => row.item_id === target_id);
 
-    if (!itemPositionResult[0] || !targetPositionResult[0]) {
+    if (!itemRow || !targetRow) {
       return {
         success: false,
         message: 'Item or target not found on this list',
@@ -235,8 +261,8 @@ export async function updatePriority(
       };
     }
 
-    const itemPosition = itemPositionResult[0].position;
-    const targetPosition = targetPositionResult[0].position;
+    const itemPosition = itemRow.position;
+    const targetPosition = targetRow.position;
 
     if (itemPosition === targetPosition) {
       return {
@@ -259,7 +285,7 @@ export async function updatePriority(
         and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
       );
 
-    updateTag('items');
+    updateTags(cacheTags.itemsOfList(listId));
 
     if (await checkListBalance(listId)) {
       await rebalanceList(listId);

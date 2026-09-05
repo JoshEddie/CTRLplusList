@@ -2,15 +2,22 @@
  * The owner/preview/claim state lands on classed wrapper divs that carry no role,
  * so a few assertions query by class.
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPurchase, removePurchase } from '@/lib/data/purchase.actions';
+import {
+  createPurchase,
+  removePurchase,
+  revealedClaimsForItem,
+} from '@/lib/data/purchase.actions';
 import Item from '../Item';
+import { makeProfile } from '@/test/helpers/profile';
 
 vi.mock('@/lib/data/purchase.actions', () => ({
   createPurchase: vi.fn(),
   removePurchase: vi.fn(),
+  revealedClaimsForItem: vi.fn(async () => []),
 }));
 
 const router = vi.hoisted(() => ({
@@ -28,26 +35,34 @@ vi.mock('next/navigation', () => ({
 // Faithful enough to invoke the function-form `error`/`success` formatters the
 // component passes (so those arrows are exercised), while rethrowing rejections
 // to the component's own try/catch.
-vi.mock('react-hot-toast', () => ({
-  default: {
-    promise: <T,>(
-      p: Promise<T>,
-      opts: { success?: unknown; error?: unknown }
-    ) =>
-      p.then(
-        (v) => {
-          if (typeof opts?.success === 'function') opts.success(v);
-          return v;
-        },
-        (e) => {
-          if (typeof opts?.error === 'function') opts.error(e);
-          throw e;
-        }
-      ),
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}));
+vi.mock('react-hot-toast', () => {
+  const success = vi.fn();
+  const error = vi.fn();
+  return {
+    default: {
+      // Mirrors the real toast.promise on both shapes it is called with here:
+      // a function is invoked with the settled value, a string is the toast.
+      promise: <T,>(
+        p: Promise<T>,
+        opts: { success?: unknown; error?: unknown }
+      ) =>
+        p.then(
+          (v) => {
+            if (typeof opts?.success === 'function') opts.success(v);
+            else if (opts?.success) success(opts.success);
+            return v;
+          },
+          (e) => {
+            if (typeof opts?.error === 'function') opts.error(e);
+            else if (opts?.error) error(opts.error);
+            throw e;
+          }
+        ),
+      success,
+      error,
+    },
+  };
+});
 
 // The carve-out children own their own rendering tests; here they are
 // prop-surfacing stubs so Item's orchestration + handler wiring is asserted in
@@ -63,7 +78,8 @@ vi.mock('../ItemCard', () => ({
       data-counter={p.counterText as string}
       data-is-owner={String(p.isOwner)}
       data-viewer-claimed={String(p.viewerClaimed)}
-      data-show-owner-claim={String(p.showOwnerClaimAction)}
+      data-has-any-claim={String(p.hasAnyClaim)}
+      data-tier={String(p.tier)}
       data-show-buy-claim={String(p.showBuyClaim)}
     >
       <button type="button" onClick={p.onPurchaseClick as () => void}>
@@ -101,12 +117,12 @@ vi.mock('../ClaimUndoPopup', () => ({
 }));
 vi.mock('../ClaimBanners', () => ({
   default: (p: Record<string, unknown>) => {
-    const claims = p.claims as { id: string; firstName: string }[];
+    const claims = p.claims as { id: string; name: string }[];
     const myClaims = p.myClaims as { id: string }[];
     return (
       <div
         data-testid="claim-banners"
-        data-claims={claims.map((c) => c.firstName).join(',')}
+        data-claims={claims.map((c) => c.name).join(',')}
         data-my-claim={String(myClaims.length > 0)}
         data-my-claim-ids={myClaims.map((c) => c.id).join(',')}
         data-counter={p.counterText as string}
@@ -134,9 +150,12 @@ vi.mock('../PurchaseModalSlot', () => ({
       data-testid="modal-slot"
       data-view={p.view as string}
       data-claims={(p.claims as { id: string }[]).map((c) => c.id).join(',')}
+      data-claim-names={(p.claims as { name?: string }[])
+        .map((c) => c.name ?? '')
+        .join(',')}
       data-viewer-is-purchaser={String(p.viewerIsPurchaser)}
       data-is-owner={String(p.isOwner)}
-      data-show-spoilers={String(p.showSpoilers)}
+      data-tier={String(p.tier)}
       data-item-name={String((p.item as { name?: string | null })?.name ?? '')}
     >
       <button type="button" onClick={p.onSelfClaim as () => void}>
@@ -152,17 +171,6 @@ vi.mock('../PurchaseModalSlot', () => ({
         }
       >
         claim-attributed
-      </button>
-      <button
-        type="button"
-        onClick={() =>
-          (p.onAttributedClaim as (t: unknown) => void)({
-            id: 'u9',
-            name: null,
-          })
-        }
-      >
-        claim-attributed-null-name
       </button>
       <button
         type="button"
@@ -182,7 +190,7 @@ vi.mock('../PurchaseModalSlot', () => ({
         type="button"
         onClick={() =>
           (p.onRemoveClaim as (c: unknown) => void)(
-            (p.ownerClaims as unknown[])[0]
+            (p.claims as unknown[])[0]
           )
         }
       >
@@ -197,13 +205,15 @@ vi.mock('../PurchaseModalSlot', () => ({
 
 const OWNER = 'owner';
 
+const actorOf = (id: string) => makeProfile(id, id, ROLES.owner);
+
 function makeItem(overrides: Record<string, unknown> = {}) {
   return {
     id: 'i1',
     name: 'Gift',
     description: '',
     image_url: '',
-    user_id: OWNER,
+    profile_id: OWNER,
     quantity_limit: 1,
     store: null,
     purchases: [],
@@ -244,7 +254,7 @@ describe('Item', () => {
   describe('OwnerGate', () => {
     it('Owner_MountsOwnerActions-MarksContainerOwner', () => {
       const { container } = renderItem(
-        { user_id: OWNER, showArchiveAction: true },
+        { actor: actorOf(OWNER), showArchiveAction: true },
         ''
       );
       const actions = screen.getByTestId('owner-actions');
@@ -254,13 +264,13 @@ describe('Item', () => {
     });
 
     it('Viewer_OmitsOwnerActions', () => {
-      renderItem({ item: { user_id: OWNER }, user_id: 'viewer' });
+      renderItem({ item: { profile_id: OWNER }, actor: actorOf('viewer') });
       expect(screen.queryByTestId('owner-actions')).not.toBeInTheDocument();
     });
 
     it('OwnerArchivedCallback_Refreshes', async () => {
       const user = userEvent.setup();
-      renderItem({ user_id: OWNER, showArchiveAction: true });
+      renderItem({ actor: actorOf(OWNER), showArchiveAction: true });
       await user.click(screen.getByRole('button', { name: 'owner-archived' }));
       expect(router.refresh).toHaveBeenCalled();
     });
@@ -270,13 +280,13 @@ describe('Item', () => {
     it('ViewerFullyClaimed_ForwardsPurchasedAndFullyClaimed', () => {
       renderItem({
         item: {
-          user_id: OWNER,
+          profile_id: OWNER,
           quantity_limit: 1,
           purchases: [
-            { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
+            { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
           ],
         },
-        user_id: 'viewer',
+        actor: actorOf('viewer'),
       });
       expect(card()).toHaveAttribute('data-show-purchased', 'true');
       expect(card()).toHaveAttribute('data-fully-claimed', 'true');
@@ -285,30 +295,39 @@ describe('Item', () => {
 
     it('UnlimitedQuantity_ForwardsInfinityCounter', () => {
       renderItem({
-        item: { user_id: OWNER, quantity_limit: null },
-        user_id: 'viewer',
+        item: { profile_id: OWNER, quantity_limit: null },
+        actor: actorOf('viewer'),
       });
       expect(card()).toHaveAttribute('data-counter', '0/∞ claimed');
       expect(card()).toHaveAttribute('data-show-counter', 'true');
     });
 
+    it('BelowClaims_HidesCounter', () => {
+      renderItem({
+        item: { profile_id: OWNER, quantity_limit: null },
+        actor: actorOf('viewer'),
+        tier: 'surprise',
+      });
+      expect(card()).toHaveAttribute('data-show-counter', 'false');
+    });
+
     it('QuantityLimitOne_HidesCounter', () => {
       renderItem({
-        item: { user_id: OWNER, quantity_limit: 1 },
-        user_id: 'viewer',
+        item: { profile_id: OWNER, quantity_limit: 1 },
+        actor: actorOf('viewer'),
       });
       expect(card()).toHaveAttribute('data-show-counter', 'false');
       expect(card()).toHaveAttribute('data-counter', '0/1 claimed');
     });
 
-    it('OwnerWithClaims_ForwardsSpoilerState', () => {
+    it('OwnerWithClaimsAtIdentity_ForwardsSpoilerPillTrue', () => {
       renderItem({
-        user_id: OWNER,
+        actor: actorOf(OWNER),
         item: {
-          user_id: OWNER,
+          profile_id: OWNER,
           quantity_limit: 3,
           purchases: [
-            { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
+            { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
           ],
         },
       });
@@ -316,19 +335,19 @@ describe('Item', () => {
     });
 
     it('NoClaims_ForwardsEmptyClaims', () => {
-      renderItem({ item: { user_id: OWNER }, user_id: 'viewer' });
+      renderItem({ item: { profile_id: OWNER }, actor: actorOf('viewer') });
       expect(banners()).toHaveAttribute('data-claims', '');
     });
 
     it('SelfClaim_ForwardsYouSummaryAndMyClaim', () => {
       renderItem({
         item: {
-          user_id: OWNER,
+          profile_id: OWNER,
           purchases: [
-            { id: 'pm', by: 'self', firstName: 'You', claimedByViewer: true },
+            { id: 'pm', by: 'self', name: 'You', claimedByViewer: true },
           ],
         },
-        user_id: 'viewer',
+        actor: actorOf('viewer'),
       });
       expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
       expect(banners()).toHaveAttribute('data-my-claim', 'true');
@@ -337,117 +356,129 @@ describe('Item', () => {
     it('MixedClaims_ForwardsOnlyViewerRemovableClaimsAsMine', () => {
       renderItem({
         item: {
-          user_id: OWNER,
+          profile_id: OWNER,
           quantity_limit: null,
           purchases: [
-            { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
-            { id: 'pm', by: 'self', firstName: 'You', claimedByViewer: true },
+            { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
+            { id: 'pm', by: 'self', name: 'You', claimedByViewer: true },
             {
               id: 'pa',
               by: 'other',
-              firstName: 'Grandma',
+              name: 'Grandma',
               claimedByViewer: true,
             },
           ],
         },
-        user_id: 'viewer',
+        actor: actorOf('viewer'),
       });
       expect(banners()).toHaveAttribute('data-my-claim-ids', 'pm,pa');
     });
 
+    it('ClaimWithNullFirstName_ForwardsNamelessClaim', () => {
+      renderItem({
+        item: {
+          profile_id: OWNER,
+          purchases: [
+            { id: 'p1', by: 'other', name: null, claimedByViewer: false },
+          ],
+        },
+        actor: actorOf('viewer'),
+      });
+      expect(banners()).toHaveAttribute('data-claims', '');
+    });
+
     it('MissingPurchasesField_TreatedAsNoClaims', () => {
       renderItem({
-        item: { user_id: OWNER, purchases: undefined },
-        user_id: 'viewer',
+        item: { profile_id: OWNER, purchases: undefined },
+        actor: actorOf('viewer'),
       });
       expect(banners()).toHaveAttribute('data-my-claim', 'false');
     });
 
     it('PropSync_ResyncsLocalPurchasesOnPropChange', () => {
       const { rerender } = renderItem({
-        item: { user_id: OWNER },
-        user_id: 'viewer',
+        item: { profile_id: OWNER },
+        actor: actorOf('viewer'),
       });
       expect(banners()).toHaveAttribute('data-claims', '');
       rerender(
         <Item
           item={makeItem({
-            user_id: OWNER,
+            profile_id: OWNER,
             purchases: [
-              { id: 'p9', by: 'other', firstName: 'Sam', claimedByViewer: false },
+              { id: 'p9', by: 'other', name: 'Sam', claimedByViewer: false },
             ],
           })}
-          user_id="viewer"
+          actor={actorOf('viewer')}
         />
       );
       expect(banners()).toHaveAttribute('data-claims', 'Sam');
     });
   });
 
-  describe('OwnerClaimGate', () => {
+  describe('OwnerClaimAffordance', () => {
     const ownedWithRoom = {
-      user_id: OWNER,
+      actor: actorOf(OWNER),
       item: {
-        user_id: OWNER,
+        profile_id: OWNER,
         quantity_limit: 3,
         purchases: [
-          { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
+          { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
         ],
       },
     };
 
-    it('OwnerSpoilersWithRemainingQuantity_ForwardsShowOwnerClaimTrue', () => {
-      renderItem({ ...ownedWithRoom, showSpoilers: true });
-      expect(card()).toHaveAttribute('data-show-owner-claim', 'true');
+    it('OwnerWithClaims_ForwardsHasAnyClaimTrueAndTheTier', () => {
+      renderItem({ ...ownedWithRoom, tier: 'claims' });
+      expect(card()).toHaveAttribute('data-has-any-claim', 'true');
+      expect(card()).toHaveAttribute('data-tier', 'claims');
     });
 
-    it('OwnerWithoutSpoilers_ForwardsShowOwnerClaimFalse', () => {
-      renderItem(ownedWithRoom);
-      expect(card()).toHaveAttribute('data-show-owner-claim', 'false');
+    it('OwnerBelowClaims_ForwardsTheTierSoTheMatrixHidesClaimState', () => {
+      renderItem({ ...ownedWithRoom, tier: 'surprise' });
+      expect(card()).toHaveAttribute('data-tier', 'surprise');
     });
 
-    it('OwnerSpoilersFullyClaimed_ForwardsShowOwnerClaimFalse', () => {
+    // A claim the viewer holds is no surprise to them, so it reaches the
+    // action matrix on their own list too — the tier governs other parties'.
+    it('OwnerHoldingTheirOwnClaim_ForwardsViewerClaimedTrue', () => {
       renderItem({
-        user_id: OWNER,
-        showSpoilers: true,
+        actor: actorOf(OWNER),
+        tier: 'surprise',
         item: {
-          user_id: OWNER,
-          quantity_limit: 1,
+          profile_id: OWNER,
+          quantity_limit: 3,
           purchases: [
-            { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
+            { id: 'po', by: 'self', name: 'You', claimedByViewer: true },
           ],
         },
       });
-      expect(card()).toHaveAttribute('data-show-owner-claim', 'false');
+      expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
     });
 
-    it('ViewerSpoilers_ForwardsShowOwnerClaimFalse', () => {
-      renderItem({
-        item: { user_id: OWNER },
-        user_id: 'viewer',
-        showSpoilers: true,
-      });
-      expect(card()).toHaveAttribute('data-show-owner-claim', 'false');
+    it('TierAbsent_DefaultsToClaims', () => {
+      renderItem({ item: { profile_id: OWNER }, actor: actorOf('viewer') });
+      expect(card()).toHaveAttribute('data-tier', 'claims');
     });
   });
 
   describe('ModalMount', () => {
     it('PurchaseParamMatches_MountsModalSlot', () => {
       renderItem(
-        { item: { user_id: OWNER }, user_id: 'viewer' },
+        { item: { profile_id: OWNER }, actor: actorOf('viewer') },
         'purchaseItem=i1'
       );
       expect(screen.getByTestId('modal-slot')).toBeInTheDocument();
     });
 
     it('NoPurchaseParam_NoModalSlot', () => {
-      renderItem({ item: { user_id: OWNER }, user_id: 'viewer' });
+      renderItem({ item: { profile_id: OWNER }, actor: actorOf('viewer') });
       expect(screen.queryByTestId('modal-slot')).not.toBeInTheDocument();
     });
 
     it('Preview_NeverMountsModalSlot', () => {
       renderItem(
-        { item: { user_id: 'viewer' }, user_id: 'viewer', preview: true },
+        { item: { profile_id: 'viewer' }, actor: actorOf('viewer'), preview: true },
         'purchaseItem=i1'
       );
       expect(screen.queryByTestId('modal-slot')).not.toBeInTheDocument();
@@ -455,8 +486,8 @@ describe('Item', () => {
 
     it('PreviewFlag_MarksContainerPreview', () => {
       const { container } = renderItem({
-        item: { user_id: 'viewer' },
-        user_id: 'viewer',
+        item: { profile_id: 'viewer' },
+        actor: actorOf('viewer'),
         preview: true,
       });
       expect(container.querySelector('.item-container')).toHaveClass('preview');
@@ -466,7 +497,7 @@ describe('Item', () => {
   describe('OpenModal', () => {
     it('CardClaimClick_PushesPurchaseParamWithoutViewParam', async () => {
       const user = userEvent.setup();
-      renderItem({ item: { user_id: OWNER }, user_id: 'viewer' });
+      renderItem({ item: { profile_id: OWNER }, actor: actorOf('viewer') });
       await user.click(screen.getByRole('button', { name: 'card-claim' }));
       expect(router.push).toHaveBeenCalledWith(
         expect.stringContaining('purchaseItem=i1')
@@ -478,7 +509,7 @@ describe('Item', () => {
 
     it('CardAddClaimClick_PushesPurchaseViewClaimParam', async () => {
       const user = userEvent.setup();
-      renderItem({ item: { user_id: OWNER }, user_id: 'viewer' });
+      renderItem({ item: { profile_id: OWNER }, actor: actorOf('viewer') });
       await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
       expect(router.push).toHaveBeenCalledWith(
         expect.stringContaining('purchaseItem=i1')
@@ -491,7 +522,7 @@ describe('Item', () => {
     it('CloseSlot_ReplacesUrlWithoutPurchaseOrViewParams', async () => {
       const user = userEvent.setup();
       renderItem(
-        { item: { user_id: OWNER }, user_id: 'viewer' },
+        { item: { profile_id: OWNER }, actor: actorOf('viewer') },
         'purchaseItem=i1&purchaseView=claim'
       );
       await user.click(screen.getByRole('button', { name: 'slot-close' }));
@@ -509,7 +540,7 @@ describe('Item', () => {
       sp.value = null as never;
       const user = userEvent.setup();
       render(
-        <Item item={makeItem({ id: undefined })} user_id="viewer" />
+        <Item item={makeItem({ id: undefined })} actor={actorOf('viewer')} />
       );
       await user.click(screen.getByRole('button', { name: 'slot-close' }));
       expect(router.replace).toHaveBeenCalledWith('/lists/l1?');
@@ -517,7 +548,7 @@ describe('Item', () => {
 
     it('NullItemName_ModalSlotGetsEmptyName', () => {
       renderItem(
-        { item: { user_id: OWNER, name: null }, user_id: 'viewer' },
+        { item: { profile_id: OWNER, name: null }, actor: actorOf('viewer') },
         'purchaseItem=i1'
       );
       expect(screen.getByTestId('modal-slot')).toHaveAttribute(
@@ -529,8 +560,8 @@ describe('Item', () => {
 
   describe('Claim', () => {
     const viewer = {
-      item: { user_id: OWNER },
-      user_id: 'viewer',
+      item: { profile_id: OWNER },
+      actor: actorOf('viewer'),
       user_name: 'Vicky',
     };
 
@@ -561,12 +592,12 @@ describe('Item', () => {
         guest_name: null,
         purchased_by: 'u9',
       });
-      // firstToken keeps only the first word of the optimistic display name;
-      // the viewer asserted the claim, so the undo affordance unlocks.
+      // The optimistic row carries the name in full, as the server render
+      // will; the viewer asserted the claim, so the undo affordance unlocks.
       await waitFor(() =>
         expect(screen.getByTestId('claim-banners')).toHaveAttribute(
           'data-claims',
-          'Sam'
+          'Sam Lee'
         )
       );
       expect(screen.getByTestId('claim-banners')).toHaveAttribute(
@@ -586,15 +617,25 @@ describe('Item', () => {
       await waitFor(() =>
         expect(screen.getByTestId('claim-banners')).toHaveAttribute(
           'data-claims',
-          'Sam'
+          'Sam Lee'
         )
       );
+    });
+
+    it('SignedOutGuestClaim_AddsClaimTheGuestHolds', async () => {
+      const user = userEvent.setup();
+      renderItem({ item: { profile_id: OWNER } }, 'purchaseItem=i1');
+      await user.click(screen.getByRole('button', { name: 'claim-guest' }));
+      await waitFor(() =>
+        expect(banners()).toHaveAttribute('data-claims', 'Sam Lee')
+      );
+      expect(banners()).toHaveAttribute('data-my-claim', 'true');
     });
 
     it('EmptyItemId_PayloadCarriesEmptyId', async () => {
       const user = userEvent.setup();
       renderItem(
-        { item: { user_id: OWNER, id: '' }, user_id: 'viewer', user_name: 'V' },
+        { item: { profile_id: OWNER, id: '' }, actor: actorOf('viewer'), user_name: 'V' },
         'purchaseItem='
       );
       await user.click(screen.getByRole('button', { name: 'claim-self' }));
@@ -620,7 +661,7 @@ describe('Item', () => {
     it('SelfClaimWithoutUserName_OptimisticClaimNamedYou', async () => {
       const user = userEvent.setup();
       renderItem(
-        { item: { user_id: OWNER }, user_id: 'viewer' },
+        { item: { profile_id: OWNER }, actor: actorOf('viewer') },
         'purchaseItem=i1'
       );
       await user.click(screen.getByRole('button', { name: 'claim-self' }));
@@ -632,7 +673,7 @@ describe('Item', () => {
     it('AttributedClaimTargetIsViewer_RecordedAsSelfClaim', async () => {
       const user = userEvent.setup();
       renderItem(
-        { item: { user_id: OWNER }, user_id: 'u9', user_name: 'Sam' },
+        { item: { profile_id: OWNER }, actor: actorOf('u9'), user_name: 'Sam' },
         'purchaseItem=i1'
       );
       await user.click(
@@ -642,17 +683,6 @@ describe('Item', () => {
         expect(card()).toHaveAttribute('data-viewer-claimed', 'true')
       );
       expect(banners()).toHaveAttribute('data-my-claim', 'true');
-    });
-
-    it('AttributedClaimNullName_FallsBackToSomeone', async () => {
-      const user = userEvent.setup();
-      renderItem(viewer, 'purchaseItem=i1');
-      await user.click(
-        screen.getByRole('button', { name: 'claim-attributed-null-name' })
-      );
-      await waitFor(() =>
-        expect(banners()).toHaveAttribute('data-claims', 'Someone')
-      );
     });
 
     it('PurchaseFailsWithMessage_Toasts', async () => {
@@ -709,12 +739,12 @@ describe('Item', () => {
       rerender(
         <Item
           item={makeItem({
-            user_id: OWNER,
+            profile_id: OWNER,
             purchases: [
-              { id: 'srv-1', by: 'self', firstName: 'You', claimedByViewer: true },
+              { id: 'srv-1', by: 'self', name: 'You', claimedByViewer: true },
             ],
           })}
-          user_id="viewer"
+          actor={actorOf('viewer')}
           user_name="Vicky"
         />
       );
@@ -740,8 +770,8 @@ describe('Item', () => {
       price: '35.50',
     };
     const buyable = {
-      item: { user_id: OWNER, store: LINKED_STORE },
-      user_id: 'viewer',
+      item: { profile_id: OWNER, store: LINKED_STORE },
+      actor: actorOf('viewer'),
       user_name: 'Vicky',
     };
     const popup = () => screen.queryByTestId('undo-popup');
@@ -752,14 +782,14 @@ describe('Item', () => {
     });
 
     it('Guest_ForwardsShowBuyClaimFalse', () => {
-      renderItem({ item: { user_id: OWNER, store: LINKED_STORE } });
+      renderItem({ item: { profile_id: OWNER, store: LINKED_STORE } });
       expect(card()).toHaveAttribute('data-show-buy-claim', 'false');
     });
 
     it('Owner_ForwardsShowBuyClaimFalse', () => {
       renderItem({
-        item: { user_id: OWNER, store: LINKED_STORE },
-        user_id: OWNER,
+        item: { profile_id: OWNER, store: LINKED_STORE },
+        actor: actorOf(OWNER),
       });
       expect(card()).toHaveAttribute('data-show-buy-claim', 'false');
     });
@@ -767,14 +797,14 @@ describe('Item', () => {
     it('FullyClaimed_ForwardsShowBuyClaimFalse', () => {
       renderItem({
         item: {
-          user_id: OWNER,
+          profile_id: OWNER,
           store: LINKED_STORE,
           quantity_limit: 1,
           purchases: [
-            { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
+            { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
           ],
         },
-        user_id: 'viewer',
+        actor: actorOf('viewer'),
       });
       expect(card()).toHaveAttribute('data-show-buy-claim', 'false');
     });
@@ -782,20 +812,20 @@ describe('Item', () => {
     it('ViewerAlreadyClaimed_ForwardsShowBuyClaimFalse', () => {
       renderItem({
         item: {
-          user_id: OWNER,
+          profile_id: OWNER,
           store: LINKED_STORE,
           quantity_limit: 3,
           purchases: [
-            { id: 'pm', by: 'self', firstName: 'You', claimedByViewer: true },
+            { id: 'pm', by: 'self', name: 'You', claimedByViewer: true },
           ],
         },
-        user_id: 'viewer',
+        actor: actorOf('viewer'),
       });
       expect(card()).toHaveAttribute('data-show-buy-claim', 'false');
     });
 
     it('NoCompleteStore_ForwardsShowBuyClaimFalse', () => {
-      renderItem({ item: { user_id: OWNER, store: null }, user_id: 'viewer' });
+      renderItem({ item: { profile_id: OWNER, store: null }, actor: actorOf('viewer') });
       expect(card()).toHaveAttribute('data-show-buy-claim', 'false');
     });
 
@@ -859,19 +889,19 @@ describe('Item', () => {
       const user = userEvent.setup();
       renderItem({
         item: {
-          user_id: OWNER,
+          profile_id: OWNER,
           store: LINKED_STORE,
           quantity_limit: 3,
           purchases: [
             {
               id: 'pa',
               by: 'other',
-              firstName: 'Grandma',
+              name: 'Grandma',
               claimedByViewer: true,
             },
           ],
         },
-        user_id: 'viewer',
+        actor: actorOf('viewer'),
         user_name: 'Vicky',
       });
       await user.click(screen.getByRole('button', { name: 'card-buy-claim' }));
@@ -888,18 +918,18 @@ describe('Item', () => {
   describe('ModalView', () => {
     const slot = () => screen.getByTestId('modal-slot');
     const claimedItem = {
-      user_id: OWNER,
+      profile_id: OWNER,
       quantity_limit: 3,
       purchases: [
-        { id: 'pm', by: 'self', firstName: 'You', claimedByViewer: true },
-        { id: 'pa', by: 'other', firstName: 'Grandma', claimedByViewer: true },
-        { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
+        { id: 'pm', by: 'self', name: 'You', claimedByViewer: true },
+        { id: 'pa', by: 'other', name: 'Grandma', claimedByViewer: true },
+        { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
       ],
     };
 
     it('ViewerWithClaimsNoViewParam_OpensManageWithAllClaims', () => {
       renderItem(
-        { item: claimedItem, user_id: 'viewer' },
+        { item: claimedItem, actor: actorOf('viewer') },
         'purchaseItem=i1'
       );
       expect(slot()).toHaveAttribute('data-view', 'manage');
@@ -908,7 +938,7 @@ describe('Item', () => {
 
     it('ViewerWithClaimsViewParamClaim_OpensClaimFlow-MarksViewerIsPurchaser', () => {
       renderItem(
-        { item: claimedItem, user_id: 'viewer' },
+        { item: claimedItem, actor: actorOf('viewer') },
         'purchaseItem=i1&purchaseView=claim'
       );
       expect(slot()).toHaveAttribute('data-view', 'claim');
@@ -919,18 +949,18 @@ describe('Item', () => {
       renderItem(
         {
           item: {
-            user_id: OWNER,
+            profile_id: OWNER,
             quantity_limit: 3,
             purchases: [
               {
                 id: 'pa',
                 by: 'other',
-                firstName: 'Grandma',
+                name: 'Grandma',
                 claimedByViewer: true,
               },
             ],
           },
-          user_id: 'viewer',
+          actor: actorOf('viewer'),
         },
         'purchaseItem=i1&purchaseView=claim'
       );
@@ -941,13 +971,13 @@ describe('Item', () => {
       renderItem(
         {
           item: {
-            user_id: OWNER,
+            profile_id: OWNER,
             quantity_limit: 3,
             purchases: [
-              { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
+              { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
             ],
           },
-          user_id: 'viewer',
+          actor: actorOf('viewer'),
         },
         'purchaseItem=i1'
       );
@@ -959,14 +989,13 @@ describe('Item', () => {
       renderItem(
         {
           item: {
-            user_id: OWNER,
+            profile_id: OWNER,
             quantity_limit: 3,
             purchases: [
-              { id: 'po', by: 'self', firstName: 'You', claimedByViewer: true },
+              { id: 'po', by: 'self', name: 'You', claimedByViewer: true },
             ],
           },
-          user_id: OWNER,
-          showSpoilers: true,
+          actor: actorOf(OWNER),
         },
         'purchaseItem=i1'
       );
@@ -974,17 +1003,265 @@ describe('Item', () => {
     });
   });
 
-  describe('OwnerMasterUnclaim', () => {
-    // Owner master unclaim is dispatched from the modal's claims list (not the
-    // spoiler banner); the modal carries `ownerClaims` only when spoilers are on.
-    const ownerWithClaim = {
-      user_id: OWNER,
-      showSpoilers: true,
+  /**
+   * Pins `claim-attribution` — "A reveal from the fully protected state SHALL
+   * be confirmed before the purchase modal opens". The confirmation intercepts
+   * the affordance, not the modal, so a pasted deep link still opens directly.
+   */
+  describe('RevealConfirmation', () => {
+    const protectedViewer = {
+      tier: 'surprise' as const,
+      actor: actorOf('viewer'),
+      item: { profile_id: OWNER },
+    };
+
+    const confirmation = () =>
+      screen.queryByText('This could spoil a surprise');
+
+    it.each(['surprise', 'progress'] as const)(
+      'AddClaimBelowClaimsAt%s_PresentsTheConfirmationWithoutOpeningTheModal',
+      async (tier) => {
+        const user = userEvent.setup();
+        renderItem({ ...protectedViewer, tier });
+        await user.click(
+          screen.getByRole('button', { name: 'card-add-claim' })
+        );
+
+        expect(confirmation()).toBeInTheDocument();
+        expect(router.push).not.toHaveBeenCalled();
+        expect(screen.queryByTestId('modal-slot')).not.toBeInTheDocument();
+      }
+    );
+
+    it.each(['surprise', 'progress'] as const)(
+      'ManageClaimBelowClaimsAt%s_IsAlsoIntercepted',
+      async (tier) => {
+        const user = userEvent.setup();
+        renderItem({ ...protectedViewer, tier });
+        await user.click(screen.getByRole('button', { name: 'card-claim' }));
+
+        expect(confirmation()).toBeInTheDocument();
+        expect(router.push).not.toHaveBeenCalled();
+      }
+    );
+
+    it('Confirm_WritesThePurchaseParamsAndDismissesTheDialog', async () => {
+      const user = userEvent.setup();
+      renderItem(protectedViewer);
+      await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
+      await user.click(screen.getByRole('button', { name: 'Show me' }));
+
+      expect(router.push).toHaveBeenCalledWith(
+        '/lists/l1?purchaseItem=i1&purchaseView=claim'
+      );
+      expect(confirmation()).not.toBeInTheDocument();
+    });
+
+    it('ConfirmFromManage_WritesThePurchaseParamWithoutViewParam', async () => {
+      const user = userEvent.setup();
+      renderItem(protectedViewer);
+      await user.click(screen.getByRole('button', { name: 'card-claim' }));
+      await user.click(screen.getByRole('button', { name: 'Show me' }));
+
+      expect(router.push).toHaveBeenCalledWith('/lists/l1?purchaseItem=i1');
+      expect(confirmation()).not.toBeInTheDocument();
+    });
+
+    it('Cancel_LeavesThePageUnchangedAndDisclosesNothing', async () => {
+      const user = userEvent.setup();
+      renderItem(protectedViewer);
+      await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(confirmation()).not.toBeInTheDocument();
+      expect(router.push).not.toHaveBeenCalled();
+      expect(card()).toHaveAttribute('data-tier', 'surprise');
+    });
+
+    it('SecondActivation_PresentsTheConfirmationAgain', async () => {
+      const user = userEvent.setup();
+      renderItem(protectedViewer);
+      await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
+      await user.click(screen.getByRole('button', { name: 'Show me' }));
+      await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
+
+      expect(confirmation()).toBeInTheDocument();
+    });
+
+    it('AddClaimAtClaims_OpensTheModalDirectly', async () => {
+      const user = userEvent.setup();
+      renderItem({ ...protectedViewer, tier: 'claims' });
+      await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
+
+      expect(confirmation()).not.toBeInTheDocument();
+      expect(router.push).toHaveBeenCalledWith(
+        '/lists/l1?purchaseItem=i1&purchaseView=claim'
+      );
+    });
+
+    // A URL the viewer pasted is a deliberate act, which is the line the ADR
+    // draws: the interception is on the affordance, not on the modal.
+    it('DeepLinkBelowClaims_MountsTheModalWithNoConfirmation', () => {
+      renderItem(protectedViewer, 'purchaseItem=i1');
+
+      expect(screen.getByTestId('modal-slot')).toBeInTheDocument();
+      expect(confirmation()).not.toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Pins `claim-attribution` — no tier names the claiming parties, so the
+   * owner's manage-claims list asks before it discloses them, and the claim
+   * affordance never does.
+   */
+  describe('OwnerNameReveal', () => {
+    // What the `claims` projection leaves of another party's claim.
+    const withheldClaim = { id: 'px', by: 'other' as const, claimedByViewer: false };
+    const ownerAtClaims = {
+      tier: 'claims' as const,
+      actor: actorOf(OWNER),
       item: {
-        user_id: OWNER,
+        profile_id: OWNER,
+        quantity_limit: 3,
+        purchases: [withheldClaim],
+      },
+    };
+
+    const confirmation = () =>
+      screen.queryByText('This could spoil a surprise');
+
+    it('OwnerWithAWithheldClaim_AsksBeforeNamingRatherThanOpeningDirectly', async () => {
+      const user = userEvent.setup();
+      renderItem(ownerAtClaims);
+      await user.click(screen.getByRole('button', { name: 'card-claim' }));
+
+      expect(confirmation()).toBeInTheDocument();
+      expect(
+        screen.getByText(/see exactly who has claimed this item, by name/)
+      ).toBeInTheDocument();
+      expect(router.push).not.toHaveBeenCalled();
+    });
+
+    it('OwnerWithEveryClaimNamed_OpensDirectly', async () => {
+      const user = userEvent.setup();
+      renderItem({
+        ...ownerAtClaims,
+        item: {
+          profile_id: OWNER,
+          quantity_limit: 3,
+          purchases: [
+            { id: 'po', by: 'self' as const, name: 'You', claimedByViewer: true },
+          ],
+        },
+      });
+      await user.click(screen.getByRole('button', { name: 'card-claim' }));
+
+      expect(confirmation()).not.toBeInTheDocument();
+      expect(router.push).toHaveBeenCalledWith('/lists/l1?purchaseItem=i1');
+    });
+
+    it('OpenModal_HandsTheModalTheNamedClaimsRatherThanTheWithheldOnes', async () => {
+      vi.mocked(revealedClaimsForItem).mockResolvedValue([
+        { id: 'px', by: 'other', name: 'Grandma', claimedByViewer: false },
+      ]);
+      renderItem(ownerAtClaims, 'purchaseItem=i1');
+
+      await waitFor(() =>
+        expect(screen.getByTestId('modal-slot')).toHaveAttribute(
+          'data-claim-names',
+          'Grandma'
+        )
+      );
+    });
+
+    it('RemovalAfterAReveal_DropsTheRowFromTheRevealedListRatherThanTheProjectedOne', async () => {
+      const user = userEvent.setup();
+      vi.mocked(revealedClaimsForItem).mockResolvedValue([
+        { id: 'px', by: 'other', name: 'Grandma', claimedByViewer: false },
+        { id: 'py', by: 'other', name: 'Uncle', claimedByViewer: false },
+      ]);
+      renderItem(ownerAtClaims, 'purchaseItem=i1');
+      await waitFor(() =>
+        expect(screen.getByTestId('modal-slot')).toHaveAttribute(
+          'data-claims',
+          'px,py'
+        )
+      );
+
+      await user.click(screen.getByRole('button', { name: 'modal-remove-first' }));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('modal-slot')).toHaveAttribute(
+          'data-claims',
+          'py'
+        )
+      );
+    });
+
+    // The claim affordance's confirmation promises the count and no names, so
+    // the modal it opens reads the projected payload however nameless — even
+    // for the owner, whose two routes resolve to the same modal view.
+    it('OwnerOnTheClaimRoute_KeepsTheProjectedClaims-FetchesNoNames', () => {
+      renderItem(ownerAtClaims, 'purchaseItem=i1&purchaseView=claim');
+
+      expect(screen.getByTestId('modal-slot')).toHaveAttribute(
+        'data-claim-names',
+        ''
+      );
+      expect(revealedClaimsForItem).not.toHaveBeenCalled();
+    });
+
+    // The claim affordance stays at the minimum: whether the item is claimed,
+    // never who claimed it.
+    it('NonOwnerAddClaimWithAWithheldClaim_NeitherAsksNorFetchesNames', async () => {
+      const user = userEvent.setup();
+      renderItem({
+        tier: 'claims',
+        actor: actorOf('viewer'),
+        item: {
+          profile_id: OWNER,
+          quantity_limit: 3,
+          purchases: [withheldClaim],
+        },
+      });
+      await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
+
+      expect(confirmation()).not.toBeInTheDocument();
+      expect(revealedClaimsForItem).not.toHaveBeenCalled();
+    });
+
+    it('NonOwnerModalWithAWithheldClaim_KeepsTheProjectedClaims', () => {
+      renderItem(
+        {
+          tier: 'claims',
+          actor: actorOf('viewer'),
+          item: {
+            profile_id: OWNER,
+            quantity_limit: 3,
+            purchases: [withheldClaim],
+          },
+        },
+        'purchaseItem=i1'
+      );
+
+      expect(screen.getByTestId('modal-slot')).toHaveAttribute(
+        'data-claim-names',
+        ''
+      );
+      expect(revealedClaimsForItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('OwnerMasterUnclaim', () => {
+    // Owner master unclaim is dispatched from the modal's claims list, not the
+    // spoiler banner. The claims it lists are what the resolved level admits.
+    const ownerWithClaim = {
+      actor: actorOf(OWNER),
+      item: {
+        profile_id: OWNER,
         quantity_limit: 3,
         purchases: [
-          { id: 'p1', by: 'other', firstName: 'Sam', claimedByViewer: false },
+          { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
         ],
       },
     };
@@ -1020,17 +1297,33 @@ describe('Item', () => {
       await waitFor(() => expect(removePurchase).toHaveBeenCalled());
       expect(banners()).toHaveAttribute('data-claims', 'Sam');
     });
+
+    it('RemoveRefused_ReportsFailureRatherThanSuccess', async () => {
+      const toast = (await import('react-hot-toast')).default;
+      vi.mocked(removePurchase).mockResolvedValue({ success: false } as never);
+      const user = userEvent.setup();
+      renderItem(ownerWithClaim, 'purchaseItem=i1');
+      await user.click(
+        screen.getByRole('button', { name: 'modal-remove-first' })
+      );
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledWith('Failed to remove claim')
+      );
+      expect(toast.success).not.toHaveBeenCalledWith(
+        'Claim removed successfully'
+      );
+    });
   });
 
   describe('ManageRemove', () => {
     const claimed = {
       item: {
-        user_id: OWNER,
+        profile_id: OWNER,
         purchases: [
-          { id: 'pm', by: 'self', firstName: 'You', claimedByViewer: true },
+          { id: 'pm', by: 'self', name: 'You', claimedByViewer: true },
         ],
       },
-      user_id: 'viewer',
+      actor: actorOf('viewer'),
     };
 
     it('LastClaimRemoved_RemovesByPurchaseId-DropsClaim-ClosesModal', async () => {
@@ -1056,19 +1349,19 @@ describe('Item', () => {
       renderItem(
         {
           item: {
-            user_id: OWNER,
+            profile_id: OWNER,
             quantity_limit: 3,
             purchases: [
-              { id: 'pm', by: 'self', firstName: 'You', claimedByViewer: true },
+              { id: 'pm', by: 'self', name: 'You', claimedByViewer: true },
               {
                 id: 'pa',
                 by: 'other',
-                firstName: 'Grandma',
+                name: 'Grandma',
                 claimedByViewer: true,
               },
             ],
           },
-          user_id: 'viewer',
+          actor: actorOf('viewer'),
         },
         'purchaseItem=i1'
       );

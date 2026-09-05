@@ -1,8 +1,10 @@
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setListItems } from '@/lib/data/listItems.actions';
 import ChooseItemsForm from '../ChooseItemsForm';
+import { makeProfile } from '@/test/helpers/profile';
 
 vi.mock('@/lib/data/listItems.actions', () => ({ setListItems: vi.fn() }));
 
@@ -82,7 +84,7 @@ function renderForm(
     items: ITEMS,
     initialSelectedIds: ['a1'],
     isNew: false,
-    user_id: 'u1',
+    actor: makeProfile('p1', 'p1', ROLES.owner),
     lists: [],
     ...overrides,
   };
@@ -167,7 +169,7 @@ describe('ChooseItemsForm', () => {
           list_name="My List"
           items={ITEMS}
           initialSelectedIds={['a1']}
-          user_id="u1"
+          actor={makeProfile('p1', 'p1', ROLES.owner)}
           lists={[]}
         />
       );
@@ -206,7 +208,7 @@ describe('ChooseItemsForm', () => {
           list_name="My List"
           items={ITEMS}
           initialSelectedIds={['a1']}
-          user_id="u1"
+          actor={makeProfile('p1', 'p1', ROLES.owner)}
           lists={[]}
         />
       );

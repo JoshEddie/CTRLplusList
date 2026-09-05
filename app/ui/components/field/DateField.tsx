@@ -21,6 +21,7 @@ export const DateField = forwardRef<HTMLInputElement, DateFieldProps>(
       label,
       description,
       error,
+      invalid,
       required,
       disabled,
       icon,
@@ -35,6 +36,7 @@ export const DateField = forwardRef<HTMLInputElement, DateFieldProps>(
         label={label}
         description={description}
         error={error}
+        invalid={invalid}
         required={required}
         disabled={disabled}
         icon={icon}

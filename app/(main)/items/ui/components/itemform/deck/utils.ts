@@ -22,32 +22,32 @@ const MIN_IMAGE_PX = 200;
 // A stalled load shouldn't block the deck from opening.
 const PROBE_TIMEOUT_MS = 6000;
 
-export const TITLE_MIN = 3;
-export const TITLE_MAX = 100;
-export const TITLE_SNAPPY = 50;
+export const NAME_MIN = 3;
+export const NAME_MAX = 100;
+export const NAME_SNAPPY = 50;
 export const DESCRIPTION_MAX = 100;
 
-export function titleTier(name: string | null | undefined): TierResult {
+export function nameTier(name: string | null | undefined): TierResult {
   const value = name ?? '';
   if (!value.trim()) {
     return { tier: 'error', note: 'An item needs a name.' };
   }
-  if (value.length < TITLE_MIN) {
+  if (value.length < NAME_MIN) {
     return {
       tier: 'error',
-      note: `An item name needs at least ${TITLE_MIN} characters.`,
+      note: `An item name needs at least ${NAME_MIN} characters.`,
     };
   }
-  if (value.length > TITLE_MAX) {
+  if (value.length > NAME_MAX) {
     return {
       tier: 'error',
-      note: `That's over the ${TITLE_MAX}-character limit — trim it before saving.`,
+      note: `That's over the ${NAME_MAX}-character limit — trim it before saving.`,
     };
   }
-  if (value.length > TITLE_SNAPPY) {
+  if (value.length > NAME_SNAPPY) {
     return {
       tier: 'warn',
-      note: `Longer than ${TITLE_SNAPPY} characters — we suggest trimming; extra detail belongs in a description.`,
+      note: `Longer than ${NAME_SNAPPY} characters — we suggest trimming; extra detail belongs in a description.`,
     };
   }
   return { tier: 'good', note: '' };
@@ -134,7 +134,7 @@ export type RowTiers = Record<RowField, TierResult>;
 export function rowTiers(item: ItemViewModel): RowTiers {
   return {
     photo: photoTier(item.photos),
-    title: titleTier(item.name),
+    name: nameTier(item.name),
     // The note is the one field whose emptiness is fine by design — "Looks
     // good" on absent content would be a false verdict, so the good tier
     // carries "Optional" until something is written.
@@ -226,19 +226,19 @@ export function amountToPrice(value: number): string {
 // parens count as boundaries; intra-word hyphens (e.g. "T-Shirt") do not.
 export function suggestTrim(name: string | null | undefined): string {
   const value = (name ?? '').trim();
-  if (value.length <= TITLE_SNAPPY) return value;
+  if (value.length <= NAME_SNAPPY) return value;
 
   const boundary = /\s[—–\-|:;]\s|,|\s\(/g;
   let cut = -1;
   for (let m = boundary.exec(value); m; m = boundary.exec(value)) {
-    if (m.index > 0 && m.index <= TITLE_SNAPPY) {
+    if (m.index > 0 && m.index <= NAME_SNAPPY) {
       cut = m.index;
       break;
     }
   }
   if (cut > 0) return value.slice(0, cut).trim();
 
-  const window = value.slice(0, TITLE_SNAPPY);
+  const window = value.slice(0, NAME_SNAPPY);
   const lastSpace = window.lastIndexOf(' ');
   return (lastSpace > 0 ? window.slice(0, lastSpace) : window).trim();
 }
@@ -267,10 +267,10 @@ export function summarize(item: ItemViewModel): IntroSummary {
     warning.push({ title: 'Photos', line: 'No photos found — add one' });
   }
 
-  const nameTier = titleTier(item.name).tier;
-  if (nameTier === 'good') {
+  const tier = nameTier(item.name).tier;
+  if (tier === 'good') {
     confirmed.push({ title: 'Item name', line: item.name });
-  } else if (nameTier === 'warn') {
+  } else if (tier === 'warn') {
     warning.push({ title: 'Item name', line: 'Review the name for best results' });
   } else {
     error.push({ title: 'Item name', line: 'Name is too long' });

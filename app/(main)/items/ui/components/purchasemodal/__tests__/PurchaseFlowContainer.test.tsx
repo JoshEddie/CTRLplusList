@@ -1,23 +1,32 @@
+import { ROLES } from '@/lib/data/profile.roles';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { claimSummaryForItem } from '@/lib/data/purchase.actions';
 import { getClaimPickerForItem } from '@/lib/data/user.actions';
 import { PurchaseView } from '@/lib/types';
 import PurchaseFlowContainer from '../PurchaseFlowContainer';
+import { makeProfile } from '@/test/helpers/profile';
 
 // user.actions is a 'use server' module whose import chain reaches the DB
 // driver; the picker read and the sign-in action are the only contracts the
 // modal consumes.
+vi.mock('@/lib/data/purchase.actions', () => ({
+  claimSummaryForItem: vi.fn(),
+}));
+
+
 vi.mock('@/lib/data/user.actions', () => ({
   getClaimPickerForItem: vi.fn(),
   signInUser: vi.fn(),
 }));
 
+const face = { accent: null, art: null, avatarStyle: null };
 const PICKER = {
   ownerName: 'Olivia Owner',
   pool: [
-    { id: 'u2', name: 'Sam Smith', image: null },
-    { id: 'u3', name: 'Jo Jones', image: null },
+    { id: 'u2', name: 'Sam Smith', ...face },
+    { id: 'u3', name: 'Jo Jones', ...face },
   ],
 };
 
@@ -29,15 +38,24 @@ const ITEM = {
   store: { name: 'Amazon', link: 'https://a.example', price: '35.50' },
 } as never;
 
+const VIEWER = makeProfile('viewer', 'viewer', ROLES.owner);
+
+const OTHERS_CLAIM: PurchaseView = {
+  id: 'pc1',
+  by: 'other',
+  name: 'Bob',
+  claimerName: 'Alice',
+  claimedByViewer: false,
+};
+
 function renderContainer(
   overrides: Partial<React.ComponentProps<typeof PurchaseFlowContainer>> = {}
 ) {
   const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
-    user_id: 'viewer',
+    actor: VIEWER,
     isOwner: false,
-    showSpoilers: false,
-    ownerCanClaim: false,
-    ownerClaims: [],
+    tier: 'claims',
+    claims: [],
     item: ITEM,
     onSelfClaim: vi.fn(),
     onAttributedClaim: vi.fn(),
@@ -61,6 +79,10 @@ async function expandLoadedDisclosure(user: ReturnType<typeof userEvent.setup>) 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getClaimPickerForItem).mockResolvedValue(PICKER);
+  vi.mocked(claimSummaryForItem).mockResolvedValue({
+    claimCount: 0,
+    remaining: null,
+  });
 });
 
 describe('PurchaseFlowContainer', () => {
@@ -74,12 +96,12 @@ describe('PurchaseFlowContainer', () => {
     });
 
     it('Guest_StoreRowRendersWithoutSignIn', () => {
-      renderContainer({ user_id: undefined });
+      renderContainer({ actor: undefined });
       expect(screen.getByRole('link', { name: /Amazon/ })).toBeInTheDocument();
     });
 
-    it('OwnerSpoilersOff_StoreRowRenders', () => {
-      renderContainer({ isOwner: true, showSpoilers: false });
+    it('OwnerBelowClaims_StoreRowRenders', () => {
+      renderContainer({ isOwner: true, tier: 'surprise' });
       expect(screen.getByRole('link', { name: /Amazon/ })).toBeInTheDocument();
     });
 
@@ -95,8 +117,8 @@ describe('PurchaseFlowContainer', () => {
   });
 
   describe('Guest', () => {
-    it('NoUserId_RendersGuestFieldAndFooterSignIn-NoPickerFetch', () => {
-      renderContainer({ user_id: undefined });
+    it('NoProfileId_RendersGuestFieldAndFooterSignIn-NoPickerFetch', () => {
+      renderContainer({ actor: undefined });
       expect(screen.getByLabelText('Your name')).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: 'Claim as Guest' })
@@ -110,7 +132,7 @@ describe('PurchaseFlowContainer', () => {
 
     it('EmptyGuestName_ClaimAsGuestDisabled-NoCallback', async () => {
       const user = userEvent.setup();
-      const { onGuestClaim } = renderContainer({ user_id: undefined });
+      const { onGuestClaim } = renderContainer({ actor: undefined });
       const guestBtn = screen.getByRole('button', { name: 'Claim as Guest' });
       expect(guestBtn).toBeDisabled();
       await user.click(guestBtn);
@@ -119,7 +141,7 @@ describe('PurchaseFlowContainer', () => {
 
     it('PaddedGuestName_CallsOnGuestClaimTrimmed', async () => {
       const user = userEvent.setup();
-      const { onGuestClaim } = renderContainer({ user_id: undefined });
+      const { onGuestClaim } = renderContainer({ actor: undefined });
       await user.type(screen.getByLabelText('Your name'), '  Bob  ');
       await user.click(screen.getByRole('button', { name: 'Claim as Guest' }));
       expect(onGuestClaim).toHaveBeenCalledWith('Bob');
@@ -308,15 +330,14 @@ describe('PurchaseFlowContainer', () => {
         )
         .mockResolvedValueOnce({
           ownerName: 'Fresh Fiona',
-          pool: [{ id: 'u7', name: 'Fresh Fred', image: null }],
+          pool: [{ id: 'u7', name: 'Fresh Fred', ...face }],
         });
       const user = userEvent.setup();
       const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
-        user_id: 'viewer',
+        actor: VIEWER,
         isOwner: false,
-        showSpoilers: false,
-        ownerCanClaim: false,
-        ownerClaims: [],
+        tier: 'claims',
+        claims: [],
         item: ITEM,
         onSelfClaim: vi.fn(),
         onAttributedClaim: vi.fn(),
@@ -353,11 +374,10 @@ describe('PurchaseFlowContainer', () => {
         .mockResolvedValueOnce(PICKER);
       const user = userEvent.setup();
       const props: React.ComponentProps<typeof PurchaseFlowContainer> = {
-        user_id: 'viewer',
+        actor: VIEWER,
         isOwner: false,
-        showSpoilers: false,
-        ownerCanClaim: false,
-        ownerClaims: [],
+        tier: 'claims',
+        claims: [],
         item: ITEM,
         onSelfClaim: vi.fn(),
         onAttributedClaim: vi.fn(),
@@ -400,21 +420,68 @@ describe('PurchaseFlowContainer', () => {
   });
 
   describe('Owner', () => {
-    it('SpoilersOff_RendersYourListLabelOnly-NoClaimUI-NoPickerFetch', () => {
-      renderContainer({ isOwner: true, showSpoilers: false });
-      expect(screen.getByText('Your list')).toBeInTheDocument();
+    // Claim affordances are ungoverned by spoiler state: the owner reaches the
+    // flow at every level, and only the disclosure the modal renders differs.
+    it('BelowClaims_RendersOwnerCtaAfterTheRevealFetch', async () => {
+      vi.mocked(claimSummaryForItem).mockResolvedValue({
+        claimCount: 2,
+        remaining: 1,
+      });
+      renderContainer({ isOwner: true, tier: 'surprise' });
+      // The reveal summary discloses only the count and remaining capacity —
+      // it names no party.
+      expect(await screen.findByText('2 claimed · 1 left')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'I bought this myself' })
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Bob')).not.toBeInTheDocument();
+    });
+
+    it('BelowClaimsItemWithoutAnId_SkipsTheRevealFetch', () => {
+      renderContainer({
+        isOwner: true,
+        tier: 'surprise',
+        item: { ...((ITEM as object) ?? {}), id: '' } as never,
+      });
+
+      expect(claimSummaryForItem).not.toHaveBeenCalled();
+    });
+
+    it('BelowClaimsSummaryUnresolved_StillOffersTheClaimCta', () => {
+      vi.mocked(claimSummaryForItem).mockReturnValue(new Promise(() => {}));
+      renderContainer({ isOwner: true, tier: 'surprise' });
+
+      expect(
+        screen.getByRole('button', { name: 'I bought this myself' })
+      ).toBeInTheDocument();
+    });
+
+    it('BelowClaimsUnlimitedItem_ReportsTheCountWithoutARemainder', async () => {
+      vi.mocked(claimSummaryForItem).mockResolvedValue({
+        claimCount: 2,
+        remaining: null,
+      });
+      renderContainer({ isOwner: true, tier: 'surprise' });
+
+      expect(await screen.findByText('2 claimed')).toBeInTheDocument();
+    });
+
+    it('BelowClaimsNoCapacityLeft_SuppressesTheClaimCta', async () => {
+      vi.mocked(claimSummaryForItem).mockResolvedValue({
+        claimCount: 3,
+        remaining: 0,
+      });
+      renderContainer({ isOwner: true, tier: 'surprise' });
+      expect(await screen.findByText('3 claimed · 0 left')).toBeInTheDocument();
       expect(
         screen.queryByRole('button', { name: 'I bought this myself' })
       ).not.toBeInTheDocument();
-      expect(getClaimPickerForItem).not.toHaveBeenCalled();
     });
 
-    it('SpoilersOn_RendersOwnerCtaAndOwnerDisclosure', async () => {
+    it('LevelIdentity_RendersOwnerCtaAndOwnerDisclosure', async () => {
       const user = userEvent.setup();
       const { onSelfClaim } = renderContainer({
         isOwner: true,
-        showSpoilers: true,
-        ownerCanClaim: true,
       });
       await user.click(
         screen.getByRole('button', { name: 'I bought this myself' })
@@ -426,20 +493,18 @@ describe('PurchaseFlowContainer', () => {
       ).toBeInTheDocument();
     });
 
-    it('SpoilersOn_OwnerClaimsListRemove-DispatchesOnRemoveClaim', async () => {
+    it('LevelIdentity_OwnerClaimsListRemove-DispatchesOnRemoveClaim', async () => {
       const user = userEvent.setup();
       const claim: PurchaseView = {
         id: 'pc1',
         by: 'other',
-        firstName: 'Bob',
-        claimerFirstName: 'Alice',
+        name: 'Bob',
+        claimerName: 'Alice',
         claimedByViewer: false,
       };
       const { onRemoveClaim } = renderContainer({
         isOwner: true,
-        showSpoilers: true,
-        ownerCanClaim: true,
-        ownerClaims: [claim],
+        claims: [claim],
       });
       expect(screen.getByText('Bob')).toBeInTheDocument();
       expect(screen.getByText('Added by Alice')).toBeInTheDocument();
@@ -447,6 +512,36 @@ describe('PurchaseFlowContainer', () => {
         screen.getByRole('button', { name: "Remove Bob's claim" })
       );
       expect(onRemoveClaim).toHaveBeenCalledWith(claim);
+    });
+
+    /**
+     * Pins `profile-permissions` — "Master unclaim is disabled below the
+     * floor". This list is the master-unclaim surface, and the floor is read
+     * off the acting role rather than the item, so a manager meets the row
+     * present and inert.
+     */
+    it('BelowTheOwnerFloor_RendersMasterUnclaimPresentAndDisabled', () => {
+      renderContainer({
+        actor: makeProfile('viewer', 'viewer', ROLES.manager),
+        isOwner: true,
+        claims: [OTHERS_CLAIM],
+      });
+
+      expect(
+        screen.getByRole('button', { name: "Remove Bob's claim" })
+      ).toBeDisabled();
+    });
+
+    it('AtTheOwnerFloor_RendersMasterUnclaimOperable', () => {
+      renderContainer({
+        actor: makeProfile('viewer', 'viewer', ROLES.owner),
+        isOwner: true,
+        claims: [OTHERS_CLAIM],
+      });
+
+      expect(
+        screen.getByRole('button', { name: "Remove Bob's claim" })
+      ).toBeEnabled();
     });
   });
 });

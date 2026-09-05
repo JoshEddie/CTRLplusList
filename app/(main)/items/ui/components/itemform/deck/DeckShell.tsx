@@ -1,8 +1,12 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { LuX } from 'react-icons/lu';
+import { CloseButton } from '@/app/ui/components/button';
 import { useDismiss } from '@/app/ui/components/use-dismiss';
+import { useScrollLock } from '@/app/ui/hooks/useScrollLock';
 import './deck-screen.css';
 
 type Variant = 'default' | 'wide';
@@ -21,26 +25,22 @@ export function DeckShell({
   children: ReactNode;
 }) {
   const dismiss = useDismiss(onClose, closeHref);
+  useScrollLock();
 
   const cls =
-    variant === 'wide' ? 'deck-screen deck-screen-wide' : 'deck-screen';
+    variant === 'wide'
+      ? 'modal-shell modal-shell-wide deck-screen'
+      : 'modal-shell deck-screen';
 
   return (
     <div
-      className="deck-screen-overlay"
+      className="modal-overlay-scrim deck-screen-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) dismiss();
       }}
     >
       <div className={cls}>
-        <button
-          type="button"
-          className="deck-screen-close"
-          onClick={dismiss}
-          aria-label="Close"
-        >
-          <LuX />
-        </button>
+        <CloseButton onClick={dismiss} className="deck-screen-close-pivot" />
         <span className="deck-screen-module-title">{moduleTitle}</span>
         {children}
       </div>

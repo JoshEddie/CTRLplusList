@@ -7,9 +7,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
+import { hasBlocked } from '@/lib/data/profile';
+import { isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
 import { getBookmarkStatus } from '@/lib/data/visit';
-import { followUser } from '@/lib/data/user.actions';
+import { followUser } from '@/lib/data/profile.actions';
 import { ListTable } from '@/lib/types';
 import { VISIBILITY } from '@/lib/visibility';
 import {
@@ -20,9 +21,11 @@ import {
 vi.mock('@/lib/data/visit', () => ({
   getBookmarkStatus: vi.fn(),
 }));
+vi.mock('@/lib/data/profile', () => ({
+  hasBlocked: vi.fn(),
+}));
 vi.mock('@/lib/data/user', () => ({
   isFollowing: vi.fn(),
-  hasBlocked: vi.fn(),
   viewerHasAnyFollows: vi.fn(),
 }));
 
@@ -35,7 +38,7 @@ vi.mock('@/lib/data/visit.actions', () => ({
   bookmarkList: vi.fn(),
   unbookmarkList: vi.fn(),
 }));
-vi.mock('@/lib/data/user.actions', () => ({
+vi.mock('@/lib/data/profile.actions', () => ({
   followUser: vi.fn(),
   unfollowUser: vi.fn(),
 }));
@@ -50,8 +53,9 @@ vi.mock('react-hot-toast', () => ({
   },
 }));
 
-const OWNER_ID = 'owner-1';
 const VIEWER_ID = 'viewer-1';
+const OWNER_PROFILE = 'owner-profile-1';
+const VIEWER_PROFILE = 'viewer-profile-1';
 
 const list: ListTable = {
   id: 'list-1',
@@ -61,15 +65,16 @@ const list: ListTable = {
   date: new Date('2025-01-01'),
   created_at: new Date('2025-01-01'),
   updated_at: new Date('2025-01-01'),
-  user_id: OWNER_ID,
+  profile_id: OWNER_PROFILE,
   shared: true,
 };
 
 const viewerProps = {
   list,
-  ownerId: OWNER_ID,
+  ownerProfileId: OWNER_PROFILE,
   ownerName: 'Bob',
-  viewerId: VIEWER_ID,
+  viewerUserId: VIEWER_ID,
+  viewerSelfProfileId: VIEWER_PROFILE,
 };
 
 const dialogProto = HTMLDialogElement.prototype as unknown as Record<
@@ -108,7 +113,11 @@ const radioLabels = () =>
 describe('HeroCollapsedOwnerItems', () => {
   it('Default_RendersShareThenVisibilitySeededFromProp-NoBookmarkOrFollow', async () => {
     render(
-      await HeroCollapsedOwnerItems({ list, visibility: VISIBILITY.LINK })
+      await HeroCollapsedOwnerItems({
+        list,
+        visibility: VISIBILITY.LINK,
+        disabled: false,
+      })
     );
     expect(
       screen.getByRole('menuitem', { name: 'Share List' })
@@ -126,7 +135,11 @@ describe('HeroCollapsedOwnerItems', () => {
   });
 
   it('Default_PerformsNoDalReads', async () => {
-    await HeroCollapsedOwnerItems({ list, visibility: VISIBILITY.OWNER });
+    await HeroCollapsedOwnerItems({
+      list,
+      visibility: VISIBILITY.OWNER,
+      disabled: false,
+    });
     expect(getBookmarkStatus).not.toHaveBeenCalled();
     expect(isFollowing).not.toHaveBeenCalled();
     expect(hasBlocked).not.toHaveBeenCalled();
@@ -146,14 +159,15 @@ describe('HeroCollapsedViewerItems', () => {
       screen.getByRole('menuitem', { name: 'Bookmarked' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('menuitem', { name: 'Follow Bob' })
+      screen.getByRole('menuitem', { name: 'Follow' })
     ).toBeInTheDocument();
   });
 
   it('OwnerBlocksViewer_SuppressesFollow-KeepsShareBookmark', async () => {
     vi.mocked(hasBlocked).mockImplementation(
-      async ({ userId, blockedId }) =>
-        userId === OWNER_ID && blockedId === VIEWER_ID
+      async ({ blockerProfileId, blockedProfileId }) =>
+        blockerProfileId === OWNER_PROFILE &&
+        blockedProfileId === VIEWER_PROFILE
     );
     render(await HeroCollapsedViewerItems(viewerProps));
     expect(
@@ -169,8 +183,9 @@ describe('HeroCollapsedViewerItems', () => {
 
   it('ViewerBlocksOwner_SuppressesFollow', async () => {
     vi.mocked(hasBlocked).mockImplementation(
-      async ({ userId, blockedId }) =>
-        userId === VIEWER_ID && blockedId === OWNER_ID
+      async ({ blockerProfileId, blockedProfileId }) =>
+        blockerProfileId === VIEWER_PROFILE &&
+        blockedProfileId === OWNER_PROFILE
     );
     render(await HeroCollapsedViewerItems(viewerProps));
     expect(
@@ -182,7 +197,7 @@ describe('HeroCollapsedViewerItems', () => {
     vi.mocked(viewerHasAnyFollows).mockResolvedValue(false);
     const user = userEvent.setup();
     const { container } = render(await HeroCollapsedViewerItems(viewerProps));
-    await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
     expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
       true
     );
@@ -194,10 +209,10 @@ describe('HeroCollapsedViewerItems', () => {
     vi.mocked(followUser).mockResolvedValue({ success: true, message: '' });
     const user = userEvent.setup();
     const { container } = render(await HeroCollapsedViewerItems(viewerProps));
-    await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
     expect((container.querySelector('dialog') as HTMLDialogElement).open).toBe(
       false
     );
-    expect(followUser).toHaveBeenCalledWith(OWNER_ID);
+    expect(followUser).toHaveBeenCalledWith(OWNER_PROFILE);
   });
 });

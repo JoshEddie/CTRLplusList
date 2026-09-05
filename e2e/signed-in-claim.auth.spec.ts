@@ -126,7 +126,7 @@ test('SignedInClaim_NameFallbackForNonUser_ShowsClaimerBannerWithName', async ({
   await page.getByLabel('Someone not listed?').fill(purchaser);
   await page.getByRole('button', { name: `Confirm — ${purchaser}` }).click();
 
-  // The viewer asserted the claim (claimed_by), so their banner names the
+  // The viewer asserted the claim (claimed_by_profile_id), so their banner names the
   // third party; it persists on reload and never reads as a bare
   // "You claimed this" (which would mean the claim was misattributed to the
   // viewer as purchaser).

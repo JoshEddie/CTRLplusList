@@ -13,7 +13,6 @@ describe('FollowButton', () => {
     render(
       <FollowButton
         following
-        userName="Bob"
         pending={false}
         onClick={vi.fn()}
       />
@@ -25,37 +24,18 @@ describe('FollowButton', () => {
     expect(screen.queryByTestId('fa-plus')).not.toBeInTheDocument();
   });
 
-  it('NotFollowingWithName_LabelFollowName-PlusIcon', () => {
+  it('NotFollowing_LabelFollow-PlusIcon', () => {
     render(
-      <FollowButton
-        following={false}
-        userName="Bob"
-        pending={false}
-        onClick={vi.fn()}
-      />
+      <FollowButton following={false} pending={false} onClick={vi.fn()} />
     );
     const button = screen.getByRole('button');
-    expect(button).toHaveTextContent('Follow Bob');
+    expect(button).toHaveTextContent('Follow');
     expect(button).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByTestId('fa-plus')).toBeInTheDocument();
   });
 
-  it('NotFollowingNullName_LabelFollow', () => {
-    render(
-      <FollowButton
-        following={false}
-        userName={null}
-        pending={false}
-        onClick={vi.fn()}
-      />
-    );
-    expect(screen.getByRole('button')).toHaveTextContent('Follow');
-  });
-
   it('Pending_AriaDisabledTrue-AriaLabelMatchesLabel', () => {
-    render(
-      <FollowButton following userName="Bob" pending onClick={vi.fn()} />
-    );
+    render(<FollowButton following pending onClick={vi.fn()} />);
     const button = screen.getByRole('button');
     expect(button).toHaveAttribute('aria-disabled', 'true');
     expect(button).toHaveAttribute('aria-label', 'Following');
@@ -67,7 +47,6 @@ describe('FollowButton', () => {
     render(
       <FollowButton
         following={false}
-        userName="Bob"
         pending={false}
         variant="secondary"
         onClick={onClick}

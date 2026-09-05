@@ -1,8 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { items, list_items, users } from '@/db/schema';
-import { auth } from '@/lib/auth';
+import { items, list_items } from '@/db/schema';
 import {
   getItemImageUrls,
   replaceItemImages,
@@ -12,33 +11,23 @@ import {
 import { touchLists } from '@/lib/data/list.touch';
 import { ItemSchema } from '@/lib/data/item.schema';
 import { validateStore } from '@/lib/data/item.store';
+import {
+  ADMIN_REQUIRED,
+  ADMIN_OPTIONAL,
+  authedWriter,
+} from '@/lib/data/profile.gate';
 import { type ActionResponse, ItemDetails } from '@/lib/types';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { updateTag } from 'next/cache';
 
 export async function createItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
+    const actor = await authedWriter(ADMIN_OPTIONAL);
+    if ('error' in actor) {
+      return actor.error;
     }
-
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      return {
-        success: false,
-        message: 'User not found',
-        error: 'Unauthorized',
-      };
-    }
+    const { identity } = actor;
 
     const validationResult = ItemSchema.safeParse(data);
     if (!validationResult.success) {
@@ -64,7 +53,8 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       description: validatedData.description || '',
       created_at: new Date(),
       updated_at: new Date(),
-      user_id: sessionUser.id,
+      profile_id: identity.activeProfile.id,
+      updated_by_user_id: identity.userId,
       quantity_limit: validatedData.quantity_limit,
     });
 
@@ -80,7 +70,10 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
       id
     );
 
-    updateTag('items');
+    updateTags(
+      cacheTags.itemsOfProfile(identity.activeProfile.id),
+      cacheTags.listsOfProfile(identity.activeProfile.id)
+    );
 
     return { success: true, message: 'Item created successfully' };
   } catch (error) {
@@ -95,32 +88,17 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
 
 export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
+    const actor = await authedWriter(ADMIN_OPTIONAL);
+    if ('error' in actor) {
+      return actor.error;
     }
-
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      return {
-        success: false,
-        message: 'User not found',
-        error: 'Unauthorized',
-      };
-    }
+    const { identity } = actor;
 
     const existing = await db.query.items.findFirst({
       where: eq(items.id, data.id),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
-    if (!existing || existing.user_id !== sessionUser.id) {
+    if (!existing || existing.profile_id !== identity.activeProfile.id) {
       return {
         success: false,
         message: 'Unauthorized - item does not belong to you',
@@ -155,6 +133,7 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
       updateData.quantity_limit = validatedData.quantity_limit;
 
     if (Object.keys(updateData).length > 0) {
+      updateData.updated_by_user_id = identity.userId;
       await db.update(items).set(updateData).where(eq(items.id, data.id));
     }
 
@@ -176,7 +155,11 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
       await replaceItemImages(base, validatedData.image_url || null, data.id);
     }
 
-    updateTag('items');
+    updateTags(
+      cacheTags.item(data.id),
+      cacheTags.itemsOfProfile(identity.activeProfile.id),
+      cacheTags.listsOfProfile(identity.activeProfile.id)
+    );
 
     return { success: true, message: 'Item updated successfully' };
   } catch (error) {
@@ -194,32 +177,17 @@ export async function archiveItem(
   archived: boolean
 ): Promise<ActionResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
+    const actor = await authedWriter(ADMIN_OPTIONAL);
+    if ('error' in actor) {
+      return actor.error;
     }
-
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      return {
-        success: false,
-        message: 'User not found',
-        error: 'Unauthorized',
-      };
-    }
+    const { identity } = actor;
 
     const item = await db.query.items.findFirst({
       where: eq(items.id, item_id),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
-    if (!item || item.user_id !== sessionUser.id) {
+    if (!item || item.profile_id !== identity.activeProfile.id) {
       return {
         success: false,
         message: 'Unauthorized - item does not belong to you',
@@ -232,7 +200,10 @@ export async function archiveItem(
       .set({ archived_at: archived ? new Date() : null })
       .where(eq(items.id, item_id));
 
-    updateTag('items');
+    updateTags(
+      cacheTags.item(item_id),
+      cacheTags.itemsOfProfile(identity.activeProfile.id)
+    );
 
     return {
       success: true,
@@ -250,26 +221,19 @@ export async function archiveItem(
 
 export async function deleteItem(id: string) {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      throw new Error('Unauthorized');
+    const actor = await authedWriter(ADMIN_REQUIRED);
+    if ('error' in actor) {
+      throw new Error(actor.error.error);
     }
-
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      throw new Error('Unauthorized');
-    }
+    const { identity } = actor;
 
     // Verify item ownership
     const item = await db.query.items.findFirst({
       where: eq(items.id, id),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
 
-    if (!item || item.user_id !== sessionUser.id) {
+    if (!item || item.profile_id !== identity.activeProfile.id) {
       throw new Error('Unauthorized - Item does not belong to you');
     }
 
@@ -286,10 +250,19 @@ export async function deleteItem(id: string) {
     const affectedListIds = memberships.map((m) => m.list_id);
     if (affectedListIds.length > 0) {
       await touchLists(affectedListIds);
-      updateTag('lists');
+      updateTags(
+        ...affectedListIds.flatMap((listId) => [
+          cacheTags.list(listId),
+          cacheTags.itemsOfList(listId),
+        ]),
+        cacheTags.listsOfProfile(identity.activeProfile.id)
+      );
     }
 
-    updateTag('items');
+    updateTags(
+      cacheTags.item(id),
+      cacheTags.itemsOfProfile(identity.activeProfile.id)
+    );
 
     return { success: true, message: 'Item deleted successfully' };
   } catch (error) {

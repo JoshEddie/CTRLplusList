@@ -1,10 +1,9 @@
-import { auth } from '@/lib/auth';
 import { getItemById } from '@/lib/data/item';
-import { getListsByUser } from '@/lib/data/list';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { getListsByProfile } from '@/lib/data/list';
+import { authedIdentity } from '@/lib/data/user.session';
+import { sameOriginPath } from '@/lib/sameOriginPath';
 import { redirect } from 'next/navigation';
 import ItemFormContainer from '../ui/components/itemform/ItemFormContainer';
-import { sanitizeReturnTo } from '../ui/components/returnTo';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -12,28 +11,33 @@ type Props = {
 };
 
 export default async function ItemFormBody({ params, searchParams }: Props) {
-  const session = await auth();
   const { id } = await params;
   const sp = await searchParams;
-  const returnTo = sanitizeReturnTo(sp.returnTo);
+  const returnTo = sameOriginPath(sp.returnTo);
 
-  if (!session?.user?.email) {
+  const identity = await authedIdentity();
+  if (!identity) {
     redirect('/');
   }
 
-  const user = await getUserIdByEmail(session.user.email);
+  const activeProfile = identity.activeProfile;
 
-  if (!user) {
-    redirect('/');
-  }
-
-  const item = await getItemById(id, user.id);
+  const item = await getItemById(id, activeProfile.id);
 
   if (!item) {
     redirect(returnTo ?? '/items');
   }
 
-  const lists = await getListsByUser(user.id);
+  const lists = await getListsByProfile(activeProfile.id);
 
-  return <ItemFormContainer item={item} lists={lists} returnTo={returnTo} />;
+  const deleteDisabled = !activeProfile.role.admin;
+
+  return (
+    <ItemFormContainer
+      item={item}
+      lists={lists}
+      returnTo={returnTo}
+      deleteDisabled={deleteDisabled}
+    />
+  );
 }

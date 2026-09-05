@@ -52,7 +52,6 @@ function renderSheet(overrides: Partial<SheetProps> = {}) {
     sort: overrides.sort ?? 'created_desc',
     defaultSort: overrides.defaultSort ?? 'created_desc',
     sortOptions: overrides.sortOptions ?? SORT_OPTIONS,
-    purchases: overrides.purchases ?? 'hide',
     show: overrides.show ?? 'all',
     storeOptions: overrides.storeOptions ?? ['Amazon'],
     selectedStores: overrides.selectedStores ?? [],
@@ -64,6 +63,8 @@ function renderSheet(overrides: Partial<SheetProps> = {}) {
     clearStores: overrides.clearStores ?? vi.fn(),
     applyPrice: overrides.applyPrice ?? vi.fn(),
     clearPrice: overrides.clearPrice ?? vi.fn(),
+    filterCount: overrides.filterCount ?? 0,
+    clearAll: overrides.clearAll ?? vi.fn(),
   };
   return render(<FiltersSheet {...props} />);
 }
@@ -90,18 +91,150 @@ describe('FiltersSheet', () => {
   });
 
   describe('Dismiss', () => {
-    it('CloseButton_CallsOnClose', () => {
-      const onClose = vi.fn();
-      renderSheet({ onClose });
-      fireEvent.click(screen.getByRole('button', { name: 'Close filters' }));
-      expect(onClose).toHaveBeenCalledTimes(1);
-    });
-
     it('DoneButton_CallsOnClose', () => {
       const onClose = vi.fn();
       renderSheet({ onClose });
       fireEvent.click(screen.getByRole('button', { name: 'Done' }));
       expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+
+  describe('Navigation', () => {
+    const storeRow = () =>
+      screen.getByRole('button', { name: 'Filter by store' });
+    const priceRow = () =>
+      screen.getByRole('button', { name: 'Filter by price' });
+    // The sheet's accessible name follows the level it is showing.
+    const level = () => screen.getByRole('dialog').getAttribute('aria-label');
+
+    it('RootLevel_ShowsFacetRowsWithoutTheirPanels', () => {
+      renderSheet();
+      expect(storeRow()).toBeInTheDocument();
+      expect(priceRow()).toBeInTheDocument();
+      expect(
+        screen.queryByRole('checkbox', { name: 'Amazon' })
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Min')).not.toBeInTheDocument();
+      expect(level()).toBe('Filters');
+    });
+
+    it('StoreRowTapped_ReplacesRootWithStorePanel', () => {
+      renderSheet();
+      fireEvent.click(storeRow());
+      expect(
+        screen.getByRole('checkbox', { name: 'Amazon' })
+      ).toBeInTheDocument();
+      expect(level()).toBe('Stores');
+    });
+
+    it('PriceRowTapped_ReplacesRootWithPricePanel', () => {
+      renderSheet();
+      fireEvent.click(priceRow());
+      expect(screen.getByLabelText('Min')).toBeInTheDocument();
+      expect(level()).toBe('Price');
+    });
+
+    it('BackFromPanel_ReturnsToRootLevel', () => {
+      renderSheet();
+      fireEvent.click(storeRow());
+      fireEvent.click(screen.getByRole('button', { name: 'Back to filters' }));
+      expect(
+        screen.queryByRole('checkbox', { name: 'Amazon' })
+      ).not.toBeInTheDocument();
+      expect(storeRow()).toBeInTheDocument();
+      expect(level()).toBe('Filters');
+    });
+
+    it('RootLevel_HasNoBackAffordance', () => {
+      renderSheet();
+      expect(
+        screen.queryByRole('button', { name: 'Back to filters' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('DrilledPanel_HasNoCloseBesideTheBackAffordance', () => {
+      renderSheet();
+      fireEvent.click(storeRow());
+      expect(
+        screen.queryByRole('button', { name: 'Close filters' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Back to filters' })
+      ).toBeInTheDocument();
+    });
+
+    it('DrilledPanel_CarriesNoOwnClearOrDoneFooter', () => {
+      renderSheet();
+      fireEvent.click(storeRow());
+      expect(screen.getAllByRole('button', { name: 'Done' })).toHaveLength(1);
+      expect(
+        screen.queryByRole('button', { name: 'Clear' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('DrilledPanel_DoneStillClosesTheWholeSheet', () => {
+      const onClose = vi.fn();
+      renderSheet({ onClose });
+      fireEvent.click(priceRow());
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('DrilledLevel_ExposesActiveFacetForStyling', () => {
+      renderSheet();
+      expect(screen.getByRole('dialog')).not.toHaveAttribute('data-facet');
+      fireEvent.click(priceRow());
+      expect(screen.getByRole('dialog')).toHaveAttribute('data-facet', 'price');
+    });
+  });
+
+  describe('ClearAll', () => {
+    it('ActiveFilters_ClearInvokesHandler', () => {
+      const clearAll = vi.fn();
+      renderSheet({ filterCount: 2, clearAll });
+      fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+      expect(clearAll).toHaveBeenCalledTimes(1);
+    });
+
+    it('NoActiveFilters_ClearIsDisabled', () => {
+      renderSheet({ filterCount: 0 });
+      expect(screen.getByRole('button', { name: 'Clear' })).toBeDisabled();
+    });
+
+    it('DrilledIntoFacet_ClearIsReplacedByBack', () => {
+      renderSheet({ filterCount: 1 });
+      fireEvent.click(screen.getByRole('button', { name: 'Filter by store' }));
+      expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Back to filters' })
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('PricePanelExit', () => {
+    // PriceField is cents-as-integer: the digit string "5000" becomes 50.00.
+    const typeMin = (digits: string) =>
+      fireEvent.change(screen.getByLabelText('Min'), {
+        target: { value: digits },
+      });
+
+    it('BackBeforeDebounceFires_CommitsTheTypedPrice', () => {
+      const applyPrice = vi.fn();
+      renderSheet({ applyPrice });
+      fireEvent.click(screen.getByRole('button', { name: 'Filter by price' }));
+      typeMin('5000');
+      fireEvent.click(screen.getByRole('button', { name: 'Back to filters' }));
+      expect(applyPrice).toHaveBeenCalledWith('50.00', '');
+    });
+
+    it('UnmountBeforeDebounceFires_CommitsTheTypedPrice', () => {
+      const applyPrice = vi.fn();
+      const { unmount } = renderSheet({ applyPrice });
+      fireEvent.click(screen.getByRole('button', { name: 'Filter by price' }));
+      typeMin('5000');
+      unmount();
+      expect(applyPrice).toHaveBeenCalledWith('50.00', '');
     });
   });
 
@@ -128,39 +261,26 @@ describe('FiltersSheet', () => {
     });
   });
 
-  describe('PurchasesAndShow', () => {
-    it('NonChooseMode_RendersPurchasesSelectWiredToUpdateParams', () => {
-      const updateParams = vi.fn();
-      renderSheet({ mode: 'items', updateParams });
-      fireEvent.change(
-        screen.getByRole('combobox', { name: 'Purchases filter' }),
-        { target: { value: 'only' } }
-      );
-      expect(updateParams).toHaveBeenCalledWith({
-        purchases: 'only',
-        page: null,
-      });
+  describe('ShowFacet', () => {
+    it('NonChooseMode_RendersNoShowSelect', () => {
+      renderSheet({ mode: 'items' });
+      expect(
+        screen.queryByRole('combobox', {
+          name: 'Show items by list membership',
+        })
+      ).not.toBeInTheDocument();
     });
 
-    it('PurchasesHideChosen_RemovesPurchasesParam', () => {
-      const updateParams = vi.fn();
-      renderSheet({ mode: 'items', purchases: 'only', updateParams });
-      fireEvent.change(
-        screen.getByRole('combobox', { name: 'Purchases filter' }),
-        { target: { value: 'hide' } }
-      );
-      expect(updateParams).toHaveBeenCalledWith({
-        purchases: null,
-        page: null,
-      });
-    });
-
-    it('ChooseMode_RendersShowSelectNotPurchases', () => {
-      const updateParams = vi.fn();
-      renderSheet({ mode: 'choose', updateParams });
+    it('NonChooseMode_RendersNoPurchasesFacet', () => {
+      renderSheet({ mode: 'items' });
       expect(
         screen.queryByRole('combobox', { name: 'Purchases filter' })
       ).not.toBeInTheDocument();
+    });
+
+    it('ChooseMode_RendersShowSelectWiredToUpdateParams', () => {
+      const updateParams = vi.fn();
+      renderSheet({ mode: 'choose', updateParams });
       fireEvent.change(
         screen.getByRole('combobox', {
           name: 'Show items by list membership',

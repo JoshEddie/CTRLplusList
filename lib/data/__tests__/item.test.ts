@@ -2,7 +2,11 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedAvatar,
+  seedUsers,
+  selfProfileOf,
+} from '@/test/helpers/seedFollowGraph';
 
 import {
   seedItem,
@@ -39,7 +43,7 @@ beforeEach(async () => {
   await resetDb(db);
 });
 
-describe('getItemsByUser', () => {
+describe('getItemsByProfile', () => {
   describe('FilterMatrix', () => {
     it('DefaultFilter_ReturnsActiveOnly', async () => {
       await seedUsers(db, [{ id: 'u' }]);
@@ -50,7 +54,7 @@ describe('getItemsByUser', () => {
         archived_at: new Date('2021-01-01'),
       });
 
-      const rows = await dal.getItemsByUser('u');
+      const rows = await dal.getItemsByProfile(selfProfileOf('u'));
       expect(rows.map((r) => r.id)).toEqual(['active']);
     });
 
@@ -63,7 +67,9 @@ describe('getItemsByUser', () => {
         archived_at: new Date('2021-01-01'),
       });
 
-      const rows = await dal.getItemsByUser('u', { filter: 'archived' });
+      const rows = await dal.getItemsByProfile(selfProfileOf('u'), {
+        filter: 'archived',
+      });
       expect(rows.map((r) => r.id)).toEqual(['archived']);
     });
 
@@ -81,7 +87,9 @@ describe('getItemsByUser', () => {
         archived_at: new Date('2021-06-01'),
       });
 
-      const rows = await dal.getItemsByUser('u', { filter: 'all' });
+      const rows = await dal.getItemsByProfile(selfProfileOf('u'), {
+        filter: 'all',
+      });
       expect(rows.map((r) => r.id)).toEqual(['active', 'archived']);
     });
   });
@@ -113,41 +121,45 @@ describe('getItemsByUser', () => {
       order: 1,
     });
 
-    const rows = await dal.getItemsByUser('u');
+    const rows = await dal.getItemsByProfile(selfProfileOf('u'));
     expect(rows.map((r) => r.id)).toEqual(['new', 'old']);
     expect(rows[0].store?.name).toBe('second');
     expect(rows[1].store).toBeNull();
   });
 
-  describe('OwnerSpoilers', () => {
-    it('SpoilersOff_ReturnsEmptyPurchases-HasPurchasesTrue', async () => {
-      await seedUsers(db, [{ id: 'owner' }, { id: 'claimer', name: 'Cara' }]);
-      await seedItem(db, { id: 'gift', user_id: 'owner' });
-      await seedPurchase(db, { id: 'p1', item_id: 'gift', user_id: 'claimer' });
-
-      const rows = await dal.getItemsByUser('owner');
-      expect(rows[0].purchases).toEqual([]);
-      expect(rows[0].hasPurchases).toBe(true);
-    });
-
-    it('SpoilersOn_ReturnsFirstNameOtherRows', async () => {
+  describe('SpoilerTier', () => {
+    beforeEach(async () => {
       await seedUsers(db, [
         { id: 'owner' },
         { id: 'claimer', name: 'Cara Lee' },
       ]);
+      await seedAvatar(db, selfProfileOf('claimer'), {
+        art: '<svg id="cara" />',
+      });
       await seedItem(db, { id: 'gift', user_id: 'owner' });
-      await seedPurchase(db, { id: 'p1', item_id: 'gift', user_id: 'claimer' });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'gift',
+        profile_id: selfProfileOf('claimer'),
+      });
+    });
 
-      const rows = await dal.getItemsByUser('owner', { showSpoilers: true });
+    it('Surprise_ReturnsEmptyPurchases-HasPurchasesFalse', async () => {
+      const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
+        tier: 'surprise',
+      });
+      expect(rows[0].purchases).toEqual([]);
+      // `hasPurchases` now reflects only what the tier discloses: an item
+      // carrying only others' claims below `claims` reads as unclaimed.
+      expect(rows[0].hasPurchases).toBe(false);
+    });
+
+    it('Claims_ReturnsBareCountEntry-HasPurchasesTrue', async () => {
+      const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
+        tier: 'claims',
+      });
       expect(rows[0].purchases).toEqual([
-        {
-          id: 'p1',
-          by: 'other',
-          firstName: 'Cara',
-          claimedByViewer: false,
-          purchasedAt: expect.any(Date),
-          image: null,
-        },
+        { id: 'p1', by: 'other', claimedByViewer: false },
       ]);
       expect(rows[0].hasPurchases).toBe(true);
     });
@@ -157,7 +169,9 @@ describe('getItemsByUser', () => {
     vi.spyOn(db.query.items, 'findMany').mockRejectedValueOnce(
       new Error('boom')
     );
-    await expect(dal.getItemsByUser('u')).rejects.toThrow('boom');
+    await expect(dal.getItemsByProfile(selfProfileOf('u'))).rejects.toThrow(
+      'boom'
+    );
   });
 });
 
@@ -184,7 +198,7 @@ describe('getItemById', () => {
       order: 1,
     });
 
-    const item = await dal.getItemById('i1', 'u');
+    const item = await dal.getItemById('i1', selfProfileOf('u'));
     expect(item?.id).toBe('i1');
     expect(item?.quantity_limit).toBe(3);
     expect(item?.store?.name).toBe('second');
@@ -204,7 +218,7 @@ describe('getItemById', () => {
       'https://img.test/b.jpg'
     );
 
-    const item = await dal.getItemById('i1', 'u');
+    const item = await dal.getItemById('i1', selfProfileOf('u'));
     expect(item?.image_candidates).toEqual([
       'https://img.test/a.jpg',
       'https://img.test/b.jpg',
@@ -216,21 +230,25 @@ describe('getItemById', () => {
   it('ItemWithoutImagePool_ReturnsEmptyCandidates-NullImageUrl', async () => {
     await seedUsers(db, [{ id: 'u' }]);
     await seedItem(db, { id: 'i1', user_id: 'u' });
-    const item = await dal.getItemById('i1', 'u');
+    const item = await dal.getItemById('i1', selfProfileOf('u'));
     expect(item?.image_candidates).toEqual([]);
     expect(item?.image_url).toBeNull();
   });
 
   it('UnknownId_ReturnsUndefined', async () => {
     await seedUsers(db, [{ id: 'u' }]);
-    expect(await dal.getItemById('missing', 'u')).toBeUndefined();
+    expect(
+      await dal.getItemById('missing', selfProfileOf('u'))
+    ).toBeUndefined();
   });
 
   it('QueryThrows_RejectsWithRawError', async () => {
     vi.spyOn(db.query.items, 'findFirst').mockRejectedValueOnce(
       new Error('boom')
     );
-    await expect(dal.getItemById('i1', 'u')).rejects.toThrow('boom');
+    await expect(dal.getItemById('i1', selfProfileOf('u'))).rejects.toThrow(
+      'boom'
+    );
   });
 });
 
@@ -245,6 +263,18 @@ describe('getItemsByListId', () => {
 
     const rows = await dal.getItemsByListId('l1');
     expect(rows.map((r) => r.id)).toEqual(['first', 'second']);
+  });
+
+  it('ItemProfileDiffersFromList_ExcludedFromMembership', async () => {
+    await seedUsers(db, [{ id: 'owner' }, { id: 'stranger' }]);
+    await seedList(db, { id: 'l1', user_id: 'owner' });
+    await seedItem(db, { id: 'mine', user_id: 'owner' });
+    await seedItem(db, { id: 'theirs', user_id: 'stranger' });
+    await seedListItem(db, { list_id: 'l1', item_id: 'mine', position: 1 });
+    await seedListItem(db, { list_id: 'l1', item_id: 'theirs', position: 2 });
+
+    const rows = await dal.getItemsByListId('l1');
+    expect(rows.map((r) => r.id)).toEqual(['mine']);
   });
 
   it('ItemWithStores_MapsScalarPrimaryStore', async () => {
@@ -281,45 +311,83 @@ describe('getItemsByListId', () => {
       await seedList(db, { id: 'l1', user_id: 'owner' });
       await seedItem(db, { id: 'i1', user_id: 'owner', quantity_limit: 2 });
       await seedListItem(db, { list_id: 'l1', item_id: 'i1', position: 1 });
-      await seedPurchase(db, { id: 'pv', item_id: 'i1', user_id: 'viewer' });
-      await seedPurchase(db, { id: 'po', item_id: 'i1', user_id: 'other' });
+      await seedPurchase(db, {
+        id: 'pv',
+        item_id: 'i1',
+        profile_id: selfProfileOf('viewer'),
+      });
+      await seedPurchase(db, {
+        id: 'po',
+        item_id: 'i1',
+        profile_id: selfProfileOf('other'),
+      });
     }
 
-    it('OwnerNoSpoilers_ReturnsEmptyPurchases', async () => {
+    it('SurpriseNoViewerId_ReturnsEmptyPurchases-HasPurchasesFalse', async () => {
       await seedClaimedItem();
-      const rows = await dal.getItemsByListId('l1', { isOwner: true });
+      const rows = await dal.getItemsByListId('l1', { tier: 'surprise' });
       expect(rows[0].purchases).toEqual([]);
+      // No viewer id, so neither claim is held: `hasPurchases` reflects the
+      // empty projection rather than the unprojected rows.
+      expect(rows[0].hasPurchases).toBe(false);
     });
 
-    it('OwnerWithSpoilers_ReturnsFirstNameOtherRows', async () => {
+    it('Claims_ReturnsCountWithNoFirstName', async () => {
+      await seedClaimedItem();
+      const rows = await dal.getItemsByListId('l1', { tier: 'claims' });
+      expect(rows[0].purchases).toHaveLength(2);
+      expect(rows[0].purchases.map((p) => p.name)).toEqual([
+        undefined,
+        undefined,
+      ]);
+    });
+
+    // The cached raw read is entered once for the list; each viewer's rows are
+    // projected separately, outside it — two viewers with differing tiers each
+    // get their own projection.
+    it('TwoViewersDifferingTiers_ProjectSeparatelyOverOneCachedRead', async () => {
+      await seedClaimedItem();
+      const viewerRows = await dal.getItemsByListId('l1', {
+        viewerSelfProfileId: selfProfileOf('viewer'),
+        tier: 'surprise',
+      });
+      const otherRows = await dal.getItemsByListId('l1', {
+        viewerSelfProfileId: selfProfileOf('other'),
+        tier: 'claims',
+      });
+      // 'viewer' at surprise keeps only their own held claim; 'other' at
+      // claims sees both, their own as self and the viewer's as a bare count.
+      expect(viewerRows[0].purchases.map((p) => p.by)).toEqual(['self']);
+      expect(otherRows[0].purchases.map((p) => p.by)).toEqual([
+        'other',
+        'self',
+      ]);
+    });
+
+    it('RawRead_IsNotExported', () => {
+      expect(
+        Object.keys(dal).filter((name) => name.startsWith('raw'))
+      ).toEqual([]);
+    });
+
+    it('NonOwnerWithViewerId_NamesTheirOwn-CountsTheOther', async () => {
       await seedClaimedItem();
       const rows = await dal.getItemsByListId('l1', {
-        isOwner: true,
-        showSpoilers: true,
+        viewerSelfProfileId: selfProfileOf('viewer'),
       });
-      const tags = rows[0].purchases.map((p) => p.by);
-      expect(tags).toEqual(['other', 'other']);
-    });
-
-    it('NonOwnerWithViewerId_TagsSelfAndOther', async () => {
-      await seedClaimedItem();
-      const rows = await dal.getItemsByListId('l1', { viewerId: 'viewer' });
       const byId = Object.fromEntries(rows[0].purchases.map((p) => [p.id, p]));
       expect(byId.pv).toEqual({
         id: 'pv',
         by: 'self',
-        firstName: 'Vic',
+        name: 'Vic',
         claimedByViewer: false,
         purchasedAt: expect.any(Date),
-        image: null,
+        avatar: { name: 'Vic', accent: null, art: null, avatarStyle: null },
       });
       expect(byId.po).toEqual({
         id: 'po',
         by: 'other',
-        firstName: 'Otto',
         claimedByViewer: false,
-        purchasedAt: expect.any(Date),
-        image: null,
       });
     });
 
@@ -329,9 +397,9 @@ describe('getItemsByListId', () => {
       expect(rows[0].purchases.map((p) => p.by)).toEqual(['other', 'other']);
     });
 
-    it('NonOwnerGuestClaim_ProjectsGuestFirstName', async () => {
-      // Guest claim (user_id null) drives the non-owner branch's
-      // `p.user?.name ?? p.guest_name` fallback to the guest name.
+    it('NonOwnerGuestClaim_CollapsesToABareCount', async () => {
+      // A guest claim is another party's like any other: the maximal tier
+      // keeps the entry so capacity stays derivable and drops the name.
       await seedUsers(db, [{ id: 'owner' }, { id: 'viewer' }]);
       await seedList(db, { id: 'l1', user_id: 'owner' });
       await seedItem(db, { id: 'i1', user_id: 'owner', quantity_limit: 2 });
@@ -342,16 +410,11 @@ describe('getItemsByListId', () => {
         guest_name: 'Gabby Guest',
       });
 
-      const rows = await dal.getItemsByListId('l1', { viewerId: 'viewer' });
+      const rows = await dal.getItemsByListId('l1', {
+        viewerSelfProfileId: selfProfileOf('viewer'),
+      });
       expect(rows[0].purchases).toEqual([
-        {
-          id: 'pg',
-          by: 'other',
-          firstName: 'Gabby',
-          claimedByViewer: false,
-          purchasedAt: expect.any(Date),
-          image: null,
-        },
+        { id: 'pg', by: 'other', claimedByViewer: false },
       ]);
     });
   });
@@ -363,56 +426,5 @@ describe('getItemsByListId', () => {
     await expect(dal.getItemsByListId('l1')).rejects.toThrow(
       'Failed to fetch items'
     );
-  });
-});
-
-// Drives the private firstNameOf projection through getItemsByUser owner+spoilers
-// (every claim maps to {by:'other', firstName}); covers the falsy/whitespace/
-// multi-word name branches and both sides of `p.user?.name ?? p.guest_name`.
-describe('firstNameOf', () => {
-  it('VariedClaimerNames_ProjectsFirstTokenElseSomeone', async () => {
-    // seedUsers coalesces a null name to the id, so the null-name branch is
-    // reached via a guest purchase with no guest_name (user null, guest null).
-    await seedUsers(db, [
-      { id: 'owner' },
-      { id: 'full', name: 'Alice Smith' },
-      { id: 'empty', name: '' },
-      { id: 'spaces', name: '   ' },
-    ]);
-    const userClaimers: Record<string, string> = {
-      iFull: 'full',
-      iEmpty: 'empty',
-      iSpaces: 'spaces',
-    };
-    for (const [itemId, userId] of Object.entries(userClaimers)) {
-      await seedItem(db, { id: itemId, user_id: 'owner' });
-      await seedPurchase(db, {
-        id: `p-${itemId}`,
-        item_id: itemId,
-        user_id: userId,
-      });
-    }
-    // Guest claim with a name: exercises the `?? p.guest_name` fallback (right side).
-    await seedItem(db, { id: 'iGuest', user_id: 'owner' });
-    await seedPurchase(db, {
-      id: 'p-iGuest',
-      item_id: 'iGuest',
-      guest_name: 'Charlie Brown',
-    });
-    // Guest claim with no name at all: `user?.name ?? guest_name` → null → 'Someone'.
-    await seedItem(db, { id: 'iNull', user_id: 'owner' });
-    await seedPurchase(db, { id: 'p-iNull', item_id: 'iNull' });
-
-    const rows = await dal.getItemsByUser('owner', { showSpoilers: true });
-    const firstNameByItem = Object.fromEntries(
-      rows.map((r) => [r.id, r.purchases[0]?.firstName])
-    );
-    expect(firstNameByItem).toEqual({
-      iFull: 'Alice',
-      iEmpty: 'Someone',
-      iSpaces: 'Someone',
-      iGuest: 'Charlie',
-      iNull: 'Someone',
-    });
   });
 });

@@ -1,16 +1,18 @@
-/* eslint-disable testing-library/no-node-access --
- * Modal's close affordance is a class-only `<div className="close-button">`
- * with no role, portaled to document.body.
- */
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getClaimPickerForItem } from '@/lib/data/user.actions';
 import { PurchaseView } from '@/lib/types';
 import PurchaseModalSlot from '../PurchaseModalSlot';
+import { makeProfile } from '@/test/helpers/profile';
 
 // user.actions is a 'use server' module whose import chain reaches the DB
 // driver; PurchaseFlowContainer only consumes the picker read.
+vi.mock('@/lib/data/purchase.actions', () => ({
+  claimSummaryForItem: vi.fn(),
+}));
+
 vi.mock('@/lib/data/user.actions', () => ({
   getClaimPickerForItem: vi.fn(),
   signInUser: vi.fn(),
@@ -19,20 +21,20 @@ vi.mock('@/lib/data/user.actions', () => ({
 const selfClaim: PurchaseView = {
   id: 'pm',
   by: 'self',
-  firstName: 'Vicky',
+  name: 'Vicky',
   claimedByViewer: true,
   purchasedAt: new Date(Date.now() - 2 * 86400000),
 };
 const attributedClaim: PurchaseView = {
   id: 'pa',
   by: 'other',
-  firstName: 'Grandma',
+  name: 'Grandma',
   claimedByViewer: true,
 };
 const othersClaim: PurchaseView = {
   id: 'po',
   by: 'other',
-  firstName: 'Frank',
+  name: 'Frank',
   claimedByViewer: false,
 };
 
@@ -44,6 +46,8 @@ const ITEM = {
   store: { name: 'Amazon', link: 'https://a.example', price: '35.50' },
 } as never;
 
+const VIEWER = makeProfile('viewer', 'viewer', ROLES.owner);
+
 function renderSlot(
   overrides: Partial<React.ComponentProps<typeof PurchaseModalSlot>> = {}
 ) {
@@ -51,11 +55,9 @@ function renderSlot(
     view: 'claim',
     claims: [],
     viewerIsPurchaser: false,
-    user_id: undefined,
+    actor: undefined,
     isOwner: false,
-    showSpoilers: false,
-    ownerCanClaim: false,
-    ownerClaims: [],
+    tier: 'claims',
     item: ITEM,
     onClose: vi.fn(),
     onSelfClaim: vi.fn(),
@@ -124,7 +126,7 @@ describe('PurchaseModalSlot', () => {
     it('SelfFallbackNameYou_RendersPlainYouNotYouYou', () => {
       renderSlot({
         view: 'manage',
-        claims: [{ ...selfClaim, firstName: 'You', purchasedAt: undefined }],
+        claims: [{ ...selfClaim, name: 'You', purchasedAt: undefined }],
       });
       expect(screen.getByText('You')).toBeInTheDocument();
       expect(screen.queryByText('You (you)')).not.toBeInTheDocument();
@@ -146,7 +148,7 @@ describe('PurchaseModalSlot', () => {
       const many = Array.from({ length: 12 }, (_, i) => ({
         ...othersClaim,
         id: `pn${i}`,
-        firstName: `Buyer${i}`,
+        name: `Buyer${i}`,
       }));
       renderSlot({ view: 'manage', claims: [selfClaim, ...many] });
       expect(screen.getAllByRole('listitem')).toHaveLength(10);
@@ -160,7 +162,7 @@ describe('PurchaseModalSlot', () => {
       const many = Array.from({ length: 12 }, (_, i) => ({
         ...othersClaim,
         id: `pn${i}`,
-        firstName: `Buyer${i}`,
+        name: `Buyer${i}`,
       }));
       renderSlot({ view: 'manage', claims: [selfClaim, ...many] });
       await user.click(screen.getByRole('button', { name: 'See more (3)' }));
@@ -201,6 +203,24 @@ describe('PurchaseModalSlot', () => {
       ).not.toBeInTheDocument();
     });
 
+    /**
+     * The manage view lists the viewer's own claims, and removing one compares
+     * the self-profile with no floor — so a `manager` keeps it operable. The
+     * owner floor governs master unclaim, which is the owner's spoiler list in
+     * `PurchaseFlowContainer`, not this one.
+     */
+    it('ManagerActor_KeepsTheViewersOwnRemovalOperable', () => {
+      renderSlot({
+        view: 'manage',
+        actor: makeProfile('viewer', 'viewer', ROLES.manager),
+        claims: [selfClaim],
+      });
+
+      expect(
+        screen.getByRole('button', { name: 'Remove your claim' })
+      ).toBeEnabled();
+    });
+
     it('ManageView_StoreRowStillRendersLiveStoreLink', () => {
       renderSlot({ view: 'manage', claims: [selfClaim] });
       const link = screen.getByRole('link', { name: /Amazon/ });
@@ -220,7 +240,7 @@ describe('PurchaseModalSlot', () => {
   describe('ClaimView', () => {
     it('ViewerIsPurchaser_HidesSelfClaimCta-KeepsDisclosureCollapsed', async () => {
       renderSlot({
-        user_id: 'viewer',
+        actor: VIEWER,
         claims: [selfClaim],
         viewerIsPurchaser: true,
       });
@@ -234,7 +254,7 @@ describe('PurchaseModalSlot', () => {
 
     it('ViewerClaimerOnly_KeepsSelfClaimCta', async () => {
       renderSlot({
-        user_id: 'viewer',
+        actor: VIEWER,
         claims: [attributedClaim],
         viewerIsPurchaser: false,
       });
@@ -253,7 +273,7 @@ describe('PurchaseModalSlot', () => {
   });
 
   it('NoClaimAuthenticated_RendersClaimFlowWithItemHeader', async () => {
-    renderSlot({ user_id: 'viewer' });
+    renderSlot({ actor: VIEWER });
     expect(
       screen.getByRole('heading', { name: 'Fancy Mug' })
     ).toBeInTheDocument();
@@ -265,11 +285,7 @@ describe('PurchaseModalSlot', () => {
   it('CloseAffordance_FiresOnClose', async () => {
     const user = userEvent.setup();
     const { props } = renderSlot({ view: 'manage', claims: [selfClaim] });
-    // Modal portals to document.body, so the close affordance is outside the
-    // render container.
-    await user.click(
-      document.body.querySelector('.close-button') as HTMLElement
-    );
+    await user.click(screen.getByRole('button', { name: 'Close' }));
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 });

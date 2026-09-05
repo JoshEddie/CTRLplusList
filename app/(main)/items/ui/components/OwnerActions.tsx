@@ -1,10 +1,10 @@
 'use client';
 
-import { archiveItem } from '@/lib/data/item.actions';
-import { removeListItem } from '@/lib/data/listItems.actions';
 import { Button } from '@/app/ui/components/button';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
+import { archiveItem } from '@/lib/data/item.actions';
+import { removeListItem } from '@/lib/data/listItems.actions';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -64,7 +64,6 @@ export default function OwnerActions({
       <Button
         ref={kebabRef}
         variant="ghost"
-        size="sm"
         className="item-owner-actions-kebab"
         aria-haspopup="menu"
         aria-expanded={kebabOpen}

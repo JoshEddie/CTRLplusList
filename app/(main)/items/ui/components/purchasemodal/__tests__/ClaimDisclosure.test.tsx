@@ -15,8 +15,8 @@ function renderDisclosure(
     circleLabel: "Olivia's circle",
     status: 'ready',
     pool: [
-      { id: 'u2', name: 'Sam Smith', image: null },
-      { id: 'u5', name: null, image: null },
+      { id: 'u2', name: 'Sam Smith', accent: null, art: null, avatarStyle: null },
+      { id: 'u5', name: '', accent: null, art: null, avatarStyle: null },
     ],
     onRetry: vi.fn(),
     onAttributedClaim: vi.fn(),
@@ -31,7 +31,7 @@ const trigger = () =>
   screen.getByRole('button', { name: /Claiming for someone else\?/ });
 
 describe('ClaimDisclosure', () => {
-  it('NullNamePoolMemberSelected_ConfirmFallsBackToSomeone', async () => {
+  it('UnnamedPoolMemberSelected_ConfirmFallsBackToSomeone', async () => {
     const user = userEvent.setup();
     const { onAttributedClaim } = renderDisclosure();
     await user.click(trigger());
@@ -40,12 +40,14 @@ describe('ClaimDisclosure', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm — Someone' }));
     expect(onAttributedClaim).toHaveBeenCalledWith({
       id: 'u5',
-      name: null,
-      image: null,
+      name: '',
+      accent: null,
+      art: null,
+      avatarStyle: null,
     });
   });
 
-  it('NullNamePoolMember_NeverMatchesSearchQuery', async () => {
+  it('UnnamedPoolMember_NeverMatchesSearchQuery', async () => {
     const user = userEvent.setup();
     renderDisclosure();
     await user.click(trigger());

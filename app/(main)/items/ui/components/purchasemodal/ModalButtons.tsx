@@ -45,7 +45,10 @@ export default function ModalButtons({
       {secondary_button_text && (
         <TooltipWrapper
           tooltip={secondary_button_disabled_with_tooltip}
-          showTooltip={!!secondary_button_disabled_with_tooltip}
+          showTooltip={
+            !!secondary_button_disabled_with_tooltip &&
+            !!secondary_button_disabled
+          }
         >
           {secondaryButton}
         </TooltipWrapper>
@@ -53,7 +56,9 @@ export default function ModalButtons({
       {primary_button_text && (
         <TooltipWrapper
           tooltip={primary_button_disabled_with_tooltip}
-          showTooltip={!!primary_button_disabled_with_tooltip}
+          showTooltip={
+            !!primary_button_disabled_with_tooltip && !!primary_button_disabled
+          }
         >
           {primaryButton}
         </TooltipWrapper>

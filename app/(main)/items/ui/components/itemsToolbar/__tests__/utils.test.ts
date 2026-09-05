@@ -15,7 +15,6 @@ function filterState(overrides: Partial<FilterState> = {}): FilterState {
     mode: 'items',
     sort: 'created_desc',
     defaultSort: 'created_desc',
-    purchases: 'hide',
     show: 'all',
     selectedStores: [],
     priceMin: '',
@@ -140,24 +139,12 @@ describe('countActiveFilters', () => {
     expect(countActiveFilters(filterState({ sort: 'name_asc' }))).toBe(1);
   });
 
-  it('NonChoosePurchases_CountsOne', () => {
-    expect(countActiveFilters(filterState({ purchases: 'only' }))).toBe(1);
-  });
-
   it('ChooseShow_CountsOne', () => {
     expect(
       countActiveFilters(
         filterState({ mode: 'choose', defaultSort: 'created_desc', show: 'on' })
       )
     ).toBe(1);
-  });
-
-  it('ChoosePurchases_NotCounted', () => {
-    expect(
-      countActiveFilters(
-        filterState({ mode: 'choose', defaultSort: 'created_desc', purchases: 'only' })
-      )
-    ).toBe(0);
   });
 
   it('SelectedStores_CountedPerStore', () => {
@@ -195,24 +182,6 @@ describe('buildChips', () => {
     expect(chips[0].label).toBe('Name A–Z');
     chips[0].onClear();
     expect(updateParams).toHaveBeenCalledWith({ sort: null, page: null });
-  });
-
-  it('ItemsPurchasesOnly_RendersPurchasesChip', () => {
-    const chips = buildChips(filterState({ purchases: 'only' }), noopHandlers);
-    expect(chips.map((c) => c.label)).toEqual(['Only purchased']);
-  });
-
-  it('ListPurchasesUnlabeledValue_RendersNoChip', () => {
-    const chips = buildChips(
-      filterState({
-        mode: 'list',
-        sort: 'list_order',
-        defaultSort: 'list_order',
-        purchases: 'reveal',
-      }),
-      noopHandlers
-    );
-    expect(chips).toEqual([]);
   });
 
   it('ChooseShowOn_RendersShowChip', () => {

@@ -1,55 +1,45 @@
-import Image from 'next/image';
+import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
+import { accentVars } from '@/lib/accent';
+import type { ProfileAvatarView } from '@/lib/types';
 import Link from 'next/link';
-import { initialsOf } from '../utils';
+
+function subLine(newCount: number, latestSharedAt: Date | null): string {
+  if (!latestSharedAt) return 'No shared lists';
+  return newCount > 0 ? `${newCount} new` : 'Active';
+}
 
 export default function UserCard({
-  user,
+  profile,
   newCount = 0,
   latestSharedAt = null,
-  compact = false,
 }: {
-  user: { id: string; name: string | null; image: string | null };
+  profile: ProfileAvatarView & { id: string };
   newCount?: number;
   latestSharedAt?: Date | null;
-  compact?: boolean;
 }) {
-  const hasImage = !!user.image && user.image.length > 0;
-  const className = compact ? 'user-card user-card--compact' : 'user-card';
-  const avatarSize = compact ? 44 : 64;
   return (
-    <Link href={`/user/${user.id}`} className={className}>
-      <div className="user-card-avatar">
-        {hasImage ? (
-          <Image
-            src={user.image!}
-            alt=""
-            width={avatarSize}
-            height={avatarSize}
-            className="user-card-avatar-img"
-          />
-        ) : (
-          <span className="user-card-avatar-initials">
-            {initialsOf(user.name) || '?'}
-          </span>
-        )}
-        {newCount > 0 && (
-          <span className="user-card-badge" aria-label={`${newCount} new`}>
-            {newCount}
-          </span>
-        )}
+    <Link
+      href={`/altvatar/${profile.id}`}
+      className="user-card"
+      style={accentVars(profile.accent)}
+    >
+      <div className="user-card-band">
+        <div className="user-card-avatar">
+          <ProfileAvatar profile={profile} />
+          {newCount > 0 && (
+            <span className="user-card-badge" aria-label={`${newCount} new`}>
+              {newCount}
+            </span>
+          )}
+        </div>
       </div>
       <div className="user-card-meta">
-        <div className="user-card-name">{user.name ?? 'Unnamed'}</div>
-        {!compact &&
-          (latestSharedAt ? (
-            <div className="user-card-sub">
-              {newCount > 0 ? `${newCount} new` : 'Active'}
-            </div>
-          ) : (
-            <div className="user-card-sub user-card-sub-muted">
-              No shared lists
-            </div>
-          ))}
+        <div className="user-card-name">{profile.name}</div>
+        <div
+          className={`user-card-sub${latestSharedAt ? '' : ' user-card-sub-muted'}`}
+        >
+          {subLine(newCount, latestSharedAt)}
+        </div>
       </div>
     </Link>
   );

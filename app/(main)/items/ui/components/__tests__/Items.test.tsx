@@ -3,16 +3,18 @@
  * class on the wrapper divs; those are layout wrappers with no role or text, so
  * `container.querySelector` is the only way to assert them.
  */
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { ItemDisplay } from '@/lib/types';
+import type { ItemDisplay, ProfileMembershipView } from '@/lib/types';
+import { makeProfile } from '@/test/helpers/profile';
 import Items from '../Items';
 
 interface ItemStubProps {
   item: ItemDisplay;
-  user_id?: string;
+  actor?: ProfileMembershipView;
   user_name?: string | null;
-  showSpoilers?: boolean;
+  tier?: string;
   showArchiveAction?: boolean;
   archivedView?: boolean;
 }
@@ -20,18 +22,19 @@ interface ItemStubProps {
 vi.mock('../Item', () => ({
   default: ({
     item,
-    user_id,
+    actor,
     user_name,
-    showSpoilers,
+    tier,
     showArchiveAction,
     archivedView,
   }: ItemStubProps) => (
     <div
       data-testid="item-stub"
       data-item-id={item.id}
-      data-user-id={user_id ?? ''}
+      data-actor-id={actor?.id ?? ''}
+      data-actor-role={actor?.role.value ?? ''}
       data-user-name={user_name ?? ''}
-      data-show-spoilers={String(showSpoilers)}
+      data-tier={String(tier)}
       data-show-archive={String(showArchiveAction)}
       data-archived-view={String(archivedView)}
     />
@@ -45,7 +48,7 @@ function makeItem(id: string): ItemDisplay {
     description: '',
     created_at: new Date('2024-01-01T00:00:00Z'),
     updated_at: new Date('2024-01-01T00:00:00Z'),
-    user_id: 'u1',
+    profile_id: 'p1',
     quantity_limit: null,
   };
 }
@@ -89,17 +92,18 @@ describe('Items', () => {
       render(
         <Items
           items={[makeItem('a')]}
-          user_id="viewer"
+          actor={makeProfile('viewer', 'viewer', ROLES.manager)}
           user_name="Vicky"
-          showSpoilers
+          tier="claims"
           showArchiveAction
           archivedView
         />
       );
       const stub = screen.getByTestId('item-stub');
-      expect(stub).toHaveAttribute('data-user-id', 'viewer');
+      expect(stub).toHaveAttribute('data-actor-id', 'viewer');
+      expect(stub).toHaveAttribute('data-actor-role', ROLES.manager.value);
       expect(stub).toHaveAttribute('data-user-name', 'Vicky');
-      expect(stub).toHaveAttribute('data-show-spoilers', 'true');
+      expect(stub).toHaveAttribute('data-tier', 'claims');
       expect(stub).toHaveAttribute('data-show-archive', 'true');
       expect(stub).toHaveAttribute('data-archived-view', 'true');
     });

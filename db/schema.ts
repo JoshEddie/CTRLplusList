@@ -1,7 +1,9 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   serial,
@@ -11,6 +13,20 @@ import {
 } from 'drizzle-orm/pg-core';
 import { nanoid } from 'nanoid';
 import type { AdapterAccountType } from 'next-auth/adapters';
+
+import type { AltvatarOptions } from '@/lib/altvatar/types';
+import { ROLES, isGrantable } from '@/lib/data/profile.roles';
+import type { RoleShape } from '@/lib/types';
+
+// A vocabulary reaches DDL as literal text: a bound parameter in a CHECK or a
+// partial index would be rendered as a placeholder by the generator rather than
+// baked into the constraint.
+const literal = (value: string) => `'${value}'`;
+const literalList = (values: readonly string[]) =>
+  values.map(literal).join(', ');
+const quoted = (role: RoleShape) => literal(role.value);
+const roleList = (roles: readonly RoleShape[]) =>
+  literalList(roles.map((role) => role.value));
 
 export const users = pgTable('user', {
   id: text('id')
@@ -57,11 +73,13 @@ export const lists = pgTable('lists', {
   date: timestamp('date').defaultNow().notNull(),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
-  user_id: text('user_id')
-    .references(() => users.id, { onDelete: 'cascade' })
+  profile_id: text('profile_id')
+    .references(() => profiles.id, { onDelete: 'cascade' })
     .notNull(),
-  // Legacy column — dormant during soak (see openspec change add-following-and-history,
-  // design Decision 4b). Removed in follow-up archive-legacy-share. Dev code reads
+  updated_by_user_id: text('updated_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  // Legacy column — dormant during soak. Removed in follow-up archive-legacy-share. Dev code reads
   // `visibility` only; `shared` is dual-written by setListVisibility for main compat.
   shared: boolean('shared').default(false).notNull(),
   visibility: text('visibility').notNull().default('private'),
@@ -75,9 +93,12 @@ export const items = pgTable('items', {
   image_url: text('image_url'),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
-  user_id: text('user_id')
-    .references(() => users.id, { onDelete: 'cascade' })
+  profile_id: text('profile_id')
+    .references(() => profiles.id, { onDelete: 'cascade' })
     .notNull(),
+  updated_by_user_id: text('updated_by_user_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
   quantity_limit: integer('quantity_limit').default(1),
   archived_at: timestamp('archived_at'),
 });
@@ -95,18 +116,6 @@ export const list_items = pgTable(
   },
   (table) => [primaryKey({ columns: [table.list_id, table.item_id] })]
 );
-
-// Legacy table — dormant during soak (see openspec change add-following-and-history,
-// design Decision 4a). Replaced by list_visits. Removed in follow-up archive-legacy-share.
-export const saved_lists = pgTable('saved_lists', {
-  id: text('id').primaryKey(),
-  list_id: text('list_id')
-    .references(() => lists.id, { onDelete: 'cascade' })
-    .notNull(),
-  user_id: text('user_id')
-    .references(() => users.id, { onDelete: 'cascade' })
-    .notNull(),
-});
 
 export const list_visits = pgTable(
   'list_visits',
@@ -130,26 +139,32 @@ export const user_follows = pgTable(
     follower_id: text('follower_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
-    followee_id: text('followee_id')
-      .references(() => users.id, { onDelete: 'cascade' })
+    followee_profile_id: text('followee_profile_id')
+      .references(() => profiles.id, { onDelete: 'cascade' })
       .notNull(),
     created_at: timestamp('created_at').defaultNow().notNull(),
   },
-  (table) => [primaryKey({ columns: [table.follower_id, table.followee_id] })]
+  (table) => [
+    primaryKey({ columns: [table.follower_id, table.followee_profile_id] }),
+  ]
 );
 
 export const user_blocks = pgTable(
   'user_blocks',
   {
-    blocker_id: text('blocker_id')
-      .references(() => users.id, { onDelete: 'cascade' })
+    blocker_profile_id: text('blocker_profile_id')
+      .references(() => profiles.id, { onDelete: 'cascade' })
       .notNull(),
-    blocked_id: text('blocked_id')
-      .references(() => users.id, { onDelete: 'cascade' })
+    blocked_profile_id: text('blocked_profile_id')
+      .references(() => profiles.id, { onDelete: 'cascade' })
       .notNull(),
     created_at: timestamp('created_at').defaultNow().notNull(),
   },
-  (table) => [primaryKey({ columns: [table.blocker_id, table.blocked_id] })]
+  (table) => [
+    primaryKey({
+      columns: [table.blocker_profile_id, table.blocked_profile_id],
+    }),
+  ]
 );
 
 export const item_stores = pgTable('item_stores', {
@@ -192,21 +207,177 @@ export const purchases = pgTable(
     item_id: text('item_id')
       .references(() => items.id, { onDelete: 'cascade' })
       .notNull(),
-    user_id: text('user_id').references(() => users.id, {
+    profile_id: text('profile_id').references(() => profiles.id, {
       onDelete: 'cascade',
     }),
-    claimed_by: text('claimed_by').references(() => users.id, {
-      onDelete: 'set null',
-    }),
+    claimed_by_profile_id: text('claimed_by_profile_id').references(
+      () => profiles.id,
+      { onDelete: 'set null' }
+    ),
     guest_name: text('guest_name'),
     purchased_at: timestamp('purchased_at').defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex('purchases_item_user_unique_idx')
-      .on(table.item_id, table.user_id)
+    uniqueIndex('purchases_item_profile_unique_idx')
+      .on(table.item_id, table.profile_id)
+      .where(sql`${table.profile_id} IS NOT NULL`),
+  ]
+);
+
+export const profiles = pgTable('profiles', {
+  id: text('id')
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
+  name: text('name').notNull(),
+  tagline: text('tagline'),
+  created_at: timestamp('created_at').defaultNow().notNull(),
+  updated_at: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Named so `createSelfProfile` can narrow its 23505 catch to the violation it
+// treats as success; a bare code would swallow unrelated ones.
+export const SELF_MEMBERSHIP_PER_USER_IDX =
+  'profile_members_one_self_per_user_idx';
+export const SELF_MEMBERSHIP_PER_PROFILE_IDX =
+  'profile_members_one_self_per_profile_idx';
+
+export const profile_members = pgTable(
+  'profile_members',
+  {
+    user_id: text('user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    profile_id: text('profile_id')
+      .references(() => profiles.id, { onDelete: 'cascade' })
+      .notNull(),
+    role: text('role').notNull(),
+    ride_along: boolean('ride_along').notNull().default(false),
+    last_active_at: timestamp('last_active_at'),
+    created_at: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.user_id, table.profile_id] }),
+    check(
+      'profile_members_role_valid',
+      sql`${table.role} IN (${sql.raw(roleList(Object.values(ROLES)))})`
+    ),
+    // Both directions are load-bearing: the account side is "one self-profile
+    // per account", the profile side is what makes a claim asserter resolve
+    // back to exactly one human.
+    uniqueIndex(SELF_MEMBERSHIP_PER_USER_IDX)
+      .on(table.user_id)
+      .where(sql`${table.role} = ${sql.raw(quoted(ROLES.self))}`),
+    uniqueIndex(SELF_MEMBERSHIP_PER_PROFILE_IDX)
+      .on(table.profile_id)
+      .where(sql`${table.role} = ${sql.raw(quoted(ROLES.self))}`),
+  ]
+);
+
+// A single-use capability grant: whoever holds the token may redeem it once,
+// and `redeemed_at` is the marker that says it is spent. No index beyond the
+// primary key: redemption reads by token, and the roster's `profile_id`
+// predicate scans the whole table — every profile's invites, spent ones
+// included, since redemption stamps rather than deletes. The scan is accepted
+// at this table's size, not argued away; an index on `profile_id` is the
+// remedy when the roster read starts costing, and it is a migration rather
+// than a change of shape.
+export const profile_invites = pgTable(
+  'profile_invites',
+  {
+    token: text('token')
+      .primaryKey()
+      .$defaultFn(() => nanoid(32)),
+    profile_id: text('profile_id')
+      .references(() => profiles.id, { onDelete: 'cascade' })
+      .notNull(),
+    created_by_user_id: text('created_by_user_id')
+      .references(() => users.id, { onDelete: 'cascade' })
+      .notNull(),
+    role: text('role').notNull(),
+    created_at: timestamp('created_at').defaultNow().notNull(),
+    expires_at: timestamp('expires_at').notNull(),
+    redeemed_at: timestamp('redeemed_at'),
+  },
+  (table) => [
+    // `self` is never grantable: a link admits a member, and a self-profile's
+    // membership is minted by onboarding alone.
+    check(
+      'profile_invites_role_valid',
+      sql`${table.role} IN (${sql.raw(
+        roleList(Object.values(ROLES).filter(isGrantable))
+      )})`
+    ),
+  ]
+);
+
+// The catalog row 0013 inserts. Named so writers and reads agree on the key
+// rather than each spelling the literal.
+export const ACCENT_PREFERENCE_ID = 'accent';
+
+// The spoiler tier. A profile-wide row (null account) is the default that
+// seeds new memberships; a per-member row (account set) is that member's own
+// baseline. One catalog row, since the tier is a single ordinal value.
+export const SPOILER_TIER_PREFERENCE_ID = 'spoiler_tier';
+
+export const SPOILER_PREFERENCE_ROWS = [
+  {
+    id: SPOILER_TIER_PREFERENCE_ID,
+    name: 'Claim visibility tier',
+    type: 'text',
+  },
+] as const;
+
+export const preferences = pgTable('preferences', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  type: text('type').notNull(),
+});
+
+export const PROFILE_PREFERENCE_DEFAULT_IDX = 'profile_preferences_default_idx';
+export const PROFILE_PREFERENCE_MEMBER_IDX = 'profile_preferences_member_idx';
+
+export const profile_preferences = pgTable(
+  'profile_preferences',
+  {
+    profile_id: text('profile_id')
+      .references(() => profiles.id, { onDelete: 'cascade' })
+      .notNull(),
+    // Nullable account key: a null row is the profile-wide value, a set row is
+    // that account's own value (meaningful only for a member). It does NOT
+    // cascade with the membership row — revocation deletes the account's rows
+    // explicitly — but it does cascade when the account itself is deleted.
+    user_id: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    preference_id: text('preference_id')
+      .references(() => preferences.id, { onDelete: 'cascade' })
+      .notNull(),
+    value: text('value').notNull(),
+  },
+  (table) => [
+    // A nullable column cannot sit in a primary key, and a plain unique index
+    // treats NULLs as distinct. Uniqueness is therefore two partial indexes:
+    // one profile-wide row per (profile, preference), one per member per
+    // (profile, account, preference). ON CONFLICT targets whichever applies.
+    uniqueIndex(PROFILE_PREFERENCE_DEFAULT_IDX)
+      .on(table.profile_id, table.preference_id)
+      .where(sql`${table.user_id} IS NULL`),
+    uniqueIndex(PROFILE_PREFERENCE_MEMBER_IDX)
+      .on(table.profile_id, table.user_id, table.preference_id)
       .where(sql`${table.user_id} IS NOT NULL`),
   ]
 );
+
+// The primary key is the one-row-per-profile rule. No default and no backfill:
+// the row's absence is what `onboarding-gate` reads to raise the gate.
+export const profile_avatars = pgTable('profile_avatars', {
+  profile_id: text('profile_id')
+    .references(() => profiles.id, { onDelete: 'cascade' })
+    .primaryKey(),
+  style: text('style').notNull(),
+  options: jsonb('options').$type<AltvatarOptions>().notNull(),
+  art: text('art').notNull(),
+  created_at: timestamp('created_at').defaultNow().notNull(),
+  updated_at: timestamp('updated_at').defaultNow().notNull(),
+});
 
 // Relations between tables
 export const item_storesRelations = relations(item_stores, ({ one }) => ({
@@ -217,9 +388,15 @@ export const item_storesRelations = relations(item_stores, ({ one }) => ({
 }));
 
 export const itemsRelations = relations(items, ({ one, many }) => ({
-  user: one(users, {
-    fields: [items.user_id],
+  profile: one(profiles, {
+    fields: [items.profile_id],
+    references: [profiles.id],
+    relationName: 'itemOwnerProfile',
+  }),
+  updatedBy: one(users, {
+    fields: [items.updated_by_user_id],
     references: [users.id],
+    relationName: 'itemUpdatedBy',
   }),
   purchases: many(purchases),
   stores: many(item_stores),
@@ -239,51 +416,38 @@ export const purchasesRelations = relations(purchases, ({ one }) => ({
     fields: [purchases.item_id],
     references: [items.id],
   }),
-  user: one(users, {
-    fields: [purchases.user_id],
-    references: [users.id],
-    relationName: 'purchaser',
+  purchaserProfile: one(profiles, {
+    fields: [purchases.profile_id],
+    references: [profiles.id],
+    relationName: 'purchaserProfile',
   }),
-  claimer: one(users, {
-    fields: [purchases.claimed_by],
-    references: [users.id],
-    relationName: 'claimer',
+  claimerProfile: one(profiles, {
+    fields: [purchases.claimed_by_profile_id],
+    references: [profiles.id],
+    relationName: 'claimerProfile',
   }),
 }));
 
 // Relations between tables
 export const listsRelations = relations(lists, ({ one, many }) => ({
-  user: one(users, {
-    fields: [lists.user_id],
+  profile: one(profiles, {
+    fields: [lists.profile_id],
+    references: [profiles.id],
+    relationName: 'listOwnerProfile',
+  }),
+  updatedBy: one(users, {
+    fields: [lists.updated_by_user_id],
     references: [users.id],
+    relationName: 'listUpdatedBy',
   }),
   items: many(list_items),
-  saved_lists: many(saved_lists),
   visits: many(list_visits),
-}));
-
-export const saved_listsRelations = relations(saved_lists, ({ one }) => ({
-  list: one(lists, {
-    fields: [saved_lists.list_id],
-    references: [lists.id],
-  }),
-  user: one(users, {
-    fields: [saved_lists.user_id],
-    references: [users.id],
-  }),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
-  lists: many(lists),
-  items: many(items),
-  purchases: many(purchases, { relationName: 'purchaser' }),
-  claimed_purchases: many(purchases, { relationName: 'claimer' }),
-  saved_lists: many(saved_lists),
+  memberships: many(profile_members),
   visits: many(list_visits),
   following: many(user_follows, { relationName: 'follower' }),
-  followers: many(user_follows, { relationName: 'followee' }),
-  blocking: many(user_blocks, { relationName: 'blocker' }),
-  blockedBy: many(user_blocks, { relationName: 'blocked' }),
 }));
 
 export const list_itemsRelations = relations(list_items, ({ one }) => ({
@@ -314,22 +478,59 @@ export const user_followsRelations = relations(user_follows, ({ one }) => ({
     references: [users.id],
     relationName: 'follower',
   }),
-  followee: one(users, {
-    fields: [user_follows.followee_id],
-    references: [users.id],
-    relationName: 'followee',
+  followeeProfile: one(profiles, {
+    fields: [user_follows.followee_profile_id],
+    references: [profiles.id],
+    relationName: 'followeeProfile',
   }),
 }));
 
-export const user_blocksRelations = relations(user_blocks, ({ one }) => ({
-  blocker: one(users, {
-    fields: [user_blocks.blocker_id],
-    references: [users.id],
-    relationName: 'blocker',
-  }),
-  blocked: one(users, {
-    fields: [user_blocks.blocked_id],
-    references: [users.id],
-    relationName: 'blocked',
-  }),
+export const profilesRelations = relations(profiles, ({ many, one }) => ({
+  members: many(profile_members),
+  preferences: many(profile_preferences),
+  avatar: one(profile_avatars),
+  lists: many(lists, { relationName: 'listOwnerProfile' }),
+  items: many(items, { relationName: 'itemOwnerProfile' }),
 }));
+
+export const profile_avatarsRelations = relations(
+  profile_avatars,
+  ({ one }) => ({
+    profile: one(profiles, {
+      fields: [profile_avatars.profile_id],
+      references: [profiles.id],
+    }),
+  })
+);
+
+export const profile_membersRelations = relations(
+  profile_members,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [profile_members.user_id],
+      references: [users.id],
+    }),
+    profile: one(profiles, {
+      fields: [profile_members.profile_id],
+      references: [profiles.id],
+    }),
+  })
+);
+
+export const preferencesRelations = relations(preferences, ({ many }) => ({
+  values: many(profile_preferences),
+}));
+
+export const profile_preferencesRelations = relations(
+  profile_preferences,
+  ({ one }) => ({
+    profile: one(profiles, {
+      fields: [profile_preferences.profile_id],
+      references: [profiles.id],
+    }),
+    preference: one(preferences, {
+      fields: [profile_preferences.preference_id],
+      references: [preferences.id],
+    }),
+  })
+);

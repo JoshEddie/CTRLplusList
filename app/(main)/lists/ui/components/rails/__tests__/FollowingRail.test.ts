@@ -8,6 +8,7 @@ import {
   seedFollow,
   seedPublicList,
   seedUsers,
+  selfProfileOf,
 } from '@/test/helpers/seedFollowGraph';
 
 mockNextCache();
@@ -96,20 +97,31 @@ describe('FollowingRail', () => {
     expect(hasMoreCard).toBe(false);
   });
 
-  it('UserCard_ReceivesIdNameImageNewCountLatestSharedCompact', async () => {
+  it('UserCard_ReceivesProfileFaceNewCountAndLatestShared', async () => {
     await seedFollowees(1);
 
     const tree = (await FollowingRail({ userId: 'viewer' })) as unknown as El;
     const card = userCardItems(tree)[0].props.children as El;
     const props = card.props as {
-      user: unknown;
+      profile: Record<string, unknown>;
       newCount: number;
       latestSharedAt: unknown;
-      compact: boolean;
     };
-    expect(props.user).toEqual({ id: 'f0', name: 'Followee 0', image: 'f0.png' });
+    // Exact rather than partial: what this seam has to prove is that the row
+    // reaching the card carries no account column, which only the full key set
+    // shows.
+    expect(props.profile).toEqual({
+      id: selfProfileOf('f0'),
+      name: 'Followee 0',
+      accent: null,
+      art: null,
+      avatarStyle: null,
+      follow_created_at: expect.any(Date),
+      last_seen_following_at: null,
+      latest_shared_at: expect.any(String),
+      new_count: 0,
+    });
     expect(props.newCount).toBe(0);
     expect(String(props.latestSharedAt)).toContain('2021');
-    expect(props.compact).toBe(true);
   });
 });

@@ -1,11 +1,16 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
-import { ItemDisplay, SortKey } from '@/lib/types';
+import {
+  ProfileMembershipView,
+  ItemDisplay,
+  SortKey,
+  SpoilerTier,
+} from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import Items from './Items';
-import ItemsToolbar from './itemsToolbar';
+import ToolbarSlot from './itemsToolbar/ToolbarSlot';
 import Pagination from './Pagination';
 import { compareItems, displayPrice } from './itemFilters';
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from './paginationConstants';
@@ -16,10 +21,13 @@ interface ItemsBrowserProps {
   items: ItemDisplay[];
   mode: BrowserMode;
   initialPageSize?: number;
-  user_id?: string;
+  actor?: ProfileMembershipView;
   user_name?: string | null;
   showArchiveAction?: boolean;
   archivedView?: boolean;
+  /** The viewer's resolved tier, and the baseline the library toggle writes deltas against. Baseline is present only where the toggle renders (the library). */
+  tier?: SpoilerTier;
+  baseline?: SpoilerTier;
 }
 
 const VALID_SORT_ITEMS: SortKey[] = [
@@ -54,10 +62,12 @@ export default function ItemsBrowser({
   items,
   mode,
   initialPageSize,
-  user_id,
+  actor,
   user_name,
   showArchiveAction,
   archivedView,
+  tier,
+  baseline,
 }: ItemsBrowserProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -71,13 +81,6 @@ export default function ItemsBrowser({
   const sort: SortKey =
     rawSort && validSorts.includes(rawSort) ? rawSort : defaultSort;
   const selectedStores = searchParams?.getAll('store') ?? [];
-  const purchasesParam = searchParams?.get('purchases') ?? 'hide';
-  // Items-library mode renders the viewer's own items, so the spoilers
-  // reveal also unlocks the owner claim/unclaim affordances. List mode
-  // viewers are never the owner, so the flag is inert there.
-  const showSpoilers =
-    mode === 'items' &&
-    (purchasesParam === 'reveal' || purchasesParam === 'only');
   const priceMin = parseFloat(searchParams?.get('price_min') ?? '');
   const priceMax = parseFloat(searchParams?.get('price_max') ?? '');
   const hasPriceFilter = Number.isFinite(priceMin) || Number.isFinite(priceMax);
@@ -100,20 +103,6 @@ export default function ItemsBrowser({
     router.replace(queryString ? `${pathname}?${queryString}` : pathname);
   };
 
-  const storeOptions = useMemo(() => {
-    const names = new Set<string>();
-    for (const item of items) {
-      if (item.store?.name) names.add(item.store.name);
-    }
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
-  }, [items]);
-
-  const hasAnyStore = storeOptions.length > 0;
-  const hasAnyPrice = useMemo(
-    () => items.some((item) => Number.isFinite(displayPrice(item))),
-    [items]
-  );
-
   const selectedStoresKey = selectedStores.join('|');
 
   const filteredSorted = useMemo(() => {
@@ -128,11 +117,6 @@ export default function ItemsBrowser({
       result = result.filter(
         (item) => !!item.store && selectedSet.has(item.store.name)
       );
-    }
-    if (purchasesParam === 'only') {
-      result = result.filter((item) => item.hasPurchases);
-    } else if (purchasesParam === 'none') {
-      result = result.filter((item) => !item.hasPurchases);
     }
     if (hasPriceFilter) {
       const lo = Number.isFinite(priceMin) ? priceMin : -Infinity;
@@ -149,7 +133,6 @@ export default function ItemsBrowser({
     items,
     q,
     selectedStoresKey,
-    purchasesParam,
     hasPriceFilter,
     priceMin,
     priceMax,
@@ -164,7 +147,6 @@ export default function ItemsBrowser({
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.delete('q');
     params.delete('store');
-    params.delete('purchases');
     params.delete('price_min');
     params.delete('price_max');
     params.delete('page');
@@ -174,12 +156,11 @@ export default function ItemsBrowser({
 
   return (
     <div className="items-browser">
-      <ItemsToolbar
+      <ToolbarSlot
+        items={items}
         mode={mode}
-        storeOptions={storeOptions}
-        showStoreSort={hasAnyStore}
-        showPriceSort={hasAnyPrice}
-        showPriceFilter={hasAnyPrice}
+        tier={tier}
+        baseline={baseline}
       />
       {filteredSorted.length === 0 ? (
         <div className="items-empty-filtered">
@@ -192,10 +173,10 @@ export default function ItemsBrowser({
         <>
           <Items
             items={visible}
-            user_id={user_id}
+            actor={actor}
             user_name={user_name}
             view={view}
-            showSpoilers={showSpoilers}
+            tier={tier}
             showArchiveAction={showArchiveAction}
             archivedView={archivedView}
           />

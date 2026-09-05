@@ -38,8 +38,7 @@
 /* Store-link chip (purchase-modal store row) opts out of the design system's
    standard variant colors — buy-links carry their own "filled lavender CTA"
    treatment to signal "leave the page to purchase." Sizing/typography stay at
-   the system's `sm` tier (32px floor, 13px font). Documented exception per
-   openspec/changes/standardize-buttons. */
+   the system's `sm` tier (32px floor, 13px font). */
 .btn.storeLinks-link {
   background: var(--buy-link-bg);
   background-color: var(--buy-link-bg);

@@ -1,4 +1,9 @@
-import { ItemDisplay, PurchaseView } from '@/lib/types';
+import {
+  ProfileMembershipView,
+  ItemDisplay,
+  PurchaseView,
+  SpoilerTier,
+} from '@/lib/types';
 import ClaimsList from './purchasemodal/ClaimsList';
 import Modal from './purchasemodal/Modal';
 import ModalStoreRow from './purchasemodal/ModalStoreRow';
@@ -11,11 +16,9 @@ export default function PurchaseModalSlot({
   view,
   claims,
   viewerIsPurchaser,
-  user_id,
+  actor,
   isOwner,
-  showSpoilers,
-  ownerCanClaim,
-  ownerClaims,
+  tier,
   item,
   onClose,
   onSelfClaim,
@@ -27,11 +30,9 @@ export default function PurchaseModalSlot({
   /** Every sanitized claim on the item — the manage view lists them all, removal gated per row. */
   claims: PurchaseView[];
   viewerIsPurchaser: boolean;
-  user_id?: string;
+  actor?: ProfileMembershipView;
   isOwner: boolean;
-  showSpoilers: boolean;
-  ownerCanClaim: boolean;
-  ownerClaims: PurchaseView[];
+  tier: SpoilerTier;
   item: ItemDisplay;
   onClose: () => void;
   onSelfClaim: () => void;
@@ -45,6 +46,8 @@ export default function PurchaseModalSlot({
         <div className="claim-modal">
           <PurchaseModalHeader item={item} />
           <ModalStoreRow store={item.store} />
+          {/* The viewer's own claims and the ones they asserted — removing
+              either compares the self-profile and takes no floor. */}
           <ClaimsList
             claims={claims}
             canRemove={(claim) => claim.by === 'self' || claim.claimedByViewer}
@@ -57,11 +60,10 @@ export default function PurchaseModalSlot({
   return (
     <Modal onClose={onClose}>
       <PurchaseFlowContainer
-        user_id={user_id}
+        actor={actor}
         isOwner={isOwner}
-        showSpoilers={showSpoilers}
-        ownerCanClaim={ownerCanClaim}
-        ownerClaims={ownerClaims}
+        tier={tier}
+        claims={claims}
         viewerIsPurchaser={viewerIsPurchaser}
         item={item}
         onSelfClaim={onSelfClaim}

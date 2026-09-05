@@ -1,5 +1,8 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import {
   FaCircleCheck,
   FaCircleExclamation,
@@ -68,8 +71,8 @@ export function FieldRows({ item, onFocus }: FieldRowsProps) {
       <FieldRow
         label="Item name"
         value={item.name || 'None'}
-        status={tiers.title}
-        onClick={() => onFocus('title')}
+        status={tiers.name}
+        onClick={() => onFocus('name')}
       />
       <FieldRow
         label="Note"

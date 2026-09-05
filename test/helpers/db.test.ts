@@ -1,7 +1,14 @@
 import { getTableName } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { items, lists, list_items, purchases, users } from '../../db/schema';
+import {
+  items,
+  lists,
+  list_items,
+  profiles,
+  purchases,
+  users,
+} from '../../db/schema';
 import { sqlstateOf } from '../../lib/sqlstate';
 import { bootPglite, resetDb, SCHEMA_TABLES } from './db';
 
@@ -31,27 +38,33 @@ describe('bootPglite', () => {
   it('DuplicatePurchase_ViolatesPartialUniqueWith23505', async () => {
     await db.insert(users).values({ id: 'u1', name: 'Owner' });
     await db.insert(users).values({ id: 'u2', name: 'Buyer' });
+    await db
+      .insert(profiles)
+      .values([
+        { id: 'pr1', name: 'Owner' },
+        { id: 'pr2', name: 'Buyer' },
+      ]);
     await db.insert(lists).values({
       id: 'l1',
       name: 'L',
       occasion: 'Birthday',
-      user_id: 'u1',
+      profile_id: 'pr1',
     });
     await db
       .insert(items)
-      .values({ id: 'i1', name: 'Thing', user_id: 'u1' });
+      .values({ id: 'i1', name: 'Thing', profile_id: 'pr1' });
     await db
       .insert(list_items)
       .values({ list_id: 'l1', item_id: 'i1', position: 0 });
     await db
       .insert(purchases)
-      .values({ id: 'p1', item_id: 'i1', user_id: 'u2' });
+      .values({ id: 'p1', item_id: 'i1', profile_id: 'pr2' });
 
     let caught: unknown;
     try {
       await db
         .insert(purchases)
-        .values({ id: 'p2', item_id: 'i1', user_id: 'u2' });
+        .values({ id: 'p2', item_id: 'i1', profile_id: 'pr2' });
     } catch (err) {
       caught = err;
     }
@@ -62,13 +75,16 @@ describe('bootPglite', () => {
 describe('resetDb', () => {
   it('SeededAcrossTables_EveryTableEmptyAfterReset', async () => {
     await db.insert(users).values({ id: 'u1', name: 'Owner' });
+    await db.insert(profiles).values({ id: 'pr1', name: 'Owner' });
     await db.insert(lists).values({
       id: 'l1',
       name: 'L',
       occasion: 'Birthday',
-      user_id: 'u1',
+      profile_id: 'pr1',
     });
-    await db.insert(items).values({ id: 'i1', name: 'Thing', user_id: 'u1' });
+    await db
+      .insert(items)
+      .values({ id: 'i1', name: 'Thing', profile_id: 'pr1' });
 
     await resetDb(db);
 

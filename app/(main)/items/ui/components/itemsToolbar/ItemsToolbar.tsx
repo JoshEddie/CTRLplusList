@@ -6,10 +6,12 @@ import {
   SegmentedControl,
   SegmentedOption,
 } from '@/app/ui/components/segmented-control';
-import { useKeyboardOffset } from '@/app/ui/hooks/useKeyboardOffset';
-import { SortKey } from '@/lib/types';
+import SpoilerPicker from '@/app/ui/components/SpoilerPicker';
+import { LIBRARY_TIER_ROWS } from '@/app/ui/components/spoiler-tier-rows';
+import { useScrollLock } from '@/app/ui/hooks/useScrollLock';
+import { SortKey, SpoilerTier } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MdGridView, MdTune, MdViewList } from 'react-icons/md';
 import { FiltersSheet } from './FiltersSheet';
 import { SearchInputControl } from './SearchInputControl';
@@ -30,6 +32,9 @@ interface ItemsToolbarProps {
   showPriceSort: boolean;
   showPriceFilter: boolean;
   showGridToggle?: boolean;
+  /** The viewer's resolved tier and own baseline, present only on the library (`mode='items'`), where the compact toggle renders to the left of search. */
+  tier?: SpoilerTier;
+  baseline?: SpoilerTier;
 }
 
 export default function ItemsToolbar({
@@ -39,6 +44,8 @@ export default function ItemsToolbar({
   showPriceSort,
   showPriceFilter,
   showGridToggle = true,
+  tier,
+  baseline,
 }: ItemsToolbarProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -48,15 +55,18 @@ export default function ItemsToolbar({
   const q = searchParams?.get('q') ?? '';
   const sort = (searchParams?.get('sort') as SortKey | null) ?? defaultSort;
   const selectedStores = searchParams?.getAll('store') ?? [];
-  const purchases = searchParams?.get('purchases') ?? 'hide';
   const show = searchParams?.get('show') ?? 'all';
   const priceMin = searchParams?.get('price_min') ?? '';
   const priceMax = searchParams?.get('price_max') ?? '';
   const view = searchParams?.get('view') === 'list' ? 'list' : 'grid';
 
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersTriggerRef = useRef<HTMLButtonElement>(null);
 
-  useKeyboardOffset(filtersOpen);
+  const closeFilters = useCallback(() => {
+    setFiltersOpen(false);
+    filtersTriggerRef.current?.focus();
+  }, []);
 
   const updateParams = useCallback(
     (patch: ParamPatch) => {
@@ -72,14 +82,18 @@ export default function ItemsToolbar({
     [updateParams]
   );
 
+  // The sheet is a fixed overlay over a document that scrolls; without this
+  // the page scrolls behind it.
+  useScrollLock(filtersOpen);
+
   useEffect(() => {
     if (!filtersOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setFiltersOpen(false);
+      if (e.key === 'Escape') closeFilters();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [filtersOpen]);
+  }, [filtersOpen, closeFilters]);
 
   const toggleStore = useCallback(
     (name: string) => {
@@ -93,10 +107,24 @@ export default function ItemsToolbar({
   const clearStores = () => updateParams({ store: null, page: null });
 
   const applyPrice = (min: string, max: string) =>
-    updateParams({ price_min: min || null, price_max: max || null, page: null });
+    updateParams({
+      price_min: min || null,
+      price_max: max || null,
+      page: null,
+    });
 
   const clearPrice = () =>
     updateParams({ price_min: null, price_max: null, page: null });
+
+  const clearAll = () =>
+    updateParams({
+      sort: null,
+      show: null,
+      store: null,
+      price_min: null,
+      price_max: null,
+      page: null,
+    });
 
   const sortOptions = useMemo(
     () => sortOptionsFor(mode, showStoreSort, showPriceSort),
@@ -107,7 +135,6 @@ export default function ItemsToolbar({
     mode,
     sort,
     defaultSort,
-    purchases,
     show,
     selectedStores,
     priceMin,
@@ -123,15 +150,26 @@ export default function ItemsToolbar({
   const filterCount = countActiveFilters(filterState);
 
   return (
-    <div
-      className={`items-toolbar ${!showGridToggle ? 'hide-grid-toggle' : ''}`}
-    >
+    <div className="items-toolbar">
       <div className="items-toolbar-row">
+        {/* The library's compact claim-visibility toggle, left of search — a
+            display control, not a filter facet (`items-library-shell`). Only
+            the library carries it; a list's control is the hero Spoilers tile. */}
+        {mode === 'items' && tier && baseline && (
+          <div className="items-toolbar-cell--spoilers">
+            <SpoilerPicker
+              tier={tier}
+              baseline={baseline}
+              rows={LIBRARY_TIER_ROWS}
+            />
+          </div>
+        )}
         <div className="items-search items-toolbar-cell--search">
           <SearchInputControl key={q} initialQ={q} onCommit={commitSearch} />
         </div>
 
         <PopoverTrigger
+          ref={filtersTriggerRef}
           className="items-toolbar-cell--filters"
           icon={<MdTune />}
           label="Filters"
@@ -143,14 +181,16 @@ export default function ItemsToolbar({
           aria-haspopup="dialog"
         />
 
+        {/* Keyed on open state so closing unmounts the sheet: the drill
+            level resets and any pending price edit flushes on cleanup. */}
         <FiltersSheet
+          key={String(filtersOpen)}
           open={filtersOpen}
-          onClose={() => setFiltersOpen(false)}
+          onClose={closeFilters}
           mode={mode}
           sort={sort}
           defaultSort={defaultSort}
           sortOptions={sortOptions}
-          purchases={purchases}
           show={show}
           storeOptions={storeOptions}
           selectedStores={selectedStores}
@@ -162,12 +202,14 @@ export default function ItemsToolbar({
           clearStores={clearStores}
           applyPrice={applyPrice}
           clearPrice={clearPrice}
+          filterCount={filterCount}
+          clearAll={clearAll}
         />
 
         {filtersOpen && (
           <div
             className="items-toolbar-filters-scrim"
-            onClick={() => setFiltersOpen(false)}
+            onClick={closeFilters}
             role="presentation"
           />
         )}

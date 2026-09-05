@@ -6,7 +6,13 @@ import { useState } from 'react';
 import { MdModeEdit } from 'react-icons/md';
 import ListFormContainer from './ListFormContainer';
 
-export default function EditListAction({ list }: { list: ListTable }) {
+export default function EditListAction({
+  list,
+  deleteDisabled,
+}: {
+  list: ListTable;
+  deleteDisabled: boolean;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -18,6 +24,7 @@ export default function EditListAction({ list }: { list: ListTable }) {
         <ListFormContainer
           list={list}
           isEditing
+          deleteDisabled={deleteDisabled}
           onClose={() => setOpen(false)}
         />
       )}

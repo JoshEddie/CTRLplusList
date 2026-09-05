@@ -9,12 +9,12 @@ function formatDate(d: Date | string): string {
 }
 
 export default function ConnectionRow({
-  userId,
+  profileId,
   name,
   since,
   actions,
 }: {
-  userId: string;
+  profileId: string;
   name: string | null;
   /** When the relationship was created — drives the "since X" subline. */
   since?: Date | string | null;
@@ -23,7 +23,7 @@ export default function ConnectionRow({
   return (
     <li className="connections-row">
       <div className="connections-row-meta">
-        <Link href={`/user/${userId}`} className="connections-link">
+        <Link href={`/altvatar/${profileId}`} className="connections-link">
           {name ?? 'Unnamed'}
         </Link>
         {since && (

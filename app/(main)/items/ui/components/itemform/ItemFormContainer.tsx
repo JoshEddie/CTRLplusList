@@ -19,11 +19,7 @@ import { useItemSubmit } from './deck/useItemSubmit';
 import { useProductFetch } from './deck/useProductFetch';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { isDirtyDraft, manualAdvanceReady, rowTiers } from './deck/utils';
-import {
-  blankItem,
-  seedFromItem,
-  type ItemViewModel,
-} from './deck/viewModel';
+import { blankItem, seedFromItem, type ItemViewModel } from './deck/viewModel';
 import { FetchingStep } from './FetchingStep';
 import { UrlEntryStep } from './UrlEntryStep';
 import type { Screen } from './utils';
@@ -38,12 +34,21 @@ const ItemFormContainer = ({
   lists,
   item,
   returnTo,
+  actingAs,
+  deleteDisabled = false,
   onClose,
   onSuccess,
 }: {
   lists: ListTable[];
   item?: EditItem;
   returnTo?: string;
+  // Deleting the item takes the owner floor. Only the editing shape offers
+  // the control, so the creating call sites pass nothing.
+  deleteDisabled?: boolean;
+  // The active profile's name, supplied only for a viewer who runs more than
+  // one. The new item is owned by whichever profile the request acts as, so
+  // the shell's heading and the submit control both say which.
+  actingAs?: string;
   onClose?: () => void;
   onSuccess?: () => void;
 }) => {
@@ -235,6 +240,7 @@ const ItemFormContainer = ({
             actions={actions}
             isEditing={isEditing}
             isPending={isPending}
+            actingAs={actingAs}
             onSubmit={submit}
             onOpenTriage={() => setScreen('triage')}
             onOpenStore={() => setFocus('store')}
@@ -247,6 +253,7 @@ const ItemFormContainer = ({
                   returnTo={returnTo}
                   onDeleted={onClose}
                   archived={item.archived_at != null}
+                  disabled={deleteDisabled}
                 />
               ) : undefined
             }
@@ -262,7 +269,13 @@ const ItemFormContainer = ({
       // screen (not the overlay) so opening a sheet/focus over preview doesn't
       // resize the modal.
       variant={screen === 'preview' ? 'wide' : 'default'}
-      moduleTitle={isEditing ? 'Edit item' : 'Add an item'}
+      moduleTitle={
+        isEditing
+          ? 'Edit item'
+          : actingAs
+            ? `Add an item for ${actingAs}`
+            : 'Add an item'
+      }
       closeHref={onClose ? undefined : (returnTo ?? '/items')}
       onClose={onClose}
     >

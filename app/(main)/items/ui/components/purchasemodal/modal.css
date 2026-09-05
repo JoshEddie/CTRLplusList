@@ -1,15 +1,14 @@
 .modal-overlay {
   position: fixed;
-  inset: 0;
+  top: var(--app-viewport-top);
+  left: 0;
+  right: 0;
+  height: var(--app-viewport-height);
   padding: 16px;
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 100;
-}
-
-.item-form-modal {
-  align-items: start;
 }
 
 .modal-overlay::before {
@@ -31,18 +30,15 @@
   max-width: 400px;
 }
 
-.item-form-modal .modal-container {
-  max-width: 800px;
-}
-
 .modal {
+  position: relative;
   background-color: var(--light-color);
   padding: 24px;
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
   z-index: 99;
   width: 100%;
-  max-height: calc(100dvh - 32px);
+  max-height: calc(var(--app-viewport-height) - 32px);
   overflow-x: hidden;
   overflow-y: auto;
   position: relative;
@@ -71,49 +67,6 @@
 
 .button-group.single {
   grid-template-columns: 1fr;
-}
-
-.tooltip-container {
-  position: relative;
-  display: inline-block;
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
-.tooltip {
-  visibility: hidden;
-  width: 200px;
-  background-color: var(--neutral-text-color);
-  color: #fff;
-  text-align: center;
-  border-radius: 4px;
-  padding: 5px;
-  position: absolute;
-  z-index: 1;
-  bottom: 125%;
-  left: 50%;
-  transform: translateX(-50%);
-  opacity: 0;
-  transition: opacity 0.3s;
-  font-size: 14px;
-  font-weight: normal;
-  pointer-events: none;
-}
-
-.tooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  margin-left: -5px;
-  border-width: 5px;
-  border-style: solid;
-  border-color: var(--neutral-text-color) transparent transparent transparent;
-}
-
-.tooltip-container:hover .tooltip {
-  visibility: visible;
-  opacity: 1;
 }
 
 /* Store row at the top of every purchase-modal variant. Ghost treatment
@@ -251,6 +204,11 @@
   background-color: var(--card-hover-background-color);
 }
 
+.claim-row .altvatar-disc {
+  width: 32px;
+  height: 32px;
+}
+
 .claim-row-info {
   flex: 1;
   min-width: 0;
@@ -304,7 +262,12 @@
   display: inline-flex;
 }
 
-.claim-disclosure-avatars .user-avatar:not(:first-child) {
+.claim-disclosure-avatars .altvatar-disc {
+  width: 24px;
+  height: 24px;
+}
+
+.claim-disclosure-avatars .altvatar-disc:not(:first-child) {
   margin-left: -8px;
 }
 
@@ -345,12 +308,6 @@
   width: 100%;
 }
 
-.claim-divider {
-  font-size: 14px;
-  font-weight: 600;
-  margin-top: 4px;
-}
-
 .claim-pool-list {
   list-style: none;
   margin: 0;
@@ -377,6 +334,11 @@
   color: inherit;
 }
 
+.claim-pool-row .altvatar-disc {
+  width: 32px;
+  height: 32px;
+}
+
 .claim-pool-row:hover,
 .claim-pool-row:focus-visible {
   background-color: rgba(0, 0, 0, 0.06);
@@ -387,20 +349,4 @@
   font-size: 14px;
   opacity: 0.75;
   text-align: center;
-}
-
-.claim-fallback-toggle {
-  border: none;
-  background: none;
-  padding: 8px;
-  font-size: 14px;
-  text-decoration: underline;
-  cursor: pointer;
-  color: inherit;
-}
-
-.claim-fallback {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }

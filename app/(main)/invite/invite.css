@@ -1,0 +1,58 @@
+/* The shell's own head, in place of the title bar: the accent band the profile
+   space uses, at the shell's width, with the disc overhanging it exactly as the
+   space and the profile card both do. */
+.invite-band {
+  position: relative;
+  height: 72px;
+  background-image: var(--accent-bg);
+  border-radius: 14px 14px 0 0;
+  flex-shrink: 0;
+}
+
+.invite-band-avatar {
+  position: absolute;
+  left: 24px;
+  bottom: -34px;
+  display: inline-flex;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px var(--light-color);
+}
+
+.invite-band-avatar .altvatar-disc {
+  width: 68px;
+  height: 68px;
+}
+
+/* Clears the disc's overhang, so the name starts below it rather than beside
+   it. */
+.invite-body {
+  padding-top: 44px;
+  gap: 6px;
+}
+
+/* The framing the name needs: without it a bare profile name reads as a page
+   heading rather than as an offer somebody has made. */
+.invite-kicker {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  color: var(--meta-text-color);
+}
+
+.invite-name {
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 28px;
+  margin: 0;
+  color: var(--heading-text-color);
+}
+
+.invite-tagline {
+  margin: 0;
+  color: var(--meta-text-color);
+}
+
+.invite-blurb {
+  margin: 8px 0 0;
+  color: var(--neutral-text-color);
+}

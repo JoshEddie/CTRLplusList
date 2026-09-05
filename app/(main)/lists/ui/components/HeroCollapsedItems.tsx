@@ -1,36 +1,36 @@
 'use client';
 
-import { setListVisibility } from '@/lib/data/list.actions';
-import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
-import { followUser, unfollowUser } from '@/lib/data/user.actions';
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
+import FollowDisclosureDialog from '@/app/(main)/users/ui/components/FollowDisclosureDialog';
 import { MenuItem, MenuItemRadio } from '@/app/ui/components/menu';
-import { ListTable } from '@/lib/types';
-import { VISIBILITY, fromDb, type ListVisibility } from '@/lib/visibility';
-import { useRouter } from 'next/navigation';
+import {
+  SPOILER_TIER_ROWS,
+  SpoilerRowIcon,
+} from '@/app/ui/components/spoiler-tier-rows';
+import { setListVisibility } from '@/lib/data/list.actions';
+import { followUser, unfollowUser } from '@/lib/data/profile.actions';
+import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
+import { withSpoilerParam } from '@/lib/spoilers';
+import { ListTable, type SpoilerTier } from '@/lib/types';
+import { type ListVisibility } from '@/lib/visibility';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import toast from 'react-hot-toast';
 import { FaBookmark, FaCheck, FaPlus, FaRegBookmark } from 'react-icons/fa';
 import { MdOutlineIosShare } from 'react-icons/md';
-import toast from 'react-hot-toast';
-import FollowDisclosureDialog from '@/app/(main)/users/ui/components/FollowDisclosureDialog';
 import { VISIBILITY_ROWS } from './visibility-rows';
 
 // ── Share ────────────────────────────────────────────────────────────────
 // Mirrors ShareButton's logic but renders as a <MenuItem>. The URL is built
-// from list.id rather than window.location, so the `?hero=closed` param is
-// never present in the shared URL — the requirement is structurally
+// from list.id rather than window.location, so no presentation-state params
+// ever reach the shared URL — the canonical-URL requirement is structurally
 // satisfied without a normalization step here.
 export function ShareMenuItem({ list }: { list: ListTable }) {
-  const router = useRouter();
   const listUrl = `https://www.ctrlpluslist.com/lists/${list.id}`;
-  const rawVisibility = (list as { visibility?: string }).visibility;
-  const visibility = rawVisibility
-    ? fromDb(rawVisibility)
-    : list.shared
-      ? VISIBILITY.LINK
-      : VISIBILITY.OWNER;
-  const isPrivate = visibility === VISIBILITY.OWNER;
 
-  const performShare = async () => {
+  const handleClick = async () => {
     if (navigator.share) {
       try {
         await navigator.share({ title: list.name, url: listUrl });
@@ -52,21 +52,6 @@ export function ShareMenuItem({ list }: { list: ListTable }) {
     }
   };
 
-  const handleClick = async () => {
-    if (isPrivate) {
-      // Promote to link-only then share, matching ShareButton's flow.
-      void setListVisibility(list.id, VISIBILITY.LINK).then((result) => {
-        if (result.success) {
-          toast.success('Sharing enabled');
-          router.refresh();
-        } else {
-          toast.error('Failed to enable sharing');
-        }
-      });
-    }
-    await performShare();
-  };
-
   return (
     <MenuItem icon={<MdOutlineIosShare size={18} />} onClick={handleClick}>
       Share List
@@ -82,16 +67,18 @@ export function ShareMenuItem({ list }: { list: ListTable }) {
 export function VisibilityMenuItems({
   listId,
   initialVisibility,
+  disabled,
 }: {
   listId: string;
   initialVisibility: ListVisibility;
+  disabled: boolean;
 }) {
   const router = useRouter();
   const [current, setCurrent] = useState<ListVisibility>(initialVisibility);
   const [isPending, startTransition] = useTransition();
 
   const apply = (next: ListVisibility) => {
-    if (next === current || isPending) return;
+    if (next === current || isPending || disabled) return;
     const prev = current;
     setCurrent(next);
     startTransition(async () => {
@@ -115,10 +102,48 @@ export function VisibilityMenuItems({
           icon={row.icon}
           description={row.description}
           checked={row.value === current}
-          disabled={isPending}
+          aria-disabled={isPending || disabled || undefined}
           onSelect={() => apply(row.value)}
         >
           {row.label}
+        </MenuItemRadio>
+      ))}
+    </>
+  );
+}
+
+// ── Spoilers ─────────────────────────────────────────────────────────────
+// The hero Spoilers tile's twin inside the collapsed-hero kebab, rendered only
+// for a viewer resolving a membership. Same four rows the tile shows, writing
+// the same `spoiler` URL param via the shared omit-on-baseline rule, so tile
+// and strip stay in lockstep (`list-hero-collapse`).
+export function SpoilerMenuItems({
+  tier,
+  baseline,
+}: {
+  tier: SpoilerTier;
+  baseline: SpoilerTier;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const apply = (next: SpoilerTier) => {
+    if (next === tier) return;
+    const qs = withSpoilerParam(searchParams?.toString() || '', next, baseline);
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  };
+
+  return (
+    <>
+      {SPOILER_TIER_ROWS.map((row) => (
+        <MenuItemRadio
+          key={row.value}
+          icon={<SpoilerRowIcon row={row} />}
+          checked={row.value === tier}
+          onSelect={() => apply(row.value)}
+        >
+          {row.title}
         </MenuItemRadio>
       ))}
     </>
@@ -168,12 +193,12 @@ export function BookmarkMenuItem({
 
 // ── Follow ───────────────────────────────────────────────────────────────
 export function FollowMenuItem({
-  ownerId,
+  ownerProfileId,
   ownerName,
   initialFollowing,
   requireDisclosure,
 }: {
-  ownerId: string;
+  ownerProfileId: string;
   ownerName: string | null;
   initialFollowing: boolean;
   requireDisclosure: boolean;
@@ -186,7 +211,7 @@ export function FollowMenuItem({
   const performFollow = () => {
     setFollowing(true);
     startTransition(async () => {
-      const result = await followUser(ownerId);
+      const result = await followUser(ownerProfileId);
       if (!result.success) {
         setFollowing(false);
         toast.error(result.message);
@@ -200,7 +225,7 @@ export function FollowMenuItem({
   const performUnfollow = () => {
     setFollowing(false);
     startTransition(async () => {
-      const result = await unfollowUser(ownerId);
+      const result = await unfollowUser(ownerProfileId);
       if (!result.success) {
         setFollowing(true);
         toast.error(result.message);
@@ -226,9 +251,7 @@ export function FollowMenuItem({
 
   const label = following
     ? 'Following'
-    : ownerName
-      ? `Follow ${ownerName}`
-      : 'Follow';
+    : 'Follow';
 
   return (
     <>

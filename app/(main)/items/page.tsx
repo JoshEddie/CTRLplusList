@@ -1,52 +1,65 @@
-import { auth } from '@/lib/auth';
-import { getItemsByUser } from '@/lib/data/item';
-import { getListsByUser } from '@/lib/data/list';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { getItemsByProfile } from '@/lib/data/item';
+import { actingAsName } from '@/lib/data/profile.active';
+import { getListsByProfile } from '@/lib/data/list';
+import { getSpoilerBaseline } from '@/lib/data/profile.members';
+import { resolveSpoilerTier } from '@/lib/spoilers';
+import { authedIdentity } from '@/lib/data/user.session';
 import { ItemDisplay } from '@/lib/types';
 import { redirect } from 'next/navigation';
 import ItemsPage from './ui/components/ItemsPage';
-import { readItemsPageSize, viewerDisplayName } from './utils';
+import { readItemsPageSize } from './utils';
 
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const session = await auth();
-
-  const user = session?.user?.email
-    ? await getUserIdByEmail(session.user.email)
-    : null;
-
-  if (!user) {
+  const identity = await authedIdentity();
+  if (!identity) {
     redirect('/');
   }
 
   const sp = await searchParams;
-  const purchasesParam =
-    typeof sp.purchases === 'string' ? sp.purchases : undefined;
-  const showSpoilers = purchasesParam === 'reveal' || purchasesParam === 'only';
+
+  // The library's items are owned by the profile the request acts as, so that
+  // is the profile whose membership resolves protection here.
+  const baseline = await getSpoilerBaseline(
+    identity.userId,
+    identity.activeProfile.id
+  );
+  const tier = resolveSpoilerTier(baseline, sp);
 
   const initialPageSize = await readItemsPageSize();
 
   const [activeItems, archivedItems] = await Promise.all([
-    getItemsByUser(user.id, { filter: 'active', showSpoilers }),
-    getItemsByUser(user.id, { filter: 'archived', showSpoilers }),
+    getItemsByProfile(identity.activeProfile.id, {
+      filter: 'active',
+      tier,
+    }),
+    getItemsByProfile(identity.activeProfile.id, {
+      filter: 'archived',
+      tier,
+    }),
   ]);
 
-  const lists = await getListsByUser(user.id);
+  const lists = await getListsByProfile(identity.activeProfile.id);
 
-  const firstLastInitial = viewerDisplayName(user.name);
+  const actingAs = await actingAsName(identity);
+
+  const actor = identity.activeProfile;
 
   return (
     <main className="container container--items-library">
       <ItemsPage
         items={activeItems as ItemDisplay[]}
         archivedItems={archivedItems as ItemDisplay[]}
-        user_id={user?.id}
-        user_name={firstLastInitial}
+        actor={actor}
+        user_name={identity.selfProfile.name}
         lists={lists}
         initialPageSize={initialPageSize}
+        actingAs={actingAs}
+        tier={tier}
+        baseline={baseline}
       />
     </main>
   );

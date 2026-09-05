@@ -16,6 +16,15 @@ import DeleteListButton from './DeleteListButton';
 interface ListFormProps {
   list?: ListTable;
   isEditing?: boolean;
+  // The active profile's name, supplied only for a viewer who runs more than
+  // one. Creating writes the new list to whichever profile the request acts
+  // as, so the form says which — a viewer with a single profile is shown no
+  // statement that could only name themselves.
+  actingAs?: string;
+  // Deleting the list takes the owner floor, which the form itself never
+  // reads: it renders the control and the surface that opened it says whether
+  // the acting role clears the floor.
+  deleteDisabled?: boolean;
   onClose?: () => void;
   onSuccess?: () => void;
 }
@@ -38,6 +47,8 @@ const initialState: ActionResponse = {
 export default function ListForm({
   list,
   isEditing = false,
+  actingAs,
+  deleteDisabled = false,
   onClose,
   onSuccess,
 }: ListFormProps) {
@@ -126,10 +137,11 @@ export default function ListForm({
   }, initialState);
 
   const closeHref = isEditing && list ? `/lists/${list.id}` : '/lists';
+  const forProfile = !isEditing && actingAs ? ` for ${actingAs}` : '';
 
   return (
     <FormShell
-      title={isEditing ? 'Edit List' : 'New List'}
+      title={isEditing ? 'Edit List' : `New List${forProfile}`}
       closeHref={onClose ? undefined : closeHref}
       onClose={onClose}
     >
@@ -195,10 +207,12 @@ export default function ListForm({
         <FormShellFooter
           cancelHref={onClose ? undefined : closeHref}
           onCancel={onClose}
-          submitLabel={isEditing ? 'Update List' : 'Create List'}
+          submitLabel={isEditing ? 'Update List' : `Create List${forProfile}`}
           isPending={isPending}
           deleteSlot={
-            isEditing && list ? <DeleteListButton id={list.id} /> : undefined
+            isEditing && list ? (
+              <DeleteListButton id={list.id} disabled={deleteDisabled} />
+            ) : undefined
           }
         />
       </form>

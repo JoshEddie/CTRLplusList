@@ -2,7 +2,6 @@
 
 import { setListVisibility } from '@/lib/data/list.actions';
 import { Menu, MenuItemRadio } from '@/app/ui/components/menu';
-import { PopoverTrigger } from '@/app/ui/components/popover-trigger';
 import { type ListVisibility } from '@/lib/visibility';
 import { useRouter } from 'next/navigation';
 import { useRef, useState, useTransition } from 'react';
@@ -12,9 +11,13 @@ import { VISIBILITY_ROWS, rowFor } from './visibility-rows';
 export default function VisibilityPicker({
   listId,
   initialVisibility,
+  // A manager on the owning profile holds no reach change. The pill stays,
+  // disabled, rather than being omitted.
+  disabled,
 }: {
   listId: string;
   initialVisibility: ListVisibility;
+  disabled: boolean;
 }) {
   const router = useRouter();
   const [current, setCurrent] = useState<ListVisibility>(initialVisibility);
@@ -43,17 +46,24 @@ export default function VisibilityPicker({
 
   return (
     <div className="visibility-picker">
-      <PopoverTrigger
+      <button
         ref={triggerRef}
-        tone="on-dark"
-        icon={currentRow.icon}
-        label={currentRow.label}
-        active={open}
+        type="button"
+        className="hero-tile visibility-tile"
+        disabled={disabled}
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Visibility: ${currentRow.label} — ${currentRow.description}. Click to change.`}
-      />
+      >
+        <span className="hero-tile-eyebrow">Visibility</span>
+        <span className="hero-tile-value">
+          {currentRow.icon} {currentRow.label}
+          <span className="hero-tile-caret" aria-hidden>
+            ▾
+          </span>
+        </span>
+      </button>
       <Menu
         open={open}
         onClose={() => setOpen(false)}

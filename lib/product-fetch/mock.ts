@@ -1,3 +1,6 @@
+// TODO(#343): extract the duplicated literal to a constant, then drop this disable
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import type { ProductResult } from '@/lib/product-fetch/types';
 
 export const MOCK_HOSTNAME = 'mock.test';

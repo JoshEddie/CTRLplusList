@@ -1,6 +1,5 @@
-import { auth } from '@/lib/auth';
 import { getList } from '@/lib/data/list';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { authedIdentity } from '@/lib/data/user.session';
 import { redirect } from 'next/navigation';
 import ListForm from '../../ui/components/ListForm';
 
@@ -9,20 +8,18 @@ type Props = {
 };
 
 export default async function EditListBody({ params }: Props) {
-  const session = await auth();
+  const identity = await authedIdentity();
   const { id } = await params;
 
-  if (!session?.user?.email) {
-    redirect('/');
-  }
-
-  const user = await getUserIdByEmail(session.user.email);
-
-  if (!user) {
+  if (!identity) {
     redirect('/');
   }
 
   const list = await getList(id);
 
-  return <ListForm list={list} isEditing={true} />;
+  const deleteDisabled = !identity.activeProfile.role.admin;
+
+  return (
+    <ListForm list={list} isEditing={true} deleteDisabled={deleteDisabled} />
+  );
 }

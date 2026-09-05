@@ -16,8 +16,8 @@ function renderActions(
     isOwner: false,
     fullyClaimed: false,
     viewerClaimed: false,
-    showOwnerClaimAction: false,
-    showOwnerManageAction: false,
+    hasAnyClaim: false,
+    tier: 'claims',
     store: STORE,
     onPurchaseClick: vi.fn(),
     onAddClaimClick: vi.fn(),
@@ -142,40 +142,91 @@ describe('ItemActions', () => {
       expect(viewItem()).not.toBeInTheDocument();
     });
 
-    it('OwnerSpoilersOff_RendersViewItemOnly-PromotedToPrimary', () => {
-      renderActions({ isOwner: true });
-      const link = viewItem();
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveClass('primary');
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    });
-
     it('ViewBesideOtherActions_KeepsSecondaryVariant', () => {
       renderActions();
       expect(viewItem()).toHaveClass('secondary');
     });
 
-    it('OwnerSpoilersOnClaimable_RendersAddClaimAndViewItem', () => {
-      renderActions({ isOwner: true, showOwnerClaimAction: true });
+    it('OwnerClaimsTierClaimable_RendersAddClaimAndViewItem', () => {
+      renderActions({ isOwner: true, tier: 'claims' });
       expect(
         screen.getByRole('button', { name: 'Add Claim' })
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
     });
 
-    it('OwnerSpoilersOnHasClaims_RendersManageClaimsAndViewItem', () => {
-      renderActions({ isOwner: true, showOwnerManageAction: true });
+    it('OwnerClaimsTierHasClaims_RendersManageClaimsAndViewItem', () => {
+      renderActions({
+        isOwner: true,
+        tier: 'claims',
+        hasAnyClaim: true,
+      });
       expect(
         screen.getByRole('button', { name: 'Manage claims' })
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
     });
 
-    it('OwnerSpoilersOffNoStore_RendersNothing', () => {
-      const { container } = renderActions({ isOwner: true, store: null });
+    it('OwnerNoStoreViewOnly_RendersNothing', () => {
+      const { container } = renderActions({
+        isOwner: true,
+        viewOnly: true,
+        store: null,
+      });
       expect(container.firstChild).toBeNull();
     });
   });
+
+  // Below `claims` the action set may not vary with another party's claim:
+  // `Fully claimed`, `Manage claims`, and the absence of `Buy & Claim` each
+  // state the item carries a claim, which is exactly what the tier withholds.
+  // A claim the VIEWER holds is no surprise to them, so it still reaches
+  // `Manage claim`.
+  for (const tier of ['surprise', 'progress'] as const) {
+    describe(`BelowClaims${tier[0].toUpperCase()}${tier.slice(1)}`, () => {
+      const protectedProps = { tier };
+
+      it('UnclaimedItem_RendersAddClaimAndViewItem', () => {
+        renderActions(protectedProps);
+        expect(
+          screen.getByRole('button', { name: 'Add Claim' })
+        ).toBeInTheDocument();
+        expect(viewItem()).toBeInTheDocument();
+      });
+
+      it('FullyClaimedByOthers_RendersTheSameSetAsUnclaimed', () => {
+        renderActions({
+          ...protectedProps,
+          fullyClaimed: true,
+          hasAnyClaim: true,
+        });
+        expect(
+          screen.getByRole('button', { name: 'Add Claim' })
+        ).toBeInTheDocument();
+        expect(viewItem()).toBeInTheDocument();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('button', { name: 'Manage claims' })
+        ).not.toBeInTheDocument();
+      });
+
+      it('ClaimableWithBuySignal_SuppressesBuyClaim', () => {
+        renderActions({ ...protectedProps, showBuyClaim: true });
+        expect(buyClaim()).not.toBeInTheDocument();
+      });
+
+      it('ViewerHoldsClaim_RendersManageClaim', () => {
+        renderActions({
+          ...protectedProps,
+          viewerClaimed: true,
+          hasAnyClaim: true,
+        });
+        expect(
+          screen.getByRole('button', { name: 'Manage claim' })
+        ).toBeInTheDocument();
+      });
+    });
+  }
 
   describe('ViewOnly', () => {
     it('ViewOnlyWithStore_RendersOnlyLiveViewItemAnchor-PromotedToPrimary', () => {
@@ -215,8 +266,8 @@ describe('ItemActions', () => {
             isOwner={false}
             fullyClaimed={false}
             viewerClaimed={false}
-            showOwnerClaimAction={false}
-            showOwnerManageAction={false}
+            hasAnyClaim={false}
+            tier="claims"
             store={STORE}
           />
         </div>
@@ -246,8 +297,8 @@ describe('ItemActions', () => {
             isOwner={false}
             fullyClaimed={false}
             viewerClaimed={false}
-            showOwnerClaimAction={false}
-            showOwnerManageAction={false}
+            hasAnyClaim={false}
+            tier="claims"
             showBuyClaim
             store={STORE}
             onBuyClaimClick={onBuyClaimClick}

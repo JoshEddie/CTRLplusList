@@ -1,4 +1,4 @@
--- Migration: harden-server-action-authorization (openspec change)
+-- Migration: harden-server-action-authorization
 --
 -- Adds a partial unique index that backstops `createPurchase` against
 -- duplicate authenticated claims on the same item. Pairs with the new

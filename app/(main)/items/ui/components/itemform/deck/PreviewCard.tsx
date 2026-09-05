@@ -20,8 +20,8 @@ export function PreviewCard({ item }: { item: ItemViewModel }) {
         fullyClaimed={false}
         showCounter={false}
         counterText=""
-        showOwnerClaimAction={false}
-        showOwnerManageAction={false}
+        hasAnyClaim={false}
+        tier="surprise"
         viewOnly
       />
     </div>

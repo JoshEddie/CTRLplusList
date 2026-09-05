@@ -1,3 +1,6 @@
+// TODO(#343): extract the duplicated literal to a constant, then drop this disable
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import { db } from '@/db';
 import {
   item_images,
@@ -5,13 +8,12 @@ import {
   items,
   list_items,
   lists,
-  users,
 } from '@/db/schema';
-import { auth } from '@/lib/auth';
 import { touchLists } from '@/lib/data/list.touch';
+import { ADMIN_OPTIONAL, authedWriter } from '@/lib/data/profile.gate';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { updateTag } from 'next/cache';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 
 // Internal write helpers for item ↔ store / item ↔ list associations, invoked
 // only by the item actions. Deliberately NOT in a 'use server' module:
@@ -25,10 +27,6 @@ export type StoreInput = {
   canonical_url?: string | null;
   currency?: string | null;
 };
-
-function emptyStore(store: StoreInput) {
-  return store.name === '' && store.link === '' && store.price === '';
-}
 
 function provenanceOf(store: StoreInput) {
   return {
@@ -45,22 +43,16 @@ export async function updateItemStores(
   itemId: string
 ): Promise<void> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      throw new Error('Unauthorized');
+    const actor = await authedWriter(ADMIN_OPTIONAL);
+    if ('error' in actor) {
+      throw new Error(actor.error.error);
     }
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      throw new Error('Unauthorized');
-    }
+    const { identity } = actor;
     const item = await db.query.items.findFirst({
       where: eq(items.id, itemId),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
-    if (!item || item.user_id !== sessionUser.id) {
+    if (!item || item.profile_id !== identity.activeProfile.id) {
       throw new Error('Unauthorized');
     }
 
@@ -99,7 +91,6 @@ export async function updateItemStores(
     if (count < stores.length) {
       await Promise.all(
         stores.slice(count).map(async (store, index) => {
-          if (emptyStore(store)) return;
           const currentOrder = count + index + 1;
           await db.insert(item_stores).values({
             id: nanoid(),
@@ -180,32 +171,26 @@ export async function updateItemLists(
   itemId: string
 ): Promise<void> {
   try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      throw new Error('Unauthorized');
+    const actor = await authedWriter(ADMIN_OPTIONAL);
+    if ('error' in actor) {
+      throw new Error(actor.error.error);
     }
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser) {
-      throw new Error('Unauthorized');
-    }
+    const { identity } = actor;
     const item = await db.query.items.findFirst({
       where: eq(items.id, itemId),
-      columns: { user_id: true },
+      columns: { profile_id: true },
     });
-    if (!item || item.user_id !== sessionUser.id) {
+    if (!item || item.profile_id !== identity.activeProfile.id) {
       throw new Error('Unauthorized');
     }
     if (listIds.length > 0) {
       const targetLists = await db
-        .select({ id: lists.id, user_id: lists.user_id })
+        .select({ id: lists.id, profile_id: lists.profile_id })
         .from(lists)
         .where(inArray(lists.id, listIds));
       if (
         targetLists.length !== listIds.length ||
-        targetLists.some((l) => l.user_id !== sessionUser.id)
+        targetLists.some((l) => l.profile_id !== identity.activeProfile.id)
       ) {
         throw new Error('Unauthorized');
       }
@@ -268,7 +253,12 @@ export async function updateItemLists(
     const changedListIds = [...addedListIds, ...listIdsToDelete];
     if (changedListIds.length > 0) {
       await touchLists(changedListIds);
-      updateTag('lists');
+      updateTags(
+        ...changedListIds.flatMap((listId) => [
+          cacheTags.list(listId),
+          cacheTags.itemsOfList(listId),
+        ])
+      );
     }
   } catch (error) {
     console.error('Database Error:', error);

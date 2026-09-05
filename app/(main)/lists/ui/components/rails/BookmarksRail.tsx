@@ -11,7 +11,7 @@ export default async function BookmarksRail({ userId }: { userId: string }) {
     subtitle: (r.list as { subtitle?: string | null }).subtitle ?? null,
     occasion: r.list.occasion,
     date: r.list.date,
-    user: r.list.user,
+    profile: r.list.profile,
   }));
   return (
     <ListCardRow

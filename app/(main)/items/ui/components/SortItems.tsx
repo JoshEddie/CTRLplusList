@@ -1,8 +1,11 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import { updatePriority } from '@/lib/data/listItems.actions';
 import { LinkButton } from '@/app/ui/components/button';
-import { ItemDisplay } from '@/lib/types';
+import { ProfileMembershipView, ItemDisplay, SpoilerTier } from '@/lib/types';
 import { MdChecklist } from 'react-icons/md';
 import {
   closestCenter,
@@ -32,8 +35,8 @@ import Item from './Item';
 interface ItemsProps {
   items: ItemDisplay[];
   listId: string;
-  user_id?: string;
-  showSpoilers?: boolean;
+  actor?: ProfileMembershipView;
+  tier?: SpoilerTier;
 }
 
 function EmptyListCTA({ listId }: { listId: string }) {
@@ -52,8 +55,8 @@ function EmptyListCTA({ listId }: { listId: string }) {
 export default function SortItems({
   items,
   listId,
-  user_id,
-  showSpoilers,
+  actor,
+  tier,
 }: ItemsProps) {
   const router = useRouter();
   // Re-sync key: changes whenever any card-visible field changes, so an edit
@@ -63,7 +66,7 @@ export default function SortItems({
   const itemsKey = items
     .map((i) => {
       const pkey = (i.purchases ?? [])
-        .map((p) => `${p.id}:${p.firstName}:${p.by}`)
+        .map((p) => `${p.id}:${p.name ?? ''}:${p.by}`)
         .join('|');
       const s = i.store;
       const skey = s ? `${s.name}:${s.price}:${s.link}` : '';
@@ -163,8 +166,8 @@ export default function SortItems({
                 id={item.id}
                 item={item}
                 listId={listId}
-                user_id={user_id}
-                showSpoilers={showSpoilers}
+                actor={actor}
+                tier={tier}
                 isAnyDragging={isDragging}
               />
             );
@@ -177,7 +180,7 @@ export default function SortItems({
           <Item
             item={itemsState[activeIndex]}
             className="item-drag-overlay"
-            user_id={user_id}
+            actor={actor}
           />
         ) : null}
       </DragOverlay>
@@ -190,16 +193,16 @@ export function SortableItem({
   item,
   className,
   listId,
-  user_id,
-  showSpoilers,
+  actor,
+  tier,
   isAnyDragging = false,
 }: {
   id: string;
   item: ItemDisplay;
   className?: string;
   listId?: string;
-  user_id?: string;
-  showSpoilers?: boolean;
+  actor?: ProfileMembershipView;
+  tier?: SpoilerTier;
   isAnyDragging?: boolean;
 }) {
   const {
@@ -244,8 +247,8 @@ export function SortableItem({
       <Item
         item={item}
         listId={listId}
-        user_id={user_id}
-        showSpoilers={showSpoilers}
+        actor={actor}
+        tier={tier}
       />
     </div>
   );

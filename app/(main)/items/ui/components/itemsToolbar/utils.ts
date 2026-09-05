@@ -1,11 +1,5 @@
 import { SortKey } from '@/lib/types';
-import {
-  PURCHASES_LABELS_ITEMS,
-  PURCHASES_LABELS_LIST,
-  SHOW_LABELS,
-  SORT_KEYS_BY_MODE,
-  SORT_LABELS,
-} from './toolbarConstants';
+import { SHOW_LABELS, SORT_KEYS_BY_MODE, SORT_LABELS } from './toolbarConstants';
 import { BrowserMode, ChipDescriptor, FilterState, ParamPatch } from './types';
 
 export function buildQueryUrl(
@@ -66,7 +60,6 @@ export function priceChipLabel(priceMin: string, priceMax: string): string {
 export function countActiveFilters(s: FilterState): number {
   return (
     (s.sort !== s.defaultSort ? 1 : 0) +
-    (s.mode !== 'choose' && s.purchases !== 'hide' ? 1 : 0) +
     (s.mode === 'choose' && s.show !== 'all' ? 1 : 0) +
     s.selectedStores.length +
     (s.priceMin || s.priceMax ? 1 : 0)
@@ -88,18 +81,6 @@ export function buildChips(
       label: SORT_LABELS[s.sort],
       onClear: () => handlers.updateParams({ sort: null, page: null }),
     });
-  }
-  if (s.mode !== 'choose' && s.purchases !== 'hide') {
-    const labelMap =
-      s.mode === 'items' ? PURCHASES_LABELS_ITEMS : PURCHASES_LABELS_LIST;
-    const label = labelMap[s.purchases];
-    if (label) {
-      chips.push({
-        key: 'purchases',
-        label,
-        onClear: () => handlers.updateParams({ purchases: null, page: null }),
-      });
-    }
   }
   if (s.mode === 'choose' && s.show !== 'all') {
     const label = SHOW_LABELS[s.show];
@@ -126,4 +107,30 @@ export function buildChips(
     });
   }
   return chips;
+}
+
+// Present-and-non-default, not merely present: `?sort=list_order` on a list
+// page names the default and narrows nothing.
+const FILTER_DEFAULTS: Record<string, string | undefined> = {
+  q: '',
+  store: undefined,
+  price_min: '',
+  price_max: '',
+  sort: undefined,
+  show: 'all',
+};
+
+// Server-side counterpart to `countActiveFilters`, over raw search params: the
+// list page decides between the reorder and viewer layouts before any toolbar
+// state exists to build a `FilterState` from.
+export function hasActiveFilter(
+  searchParams: Record<string, string | string[] | undefined>,
+  defaultSort: SortKey
+): boolean {
+  return Object.entries(FILTER_DEFAULTS).some(([key, fallback]) => {
+    const raw = searchParams[key];
+    const values = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    const inert = key === 'sort' ? defaultSort : fallback;
+    return values.some((value) => value !== '' && value !== inert);
+  });
 }

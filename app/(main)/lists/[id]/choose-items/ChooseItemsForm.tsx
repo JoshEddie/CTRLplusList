@@ -7,7 +7,7 @@ import ItemsToolbar from '@/app/(main)/items/ui/components/itemsToolbar';
 import { setListItems } from '@/lib/data/listItems.actions';
 import { Button, LinkButton } from '@/app/ui/components/button';
 import { CheckboxField } from '@/app/ui/components/field/CheckboxField';
-import { ItemDisplay, ListTable } from '@/lib/types';
+import { ProfileMembershipView, ItemDisplay, ListTable } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -28,16 +28,18 @@ export default function ChooseItemsForm({
   items,
   initialSelectedIds,
   isNew = false,
-  user_id,
+  actor,
   lists,
+  actingAs,
 }: {
   list_id: string;
   list_name: string;
   items: ItemRow[];
   initialSelectedIds: string[];
   isNew?: boolean;
-  user_id: string;
+  actor: ProfileMembershipView;
   lists: ListTable[];
+  actingAs?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -236,7 +238,7 @@ export default function ChooseItemsForm({
                         checked={isSelected}
                         onChange={() => toggle(item.id)}
                       />
-                      <Item item={item} user_id={user_id} preview />
+                      <Item item={item} actor={actor} preview />
                     </label>
                   </li>
                 );
@@ -302,6 +304,7 @@ export default function ChooseItemsForm({
       {showNewItem && (
         <ItemFormContainer
           lists={lists}
+          actingAs={actingAs}
           onClose={() => setShowNewItem(false)}
           onSuccess={() => setShowNewItem(false)}
         />

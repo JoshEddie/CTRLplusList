@@ -1,7 +1,7 @@
 'use client';
 
-import { followUser, unfollowUser } from '@/lib/data/user.actions';
 import type { ButtonVariant } from '@/app/ui/components/button';
+import { followUser, unfollowUser } from '@/lib/data/profile.actions';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
@@ -9,13 +9,13 @@ import FollowButton from './FollowButton';
 import FollowDisclosureDialog from './FollowDisclosureDialog';
 
 export default function FollowControls({
-  userId,
+  profileId,
   userName,
   initialFollowing,
   requireDisclosure,
   variant = 'primary',
 }: {
-  userId: string;
+  profileId: string;
   userName: string | null;
   initialFollowing: boolean;
   requireDisclosure: boolean;
@@ -29,7 +29,7 @@ export default function FollowControls({
   const performFollow = () => {
     setFollowing(true);
     startTransition(async () => {
-      const result = await followUser(userId);
+      const result = await followUser(profileId);
       if (!result.success) {
         setFollowing(false);
         toast.error(result.message);
@@ -43,7 +43,7 @@ export default function FollowControls({
   const performUnfollow = () => {
     setFollowing(false);
     startTransition(async () => {
-      const result = await unfollowUser(userId);
+      const result = await unfollowUser(profileId);
       if (!result.success) {
         setFollowing(true);
         toast.error(result.message);
@@ -71,7 +71,6 @@ export default function FollowControls({
     <>
       <FollowButton
         following={following}
-        userName={userName}
         pending={isPending}
         variant={variant}
         onClick={handleClick}

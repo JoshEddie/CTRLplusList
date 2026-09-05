@@ -1,8 +1,11 @@
 'use client';
 
-import { LuX } from 'react-icons/lu';
-import { Button } from '@/app/ui/components/button';
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
+import { Button, CloseButton } from '@/app/ui/components/button';
 import { useDismiss } from '@/app/ui/components/use-dismiss';
+import { useScrollLock } from '@/app/ui/hooks/useScrollLock';
 import '@/app/ui/styles/form-shell.css';
 
 type Variant = 'default' | 'wide';
@@ -10,39 +13,43 @@ type Variant = 'default' | 'wide';
 export function FormShell({
   variant = 'default',
   title,
+  header,
   closeHref,
   onClose,
   children,
 }: {
   variant?: Variant;
-  title: string;
+  title?: string;
+  /** Chrome of its own in place of the title bar, for a form whose header
+      carries something other than a title. A header given here owns its own
+      close affordance. */
+  header?: React.ReactNode;
   closeHref?: string;
   onClose?: () => void;
   children: React.ReactNode;
 }) {
   const dismiss = useDismiss(onClose, closeHref);
+  useScrollLock();
 
-  const cls = variant === 'wide' ? 'form-shell form-shell-wide' : 'form-shell';
+  const cls =
+    variant === 'wide'
+      ? 'modal-shell modal-shell-wide form-shell'
+      : 'modal-shell form-shell';
 
   return (
     <div
-      className="form-shell-overlay"
+      className="modal-overlay-scrim form-shell-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) dismiss();
       }}
     >
       <div className={cls}>
-        <div className="form-shell-hd">
-          <span className="form-shell-title">{title}</span>
-          <button
-            type="button"
-            className="form-shell-close"
-            onClick={dismiss}
-            aria-label="Close"
-          >
-            <LuX />
-          </button>
-        </div>
+        {header ?? (
+          <div className="form-shell-hd">
+            <span className="form-shell-title">{title}</span>
+            <CloseButton onClick={dismiss} className="close-button--in-flow" />
+          </div>
+        )}
         {children}
       </div>
     </div>

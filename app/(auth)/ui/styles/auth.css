@@ -35,7 +35,12 @@
 .avatar-popover-wrap {
   position: relative;
 }
-.avatar-popover-wrap .avatar-container {
+.avatar-popover-wrap .avatar {
+  width: 45px;
+  height: 45px;
+}
+
+.avatar-container {
   /* Override the existing div-as-button: this is now a real <button>. */
   background: none;
   border: none;
@@ -104,29 +109,6 @@
   border-radius: 50%;
 }
 
-.close-button {
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  background-color: var(--primary-color);
-  border: 1px solid var(--primary-color);
-  color: var(--contrast-text-color);
-  border-radius: 50%;
-  width: 34px;
-  height: 34px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  z-index: 100;
-}
-
-.close-button:hover {
-  background-color: var(--contrast-text-color);
-  color: var(--primary-color);
-}
-
 .avatar-container {
   height: 45px;
   width: 45px;
@@ -138,11 +120,6 @@
 
 .avatar-container.hide {
   display: none;
-}
-
-.avatar-container .avatar {
-  width: 45px;
-  height: 45px;
 }
 
 .avatar-container .gradientOverlay {

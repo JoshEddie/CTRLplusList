@@ -296,6 +296,34 @@ describe('ListForm', () => {
       ).not.toBeInTheDocument();
     });
 
+    it('MultiProfileViewer_NamesTheProfileInTheHeadingAndOnSubmit', () => {
+      render(<ListForm actingAs="Owned Profile" />);
+      expect(
+        screen.getByText('New List for Owned Profile')
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Create List for Owned Profile' })
+      ).toBeInTheDocument();
+    });
+
+    it('SingleProfileViewer_RendersNoProfileStatement', () => {
+      render(<ListForm />);
+      expect(screen.getByText('New List')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Create List' })
+      ).toBeInTheDocument();
+    });
+
+    it('EditingMultiProfileViewer_NamesNoProfile', () => {
+      // Editing does not move a list between profiles, so there is nothing to
+      // state — the heading and control stay the edit pair.
+      render(<ListForm list={makeList()} isEditing actingAs="Owned Profile" />);
+      expect(screen.getByText('Edit List')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Update List' })
+      ).toBeInTheDocument();
+    });
+
     it('PendingSubmit_DisablesNameField', async () => {
       let resolveCreate: (v: unknown) => void = () => {};
       vi.mocked(createList).mockReturnValue(

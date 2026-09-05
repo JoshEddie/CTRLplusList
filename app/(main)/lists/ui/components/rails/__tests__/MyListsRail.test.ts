@@ -3,7 +3,11 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import ListCardRow from '@/app/ui/components/ListCardRow';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedPublicList, seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedPublicList,
+  seedUsers,
+  selfProfileOf,
+} from '@/test/helpers/seedFollowGraph';
 
 mockNextCache();
 
@@ -41,7 +45,7 @@ describe('MyListsRail', () => {
   it('OverFiveLists_CapsAtFiveWithRemainder', async () => {
     await seedOwnedLists(8);
 
-    const tree = await MyListsRail({ userId: 'viewer' });
+    const tree = await MyListsRail({ profileId: selfProfileOf('viewer') });
     expect(tree.type).toBe(ListCardRow);
     expect(tree.props.lists).toHaveLength(5);
     expect(tree.props.moreCount).toBe(3);
@@ -51,14 +55,16 @@ describe('MyListsRail', () => {
   it('FiveOrFewer_ShowsAllZeroMore', async () => {
     await seedOwnedLists(4);
 
-    const tree = await MyListsRail({ userId: 'viewer' });
+    const tree = await MyListsRail({ profileId: selfProfileOf('viewer') });
     expect(tree.props.lists).toHaveLength(4);
     expect(tree.props.moreCount).toBe(0);
   });
 
   it('NoLists_PassesEmptyMessage', async () => {
-    const tree = await MyListsRail({ userId: 'viewer' });
+    const tree = await MyListsRail({ profileId: selfProfileOf('viewer') });
     expect(tree.props.lists).toHaveLength(0);
-    expect(tree.props.emptyMessage).toBe('No lists yet. Create your first one.');
+    expect(tree.props.emptyMessage).toBe(
+      'No lists yet. Create your first one.'
+    );
   });
 });

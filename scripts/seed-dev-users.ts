@@ -9,7 +9,7 @@
  * deterministic IDs and `.onConflictDoNothing()`. Hard-fails on production.
  *
  * --------------------------------------------------------------------------
- * Seed-as-fixture (testing-foundation capability).
+ * Seed-as-fixture.
  *
  * This file is the canonical E2E fixture. E2E specs assert against the
  * entities created here (users, lists, items, visits, follows). Any edit
@@ -22,19 +22,39 @@
  * --------------------------------------------------------------------------
  */
 import 'dotenv/config';
-import { inArray, sql } from 'drizzle-orm';
+import { inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { db } from '../db';
 import {
+  ACCENT_PREFERENCE_ID,
+  SPOILER_PREFERENCE_ROWS,
+  SPOILER_TIER_PREFERENCE_ID,
   item_images,
   item_stores,
   items,
   list_items,
   list_visits,
   lists,
+  preferences,
+  profile_avatars,
+  profile_members,
+  profile_preferences,
+  profiles,
   purchases,
   user_follows,
   users,
 } from '../db/schema';
+import { seedUserEmail } from '../lib/auth';
+import { ROLES } from '../lib/data/profile.roles';
+import { styleOf } from '../lib/altvatar/registry';
+import { openmojiArtUrl } from '../lib/altvatar/styles/openmoji';
+import { renderAltvatar } from '../lib/altvatar/render';
+import { offersOf } from '../lib/altvatar/resolve';
+import type {
+  AltvatarStyle,
+  AltvatarStyleId,
+  Selections,
+} from '../lib/altvatar/types';
+import type { SpoilerTier } from '../lib/types';
 import { VISIBILITY, type ListVisibility } from '../lib/visibility';
 
 if (process.env.NODE_ENV === 'production') {
@@ -44,45 +64,190 @@ if (process.env.NODE_ENV === 'production') {
 
 const VIEWER_ID = 'dev-test-viewer';
 
-// Inline SVG data URL so dev avatars render through next/image without needing
-// an extra remotePatterns entry (and so UserImage doesn't get an empty src,
-// which it doesn't null-check — see app/(auth)/ui/components/UserAvatarPopover).
-function avatar(initials: string, bg: string): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><circle cx="40" cy="40" r="40" fill="${bg}"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="system-ui,sans-serif" font-size="32" font-weight="600" fill="white">${initials}</text></svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-}
+// The two un-onboarded fixtures, one per arm of `onboarding-gate`'s latch.
+// Neither is the primary viewer: the viewer is onboarded, so every other spec
+// and every local page renders the application rather than the gate.
+//
+// SIGNUP holds an account row and nothing else — no profile, no membership —
+// which is the state an account is in between sign-in and the gate's submit.
+// EXISTING holds a self-profile carrying no Altvatar art, which is the state
+// the phase-1 backfill left every account that predates the gate in. They are
+// reached through BYPASS_SESSION_USER, one Playwright server mode each, and
+// nothing submits against them: the latch is one-shot per seeded database, so
+// a spec that completed the gate would consume the fixture for every run after
+// it.
+const SIGNUP_FIXTURE_ID = 'dev-unonboarded-signup';
+const EXISTING_FIXTURE_ID = 'dev-unonboarded-existing';
 
-type SeedUser = { id: string; name: string; email: string; image: string };
+// `users.image` carries no seeded value: a profile's face comes from its own
+// Altvatar row and never from the account, so a synthesized account image would
+// be a source nothing reads. NextAuth still writes the column on sign-in; the
+// application asks it for nothing.
+type SeedUser = { id: string; name: string; email: string };
 // Expanded roster — enough friends to push the Following rail past horizontal
 // scroll and to give Recently Visited / Bookmarks enough variety.
-const FRIENDS: { slug: string; first: string; bg: string }[] = [
-  { slug: 'alice', first: 'Alice', bg: '#0ea5e9' },
-  { slug: 'bob', first: 'Bob', bg: '#16a34a' },
-  { slug: 'carol', first: 'Carol', bg: '#ea580c' },
-  { slug: 'dave', first: 'Dave', bg: '#dc2626' },
-  { slug: 'eve', first: 'Eve', bg: '#7c3aed' },
-  { slug: 'frank', first: 'Frank', bg: '#0891b2' },
-  { slug: 'grace', first: 'Grace', bg: '#db2777' },
-  { slug: 'hank', first: 'Hank', bg: '#65a30d' },
-  { slug: 'iris', first: 'Iris', bg: '#f59e0b' },
-  { slug: 'jack', first: 'Jack', bg: '#475569' },
-  { slug: 'kim', first: 'Kim', bg: '#9333ea' },
+const FRIENDS: { slug: string; first: string }[] = [
+  { slug: 'alice', first: 'Alice' },
+  { slug: 'bob', first: 'Bob' },
+  { slug: 'carol', first: 'Carol' },
+  { slug: 'dave', first: 'Dave' },
+  { slug: 'eve', first: 'Eve' },
+  { slug: 'frank', first: 'Frank' },
+  { slug: 'grace', first: 'Grace' },
+  { slug: 'hank', first: 'Hank' },
+  { slug: 'iris', first: 'Iris' },
+  { slug: 'jack', first: 'Jack' },
+  { slug: 'kim', first: 'Kim' },
 ];
 const friendId = (slug: string) => `dev-friend-${slug}`;
+const selfProfileOf = (userId: string) => `self-${userId}`;
+// A list and its items must land on the same profile: a list pinned to an
+// owned profile whose items stayed on the account's self-profile renders as a
+// stranger's items to the profile that owns the list.
+const listProfileOf = (list: { user_id: string; profile_id?: string }) =>
+  list.profile_id ?? selfProfileOf(list.user_id);
 const seedUsers: SeedUser[] = [
   {
     id: VIEWER_ID,
     name: 'Test Viewer',
-    email: 'test-viewer@dev.local',
-    image: avatar('TV', '#5b21b6'),
+    email: seedUserEmail(VIEWER_ID),
   },
   ...FRIENDS.map((f) => ({
     id: friendId(f.slug),
     name: `${f.first} Example`,
-    email: `${f.slug}@dev.local`,
-    image: avatar(`${f.first[0]}E`, f.bg),
+    email: seedUserEmail(friendId(f.slug)),
   })),
+  {
+    id: SIGNUP_FIXTURE_ID,
+    name: 'Newly Signed Up',
+    email: seedUserEmail(SIGNUP_FIXTURE_ID),
+  },
+  {
+    id: EXISTING_FIXTURE_ID,
+    name: 'Faceless Veteran',
+    email: seedUserEmail(EXISTING_FIXTURE_ID),
+  },
 ];
+
+// Everyone but the signup fixture, which holds no profile and no membership by
+// definition — that absence is the whole of what the gate's first arm reads.
+const profiledUsers = seedUsers.filter((u) => u.id !== SIGNUP_FIXTURE_ID);
+
+// The two account-less profile fixtures, named for the viewer's role on each:
+// the viewer is `owner` on the first and `manager` on the second, so between
+// them and their own self-profile the viewer runs all three roles. The
+// `manager` role — the one the membership floor admits and #194 later narrows —
+// is therefore covered by a fixture rather than only by a unit test.
+const OWNED_PROFILE_ID = 'dev-profile-owned';
+const MANAGED_PROFILE_ID = 'dev-profile-managed';
+
+// A third seat, also `manager`, existing only so that e2e has a managed profile
+// it may write on. MANAGED_PROFILE_ID cannot serve: it is simultaneously the
+// never-acted-as ordering fixture and the empty-lists fixture, and both are
+// consumed by the first flow that acts as it — a manager may create lists and
+// items but may delete neither, so nothing it writes can be cleaned up.
+const WORKSHOP_PROFILE_ID = 'dev-profile-workshop';
+
+// A fourth seat, whose only fixture is a claim-visibility baseline an owner
+// writes. Workshop cannot serve: `roles-manager.auth.spec` reads its list in a
+// parallel worker and depends on the viewer's baseline staying at `nothing` —
+// the reorder layout is one of the two things the item level decides — so a
+// flow that raises it there races that spec for the window it is raised.
+const VISIBILITY_PROFILE_ID = 'dev-profile-visibility';
+
+// Member baseline tiers, now account-keyed `profile_preferences` rows rather
+// than columns on the membership. Only seats that must differ from the resolved
+// default carry a row: an absent row resolves to `surprise` (PROTECTED_TIER), so
+// every self membership and every fully-protected fixture needs none. The owned
+// profile is the identity seat — the viewer sits at `identity` so the
+// namable-recorder rendering is reachable in local mode by switching to it, and
+// a second member is pinned explicitly to `surprise` so the set-to-protected row
+// (distinct from an absent one) is itself a fixture.
+const MEMBER_SPOILER_TIERS: {
+  profile_id: string;
+  user_id: string;
+  tier: SpoilerTier;
+}[] = [
+  { profile_id: OWNED_PROFILE_ID, user_id: VIEWER_ID, tier: 'claims' },
+  {
+    profile_id: OWNED_PROFILE_ID,
+    user_id: friendId('alice'),
+    tier: 'surprise',
+  },
+];
+
+// Accents and Altvatars for a slice of the roster, so every branch of the
+// avatar disc is on screen at once: art on an accent, initials on an accent,
+// and the unset fallback. `kim` and MANAGED_PROFILE_ID carry neither on
+// purpose — a seed where everything has a face hides the fallback path that
+// most real profiles start in.
+//
+//
+// The viewer carries art on purpose: art is what `onboarding-gate` latches on,
+// so a viewer without it would meet the gate on every local page and in front
+// of every e2e spec. EXISTING_FIXTURE_ID is the profile deliberately left
+// without it, and it is not the viewer.
+const SEEDED_FACES: Record<
+  string,
+  { accent: string; face?: AltvatarStyleId; glyph?: string }
+> = {
+  [selfProfileOf(VIEWER_ID)]: { accent: 'midnight', face: 'avataaars' },
+  [selfProfileOf(friendId('alice'))]: { accent: 'rose', face: 'personas' },
+  [selfProfileOf(friendId('bob'))]: { accent: 'denim', face: 'avataaars' },
+  // The thing kind's fixtures: a dog and a rocket, codepoints per OpenMoji.
+  [selfProfileOf(friendId('carol'))]: {
+    accent: 'lion',
+    face: 'openmoji',
+    glyph: '1F415',
+  },
+  [selfProfileOf(friendId('dave'))]: { accent: 'juniper', face: 'avataaars' },
+  [selfProfileOf(friendId('eve'))]: { accent: 'nebula', face: 'personas' },
+  [selfProfileOf(friendId('frank'))]: {
+    accent: 'fathom',
+    face: 'openmoji',
+    glyph: '1F680',
+  },
+  [selfProfileOf(friendId('grace'))]: { accent: 'coral', face: 'avataaars' },
+  [selfProfileOf(friendId('hank'))]: { accent: 'clover', face: 'toon-head' },
+  // Accent, no art: the initials-on-an-accent-disc branch.
+  [selfProfileOf(friendId('iris'))]: { accent: 'oasis' },
+  [selfProfileOf(friendId('jack'))]: { accent: 'slate' },
+  // OWNED_PROFILE_ID is absent on purpose: e2e/profiles.auth.spec.ts opens its
+  // space to prove the no-accent-row branch rolls a suggestion, so seeding it
+  // one would erase the only fixture for that path.
+  //
+  // EXISTING_FIXTURE_ID's self-profile is absent for a different reason: no art
+  // is exactly what leaves that account un-onboarded, so giving it a face here
+  // would silently retire the gate's second arm.
+};
+
+// A colour axis has no seed-driven default — left unset, every face lands on
+// the same skin and hair — so each is picked from its own palette by a hash of
+// the profile id. Hashing rather than `shuffleAltvatar` keeps a re-run's faces
+// identical to the last run's, which is what makes them usable as fixtures.
+function seededSelections(style: AltvatarStyle, key: string): Selections {
+  let hash = 0;
+  for (const ch of key) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  const selections: Selections = {};
+  for (const offer of offersOf(style)) {
+    if (offer.kind !== 'color') continue;
+    selections[offer.axis] = offer.palette[hash++ % offer.palette.length].value;
+  }
+  return selections;
+}
+
+// Last-acted-as fixtures. Absolute rather than relative to the seed run, so a
+// switcher ordered most-recently-acted-as first is testable against values that
+// do not move; far enough apart that a broken ordering cannot pass by accident.
+// `dev-profile-managed` is deliberately absent from this map: NULL is the
+// never-acted-as ordering branch's fixture, and no e2e flow may consume it,
+// because a switch stamps the row and no affordance unsets it.
+const LAST_ACTIVE_AT: Record<string, Date> = {
+  [selfProfileOf(VIEWER_ID)]: new Date('2026-08-20T12:00:00Z'),
+  [OWNED_PROFILE_ID]: new Date('2026-02-14T09:00:00Z'),
+  // Stamped, so the NULL ordering branch stays a fixture of exactly one row.
+  [WORKSHOP_PROFILE_ID]: new Date('2026-03-01T09:00:00Z'),
+};
 
 type SeedList = {
   id: string;
@@ -90,6 +255,10 @@ type SeedList = {
   subtitle?: string;
   occasion: string;
   user_id: string;
+  // A managed profile owns lists but has no account, so the owning profile is
+  // named directly where it is not a seeded user's own. `user_id` still carries
+  // the account whose reset sweep reaches the row.
+  profile_id?: string;
   visibility: ListVisibility;
   itemNames: string[];
 };
@@ -207,11 +376,8 @@ function itemsForList(listId: string): string[] {
 //                        viewer's archived items run hotter (~70%) since
 //                        archived often means purchased.
 function purchaseCountFor(
-  item: {
-    user_id: string;
-    archived_at: Date | null;
-    quantity_limit: number | null;
-  },
+  item: { archived_at: Date | null; quantity_limit: number | null },
+  ownerId: string,
   listIdx: number,
   itemIdx: number,
   baseRatio: number
@@ -219,7 +385,7 @@ function purchaseCountFor(
   if (item.quantity_limit === 3) return listIdx % 2 === 0 ? 1 : 3;
   if (item.quantity_limit === null) return listIdx % 2 === 0 ? 1 : 4;
   const effectiveRatio =
-    item.user_id === VIEWER_ID && item.archived_at ? 0.7 : baseRatio;
+    ownerId === VIEWER_ID && item.archived_at ? 0.7 : baseRatio;
   const stride = Math.max(1, Math.round(1 / effectiveRatio));
   return itemIdx % stride === 0 ? 1 : 0;
 }
@@ -432,7 +598,7 @@ const FRIEND_LIST_TEMPLATES: {
     name: "Jack's Holiday",
     occasion: 'Holiday',
   },
-  // testing-foundation: spike audit additions. These three lists give the
+  // These three lists give the
   // E2E fixture a friend-owned OWNER list, a friend-owned LINK list, and a
   // new friend (kim) owning a FOLLOWERS list with no list_visits row for
   // the viewer. dave + jack are existing not-followed-by-viewer friends.
@@ -484,6 +650,44 @@ const seedLists: SeedList[] = [
       itemNames: itemsForList(id),
     };
   }),
+  // The owned profile's own collection: what `/lists` renders once the viewer
+  // switches to it, and the fixture the profile-switch e2e flow asserts against.
+  {
+    id: 'dev-list-owned-wishlist',
+    name: 'Owned Profile Wishlist',
+    subtitle: 'Turning six',
+    occasion: 'Birthday',
+    user_id: VIEWER_ID,
+    profile_id: OWNED_PROFILE_ID,
+    visibility: VISIBILITY.FOLLOWERS,
+    itemNames: itemsForList('dev-list-owned-wishlist'),
+  },
+  // The manager seat's pre-existing content, owned by the profile's owner: what
+  // makes an owner-floor refusal testable against rows the manager did not
+  // create and cannot delete. Appended last so no earlier list's index-derived
+  // fixtures (quantity rotation, imageless items) shift.
+  {
+    id: 'dev-list-workshop-wishlist',
+    name: 'Workshop Profile Wishlist',
+    subtitle: 'Seeded by the owner',
+    occasion: 'Birthday',
+    user_id: friendId('bob'),
+    profile_id: WORKSHOP_PROFILE_ID,
+    visibility: VISIBILITY.FOLLOWERS,
+    itemNames: itemsForList('dev-list-workshop-wishlist'),
+  },
+  // The claim-visibility seat's content, so a baseline written by its owner has
+  // something whose disclosure observably flips.
+  {
+    id: 'dev-list-visibility-wishlist',
+    name: 'Visibility Profile Wishlist',
+    subtitle: 'Seeded by the owner',
+    occasion: 'Birthday',
+    user_id: friendId('bob'),
+    profile_id: VISIBILITY_PROFILE_ID,
+    visibility: VISIBILITY.FOLLOWERS,
+    itemNames: itemsForList('dev-list-visibility-wishlist'),
+  },
 ];
 
 type SeedVisit = {
@@ -495,7 +699,7 @@ type SeedVisit = {
 // Visit every public friend list — gives Recently Visited enough rows (≥15) to
 // force pagination and horizontal scroll. Bookmark every other one so the
 // Bookmarks rail has plenty of content too. Kim is excluded per the
-// testing-foundation spike audit: kim must have zero list_visits rows so
+// kim must have zero list_visits rows so
 // the "user with no visit history from the viewer" surface is reachable
 // directly from the seed.
 const seedVisits: SeedVisit[] = FRIEND_LIST_TEMPLATES.filter(
@@ -508,7 +712,8 @@ const seedVisits: SeedVisit[] = FRIEND_LIST_TEMPLATES.filter(
 }));
 
 // Follow graph — viewer follows ~6 friends; 4 follow back; 2 follow viewer
-// one-way (so followers count exceeds following count visually).
+// one-way (so followers count exceeds following count visually). The
+// followee's profile column is derived below at insert time.
 const seedFollows: { follower_id: string; followee_id: string }[] = [
   // Viewer → friend (following count = 6)
   { follower_id: VIEWER_ID, followee_id: friendId('alice') },
@@ -562,7 +767,8 @@ const LINKLESS_EXTRAS: {
   {
     list_id: 'dev-list-alice-wedding',
     name: 'A homemade dinner for two',
-    description: 'Your signature dish, delivered — better than any registry box.',
+    description:
+      'Your signature dish, delivered — better than any registry box.',
     price: '',
   },
   {
@@ -578,7 +784,7 @@ function appendLinklessExtras(
     id: string;
     name: string;
     description: string;
-    user_id: string;
+    profile_id: string;
     image_url: string;
     archived_at: Date | null;
     quantity_limit: number | null;
@@ -593,7 +799,7 @@ function appendLinklessExtras(
       id: itemId,
       name: extra.name,
       description: extra.description,
-      user_id: list.user_id,
+      profile_id: listProfileOf(list),
       image_url: '',
       archived_at: null,
       quantity_limit: 1,
@@ -622,6 +828,24 @@ async function main() {
   // viewer that lack a dev-* prefix.
   if (process.argv.includes('--reset')) {
     const seededIds = seedUsers.map((u) => u.id);
+    // Profiles first: they deliberately do NOT cascade from users, and the user
+    // delete below cascades memberships away — membership is the only handle
+    // onto a seeded profile, so after it every one of them is stranded.
+    const deletedProfiles = await db
+      .delete(profiles)
+      .where(
+        inArray(
+          profiles.id,
+          db
+            .select({ id: profile_members.profile_id })
+            .from(profile_members)
+            .where(inArray(profile_members.user_id, seededIds))
+        )
+      )
+      .returning({ id: profiles.id });
+    console.log(
+      `  reset: deleted ${deletedProfiles.length} profiles reachable from seeded users`
+    );
     const deleted = await db
       .delete(users)
       .where(inArray(users.id, seededIds))
@@ -631,7 +855,7 @@ async function main() {
     );
   }
 
-  // Update name + image on conflict so re-runs pick up avatar changes.
+  // Update name on conflict so re-runs pick up roster edits.
   await db
     .insert(users)
     .values(
@@ -640,14 +864,211 @@ async function main() {
         name: u.name,
         email: u.email,
         emailVerified: new Date(),
-        image: u.image,
       }))
     )
     .onConflictDoUpdate({
       target: users.id,
-      set: { name: sql`excluded.name`, image: sql`excluded.image` },
+      set: { name: sql`excluded.name` },
     });
   console.log(`  users: ${seedUsers.length} upserted`);
+
+  // The preferences catalog. Migrations insert these rows, but the local and
+  // e2e databases are provisioned by `drizzle-kit push` straight from
+  // db/schema.ts, which creates tables and replays no migration data — so
+  // without them the accent and spoiler-tier writes fail their foreign key
+  // everywhere but Neon.
+  await db
+    .insert(preferences)
+    .values([
+      { id: ACCENT_PREFERENCE_ID, name: 'Accent color', type: 'text' },
+      ...SPOILER_PREFERENCE_ROWS,
+    ])
+    .onConflictDoNothing();
+
+  // Profiles: one self-profile per seeded user (the invariant the migration
+  // backfill guarantees in Neon) plus the two account-less fixtures.
+  await db
+    .insert(profiles)
+    .values([
+      ...profiledUsers.map((u) => ({
+        id: selfProfileOf(u.id),
+        name: u.name,
+      })),
+      { id: OWNED_PROFILE_ID, name: 'Owned Profile' },
+      { id: MANAGED_PROFILE_ID, name: 'Managed Profile' },
+      { id: WORKSHOP_PROFILE_ID, name: 'Workshop Profile' },
+      { id: VISIBILITY_PROFILE_ID, name: 'Visibility Profile' },
+    ])
+    .onConflictDoNothing();
+
+  // Accents and faces. Upserted rather than ignored on conflict so re-running
+  // the seed after editing SEEDED_FACES actually repaints.
+  const seededFaces = Object.entries(SEEDED_FACES);
+  await db
+    .insert(profile_preferences)
+    .values(
+      seededFaces.map(([profile_id, { accent }]) => ({
+        profile_id,
+        preference_id: ACCENT_PREFERENCE_ID,
+        value: accent,
+      }))
+    )
+    .onConflictDoUpdate({
+      // The accent is the profile-wide (null-account) row, so its arbiter is
+      // the partial unique index over (profile, preference) WHERE user_id IS
+      // NULL — the predicate must be restated for Postgres to infer it.
+      target: [
+        profile_preferences.profile_id,
+        profile_preferences.preference_id,
+      ],
+      targetWhere: isNull(profile_preferences.user_id),
+      set: { value: sql`excluded.value` },
+    });
+  const avatarRows = await Promise.all(
+    seededFaces
+      .filter(([, f]) => f.face)
+      .map(async ([profile_id, f]) => {
+        const style = styleOf(f.face as string);
+        // The thing kind's art is the route its bundled picture is served
+        // from, exactly as the production write path stores it (see
+        // profileAvatar.write.ts).
+        if (style.id === 'openmoji') {
+          const options = { seed: profile_id, selections: { glyph: f.glyph } };
+          return {
+            profile_id,
+            style: style.id,
+            options,
+            art: openmojiArtUrl(f.glyph),
+          };
+        }
+        const options = {
+          seed: profile_id,
+          selections: seededSelections(style, profile_id),
+        };
+        return {
+          profile_id,
+          style: style.id,
+          options,
+          art: await renderAltvatar(style.id, options),
+        };
+      })
+  );
+  await db
+    .insert(profile_avatars)
+    .values(avatarRows)
+    .onConflictDoUpdate({
+      target: profile_avatars.profile_id,
+      set: {
+        style: sql`excluded.style`,
+        options: sql`excluded.options`,
+        art: sql`excluded.art`,
+        updated_at: new Date(),
+      },
+    });
+  console.log(
+    `  faces: ${seededFaces.length} accents, ${avatarRows.length} Altvatars upserted`
+  );
+  await db
+    .insert(profile_members)
+    .values([
+      // Every self membership at the fully protected default — an absent tier
+      // row resolves to `surprise`, the state every existing account resolves
+      // to and the one the viewer's own lists render at in local mode.
+      ...profiledUsers.map((u) => ({
+        user_id: u.id,
+        profile_id: selfProfileOf(u.id),
+        role: ROLES.self.value,
+        last_active_at: LAST_ACTIVE_AT[selfProfileOf(u.id)] ?? null,
+      })),
+      // The one seat carrying a raised baseline (written below as a
+      // `profile_preferences` tier row), so both projections are reachable in
+      // local mode by switching profiles rather than by writing.
+      {
+        user_id: VIEWER_ID,
+        profile_id: OWNED_PROFILE_ID,
+        role: ROLES.owner.value,
+        last_active_at: LAST_ACTIVE_AT[OWNED_PROFILE_ID] ?? null,
+      },
+      {
+        user_id: friendId('alice'),
+        profile_id: OWNED_PROFILE_ID,
+        role: ROLES.manager.value,
+        last_active_at: null,
+      },
+      // The viewer as `manager`, never acted as: the third role, and the NULL
+      // that orders after every membership carrying a value.
+      {
+        user_id: VIEWER_ID,
+        profile_id: MANAGED_PROFILE_ID,
+        role: ROLES.manager.value,
+        last_active_at: null,
+      },
+      {
+        user_id: friendId('bob'),
+        profile_id: MANAGED_PROFILE_ID,
+        role: ROLES.owner.value,
+        last_active_at: null,
+      },
+      // The manager seat e2e writes on, kept apart from the two fixtures
+      // MANAGED_PROFILE_ID carries.
+      {
+        user_id: VIEWER_ID,
+        profile_id: WORKSHOP_PROFILE_ID,
+        role: ROLES.manager.value,
+        last_active_at: LAST_ACTIVE_AT[WORKSHOP_PROFILE_ID] ?? null,
+      },
+      {
+        user_id: friendId('bob'),
+        profile_id: WORKSHOP_PROFILE_ID,
+        role: ROLES.owner.value,
+        last_active_at: null,
+      },
+      // The claim-visibility seat: the viewer is the member whose baseline an
+      // owner writes. No tier row is seeded, so both members resolve to the
+      // fully protected `surprise` — where the flow's first assertion starts.
+      {
+        user_id: VIEWER_ID,
+        profile_id: VISIBILITY_PROFILE_ID,
+        role: ROLES.manager.value,
+        last_active_at: null,
+      },
+      {
+        user_id: friendId('bob'),
+        profile_id: VISIBILITY_PROFILE_ID,
+        role: ROLES.owner.value,
+        last_active_at: null,
+      },
+    ])
+    .onConflictDoNothing();
+  console.log(
+    `  preferences: 2 catalog rows inserted-if-absent\n  profiles: ${profiledUsers.length} self + 4 managed inserted-if-absent, profile_members: ${profiledUsers.length + 8} inserted-if-absent (existing rows keep their current values)`
+  );
+
+  // Member baseline tiers: account-keyed rows on the identity seat. Upserted so
+  // a re-run after editing MEMBER_SPOILER_TIERS repaints the value. Targets the
+  // partial member index (WHERE user_id IS NOT NULL), matching writeMemberTier.
+  await db
+    .insert(profile_preferences)
+    .values(
+      MEMBER_SPOILER_TIERS.map((m) => ({
+        profile_id: m.profile_id,
+        user_id: m.user_id,
+        preference_id: SPOILER_TIER_PREFERENCE_ID,
+        value: m.tier,
+      }))
+    )
+    .onConflictDoUpdate({
+      target: [
+        profile_preferences.profile_id,
+        profile_preferences.user_id,
+        profile_preferences.preference_id,
+      ],
+      targetWhere: isNotNull(profile_preferences.user_id),
+      set: { value: sql`excluded.value` },
+    });
+  console.log(
+    `  profile_preferences: ${MEMBER_SPOILER_TIERS.length} member spoiler tiers upserted`
+  );
 
   const now = Date.now();
   const sharedAt = new Date(now - 1000 * 60 * 60 * 24 * 14); // 2 weeks ago
@@ -663,7 +1084,7 @@ async function main() {
           name: l.name,
           subtitle: l.subtitle ?? null,
           occasion: l.occasion,
-          user_id: l.user_id,
+          profile_id: listProfileOf(l),
           visibility: l.visibility,
           shared,
           shared_at: shared ? sharedAt : null,
@@ -702,7 +1123,7 @@ async function main() {
     id: string;
     name: string;
     description: string;
-    user_id: string;
+    profile_id: string;
     image_url: string;
     archived_at: Date | null;
     quantity_limit: number | null;
@@ -720,6 +1141,13 @@ async function main() {
       if (idx === 0) quantity_limit = rotation[0];
       else if (idx === 1) quantity_limit = rotation[1];
       else if (idx === lastIdx) quantity_limit = rotation[2];
+      // The claim-visibility seat's first item is pinned to a single claim so
+      // its seeded claim fills it: what a raised baseline discloses on a
+      // non-owner's card is the fully-claimed treatment, and the rotation
+      // would otherwise decide that per run position.
+      if (list.id === 'dev-list-visibility-wishlist' && idx === 0) {
+        quantity_limit = 1;
+      }
       // Every third item on every fourth list seeds imageless so the lazy
       // placeholder-mint path (empty container -> generated art on first view)
       // is reachable straight from the seed.
@@ -728,7 +1156,7 @@ async function main() {
         id: itemId,
         name,
         description: descriptionFor(itemId),
-        user_id: list.user_id,
+        profile_id: listProfileOf(list),
         image_url: imageless
           ? ''
           : `https://picsum.photos/seed/${itemId}/400/400`,
@@ -923,8 +1351,8 @@ async function main() {
   const purchaseRows: {
     id: string;
     item_id: string;
-    user_id: string | null;
-    claimed_by: string | null;
+    profile_id: string | null;
+    claimed_by_profile_id: string | null;
     guest_name: string | null;
     purchased_at: Date;
   }[] = [];
@@ -940,8 +1368,8 @@ async function main() {
       // the owner-spoiler e2e spec master-unclaims this exact row.
       id: 'dev-purchase-attributed',
       item_id: 'dev-list-viewer-birthday-item-1',
-      user_id: friendId('bob'),
-      claimed_by: friendId('alice'),
+      profile_id: selfProfileOf(friendId('bob')),
+      claimed_by_profile_id: selfProfileOf(friendId('alice')),
       guest_name: null,
       purchased_at: ATTRIBUTION_EPOCH,
     },
@@ -950,8 +1378,8 @@ async function main() {
       // viewer. The viewer sees it as their own claim ('self') and can unclaim.
       id: 'dev-purchase-attributed-to-viewer',
       item_id: 'dev-list-alice-wedding-item-1',
-      user_id: VIEWER_ID,
-      claimed_by: friendId('bob'),
+      profile_id: selfProfileOf(VIEWER_ID),
+      claimed_by_profile_id: selfProfileOf(friendId('bob')),
       guest_name: null,
       purchased_at: ATTRIBUTION_EPOCH,
     },
@@ -960,8 +1388,48 @@ async function main() {
       // owner — the spoiler-view "I bought this myself" state.
       id: 'dev-purchase-owner-self',
       item_id: 'dev-list-viewer-birthday-item-2',
-      user_id: VIEWER_ID,
-      claimed_by: VIEWER_ID,
+      profile_id: selfProfileOf(VIEWER_ID),
+      claimed_by_profile_id: selfProfileOf(VIEWER_ID),
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    // The owned profile's list is the seat whose baseline is `identity`, so it
+    // carries one claim of each shape the levels render differently: another
+    // party's, the viewer's own, and one recorded on someone's behalf.
+    {
+      id: 'dev-purchase-owned-other',
+      item_id: 'dev-list-owned-wishlist-item-1',
+      profile_id: selfProfileOf(friendId('alice')),
+      claimed_by_profile_id: selfProfileOf(friendId('alice')),
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    {
+      id: 'dev-purchase-owned-mine',
+      item_id: 'dev-list-owned-wishlist-item-2',
+      profile_id: selfProfileOf(VIEWER_ID),
+      claimed_by_profile_id: selfProfileOf(VIEWER_ID),
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    {
+      // Proxy-recorded, so the recorder is namable at `identity` and at no
+      // level below it.
+      id: 'dev-purchase-owned-proxy',
+      item_id: 'dev-list-owned-wishlist-item-3',
+      profile_id: selfProfileOf(friendId('bob')),
+      claimed_by_profile_id: selfProfileOf(friendId('alice')),
+      guest_name: null,
+      purchased_at: ATTRIBUTION_EPOCH,
+    },
+    {
+      // Visibility Profile's list carries one deterministic claim so the
+      // owner-sets-a-member's-baseline e2e flow has something whose disclosure
+      // flips with the baseline, rather than depending on the fan-out.
+      id: 'dev-purchase-visibility-other',
+      item_id: 'dev-list-visibility-wishlist-item-1',
+      profile_id: selfProfileOf(friendId('alice')),
+      claimed_by_profile_id: selfProfileOf(friendId('alice')),
       guest_name: null,
       purchased_at: ATTRIBUTION_EPOCH,
     },
@@ -971,8 +1439,8 @@ async function main() {
       // unclaim.
       id: 'dev-purchase-legacy-guest',
       item_id: 'dev-list-viewer-birthday-item-3',
-      user_id: null,
-      claimed_by: null,
+      profile_id: null,
+      claimed_by_profile_id: null,
       guest_name: 'Grandma',
       purchased_at: ATTRIBUTION_EPOCH,
     },
@@ -998,15 +1466,21 @@ async function main() {
       const item = itemRows.find((r) => r.id === itemId);
       if (!item) return;
 
-      const purchaseCount = purchaseCountFor(item, listIdx, idx, purchaseRatio);
+      const purchaseCount = purchaseCountFor(
+        item,
+        list.user_id,
+        listIdx,
+        idx,
+        purchaseRatio
+      );
       if (purchaseCount === 0) return;
 
       // Eligible buyer pool (owner excluded). Rotate by (h + n) so each
       // multi-buyer item picks distinct buyers across its purchase rows.
       const pool =
-        item.user_id === VIEWER_ID
+        list.user_id === VIEWER_ID
           ? friendIds
-          : [VIEWER_ID, ...friendIds].filter((id) => id !== item.user_id);
+          : [VIEWER_ID, ...friendIds].filter((id) => id !== list.user_id);
 
       for (let n = 1; n <= purchaseCount; n++) {
         const h = hash(`${itemId}-${n}`);
@@ -1015,10 +1489,10 @@ async function main() {
         purchaseRows.push({
           id: `${itemId}-purchase-${n}`,
           item_id: itemId,
-          user_id: asGuest ? null : buyerId,
+          profile_id: asGuest ? null : selfProfileOf(buyerId),
           // Self-claim shape: the buyer asserted their own claim. Guest rows
           // keep the signed-out shape (all-NULL identities).
-          claimed_by: asGuest ? null : buyerId,
+          claimed_by_profile_id: asGuest ? null : selfProfileOf(buyerId),
           guest_name: asGuest ? GUEST_NAMES[h % GUEST_NAMES.length] : null,
           purchased_at: new Date(PURCHASE_EPOCH - ((h + n) % 60) * 86400000),
         });
@@ -1041,8 +1515,8 @@ async function main() {
       .onConflictDoUpdate({
         target: purchases.id,
         set: {
-          user_id: sql`excluded.user_id`,
-          claimed_by: sql`excluded.claimed_by`,
+          profile_id: sql`excluded.profile_id`,
+          claimed_by_profile_id: sql`excluded.claimed_by_profile_id`,
           guest_name: sql`excluded.guest_name`,
           purchased_at: sql`excluded.purchased_at`,
         },
@@ -1050,7 +1524,15 @@ async function main() {
   }
   console.log(`  purchases: ${purchaseRows.length} upserted`);
 
-  await db.insert(user_follows).values(seedFollows).onConflictDoNothing();
+  await db
+    .insert(user_follows)
+    .values(
+      seedFollows.map((f) => ({
+        follower_id: f.follower_id,
+        followee_profile_id: selfProfileOf(f.followee_id),
+      }))
+    )
+    .onConflictDoNothing();
   console.log(`  user_follows: ${seedFollows.length} upserted`);
 
   await db

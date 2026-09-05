@@ -1,5 +1,5 @@
 interface HeaderProps {
-  title: string;
+  title: React.ReactNode;
   className?: string;
   children?: React.ReactNode;
 }

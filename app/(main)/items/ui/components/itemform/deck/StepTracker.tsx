@@ -1,12 +1,15 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import { Fragment, useRef, useState } from 'react';
 import { LuCheck } from 'react-icons/lu';
 import type { DeckStep, DeckStepState } from './neededSteps';
 
 const STEP_LABELS: Record<DeckStep, string> = {
   photo: 'Photo',
-  title: 'Name',
+  name: 'Name',
   price: 'Price',
   store: 'Store',
   note: 'Note',

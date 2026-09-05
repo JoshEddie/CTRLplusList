@@ -1,42 +1,37 @@
 'use client';
 
-import { deleteList } from '@/lib/data/list.actions';
 import { Button } from '@/app/ui/components/button';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
+import { deleteList } from '@/lib/data/list.actions';
 import { ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { ReactNode, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
-  MdChecklist,
   MdDeleteForever,
   MdModeEdit,
   MdMoreVert,
-  MdPreview,
-  MdVisibility,
-  MdVisibilityOff,
+  MdPreview
 } from 'react-icons/md';
 import ListFormContainer from './ListFormContainer';
 
 export default function ListActionsMenu({
   list,
-  showSpoilers,
   previewMode,
-  spoilerHref,
   previewHref,
   exitPreviewHref,
   isOwner = true,
   prependedItems,
+  disabled,
 }: {
   list: ListTable;
-  showSpoilers: boolean;
   previewMode: boolean;
-  spoilerHref: string;
   previewHref: string;
   exitPreviewHref: string;
   isOwner?: boolean;
   prependedItems?: ReactNode;
+  disabled: boolean;
 }) {
   const listId = list.id;
   const router = useRouter();
@@ -56,10 +51,8 @@ export default function ListActionsMenu({
   };
 
   const close = () => setOpen(false);
-  const showSpoilerToggle = isOwner;
   const showPreviewToggle = isOwner;
   const showOwnerEdit = isOwner && !previewMode;
-  const showOwnerChoose = isOwner && !previewMode;
   const showOwnerDelete = isOwner && !previewMode;
 
   return (
@@ -83,15 +76,6 @@ export default function ListActionsMenu({
           aria-label="List actions"
         >
           {prependedItems}
-          {showOwnerChoose && (
-            <MenuLinkItem
-              href={`/lists/${listId}/choose-items`}
-              icon={<MdChecklist size={18} />}
-              onClick={close}
-            >
-              Choose items
-            </MenuLinkItem>
-          )}
           {showOwnerEdit && (
             <MenuItem
               icon={<MdModeEdit size={18} />}
@@ -102,21 +86,6 @@ export default function ListActionsMenu({
             >
               Edit list
             </MenuItem>
-          )}
-          {showSpoilerToggle && (
-            <MenuLinkItem
-              href={spoilerHref}
-              icon={
-                showSpoilers ? (
-                  <MdVisibilityOff size={18} />
-                ) : (
-                  <MdVisibility size={18} />
-                )
-              }
-              onClick={close}
-            >
-              {showSpoilers ? 'Hide spoilers' : 'Show spoilers'}
-            </MenuLinkItem>
           )}
           {showPreviewToggle &&
             (previewMode ? (
@@ -140,7 +109,9 @@ export default function ListActionsMenu({
             <MenuItem
               icon={<MdDeleteForever size={18} />}
               tone="danger"
+              aria-disabled={disabled || undefined}
               onClick={() => {
+                if (disabled) return;
                 close();
                 setShowConfirm(true);
               }}
@@ -154,6 +125,7 @@ export default function ListActionsMenu({
         <ListFormContainer
           list={list}
           isEditing
+          deleteDisabled={disabled}
           onClose={() => setEditOpen(false)}
         />
       )}

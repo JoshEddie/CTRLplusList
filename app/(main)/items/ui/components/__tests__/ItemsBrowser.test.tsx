@@ -7,6 +7,10 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ItemDisplay, ItemStoreTable } from '@/lib/types';
 import ItemsBrowser from '../ItemsBrowser';
+import {
+  HERO_SLOT_READY_EVENT,
+  HERO_TOOLBAR_SLOT_ID,
+} from '@/app/(main)/lists/ui/components/ListHeroSurface';
 
 const nav = vi.hoisted(() => ({
   replace: vi.fn(),
@@ -21,24 +25,17 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('../Item', () => ({
-  default: ({
-    item,
-    showSpoilers,
-  }: {
-    item: ItemDisplay;
-    showSpoilers?: boolean;
-  }) => (
-    <div
-      data-testid="item-stub"
-      data-item-id={item.id}
-      data-show-spoilers={String(showSpoilers)}
-    />
+  default: ({ item, tier }: { item: ItemDisplay; tier?: string }) => (
+    <div data-testid="item-stub" data-item-id={item.id} data-tier={String(tier)} />
   ),
 }));
 vi.mock('../PriceFilterPopover', () => ({ default: () => <div /> }));
 vi.mock('../StoreFilterPopover', () => ({
   default: ({ storeOptions }: { storeOptions: string[] }) => (
-    <div data-testid="store-filter-stub" data-options={storeOptions.join(',')} />
+    <div
+      data-testid="store-filter-stub"
+      data-options={storeOptions.join(',')}
+    />
   ),
 }));
 
@@ -50,14 +47,17 @@ function store(
   return { name, price, link };
 }
 
-function makeItem(id: string, overrides: Partial<ItemDisplay> = {}): ItemDisplay {
+function makeItem(
+  id: string,
+  overrides: Partial<ItemDisplay> = {}
+): ItemDisplay {
   return {
     id,
     name: `Item ${id}`,
     description: '',
     created_at: new Date('2024-01-01T00:00:00Z'),
     updated_at: new Date('2024-01-01T00:00:00Z'),
-    user_id: 'u1',
+    profile_id: 'p1',
     quantity_limit: null,
     ...overrides,
   };
@@ -65,13 +65,18 @@ function makeItem(id: string, overrides: Partial<ItemDisplay> = {}): ItemDisplay
 
 type BrowserProps = React.ComponentProps<typeof ItemsBrowser>;
 
-function renderBrowser(items: ItemDisplay[], overrides: Partial<BrowserProps> = {}) {
+function renderBrowser(
+  items: ItemDisplay[],
+  overrides: Partial<BrowserProps> = {}
+) {
   return render(
     <ItemsBrowser
       items={items}
       mode={overrides.mode ?? 'list'}
       initialPageSize={overrides.initialPageSize}
-      user_id={overrides.user_id}
+      actor={overrides.actor}
+      tier={overrides.tier}
+      baseline={overrides.baseline}
     />
   );
 }
@@ -104,57 +109,24 @@ describe('ItemsBrowser', () => {
       expect(visibleIds().sort()).toEqual(['a', 'b']);
     });
 
-    it('StoreFilter_OrWithinAndAcrossOtherFilters', () => {
-      nav.search = 'store=Amazon&store=Etsy&purchases=only';
+    it('MultiStore_KeepsItemsMatchingAnySelectedStore', () => {
+      nav.search = 'store=Amazon&store=Etsy';
       renderBrowser([
-        makeItem('amazonBought', {
-          store: store('Amazon', '20'),
-          hasPurchases: true,
-        }),
-        makeItem('etsyBought', {
-          store: store('Etsy', '20'),
-          hasPurchases: true,
-        }),
-        makeItem('amazonUnbought', {
-          store: store('Amazon', '20'),
-          hasPurchases: false,
-        }),
-        makeItem('otherBought', {
-          store: store('Other', '20'),
-          hasPurchases: true,
-        }),
+        makeItem('amazon', { store: store('Amazon', '20') }),
+        makeItem('etsy', { store: store('Etsy', '20') }),
+        makeItem('other', { store: store('Other', '20') }),
       ]);
-      expect(visibleIds().sort()).toEqual(['amazonBought', 'etsyBought']);
+      expect(visibleIds().sort()).toEqual(['amazon', 'etsy']);
     });
 
     it('DormantLegacyStoreName_NeitherMatchesNorAppearsAsOption', () => {
       // The DAL selected Amazon; the legacy second row (Etsy) never reaches
       // the UI, so filtering on it matches nothing and offers no option.
       nav.search = 'store=Etsy';
-      renderBrowser([
-        makeItem('legacy', { store: store('Amazon', '20') }),
-      ]);
+      renderBrowser([makeItem('legacy', { store: store('Amazon', '20') })]);
       expect(visibleIds()).toEqual([]);
       const stubs = screen.getAllByTestId('store-filter-stub');
       expect(stubs[0]).toHaveAttribute('data-options', 'Amazon');
-    });
-
-    it('PurchasesOnly_KeepsHasPurchases', () => {
-      nav.search = 'purchases=only';
-      renderBrowser([
-        makeItem('p', { hasPurchases: true }),
-        makeItem('q', { hasPurchases: false }),
-      ]);
-      expect(visibleIds()).toEqual(['p']);
-    });
-
-    it('PurchasesNone_KeepsNotHasPurchases', () => {
-      nav.search = 'purchases=none';
-      renderBrowser([
-        makeItem('p', { hasPurchases: true }),
-        makeItem('q', { hasPurchases: false }),
-      ]);
-      expect(visibleIds()).toEqual(['q']);
     });
 
     it('PriceRange_InclusiveExcludesNonFinitePrice', () => {
@@ -209,33 +181,23 @@ describe('ItemsBrowser', () => {
     });
 
     it('MultipleFilters_ComposeConjunctively', () => {
-      nav.search =
-        'q=gift&store=Amazon&purchases=only&price_min=10&price_max=50';
+      nav.search = 'q=gift&store=Amazon&price_min=10&price_max=50';
       renderBrowser([
         makeItem('match', {
           name: 'Gift',
           store: store('Amazon', '20'),
-          hasPurchases: true,
         }),
         makeItem('failStore', {
           name: 'Gift',
           store: store('Other', '20'),
-          hasPurchases: true,
-        }),
-        makeItem('failPurch', {
-          name: 'Gift',
-          store: store('Amazon', '20'),
-          hasPurchases: false,
         }),
         makeItem('failPrice', {
           name: 'Gift',
           store: store('Amazon', '200'),
-          hasPurchases: true,
         }),
         makeItem('failName', {
           name: 'Toy',
           store: store('Amazon', '20'),
-          hasPurchases: true,
         }),
       ]);
       expect(visibleIds()).toEqual(['match']);
@@ -257,10 +219,9 @@ describe('ItemsBrowser', () => {
     });
 
     it('ListOrder_PreservesInputOrder', () => {
-      renderBrowser(
-        [makeItem('a'), makeItem('b'), makeItem('c')],
-        { mode: 'list' }
-      );
+      renderBrowser([makeItem('a'), makeItem('b'), makeItem('c')], {
+        mode: 'list',
+      });
       expect(visibleIds()).toEqual(['a', 'b', 'c']);
     });
 
@@ -360,9 +321,8 @@ describe('ItemsBrowser', () => {
       ).toBeInTheDocument();
     });
 
-    it('ClearFilters_RemovesQStorePurchasesPricePageParams', () => {
-      nav.search =
-        'q=zzz&store=A&purchases=only&price_min=1&price_max=2&page=3';
+    it('ClearFilters_RemovesQStorePricePageParams', () => {
+      nav.search = 'q=zzz&store=A&price_min=1&price_max=2&page=3';
       renderBrowser([makeItem('a', { name: 'Gift' })]);
       fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
       expect(nav.replace).toHaveBeenCalledWith('/items');
@@ -376,31 +336,18 @@ describe('ItemsBrowser', () => {
     });
   });
 
-  describe('Spoilers', () => {
-    const spoilerFlag = () =>
-      screen.getByTestId('item-stub').getAttribute('data-show-spoilers');
+  describe('Tier', () => {
+    const tierOf = () =>
+      screen.getByTestId('item-stub').getAttribute('data-tier');
 
-    it('ModeItemsPurchasesReveal_PassesShowSpoilersTrue', () => {
-      nav.search = 'purchases=reveal';
-      renderBrowser([makeItem('a')], { mode: 'items' });
-      expect(spoilerFlag()).toBe('true');
+    it('ResolvedTier_ReachesEachItem', () => {
+      renderBrowser([makeItem('a')], { tier: 'claims' });
+      expect(tierOf()).toBe('claims');
     });
 
-    it('ModeItemsPurchasesOnly_PassesShowSpoilersTrue', () => {
-      nav.search = 'purchases=only';
-      renderBrowser([makeItem('a', { hasPurchases: true })], { mode: 'items' });
-      expect(spoilerFlag()).toBe('true');
-    });
-
-    it('ModeListPurchasesReveal_PassesShowSpoilersFalse', () => {
-      nav.search = 'purchases=reveal';
-      renderBrowser([makeItem('a')], { mode: 'list' });
-      expect(spoilerFlag()).toBe('false');
-    });
-
-    it('ModeItemsNoPurchasesParam_PassesShowSpoilersFalse', () => {
-      renderBrowser([makeItem('a')], { mode: 'items' });
-      expect(spoilerFlag()).toBe('false');
+    it('AbsentTier_ReachesItemAsUndefined', () => {
+      renderBrowser([makeItem('a')]);
+      expect(tierOf()).toBe('undefined');
     });
   });
 
@@ -488,6 +435,36 @@ describe('ItemsBrowser', () => {
       nav.search = 'store=Amazon';
       rerender(<ItemsBrowser items={items} mode="list" />);
       expect(visibleIds()).toEqual(['amazon']);
+    });
+  });
+
+  describe('ToolbarSlot', () => {
+    function addSlot() {
+      const el = document.createElement('div');
+      el.id = HERO_TOOLBAR_SLOT_ID;
+      document.body.appendChild(el);
+      return el;
+    }
+
+    afterEach(() => {
+      document.getElementById(HERO_TOOLBAR_SLOT_ID)?.remove();
+    });
+
+    it('SlotPresent_ToolbarRendersInsideItRatherThanInline', () => {
+      const target = addSlot();
+      const { container } = renderBrowser([makeItem('a')], { mode: 'list' });
+      expect(target.querySelector('.items-toolbar')).not.toBeNull();
+      expect(container.querySelector('.items-toolbar')).toBeNull();
+    });
+
+    it('SlotAppearsAfterMount_ToolbarMovesInOnTheReadyEvent', () => {
+      const { container } = renderBrowser([makeItem('a')], { mode: 'list' });
+      expect(container.querySelector('.items-toolbar')).not.toBeNull();
+
+      const target = addSlot();
+      fireEvent(window, new Event(HERO_SLOT_READY_EVENT));
+      expect(target.querySelector('.items-toolbar')).not.toBeNull();
+      expect(container.querySelector('.items-toolbar')).toBeNull();
     });
   });
 });

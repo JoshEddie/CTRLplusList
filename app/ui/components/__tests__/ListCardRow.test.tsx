@@ -8,6 +8,7 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ListCardRow from '../ListCardRow';
+import { makeProfile } from '@/test/helpers/profile';
 import { makeList } from './test-helpers';
 
 vi.mock('next/link', async () => ({
@@ -48,14 +49,16 @@ describe('ListCardRow', () => {
 
     it('ShowOwner_ThreadsToEachCard', () => {
       const lists = [
-        makeList({ id: 'a', user: { name: 'Alice' } }),
-        makeList({ id: 'b', user: { name: 'Bob' } }),
+        makeList({ id: 'a', profile: makeProfile('p1', 'Alice') }),
+        makeList({ id: 'b', profile: makeProfile('p2', 'Bob') }),
       ];
       render(<ListCardRow lists={lists} emptyMessage="empty" showOwner />);
       const bylines = Array.from(
         document.querySelectorAll('.list-card-byline')
-      ).map((b) => b.textContent?.trim());
-      expect(bylines).toEqual(['Alice', 'Bob']);
+      );
+      expect(bylines).toHaveLength(2);
+      expect(bylines[0]).toHaveTextContent('Alice');
+      expect(bylines[1]).toHaveTextContent('Bob');
     });
 
     it('BookmarkedIds_ThreadsToEachCard', () => {

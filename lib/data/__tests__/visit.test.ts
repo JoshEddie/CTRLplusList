@@ -92,7 +92,7 @@ describe('getBookmarkedListsByUser', () => {
     });
 
     const rows = await dal.getBookmarkedListsByUser(VIEWER.id);
-    expect(rows[0].list.user.name).toBe('Olivia Owner');
+    expect(rows[0].list.profile.name).toBe('Olivia Owner');
   });
 
   it('NullLastVisitedButFavorited_StillReturned', async () => {
@@ -195,7 +195,7 @@ describe('getVisitHistoryByUser', () => {
     expect(rows).toEqual([]);
   });
 
-  it('LimitAndOffset_PaginatesResult', async () => {
+  it('Limit_CapsResultToNewestVisits', async () => {
     await seedList(db, { id: 'a', user_id: OTHER.id });
     await seedList(db, { id: 'b', user_id: OTHER.id });
     await seedList(db, { id: 'c', user_id: OTHER.id });
@@ -215,11 +215,8 @@ describe('getVisitHistoryByUser', () => {
       last_visited_at: new Date('2021-01-01'),
     });
 
-    const page = await dal.getVisitHistoryByUser(VIEWER.id, {
-      limit: 1,
-      offset: 1,
-    });
-    expect(page.map((r) => r.list_id)).toEqual(['b']);
+    const page = await dal.getVisitHistoryByUser(VIEWER.id, { limit: 2 });
+    expect(page.map((r) => r.list_id)).toEqual(['a', 'b']);
   });
 
   it('Result_IncludesJoinedOwnerName', async () => {
@@ -231,7 +228,7 @@ describe('getVisitHistoryByUser', () => {
     });
 
     const rows = await dal.getVisitHistoryByUser(VIEWER.id);
-    expect(rows[0].list.user.name).toBe('Olivia Owner');
+    expect(rows[0].list.profile.name).toBe('Olivia Owner');
   });
 });
 

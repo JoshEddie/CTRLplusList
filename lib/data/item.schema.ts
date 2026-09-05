@@ -3,20 +3,11 @@ import {
   PLACEHOLDER_URI_MAX_LENGTH,
   isPlaceholderUri,
 } from '@/lib/placeholderArt.shared';
+import { isValidProductUrl } from '@/lib/storeValidity';
 import { z } from 'zod';
 
-function isHttpUrl(val: string): boolean {
-  try {
-    const url = new URL(val);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
 // Define Zod schema for item validation. The actor's user_id is resolved
-// server-side from the session, never accepted from the client payload — see
-// openspec/specs/server-endpoint-authorization.
+// server-side from the session, never accepted from the client payload
 export const ItemSchema = z.object({
   name: z
     .string()
@@ -56,7 +47,7 @@ export const ItemSchema = z.object({
     .superRefine((candidates, ctx) => {
       const placeholders = candidates.filter(isPlaceholderUri);
       const rest = candidates.filter((val) => !isPlaceholderUri(val));
-      if (rest.some((val) => !isHttpUrl(val))) {
+      if (rest.some((val) => !isValidProductUrl(val))) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'Image candidates must be valid image URLs',

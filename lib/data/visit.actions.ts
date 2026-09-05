@@ -4,27 +4,32 @@ import { db } from '@/db';
 import { list_visits, lists } from '@/db/schema';
 import {
   UNAUTHORIZED_RESPONSE,
+  authedIdentity,
   authedUserId,
 } from '@/lib/data/user.session';
 import { type ActionResponse } from '@/lib/types';
 import { VISIBILITY, fromDb } from '@/lib/visibility';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
-import { updateTag } from 'next/cache';
 
 export async function bookmarkList(list_id: string): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
+    const identity = await authedIdentity();
+    if (!identity) {
       return UNAUTHORIZED_RESPONSE;
     }
 
+    // The owner check is an ownership comparison, so it takes the profile the
+    // request acts as; the row written below stays keyed by the caller's
+    // account — list_visits records what a human did, whoever they act as.
     const list = await db.query.lists.findFirst({
       where: eq(lists.id, list_id),
-      columns: { user_id: true, visibility: true },
+      columns: { profile_id: true, visibility: true },
     });
     if (
       !list ||
-      (list.user_id !== userId && fromDb(list.visibility) === VISIBILITY.OWNER)
+      (list.profile_id !== identity.activeProfile.id &&
+        fromDb(list.visibility) === VISIBILITY.OWNER)
     ) {
       return {
         success: false,
@@ -37,7 +42,7 @@ export async function bookmarkList(list_id: string): Promise<ActionResponse> {
     await db
       .insert(list_visits)
       .values({
-        user_id: userId,
+        user_id: identity.userId,
         list_id,
         last_visited_at: now,
         visit_count: 1,
@@ -48,7 +53,7 @@ export async function bookmarkList(list_id: string): Promise<ActionResponse> {
         set: { favorited_at: now },
       });
 
-    updateTag('list_visits');
+    updateTags(cacheTags.visitsOfUser(identity.userId));
     return { success: true, message: 'Bookmarked' };
   } catch (error) {
     console.error('Error bookmarking list:', error);
@@ -70,7 +75,7 @@ export async function unbookmarkList(list_id: string): Promise<ActionResponse> {
         and(eq(list_visits.user_id, userId), eq(list_visits.list_id, list_id))
       );
 
-    updateTag('list_visits');
+    updateTags(cacheTags.visitsOfUser(userId));
     return { success: true, message: 'Bookmark removed' };
   } catch (error) {
     console.error('Error unbookmarking list:', error);
@@ -108,7 +113,7 @@ export async function clearVisitHistory(opts: {
         );
     }
 
-    updateTag('list_visits');
+    updateTags(cacheTags.visitsOfUser(userId));
     return { success: true, message: 'History cleared' };
   } catch (error) {
     console.error('Error clearing history:', error);
@@ -153,7 +158,7 @@ export async function removeVisit(list_id: string): Promise<ActionResponse> {
         );
     }
 
-    updateTag('list_visits');
+    updateTags(cacheTags.visitsOfUser(userId));
     return { success: true, message: 'Removed from history' };
   } catch (error) {
     console.error('Error removing visit:', error);

@@ -1,4 +1,8 @@
-import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
+import { hasBlocked } from '@/lib/data/profile';
+import { isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
 import { getBookmarkStatus } from '@/lib/data/visit';
 import { ListTable } from '@/lib/types';
 import { type ListVisibility } from '@/lib/visibility';
@@ -17,14 +21,20 @@ import {
 export async function HeroCollapsedOwnerItems({
   list,
   visibility,
+  disabled,
 }: {
   list: ListTable;
   visibility: ListVisibility;
+  disabled: boolean;
 }) {
   return (
     <>
       <ShareMenuItem list={list} />
-      <VisibilityMenuItems listId={list.id} initialVisibility={visibility} />
+      <VisibilityMenuItems
+        listId={list.id}
+        initialVisibility={visibility}
+        disabled={disabled}
+      />
     </>
   );
 }
@@ -35,14 +45,16 @@ export async function HeroCollapsedOwnerItems({
 // Follow row is suppressed.
 export async function HeroCollapsedViewerItems({
   list,
-  ownerId,
+  ownerProfileId,
   ownerName,
-  viewerId,
+  viewerUserId,
+  viewerSelfProfileId,
 }: {
   list: ListTable;
-  ownerId: string;
+  ownerProfileId: string;
   ownerName: string | null;
-  viewerId: string;
+  viewerUserId: string;
+  viewerSelfProfileId: string;
 }) {
   const [
     bookmarked,
@@ -51,11 +63,17 @@ export async function HeroCollapsedViewerItems({
     blockedByViewer,
     hasAnyFollows,
   ] = await Promise.all([
-    getBookmarkStatus(list.id, viewerId),
-    isFollowing({ userId: viewerId, followeeId: ownerId }),
-    hasBlocked({ userId: ownerId, blockedId: viewerId }),
-    hasBlocked({ userId: viewerId, blockedId: ownerId }),
-    viewerHasAnyFollows(viewerId),
+    getBookmarkStatus(list.id, viewerUserId),
+    isFollowing({ userId: viewerUserId, followeeProfileId: ownerProfileId }),
+    hasBlocked({
+      blockerProfileId: ownerProfileId,
+      blockedProfileId: viewerSelfProfileId,
+    }),
+    hasBlocked({
+      blockerProfileId: viewerSelfProfileId,
+      blockedProfileId: ownerProfileId,
+    }),
+    viewerHasAnyFollows(viewerUserId),
   ]);
 
   const showFollow = !blockedByOwner && !blockedByViewer;
@@ -66,7 +84,7 @@ export async function HeroCollapsedViewerItems({
       <BookmarkMenuItem listId={list.id} initialBookmarked={bookmarked} />
       {showFollow && (
         <FollowMenuItem
-          ownerId={ownerId}
+          ownerProfileId={ownerProfileId}
           ownerName={ownerName}
           initialFollowing={following}
           requireDisclosure={!hasAnyFollows}

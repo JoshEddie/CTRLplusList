@@ -31,7 +31,7 @@ describe('FocusEditor', () => {
       // item — the floor is Preview's Create/Save gate and the manual advance
       // rule, never a trapped editor.
       const user = userEvent.setup();
-      const { onDone } = setup('title', { name: 'a'.repeat(120) });
+      const { onDone } = setup('name', { name: 'a'.repeat(120) });
       const done = screen.getByRole('button', { name: 'Done' });
       expect(done).toBeEnabled();
       await user.click(done);
@@ -40,7 +40,7 @@ describe('FocusEditor', () => {
 
     it('ValidName_EnablesDone-ClickCallsOnDone', async () => {
       const user = userEvent.setup();
-      const { onDone } = setup('title');
+      const { onDone } = setup('name');
       const done = screen.getByRole('button', { name: 'Done' });
       expect(done).toBeEnabled();
       await user.click(done);

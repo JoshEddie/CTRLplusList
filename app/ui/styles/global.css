@@ -13,6 +13,9 @@
   --secondary-dark-color: #111111;
   --third-dark-color: #222222;
   --danger-color: #ef4444;
+  --danger-bg: #fbe5e2;
+  --danger-border: #f0bdb6;
+  --danger-text: #b91c1c;
 
   --neutral-text-color: #1f2937;
   --muted-text-color: #6b7280;
@@ -28,7 +31,6 @@
 
   --max-width: 1500px;
 
-  /* Redesign tokens — see openspec/changes/redesign-home-and-tokens design.md D3 */
   --page-frame-gradient: linear-gradient(
     120deg,
     var(--primary-color-dark) 25%,
@@ -36,7 +38,7 @@
   );
   --heading-text-color: #1f2937;
   --subtitle-text-color: #aaaaaa;
-  --meta-text-color: #bbbbbb;
+  --meta-text-color: #5f6470;
   --date-text-color: #cccccc;
   --divider-color: #f0f0f8;
   --card-border-color: #ebebf5;
@@ -56,11 +58,42 @@
   --buy-link-hover-text: #3520a8;
   --success-bg: #ecfdf3;
   --success-border: #6ee7b7;
-  --success-text: #059669;
+  --success-text: #1c7146;
+  --warn: #845309;
+  --warn-bg: #fbf1d9;
+  --warn-line: #ecd49a;
+  /* Claim-visibility tier tints — the Spoilers tile fill and its menu dots.
+     A genuinely new role: no existing token maps a tier to a colour. Peach
+     serves both `claims` and `identity` (per the 2026-09-01 mockup). */
+  --spoiler-tint-surprise: #d8f6c9;
+  --spoiler-tint-progress: #fff8c9;
+  --spoiler-tint-claims: #f6d5c9;
   --tab-active-color: var(--primary-color);
 
   --WCAG-input-size: 44px;
   --WCAG-input-size-sm: 36px;
+  /* The visible band: the slice of the layout viewport the soft keyboard is not
+     covering. AppViewport overwrites both with exact pixels off visualViewport;
+     these are the pre-JS fallbacks, where the band is the whole viewport.
+     `--app-viewport-top` is for `position: fixed` surfaces only — they translate
+     cleanly. A sticky element renders at max(flowY - scrollY, top), so shifting
+     its `top` moves it relative to the content behind it and the shift appears
+     and disappears as the element pins and unpins. Sticky offsets stay in
+     layout coordinates and simply go out of view while the band is displaced. */
+  --app-viewport-top: 0px;
+  --app-viewport-height: 100vh;
+  /* Layout-viewport distance down to the band's bottom edge. A surface starting
+     at layout-y 0 has to reach this, not merely the band's height, or it stops
+     short by the offset and shows the canvas underneath. */
+  --app-viewport-fill: calc(
+    var(--app-viewport-top) + var(--app-viewport-height)
+  );
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-viewport-height: 100dvh;
+  }
 }
 
 /* @media (prefers-color-scheme: dark) {
@@ -89,34 +122,39 @@
 
 html,
 body {
-  width: 100vw;
-  overflow-x: hidden;
   color: var(--primary-text-color);
 }
 
+/* While a fixed overlay sheet owns the screen, the document behind it must
+   not scroll. On <html> rather than <body> so the scroll position survives
+   (the position:fixed body trick loses it). The class is owned by
+   useScrollLock, not a `:has(.modal-overlay-scrim)` selector: the App Router
+   keeps the route you navigated back from mounted-but-hidden, so a structural
+   selector goes on matching a scrim nobody can see and never unlocks. */
+html.has-open-sheet {
+  overflow: hidden;
+  /* overflow: hidden stops scrolling but not the iOS rubber-band, and the
+     bounce carries position:fixed chrome with it (the nav-jump on input
+     focus); this kills the bounce too. */
+  overscroll-behavior: none;
+}
+
 html {
-  background-color: var(--primary-color-dark);
+  /* Clips horizontal overflow for the whole page: html's overflow propagates
+     to the viewport, leaving html itself `visible`. Setting it on `body`
+     instead would make body a scroll container (a non-visible axis forces the
+     other to `auto`), and the sticky app nav would pin to body's full-content
+     scrollport rather than the viewport — i.e. never pin. */
+  overflow-x: hidden;
+  /* Painted on the canvas, so it also fills the overscroll gutter iOS
+     rubber-bands into — matching the manifest theme_color. */
+  background-color: var(--secondary-color-dark);
 }
 
 body {
   font-family: var(--font-roboto-condensed);
   -webkit-font-smoothing: antialiased;
   /* background-color: var(--background-color); */
-  height: 100vh;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: var(--page-frame-gradient);
-  background-attachment: fixed;
-  pointer-events: none;
 }
 
 * {
@@ -125,7 +163,11 @@ body::before {
   margin: 0;
 }
 
-.sr-only {
+/* Grouped: the choose-items checkbox label span is visually hidden but kept
+   for assistive tech (its accessible name is the item name) — same clip
+   block, one home. */
+.sr-only,
+.choose-items-select .checkbox_field > span {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -138,16 +180,20 @@ body::before {
 }
 
 /* Content well inside the .app-surface. The white surface is the backdrop now,
-   so .container is just inner padding and flow positioning. */
+   so .container is just inner padding and flow positioning. The padding is
+   held in variables because full-bleed children (a hero band that has to sit
+   on the surface's own edge) cancel it with a negative margin, and the two
+   have to move together. */
 .container {
-  padding: 32px 44px 0;
+  --container-padding-x: 44px;
+  --container-padding-top: 32px;
+  padding: var(--container-padding-top) var(--container-padding-x) 0;
   padding-bottom: 36px;
 }
 
 @media (max-width: 800px) {
   .container {
-    padding: 32px 20px 0;
-    padding-bottom: 36px;
+    --container-padding-x: 20px;
   }
 }
 
@@ -160,20 +206,9 @@ body::before {
   color: var(--primary-text-color);
 }
 
-.header.saved-lists {
-  margin-top: 16px;
-}
-
 .header .pageTitle {
-  font-size: 40px;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
   text-align: left;
   color: var(--primary-color);
-}
-
-.header .listDetails {
-  text-align: left;
 }
 
 .header-buttons {
@@ -244,40 +279,61 @@ body::before {
 }
 
 /* Navigation Styles */
-.nav-container {
-  width: 100%;
-  max-width: 600px;
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 16px;
-  order: 2;
-  grid-column: span 2;
-}
-
-.nav-menu {
-  font-size: 1.25rem;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
-  color: #ffffff;
-  border-bottom: 1px solid #ffffff;
-  width: 80%;
-  margin: 0 auto;
-}
-
 .nav-items {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.logout-icon {
-  margin-right: 10px;
+/* Shared panel chrome for the two dialog implementations (confirm dialog +
+   follow disclosure); each keeps only its own sizing. */
+.dialog-panel {
+  background-color: var(--background-color);
+  color: var(--primary-text-color);
+  border: 1px solid var(--primary-color);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+
+/* Shared overlay scrim + shell box for the form-shell and deck-screen
+   modals — purchasemodal's .modal-overlay is a different scrim (z-index/
+   animation) and stays separate. Skins (radius, shadow, height caps) live
+   with each surface. */
+.modal-overlay-scrim {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Covers the whole layout viewport, not the visualViewport band: band-sized
+     boxes leave a strip of raw page when iOS misreports the band around
+     keyboard/toolbar transitions. The soft keyboard deliberately overlays the
+     shell instead of shrinking it — iOS pans the focused field into view. */
+  padding: 24px 16px;
+  z-index: 60;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  background: rgba(42, 32, 96, 0.45);
+  backdrop-filter: blur(3px);
+}
+
+.modal-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  overflow: hidden;
+  background: var(--light-color);
+  color: var(--neutral-text-color);
+}
+
+.modal-shell-wide {
+  max-width: 640px;
 }
 
 .empty-container {
   padding: 40px 20px;
-  border: 1px solid var(--primary-color);
-  background-color: var(--secondary-background-color);
   border-radius: 10px;
   display: flex;
   flex-direction: column;
@@ -288,24 +344,37 @@ body::before {
   color: var(--primary-text-color);
 }
 
-.empty-container h3 {
+/* The two ways out of an empty profile-scoped surface, side by side while the
+   row fits and stacked once it does not — `wrap` is the whole rule, so there is
+   no breakpoint to keep in step with the buttons' own widths. */
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* Display-heading pair shared by the big message surfaces (empty states,
+   error boundary, private-list cover, page titles). */
+.empty-container h3,
+.error-boundary h3,
+.header .pageTitle,
+.list-private h1 {
   font-size: 40px;
   font-family: var(--font-crimson-pro);
   font-weight: 100;
 }
 
-.empty-container p {
+.empty-container p,
+.error-boundary p,
+.list-private p {
   font-size: 18px;
 }
 
 @media (min-width: 550px) {
   .menu {
     grid-template-columns: 199px 1fr 45px;
-  }
-
-  .nav-container {
-    order: 0;
-    grid-column: span 1;
   }
 }
 
@@ -316,10 +385,6 @@ body::before {
   }
 
   .header .pageTitle {
-    text-align: left;
-  }
-
-  .header .listDetails {
     text-align: left;
   }
 }
@@ -335,14 +400,10 @@ body::before {
 }
 
 .error-boundary h3 {
-  font-size: 40px;
-  font-family: var(--font-crimson-pro);
-  font-weight: 100;
   color: var(--heading-text-color);
 }
 
 .error-boundary p {
-  font-size: 18px;
   color: var(--muted-text-color);
 }
 
@@ -354,11 +415,4 @@ body::before {
 .error-boundary-digest {
   font-size: 14px;
   color: var(--subtitle-text-color);
-}
-
-.container--list-details {
-  padding: 0 0 16px;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
 }

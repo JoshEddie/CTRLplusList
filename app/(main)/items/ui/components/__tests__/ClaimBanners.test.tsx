@@ -6,25 +6,25 @@ import ClaimBanners from '../ClaimBanners';
 const selfClaim: PurchaseView = {
   id: 'p1',
   by: 'self',
-  firstName: 'You',
+  name: 'You',
   claimedByViewer: true,
 };
 const samClaim: PurchaseView = {
   id: 'p2',
   by: 'other',
-  firstName: 'Sam',
+  name: 'Sam',
   claimedByViewer: false,
 };
 const joClaim: PurchaseView = {
   id: 'p3',
   by: 'other',
-  firstName: 'Jo',
+  name: 'Jo Nakamura',
   claimedByViewer: false,
 };
 const grandmaClaim: PurchaseView = {
   id: 'p4',
   by: 'other',
-  firstName: 'Grandma',
+  name: 'Grandma',
   claimedByViewer: true,
 };
 
@@ -35,7 +35,7 @@ function renderBanners(
     showPurchased: false,
     myClaims: [],
     isOwner: false,
-    showSpoilerInfo: false,
+    tier: 'claims',
     claims: [],
     claimSummary: '',
     counterText: '1/3 claimed',
@@ -49,9 +49,9 @@ describe('ClaimBanners', () => {
     renderBanners({
       showPurchased: true,
       claims: [samClaim, joClaim],
-      claimSummary: 'Sam, Jo',
+      claimSummary: 'Sam, Jo Nakamura',
     });
-    expect(screen.getByRole('status')).toHaveTextContent('Claimed by Sam, Jo');
+    expect(screen.getByRole('status')).toHaveTextContent('Claimed by Sam, Jo Nakamura');
   });
 
   it('PurchasedButMine_SuppressesOthersBanner', () => {
@@ -70,19 +70,19 @@ describe('ClaimBanners', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('ClaimedByViewerForOther_ShowsYouClaimedThisForFirstName', () => {
+  it('ClaimedByViewerForOther_ShowsYouClaimedThisForThem', () => {
     renderBanners({ myClaims: [grandmaClaim] });
     expect(
       screen.getByText('You claimed this for Grandma')
     ).toBeInTheDocument();
   });
 
-  it('TwoAttributedClaims_EnumeratesBothNames', () => {
+  it('TwoAttributedClaims_EnumeratesBothNamesInFull', () => {
     renderBanners({
       myClaims: [grandmaClaim, { ...joClaim, claimedByViewer: true }],
     });
     expect(
-      screen.getByText('You claimed this for Grandma, Jo')
+      screen.getByText('You claimed this for Grandma, Jo Nakamura')
     ).toBeInTheDocument();
   });
 
@@ -98,37 +98,42 @@ describe('ClaimBanners', () => {
     expect(screen.queryByText('You claimed this')).not.toBeInTheDocument();
   });
 
+  // The owner spoiler banner is computed internally: it shows only when the
+  // viewer is the owner, the item carries claims, and the tier is `claims`.
+  // No tier names the claiming parties — that is the claim modal's reveal.
   describe('Spoiler', () => {
-    it('TwoClaims_RendersInformationalRowPerClaim-NoRemoveAffordance', () => {
+    it('OwnerAtClaims_RendersCounterWithoutNamingParties', () => {
       renderBanners({
-        showSpoilerInfo: true,
+        isOwner: true,
+        tier: 'claims',
         claims: [samClaim, joClaim],
       });
-      expect(screen.getByText('Sam')).toBeInTheDocument();
-      expect(screen.getByText('Jo')).toBeInTheDocument();
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent('1/3 claimed');
+      expect(screen.queryByText('Sam')).not.toBeInTheDocument();
+      expect(screen.queryByText('Jo Nakamura')).not.toBeInTheDocument();
     });
 
-    it('AttributedClaim_RendersAddedByClaimerFirstName', () => {
+    it('OwnerAtClaimsWithAttributedClaim_NamesNeitherParty', () => {
       renderBanners({
-        showSpoilerInfo: true,
-        claims: [{ ...grandmaClaim, claimerFirstName: 'Vicky' }],
+        isOwner: true,
+        tier: 'claims',
+        claims: [{ ...grandmaClaim, claimerName: 'Vicky' }],
       });
-      expect(
-        screen.getByText('Grandma — added by Vicky')
-      ).toBeInTheDocument();
+      expect(screen.queryByText(/Grandma/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Vicky/)).not.toBeInTheDocument();
     });
 
-    it('SelfClaim_LabelsRowYou', () => {
-      renderBanners({ showSpoilerInfo: true, claims: [selfClaim] });
-      expect(screen.getByText('You')).toBeInTheDocument();
-    });
+    it.each(['surprise', 'progress'] as const)(
+      'OwnerBelowClaimsAt%s_RendersNoSpoilerBanner',
+      (tier) => {
+        renderBanners({ isOwner: true, tier, claims: [samClaim, joClaim] });
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      }
+    );
 
-    it('CounterText_RendersSpoilersPrefix', () => {
-      renderBanners({ showSpoilerInfo: true, claims: [samClaim] });
-      expect(screen.getByRole('status')).toHaveTextContent(
-        'Spoilers: 1/3 claimed'
-      );
+    it('NonOwnerAtClaims_RendersNoSpoilerBanner', () => {
+      renderBanners({ isOwner: false, tier: 'claims', claims: [samClaim] });
+      expect(screen.queryByText('1/3 claimed')).not.toBeInTheDocument();
     });
   });
 
@@ -136,4 +141,19 @@ describe('ClaimBanners', () => {
     renderBanners();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
+});
+
+// A claim the viewer holds is disclosed in full at every level, so it always
+// carries a name — except on an optimistic row assembled before the server
+// answers, where the fallback keeps the label total.
+it('AttributedOwnClaimWithoutAName_LabelsItSomeone', () => {
+  renderBanners({
+    myClaims: [
+      { id: 'p9', by: 'other', claimedByViewer: true },
+    ],
+  });
+
+  expect(screen.getByRole('status')).toHaveTextContent(
+    'You claimed this for Someone'
+  );
 });

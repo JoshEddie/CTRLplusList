@@ -1,5 +1,5 @@
 import { storeValid } from '@/lib/storeValidity';
-import { ItemDisplay } from '@/lib/types';
+import { ItemDisplay, SpoilerTier } from '@/lib/types';
 import ItemActions from './ItemActions';
 import ItemPhoto from './ItemPhoto';
 import PriceLine from './PriceLine';
@@ -15,8 +15,8 @@ export default function ItemCard({
   fullyClaimed,
   showCounter,
   counterText,
-  showOwnerClaimAction,
-  showOwnerManageAction,
+  hasAnyClaim,
+  tier,
   showBuyClaim,
   viewOnly,
   onPurchaseClick,
@@ -34,8 +34,8 @@ export default function ItemCard({
   fullyClaimed: boolean;
   showCounter: boolean;
   counterText: string;
-  showOwnerClaimAction: boolean;
-  showOwnerManageAction: boolean;
+  hasAnyClaim: boolean;
+  tier: SpoilerTier;
   /** Authed non-owner Buy & Claim signal; absent on view-only surfaces. */
   showBuyClaim?: boolean;
   /** Non-interactive preview surfaces render only the live View item link. */
@@ -64,8 +64,8 @@ export default function ItemCard({
           fullyClaimed={fullyClaimed}
           viewerClaimed={viewerClaimed}
           guestViewer={guestViewer}
-          showOwnerClaimAction={showOwnerClaimAction}
-          showOwnerManageAction={showOwnerManageAction}
+          hasAnyClaim={hasAnyClaim}
+          tier={tier}
           showBuyClaim={showBuyClaim}
           store={storeValid(item.store) ? (item.store ?? null) : null}
           viewOnly={viewOnly}
