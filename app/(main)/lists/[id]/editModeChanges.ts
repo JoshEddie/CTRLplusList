@@ -1,19 +1,4 @@
-import { dateInputValue } from '@/app/(main)/lists/ui/components/utils';
 import { getMessage } from '@/lib/i18n/utils';
-
-export interface ListDetailsDraft {
-  name: string;
-  subtitle: string;
-  occasion: string;
-  date: string;
-}
-
-type ListDetailsSaved = {
-  name: string;
-  subtitle: string | null;
-  occasion: string;
-  date: Date;
-};
 
 /** One list entry as edit mode stages it: the array's order is the position. */
 export type StagedEntry = { item_id: string; quantity: number };
@@ -29,6 +14,7 @@ function listHref(
 ): string {
   const next = new URLSearchParams(params?.toString());
   next.delete('new');
+  next.delete('page');
   if (edit) next.set('edit', '1');
   else next.delete('edit');
   const queryString = next.toString();
@@ -49,17 +35,17 @@ export function exitEditHref(
   return listHref(listId, params, false);
 }
 
+// The primary always reads as the commit: on the create fork it counts what
+// is staged, and with nothing staged it is a plain Save that just leaves.
 export function editModeSaveLabel(
   isNew: boolean,
   totalSelected: number
 ): string {
-  if (!isNew) return getMessage('edit_mode_save_label');
-  return totalSelected > 0
-    ? getMessage('edit_mode_add_label', { count: totalSelected })
-    : getMessage('edit_mode_skip_label');
+  if (!isNew || totalSelected === 0) return getMessage('edit_mode_save_label');
+  return getMessage('edit_mode_add_label', { count: totalSelected });
 }
 
-const quantities = (entries: StagedEntry[]) =>
+export const quantitiesOf = (entries: StagedEntry[]) =>
   new Map(entries.map((entry) => [entry.item_id, entry.quantity]));
 
 // Reorder is judged on the rows both states share: an add lands at the end
@@ -73,8 +59,8 @@ export function entryDiff(
   requantified: number;
   reordered: boolean;
 } {
-  const before = quantities(initial);
-  const after = quantities(staged);
+  const before = quantitiesOf(initial);
+  const after = quantitiesOf(staged);
   let added = 0;
   let removed = 0;
   let requantified = 0;
@@ -103,18 +89,14 @@ export function pendingChanges(
   staged: StagedEntry[],
   moved: ReadonlySet<string>
 ): Set<string> {
-  const before = quantities(initial);
-  const after = quantities(staged);
+  const before = quantitiesOf(initial);
+  const after = quantitiesOf(staged);
   const pending = new Set(moved);
   for (const [id, quantity] of after) {
     if (before.get(id) !== quantity) pending.add(id);
   }
   for (const id of before.keys()) if (!after.has(id)) pending.add(id);
   return pending;
-}
-
-export function stagedUnits(staged: StagedEntry[]): number {
-  return staged.reduce((sum, entry) => sum + entry.quantity, 0);
 }
 
 export function moveEntry(
@@ -130,17 +112,77 @@ export function moveEntry(
   return next;
 }
 
-// A blank subtitle is stored as NULL, so the draft's empty string and the
-// row's null are the same value and must not read as an edit.
-export function detailsChanged(
-  draft: ListDetailsDraft,
-  saved: ListDetailsSaved
-): boolean {
-  const subtitle = draft.subtitle.trim();
-  return (
-    draft.name !== saved.name ||
-    (subtitle === '' ? null : subtitle) !== saved.subtitle ||
-    draft.occasion !== saved.occasion ||
-    draft.date !== dateInputValue(saved.date)
-  );
+/** The order `In this list` shows: the staged entries, with every saved entry removed this session spliced back at the index it held. */
+export function displayOrder(
+  staged: StagedEntry[],
+  saved: StagedEntry[]
+): { item_id: string; removed: boolean }[] {
+  const stagedIds = new Set(staged.map((entry) => entry.item_id));
+  const order = staged.map((entry) => ({
+    item_id: entry.item_id,
+    removed: false,
+  }));
+  saved.forEach((entry, index) => {
+    if (stagedIds.has(entry.item_id)) return;
+    order.splice(Math.min(index, order.length), 0, {
+      item_id: entry.item_id,
+      removed: true,
+    });
+  });
+  return order;
+}
+
+// Where a removed entry goes back into the staged array so that the shown
+// order does not change: its shown index, less the removed rows still ahead
+// of it, which the staged array does not hold.
+function restoreIndex(
+  entries: StagedEntry[],
+  saved: StagedEntry[],
+  itemId: string
+): number {
+  const shown = displayOrder(entries, saved);
+  const at = shown.findIndex((row) => row.item_id === itemId);
+  if (at < 0) return entries.length;
+  return at - shown.slice(0, at).filter((row) => row.removed).length;
+}
+
+// The one membership control: 0 removes, a new item lands at the end, and a
+// saved entry being put back lands where its struck-through row already is.
+export function setEntryQuantity(
+  entries: StagedEntry[],
+  saved: StagedEntry[],
+  itemId: string,
+  quantity: number
+): StagedEntry[] {
+  if (quantity <= 0) return entries.filter((entry) => entry.item_id !== itemId);
+  if (entries.some((entry) => entry.item_id === itemId))
+    return entries.map((entry) =>
+      entry.item_id === itemId ? { ...entry, quantity } : entry
+    );
+  const next = [...entries];
+  next.splice(restoreIndex(entries, saved, itemId), 0, {
+    item_id: itemId,
+    quantity,
+  });
+  return next;
+}
+
+// Where a click on an in-app link would take the page, or null when the click
+// is not a plain navigation the mode should intercept.
+export function inAppDestination(event: MouseEvent): string | null {
+  if (
+    event.defaultPrevented ||
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  )
+    return null;
+  const anchor =
+    event.target instanceof Element ? event.target.closest('a[href]') : null;
+  if (!(anchor instanceof HTMLAnchorElement)) return null;
+  if (anchor.target === '_blank' || anchor.origin !== window.location.origin)
+    return null;
+  return anchor.pathname + anchor.search + anchor.hash;
 }

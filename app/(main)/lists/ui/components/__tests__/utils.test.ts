@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dateFieldError, dateInputValue } from '../utils';
+import { dateFieldError, dateInputValue, detailsChanged } from '../utils';
 
 describe('dateFieldError', () => {
   it('WellFormedDate_ReturnsNull', () => {
@@ -30,5 +30,42 @@ describe('dateInputValue', () => {
 
   it('IsoString_ReturnsIsoDayWithoutTime', () => {
     expect(dateInputValue('2026-12-25T00:00:00.000Z')).toBe('2026-12-25');
+  });
+});
+
+describe('detailsChanged', () => {
+  const list = {
+    name: 'Birthday',
+    subtitle: 'Brandy Family',
+    occasion: 'Birthday',
+    date: new Date('2026-03-04T00:00:00.000Z'),
+  };
+  const draft = {
+    name: 'Birthday',
+    subtitle: 'Brandy Family',
+    occasion: 'Birthday',
+    date: '2026-03-04',
+  };
+
+  it('DraftMatchesList_ReturnsFalse', () => {
+    expect(detailsChanged(draft, list)).toBe(false);
+  });
+
+  it('NameEdited_ReturnsTrue', () => {
+    expect(detailsChanged({ ...draft, name: 'Xmas' }, list)).toBe(true);
+  });
+
+  it('DateEdited_ReturnsTrue', () => {
+    expect(detailsChanged({ ...draft, date: '2026-03-05' }, list)).toBe(true);
+  });
+
+  it('SubtitleClearedAgainstNull_ReturnsFalse', () => {
+    expect(
+      detailsChanged({ ...draft, subtitle: '  ' }, { ...list, subtitle: null })
+    ).toBe(false);
+  });
+
+  it('SubtitleClearedAgainstText_ReturnsTrue', () => {
+    expect(detailsChanged({ ...draft, subtitle: '' }, list)).toBe(true);
   });
 });

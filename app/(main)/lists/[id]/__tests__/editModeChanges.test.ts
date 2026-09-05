@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-  detailsChanged,
+  displayOrder,
   editModeSaveLabel,
   enterEditHref,
   entryDiff,
   exitEditHref,
   moveEntry,
   pendingChanges,
-  stagedUnits,
+  setEntryQuantity,
 } from '../editModeChanges';
 import { entry } from './test-helpers';
 
@@ -16,8 +16,9 @@ describe('editModeSaveLabel', () => {
     expect(editModeSaveLabel(false, 5)).toBe('Save');
   });
 
-  it('NewListNoSelection_ShowsSkip', () => {
-    expect(editModeSaveLabel(true, 0)).toBe('Skip');
+  // The primary always reads as the commit; Skip is the revert's label alone.
+  it('NewListNoSelection_StillReadsSave', () => {
+    expect(editModeSaveLabel(true, 0)).toBe('Save');
   });
 
   it('NewList_PluralizesItemCount', () => {
@@ -47,6 +48,13 @@ describe('enterEditHref', () => {
 describe('exitEditHref', () => {
   it('OnlyModeParams_ReturnsTheBareListPath', () => {
     expect(exitEditHref('l1', new URLSearchParams('edit=1&new=1'))).toBe(
+      '/lists/l1'
+    );
+  });
+
+  // The page belongs to the library the mode paged through, not to the list.
+  it('PageParam_DoesNotSurviveTheExit', () => {
+    expect(exitEditHref('l1', new URLSearchParams('edit=1&page=3'))).toBe(
       '/lists/l1'
     );
   });
@@ -128,21 +136,6 @@ describe('pendingChanges', () => {
   });
 });
 
-describe('stagedUnits', () => {
-  it('MixedQuantities_SumsThem', () => {
-    expect(
-      stagedUnits([
-        { item_id: 'a', quantity: 1 },
-        { item_id: 'b', quantity: 4 },
-      ])
-    ).toBe(5);
-  });
-
-  it('NoEntries_ReturnsZero', () => {
-    expect(stagedUnits([])).toBe(0);
-  });
-});
-
 describe('moveEntry', () => {
   const entries = ['a', 'b', 'c'].map((item_id) => ({ item_id, quantity: 1 }));
   const ids = (list: { item_id: string }[]) => list.map((e) => e.item_id);
@@ -164,39 +157,72 @@ describe('moveEntry', () => {
   });
 });
 
-describe('detailsChanged', () => {
-  const list = {
-    name: 'Birthday',
-    subtitle: 'Brandy Family',
-    occasion: 'Birthday',
-    date: new Date('2026-03-04T00:00:00.000Z'),
-  };
-  const draft = {
-    name: 'Birthday',
-    subtitle: 'Brandy Family',
-    occasion: 'Birthday',
-    date: '2026-03-04',
-  };
+describe('setEntryQuantity', () => {
+  const saved = [entry('a'), entry('b'), entry('c')];
 
-  it('DraftMatchesList_ReturnsFalse', () => {
-    expect(detailsChanged(draft, list)).toBe(false);
+  it('Zero_DropsTheEntry', () => {
+    expect(setEntryQuantity([...saved], saved, 'b', 0)).toEqual([
+      entry('a'),
+      entry('c'),
+    ]);
   });
 
-  it('NameEdited_ReturnsTrue', () => {
-    expect(detailsChanged({ ...draft, name: 'Xmas' }, list)).toBe(true);
+  it('ExistingEntry_ChangesItsQuantityInPlace', () => {
+    expect(setEntryQuantity([...saved], saved, 'b', 4)).toEqual([
+      entry('a'),
+      entry('b', 4),
+      entry('c'),
+    ]);
   });
 
-  it('DateEdited_ReturnsTrue', () => {
-    expect(detailsChanged({ ...draft, date: '2026-03-05' }, list)).toBe(true);
+  it('NewItem_LandsAtTheEnd', () => {
+    expect(setEntryQuantity([...saved], saved, 'd', 2)).toEqual([
+      ...saved,
+      entry('d', 2),
+    ]);
   });
 
-  it('SubtitleClearedAgainstNull_ReturnsFalse', () => {
+  it('RemovedSavedEntryPutBack_LandsAtTheIndexItHeld', () => {
+    expect(setEntryQuantity([entry('a'), entry('c')], saved, 'b', 1)).toEqual([
+      entry('a'),
+      entry('b'),
+      entry('c'),
+    ]);
+  });
+
+  it('SavedIndexPastTheStagedLength_LandsAtTheEnd', () => {
+    expect(setEntryQuantity([entry('a')], saved, 'c', 1)).toEqual([
+      entry('a'),
+      entry('c'),
+    ]);
+  });
+
+  // The struck-through row ahead of it is not in the staged array, so the
+  // saved index alone would land one place too late.
+  it('RestoredBehindAnotherRemovedRow_KeepsTheShownOrder', () => {
+    expect(setEntryQuantity([entry('c')], saved, 'b', 1)).toEqual([
+      entry('b'),
+      entry('c'),
+    ]);
+    expect(setEntryQuantity([entry('c')], saved, 'a', 1)).toEqual([
+      entry('a'),
+      entry('c'),
+    ]);
+  });
+});
+
+describe('displayOrder', () => {
+  it('RemovedEntries_SplicedBackAtTheirSavedIndexAndFlagged', () => {
     expect(
-      detailsChanged({ ...draft, subtitle: '  ' }, { ...list, subtitle: null })
-    ).toBe(false);
-  });
-
-  it('SubtitleClearedAgainstText_ReturnsTrue', () => {
-    expect(detailsChanged({ ...draft, subtitle: '' }, list)).toBe(true);
+      displayOrder(
+        [entry('c'), entry('d')],
+        [entry('a'), entry('b'), entry('c')]
+      )
+    ).toEqual([
+      { item_id: 'a', removed: true },
+      { item_id: 'b', removed: true },
+      { item_id: 'c', removed: false },
+      { item_id: 'd', removed: false },
+    ]);
   });
 });

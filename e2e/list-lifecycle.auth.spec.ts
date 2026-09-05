@@ -24,15 +24,20 @@ test('ListLifecycle_OwnerCreatesAndShares_StepsReflected', async ({ page }) => {
   const listId = page.url().match(/\/lists\/([^/]+)\?edit=1/)?.[1];
   expect(listId).toBeTruthy();
 
-  // Add items — select one library item and save; the arc returns to the list
-  // page. Capture the chosen row's item name so the post-save assertion can
-  // prove the attach itself round-tripped.
-  const chosenRow = page.locator('li.edit-mode-item').first();
-  await chosenRow.getByRole('button', { name: 'Increase' }).click();
+  // Add items — the create fork opens on `Add items`; bump one library card
+  // and save, and the arc returns to the list page. Capture the chosen card's
+  // item name so the post-save assertion can prove the attach round-tripped.
+  await expect(page.getByRole('tab', { name: /^Add items/ })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  );
+  await expect(page.locator('.edit-mode-count')).toHaveText('No changes');
+  const chosenCard = page.locator('.edit-mode-library .item').first();
+  await chosenCard.getByRole('button', { name: 'Increase' }).click();
   const chosenItemName = (
-    await chosenRow.locator('.edit-mode-row-name-static').innerText()
+    await chosenCard.locator('.itemName').innerText()
   ).trim();
-  await expect(page.locator('.edit-mode-count')).toHaveText('1 item');
+  await expect(page.locator('.edit-mode-count')).toHaveText('1 change');
   await page.getByRole('button', { name: /Add 1 item/ }).click();
   await page.getByRole('button', { name: 'Save changes' }).click();
 
@@ -43,11 +48,11 @@ test('ListLifecycle_OwnerCreatesAndShares_StepsReflected', async ({ page }) => {
   // The chosen item's name rendering proves setListItems persisted the attach —
   // URL + heading alone would also pass on a silent no-op save (the new list
   // starts empty, so nothing else can supply this name). Scoped to the list
-  // page's owner item rows (.sortable-item): edit mode's DOM — full of
+  // page's item surface (.items-browser): edit mode's DOM — full of
   // .itemName nodes for the whole library — stays mounted in the document
   // after the client-side transition, so an unscoped name lookup matches it.
   await expect(
-    page.locator('.sortable-item .itemName', { hasText: chosenItemName })
+    page.locator('.items-browser .itemName', { hasText: chosenItemName })
   ).toBeVisible();
 
   // Set visibility — a new list defaults to Hidden; promote it to Shared via

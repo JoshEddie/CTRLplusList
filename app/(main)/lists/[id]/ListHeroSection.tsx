@@ -33,14 +33,10 @@ export default async function ListHeroSection({
   const list = await guardListViewable(await getList(id), identity);
 
   const isOwner = identity?.activeProfile.id === list.profile_id;
-  const previewMode = isOwner && sp.preview === 'viewer';
 
   // Edit mode replaces the hero with its own band; the two never coexist.
   if (isOwner && sp.edit === '1') return null;
 
-  // Preview renders claim information at the OWNER's own resolved tier, not a
-  // non-member's: a preview honest about claim data would show every claim with
-  // names and spoil the person who opened it.
   const baseline = await getSpoilerBaseline(identity?.userId, list.profile_id);
   const tier = resolveSpoilerTier(baseline, sp);
   const viewerIsMember = await viewerIsProfileMember(
@@ -103,7 +99,6 @@ export default async function ListHeroSection({
             ? (await getListClaimedCount(id)).claimedItemCount
             : undefined
         }
-        previewMode={previewMode}
         itemCount={list.item_count}
         editHref={enterEditHref(
           id,

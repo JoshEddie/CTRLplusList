@@ -85,28 +85,29 @@ no list is visible to its owner only.
 A profile's entire item set, independent of any list.
 
 **Edit mode**:
-The owner's one surface for changing a list, reached at `?edit=1` on the list's
-own route rather than through a page of its own. It replaces the hero with a
-band carrying the list's own details and the staged unit total, swaps the item
-surface for the whole item library partitioned into _In this list_ (position
-order, reorderable by drag) and _Not in this list_ (by name), and commits
-everything it staged — the entries and the list row — through a single Save.
-Quantity is the membership control: a row's stepper reaches 0, which is the
-removal, and any number above it is the add. The stepper sits in the row where
-there is width for it and in the row's own sheet — swatch, name, price, note,
-store link — where there is not; the name opens that sheet at whatever is
-staged, 0 included, so reading an item never adds it.
-Search, store and price filters narrow both halves; while any is active,
-reorder suspends. Cancel is its only revert, and Save, Cancel and backing out of
-the mode all confirm while anything is staged. No claim state renders here: a
-claim belongs to a list entry, not to an item, so a library row carries none
-this list could judge.
+The owner's one surface for changing what is on a list, reached at `?edit=1`
+on the list's own route rather than through a page of its own. It replaces the
+hero with a still band — the list's name and two tabs — and the item surface
+with one staged session. _In this list_ holds the entries in position order,
+one per line, reorderable by drag and never filtered or paginated; _Add items_
+is the item library exactly as the items page renders it (toolbar, card grid,
+pagination), with a quantity stepper standing where the claim actions stand
+elsewhere. Quantity is the membership control: a stepper reaching 0 is the
+removal, and any number above it is the add. A staged change marks its row or
+card where it already is; nothing crosses between tabs, and a removed entry
+keeps the index it held when saved, struck through, until Save. One Save
+commits the entries — membership, quantity and the whole order — and nothing
+else; the list row is the kebab's _Edit list_ modal's. Cancel is the only
+revert, and Save, Cancel, Back, reload and any in-app link all confirm while
+anything is staged. No claim state renders here: a claim belongs to a list
+entry, not to an item, so a library card carries none this list could judge.
 
 **Pending change**:
 An entry, as edit mode stages it, whose membership, quantity, or position
 differs from what is saved — added, removed, re-quantified, or moved. Marked by
-a dot beside the item name; a removed entry keeps its dot below the divider,
-which is how the owner finds what they took off. A drag marks only the row
+a dot beside the item name in _In this list_ and by the status line on a
+library card; a removed entry keeps its place, struck through, which is how the
+owner finds what they took off and puts it back. A drag marks only the row
 dragged — the rows it displaces are still where the owner put them, even
 though Save rewrites their positions along with it
 ([ADR-0010](docs/adr/0010-sparse-fractional-indexing-for-list-order.md)).
@@ -123,8 +124,8 @@ the item or the list.
 How many of an item its owner wants **on one list** — the only quantity there
 is, since an item carries none of its own. The same item asked for once at a
 birthday and four times at Christmas is two entries with two quantities. Set
-from the list being looked at, through the row's kebab menu, and shown on the
-row only when it is above 1. There is no unlimited quantity, and none above 99.
+only inside edit mode, where the entry's stepper is the one quantity control,
+and shown on the row only when it is above 1. There is no unlimited quantity, and none above 99.
 Lowering it below what is already claimed succeeds quietly: refusing would tell
 an owner held below the claims tier that somebody has bought something
 ([ADR-0015](docs/adr/0015-behaviour-may-not-vary-on-spoiler-hidden-state.md)).

@@ -2,33 +2,22 @@
 
 import { Button } from '@/app/ui/components/button';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
-import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
+import { Menu, MenuItem } from '@/app/ui/components/menu';
 import { deleteList } from '@/lib/data/list.actions';
 import { ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { ReactNode, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import {
-  MdDeleteForever,
-  MdModeEdit,
-  MdMoreVert,
-  MdPreview
-} from 'react-icons/md';
+import { MdDeleteForever, MdModeEdit, MdMoreVert } from 'react-icons/md';
 import ListFormContainer from './ListFormContainer';
 
 export default function ListActionsMenu({
   list,
-  previewMode,
-  previewHref,
-  exitPreviewHref,
   isOwner = true,
   prependedItems,
   disabled,
 }: {
   list: ListTable;
-  previewMode: boolean;
-  previewHref: string;
-  exitPreviewHref: string;
   isOwner?: boolean;
   prependedItems?: ReactNode;
   disabled: boolean;
@@ -51,9 +40,6 @@ export default function ListActionsMenu({
   };
 
   const close = () => setOpen(false);
-  const showPreviewToggle = isOwner;
-  const showOwnerEdit = isOwner && !previewMode;
-  const showOwnerDelete = isOwner && !previewMode;
 
   return (
     <>
@@ -76,7 +62,7 @@ export default function ListActionsMenu({
           aria-label="List actions"
         >
           {prependedItems}
-          {showOwnerEdit && (
+          {isOwner && (
             <MenuItem
               icon={<MdModeEdit size={18} />}
               onClick={() => {
@@ -87,25 +73,7 @@ export default function ListActionsMenu({
               Edit list
             </MenuItem>
           )}
-          {showPreviewToggle &&
-            (previewMode ? (
-              <MenuLinkItem
-                href={exitPreviewHref}
-                icon={<MdPreview size={18} />}
-                onClick={close}
-              >
-                Exit preview
-              </MenuLinkItem>
-            ) : (
-              <MenuLinkItem
-                href={previewHref}
-                icon={<MdPreview size={18} />}
-                onClick={close}
-              >
-                Preview as viewer
-              </MenuLinkItem>
-            ))}
-          {showOwnerDelete && (
+          {isOwner && (
             <MenuItem
               icon={<MdDeleteForever size={18} />}
               tone="danger"

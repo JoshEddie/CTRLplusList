@@ -1,3 +1,4 @@
+import { readItemsPageSize } from '@/app/(main)/items/utils';
 import { db } from '@/db';
 import { list_items } from '@/db/schema';
 import { getItemsByProfile } from '@/lib/data/item';
@@ -27,15 +28,17 @@ export default async function ListEditSection({
     return null;
   }
 
-  const [allItems, currentListItems, userLists] = await Promise.all([
-    getItemsByProfile(identity.activeProfile.id, { filter: 'all' }),
-    db
-      .select({ item_id: list_items.item_id, quantity: list_items.quantity })
-      .from(list_items)
-      .where(eq(list_items.list_id, id))
-      .orderBy(asc(list_items.position)),
-    getListsByProfile(identity.activeProfile.id),
-  ]);
+  const [allItems, currentListItems, userLists, initialPageSize] =
+    await Promise.all([
+      getItemsByProfile(identity.activeProfile.id, { filter: 'all' }),
+      db
+        .select({ item_id: list_items.item_id, quantity: list_items.quantity })
+        .from(list_items)
+        .where(eq(list_items.list_id, id))
+        .orderBy(asc(list_items.position)),
+      getListsByProfile(identity.activeProfile.id),
+      readItemsPageSize(),
+    ]);
 
   const currentListItemIds = new Set(currentListItems.map((r) => r.item_id));
   const initialEntries = currentListItems.map(({ item_id, quantity }) => ({
@@ -65,6 +68,7 @@ export default async function ListEditSection({
       // is staged behind Save, never written by the create.
       lists={userLists.filter((list) => list.id !== id)}
       actingAs={await actingAsName(identity)}
+      initialPageSize={initialPageSize}
     />
   );
 }

@@ -21,3 +21,25 @@ export function dateFieldError(dateString: string): string | null {
 export function dateInputValue(date: Date | string): string {
   return new Date(date).toISOString().split('T')[0];
 }
+
+export interface ListDetailsDraft {
+  name: string;
+  subtitle: string;
+  occasion: string;
+  date: string;
+}
+
+// A blank subtitle is stored as NULL, so the draft's empty string and the
+// row's null are the same value and must not read as an edit.
+export function detailsChanged(
+  draft: ListDetailsDraft,
+  saved: { name: string; subtitle: string | null; occasion: string; date: Date }
+): boolean {
+  const subtitle = draft.subtitle.trim();
+  return (
+    draft.name !== saved.name ||
+    (subtitle === '' ? null : subtitle) !== saved.subtitle ||
+    draft.occasion !== saved.occasion ||
+    draft.date !== dateInputValue(saved.date)
+  );
+}

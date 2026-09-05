@@ -1,32 +1,38 @@
 'use client';
 
 import {
-  dateFieldError,
-  dateInputValue,
-} from '@/app/(main)/lists/ui/components/utils';
+  browseItems,
+  parseSort,
+} from '@/app/(main)/items/ui/components/itemFilters';
+import ItemFormContainer from '@/app/(main)/items/ui/components/itemform/ItemFormContainer';
+import { SORT_KEYS_BY_MODE } from '@/app/(main)/items/ui/components/itemsToolbar/toolbarConstants';
+import Pagination from '@/app/(main)/items/ui/components/Pagination';
+import { useItemsPageSize } from '@/app/(main)/items/ui/components/useItemsPageSize';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
-import { updateList } from '@/lib/data/list.actions';
 import { setListItems } from '@/lib/data/listItems.actions';
 import { getMessage } from '@/lib/i18n/utils';
 import { ItemDisplay, ListTable } from '@/lib/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import EditModeFooter from './EditModeFooter';
-import EditModeHeader from './EditModeHeader';
-import EditModeItems from './EditModeItems';
+import EditModeBand, { type EditModeTab } from './EditModeBand';
 import {
-  detailsChanged,
   entryDiff,
   exitEditHref,
+  inAppDestination,
   moveEntry,
   pendingChanges,
-  stagedUnits,
-  type ListDetailsDraft,
+  setEntryQuantity,
   type StagedEntry,
 } from './editModeChanges';
+import EditModeFooter from './EditModeFooter';
+import EditModeInList from './EditModeInList';
+import EditModeLibrary from './EditModeLibrary';
+import EditModeToolbar from './EditModeToolbar';
 
-type Confirming = 'save' | 'discard' | null;
+// `discard` is Cancel's and Back's; `leave` is an in-app link's, which carries
+// the href the confirm then follows.
+type Confirming = 'save' | 'discard' | 'leave' | null;
 
 export default function EditModeForm({
   list,
@@ -35,6 +41,7 @@ export default function EditModeForm({
   isNew,
   lists,
   actingAs,
+  initialPageSize,
 }: {
   list: ListTable;
   items: ItemDisplay[];
@@ -43,6 +50,7 @@ export default function EditModeForm({
   isNew: boolean;
   lists: ListTable[];
   actingAs?: string;
+  initialPageSize?: number;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,31 +59,42 @@ export default function EditModeForm({
   // The rows whose drag is what put them where they are: a move displaces its
   // neighbours on screen, but only the dragged row's saved position changes.
   const [moved, setMoved] = useState<ReadonlySet<string>>(() => new Set());
-  const [draft, setDraft] = useState<ListDetailsDraft>(() => ({
-    name: list.name,
-    subtitle: list.subtitle ?? '',
-    occasion: list.occasion,
-    date: dateInputValue(list.date),
-  }));
+  // Component state, not a search param: the page is already a `replace`, and
+  // a back-navigable tab would compound the entry the dirty-exit guard pushes.
+  // An empty list opens on the library: the only thing to do there is add.
+  const [tab, setTab] = useState<EditModeTab>(
+    isNew || initialEntries.length === 0 ? 'add' : 'list'
+  );
+  const [showNewItem, setShowNewItem] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirming, setConfirming] = useState<Confirming>(null);
+  const [leaveHref, setLeaveHref] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useItemsPageSize(initialPageSize);
 
   const { added, removed, requantified, reordered } = entryDiff(
     initialEntries,
     entries
   );
-  const entriesDirty =
-    added > 0 || removed > 0 || requantified > 0 || reordered;
+  const isDirty = added > 0 || removed > 0 || requantified > 0 || reordered;
   const pending = useMemo(
     () => pendingChanges(initialEntries, entries, moved),
     [initialEntries, entries, moved]
   );
-  const rowDirty = detailsChanged(draft, list);
-  const isDirty = entriesDirty || rowDirty;
 
   const exitHref = useMemo(
     () => exitEditHref(list.id, searchParams),
     [searchParams, list.id]
+  );
+
+  const library = useMemo(
+    () =>
+      browseItems(
+        items,
+        searchParams,
+        parseSort(searchParams, SORT_KEYS_BY_MODE.edit, 'created_desc'),
+        pageSize
+      ),
+    [items, searchParams, pageSize]
   );
 
   // Leaving the tab, reloading, or following a link off-site.
@@ -101,23 +120,40 @@ export default function EditModeForm({
     return () => window.removeEventListener('popstate', onPopState);
   }, [isDirty]);
 
-  const exit = () => {
-    router.push(exitHref);
+  // An in-app link is a client-side navigation `beforeunload` never sees.
+  // Caught in the capture phase so it runs ahead of the link's own handler,
+  // which honours the cancelled default.
+  useEffect(() => {
+    if (!isDirty) return;
+    const onClick = (event: MouseEvent) => {
+      const href = inAppDestination(event);
+      if (href === null) return;
+      event.preventDefault();
+      setLeaveHref(href);
+      setConfirming('leave');
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  }, [isDirty]);
+
+  const exit = (href: string = exitHref) => {
+    router.push(href);
     router.refresh();
   };
 
-  // The one membership control: 0 removes, and an item without an entry gets
-  // one at the end, where a restore lands too.
   const setQuantity = (itemId: string, quantity: number) => {
-    setEntries((prev) => {
-      if (quantity <= 0)
-        return prev.filter((entry) => entry.item_id !== itemId);
-      if (prev.some((entry) => entry.item_id === itemId))
-        return prev.map((entry) =>
-          entry.item_id === itemId ? { ...entry, quantity } : entry
-        );
-      return [...prev, { item_id: itemId, quantity }];
-    });
+    setEntries((prev) =>
+      setEntryQuantity(prev, initialEntries, itemId, quantity)
+    );
+    // Putting a removed row back is not a move: its mark clears with it.
+    if (quantity > 0)
+      setMoved((prev) => {
+        if (!prev.has(itemId) || entries.some((e) => e.item_id === itemId))
+          return prev;
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
   };
 
   const reorder = (activeId: string, overId: string) => {
@@ -130,35 +166,27 @@ export default function EditModeForm({
     );
   };
 
-  // Each concern is skipped when its own slice is unchanged, so a title-only
-  // edit never touches the entries and a quantity-only edit never touches the
-  // list row. The two writes are sequenced, not atomic across each other.
-  const commit = async () => {
-    if (entriesDirty) {
-      const result = await setListItems(list.id, entries);
-      if (!result.success) throw new Error(result.message);
-    }
-    if (rowDirty) {
-      const subtitle = draft.subtitle.trim();
-      const result = await updateList(list.id, {
-        name: draft.name,
-        subtitle: subtitle === '' ? null : subtitle,
-        occasion: draft.occasion,
-        date: new Date(draft.date),
-      });
-      if (!result.success) throw new Error(result.message);
-    }
+  // The item write is real; its membership here is staged like any other
+  // add. The card itself arrives with the refresh the form triggers.
+  const handleCreated = (id?: string) => {
+    setShowNewItem(false);
+    if (id) setQuantity(id, 1);
   };
 
   const save = async () => {
     setIsSubmitting(true);
     try {
-      await toast.promise(commit(), {
-        loading: getMessage('edit_mode_save_loading'),
-        success: getMessage('edit_mode_save_success'),
-        error: (err: Error) =>
-          err.message || getMessage('edit_mode_save_error'),
-      });
+      await toast.promise(
+        setListItems(list.id, entries).then((result) => {
+          if (!result.success) throw new Error(result.message);
+        }),
+        {
+          loading: getMessage('edit_mode_save_loading'),
+          success: getMessage('edit_mode_save_success'),
+          error: (err: Error) =>
+            err.message || getMessage('edit_mode_save_error'),
+        }
+      );
       exit();
     } catch {
       // toast.promise has already surfaced the failure; the staged edit stays
@@ -167,8 +195,6 @@ export default function EditModeForm({
       setIsSubmitting(false);
     }
   };
-
-  const canSave = !dateFieldError(draft.date) && (isDirty || isNew);
 
   // Both confirms are the price bulk Save takes on, and the create fork buys no
   // exemption from them — it changes the labels only. A pristine mode has
@@ -188,35 +214,70 @@ export default function EditModeForm({
   const dismissConfirm = () => {
     if (confirming === 'discard' && isDirty) window.history.pushState(null, '');
     setConfirming(null);
+    setLeaveHref(null);
+  };
+
+  const confirmDiscard = () => {
+    exit(confirming === 'leave' && leaveHref ? leaveHref : exitHref);
   };
 
   return (
     <>
-      <EditModeHeader
-        draft={draft}
-        onChange={(patch) => setDraft((prev) => ({ ...prev, ...patch }))}
-        disabled={isSubmitting}
-        units={stagedUnits(entries)}
-      />
-      <EditModeItems
-        items={items}
-        entries={entries}
-        pending={pending}
-        onQuantityChange={setQuantity}
-        onReorder={reorder}
-        lists={lists}
-        actingAs={actingAs}
-      />
+      <EditModeBand
+        title={list.name}
+        tab={tab}
+        onTabChange={setTab}
+        inListCount={entries.length}
+        onCreate={() => setShowNewItem(true)}
+      >
+        {tab === 'add' && items.length > 0 && <EditModeToolbar items={items} />}
+      </EditModeBand>
+      {tab === 'list' ? (
+        <EditModeInList
+          items={items}
+          saved={initialEntries}
+          entries={entries}
+          moved={moved}
+          onQuantityChange={setQuantity}
+          onReorder={reorder}
+        />
+      ) : (
+        <EditModeLibrary
+          items={items}
+          rows={library.rows}
+          saved={initialEntries}
+          entries={entries}
+          onQuantityChange={setQuantity}
+          onCreate={() => setShowNewItem(true)}
+        />
+      )}
       <EditModeFooter
+        changeCount={pending.size}
+        pager={
+          tab === 'add' && items.length > 0 ? (
+            <Pagination
+              page={library.page}
+              totalPages={library.totalPages}
+              pageSize={pageSize}
+              onPageSizeChange={setPageSize}
+            />
+          ) : undefined
+        }
         totalSelected={entries.length}
-        added={added}
-        removed={removed}
         isNew={isNew}
-        canSave={canSave}
+        canSave={isDirty || isNew}
         isSubmitting={isSubmitting}
         onCancel={handleCancel}
         onSave={handleSave}
       />
+      {showNewItem && (
+        <ItemFormContainer
+          lists={lists}
+          actingAs={actingAs}
+          onClose={() => setShowNewItem(false)}
+          onSuccess={handleCreated}
+        />
+      )}
       <ConfirmDialog
         isOpen={confirming === 'save'}
         onClose={dismissConfirm}
@@ -231,9 +292,9 @@ export default function EditModeForm({
         confirmVariant="primary"
       />
       <ConfirmDialog
-        isOpen={confirming === 'discard'}
+        isOpen={confirming === 'discard' || confirming === 'leave'}
         onClose={dismissConfirm}
-        onConfirm={exit}
+        onConfirm={confirmDiscard}
         title={getMessage('edit_mode_cancel_confirm_title')}
         message={getMessage('edit_mode_cancel_confirm_message')}
         confirmText={getMessage('edit_mode_discard_confirm_label')}

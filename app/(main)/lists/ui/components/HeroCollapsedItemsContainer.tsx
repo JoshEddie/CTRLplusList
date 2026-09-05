@@ -15,8 +15,7 @@ import {
 
 // Owner variant — composes the kebab items added when the hero is
 // collapsed. Only items NOT already in the base `ListActionsMenu`
-// are added here. Choose items and Edit list are already in the base
-// menu (they render unconditionally for owner-non-preview), so we
+// are added here. Edit list is already in the base menu, so we
 // only prepend Share + Visibility radio rows here.
 export async function HeroCollapsedOwnerItems({
   list,

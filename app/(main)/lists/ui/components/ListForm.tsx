@@ -9,10 +9,11 @@ import { useActionState, useState } from 'react';
 import DeleteListButton from './DeleteListButton';
 import ListDetailsFields from './ListDetailsFields';
 import {
+  dateFieldError,
+  dateInputValue,
   detailsChanged,
   type ListDetailsDraft,
-} from '../../[id]/editModeChanges';
-import { dateFieldError, dateInputValue } from './utils';
+} from './utils';
 
 interface ListFormProps {
   list?: ListTable;
@@ -98,6 +99,9 @@ export default function ListForm({
             router.push(`/lists/${result.id}`);
           }
         } else {
+          // The page this form sits on outlives the push, so the shell has to
+          // close itself or its scrim keeps the document from scrolling.
+          onClose?.();
           router.push(`/lists/${result.id}?edit=1&new=1`);
         }
       }

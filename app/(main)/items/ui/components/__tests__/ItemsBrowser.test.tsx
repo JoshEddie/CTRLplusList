@@ -15,13 +15,16 @@ import {
 const nav = vi.hoisted(() => ({
   replace: vi.fn(),
   pathname: '/items',
-  search: '',
+  search: '' as string | null,
 }));
 
+// `null` stands for a render outside a client navigation context, where
+// useSearchParams has nothing to hand back.
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: nav.replace }),
   usePathname: () => nav.pathname,
-  useSearchParams: () => new URLSearchParams(nav.search),
+  useSearchParams: () =>
+    nav.search === null ? null : new URLSearchParams(nav.search),
 }));
 
 vi.mock('../Item', () => ({
@@ -76,6 +79,7 @@ function renderBrowser(
       actor={overrides.actor}
       tier={overrides.tier}
       baseline={overrides.baseline}
+      emptyState={overrides.emptyState}
     />
   );
 }
@@ -332,6 +336,50 @@ describe('ItemsBrowser', () => {
       renderBrowser([makeItem('a', { name: 'Gift' })], { mode: 'items' });
       fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
       expect(nav.replace).toHaveBeenCalledWith('/items?sort=name_asc');
+    });
+  });
+
+  describe('EmptyState', () => {
+    it('NoItemsAtAll_RendersTheEmptyStateInsteadOfTheFilteredMessage', () => {
+      renderBrowser([], { emptyState: <div data-testid="empty-door" /> });
+      expect(screen.getByTestId('empty-door')).toBeInTheDocument();
+      expect(
+        screen.queryByText('No items match your filters.')
+      ).not.toBeInTheDocument();
+    });
+
+    it('ItemsFilteredToNone_KeepsTheFilteredMessageOverTheEmptyState', () => {
+      nav.search = 'q=zzz';
+      renderBrowser([makeItem('a', { name: 'Gift' })], {
+        emptyState: <div data-testid="empty-door" />,
+      });
+      expect(screen.queryByTestId('empty-door')).not.toBeInTheDocument();
+      expect(
+        screen.getByText('No items match your filters.')
+      ).toBeInTheDocument();
+    });
+
+    it('NoItemsAndNoEmptyState_FallsBackToTheFilteredMessage', () => {
+      renderBrowser([]);
+      expect(
+        screen.getByText('No items match your filters.')
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('SearchParamsNull', () => {
+    it('Render_ShowsTheGridInDefaultOrder', () => {
+      nav.search = null;
+      const { container } = renderBrowser([makeItem('a'), makeItem('b')]);
+      expect(container.querySelector('.item-grid')).not.toBeNull();
+      expect(visibleIds()).toEqual(['a', 'b']);
+    });
+
+    it('ClearFilters_ReplacesWithTheBarePath', () => {
+      nav.search = null;
+      renderBrowser([]);
+      fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+      expect(nav.replace).toHaveBeenCalledWith('/items');
     });
   });
 

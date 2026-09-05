@@ -26,7 +26,6 @@ export default function Item({
   showArchiveAction,
   archivedView,
   preview,
-  listId,
 }: {
   item: ItemDisplay;
   className?: string;
@@ -39,11 +38,6 @@ export default function Item({
   archivedView?: boolean;
   /** Render as a live preview inside the item form: no modal, no interactions. */
   preview?: boolean;
-  /** The owner's own view of one of their lists — enables the "Remove from
-   * list" action. Not the same thing as `item.list_id`, which every list
-   * surface carries: this one says the viewer is managing the list, not
-   * merely looking at it. */
-  listId?: string;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -164,8 +158,6 @@ export default function Item({
             itemId={item.id}
             showArchiveAction={showArchiveAction}
             archivedView={archivedView}
-            listId={listId}
-            quantity={item.quantity}
             pathname={pathname}
             searchParams={searchParams}
             onChanged={() => router.refresh()}

@@ -298,11 +298,14 @@ describe('ItemsToolbar', () => {
       expect(nav.replace).toHaveBeenCalledWith('/items');
     });
 
-    it('ModeEdit_RendersNoSortSelect', () => {
+    it('ModeEdit_OffersTheLibrarySortsWithoutListOrder', () => {
       renderToolbar({ mode: 'edit' });
-      expect(
-        screen.queryByRole('combobox', { name: 'Sort items' })
-      ).not.toBeInTheDocument();
+      const options = screen
+        .getAllByRole('option')
+        .map((option) => option.textContent);
+      expect(options[0]).toBe('Newest');
+      expect(options).toContain('Oldest');
+      expect(options).not.toContain('List order');
     });
   });
 

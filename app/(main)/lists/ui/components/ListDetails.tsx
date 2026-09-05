@@ -8,15 +8,20 @@ import SpoilerPicker from '@/app/ui/components/SpoilerPicker';
 import { writableMembership } from '@/lib/data/profile.gate';
 import { atLeast } from '@/lib/spoilers';
 import { authedIdentity } from '@/lib/data/user.session';
+import { getMessage } from '@/lib/i18n/utils';
 import { timeAgo } from '@/lib/timeAgo';
-import { ListTable, type ProfileAvatarView, type SpoilerTier } from '@/lib/types';
+import {
+  ListTable,
+  type ProfileAvatarView,
+  type SpoilerTier,
+} from '@/lib/types';
 import {
   VISIBILITY,
   resolveListVisibility,
   type ListVisibility,
 } from '@/lib/visibility';
 import Link from 'next/link';
-import { MdChecklist, MdVisibility } from 'react-icons/md';
+import { MdChecklist } from 'react-icons/md';
 import BookmarkContainer from './BookmarkContainer';
 import ClaimProgress from './ClaimProgress';
 import {
@@ -44,7 +49,6 @@ export default async function ListDetails({
   viewerIsMember,
   baseline,
   claimedCount,
-  previewMode,
   itemCount,
   editHref,
 }: {
@@ -60,18 +64,14 @@ export default async function ListDetails({
   baseline: SpoilerTier;
   /** Present only where the resolved tier is `progress` or above — `surprise` costs no query. */
   claimedCount?: number;
-  previewMode?: boolean;
   itemCount: number;
   /** Built where the request's searchParams are known, so the tier and any filters ride into the mode. */
   editHref: string;
 }) {
   const identity = await authedIdentity();
-  const ownerFloorDisabled =
-    !!identity && !identity.activeProfile.role.admin;
+  const ownerFloorDisabled = !!identity && !identity.activeProfile.role.admin;
 
   const visibility = resolveListVisibility(list);
-  const previewHref = `/lists/${list.id}?preview=viewer`;
-  const exitPreviewHref = `/lists/${list.id}`;
 
   // Membership on the OWNING profile while acting as another. Independent of
   // the resolved spoiler state: it reports what the viewer may act as, not
@@ -83,23 +83,21 @@ export default async function ListDetails({
 
   const updatedDisplay = timeAgo(list.updated_at);
   const itemsDisplay = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
-  const showOwnerControls = isOwner && !previewMode;
+  const showOwnerControls = isOwner;
   const showViewerControls =
-    !isOwner && viewer_user_id && viewer_self_profile_id && !previewMode;
+    !isOwner && !!viewer_user_id && !!viewer_self_profile_id;
 
   // The Spoilers tile: offered to any viewer resolving a membership on the
-  // owning profile — a non-member has no baseline to adjust — and hidden in
-  // preview, where the owner is pinned to their own resolved tier.
-  const showSpoilerTile = viewerIsMember && !previewMode;
+  // owning profile — a non-member has no baseline to adjust. The owner keeps
+  // it too: their default view is a member's view, at their own tier.
+  const showSpoilerTile = viewerIsMember;
   const spoilerTile = showSpoilerTile ? (
     <SpoilerPicker tier={tier} baseline={baseline} />
   ) : null;
 
   // Compose the prepended kebab items shown on the sticky strip while the
-  // full hero is scrolled away. Owner-preview gets the owner items
-  // (Share/Choose/Edit/Visibility are still owner affordances in preview
-  // mode — visibility just shows current state). Pure viewers get the
-  // viewer items.
+  // full hero is scrolled away. Owners get the owner items; pure viewers get
+  // the viewer items.
   // The Spoilers menu hoists into the sticky-strip kebab as its own rows for a
   // member viewer, in lockstep with the hero tile (`list-hero-collapse`).
   const collapsedSpoilerItems = showSpoilerTile ? (
@@ -135,9 +133,6 @@ export default async function ListDetails({
   const collapsedKebab = (
     <ListActionsMenu
       list={list}
-      previewMode={!!previewMode}
-      previewHref={previewHref}
-      exitPreviewHref={exitPreviewHref}
       isOwner={isOwner}
       prependedItems={collapsedPrepended}
       disabled={ownerFloorDisabled}
@@ -147,25 +142,13 @@ export default async function ListDetails({
   // One role for the hero's two role-keyed regions (actions row, tiles/byline
   // row). Extracted into subcomponents below so this component stays lean and
   // its branching does not compound.
-  const heroMode = heroModeOf({
-    showOwnerControls,
-    showViewerControls,
-    isOwner,
-    previewMode: !!previewMode,
-  });
+  const heroMode = heroModeOf({ showOwnerControls, showViewerControls });
 
-  // The kebab holds Choose/Edit/Preview/Delete — Edit is never a hero button,
-  // only a menu row. It closes the owner's action cluster; in preview it is
-  // the only control and stands alone.
+  // The kebab holds Edit list and Delete — the list row's door, never a hero
+  // button. It closes the owner's action cluster.
   const heroKebab = (
     <div className="list-hero-kebab">
-      <ListActionsMenu
-        list={list}
-        previewMode={!!previewMode}
-        previewHref={previewHref}
-        exitPreviewHref={exitPreviewHref}
-        disabled={ownerFloorDisabled}
-      />
+      <ListActionsMenu list={list} disabled={ownerFloorDisabled} />
     </div>
   );
 
@@ -194,55 +177,44 @@ export default async function ListDetails({
 
   return (
     <>
-
-    <ListHeroSurface title={list.name} kebab={collapsedKebab}>
-      <div className="list-hero">
-        {previewMode && (
-          <div className="preview-banner" role="status">
-            <MdVisibility />
-            <span>You&apos;re previewing this list as a viewer.</span>
-            <LinkButton href={exitPreviewHref} variant="on-dark" size="sm">
-              Exit preview
-            </LinkButton>
-          </div>
-        )}
-
-        {/* Two rows per the 2026-09-01 mockup: title | actions, then
+      <ListHeroSurface title={list.name} kebab={collapsedKebab}>
+        <div className="list-hero">
+          {/* Two rows per the 2026-09-01 mockup: title | actions, then
             lead | meta | spoilers. Desktop lays each row out with flex so
             the rows share no columns; mobile flattens both rows into one
             stack (see list.css). */}
-        <div className="list-hero-main">
-          <div className="list-hero-row">
-            <div className="list-hero-titleblock">
-              <h1 className="list-hero-title">{list.name}</h1>
-              {list.subtitle ? (
-                <div className="list-hero-eyebrow-subtitle-wrapper">
-                  {list.occasion ? (
-                    <span className="list-hero-eyebrow">{list.occasion}</span>
-                  ) : null}{' '}
-                  <p className="list-hero-subtitle">{list.subtitle}</p>
-                </div>
-              ) : null}
+          <div className="list-hero-main">
+            <div className="list-hero-row">
+              <div className="list-hero-titleblock">
+                <h1 className="list-hero-title">{list.name}</h1>
+                {list.subtitle ? (
+                  <div className="list-hero-eyebrow-subtitle-wrapper">
+                    {list.occasion ? (
+                      <span className="list-hero-eyebrow">{list.occasion}</span>
+                    ) : null}{' '}
+                    <p className="list-hero-subtitle">{list.subtitle}</p>
+                  </div>
+                ) : null}
+              </div>
+              {heroActions}
             </div>
-            {heroActions}
-          </div>
-          <div className="list-hero-row">
-            {heroLead}
-            {/* The claimed count describes the list, not the visible item
+            <div className="list-hero-row">
+              {heroLead}
+              {/* The claimed count describes the list, not the visible item
                 set. At `surprise` the line carries item count and time alone. */}
-            <div className="list-hero-meta">
-              <span>
-                {itemsDisplay}
-                {updatedDisplay && <> · updated {updatedDisplay}</>}
-              </span>
-              {atLeast(tier, 'progress') && claimedCount !== undefined && (
-                <ClaimProgress claimed={claimedCount} total={itemCount} />
-              )}
+              <div className="list-hero-meta">
+                <span>
+                  {itemsDisplay}
+                  {updatedDisplay && <> · updated {updatedDisplay}</>}
+                </span>
+                {atLeast(tier, 'progress') && claimedCount !== undefined && (
+                  <ClaimProgress claimed={claimedCount} total={itemCount} />
+                )}
+              </div>
+              {spoilerTile}
             </div>
-            {spoilerTile}
           </div>
         </div>
-      </div>
       </ListHeroSurface>
       {/* Floating, dismissible — sits over the list panel rather than in the
           hero, per the mockup. Fixed positioning, so its DOM home here does not
@@ -257,29 +229,23 @@ export default async function ListDetails({
   );
 }
 
-type HeroMode = 'owner' | 'viewer' | 'preview' | null;
+type HeroMode = 'owner' | 'viewer' | null;
 
 function heroModeOf({
   showOwnerControls,
   showViewerControls,
-  isOwner,
-  previewMode,
 }: {
   showOwnerControls: boolean;
-  showViewerControls: boolean | '' | undefined;
-  isOwner: boolean;
-  previewMode: boolean;
+  showViewerControls: boolean;
 }): HeroMode {
   if (showOwnerControls) return 'owner';
   if (showViewerControls) return 'viewer';
-  if (isOwner && previewMode) return 'preview';
   return null;
 }
 
-// The hero's primary-action cluster (mockup: Share / Choose). Owner gets
-// Share + Choose items; a signed-in viewer gets Share + Bookmark. Edit, Preview
-// and Delete are never hero buttons — they live in the corner kebab. Preview
-// mode renders none (the kebab's Exit-preview is the only control).
+// The hero's primary-action cluster. Owner gets Share + Edit items, the one
+// door to the list's entries; a signed-in viewer gets Share + Bookmark. Edit
+// list and Delete are never hero buttons — they live in the corner kebab.
 function HeroActions({
   mode,
   list,
@@ -301,13 +267,12 @@ function HeroActions({
         {visibility !== VISIBILITY.OWNER && <ShareButton list={list} />}
         <LinkButton href={editHref} variant="on-dark">
           <MdChecklist />
-          <span className="label">Choose items</span>
+          <span className="label">{getMessage('list_edit_items_label')}</span>
         </LinkButton>
         {kebab}
       </div>
     );
   }
-  if (mode === 'preview') return kebab;
   if (mode === 'viewer') {
     return (
       <div className="list-hero-actions">

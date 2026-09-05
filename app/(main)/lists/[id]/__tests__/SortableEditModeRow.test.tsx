@@ -11,10 +11,10 @@ const sortable = vi.hoisted(() => ({
     transform: null as { x: number; y: number } | null,
     isDragging: false,
   },
-  calls: [] as { id: string; disabled: boolean }[],
+  calls: [] as { id: string }[],
 }));
 vi.mock('@dnd-kit/sortable', () => ({
-  useSortable: (args: { id: string; disabled: boolean }) => {
+  useSortable: (args: { id: string }) => {
     sortable.calls.push(args);
     return {
       attributes: { role: 'button', tabIndex: 0 },
@@ -29,13 +29,12 @@ vi.mock('@dnd-kit/sortable', () => ({
 
 const ITEM = { id: 'a1', name: 'Apple', description: '', store: null } as never;
 
-function renderRow(disabled = false) {
+function renderRow() {
   return render(
     <SortableEditModeRow
       item={ITEM}
       quantity={1}
-      pending={false}
-      disabled={disabled}
+      status="kept"
       onQuantityChange={vi.fn()}
       onOpen={vi.fn()}
     />
@@ -59,7 +58,7 @@ describe('SortableEditModeRow', () => {
       handle.compareDocumentPosition(screen.getByTestId('photo')) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
-    expect(sortable.calls[0]).toEqual({ id: 'a1', disabled: false });
+    expect(sortable.calls[0]).toEqual({ id: 'a1' });
   });
 
   it('Dragging_TranslatesTheRowAndMarksIt', () => {
@@ -68,10 +67,5 @@ describe('SortableEditModeRow', () => {
     const row = screen.getByRole('listitem');
     expect(row).toHaveClass('is-dragging');
     expect(row.style.transform).toBe('translate3d(0px, 40px, 0)');
-  });
-
-  it('Disabled_PassesDisabledToTheSortable', () => {
-    renderRow(true);
-    expect(sortable.calls[0]).toEqual({ id: 'a1', disabled: true });
   });
 });

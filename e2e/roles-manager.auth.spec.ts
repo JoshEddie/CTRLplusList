@@ -9,12 +9,9 @@ import { pinActingProfile } from './helpers/activeProfile';
 // control and then reloads, since the whole point of the change is that the
 // disabled control is not the enforcement.
 //
-// Item ordering is not driven here. dnd-kit's mouse sensor does not arm under
-// Playwright's synthetic input — the drag overlay never mounts, so `onDragStart`
-// never fires — and no spec in this suite has ever driven a drag. `updatePriority`
-// takes the same `member` floor as the writes below and is covered from dnd-kit's
-// own `onDragEnd` in `SortItems.test.tsx`, so the manager seat loses no role
-// coverage by leaving the gesture out.
+// Item ordering is not driven here: it is staged inside edit mode and lands
+// through the same `setListItems` write the attach below already exercises, so
+// the manager seat loses no role coverage by leaving the gesture out.
 //
 // Seed baseline: `dev-test-viewer` holds `manager` on `dev-profile-workshop`
 // ("Workshop Profile") and `owner` on `dev-profile-owned` ("Owned Profile").
@@ -115,12 +112,12 @@ test('RolesManager_ManagerCreatesItemsAttachesAndArchives_EachStepReflected', as
   await expect(page).toHaveURL(/\/lists\/[^/]+\?edit=1&new=1$/);
   const listId = page.url().match(/\/lists\/([^/]+)\?edit=1/)?.[1];
 
-  const rows = page.locator('ul.edit-mode-list li');
-  await rows
+  const cards = page.locator('.edit-mode-library .item');
+  await cards
     .filter({ hasText: renamed })
     .getByRole('button', { name: 'Increase' })
     .click();
-  await rows
+  await cards
     .filter({ hasText: secondItem })
     .getByRole('button', { name: 'Increase' })
     .click();
@@ -130,7 +127,7 @@ test('RolesManager_ManagerCreatesItemsAttachesAndArchives_EachStepReflected', as
 
   // The attach lands the viewer on the list page before its rows have
   // streamed in, so both are awaited before the flow moves on.
-  await expect(page.locator('.sortable-item')).toHaveCount(2);
+  await expect(page.locator('.items-browser .item-container')).toHaveCount(2);
 
   // Archive — `member` floor: it destroys nothing and the item stays attached.
   await page.goto('/items');

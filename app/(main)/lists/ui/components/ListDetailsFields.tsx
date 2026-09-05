@@ -2,12 +2,10 @@
 
 import { DatalistField, DateField, TextField } from '@/app/ui/components/field';
 import { getMessage } from '@/lib/i18n/utils';
-import type { ListDetailsDraft } from '../../[id]/editModeChanges';
-import { COMMON_OCCASIONS } from './utils';
+import { COMMON_OCCASIONS, type ListDetailsDraft } from './utils';
 
-// The whole of what a list row holds, controlled. Both surfaces that edit a
-// list render this one block — the create/edit form and the mode's band — so
-// the fields, their bounds and their copy have a single home.
+// The whole of what a list row holds, controlled, so the fields, their bounds
+// and their copy have a single home.
 export default function ListDetailsFields({
   draft,
   onChange,

@@ -17,6 +17,9 @@ vi.mock('@/lib/data/list', () => ({
 }));
 vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({ getUserIdByEmail: vi.fn() }));
+vi.mock('@/app/(main)/items/utils', () => ({
+  readItemsPageSize: vi.fn(async () => 48),
+}));
 
 const membership = vi.hoisted(() => ({
   rows: [] as { item_id: string; quantity: number }[],
@@ -38,6 +41,7 @@ vi.mock('../EditModeForm', () => ({
     initialEntries: { item_id: string; quantity: number }[];
     isNew: boolean;
     lists: { id: string }[];
+    initialPageSize?: number;
   }) => (
     <div
       data-testid="edit-form"
@@ -53,6 +57,7 @@ vi.mock('../EditModeForm', () => ({
         .join(',')}
       data-is-new={String(p.isNew)}
       data-lists={p.lists.map((l) => l.id).join(',')}
+      data-page-size={String(p.initialPageSize)}
     />
   ),
 }));
@@ -162,6 +167,8 @@ describe('ListEditSection', () => {
       // The list being edited stays out of the item form's picker.
       expect(form).toHaveAttribute('data-lists', 'l2');
       expect(form).toHaveAttribute('data-is-new', 'false');
+      // The library pages like the items page, at the size the viewer chose.
+      expect(form).toHaveAttribute('data-page-size', '48');
     });
 
     it('ItemsCarryingClaims_ForwardsNoPurchaseKeys', async () => {

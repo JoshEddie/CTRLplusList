@@ -2,65 +2,39 @@
 
 import { Button } from '@/app/ui/components/button';
 import { getMessage } from '@/lib/i18n/utils';
+import type { ReactNode } from 'react';
 import { FaArrowRightLong } from 'react-icons/fa6';
 import { editModeSaveLabel } from './editModeChanges';
 
-// Cancel is the only revert in this mode: with the whole edit staged behind one
-// Save, a bulk Undo would be a second way to reach the state Cancel already
-// restores, and there is no per-row undo for it to be consistent with.
+// Cancel is the only revert in this mode: with the whole edit
+// staged behind one Save, a bulk Undo would be a second way to reach the state
+// Cancel already restores, and every marked row can be put back by hand.
 export default function EditModeFooter({
+  changeCount,
+  pager,
   totalSelected,
-  added,
-  removed,
   isNew,
   canSave,
   isSubmitting,
   onCancel,
   onSave,
 }: {
+  changeCount: number;
+  pager?: ReactNode;
   totalSelected: number;
-  added: number;
-  removed: number;
   isNew: boolean;
-  /** Whether Save may fire at all — a staged change (or the create pass-through) with no field in error. The diff line reports entries only. */
+  /** Whether Save may fire at all — a staged change, or the create pass-through. */
   canSave: boolean;
   isSubmitting: boolean;
   onCancel: () => void;
   onSave: () => void;
 }) {
-  const hasEntryChanges = added > 0 || removed > 0;
-
   return (
     <div className="edit-mode-footer">
-      <div className="edit-mode-count">
-        {totalSelected > 0 ? (
-          getMessage('edit_mode_count_selected', { count: totalSelected })
-        ) : (
-          <span className="edit-mode-count-muted">
-            {getMessage('edit_mode_count_none')}
-          </span>
-        )}
-        {!isNew && hasEntryChanges && (
-          <span className="edit-mode-count-diff">
-            {added > 0 && (
-              <>
-                {' · '}
-                <span className="edit-mode-count-added">
-                  {getMessage('edit_mode_count_added', { count: added })}
-                </span>
-              </>
-            )}
-            {removed > 0 && (
-              <>
-                {' · '}
-                <span className="edit-mode-count-removed">
-                  {getMessage('edit_mode_count_removed', { count: removed })}
-                </span>
-              </>
-            )}
-          </span>
-        )}
-      </div>
+      <span className="edit-mode-count">
+        {getMessage('edit_mode_change_count', { count: changeCount })}
+      </span>
+      {pager && <div className="edit-mode-footer-pager">{pager}</div>}
       <div className="edit-mode-footer-actions">
         <Button variant="ghost" onClick={onCancel} disabled={isSubmitting}>
           {getMessage(

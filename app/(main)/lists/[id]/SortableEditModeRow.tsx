@@ -5,21 +5,18 @@ import { ItemDisplay } from '@/lib/types';
 import { useSortable } from '@dnd-kit/sortable';
 import { MdOutlineDragHandle } from 'react-icons/md';
 import EditModeRow from './EditModeRow';
+import type { RowStatus } from './editModeRows';
 
-// The handle stays rendered while a filter suspends reorder: dropping it
-// would shift the row's layout for the length of a search.
 export default function SortableEditModeRow({
   item,
   quantity,
-  pending,
-  disabled,
+  status,
   onQuantityChange,
   onOpen,
 }: {
   item: ItemDisplay;
   quantity: number;
-  pending: boolean;
-  disabled: boolean;
+  status: RowStatus;
   onQuantityChange: (itemId: string, quantity: number) => void;
   onOpen: (item: ItemDisplay) => void;
 }) {
@@ -30,7 +27,7 @@ export default function SortableEditModeRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: item.id, disabled });
+  } = useSortable({ id: item.id });
 
   return (
     <li
@@ -46,7 +43,7 @@ export default function SortableEditModeRow({
       <EditModeRow
         item={item}
         quantity={quantity}
-        pending={pending}
+        status={status}
         onQuantityChange={onQuantityChange}
         onOpen={onOpen}
         handle={

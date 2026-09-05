@@ -9,6 +9,7 @@ import { MAX_ENTRY_QUANTITY } from '@/lib/data/listItems.schema';
 import { getMessage } from '@/lib/i18n/utils';
 import { ItemDisplay } from '@/lib/types';
 import type { ReactNode } from 'react';
+import { statusLabel, type RowStatus } from './editModeRows';
 
 // No claim state on purpose: a claim belongs to a list entry, not to an item,
 // so a library row surfaced here carries none this list could judge.
@@ -22,7 +23,7 @@ import type { ReactNode } from 'react';
 export default function EditModeRow({
   item,
   quantity,
-  pending,
+  status,
   onQuantityChange,
   onOpen,
   handle,
@@ -30,14 +31,16 @@ export default function EditModeRow({
   item: ItemDisplay;
   /** Staged units wanted here; 0 is not in the list at all. */
   quantity: number;
-  /** Differs from what is saved — added, removed, re-quantified, or moved. */
-  pending: boolean;
+  /** How the row reads against what is saved. */
+  status: RowStatus;
   onQuantityChange: (itemId: string, quantity: number) => void;
   onOpen: (item: ItemDisplay) => void;
   /** The drag handle, supplied only by the sortable wrapper. */
   handle?: ReactNode;
 }) {
   const inList = quantity > 0;
+  const pending = status !== 'kept';
+  const removed = status === 'removed';
   const name = item.name ?? '';
   return (
     <div
@@ -66,6 +69,11 @@ export default function EditModeRow({
               role="img"
               aria-label={getMessage('edit_mode_pending_change_label')}
             />
+          )}
+          {removed && (
+            <span className="edit-mode-status edit-mode-status--removed">
+              {statusLabel(status)}
+            </span>
           )}
         </div>
         <div className="edit-mode-row-meta">

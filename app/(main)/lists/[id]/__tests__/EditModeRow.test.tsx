@@ -27,7 +27,7 @@ function renderRow(
     <EditModeRow
       item={ITEM}
       quantity={1}
-      pending={false}
+      status="kept"
       onQuantityChange={onQuantityChange}
       onOpen={onOpen}
       {...overrides}
@@ -121,7 +121,7 @@ describe('EditModeRow', () => {
   });
 
   it('Pending_ShowsOneDotBesideTheName', () => {
-    renderRow({ pending: true });
+    renderRow({ status: 'added' });
     expect(
       screen.getByRole('img', { name: 'Unsaved change' })
     ).toBeInTheDocument();

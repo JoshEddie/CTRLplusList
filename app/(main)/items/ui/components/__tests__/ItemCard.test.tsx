@@ -268,6 +268,43 @@ describe('ItemCard', () => {
     });
   });
 
+  describe('ActionsSlot', () => {
+    it('ActionsGiven_RenderInPlaceOfTheClaimActions', () => {
+      render(
+        <ItemCard
+          item={{ id: 'i1', name: 'Gift', store: STORE } as never}
+          entryLine="On this list"
+          actions={<button type="button">own-control</button>}
+        />
+      );
+      expect(
+        screen.getByRole('button', { name: 'own-control' })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Add Claim' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: 'View item — opens in new tab' })
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('On this list')).toBeInTheDocument();
+    });
+
+    it('NoClaimPropsAndNoActions_RendersAViewOnlyCardWithNoClaimAffordance', () => {
+      render(
+        <ItemCard
+          item={{ id: 'i1', name: 'Gift', store: STORE } as never}
+          entryLine=""
+        />
+      );
+      expect(
+        screen.queryByRole('button', { name: 'Add Claim' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'View item — opens in new tab' })
+      ).toBeInTheDocument();
+    });
+  });
+
   it('PurchasedOrSpoiler_MarksItemPurchased', () => {
     const { container } = renderCard({ showSpoilerInfo: true });
     expect(container.querySelector('.item.purchased')).toBeInTheDocument();

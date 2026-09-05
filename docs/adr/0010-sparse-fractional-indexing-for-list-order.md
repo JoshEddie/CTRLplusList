@@ -6,7 +6,11 @@ positions were the alternative and would need N updates per move — which, unde
 [0001](0001-no-interactive-database-transactions.md), means N non-atomic writes
 with no way to roll back a partial reorder.
 
-Edit mode's Save is the exception: it receives the whole ordering at once, so
-when that order differs from the saved one it rewrites every position as a
-clean multiple of the stride in one upsert, and the rebalance never fires on
-that path. An unchanged order leaves positions untouched.
+Edit mode's Save is now the only writer of positions: it receives the whole
+ordering at once, so when that order differs from the saved one it rewrites
+every position as a clean multiple of the stride in one upsert, and the
+rebalance never fires on that path. An unchanged order leaves positions
+untouched. The midpoint write and its lazy rebalance still exist as helpers but
+have no caller since the list page stopped reordering live; whether they stay
+is [#345](https://github.com/JoshEddie/CTRLplusList/issues/345) and
+[#221](https://github.com/JoshEddie/CTRLplusList/issues/221)'s question.

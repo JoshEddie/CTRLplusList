@@ -261,7 +261,7 @@
 /* ── Controls card content ───────────────────────────────────────────── */
 /* Share button (the only direct .btn child of the owner controls card) is
    the primary affordance — stretches to full card width. Viewer/owner-
-   preview compositions wrap their buttons in .list-hero-action-row, which
+   compositions wrap their buttons in .list-hero-action-row, which
    sizes children separately. */
 .list-hero-card-controls > .btn {
   width: 100%;
@@ -323,7 +323,7 @@
 }
 
 /* Action row buttons size to their content + share remaining row width.
-   `flex: 1 1 auto` (not `1 1 0`) so labels like "Choose items" don't wrap
+   `flex: 1 1 auto` (not `1 1 0`) so labels like "Edit items" don't wrap
    to two lines inside narrow buttons — natural text width is the floor.
    The kebab keeps a fixed size and pulls to the row's end. */
 .list-hero-action-row > .btn,
@@ -360,36 +360,6 @@
   left: 0;
   right: auto;
   min-width: min(320px, 90vw);
-}
-
-/* Preview banner inside hero. Sits above the two-card grid; carries its own
-   gradient so the dashed border has something to read against. */
-.list-hero .preview-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background-image: var(--hero-gradient);
-  border: 1.5px dashed rgba(255, 255, 255, 0.4);
-  border-radius: 10px;
-  width: 100%;
-  font-size: 13px;
-  color: var(--light-color);
-  flex-wrap: wrap;
-}
-
-.list-hero .preview-banner > svg {
-  flex-shrink: 0;
-  color: var(--light-color);
-}
-
-.list-hero .preview-banner > span {
-  flex: 1;
-  min-width: 140px;
-}
-
-.list-hero .preview-banner .btn {
-  margin-left: auto;
 }
 
 /* Private-list message (unchanged) */
@@ -563,10 +533,6 @@
   padding: 16px 28px;
 }
 
-.container--list-details > .item-grid.sortable {
-  padding: 16px 28px 28px;
-}
-
 @media (max-width: 800px) {
   .container--list-details .items-toolbar {
     padding: 12px 16px;
@@ -576,60 +542,71 @@
     padding-left: 16px;
     padding-right: 16px;
   }
-
-  .container--list-details > .item-grid.sortable {
-    padding: 16px 16px 28px;
-  }
 }
 
 /* ===== Edit mode (`?edit=1`) =====
-   The band replaces .list-hero on the same route, so it reuses the hero's
-   own sticky/collapsing surface and only re-dresses what sits inside it.
-   The item surface below keeps the row anatomy the retired picker route
-   defined, renamed to the mode that now owns it. */
-
-/* The mode's parts are direct children of the container, exactly as the hero
-   and the item grid are on the default view — no wrapper. A wrapper would
-   become the chrome's sticky containing block, and any gap it introduced
-   between ListHeroSurface's sentinel and the chrome would break the
-   `surface.top - sentinel.top` pin-depth reading the collapse turns on.
-   Clearance for the fixed footer therefore lands on the container itself. */
+   The band replaces .list-hero on the same route; the two tab panels replace
+   the item surface; the bottom bar is fixed. The mode's parts are direct
+   children of the container, exactly as the hero and the item grid are on the
+   default view — clearance for the fixed bar lands on the container itself. */
 .container--list-details:has(.edit-mode-footer) {
-  padding-bottom: 84px;
+  padding-bottom: 96px;
 }
 
-/* Mobile-first: one column of fields, widening to two where the band has the
-   room. Fields sit on the hero gradient, so their labels take the same
-   on-dark treatment the rest of the band already uses while the input boxes
-   stay on their own light surface. */
-.list-edit-hero {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px 16px;
-  /* Side padding tracks .container--list-details .items-toolbar so the field
-     boxes line up with the search field directly beneath them. */
-  padding: 14px 28px 18px;
-}
-
-@media (min-width: 700px) {
-  .list-edit-hero {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 800px) {
-  .list-edit-hero {
-    padding: 12px 16px 16px;
-  }
-}
-
-.list-edit-hero .form_field_group .form_field_label,
-.list-edit-hero .form_field_group .form_field_description {
-  color: var(--light-color);
-}
-
-.list-edit-hero .form_field_group .form_field {
+/* A plain sticky strip: the list's name, then the tab row. It never
+   collapses, so a drag toward the top of the list has nothing growing back
+   under it. */
+.edit-mode-band {
+  position: sticky;
+  top: var(--app-sticky-top);
+  z-index: 5;
+  padding: 12px 16px 0;
   background-color: var(--light-color);
+  border-radius: calc(var(--app-surface-radius) - 1px)
+    calc(var(--app-surface-radius) - 1px) 0 0;
+}
+
+.edit-mode-band-title {
+  margin: 0 0 6px;
+  font-family: var(--font-crimson-pro);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--heading-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.edit-mode-tabrow {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.edit-mode-tabs {
+  flex: 1;
+  min-width: 0;
+}
+
+.edit-mode-tabrow > .btn {
+  flex-shrink: 0;
+  align-self: center;
+  white-space: nowrap;
+}
+
+.edit-mode-panel {
+  padding-bottom: 12px;
+}
+
+.edit-mode-empty {
+  margin: 0;
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted-text-color);
 }
 
 .edit-mode-list {
@@ -647,11 +624,11 @@
 
 /* ── EDIT-MODE ROW ──
    handle | swatch | name / price · store · link / note | quantity.
-   The handle column is always laid out, empty below the divider, so both
-   halves share one set of column edges and a row crossing it shifts nothing
-   but its section. The stepper states the quantity itself, 0 for a row below
-   the divider included, so no cell restates it. Mobile-first: narrower swatch
-   and handle, and the quantity cell is the chip rather than the stepper. */
+   The handle column is always laid out, empty on a removed row, so every row
+   shares one set of column edges. The stepper states the quantity itself, 0
+   for a removed row included, so no cell restates it. Mobile-first: narrower
+   swatch and handle, and the quantity cell is the chip rather than the
+   stepper. */
 .edit-mode-row {
   display: grid;
   grid-template-columns: 28px 56px minmax(0, 1fr) auto;
@@ -758,8 +735,9 @@
   -webkit-box-orient: vertical;
 }
 
-/* Rows below the divider do not read as content yet: the swatch, price and
-   note dim, the name stays legible so the row can still be found. */
+/* A removed row does not read as content any more: the swatch, price and
+   note dim, the name stays legible so the row can still be found and put
+   back. */
 .edit-mode-row.is-off .item-image-container {
   opacity: 0.6;
 }
@@ -786,11 +764,6 @@
   width: 28px;
   height: 44px;
   justify-content: center;
-}
-
-.edit-mode-handle[aria-disabled='true'] {
-  cursor: default;
-  opacity: 0.35;
 }
 
 /* The two quantity affordances. Exactly one is laid out at any width, so the
@@ -833,63 +806,22 @@
   }
 }
 
-.edit-mode-section {
-  padding: 0 0 12px;
+/* A removed row keeps its place, struck through, until Save. */
+.edit-mode-item.is-removed .itemName {
+  text-decoration: line-through;
 }
 
-/* A centred rule-flanked heading is the divider between the two halves. */
-.edit-mode-section-head {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 20px 16px 8px;
-}
-
-.edit-mode-section-title {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  width: 100%;
-  margin: 0;
-  font-size: 12px;
+.edit-mode-status {
+  flex: none;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  background-color: var(--secondary-background-color);
   color: var(--muted-text-color);
-}
-
-.edit-mode-section-title::before,
-.edit-mode-section-title::after {
-  content: '';
-  flex: 1;
-  border-top: 1px solid var(--divider-color);
-}
-
-.edit-mode-section-hint,
-.edit-mode-section-empty {
-  margin: 0;
-  font-size: 13px;
-  color: var(--muted-text-color);
-}
-
-.edit-mode-section-empty {
-  padding: 12px 16px 4px;
-  text-align: center;
-}
-
-.edit-mode-create {
-  display: flex;
-  justify-content: center;
-  padding: 4px 12px 12px;
-}
-
-.list-edit-summary {
-  grid-column: 1 / -1;
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--light-color);
 }
 
 @media (min-width: 801px) {
@@ -925,13 +857,61 @@
   .edit-mode-row .edit-mode-row-name-static {
     display: flex;
   }
+}
 
-  .edit-mode-section-head,
-  .edit-mode-section-empty {
-    padding-left: 28px;
-    padding-right: 28px;
-  }
+/* ── ADD ITEMS ──
+   The items page's own toolbar and grid, with the stepper where the claim
+   actions stand elsewhere. The toolbar rides in the band, under the tabs, so
+   it pins with them; the band already pads the sides. */
+.edit-mode-band .items-toolbar {
+  padding: 10px 0 12px;
+}
 
+/* The stepper's label is for assistive technology only: the card has no room
+   for it, and the number cell already says the quantity. */
+.edit-mode-card .stepper_label_row {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The five-cell stepper owns a full row and `View item` stacks under it: the
+   grid keeps a card near 250px at any viewport, so they can never share one. */
+.edit-mode-card-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.edit-mode-card-actions .stepper_group {
+  width: 100%;
+}
+
+.edit-mode-card.is-on {
+  outline: 2px solid var(--primary-color);
+  outline-offset: -2px;
+}
+
+.edit-mode-card--removed {
+  opacity: 0.6;
+}
+
+.edit-mode-card--removed .itemName {
+  text-decoration: line-through;
+}
+
+.edit-mode-card--added .item-entry-line,
+.edit-mode-card--removed .item-entry-line,
+.edit-mode-card--requantified .item-entry-line {
+  color: var(--primary-color);
+  font-weight: 600;
 }
 
 /* ── EDIT-MODE ROW SHEET ──
@@ -1017,19 +997,23 @@
   justify-content: center;
 }
 
-/* Inset to the app surface, not the viewport: .app-surface-bleed pads the
+/* ── THE BOTTOM BAR ──
+   Inset to the app surface, not the viewport: .app-surface-bleed pads the
    sides and .app-surface centres at 1700px, so a full-bleed bar would hang
    over the gradient either side of the card. Same expression the nav's
-   corner notches use. */
+   corner notches use. Equal outer columns so the pager is centred on the
+   bar, not on whatever space the save cluster leaves. */
 .edit-mode-footer {
   position: fixed;
   bottom: 0;
   left: max(20px, calc((100% - 1700px) / 2));
   right: max(20px, calc((100% - 1700px) / 2));
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-areas: 'changes pager save';
   align-items: center;
-  padding: 14px 44px;
+  gap: 16px;
+  padding: 10px 44px calc(10px + env(safe-area-inset-bottom));
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--card-border-color);
@@ -1037,35 +1021,35 @@
 }
 
 .edit-mode-count {
+  grid-area: changes;
   font-size: 14px;
   font-weight: 600;
   color: var(--heading-text-color);
   white-space: nowrap;
 }
 
-.edit-mode-count-muted {
-  color: var(--muted-text-color);
-  font-weight: 500;
+.edit-mode-footer-pager {
+  grid-area: pager;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
 }
 
-.edit-mode-count-diff {
-  color: var(--primary-color);
-  font-weight: 600;
-}
-
-.edit-mode-count-added,
-.edit-mode-count-removed {
-  color: var(--primary-color);
-}
-
-@media (max-width: 600px) {
-  .edit-mode-count-diff {
-    display: none;
-  }
+/* The shared rule pins `.items-pagination` to the viewport; inside the bar it
+   is a plain row. */
+.container--list-details .edit-mode-footer .items-pagination {
+  position: static;
+  margin: 0;
+  padding: 0;
+  box-shadow: none;
+  background: none;
+  backdrop-filter: none;
 }
 
 .edit-mode-footer-actions {
+  grid-area: save;
   display: flex;
+  justify-content: flex-end;
   gap: 10px;
   align-items: center;
 }
@@ -1075,10 +1059,52 @@
 }
 
 @media (max-width: 800px) {
+  .container--list-details:has(.edit-mode-footer) {
+    padding-bottom: 150px;
+  }
+
+  /* Stacked: the pager owns a row above, the count and the buttons share
+     the next. */
   .edit-mode-footer {
     left: 12px;
     right: 12px;
-    padding: 12px 20px;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'pager pager'
+      'changes save';
+    gap: 0;
+    padding: 0 0 env(safe-area-inset-bottom);
+  }
+
+  .edit-mode-footer-pager {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--card-border-color);
+  }
+
+  .edit-mode-count {
+    padding: 10px 0 10px 14px;
+  }
+
+  .edit-mode-footer-actions {
+    padding: 10px 14px;
+  }
+}
+
+/* Below 600px item.css turns every card into the thumb-beside-text row and
+   places each part on that grid by class; the stepper block and the status
+   line are this surface's own, so they take their rows here or auto-placement
+   squeezes them under the thumb. */
+@media (max-width: 599px) {
+  .item-grid .edit-mode-card .edit-mode-card-actions {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    margin-top: 4px;
+  }
+
+  .item-grid .edit-mode-card .item-entry-line {
+    display: block;
+    grid-column: 1 / -1;
+    grid-row: 5;
   }
 }
 
