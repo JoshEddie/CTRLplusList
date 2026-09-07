@@ -115,7 +115,7 @@ export default function Item({
         className={containerClasses({
           className,
           isOwner,
-          purchased: claim.showPurchased || claim.showSpoilerInfo,
+          purchased: claim.isFullyClaimed,
           hasMyClaim: claim.hasViewerClaim,
           preview,
         })}
@@ -124,14 +124,11 @@ export default function Item({
           item={item}
           className={className}
           isOwner={isOwner}
-          showPurchased={claim.showPurchased}
-          showSpoilerInfo={claim.showSpoilerInfo}
           // The owner is included: a claim the viewer holds is disclosed at
           // every level, so it must reach the action matrix on their own list.
           viewerClaimed={claim.hasViewerClaim}
           guestViewer={!actor}
           fullyClaimed={claim.isFullyClaimed}
-          entryLine={claim.entryLine}
           hasAnyClaim={claim.hasAnyClaim}
           claimable={claim.claimable}
           tier={tier}
@@ -142,16 +139,7 @@ export default function Item({
           onBuyClaimClick={preview ? undefined : claim.handleBuyClaim}
         />
 
-        <ClaimBanners
-          showPurchased={claim.showPurchased}
-          myClaims={claim.viewerClaims}
-          isOwner={isOwner}
-          tier={tier}
-          claims={claim.claims}
-          claimSummary={claim.claimSummary}
-          counterText={claim.counterText}
-          claimable={claim.claimable}
-        />
+        {claim.banner && <ClaimBanners {...claim.banner} />}
 
         {isOwner && (
           <OwnerActions

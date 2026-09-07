@@ -2,24 +2,21 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 // Locates the first item card a non-owner viewer can freshly claim on the
 // current list page. The card:
-//   - exposes an enabled "Add Claim" affordance (so it is not already
-//     fully claimed), and
-//   - is a single-unit entry — no claim counter is rendered (the entry's
-//     `quantity` is 1), so claiming it fully claims the entry and surfaces the
-//     claimer's name ("Claimed by …" for a guest, "You claimed this" for the
-//     viewer), and
-//   - the viewer has not already claimed it ("You claimed this" absent), so a
-//     fresh claim is always accepted.
+//   - exposes the "Claim" affordance, and
+//   - is a single-unit entry with nothing claimed on it — the progress banner
+//     reads "0 / 1 Claimed", so claiming it fully claims the entry and no
+//     claim of the viewer's (or anyone's) is already on it.
 //
-// The `.item-container` / `.item-entry-line` class hooks select the FIXTURE; the
-// specs' assertions target user-visible text, per the suite's "drive real
+// The `.item-container` / `.purchased-banner` class hooks select the FIXTURE;
+// the specs' assertions target user-visible text, per the suite's "drive real
 // affordances" rule.
 export function firstClaimableSingleItem(page: Page): Locator {
   return page
     .locator('.item-container')
-    .filter({ has: page.getByRole('button', { name: 'Add Claim' }) })
-    .filter({ hasNot: page.locator('.item-entry-line') })
-    .filter({ hasNotText: 'You claimed this' })
+    .filter({ has: page.getByRole('button', { name: 'Claim', exact: true }) })
+    .filter({
+      has: page.locator('.purchased-banner', { hasText: /^0 \/ 1 Claimed$/ }),
+    })
     .first();
 }
 
@@ -38,23 +35,23 @@ export async function openList(
 
 // The first multi-unit entry on the current list page with at least `minFree`
 // units unclaimed and no claim of the viewer's. Capacity is per entry and
-// enforced, so "has a counter" is not enough: a card one unit short passes a
-// first claim and then loses its affordance. Reading the remainder off the
-// counter states the requirement instead of trusting a seeded position, and
-// throws rather than timing out if the seed stops meeting it.
+// enforced, so "has a banner" is not enough — every card carries one: a card
+// one unit short passes a first claim and then loses its affordance. Reading
+// the remainder off the banner states the requirement instead of trusting a
+// seeded position, and throws rather than timing out if the seed stops meeting
+// it. A claim of the viewer's is what Manage claim marks, at every tier.
 export async function multiUnitEntryWithRoom(
   page: Page,
   minFree: number
 ): Promise<{ card: Locator; claimed: number; quantity: number }> {
   const candidates = page
     .locator('.item-container')
-    .filter({ has: page.getByRole('button', { name: 'Add Claim' }) })
-    .filter({ has: page.locator('.item-entry-line') })
-    .filter({ hasNotText: 'You claimed this' });
+    .filter({ has: page.getByRole('button', { name: 'Claim', exact: true }) })
+    .filter({ hasNot: page.getByRole('button', { name: /^Manage claim/ }) });
   for (const card of await candidates.all()) {
-    const counter = await card.locator('.item-entry-line').innerText();
-    const parsed = /(\d+)\/(\d+) claimed/.exec(counter);
-    if (!parsed) continue;
+    const counter = await card.locator('.purchased-banner').innerText();
+    const parsed = /(\d+) \/ (\d+) Claimed/.exec(counter);
+    if (!parsed || parsed[2] === '1') continue;
     const claimed = Number(parsed[1]);
     const quantity = Number(parsed[2]);
     if (quantity - claimed >= minFree) return { card, claimed, quantity };

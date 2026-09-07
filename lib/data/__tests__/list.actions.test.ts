@@ -386,7 +386,9 @@ describe('updateList', () => {
 });
 
 describe('deleteList', () => {
-  it('Owner_RemovesRow-BumpsListAndOwnerTags', async () => {
+  // The item pool is in the set because the cascade takes the list's entries
+  // with it, and a library card states its item's entries rolled up.
+  it('Owner_RemovesRow-BumpsListOwnerAndItemPoolTags', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     const res = await actions.deleteList('L');
     expect(res.success).toBe(true);
@@ -394,6 +396,7 @@ describe('deleteList', () => {
     expect(contentTagCalls(updateTag)).toEqual([
       ['lists:id:L'],
       [`lists:profile:${selfProfileOf(OWNER.id)}`],
+      [`items:profile:${selfProfileOf(OWNER.id)}`],
     ]);
   });
 

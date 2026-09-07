@@ -18,26 +18,6 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { AttributedTarget } from './purchasemodal/PurchaseFlowContainer';
-import { claimSummaryOf, showsSpoilerBanner } from './utils';
-
-// The one line a row carries under itself, so the card renders a single node.
-// `progress` is the claim fraction where the viewer's tier grants it and null
-// where it does not — the owner included, whose claim count belongs on the
-// spoiler banner rather than beside their own number. Empty off a list, on an
-// entry asking for one (so an ordinary list reads as it always has), and on a
-// sold-out row, which leaves the line to its claimed-by banner.
-function entryLineOf(
-  entry: { quantity: number } | null,
-  multiUnit: boolean,
-  soldOut: boolean,
-  progress: string | null
-): string {
-  if (!entry || !multiUnit || soldOut) return '';
-  return (
-    progress ??
-    getMessage('entry_quantity_wanted', { quantity: entry.quantity })
-  );
-}
 
 // A claim's own unit count where the viewer may see it, and one otherwise —
 // the claims-tier stub for another party's claim carries none. The fallback
@@ -89,27 +69,22 @@ export function useItemClaims({
     null
   );
 
+  // The row's own number, never summed from the projected claims — a
+  // per-claim unit count is not something the claims tier discloses. The local
+  // delta keeps an optimistic write visible until the page re-reads, and moves
+  // with the units a claim covers rather than by one per row.
+  const claimedUnits =
+    (item.claimed_units ?? 0) + (sumUnits(claims) - sumUnits(propPurchases));
+
   // The list entry this card was read through, or null on the item library,
   // which spans every list and so has no entry to claim against. One
   // discriminator for the whole hook: the id and the capacity arrive together
   // or not at all, so nothing downstream can test one and assume the other.
-  //
-  // `claimedUnits` is the entry's own number, never summed from the projected
-  // claims — a per-claim unit count is not something the claims tier
-  // discloses. The local delta keeps an optimistic claim visible until the
-  // page re-reads, and moves with the units a claim covers rather than by one
-  // per row.
   const entry =
     item.list_id !== undefined && item.quantity !== undefined
-      ? {
-          listId: item.list_id,
-          quantity: item.quantity,
-          claimedUnits:
-            (item.claimed_units ?? 0) +
-            (sumUnits(claims) - sumUnits(propPurchases)),
-        }
+      ? { listId: item.list_id, quantity: item.quantity }
       : null;
-  const isFullyClaimed = !!entry && entry.claimedUnits >= entry.quantity;
+  const isFullyClaimed = !!entry && claimedUnits >= entry.quantity;
   const claimable = !!entry;
   const entryListId = entry?.listId;
 
@@ -121,7 +96,6 @@ export function useItemClaims({
   );
   const hasViewerClaim = viewerClaims.length > 0;
   const hasAnyClaim = claims.length > 0;
-  const claimSummary = useMemo(() => claimSummaryOf(claims), [claims]);
 
   // The claim affordance's reveal is the count and the remaining capacity, which
   // only a tier below `claims` withholds. The owner's manage-claims list is the
@@ -267,37 +241,6 @@ export function useItemClaims({
       settle
     );
 
-  // An entry asking for one has no fraction to show, and the library has no
-  // entry at all.
-  const multiUnit = !!entry && entry.quantity !== 1;
-
-  // Below `claims` the entry's count is withheld, so a counter drawn from the
-  // payload would state a false zero rather than hide.
-  const showCounter = multiUnit && atLeast(tier, 'claims');
-
-  // An entry meeting its quantity says so plainly rather than showing a
-  // fraction: an owner who lowered the number afterwards would otherwise be
-  // presented with one that looks broken. Empty off a list, where there is no
-  // capacity to count against — what a surface shows instead is that surface's
-  // to decide, not this hook's to invent a second phrasing for.
-  const counterText = !entry
-    ? ''
-    : isFullyClaimed
-      ? getMessage('claim_fully_claimed')
-      : getMessage('claim_counter', {
-          claimed: entry.claimedUnits,
-          quantity: entry.quantity,
-        });
-
-  const showPurchased = isFullyClaimed && !isOwner;
-
-  const entryLine = entryLineOf(
-    entry,
-    multiUnit,
-    showPurchased,
-    showCounter && !isOwner ? counterText : null
-  );
-
   return {
     claims,
     revealedClaims,
@@ -306,20 +249,20 @@ export function useItemClaims({
     viewerIsPurchaser: viewerClaims.some((p) => p.by === 'self'),
     hasAnyClaim,
     isFullyClaimed,
-    claimSummary,
     countWithheld,
     namesWithheld,
-    counterText,
-    entryLine,
-    // "Sold out" treatment (strikethrough price, faded stores, hidden claim
-    // button) only fires once the entry's units are all spoken for. An entry
-    // with room left still accepts buyers, so stores + claim button stay live
-    // and price stays unstruck.
-    showPurchased,
-    // The owner-side claim pill. Keyed on the resolved tier rather than on a
-    // spoiler parameter: never below `claims`, and from `claims` upward whenever
-    // claims exist (`item-store-links`).
-    showSpoilerInfo: showsSpoilerBanner(isOwner, tier, hasAnyClaim),
+    // The pair the row carries, at whichever scope it was read: one entry's on
+    // a list, every entry's summed on the library, where `num_lists` says how
+    // many. Null for an item on no list — nothing asked for anywhere.
+    banner:
+      item.quantity === undefined
+        ? null
+        : {
+            claimed: claimedUnits,
+            quantity: item.quantity,
+            withheld: countWithheld,
+            lists: item.num_lists,
+          },
     // No entry, no claim: the library's items span every list and some sit on
     // none, so the affordance that creates a claim is not offered there.
     claimable,
@@ -328,7 +271,7 @@ export function useItemClaims({
     capacity: entry
       ? {
           quantity: entry.quantity,
-          remaining: Math.max(0, entry.quantity - entry.claimedUnits),
+          remaining: Math.max(0, entry.quantity - claimedUnits),
         }
       : null,
     showBuyClaim:

@@ -7,22 +7,24 @@ describe('getMessage', () => {
   });
 
   it('MessageWithOneArgument_InterpolatesNames', () => {
-    expect(getMessage('claim_banner_for_others', { names: 'Ada, Grace' })).toBe(
-      'You claimed this for Ada, Grace'
+    expect(getMessage('claim_row_meta_added_by', { name: 'Ada' })).toBe(
+      'Added by Ada'
     );
   });
 
   describe('PluralMessage', () => {
-    it('Count0_ReturnsEmptyString', () => {
-      expect(getMessage('claim_summary', { count: 0 })).toBe('');
+    it('Count0_TakesTheExactZeroBranch', () => {
+      expect(getMessage('edit_mode_change_count', { count: 0 })).toBe(
+        'No changes'
+      );
     });
 
     it.each([
-      [1, '1 person'],
-      [2, '2 people'],
-      [1234, '1,234 people'],
-    ])('Count%i_ReturnsPersonPhrase', (count, expected) => {
-      expect(getMessage('claim_summary', { count })).toBe(expected);
+      [1, '1 change'],
+      [2, '2 changes'],
+      [1234, '1,234 changes'],
+    ])('Count%i_ReturnsTheChangePhrase', (count, expected) => {
+      expect(getMessage('edit_mode_change_count', { count })).toBe(expected);
     });
   });
 

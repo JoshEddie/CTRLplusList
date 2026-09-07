@@ -106,7 +106,9 @@ test('EditMode_OwnerStagesAddQuantityReorderAndRemoval_OneSavePersistsAll', asyn
   await expect(page).toHaveURL(new RegExp(`/lists/${listId}$`));
 
   // A fresh navigation reads the saved state: order, membership and quantity.
-  await page.goto(`/lists/${listId}`);
+  // Read at `?spoiler=claims`, which only ever raises, so the entry's ask is
+  // stated as a count whatever baseline this profile is carrying.
+  await page.goto(`/lists/${listId}?spoiler=claims`);
   await expect(page.locator('.items-browser .itemName')).toHaveText([
     thirdItem,
     secondItem,
@@ -114,8 +116,8 @@ test('EditMode_OwnerStagesAddQuantityReorderAndRemoval_OneSavePersistsAll', asyn
   await expect(
     page
       .locator('.item-container', { hasText: secondItem })
-      .locator('.item-entry-line')
-  ).toHaveText('4 wanted');
+      .locator('.purchased-banner')
+  ).toHaveText('0 / 4 Claimed');
   await expect(
     page.locator('.item-container', { hasText: firstItem })
   ).toHaveCount(0);

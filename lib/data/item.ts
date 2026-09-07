@@ -26,13 +26,14 @@ export async function getItemsByProfile(
 ) {
   const rows = await rawItemsByProfile(profileId, opts.filter ?? 'active');
   const tier = opts.tier ?? MAXIMAL_TIER;
-  return rows.map((item) => {
-    // `hasPurchases` reflects only what the resolved tier discloses: there is
-    // no claim-state filter left to consume a pre-sanitization truth, so a
-    // `hasPurchases` set from unprojected rows would be a passive leak.
-    const purchases = sanitizePurchases(item.purchases, profileId, tier);
-    return { ...item, hasPurchases: purchases.length > 0, purchases };
-  });
+  return rows.map((item) => ({
+    ...item,
+    purchases: sanitizePurchases(item.purchases, profileId, tier),
+    // Summed over every entry rather than read off one, but withheld by the
+    // rule getItemsByListId withholds by, and for the reason it sums rather
+    // than counting the projected array (ADR-0016).
+    claimed_units: atLeast(tier, 'claims') ? item.claimed_units : undefined,
+  }));
 }
 
 async function rawItemsByProfile(
@@ -78,16 +79,30 @@ async function rawItemsByProfile(
           orderBy: (images, { asc }) => [asc(images.id)],
           limit: 1,
         },
+        // The item's entries: an item carries no quantity of its own, so the
+        // ask a library card states only exists as a sum over them.
+        list_items: { columns: { list_id: true, quantity: true } },
       },
       orderBy: (items, { desc }) => [desc(items.created_at)],
     });
 
     cacheTag(...itemRowTags(result));
 
-    return result.map(({ images, stores, ...item }) => ({
+    return result.map(({ images, stores, list_items: entries, ...item }) => ({
       ...item,
       image_url: images[0]?.url ?? null,
       store: primaryStore(stores),
+      // The same pair a list row carries, read at the library's scope: summed
+      // over every entry instead of taken from one. `num_lists` is how many
+      // that is, and its presence is what says which reading this is. All
+      // absent for an item on no list — no entries, nothing to sum.
+      ...(entries.length
+        ? {
+            num_lists: entries.length,
+            quantity: entries.reduce((sum, entry) => sum + entry.quantity, 0),
+            claimed_units: item.purchases.reduce((sum, p) => sum + p.units, 0),
+          }
+        : {}),
     }));
   } catch (error) {
     console.error('Error fetching items:', error);
@@ -178,7 +193,6 @@ export async function getItemsByListId(
     );
     return {
       ...item,
-      hasPurchases: purchases.length > 0,
       purchases,
       // The entry's own number, summed before the projection rather than from
       // it: a projected claim carries its units only where the viewer may see

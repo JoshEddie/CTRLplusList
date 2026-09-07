@@ -12,8 +12,6 @@ export default function ItemCard({
   className,
   actions,
   isOwner = false,
-  showPurchased = false,
-  showSpoilerInfo = false,
   viewerClaimed = false,
   guestViewer,
   fullyClaimed = false,
@@ -32,14 +30,12 @@ export default function ItemCard({
   /** Replaces the claim action block wholesale where the card's job is not claiming. */
   actions?: ReactNode;
   isOwner?: boolean;
-  showPurchased?: boolean;
-  showSpoilerInfo?: boolean;
   viewerClaimed?: boolean;
   /** Signed-out viewer — gates the claimed-guest Add Claim carve-out in ItemActions. */
   guestViewer?: boolean;
   fullyClaimed?: boolean;
-  /** The entry's line under the row — claim progress or the bare ask. Empty renders nothing. */
-  entryLine: string;
+  /** A line under the row, supplied by surfaces that have one (edit mode). Empty renders nothing. */
+  entryLine?: string;
   hasAnyClaim?: boolean;
   /** A list entry exists to claim against; see ItemActions. */
   claimable?: boolean;
@@ -55,7 +51,7 @@ export default function ItemCard({
 }) {
   return (
     <div
-      className={`item ${className || ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''}`}
+      className={`item ${className || ''} ${fullyClaimed ? 'purchased' : ''}`}
       title={item.name || ''}
     >
       <ItemPhoto

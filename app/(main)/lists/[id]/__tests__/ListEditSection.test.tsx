@@ -50,7 +50,9 @@ vi.mock('../EditModeForm', () => ({
       data-item-ids={p.items.map((i) => i.id).join(',')}
       data-claim-keys={p.items
         .flatMap((i) => Object.keys(i))
-        .filter((k) => k === 'purchases' || k === 'hasPurchases')
+        .filter((k) =>
+          ['purchases', 'claimed_units', 'quantity', 'num_lists'].includes(k)
+        )
         .join(',')}
       data-entries={p.initialEntries
         .map((e) => `${e.item_id}:${e.quantity}`)
@@ -94,7 +96,9 @@ beforeEach(() => {
       id: 'a1',
       name: 'Active',
       archived_at: null,
-      hasPurchases: true,
+      quantity: 5,
+      claimed_units: 2,
+      num_lists: 2,
       purchases: [
         { id: 'c1', by: 'other', claimedByViewer: false },
         { id: 'c2', by: 'self', name: 'Owner', claimedByViewer: true },
@@ -105,7 +109,9 @@ beforeEach(() => {
       id: 'a3',
       name: 'ArchivedOn',
       archived_at: new Date(),
-      hasPurchases: false,
+      quantity: 1,
+      claimed_units: 0,
+      num_lists: 1,
       purchases: [],
     },
   ] as never);

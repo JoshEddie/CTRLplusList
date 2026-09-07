@@ -6,7 +6,7 @@ import { list_items, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import { seedUsers, selfProfileOf } from '@/test/helpers/seedFollowGraph';
 
 import {
   contentTagCalls,
@@ -253,6 +253,11 @@ describe('setListItems', () => {
         ])
       );
       expect(updateTag).toHaveBeenCalledWith('list_items:list:L');
+      // The library card rolls the item's entries up, so the owner's item
+      // pool answers differently after a quantity that names no other item.
+      expect(updateTag).toHaveBeenCalledWith(
+        `items:profile:${selfProfileOf(OWNER.id)}`
+      );
     });
 
     it('AddTrailing_AppendsAfterMaxWithoutMovingSurvivors', async () => {

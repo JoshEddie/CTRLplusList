@@ -125,7 +125,8 @@ How many of an item its owner wants **on one list** — the only quantity there
 is, since an item carries none of its own. The same item asked for once at a
 birthday and four times at Christmas is two entries with two quantities. Set
 only inside edit mode, where the entry's stepper is the one quantity control,
-and shown on the row only when it is above 1. There is no unlimited quantity, and none above 99.
+and shown on every card the entry backs, whatever its value — summed over
+every entry on a library card, which is read through none. There is no unlimited quantity, and none above 99.
 Lowering it below what is already claimed succeeds quietly: refusing would tell
 an owner held below the claims tier that somebody has bought something
 ([ADR-0015](docs/adr/0015-behaviour-may-not-vary-on-spoiler-hidden-state.md)).

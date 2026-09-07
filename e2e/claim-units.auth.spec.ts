@@ -26,7 +26,7 @@ test('ListPage_OneClaimerTakesEveryUnitThenLowersIt_CounterFollowsTheUnits', asy
 
   // The stepper caps at what is left, so the whole remainder is claimable and
   // nothing beyond it is.
-  await card.getByRole('button', { name: 'Add Claim' }).click();
+  await card.getByRole('button', { name: 'Claim', exact: true }).click();
   const units = page.getByRole('spinbutton');
   await expect(units).toHaveValue('1');
   await expect(units).toHaveAttribute('max', String(remaining));
@@ -41,16 +41,20 @@ test('ListPage_OneClaimerTakesEveryUnitThenLowersIt_CounterFollowsTheUnits', asy
   // Every unit spoken for by one person: the entry reads as claimed rather than
   // still offering room.
   const claimedCard = page.locator('.item-container', { hasText: itemName });
-  await expect(claimedCard.getByText('You claimed this').first()).toBeVisible();
+  await expect(claimedCard.locator('.purchased-banner')).toHaveText(
+    `${quantity} / ${quantity} Claimed`
+  );
   // The recorded claim closes the modal by dropping the query parameter;
   // reloading before that lands would reopen it over the card.
   await expect(page).not.toHaveURL(/purchaseItem/);
   await page.reload();
   const settled = page.locator('.item-container', { hasText: itemName });
-  await expect(settled.getByText('You claimed this').first()).toBeVisible();
-  await expect(settled.getByRole('button', { name: 'Add Claim' })).toHaveCount(
-    0
+  await expect(settled.locator('.purchased-banner')).toHaveText(
+    `${quantity} / ${quantity} Claimed`
   );
+  await expect(
+    settled.getByRole('button', { name: 'Claim', exact: true })
+  ).toHaveCount(0);
 
   // Manage claim moves the count down without destroying the claim.
   await settled.getByRole('button', { name: 'Manage claim' }).click();
@@ -65,8 +69,10 @@ test('ListPage_OneClaimerTakesEveryUnitThenLowersIt_CounterFollowsTheUnits', asy
   // rest of the entry is open again.
   await page.reload();
   const lowered = page.locator('.item-container', { hasText: itemName });
-  await expect(lowered.getByText('You claimed this').first()).toBeVisible();
-  await expect(lowered.locator('.item-entry-line')).toHaveText(
-    `${claimed + 1}/${quantity} claimed`
+  await expect(
+    lowered.getByRole('button', { name: 'Manage claim' })
+  ).toBeVisible();
+  await expect(lowered.locator('.purchased-banner')).toHaveText(
+    `${claimed + 1} / ${quantity} Claimed`
   );
 });

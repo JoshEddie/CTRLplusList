@@ -147,9 +147,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background-color: var(--success-bg);
-  border-top: 1.5px solid var(--success-border);
-  color: var(--success-text);
+  background-color: var(--primary-color-dark);
+  border-top: 1.5px solid var(--primary-color);
+  color: var(--light-color);
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 600;
@@ -157,10 +157,6 @@
      popover children can render outside the card boundary. */
   border-bottom-left-radius: 10px;
   border-bottom-right-radius: 10px;
-}
-
-.purchased-banner--mine {
-  background-color: var(--success-bg);
 }
 
 /* Owner actions kebab. Base treatment is the grid-view top-right overlay

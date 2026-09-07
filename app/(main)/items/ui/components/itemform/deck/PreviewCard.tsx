@@ -14,11 +14,8 @@ export function PreviewCard({ item }: { item: ItemViewModel }) {
       <ItemCard
         item={toItemDisplay(item)}
         isOwner
-        showPurchased={false}
-        showSpoilerInfo={false}
         viewerClaimed={false}
         fullyClaimed={false}
-        entryLine=""
         hasAnyClaim={false}
         tier="surprise"
         viewOnly

@@ -1,0 +1,19 @@
+/* A ring around a wedge filled clockwise to `--progress`: empty at 0, solid at
+   1. `flex: none` because the banner it sits in is a flex row. */
+.progress-disc {
+  display: flex;
+  flex: none;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  padding: 2px;
+}
+
+.progress-disc-inside {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: conic-gradient(
+    currentColor calc(var(--progress) * 1turn),
+    transparent 0
+  );
+}

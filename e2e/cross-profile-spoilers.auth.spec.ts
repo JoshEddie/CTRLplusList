@@ -35,7 +35,9 @@ test('CrossProfile_MemberActingAsAnother_IsProtectedByTheirMembership', async ({
   // A stranger would resolve to the maximal projection and see Alice's claim;
   // this account is a member of the owning profile, so their baseline governs.
   await expect(page.getByText('Spoilers:')).toHaveCount(0);
-  await expect(page.getByText('Claimed by')).toHaveCount(0);
+  await expect(
+    page.locator('.purchased-banner', { hasText: 'claimed' })
+  ).toHaveCount(0);
   await expect(page.getByText('added by Alice')).toHaveCount(0);
 });
 

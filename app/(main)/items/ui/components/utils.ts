@@ -1,24 +1,6 @@
 import { getMessage } from '@/lib/i18n/utils';
 import { priceAmount } from '@/lib/storeValidity';
-import { atLeast } from '@/lib/spoilers';
-import { EntryCapacity, PurchaseView, SpoilerTier } from '@/lib/types';
-
-// The owner-side claim pill: never below `claims`, and from `claims` up whenever
-// the item carries claims. One home so the card's `purchased` styling and the
-// banner itself agree on when it shows.
-export function showsSpoilerBanner(
-  isOwner: boolean,
-  tier: SpoilerTier,
-  hasAnyClaim: boolean
-): boolean {
-  return isOwner && hasAnyClaim && atLeast(tier, 'claims');
-}
-
-// The card's "Claimed by …" line. No tier names another party's claim, so the
-// line reports how many rather than who — names are the modal's reveal alone.
-export function claimSummaryOf(claims: PurchaseView[]): string {
-  return getMessage('claim_summary', { count: claims.length });
-}
+import { EntryCapacity, PurchaseView } from '@/lib/types';
 
 // What the entry already has spoken for, phrased for the label row beside a
 // units control. Derived from capacity rather than from the projected claims,

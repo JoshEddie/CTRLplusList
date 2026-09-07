@@ -48,13 +48,17 @@ export default async function ListEditSection({
 
   // Claim state is dropped outright rather than projected through a tier: a
   // claim belongs to one list entry, not to an item, so a library row surfaced
-  // here carries none this list could judge.
+  // here carries none this list could judge. The summed ask goes with it — it
+  // spans every list, and would read as this list's beside the stepper that
+  // sets that.
   const displayItems = allItems
     .filter((item) => !item.archived_at || currentListItemIds.has(item.id))
     .map((item) => {
       const stripped: ItemDisplay = { ...item };
       delete stripped.purchases;
-      delete stripped.hasPurchases;
+      delete stripped.claimed_units;
+      delete stripped.quantity;
+      delete stripped.num_lists;
       return stripped;
     });
 

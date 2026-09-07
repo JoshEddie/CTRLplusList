@@ -28,8 +28,6 @@ function renderCard(
     } as never,
     className: undefined,
     isOwner: false,
-    showPurchased: false,
-    showSpoilerInfo: false,
     viewerClaimed: false,
     fullyClaimed: false,
     entryLine: '0/3 claimed',
@@ -56,7 +54,7 @@ describe('ItemCard', () => {
     });
     expect(screen.getByText('A nice mug')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Add Claim' })
+      screen.getByRole('button', { name: 'Claim' })
     ).toBeInTheDocument();
     expect(screen.getByText('0/3 claimed')).toBeInTheDocument();
   });
@@ -64,7 +62,7 @@ describe('ItemCard', () => {
   it('ClaimClick_FiresAddClaimCallbackOnce', async () => {
     const user = userEvent.setup();
     const { props } = renderCard();
-    await user.click(screen.getByRole('button', { name: 'Add Claim' }));
+    await user.click(screen.getByRole('button', { name: 'Claim' }));
     expect(props.onAddClaimClick).toHaveBeenCalledTimes(1);
     expect(props.onPurchaseClick).not.toHaveBeenCalled();
   });
@@ -85,7 +83,7 @@ describe('ItemCard', () => {
     it('PriceLine_RendersUniformlyAcrossClaimStates', () => {
       for (const overrides of [
         { viewerClaimed: true },
-        { fullyClaimed: true, showPurchased: true },
+        { fullyClaimed: true },
         { isOwner: true },
       ]) {
         const { container, unmount } = renderCard({
@@ -130,7 +128,7 @@ describe('ItemCard', () => {
       });
       expect(container.querySelector('.item-price-row')).toBeNull();
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
     });
 
@@ -166,7 +164,7 @@ describe('ItemCard', () => {
       for (const overrides of [
         {},
         { viewerClaimed: true },
-        { fullyClaimed: true, showPurchased: true },
+        { fullyClaimed: true },
         { isOwner: true },
       ]) {
         const { unmount } = renderCard({
@@ -195,7 +193,7 @@ describe('ItemCard', () => {
         item: { id: 'i1', name: 'Gift', store: STORE } as never,
       });
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
       expect(container.querySelector('.item-price')).toHaveTextContent(
         '$35.50'
@@ -217,7 +215,6 @@ describe('ItemCard', () => {
     it('FullyClaimed_ShowsStatus-KeepsPriceLine', () => {
       const { container } = renderCard({
         fullyClaimed: true,
-        showPurchased: true,
         item: { id: 'i1', name: 'Gift', store: STORE } as never,
       });
       expect(screen.getByRole('status')).toHaveTextContent('Fully claimed');
@@ -227,7 +224,7 @@ describe('ItemCard', () => {
     });
 
     it('FullyClaimedNoStore_RendersNoClickTarget', () => {
-      renderCard({ fullyClaimed: true, showPurchased: true });
+      renderCard({ fullyClaimed: true });
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
   });
@@ -281,7 +278,7 @@ describe('ItemCard', () => {
         screen.getByRole('button', { name: 'own-control' })
       ).toBeInTheDocument();
       expect(
-        screen.queryByRole('button', { name: 'Add Claim' })
+        screen.queryByRole('button', { name: 'Claim' })
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole('link', { name: 'View item — opens in new tab' })
@@ -297,7 +294,7 @@ describe('ItemCard', () => {
         />
       );
       expect(
-        screen.queryByRole('button', { name: 'Add Claim' })
+        screen.queryByRole('button', { name: 'Claim' })
       ).not.toBeInTheDocument();
       expect(
         screen.getByRole('link', { name: 'View item — opens in new tab' })
@@ -305,8 +302,8 @@ describe('ItemCard', () => {
     });
   });
 
-  it('PurchasedOrSpoiler_MarksItemPurchased', () => {
-    const { container } = renderCard({ showSpoilerInfo: true });
+  it('FullyClaimed_MarksTheCardSpent', () => {
+    const { container } = renderCard({ fullyClaimed: true });
     expect(container.querySelector('.item.purchased')).toBeInTheDocument();
   });
 

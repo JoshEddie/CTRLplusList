@@ -33,22 +33,29 @@ const buyClaim = () =>
   screen.queryByRole('link', { name: 'Buy & Claim — opens in new tab' });
 
 describe('ItemActions', () => {
-  // No entry, no claim: the item library names no list, so the affordance that
-  // would create a claim is not offered there. Managing an existing claim is
-  // untouched — removal is row-based and needs no entry.
+  // No entry, no claim: the item library names no list, so neither the
+  // affordance that creates a claim nor the one that manages an existing one
+  // is offered there.
   describe('NoEntry', () => {
     it('Unclaimed_RendersNoAddClaim', () => {
       renderActions({ claimable: false });
       expect(
-        screen.queryByRole('button', { name: 'Add Claim' })
+        screen.queryByRole('button', { name: 'Claim' })
       ).not.toBeInTheDocument();
     });
 
-    it('OwnerWithClaims_StillRendersManageClaims', () => {
+    it('OwnerWithClaims_RendersNoManageClaims', () => {
       renderActions({ claimable: false, isOwner: true, hasAnyClaim: true });
       expect(
-        screen.getByRole('button', { name: 'Manage claims' })
-      ).toBeInTheDocument();
+        screen.queryByRole('button', { name: 'Manage claims' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('ViewerHoldsAClaim_RendersNoManageClaim', () => {
+      renderActions({ claimable: false, viewerClaimed: true });
+      expect(
+        screen.queryByRole('button', { name: 'Manage claim' })
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -60,7 +67,7 @@ describe('ItemActions', () => {
       expect(buy).toHaveClass('primary');
       expect(viewItem()).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
     });
 
@@ -68,7 +75,7 @@ describe('ItemActions', () => {
       renderActions();
       expect(buyClaim()).not.toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
     });
 
@@ -77,7 +84,7 @@ describe('ItemActions', () => {
       expect(buyClaim()).not.toBeInTheDocument();
       expect(viewItem()).not.toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
     });
 
@@ -98,7 +105,7 @@ describe('ItemActions', () => {
     it('NonOwnerClaimable_RendersAddClaimWithViewItem-NoManage', () => {
       renderActions();
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
       expect(
@@ -113,7 +120,7 @@ describe('ItemActions', () => {
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
     });
 
@@ -124,7 +131,7 @@ describe('ItemActions', () => {
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
       expect(
-        screen.queryByRole('button', { name: 'Add Claim' })
+        screen.queryByRole('button', { name: 'Claim' })
       ).not.toBeInTheDocument();
       expect(buyClaim()).not.toBeInTheDocument();
     });
@@ -132,7 +139,7 @@ describe('ItemActions', () => {
     it('GuestUnclaimed_KeepsAddClaimDespiteGuestViewer', () => {
       renderActions({ guestViewer: true });
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
     });
 
@@ -143,7 +150,7 @@ describe('ItemActions', () => {
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
       expect(
-        screen.queryByRole('button', { name: 'Add Claim' })
+        screen.queryByRole('button', { name: 'Claim' })
       ).not.toBeInTheDocument();
     });
 
@@ -157,7 +164,7 @@ describe('ItemActions', () => {
     it('NoStoreClaimable_RendersAddClaimWithoutViewItem', () => {
       renderActions({ store: null });
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
       expect(viewItem()).not.toBeInTheDocument();
     });
@@ -170,7 +177,7 @@ describe('ItemActions', () => {
     it('OwnerClaimsTierClaimable_RendersAddClaimAndViewItem', () => {
       renderActions({ isOwner: true, tier: 'claims' });
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
     });
@@ -209,7 +216,7 @@ describe('ItemActions', () => {
       it('UnclaimedItem_RendersAddClaimAndViewItem', () => {
         renderActions(protectedProps);
         expect(
-          screen.getByRole('button', { name: 'Add Claim' })
+          screen.getByRole('button', { name: 'Claim' })
         ).toBeInTheDocument();
         expect(viewItem()).toBeInTheDocument();
       });
@@ -221,7 +228,7 @@ describe('ItemActions', () => {
           hasAnyClaim: true,
         });
         expect(
-          screen.getByRole('button', { name: 'Add Claim' })
+          screen.getByRole('button', { name: 'Claim' })
         ).toBeInTheDocument();
         expect(viewItem()).toBeInTheDocument();
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
@@ -345,7 +352,7 @@ describe('ItemActions', () => {
   it('AddClaimClick_FiresOnAddClaimClickOnce-NotOnPurchaseClick', async () => {
     const user = userEvent.setup();
     const { props } = renderActions();
-    await user.click(screen.getByRole('button', { name: 'Add Claim' }));
+    await user.click(screen.getByRole('button', { name: 'Claim' }));
     expect(props.onAddClaimClick).toHaveBeenCalledTimes(1);
     expect(props.onPurchaseClick).not.toHaveBeenCalled();
   });

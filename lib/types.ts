@@ -121,13 +121,14 @@ export type EntryCapacity = { quantity: number; remaining: number };
 export type ItemDisplay = ItemTable & {
   store?: ItemStoreTable | null;
   purchases?: PurchaseView[];
-  hasPurchases?: boolean;
   /** The entry this row was read through — a claim is made against it, so its absence (the item library) is what withdraws the claim affordance. */
   list_id?: string;
-  /** The entry's capacity in units. Present with `list_id`. */
+  /** Units asked for: the entry's own alongside `list_id`, or every entry's summed alongside `num_lists` on a library row. Absent for an item on no list. */
   quantity?: number;
-  /** Units already claimed on the entry, summed server-side (ADR-0016) so units never enter the claim projection. Withheld below the `claims` tier. */
+  /** Units already claimed against that same scope, summed server-side (ADR-0016) so units never enter the claim projection. Withheld below the `claims` tier. */
   claimed_units?: number;
+  /** How many entries `quantity` and `claimed_units` are summed over — present only on a library row, and what marks them as the summed reading. */
+  num_lists?: number;
 };
 
 export type SortKey =

@@ -225,9 +225,13 @@ export async function deleteList(id: string): Promise<ActionResponse> {
 
     await db.delete(lists).where(eq(lists.id, id));
 
+    // The cascade takes every entry on the list with it, and a library card
+    // states its item's entries rolled up — so the owner's item pool answers
+    // differently after this too.
     updateTags(
       cacheTags.list(id),
-      cacheTags.listsOfProfile(identity.activeProfile.id)
+      cacheTags.listsOfProfile(identity.activeProfile.id),
+      cacheTags.itemsOfProfile(identity.activeProfile.id)
     );
 
     return { success: true, message: 'List deleted successfully' };

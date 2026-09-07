@@ -60,15 +60,17 @@ export default function ItemActions({
   const revealed = atLeast(tier, 'claims');
   const claimedGuest = !!guestViewer && viewerClaimed;
 
+  // No entry, no claim: a claim is made against an item's presence on a list,
+  // so a surface that names none neither creates nor manages one. The library
+  // card totals its claims in the banner and offers nothing to act on.
   const showManage =
-    !viewOnly && (viewerClaimed || (isOwner && revealed && hasAnyClaim));
+    !viewOnly &&
+    claimable &&
+    (viewerClaimed || (isOwner && revealed && hasAnyClaim));
   const showStatus =
     !viewOnly && revealed && !isOwner && fullyClaimed && !viewerClaimed;
   const ownerCanAdd = revealed ? !fullyClaimed && !hasAnyClaim : !viewerClaimed;
   const nonOwnerCanAdd = !claimedGuest && (!revealed || !fullyClaimed);
-  // No entry, no claim: a claim is made against an item's presence on a list,
-  // so a surface that names no list offers no way to create one. Managing a
-  // claim that already exists is unaffected — removal is row-based.
   const showAdd =
     !viewOnly && claimable && (isOwner ? ownerCanAdd : nonOwnerCanAdd);
   // Keyed on a navigable link, never mere store presence — a PRICED/linkless

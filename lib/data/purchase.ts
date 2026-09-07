@@ -61,18 +61,19 @@ export function sanitizePurchases(
     if (!held && (projection === 'surprise' || projection === 'progress'))
       return views;
     if (!held && projection === 'claims') {
-      // A bare presence flag: one stub per claim, so the person count survives,
-      // and no unit count on it. Capacity is read off the entry instead — a
-      // per-row unit count here would turn "three people claimed" into "one
-      // person claimed three", which is more than this tier ever disclosed.
+      // A bare presence flag: one stub per claim, carrying no unit count.
+      // Still one row each, so the owner's manage list has an entry per claim
+      // to reveal; capacity is read off the entry instead. A per-row unit
+      // count here would let three claims of one be read as one claim of
+      // three, which is more than this tier ever disclosed.
       views.push({ id: p.id, by: 'other', claimedByViewer: false });
       return views;
     }
 
     // Units ride only on a claim that is named: the holder's own, and every
-    // claim once a reveal is confirmed. The stub above carries none, so the
-    // claims tier keeps saying "three people claimed" rather than gaining the
-    // "one person claimed three" it never disclosed.
+    // claim once a reveal is confirmed. The stub above carries none, so
+    // counting rows at the claims tier says how many claims exist and never
+    // how the units split between them.
     const view: PurchaseView = {
       id: p.id,
       units: p.units,

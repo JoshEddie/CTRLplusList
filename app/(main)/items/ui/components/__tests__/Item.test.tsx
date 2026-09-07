@@ -74,8 +74,6 @@ vi.mock('../ItemCard', () => ({
   default: (p: Record<string, unknown>) => (
     <div
       data-testid="item-card"
-      data-show-purchased={String(p.showPurchased)}
-      data-show-spoiler={String(p.showSpoilerInfo)}
       data-fully-claimed={String(p.fullyClaimed)}
       data-entry-line={p.entryLine as string}
       data-is-owner={String(p.isOwner)}
@@ -125,19 +123,14 @@ vi.mock('../ClaimUndoPopup', () => ({
     ) : null,
 }));
 vi.mock('../ClaimBanners', () => ({
-  default: (p: Record<string, unknown>) => {
-    const claims = p.claims as { id: string; name: string }[];
-    const myClaims = p.myClaims as { id: string }[];
-    return (
-      <div
-        data-testid="claim-banners"
-        data-claims={claims.map((c) => c.name).join(',')}
-        data-my-claim={String(myClaims.length > 0)}
-        data-my-claim-ids={myClaims.map((c) => c.id).join(',')}
-        data-counter={p.counterText as string}
-      />
-    );
-  },
+  default: (p: Record<string, unknown>) => (
+    <div
+      data-testid="claim-banners"
+      data-claimed={String(p.claimed)}
+      data-quantity={String(p.quantity)}
+      data-withheld={String(p.withheld)}
+    />
+  ),
 }));
 vi.mock('../OwnerActions', () => ({
   default: (p: Record<string, unknown>) => (
@@ -230,6 +223,7 @@ function renderItem(
 
 const card = () => screen.getByTestId('item-card');
 const banners = () => screen.getByTestId('claim-banners');
+const slot = () => screen.getByTestId('modal-slot');
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -282,59 +276,41 @@ describe('Item', () => {
         },
         actor: actorOf('viewer'),
       });
-      expect(card()).toHaveAttribute('data-show-purchased', 'true');
       expect(card()).toHaveAttribute('data-fully-claimed', 'true');
-      expect(banners()).toHaveAttribute('data-claims', 'Sam');
+      expect(card()).toHaveAttribute('data-has-any-claim', 'true');
     });
 
-    it('QuantityAboveOne_ForwardsTheFractionEntryLine', () => {
+    it('EntryWithCapacity_ForwardsTheClaimedOverQuantityPair', () => {
       renderItem({
         item: { profile_id: OWNER, quantity: AMPLE_QUANTITY },
         actor: actorOf('viewer'),
       });
-      expect(card()).toHaveAttribute(
-        'data-entry-line',
-        `0/${AMPLE_QUANTITY} claimed`
-      );
+      expect(banners()).toHaveAttribute('data-claimed', '0');
+      expect(banners()).toHaveAttribute('data-quantity', `${AMPLE_QUANTITY}`);
+      expect(banners()).toHaveAttribute('data-withheld', 'false');
     });
 
-    it('BelowClaims_ForwardsTheBareAskEntryLine', () => {
+    it('BelowClaims_ForwardsTheBannerAsWithheld', () => {
       renderItem({
         item: { profile_id: OWNER, quantity: AMPLE_QUANTITY },
         actor: actorOf('viewer'),
         tier: 'surprise',
       });
-      expect(card()).toHaveAttribute(
-        'data-entry-line',
-        `${AMPLE_QUANTITY} wanted`
-      );
+      expect(banners()).toHaveAttribute('data-withheld', 'true');
     });
 
-    it('QuantityOne_ForwardsEmptyEntryLine', () => {
+    // The library reads no entry, so there is no capacity to count against.
+    it('NoEntry_RendersNoBanner', () => {
       renderItem({
-        item: { profile_id: OWNER, quantity: 1 },
+        item: { profile_id: OWNER, list_id: undefined, quantity: undefined },
         actor: actorOf('viewer'),
       });
-      expect(card()).toHaveAttribute('data-entry-line', '');
+      expect(screen.queryByTestId('claim-banners')).not.toBeInTheDocument();
     });
 
-    it('OwnerWithClaimsAtIdentity_ForwardsSpoilerPillTrue', () => {
-      renderItem({
-        actor: actorOf(OWNER),
-        item: {
-          profile_id: OWNER,
-          quantity: 3,
-          purchases: [
-            { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
-          ],
-        },
-      });
-      expect(card()).toHaveAttribute('data-show-spoiler', 'true');
-    });
-
-    it('NoClaims_ForwardsEmptyClaims', () => {
+    it('NoClaims_ForwardsHasAnyClaimFalse', () => {
       renderItem({ item: { profile_id: OWNER }, actor: actorOf('viewer') });
-      expect(banners()).toHaveAttribute('data-claims', '');
+      expect(card()).toHaveAttribute('data-has-any-claim', 'false');
     });
 
     it('SelfClaim_ForwardsYouSummaryAndMyClaim', () => {
@@ -348,28 +324,7 @@ describe('Item', () => {
         actor: actorOf('viewer'),
       });
       expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
-      expect(banners()).toHaveAttribute('data-my-claim', 'true');
-    });
-
-    it('MixedClaims_ForwardsOnlyViewerRemovableClaimsAsMine', () => {
-      renderItem({
-        item: {
-          profile_id: OWNER,
-          quantity: AMPLE_QUANTITY,
-          purchases: [
-            { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
-            { id: 'pm', by: 'self', name: 'You', claimedByViewer: true },
-            {
-              id: 'pa',
-              by: 'other',
-              name: 'Grandma',
-              claimedByViewer: true,
-            },
-          ],
-        },
-        actor: actorOf('viewer'),
-      });
-      expect(banners()).toHaveAttribute('data-my-claim-ids', 'pm,pa');
+      expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
     });
 
     it('ClaimWithNullFirstName_ForwardsNamelessClaim', () => {
@@ -382,7 +337,7 @@ describe('Item', () => {
         },
         actor: actorOf('viewer'),
       });
-      expect(banners()).toHaveAttribute('data-claims', '');
+      expect(card()).toHaveAttribute('data-has-any-claim', 'true');
     });
 
     it('MissingPurchasesField_TreatedAsNoClaims', () => {
@@ -390,7 +345,7 @@ describe('Item', () => {
         item: { profile_id: OWNER, purchases: undefined },
         actor: actorOf('viewer'),
       });
-      expect(banners()).toHaveAttribute('data-my-claim', 'false');
+      expect(card()).toHaveAttribute('data-viewer-claimed', 'false');
     });
 
     it('PropSync_ResyncsLocalPurchasesOnPropChange', () => {
@@ -398,7 +353,7 @@ describe('Item', () => {
         item: { profile_id: OWNER },
         actor: actorOf('viewer'),
       });
-      expect(banners()).toHaveAttribute('data-claims', '');
+      expect(card()).toHaveAttribute('data-has-any-claim', 'false');
       rerender(
         <Item
           item={makeItem({
@@ -410,7 +365,7 @@ describe('Item', () => {
           actor={actorOf('viewer')}
         />
       );
-      expect(banners()).toHaveAttribute('data-claims', 'Sam');
+      expect(card()).toHaveAttribute('data-has-any-claim', 'true');
     });
   });
 
@@ -578,10 +533,7 @@ describe('Item', () => {
         units: 1,
       });
       await waitFor(() =>
-        expect(screen.getByTestId('claim-banners')).toHaveAttribute(
-          'data-my-claim',
-          'true'
-        )
+        expect(card()).toHaveAttribute('data-viewer-claimed', 'true')
       );
     });
 
@@ -601,15 +553,9 @@ describe('Item', () => {
       // The optimistic row carries the name in full, as the server render
       // will; the viewer asserted the claim, so the undo affordance unlocks.
       await waitFor(() =>
-        expect(screen.getByTestId('claim-banners')).toHaveAttribute(
-          'data-claims',
-          'Sam Lee'
-        )
+        expect(slot()).toHaveAttribute('data-claim-names', 'Sam Lee')
       );
-      expect(screen.getByTestId('claim-banners')).toHaveAttribute(
-        'data-my-claim',
-        'true'
-      );
+      expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
     });
 
     it('GuestClaim_CreatePurchaseWithName-AddsOtherClaim', async () => {
@@ -623,10 +569,7 @@ describe('Item', () => {
         units: 1,
       });
       await waitFor(() =>
-        expect(screen.getByTestId('claim-banners')).toHaveAttribute(
-          'data-claims',
-          'Sam Lee'
-        )
+        expect(slot()).toHaveAttribute('data-claim-names', 'Sam Lee')
       );
     });
 
@@ -635,9 +578,9 @@ describe('Item', () => {
       renderItem({ item: { profile_id: OWNER } }, 'purchaseItem=i1');
       await user.click(screen.getByRole('button', { name: 'claim-guest' }));
       await waitFor(() =>
-        expect(banners()).toHaveAttribute('data-claims', 'Sam Lee')
+        expect(slot()).toHaveAttribute('data-claim-names', 'Sam Lee')
       );
-      expect(banners()).toHaveAttribute('data-my-claim', 'true');
+      expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
     });
 
     it('EmptyItemId_PayloadCarriesEmptyId', async () => {
@@ -684,7 +627,7 @@ describe('Item', () => {
       );
       await user.click(screen.getByRole('button', { name: 'claim-self' }));
       await waitFor(() =>
-        expect(banners()).toHaveAttribute('data-claims', 'You')
+        expect(slot()).toHaveAttribute('data-claim-names', 'You')
       );
     });
 
@@ -700,7 +643,7 @@ describe('Item', () => {
       await waitFor(() =>
         expect(card()).toHaveAttribute('data-viewer-claimed', 'true')
       );
-      expect(banners()).toHaveAttribute('data-my-claim', 'true');
+      expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
     });
 
     it('PurchaseFailsWithMessage_Toasts', async () => {
@@ -740,7 +683,7 @@ describe('Item', () => {
       );
       expect(removePurchase).toHaveBeenCalledWith({ purchase_id: 'srv-1' });
       await waitFor(() =>
-        expect(banners()).toHaveAttribute('data-my-claim', 'false')
+        expect(card()).toHaveAttribute('data-viewer-claimed', 'false')
       );
     });
 
@@ -768,7 +711,7 @@ describe('Item', () => {
       );
       resolveCreate({ success: true, id: 'srv-1' });
       await waitFor(() =>
-        expect(banners()).toHaveAttribute('data-claims', 'You')
+        expect(slot()).toHaveAttribute('data-claim-names', 'You')
       );
     });
 
@@ -857,7 +800,7 @@ describe('Item', () => {
         units: 1,
       });
       await waitFor(() => expect(popup()).toBeInTheDocument());
-      expect(banners()).toHaveAttribute('data-my-claim', 'true');
+      expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
     });
 
     it('BuyClaimRejected_NoPopup-StaysClaimable', async () => {
@@ -867,7 +810,7 @@ describe('Item', () => {
       await user.click(screen.getByRole('button', { name: 'card-buy-claim' }));
       await waitFor(() => expect(createPurchase).toHaveBeenCalled());
       expect(popup()).not.toBeInTheDocument();
-      expect(banners()).toHaveAttribute('data-my-claim', 'false');
+      expect(card()).toHaveAttribute('data-viewer-claimed', 'false');
     });
 
     it('BuyClaimThrows_NoPopup', async () => {
@@ -887,7 +830,7 @@ describe('Item', () => {
       await user.click(screen.getByRole('button', { name: 'popup-undo' }));
       expect(removePurchase).toHaveBeenCalledWith({ purchase_id: 'srv-1' });
       await waitFor(() =>
-        expect(banners()).toHaveAttribute('data-my-claim', 'false')
+        expect(card()).toHaveAttribute('data-viewer-claimed', 'false')
       );
       expect(popup()).not.toBeInTheDocument();
     });
@@ -941,7 +884,7 @@ describe('Item', () => {
       await user.click(screen.getByRole('button', { name: 'popup-keep' }));
       expect(popup()).not.toBeInTheDocument();
       expect(removePurchase).not.toHaveBeenCalled();
-      expect(banners()).toHaveAttribute('data-my-claim', 'true');
+      expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
     });
 
     it('ViewerHoldsOlderRemovableClaim_PopupUndoRemovesJustRecordedClaimOnly', async () => {
@@ -969,13 +912,12 @@ describe('Item', () => {
       expect(removePurchase).toHaveBeenCalledTimes(1);
       expect(removePurchase).toHaveBeenCalledWith({ purchase_id: 'srv-1' });
       await waitFor(() =>
-        expect(banners()).toHaveAttribute('data-my-claim-ids', 'pa')
+        expect(card()).toHaveAttribute('data-viewer-claimed', 'true')
       );
     });
   });
 
   describe('ModalView', () => {
-    const slot = () => screen.getByTestId('modal-slot');
     const claimedItem = {
       profile_id: OWNER,
       quantity: 3,
@@ -1343,7 +1285,9 @@ describe('Item', () => {
         screen.getByRole('button', { name: 'modal-remove-first' })
       );
       expect(removePurchase).toHaveBeenCalledWith({ purchase_id: 'p1' });
-      await waitFor(() => expect(banners()).toHaveAttribute('data-claims', ''));
+      await waitFor(() =>
+        expect(card()).toHaveAttribute('data-has-any-claim', 'false')
+      );
     });
 
     it('RemoveThrows_LogsError-KeepsClaim', async () => {
@@ -1354,7 +1298,7 @@ describe('Item', () => {
         screen.getByRole('button', { name: 'modal-remove-first' })
       );
       await waitFor(() => expect(console.error).toHaveBeenCalled());
-      expect(banners()).toHaveAttribute('data-claims', 'Sam');
+      expect(slot()).toHaveAttribute('data-claim-names', 'Sam');
     });
 
     it('RemoveFails_KeepsClaim', async () => {
@@ -1365,7 +1309,7 @@ describe('Item', () => {
         screen.getByRole('button', { name: 'modal-remove-first' })
       );
       await waitFor(() => expect(removePurchase).toHaveBeenCalled());
-      expect(banners()).toHaveAttribute('data-claims', 'Sam');
+      expect(slot()).toHaveAttribute('data-claim-names', 'Sam');
     });
 
     it('RemoveRefused_ReportsFailureRatherThanSuccess', async () => {
@@ -1404,10 +1348,7 @@ describe('Item', () => {
       );
       expect(removePurchase).toHaveBeenCalledWith({ purchase_id: 'pm' });
       await waitFor(() =>
-        expect(screen.getByTestId('claim-banners')).toHaveAttribute(
-          'data-my-claim',
-          'false'
-        )
+        expect(card()).toHaveAttribute('data-viewer-claimed', 'false')
       );
       expect(router.replace).toHaveBeenCalledWith(
         expect.not.stringContaining('purchaseItem')
@@ -1466,10 +1407,7 @@ describe('Item', () => {
         screen.getByRole('button', { name: 'manage-remove-first' })
       );
       await waitFor(() => expect(removePurchase).toHaveBeenCalled());
-      expect(screen.getByTestId('claim-banners')).toHaveAttribute(
-        'data-my-claim',
-        'true'
-      );
+      expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
       expect(router.replace).not.toHaveBeenCalled();
     });
   });

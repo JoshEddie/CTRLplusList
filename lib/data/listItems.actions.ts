@@ -208,10 +208,14 @@ export async function setListItems(
     // Per-item tags alongside the list tags: getItemById is keyed by item and
     // carries membership tags only for the lists the item was already on, so an
     // added item's cached entry names no tag this write would otherwise fire.
+    // The owner's item pool too: a library card states the quantity and list
+    // count rolled up across the entries this write just moved, so the pool
+    // read answers differently after it.
     updateTags(
       cacheTags.list(list_id),
       cacheTags.itemsOfList(list_id),
       cacheTags.listsOfProfile(list.profile_id),
+      cacheTags.itemsOfProfile(list.profile_id),
       ...[...toInsert, ...toRemove].map((itemId) => cacheTags.item(itemId))
     );
 

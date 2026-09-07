@@ -1,177 +1,53 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { PurchaseView } from '@/lib/types';
 import ClaimBanners from '../ClaimBanners';
 
-const selfClaim: PurchaseView = {
-  id: 'p1',
-  by: 'self',
-  name: 'You',
-  claimedByViewer: true,
-};
-const samClaim: PurchaseView = {
-  id: 'p2',
-  by: 'other',
-  name: 'Sam',
-  claimedByViewer: false,
-};
-const joClaim: PurchaseView = {
-  id: 'p3',
-  by: 'other',
-  name: 'Jo Nakamura',
-  claimedByViewer: false,
-};
-const grandmaClaim: PurchaseView = {
-  id: 'p4',
-  by: 'other',
-  name: 'Grandma',
-  claimedByViewer: true,
-};
-
-function renderBanners(
+function mountBanner(
   overrides: Partial<React.ComponentProps<typeof ClaimBanners>> = {}
 ) {
-  const props: React.ComponentProps<typeof ClaimBanners> = {
-    showPurchased: false,
-    myClaims: [],
-    isOwner: false,
-    tier: 'claims',
-    claims: [],
-    claimSummary: '',
-    counterText: '1/3 claimed',
-    claimable: true,
-    ...overrides,
-  };
-  return { props, ...render(<ClaimBanners {...props} />) };
+  render(
+    <ClaimBanners claimed={0} quantity={8} withheld={false} {...overrides} />
+  );
+  return screen.getByRole('status');
+}
+
+// The fraction the disc is painted from, read off the custom property the
+// stylesheet fills it with.
+function progressOf(banner: HTMLElement): string | undefined {
+  return banner
+    .querySelector<HTMLElement>('.progress-disc-inside')
+    ?.style.getPropertyValue('--progress');
 }
 
 describe('ClaimBanners', () => {
-  it('PurchasedByOthers_ShowsClaimedByNames', () => {
-    renderBanners({
-      showPurchased: true,
-      claims: [samClaim, joClaim],
-      claimSummary: 'Sam, Jo Nakamura',
-    });
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Claimed by Sam, Jo Nakamura'
+  it('NothingClaimed_ShowsTheZeroCountAndAnUnfilledDisc', () => {
+    const banner = mountBanner({ claimed: 0, quantity: 3 });
+    expect(banner).toHaveTextContent('0 / 3 Claimed');
+    expect(progressOf(banner)).toBe('0');
+  });
+
+  it('PartiallyClaimed_FillsTheDiscToTheFraction', () => {
+    const banner = mountBanner({ claimed: 1, quantity: 4 });
+    expect(banner).toHaveTextContent('1 / 4 Claimed');
+    expect(progressOf(banner)).toBe('0.25');
+  });
+
+  it('ListCountGiven_SaysHowManyListsTheCounterSpans', () => {
+    expect(mountBanner({ claimed: 3, quantity: 5, lists: 2 })).toHaveTextContent(
+      '3 / 5 Claimed on 2 lists'
     );
   });
 
-  it('PurchasedButMine_SuppressesOthersBanner', () => {
-    renderBanners({
-      showPurchased: true,
-      myClaims: [selfClaim],
-      claims: [selfClaim],
-    });
-    expect(screen.queryByText(/Claimed by/)).not.toBeInTheDocument();
-    expect(screen.getByText('You claimed this')).toBeInTheDocument();
-  });
-
-  it('SelfClaim_ShowsYouClaimedThis-WithoutUndoAffordance', () => {
-    renderBanners({ myClaims: [selfClaim] });
-    expect(screen.getByText('You claimed this')).toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-  });
-
-  it('ClaimedByViewerForOther_ShowsYouClaimedThisForThem', () => {
-    renderBanners({ myClaims: [grandmaClaim] });
+  it('ListCountGivenWithCountWithheld_SaysTheSpanAfterTheAsk', () => {
     expect(
-      screen.getByText('You claimed this for Grandma')
-    ).toBeInTheDocument();
+      mountBanner({ claimed: 3, quantity: 5, withheld: true, lists: 1 })
+    ).toHaveTextContent('5 wanted on 1 list');
   });
 
-  it('TwoAttributedClaims_EnumeratesBothNamesInFull', () => {
-    renderBanners({
-      myClaims: [grandmaClaim, { ...joClaim, claimedByViewer: true }],
-    });
-    expect(
-      screen.getByText('You claimed this for Grandma, Jo Nakamura')
-    ).toBeInTheDocument();
+  it('CountWithheld_ShowsTheAskAndDisclosesNoProgress', () => {
+    const banner = mountBanner({ claimed: 3, quantity: 3, withheld: true });
+    expect(banner).toHaveTextContent('3 wanted');
+    expect(banner).not.toHaveTextContent('Claimed');
+    expect(progressOf(banner)).toBe('0');
   });
-
-  it('SelfPlusAttributedClaims_EnumeratesSelfAndNames', () => {
-    renderBanners({ myClaims: [selfClaim, grandmaClaim] });
-    expect(
-      screen.getByText('You claimed this, and for Grandma')
-    ).toBeInTheDocument();
-  });
-
-  it('OwnerWithMyClaim_OmitsMineBanner', () => {
-    renderBanners({ myClaims: [selfClaim], isOwner: true });
-    expect(screen.queryByText('You claimed this')).not.toBeInTheDocument();
-  });
-
-  // The owner spoiler banner is computed internally: it shows only when the
-  // viewer is the owner, the item carries claims, and the tier is `claims`.
-  // No tier names the claiming parties — that is the claim modal's reveal.
-  describe('Spoiler', () => {
-    it('OwnerAtClaims_RendersCounterWithoutNamingParties', () => {
-      renderBanners({
-        isOwner: true,
-        tier: 'claims',
-        claims: [samClaim, joClaim],
-      });
-      expect(screen.getByRole('status')).toHaveTextContent('1/3 claimed');
-      expect(screen.queryByText('Sam')).not.toBeInTheDocument();
-      expect(screen.queryByText('Jo Nakamura')).not.toBeInTheDocument();
-    });
-
-    // Off a list there is no entry, so no capacity to count against and no
-    // counter. The banner shows the same line it already uses for a
-    // fully-claimed item rather than rendering a bare check mark.
-    it('OwnerWithNoEntry_ShowsTheClaimedByLine', () => {
-      renderBanners({
-        isOwner: true,
-        tier: 'claims',
-        claims: [samClaim, joClaim],
-        claimSummary: '2 people',
-        counterText: '',
-        claimable: false,
-      });
-      expect(screen.getByRole('status')).toHaveTextContent(
-        'Claimed by 2 people'
-      );
-    });
-
-    it('OwnerAtClaimsWithAttributedClaim_NamesNeitherParty', () => {
-      renderBanners({
-        isOwner: true,
-        tier: 'claims',
-        claims: [{ ...grandmaClaim, claimerName: 'Vicky' }],
-      });
-      expect(screen.queryByText(/Grandma/)).not.toBeInTheDocument();
-      expect(screen.queryByText(/Vicky/)).not.toBeInTheDocument();
-    });
-
-    it.each(['surprise', 'progress'] as const)(
-      'OwnerBelowClaimsAt%s_RendersNoSpoilerBanner',
-      (tier) => {
-        renderBanners({ isOwner: true, tier, claims: [samClaim, joClaim] });
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
-      }
-    );
-
-    it('NonOwnerAtClaims_RendersNoSpoilerBanner', () => {
-      renderBanners({ isOwner: false, tier: 'claims', claims: [samClaim] });
-      expect(screen.queryByText('1/3 claimed')).not.toBeInTheDocument();
-    });
-  });
-
-  it('NoFlags_RendersNothing', () => {
-    renderBanners();
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
-  });
-});
-
-// A claim the viewer holds is disclosed in full at every level, so it always
-// carries a name — except on an optimistic row assembled before the server
-// answers, where the fallback keeps the label total.
-it('AttributedOwnClaimWithoutAName_LabelsItSomeone', () => {
-  renderBanners({
-    myClaims: [{ id: 'p9', by: 'other', claimedByViewer: true }],
-  });
-
-  expect(screen.getByRole('status')).toHaveTextContent(
-    'You claimed this for Someone'
-  );
 });

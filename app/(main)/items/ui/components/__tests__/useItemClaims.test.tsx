@@ -133,33 +133,30 @@ describe('Capacity', () => {
   });
 });
 
-describe('Counter', () => {
-  it('QuantityTwoWithOneClaimedUnit_CounterReportsOneOverTwo', () => {
+describe('Banner', () => {
+  it('QuantityTwoWithOneClaimedUnit_BannerReportsOneOfTwo', () => {
     const { result } = mount({
       item: makeItem({ quantity: 2, purchases: [ownClaim()] }),
     });
-    expect(result.current.counterText).toBe('1/2 claimed');
-  });
-
-  // An entry that has met its quantity says so plainly: an owner who lowered
-  // the number afterwards would otherwise be shown a fraction reading 3/2.
-  it('ClaimedUnitsMeetingQuantity_CounterReadsFullyClaimed', () => {
-    const { result } = mount({
-      item: makeItem({ quantity: 2, claimed_units: 2 }),
+    expect(result.current.banner).toEqual({
+      claimed: 1,
+      quantity: 2,
+      withheld: false,
     });
-    expect(result.current.counterText).toBe('Fully claimed');
   });
 
-  it('ClaimedUnitsPastQuantity_CounterReadsFullyClaimedWithNoFraction', () => {
+  // An owner who lowered the quantity afterwards still has more claimed than
+  // asked for; the banner reports the raw pair rather than inventing a cap.
+  it('ClaimedUnitsPastQuantity_BannerKeepsTheRawPair', () => {
     const { result } = mount({
       item: makeItem({ quantity: 2, claimed_units: 3 }),
     });
-    expect(result.current.counterText).toBe('Fully claimed');
+    expect(result.current.banner).toMatchObject({ claimed: 3, quantity: 2 });
   });
 
-  // The library reads no entry, so it has no capacity to count against and no
-  // counter to offer. What the owner's banner shows there is the banner's own.
-  it('NoEntry_CounterIsEmpty-EntryLineIsEmpty', () => {
+  // The library reads no entry, so it has no capacity to count against and
+  // nothing the banner could state.
+  it('NoEntry_BannerIsNull', () => {
     const { result } = mount({
       item: makeItem({
         list_id: undefined,
@@ -167,49 +164,59 @@ describe('Counter', () => {
         purchases: [ownClaim(), othersClaim()],
       }),
     });
-    expect(result.current.counterText).toBe('');
-    expect(result.current.entryLine).toBe('');
+    expect(result.current.banner).toBeNull();
   });
 
-  it('QuantityTwo_EntryLineReadsClaimProgress', () => {
-    const { result } = mount({ item: makeItem({ quantity: 2 }) });
-    expect(result.current.entryLine).toBe('0/2 claimed');
+  // A library row carries the same pair summed over every entry, and the list
+  // count that says so.
+  it('NoListIdWithSummedPair_BannerStatesItAndTheListCount', () => {
+    const { result } = mount({
+      item: makeItem({
+        list_id: undefined,
+        quantity: 5,
+        claimed_units: 3,
+        num_lists: 2,
+      }),
+    });
+    expect(result.current.banner).toEqual({
+      claimed: 3,
+      quantity: 5,
+      withheld: false,
+      lists: 2,
+    });
   });
 
-  // A single-quantity item has nothing to count towards, so an ordinary list
-  // reads exactly as it did before entries carried a number.
-  it('QuantityOne_EntryLineIsEmpty', () => {
-    const { result } = mount({ item: makeItem({ quantity: 1 }) });
-    expect(result.current.entryLine).toBe('');
+  // Below `claims` the DAL withheld the summed count, so the banner states the
+  // ask and reports nothing claimed rather than a false zero.
+  it('TierBelowClaimsOnASummedRow_BannerWithholdsTheCount', () => {
+    const { result } = mount({
+      item: makeItem({
+        list_id: undefined,
+        quantity: 5,
+        claimed_units: undefined,
+        num_lists: 2,
+      }),
+      tier: 'progress',
+    });
+    expect(result.current.banner).toEqual({
+      claimed: 0,
+      quantity: 5,
+      withheld: true,
+      lists: 2,
+    });
   });
 
-  // Below `claims` the projection withheld other parties' claims, so a counter
-  // built from the payload would state a false zero rather than hide. The
-  // owner's ask is not claim data, so it survives the withholding.
-  it('TierBelowClaims_EntryLineReadsTheBareAsk', () => {
+  // Below `claims` the projection withheld other parties' claims, so a count
+  // built from the payload would state a false zero rather than hide.
+  it('TierBelowClaims_BannerIsWithheld', () => {
     const { result } = mount({
       item: makeItem({ quantity: 2 }),
       tier: 'progress',
     });
-    expect(result.current.entryLine).toBe('2 wanted');
-  });
-
-  // The owner's claim count is spoiler-gated onto their banner; the row states
-  // what they asked for, which is theirs to know at every tier.
-  it('Owner_EntryLineReadsTheBareAsk', () => {
-    const { result } = mount({
-      item: makeItem({ quantity: 4, claimed_units: 2 }),
-      isOwner: true,
+    expect(result.current.banner).toMatchObject({
+      quantity: 2,
+      withheld: true,
     });
-    expect(result.current.entryLine).toBe('4 wanted');
-  });
-
-  // The sold-out row already carries its claimed-by banner.
-  it('FullyClaimedViewer_EntryLineIsEmpty', () => {
-    const { result } = mount({
-      item: makeItem({ quantity: 2, claimed_units: 2 }),
-    });
-    expect(result.current.entryLine).toBe('');
   });
 });
 
@@ -297,36 +304,6 @@ describe('SpoilerGates', () => {
     expect(result.current.namesWithheld).toBe(true);
   });
 
-  it('OwnerWithClaimsAtClaimsTier_ShowsTheSpoilerPill', () => {
-    const { result } = mount({
-      isOwner: true,
-      item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [othersClaim()] }),
-    });
-    expect(result.current.showSpoilerInfo).toBe(true);
-  });
-
-  it('OwnerWithNoClaims_HidesTheSpoilerPill', () => {
-    const { result } = mount({ isOwner: true });
-    expect(result.current.showSpoilerInfo).toBe(false);
-  });
-});
-
-describe('PurchasedTreatment', () => {
-  it('NonOwnerFullyClaimed_ShowsThePurchasedTreatment', () => {
-    const { result } = mount({
-      item: makeItem({ quantity: 1, purchases: [othersClaim()] }),
-    });
-    expect(result.current.showPurchased).toBe(true);
-  });
-
-  // The owner's own list never goes sold-out on them.
-  it('OwnerFullyClaimed_HidesThePurchasedTreatment', () => {
-    const { result } = mount({
-      isOwner: true,
-      item: makeItem({ quantity: 1, purchases: [othersClaim()] }),
-    });
-    expect(result.current.showPurchased).toBe(false);
-  });
 });
 
 describe('BuyClaimAffordance', () => {

@@ -9,7 +9,7 @@ import { expect, test, type Locator } from '@playwright/test';
 //     `$X.XX` with no `· {store name}`; BARE renders no price line at all).
 //   item-actions — "Priced-but-linkless item never offers Buy & Claim" (both
 //     Buy & Claim ↗ and View item ↗ key on a navigable link, so a linkless
-//     card falls to Add Claim alone).
+//     card falls to Claim alone).
 //
 // Read-only: no claim is recorded and no item is edited, so sharing
 // dev-list-alice-wedding with signed-in-claim.auth.spec (which mutates it) is
@@ -29,7 +29,7 @@ const VIEW_ITEM = 'View item — opens in new tab';
 // "Add Claim SHALL render full width": purchase.css spans a lone action across
 // the whole action grid, and only demotes it to a half-width `grid-column: 2`
 // when it shares the two-up row with View item. The variant is no signal —
-// ItemActions renders Add Claim `primary` in every state, two-up included.
+// ItemActions renders Claim `primary` in every state, two-up included.
 async function expectFullWidth(action: Locator) {
   await expect(action).toBeVisible();
   await expect(action).toHaveCSS('grid-column-end', '-1');
@@ -51,7 +51,9 @@ test('PricedItem_NonOwnerViewsCard_ShowsBarePriceAndAddClaimOnly', async ({
 
   // No navigable link, so the store-going actions are both absent and the
   // claim action stands alone across the full width.
-  await expectFullWidth(card.getByRole('button', { name: 'Add Claim' }));
+  await expectFullWidth(
+    card.getByRole('button', { name: 'Claim', exact: true })
+  );
   await expect(card.getByRole('link', { name: BUY_CLAIM })).toHaveCount(0);
   await expect(card.getByRole('link', { name: VIEW_ITEM })).toHaveCount(0);
 });
@@ -65,7 +67,9 @@ test('BareItem_NonOwnerViewsCard_ShowsNoPriceLineAndAddClaimOnly', async ({
   ).toBeVisible();
 
   const card = page.locator('.item-container', { hasText: BARE_ITEM });
-  await expectFullWidth(card.getByRole('button', { name: 'Add Claim' }));
+  await expectFullWidth(
+    card.getByRole('button', { name: 'Claim', exact: true })
+  );
 
   // No valid store at all: no price line, and neither store-going action.
   await expect(card.locator('.item-price-row')).toHaveCount(0);

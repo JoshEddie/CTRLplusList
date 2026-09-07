@@ -144,24 +144,84 @@ describe('getItemsByProfile', () => {
       });
     });
 
-    it('Surprise_ReturnsEmptyPurchases-HasPurchasesFalse', async () => {
+    it('Surprise_ReturnsEmptyPurchases', async () => {
       const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
         tier: 'surprise',
       });
       expect(rows[0].purchases).toEqual([]);
-      // `hasPurchases` now reflects only what the tier discloses: an item
-      // carrying only others' claims below `claims` reads as unclaimed.
-      expect(rows[0].hasPurchases).toBe(false);
     });
 
-    it('Claims_ReturnsBareCountEntry-HasPurchasesTrue', async () => {
+    it('Claims_ReturnsBareCountEntry', async () => {
       const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
         tier: 'claims',
       });
       expect(rows[0].purchases).toEqual([
         { id: 'p1', by: 'other', claimedByViewer: false },
       ]);
-      expect(rows[0].hasPurchases).toBe(true);
+    });
+  });
+
+  // The library card is read through no entry, so the pair it states is summed
+  // over every entry the item has, with `num_lists` saying how many.
+  describe('SummedOverEveryEntry', () => {
+    beforeEach(async () => {
+      await seedUsers(db, [{ id: 'owner' }, { id: 'claimer' }]);
+      await seedItem(db, { id: 'gift', user_id: 'owner' });
+      await seedList(db, { id: 'l1', user_id: 'owner' });
+      await seedList(db, { id: 'l2', user_id: 'owner' });
+      await seedListItem(db, {
+        list_id: 'l1',
+        item_id: 'gift',
+        position: 1,
+        quantity: 2,
+      });
+      await seedListItem(db, {
+        list_id: 'l2',
+        item_id: 'gift',
+        position: 1,
+        quantity: 3,
+      });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'gift',
+        list_id: 'l1',
+        units: 2,
+        profile_id: selfProfileOf('claimer'),
+      });
+      await seedPurchase(db, {
+        id: 'p2',
+        item_id: 'gift',
+        list_id: 'l2',
+        units: 1,
+        profile_id: selfProfileOf('claimer'),
+      });
+    });
+
+    it('ItemOnTwoLists_SumsQuantityAndClaimedUnitsAcrossBoth', async () => {
+      const rows = await dal.getItemsByProfile(selfProfileOf('owner'));
+      expect(rows[0]).toMatchObject({
+        num_lists: 2,
+        quantity: 5,
+        claimed_units: 3,
+      });
+    });
+
+    it('TierBelowClaims_WithholdsTheClaimedUnitsButKeepsTheAsk', async () => {
+      const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
+        tier: 'progress',
+      });
+      expect(rows[0]).toMatchObject({ num_lists: 2, quantity: 5 });
+      expect(rows[0].claimed_units).toBeUndefined();
+    });
+
+    it('ItemOnNoList_CarriesNeitherAskNorListCount', async () => {
+      await seedItem(db, { id: 'orphan', user_id: 'owner' });
+
+      const orphan = (await dal.getItemsByProfile(selfProfileOf('owner'))).find(
+        (r) => r.id === 'orphan'
+      );
+      expect(orphan?.quantity).toBeUndefined();
+      expect(orphan?.num_lists).toBeUndefined();
     });
   });
 
@@ -329,13 +389,11 @@ describe('getItemsByListId', () => {
       });
     }
 
-    it('SurpriseNoViewerId_ReturnsEmptyPurchases-HasPurchasesFalse', async () => {
+    // No viewer id, so neither claim is held and the projection empties.
+    it('SurpriseNoViewerId_ReturnsEmptyPurchases', async () => {
       await seedClaimedItem();
       const rows = await dal.getItemsByListId('l1', { tier: 'surprise' });
       expect(rows[0].purchases).toEqual([]);
-      // No viewer id, so neither claim is held: `hasPurchases` reflects the
-      // empty projection rather than the unprojected rows.
-      expect(rows[0].hasPurchases).toBe(false);
     });
 
     it('Claims_ReturnsCountWithNoFirstName', async () => {

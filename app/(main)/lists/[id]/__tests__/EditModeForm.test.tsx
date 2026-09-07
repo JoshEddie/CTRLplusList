@@ -207,7 +207,7 @@ describe('EditModeForm', () => {
     it('Default_OpensOnInThisListWithBothTabsCounted', () => {
       renderForm();
       expect(inListTab()).toHaveTextContent('In this list · 2');
-      expect(addTab()).toHaveTextContent('Add items · 4');
+      expect(addTab()).toHaveTextContent('Add items');
       expect(inListTab()).toHaveAttribute('aria-selected', 'true');
       expect(rowNames()).toEqual(['Apple', 'Banana']);
     });
