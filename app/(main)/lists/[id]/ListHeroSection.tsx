@@ -1,5 +1,4 @@
 import ListDetails from '@/app/(main)/lists/ui/components/ListDetails';
-import { enterEditHref } from './editModeChanges';
 import ListPrivate from '@/app/(main)/lists/ui/components/ListPrivate';
 import { db } from '@/db';
 import { list_visits } from '@/db/schema';
@@ -100,10 +99,6 @@ export default async function ListHeroSection({
             : undefined
         }
         itemCount={list.item_count}
-        editHref={enterEditHref(
-          id,
-          new URLSearchParams(sp as Record<string, string>)
-        )}
       />
     </>
   );

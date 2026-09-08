@@ -141,6 +141,20 @@ describe('heroContrast', () => {
       expect(ratioOverWorstCase(color)).toBeGreaterThanOrEqual(AA_NORMAL);
     });
 
+    it('Byline_MeetsNormalTextAA', () => {
+      const color = resolveColor(
+        declaration(listCss, '.list-hero-byline-link', 'color')
+      );
+      expect(ratioOverWorstCase(color)).toBeGreaterThanOrEqual(AA_NORMAL);
+    });
+
+    it('Meta_MeetsNormalTextAA', () => {
+      const color = resolveColor(
+        declaration(listCss, '.list-hero-meta', 'color')
+      );
+      expect(ratioOverWorstCase(color)).toBeGreaterThanOrEqual(AA_NORMAL);
+    });
+
     it('Eyebrow_MeetsNormalTextAA', () => {
       const color = resolveColor(
         declaration(listCss, '.list-hero-eyebrow', 'color')

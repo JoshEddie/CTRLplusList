@@ -28,8 +28,9 @@ test('EditMode_OwnerStagesAddQuantityReorderAndRemoval_OneSavePersistsAll', asyn
   ).toHaveCount(0);
   await page.keyboard.press('Escape');
 
-  await page.getByRole('link', { name: 'Edit items' }).click();
-  await expect(page).toHaveURL(new RegExp(`/lists/${listId}\\?edit=1$`));
+  // The hero carries no door into the staged session; its own URL is the way
+  // in.
+  await page.goto(`/lists/${listId}?edit=1`);
   const inListTab = page.getByRole('tab', { name: /^In this list/ });
   const addTab = page.getByRole('tab', { name: /^Add items/ });
   await expect(inListTab).toHaveText('In this list · 1');

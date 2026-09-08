@@ -7,6 +7,7 @@
 import { ROLES } from '@/lib/data/profile.roles';
 import { PROTECTED_TIER } from '@/lib/spoilers';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { writableMembership } from '@/lib/data/profile.gate';
 import { authedIdentity } from '@/lib/data/user.session';
@@ -26,12 +27,12 @@ vi.mock('../VisibilityPicker', () => ({
 }));
 vi.mock('../ListActionsMenu', () => ({
   default: (props: {
-    disabled?: boolean;
+    deleteDisabled?: boolean;
     prependedItems?: React.ReactNode;
   }) => (
     <div
       data-testid="actions-menu-stub"
-      data-disabled={props.disabled || undefined}
+      data-disabled={props.deleteDisabled || undefined}
     >
       {props.prependedItems}
     </div>
@@ -100,8 +101,8 @@ vi.mock('../ListHeroSurface', () => ({
   ),
 }));
 // EditListAction is real; its downstream form (owned by 4.9) is mocked away.
-vi.mock('@/app/(main)/lists/ui/components/ListFormContainer', () => ({
-  default: () => <div data-testid="list-form-container" />,
+vi.mock('@/app/(main)/lists/ui/components/ListFormContainer', async () => ({
+  default: (await import('./list-form-stub')).ListFormContainerStub,
 }));
 // ShareButton is real but calls useRouter at render and imports a server
 // action whose module initializes the DB at load — mock both boundaries.
@@ -129,7 +130,6 @@ afterEach(() => {
 type Props = Parameters<typeof ListDetails>[0];
 
 const baseProps: Props = {
-  editHref: '/lists/list-7?edit=1',
   isOwner: true,
   list: makeList(),
   owner: {
@@ -156,11 +156,12 @@ function heroOf(container: HTMLElement) {
   const titleblock = hero.querySelector(
     '.list-hero-titleblock'
   ) as HTMLElement;
-  const kebab = hero.querySelector('.list-hero-kebab') as HTMLElement;
+  const titleLine = hero.querySelector('.list-hero-title-line') as HTMLElement;
   const actions = hero.querySelector('.list-hero-actions') as HTMLElement;
+  const row1 = hero.querySelectorAll('.list-hero-row')[0] as HTMLElement;
   const row2 = hero.querySelectorAll('.list-hero-row')[1] as HTMLElement;
   const meta = hero.querySelector('.list-hero-meta') as HTMLElement;
-  return { hero, titleblock, kebab, actions, row2, meta };
+  return { hero, titleblock, titleLine, actions, row1, row2, meta };
 }
 
 function expectInOrder(scope: Element, selectors: string[]) {
@@ -180,15 +181,19 @@ const sharedOwnerList = (overrides: Partial<TestList> = {}) =>
 
 describe('ListDetails', () => {
   describe('Owner', () => {
-    it('Owner_Row1HoldsTitleAndActions-Row2HoldsPickerMetaSpoilers', async () => {
+    it('Owner_Row1HoldsTitleblockThenByline-Row2HoldsShareVisibilitySpoilersMeta', async () => {
       const { container } = await renderHero({ list: sharedOwnerList() });
       const rows = container.querySelectorAll('.list-hero-main > .list-hero-row');
       expect(rows).toHaveLength(2);
-      expectInOrder(rows[0], ['.list-hero-titleblock', '.list-hero-actions']);
+      expectInOrder(rows[0], [
+        '.list-hero-titleblock',
+        '.list-hero-byline-group',
+      ]);
       expectInOrder(rows[1], [
+        '.list-hero-actions',
         '[data-testid="visibility-picker-stub"]',
-        '.list-hero-meta',
         '[data-testid="spoiler-tile"]',
+        '.list-hero-meta',
       ]);
     });
 
@@ -199,42 +204,50 @@ describe('ListDetails', () => {
       ).toBeInTheDocument();
     });
 
-    it('OwnerPrivate_Row2HasPicker-ActionsHaveNoShareButton', async () => {
-      const { row2, actions } = await renderHero({
+    // Share is the owner's only button, so an owner-only list leaves the row
+    // with nothing to hold.
+    it('OwnerPrivate_Row2HasPicker-OmitsTheActionsRow', async () => {
+      const { row2, container } = await renderHero({
         list: makeList({ shared: false }),
       });
       expect(
         row2.querySelector('[data-testid="visibility-picker-stub"]')
       ).toBeInTheDocument();
-      expect(
-        within(actions).queryByRole('button', { name: 'Share list' })
-      ).not.toBeInTheDocument();
+      expect(container.querySelector('.list-hero-actions')).toBeNull();
     });
 
-    it('Owner_ActionsHaveEditItemsThenKebab-NoEditListButton', async () => {
-      const { actions, kebab } = await renderHero({
-        list: sharedOwnerList({ id: 'list-7' }),
-      });
-      const editItems = within(actions).getByRole('link', {
-        name: 'Edit Items',
-      });
-      expect(editItems).toHaveAttribute('href', '/lists/list-7?edit=1');
-      // Edit is never a hero button; it lives in the kebab menu, which closes
-      // the actions cluster.
+    it('Owner_TitleLineHoldsTitleThenPencil', async () => {
+      const { titleLine } = await renderHero({ list: sharedOwnerList() });
+      expect(titleLine.querySelector('.list-hero-title')).toHaveTextContent(
+        'Birthday Wishlist'
+      );
+      expectInOrder(titleLine, ['.list-hero-title', '.btn']);
       expect(
-        within(actions).queryByRole('button', { name: 'Edit list' })
-      ).not.toBeInTheDocument();
-      expect(actions.lastElementChild).toBe(kebab);
-      expect(
-        kebab.querySelector('[data-testid="actions-menu-stub"]')
+        within(titleLine).getByRole('button', { name: 'Edit list' })
       ).toBeInTheDocument();
     });
 
-    it('Owner_NoBylineGroup', async () => {
-      const { container } = await renderHero({ list: sharedOwnerList() });
+    // The kebab and its Edit-items door are gone: the pencil reaches the list
+    // form in one press, and the form carries Delete.
+    it('Owner_HeroHasNoKebabOrEditItemsLink', async () => {
+      const { hero } = await renderHero({ list: sharedOwnerList() });
       expect(
-        container.querySelector('.list-hero-byline-group')
+        hero.querySelector('[data-testid="actions-menu-stub"]')
+      ).toBeNull();
+      expect(
+        within(hero).queryByRole('link', { name: 'Edit Items' })
       ).not.toBeInTheDocument();
+    });
+
+    it('Owner_BylineNamesTheOwningProfile-NoFollow', async () => {
+      const { row1 } = await renderHero({ list: sharedOwnerList() });
+      const byline = row1.querySelector(
+        '.list-hero-byline-group'
+      ) as HTMLElement;
+      expect(
+        within(byline).getByRole('link', { name: 'Olivia Owner' })
+      ).toHaveAttribute('href', '/altvatar/owner-profile-1');
+      expect(byline.querySelector('[data-testid="follow-stub"]')).toBeNull();
     });
   });
 
@@ -247,18 +260,31 @@ describe('ListDetails', () => {
       list: makeList({ shared: true, profile_id: 'owner-profile-1' }),
     };
 
-    it('Viewer_Row2LeadsWithByline-ActionsHoldShareAndBookmark', async () => {
-      const { row2, actions } = await renderHero(viewerProps);
-      expectInOrder(row2, ['.list-hero-byline-group', '.list-hero-meta']);
+    it('Viewer_Row1EndsWithByline-Row2HoldsShareThenBookmarkThenMeta', async () => {
+      const { row1, row2, actions } = await renderHero(viewerProps);
+      expect(row1.lastElementChild).toHaveClass('list-hero-byline-group');
+      expectInOrder(row2, ['.list-hero-actions', '.list-hero-meta']);
       expect(
         row2.querySelector('[data-testid="visibility-picker-stub"]')
       ).toBeNull();
+      expectInOrder(actions, [
+        'button[aria-label="Share list"]',
+        '[data-testid="bookmark-stub"]',
+      ]);
+    });
+
+    // Share is the row's fixed anchor: it opens the cluster whoever is
+    // looking, so no control ever lands where a different one just stood.
+    it('ViewerMember_ShareLeadsTheRowAheadOfEveryViewerKeyedControl', async () => {
+      const { row2 } = await renderHero({
+        ...viewerProps,
+        viewerIsMember: true,
+        tier: 'claims',
+      });
+      expect(row2.firstElementChild).toHaveClass('list-hero-actions');
       expect(
-        within(actions).getByRole('button', { name: 'Share list' })
-      ).toBeInTheDocument();
-      expect(
-        actions.querySelector('[data-testid="bookmark-stub"]')
-      ).toBeInTheDocument();
+        (row2.firstElementChild as HTMLElement).firstElementChild
+      ).toHaveAttribute('aria-label', 'Share list');
     });
 
     it('Viewer_BylineHasAvatarLinkedNameFollow', async () => {
@@ -277,13 +303,13 @@ describe('ListDetails', () => {
       ]);
     });
 
-    it('Viewer_ActionsHaveNoKebabOrEdit', async () => {
-      const { actions } = await renderHero(viewerProps);
+    it('Viewer_HeroHasNoPencilOrKebab', async () => {
+      const { hero } = await renderHero(viewerProps);
       expect(
-        actions.querySelector('[data-testid="actions-menu-stub"]')
+        hero.querySelector('[data-testid="actions-menu-stub"]')
       ).not.toBeInTheDocument();
       expect(
-        within(actions).queryByRole('button', { name: 'Edit list' })
+        within(hero).queryByRole('button', { name: 'Edit list' })
       ).not.toBeInTheDocument();
     });
 
@@ -294,7 +320,7 @@ describe('ListDetails', () => {
       ).toBeNull();
     });
 
-    it('SignedOutViewer_NoActionsClusterAndNoKebabPrepends', async () => {
+    it('SignedOutViewer_StillSeesTheByline-NoActionsClusterAndNoKebabPrepends', async () => {
       const { container } = await renderHero({
         ...viewerProps,
         viewer_user_id: undefined,
@@ -308,6 +334,9 @@ describe('ListDetails', () => {
         kebab.querySelector('[data-testid="collapsed-owner-items"]')
       ).toBeNull();
       expect(container.querySelector('.list-hero-actions')).toBeNull();
+      expect(
+        container.querySelector('.list-hero-byline-link')
+      ).toHaveTextContent('Olivia Owner');
     });
 
     it('UnnamedOwner_BylineLinkRendersWithEmptyName', async () => {
@@ -468,14 +497,16 @@ describe('ListDetails', () => {
       expect(picker).toHaveAttribute('data-disabled', 'true');
     });
 
-    it('Manager_CornerKebabDisabled', async () => {
-      // Edit/Delete live in the corner kebab, which the owner floor disables —
-      // there is no separate hero Edit button to gate.
-      const { kebab } = await renderHero({ list: sharedOwnerList() });
-      const menu = kebab.querySelector(
-        '[data-testid="actions-menu-stub"]'
-      ) as HTMLElement;
-      expect(menu).toHaveAttribute('data-disabled', 'true');
+    it('ManagerOpensTheListForm_DeleteRendersDisabled', async () => {
+      const user = userEvent.setup();
+      const { titleLine } = await renderHero({ list: sharedOwnerList() });
+      await user.click(
+        within(titleLine).getByRole('button', { name: 'Edit list' })
+      );
+      expect(screen.getByTestId('list-form-container')).toHaveAttribute(
+        'data-delete-disabled',
+        'true'
+      );
     });
 
     it('Manager_CollapsedKebabDisabled', async () => {
@@ -550,7 +581,7 @@ describe('ListDetails', () => {
    * strip-kebab twin hoists in lockstep.
    */
   describe('SpoilersTile', () => {
-    it('OwnerMember_RendersTileAtRow2End', async () => {
+    it('OwnerMember_RendersTileAfterShareAndTheVisibilityPicker', async () => {
       const { row2 } = await renderHero({ list: sharedOwnerList() });
       const tile = row2.querySelector(
         '[data-testid="spoiler-tile"]'
@@ -558,10 +589,14 @@ describe('ListDetails', () => {
       expect(tile).toBeInTheDocument();
       expect(tile).toHaveAttribute('data-tier', 'surprise');
       expect(tile).toHaveAttribute('data-baseline', 'surprise');
-      expect(row2.lastElementChild).toContainElement(tile);
+      expectInOrder(row2, [
+        '.list-hero-actions',
+        '[data-testid="visibility-picker-stub"]',
+        '[data-testid="spoiler-tile"]',
+      ]);
     });
 
-    it('ViewerMember_RendersTileAtRow2EndAfterByline', async () => {
+    it('ViewerMember_RendersTileAfterTheActionsRow', async () => {
       const { row2 } = await renderHero({
         isOwner: false,
         viewer_user_id: 'viewer-9',
@@ -577,9 +612,9 @@ describe('ListDetails', () => {
       expect(tile).toBeInTheDocument();
       expect(tile).toHaveAttribute('data-tier', 'claims');
       expectInOrder(row2, [
-        '.list-hero-byline-group',
-        '.list-hero-meta',
+        '.list-hero-actions',
         '[data-testid="spoiler-tile"]',
+        '.list-hero-meta',
       ]);
     });
 

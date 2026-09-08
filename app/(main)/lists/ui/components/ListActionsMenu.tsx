@@ -1,45 +1,30 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
-import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { Menu, MenuItem } from '@/app/ui/components/menu';
-import { deleteList } from '@/lib/data/list.actions';
+import { getMessage } from '@/lib/i18n/utils';
 import { ListTable } from '@/lib/types';
-import { useRouter } from 'next/navigation';
 import { ReactNode, useRef, useState } from 'react';
-import toast from 'react-hot-toast';
-import { MdDeleteForever, MdModeEdit, MdMoreVert } from 'react-icons/md';
+import { MdModeEdit, MdMoreVert } from 'react-icons/md';
 import ListFormContainer from './ListFormContainer';
 
 export default function ListActionsMenu({
   list,
   isOwner = true,
   prependedItems,
-  disabled,
+  deleteDisabled,
 }: {
   list: ListTable;
   isOwner?: boolean;
   prependedItems?: ReactNode;
-  disabled: boolean;
+  deleteDisabled: boolean;
 }) {
-  const listId = list.id;
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const handleDelete = async () => {
-    const result = await deleteList(listId);
-    if (result.success) {
-      toast.success('List deleted successfully');
-      router.push('/lists');
-    } else {
-      toast.error(result.error || 'Failed to delete list');
-    }
-  };
-
   const close = () => setOpen(false);
+  const actionsLabel = getMessage('list_actions_label');
 
   return (
     <>
@@ -51,7 +36,7 @@ export default function ListActionsMenu({
           onClick={() => setOpen((v) => !v)}
           aria-haspopup="menu"
           aria-expanded={open}
-          aria-label="List actions"
+          aria-label={actionsLabel}
         >
           <MdMoreVert size={22} />
         </Button>
@@ -59,7 +44,7 @@ export default function ListActionsMenu({
           open={open}
           onClose={close}
           anchorRef={triggerRef}
-          aria-label="List actions"
+          aria-label={actionsLabel}
         >
           {prependedItems}
           {isOwner && (
@@ -70,21 +55,7 @@ export default function ListActionsMenu({
                 setEditOpen(true);
               }}
             >
-              Edit list
-            </MenuItem>
-          )}
-          {isOwner && (
-            <MenuItem
-              icon={<MdDeleteForever size={18} />}
-              tone="danger"
-              aria-disabled={disabled || undefined}
-              onClick={() => {
-                if (disabled) return;
-                close();
-                setShowConfirm(true);
-              }}
-            >
-              Delete list
+              {getMessage('list_edit_label')}
             </MenuItem>
           )}
         </Menu>
@@ -93,19 +64,10 @@ export default function ListActionsMenu({
         <ListFormContainer
           list={list}
           isEditing
-          deleteDisabled={disabled}
+          deleteDisabled={deleteDisabled}
           onClose={() => setEditOpen(false)}
         />
       )}
-      <ConfirmDialog
-        isOpen={showConfirm}
-        onClose={() => setShowConfirm(false)}
-        onConfirm={handleDelete}
-        title="Confirm Delete"
-        message="Are you sure you want to delete this list? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-      />
     </>
   );
 }

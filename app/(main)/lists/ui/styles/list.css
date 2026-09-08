@@ -1108,14 +1108,12 @@
   }
 }
 
-/* ══ 2026-09-01 hero composition ══════════════════════════════════════════
-   Two rows (mockup): title | actions, then lead | meta | spoilers. The rows
-   share no columns, so desktop lays each out with flex. Mobile-first: the
-   rows dissolve (display: contents) into one two-column stack — everything
-   spans both columns except the two tiles, which pair up — and the kebab is
-   pinned to the top-right corner so an absent one reserves nothing. */
+/* ══ Hero composition ═════════════════════════════════════════════════════
+   Two rows: identity (title + pencil, byline), then controls (tiles, action
+   buttons, meta). Mobile-first — the rows dissolve (display: contents) into
+   one two-column stack where everything spans both columns except the two
+   tiles, which pair up. Desktop lays each row out with flex. */
 .list-hero-main {
-  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
@@ -1141,16 +1139,61 @@
   min-width: 0;
 }
 
-.list-hero-main:has(.list-hero-kebab) .list-hero-titleblock {
-  padding-right: 56px;
+/* The pencil sits beside the title at every width, so it rides the title's
+   own line rather than the action row. */
+.list-hero-title-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.list-hero-title-line > .btn {
+  flex: none;
 }
 
 .list-hero-byline-group {
   order: 1;
 }
 
-.list-hero-meta {
+.list-hero-actions {
   order: 2;
+  display: flex;
+  gap: 12px;
+}
+
+.list-hero-row > .visibility-picker,
+.list-hero-row > .spoiler-picker {
+  order: 3;
+  min-width: 0;
+}
+
+/* The pair is a pair only for an owner; a viewer's lone Spoilers tile takes
+   the whole width rather than leaving the second column empty. */
+.list-hero-row > .spoiler-picker {
+  grid-column: 1 / -1;
+}
+
+.list-hero-row > .visibility-picker ~ .spoiler-picker {
+  grid-column: auto;
+}
+
+.list-hero-row .hero-tile {
+  width: 100%;
+}
+
+.list-hero-actions > .btn {
+  flex: 0 0 auto;
+}
+
+/* Icon-only on a phone: the row has to hold every control without scrolling,
+   and each button already carries its name in aria-label. */
+.list-hero-actions .label {
+  display: none;
+}
+
+.list-hero-meta {
+  order: 4;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1159,41 +1202,14 @@
   color: var(--light-color);
 }
 
-.list-hero-actions {
-  order: 3;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.list-hero-actions > .btn {
-  width: 100%;
-}
-
-.list-hero-kebab {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-}
-
-.list-hero-row > .visibility-picker,
-.list-hero-row > .spoiler-picker {
-  order: 4;
-  min-width: 0;
-}
-
-.list-hero-row .hero-tile {
-  width: 100%;
-}
-
 @media (min-width: 801px) {
   .list-hero-main {
     display: flex;
     flex-direction: column;
     padding: 22px 24px 18px;
   }
-  /* Row 1 hangs from the top (actions level with the title); row 2 sits on
-     the bottom (byline / bar / tile bottoms flush), as the grid's per-area
+  /* Row 1 hangs from the top (byline level with the title); row 2 sits on
+     the bottom (bar / tile bottoms flush), as the grid's per-area
      align-self did before. */
   .list-hero-row {
     display: flex;
@@ -1212,29 +1228,22 @@
   .list-hero-row > .visibility-picker {
     width: auto;
   }
-  .list-hero-main:has(.list-hero-kebab) .list-hero-titleblock {
-    padding-right: 0;
-  }
   .list-hero-titleblock {
     flex: 1 1 auto;
   }
-  .list-hero-actions,
-  .list-hero-row > .list-hero-kebab {
+  .list-hero-byline-group {
+    flex: 0 1 auto;
     margin-left: auto;
   }
   .list-hero-actions {
-    display: flex;
     flex-wrap: wrap;
   }
-  .list-hero-actions > .btn {
-    width: auto;
+  .list-hero-actions .label {
+    display: inline;
   }
-  .list-hero-kebab {
-    position: static;
-  }
-  /* Row 2 at the 801px floor is ~713px: byline (~276) + tile (~148) + gaps
-     leaves ~265, so the meta floors at 200 (label + a usable bar) and takes
-     the remainder up to the mockup's bar width; the auto margin absorbs the
+  /* Row 2 at the 801px floor is ~713px: tiles (~296) + actions leave the
+     meta ~265, so it floors at 200 (label + a usable bar) and takes the
+     remainder up to the mockup's bar width; the auto margin absorbs the
      rest on wide screens. */
   .list-hero-meta {
     flex: 1 1 auto;

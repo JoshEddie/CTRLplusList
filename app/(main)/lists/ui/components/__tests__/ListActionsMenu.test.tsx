@@ -1,19 +1,12 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { deleteList } from '@/lib/data/list.actions';
 import { ListTable } from '@/lib/types';
-import toast from 'react-hot-toast';
 import ListActionsMenu from '../ListActionsMenu';
 
-vi.mock('@/lib/data/list.actions', () => ({ deleteList: vi.fn() }));
-
-const router = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => router }));
-
-vi.mock('react-hot-toast', () => ({
-  default: { success: vi.fn(), error: vi.fn() },
+vi.mock('../ListFormContainer', async () => ({
+  default: (await import('./list-form-stub')).ListFormContainerStub,
 }));
 
 const list: ListTable = {
@@ -36,7 +29,7 @@ function renderMenu(overrides: MenuOverrides = {}, meetsOwnerFloor = true) {
       list={list}
       isOwner={overrides.isOwner}
       prependedItems={overrides.prependedItems as ReactNode}
-      disabled={!meetsOwnerFloor}
+      deleteDisabled={!meetsOwnerFloor}
     />
   );
 }
@@ -81,12 +74,14 @@ describe('ListActionsMenu', () => {
   });
 
   describe('Owner', () => {
-    it('Default_RendersEditAndDeleteInOrder', async () => {
+    // Delete moved into the list form's footer, so the menu's one row is the
+    // door to that form.
+    it('Default_RendersEditListAsTheOnlyRow', async () => {
       const user = userEvent.setup();
       renderMenu();
       await openMenu(user);
       const items = screen.getAllByRole('menuitem').map((el) => el.textContent);
-      expect(items).toEqual(['Edit list', 'Delete list']);
+      expect(items).toEqual(['Edit list']);
     });
 
     // Claim visibility is adjusted from the hero tile and from the viewer's
@@ -122,15 +117,6 @@ describe('ListActionsMenu', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('Default_SuppressesDeleteList', async () => {
-      const user = userEvent.setup();
-      renderMenu({ isOwner: false });
-      await openMenu(user);
-      expect(
-        screen.queryByRole('menuitem', { name: 'Delete list' })
-      ).not.toBeInTheDocument();
-    });
-
     it('WithPrependedItems_RendersOnlyPrependedItems', async () => {
       const user = userEvent.setup();
       renderMenu({
@@ -140,70 +126,6 @@ describe('ListActionsMenu', () => {
       await openMenu(user);
       expect(screen.getByTestId('prepended')).toBeInTheDocument();
       expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
-    });
-  });
-
-  describe('DeleteFlow', () => {
-    const openDelete = async (user: ReturnType<typeof userEvent.setup>) => {
-      await openMenu(user);
-      await user.click(screen.getByRole('menuitem', { name: 'Delete list' }));
-    };
-
-    it('BelowTheOwnerFloor_RendersDeleteDisabledAndOpensNoDialog', async () => {
-      const user = userEvent.setup();
-      renderMenu({}, false);
-      await openMenu(user);
-
-      const item = screen.getByRole('menuitem', { name: 'Delete list' });
-      expect(item).toHaveAttribute('aria-disabled', 'true');
-      await user.click(item);
-      expect(screen.queryByText('Confirm Delete')).not.toBeInTheDocument();
-    });
-
-    it('ActivateDelete_OpensConfirmDialog', async () => {
-      const user = userEvent.setup();
-      renderMenu();
-      await openDelete(user);
-      expect(screen.getByText('Confirm Delete')).toBeInTheDocument();
-    });
-
-    it('ConfirmSuccess_CallsDeleteList-PushesLists-ToastsSuccess', async () => {
-      vi.mocked(deleteList).mockResolvedValue({ success: true, message: '' });
-      const user = userEvent.setup();
-      renderMenu();
-      await openDelete(user);
-      await user.click(screen.getByRole('button', { name: 'Delete' }));
-      await waitFor(() => expect(deleteList).toHaveBeenCalledWith('list-1'));
-      await waitFor(() => expect(router.push).toHaveBeenCalledWith('/lists'));
-      expect(toast.success).toHaveBeenCalledWith('List deleted successfully');
-    });
-
-    it('ConfirmFailureWithoutAnError_ToastsTheGenericMessage', async () => {
-      vi.mocked(deleteList).mockResolvedValue({
-        success: false,
-        message: '',
-      });
-      const user = userEvent.setup();
-      renderMenu();
-      await openDelete(user);
-      await user.click(screen.getByRole('button', { name: 'Delete' }));
-      await waitFor(() =>
-        expect(toast.error).toHaveBeenCalledWith('Failed to delete list')
-      );
-    });
-
-    it('ConfirmFailure_ToastsError-NoNavigate', async () => {
-      vi.mocked(deleteList).mockResolvedValue({
-        success: false,
-        message: '',
-        error: 'Boom',
-      });
-      const user = userEvent.setup();
-      renderMenu();
-      await openDelete(user);
-      await user.click(screen.getByRole('button', { name: 'Delete' }));
-      await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Boom'));
-      expect(router.push).not.toHaveBeenCalled();
     });
   });
 
@@ -217,15 +139,25 @@ describe('ListActionsMenu', () => {
       const user = userEvent.setup();
       renderMenu();
       await openEdit(user);
-      expect(screen.getByText('Edit List')).toBeInTheDocument();
+      expect(screen.getByTestId('list-form-container')).toBeInTheDocument();
+    });
+
+    it('BelowTheOwnerFloor_FormRendersItsDeleteDisabled', async () => {
+      const user = userEvent.setup();
+      renderMenu({}, false);
+      await openEdit(user);
+      expect(screen.getByTestId('list-form-container')).toHaveAttribute(
+        'data-delete-disabled',
+        'true'
+      );
     });
 
     it('CloseEdit_UnmountsListFormContainer', async () => {
       const user = userEvent.setup();
       renderMenu();
       await openEdit(user);
-      await user.click(screen.getByRole('button', { name: 'Close' }));
-      expect(screen.queryByText('Edit List')).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'close-form' }));
+      expect(screen.queryByTestId('list-form-container')).not.toBeInTheDocument();
     });
   });
 });

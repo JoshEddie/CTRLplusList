@@ -97,10 +97,11 @@ removal, and any number above it is the add. A staged change marks its row or
 card where it already is; nothing crosses between tabs, and a removed entry
 keeps the index it held when saved, struck through, until Save. One Save
 commits the entries — membership, quantity and the whole order — and nothing
-else; the list row is the kebab's _Edit list_ modal's. Cancel is the only
-revert, and Save, Cancel, Back, reload and any in-app link all confirm while
-anything is staged. No claim state renders here: a claim belongs to a list
-entry, not to an item, so a library card carries none this list could judge.
+else; the list row is the hero pencil's _Edit list_ modal's, which also carries
+the list's deletion. Cancel is the only revert, and Save, Cancel, Back, reload
+and any in-app link all confirm while anything is staged. No claim state
+renders here: a claim belongs to a list entry, not to an item, so a library
+card carries none this list could judge.
 
 **Pending change**:
 An entry, as edit mode stages it, whose membership, quantity, or position

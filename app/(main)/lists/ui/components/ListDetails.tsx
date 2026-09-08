@@ -3,12 +3,10 @@
 
 import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import FollowContainer from '@/app/(main)/users/ui/components/FollowContainer';
-import { LinkButton } from '@/app/ui/components/button';
 import SpoilerPicker from '@/app/ui/components/SpoilerPicker';
 import { writableMembership } from '@/lib/data/profile.gate';
 import { atLeast } from '@/lib/spoilers';
 import { authedIdentity } from '@/lib/data/user.session';
-import { getMessage } from '@/lib/i18n/utils';
 import { timeAgo } from '@/lib/timeAgo';
 import {
   ListTable,
@@ -21,9 +19,9 @@ import {
   type ListVisibility,
 } from '@/lib/visibility';
 import Link from 'next/link';
-import { MdChecklist } from 'react-icons/md';
 import BookmarkContainer from './BookmarkContainer';
 import ClaimProgress from './ClaimProgress';
+import EditListAction from './EditListAction';
 import {
   HeroCollapsedOwnerItems,
   HeroCollapsedViewerItems,
@@ -50,7 +48,6 @@ export default async function ListDetails({
   baseline,
   claimedCount,
   itemCount,
-  editHref,
 }: {
   isOwner: boolean;
   list: ListWithVisibility;
@@ -65,8 +62,6 @@ export default async function ListDetails({
   /** Present only where the resolved tier is `progress` or above — `surprise` costs no query. */
   claimedCount?: number;
   itemCount: number;
-  /** Built where the request's searchParams are known, so the tier and any filters ride into the mode. */
-  editHref: string;
 }) {
   const identity = await authedIdentity();
   const ownerFloorDisabled = !!identity && !identity.activeProfile.role.admin;
@@ -86,6 +81,13 @@ export default async function ListDetails({
   const showOwnerControls = isOwner;
   const showViewerControls =
     !isOwner && !!viewer_user_id && !!viewer_self_profile_id;
+
+  // Share is the button cluster's only unconditional member, so a list nobody
+  // else can reach leaves the row with nothing to hold. It is also the only
+  // control in the row that is not keyed on the viewer, which is why it leads.
+  const showActions = isOwner
+    ? visibility !== VISIBILITY.OWNER
+    : showViewerControls;
 
   // The Spoilers tile: offered to any viewer resolving a membership on the
   // owning profile — a non-member has no baseline to adjust. The owner keeps
@@ -135,58 +137,36 @@ export default async function ListDetails({
       list={list}
       isOwner={isOwner}
       prependedItems={collapsedPrepended}
-      disabled={ownerFloorDisabled}
+      deleteDisabled={ownerFloorDisabled}
     />
   );
 
-  // One role for the hero's two role-keyed regions (actions row, tiles/byline
-  // row). Extracted into subcomponents below so this component stays lean and
-  // its branching does not compound.
-  const heroMode = heroModeOf({ showOwnerControls, showViewerControls });
-
-  // The kebab holds Edit list and Delete — the list row's door, never a hero
-  // button. It closes the owner's action cluster.
-  const heroKebab = (
-    <div className="list-hero-kebab">
-      <ListActionsMenu list={list} disabled={ownerFloorDisabled} />
-    </div>
-  );
-
-  const heroActions = (
-    <HeroActions
-      mode={heroMode}
-      list={list}
-      visibility={visibility}
-      viewerUserId={viewer_user_id}
-      kebab={heroKebab}
-      editHref={editHref}
-    />
-  );
-
-  const heroLead = (
-    <HeroLead
-      mode={heroMode}
-      list={list}
-      owner={owner}
-      visibility={visibility}
-      ownerFloorDisabled={ownerFloorDisabled}
+  const follow = showViewerControls ? (
+    <FollowContainer
+      ownerProfileId={list.profile_id}
+      ownerName={owner.name}
       viewerUserId={viewer_user_id}
       viewerSelfProfileId={viewer_self_profile_id}
+      variant="on-dark"
     />
-  );
+  ) : null;
 
   return (
     <>
       <ListHeroSurface title={list.name} kebab={collapsedKebab}>
         <div className="list-hero">
-          {/* Two rows per the 2026-09-01 mockup: title | actions, then
-            lead | meta | spoilers. Desktop lays each row out with flex so
-            the rows share no columns; mobile flattens both rows into one
-            stack (see list.css). */}
           <div className="list-hero-main">
             <div className="list-hero-row">
               <div className="list-hero-titleblock">
-                <h1 className="list-hero-title">{list.name}</h1>
+                <div className="list-hero-title-line">
+                  <h1 className="list-hero-title">{list.name}</h1>
+                  {isOwner && (
+                    <EditListAction
+                      list={list}
+                      deleteDisabled={ownerFloorDisabled}
+                    />
+                  )}
+                </div>
                 {list.subtitle ? (
                   <div className="list-hero-eyebrow-subtitle-wrapper">
                     {list.occasion ? (
@@ -196,10 +176,27 @@ export default async function ListDetails({
                   </div>
                 ) : null}
               </div>
-              {heroActions}
+              <HeroByline
+                profileId={list.profile_id}
+                owner={owner}
+                follow={follow}
+              />
             </div>
             <div className="list-hero-row">
-              {heroLead}
+              {showActions && (
+                <HeroActions
+                  list={list}
+                  viewerUserId={showViewerControls ? viewer_user_id : undefined}
+                />
+              )}
+              {showOwnerControls && (
+                <VisibilityPicker
+                  listId={list.id}
+                  initialVisibility={visibility}
+                  disabled={ownerFloorDisabled}
+                />
+              )}
+              {spoilerTile}
               {/* The claimed count describes the list, not the visible item
                 set. At `surprise` the line carries item count and time alone. */}
               <div className="list-hero-meta">
@@ -211,7 +208,6 @@ export default async function ListDetails({
                   <ClaimProgress claimed={claimedCount} total={itemCount} />
                 )}
               </div>
-              {spoilerTile}
             </div>
           </div>
         </div>
@@ -229,109 +225,45 @@ export default async function ListDetails({
   );
 }
 
-type HeroMode = 'owner' | 'viewer' | null;
-
-function heroModeOf({
-  showOwnerControls,
-  showViewerControls,
-}: {
-  showOwnerControls: boolean;
-  showViewerControls: boolean;
-}): HeroMode {
-  if (showOwnerControls) return 'owner';
-  if (showViewerControls) return 'viewer';
-  return null;
-}
-
-// The hero's primary-action cluster. Owner gets Share + Edit items, the one
-// door to the list's entries; a signed-in viewer gets Share + Bookmark. Edit
-// list and Delete are never hero buttons — they live in the corner kebab.
+// Row 2's button cluster. Share leads and never moves — every other control
+// in the row comes and goes with who is looking, so anchoring the one constant
+// keeps a control from landing where a different one stood a moment ago.
 function HeroActions({
-  mode,
   list,
-  visibility,
   viewerUserId,
-  kebab,
-  editHref,
 }: {
-  mode: HeroMode;
   list: ListWithVisibility;
-  visibility: ListVisibility;
   viewerUserId: string | undefined;
-  kebab: React.ReactNode;
-  editHref: string;
 }) {
-  if (mode === 'owner') {
-    return (
-      <div className="list-hero-actions">
-        {visibility !== VISIBILITY.OWNER && <ShareButton list={list} />}
-        <LinkButton href={editHref} variant="on-dark">
-          <MdChecklist />
-          <span className="label">{getMessage('list_edit_items_label')}</span>
-        </LinkButton>
-        {kebab}
-      </div>
-    );
-  }
-  if (mode === 'viewer') {
-    return (
-      <div className="list-hero-actions">
-        <ShareButton list={list} />
-        {viewerUserId && (
-          <BookmarkContainer list_id={list.id} user_id={viewerUserId} />
-        )}
-      </div>
-    );
-  }
-  return null;
+  return (
+    <div className="list-hero-actions">
+      <ShareButton list={list} />
+      {viewerUserId && (
+        <BookmarkContainer list_id={list.id} user_id={viewerUserId} />
+      )}
+    </div>
+  );
 }
 
-// Row 2's leading slot: the owner's Visibility tile, or the owner byline
-// (+ Follow) for a signed-in viewer.
-function HeroLead({
-  mode,
-  list,
+// The byline names the profile that owns the list, to every viewer — an owner
+// running more than one Altvatar needs it as much as a stranger does.
+function HeroByline({
+  profileId,
   owner,
-  visibility,
-  ownerFloorDisabled,
-  viewerUserId,
-  viewerSelfProfileId,
+  follow,
 }: {
-  mode: HeroMode;
-  list: ListWithVisibility;
+  profileId: string;
   owner: ProfileAvatarView;
-  visibility: ListVisibility;
-  ownerFloorDisabled: boolean;
-  viewerUserId: string | undefined;
-  viewerSelfProfileId: string | undefined;
+  follow: React.ReactNode;
 }) {
-  if (mode === 'owner') {
-    return (
-      <VisibilityPicker
-        listId={list.id}
-        initialVisibility={visibility}
-        disabled={ownerFloorDisabled}
-      />
-    );
-  }
-  if (mode !== 'viewer' || !viewerUserId || !viewerSelfProfileId) return null;
   return (
     <div className="list-hero-byline-group">
       <ProfileAvatar profile={owner} />
       <div className="list-hero-byline-text">
-        <Link
-          href={`/altvatar/${list.profile_id}`}
-          className="list-hero-byline-link"
-        >
+        <Link href={`/altvatar/${profileId}`} className="list-hero-byline-link">
           {owner.name}
         </Link>
-        <FollowContainer
-          ownerProfileId={list.profile_id}
-          ownerName={owner.name}
-          viewerUserId={viewerUserId}
-          viewerSelfProfileId={viewerSelfProfileId}
-          variant="on-dark"
-        />
+        {follow}
       </div>
     </div>
   );
