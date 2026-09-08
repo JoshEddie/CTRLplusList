@@ -1,0 +1,83 @@
+import { HERO_BAND_SLOT_ID } from '@/app/(main)/lists/ui/components/ListHeroSurface';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import ListOwnerBand from '../ListOwnerBand';
+
+function renderBand(
+  overrides: Partial<React.ComponentProps<typeof ListOwnerBand>> = {}
+) {
+  const onTabChange = vi.fn();
+  const onCreate = vi.fn();
+  const onChooseExisting = vi.fn();
+  const view = render(
+    <ListOwnerBand
+      tab="list"
+      onTabChange={onTabChange}
+      inListCount={3}
+      onCreate={onCreate}
+      onChooseExisting={onChooseExisting}
+      {...overrides}
+    />
+  );
+  return { view, onTabChange, onCreate, onChooseExisting };
+}
+
+let heroSlot: HTMLElement | null = null;
+
+function mountHeroSlot() {
+  heroSlot = document.createElement('div');
+  heroSlot.id = HERO_BAND_SLOT_ID;
+  document.body.appendChild(heroSlot);
+  return heroSlot;
+}
+
+afterEach(() => {
+  heroSlot?.remove();
+  heroSlot = null;
+});
+
+describe('ListOwnerBand', () => {
+  it('Default_NamesBothTabsWithTheEntryCount-SelectsTheGivenTab', () => {
+    renderBand();
+    expect(
+      screen.getByRole('tab', { name: 'In this list · 3' })
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'All items' })).toHaveAttribute(
+      'aria-selected',
+      'false'
+    );
+  });
+
+  it('ClickAllItems_ReportsTheLibraryTab', async () => {
+    const { onTabChange } = renderBand();
+    await userEvent.click(screen.getByRole('tab', { name: 'All items' }));
+    expect(onTabChange).toHaveBeenCalledWith('library');
+  });
+
+  it('ChooseFromExisting_ReportsTheLibraryTabWithoutCreating', async () => {
+    const { onChooseExisting, onCreate } = renderBand();
+    await userEvent.click(screen.getByRole('button', { name: 'Add item' }));
+    await userEvent.click(
+      screen.getByRole('menuitem', { name: 'Choose from existing' })
+    );
+    expect(onChooseExisting).toHaveBeenCalledTimes(1);
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
+  // Without the hero chrome's slot (pre-hydration, or no hero at all) the band
+  // renders where it stands rather than vanishing.
+  it('NoHeroSlot_RendersInline', () => {
+    const { view } = renderBand();
+    expect(within(view.container).getByRole('tablist')).toBeInTheDocument();
+  });
+
+  it('HeroSlotPresent_RendersIntoTheSlot', () => {
+    const slot = mountHeroSlot();
+    const { view } = renderBand();
+    expect(within(view.container).queryByRole('tablist')).toBeNull();
+    expect(
+      within(slot).getByRole('tab', { name: 'All items' })
+    ).toBeInTheDocument();
+  });
+});

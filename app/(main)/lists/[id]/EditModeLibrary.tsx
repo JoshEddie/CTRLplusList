@@ -39,8 +39,8 @@ export default function EditModeLibrary({
     >
       {items.length === 0 ? (
         <div className="empty-container">
-          <h3>{getMessage('edit_mode_library_empty_title')}</h3>
-          <p>{getMessage('edit_mode_library_empty_body')}</p>
+          <h3>{getMessage('library_empty_title')}</h3>
+          <p>{getMessage('library_empty_body')}</p>
           <NewItemButton onClick={onCreate} />
         </div>
       ) : rows.length === 0 ? (

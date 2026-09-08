@@ -90,6 +90,7 @@ vi.mock('../ItemCard', () => ({
       data-is-owner={String(p.isOwner)}
       data-viewer-claimed={String(p.viewerClaimed)}
       data-has-any-claim={String(p.hasAnyClaim)}
+      data-claimable={String(p.claimable)}
       data-tier={String(p.tier)}
       data-show-buy-claim={String(p.showBuyClaim)}
     >
@@ -1499,7 +1500,7 @@ describe('ListEntry', () => {
     expect(router.refresh).not.toHaveBeenCalled();
   });
 
-  it('SteppedBackUpFromZero_CallsSetListItemQuantityWithOne-ShowsOne', async () => {
+  it('SteppedBackUpFromZero_CallsSetListItemQuantityWithOne-ShowsOne-RouterRefresh', async () => {
     const user = userEvent.setup();
     renderItem({ ...owner, item: { quantity: 1 } });
     await user.click(press('Decrease'));
@@ -1509,6 +1510,9 @@ describe('ListEntry', () => {
       expect(setListItemQuantity).toHaveBeenCalledWith('l1', 'i1', 1)
     );
     expect(stepper()).toHaveValue(1);
+    // An entry that now exists is one the list's own body and the band's
+    // entry count have to state.
+    await waitFor(() => expect(router.refresh).toHaveBeenCalled());
   });
 
   it('ZeroQuantity_TellsMenuTheEntryIsGone', async () => {
@@ -1628,5 +1632,38 @@ describe('ListEntry', () => {
       'data-list-ends',
       'a'
     );
+  });
+});
+
+// The owner's library browser read through one list: the stepper writes that
+// list's entry, and nothing on the card resolves a claim against it.
+describe('Claimless', () => {
+  const owner = { actor: actorOf('owner'), claimless: true };
+
+  it('OnList_RendersStepperAtThisListsQuantity-NoBanner-NotClaimable', () => {
+    renderItem({ ...owner, item: { quantity: 4, claimed_units: undefined } });
+    expect(screen.getByRole('spinbutton')).toHaveValue(4);
+    expect(screen.queryByTestId('claim-banners')).not.toBeInTheDocument();
+    expect(card()).toHaveAttribute('data-claimable', 'false');
+    expect(card()).toHaveAttribute('data-fully-claimed', 'false');
+  });
+
+  // Quantity 0 is the absence of an entry, not a filled one: without the
+  // claim reading withdrawn, zero claimed against zero wanted would paint the
+  // card as fully claimed.
+  it('OffList_RendersStepperAtZero-NotMarkedPurchased', () => {
+    const { container } = renderItem({
+      ...owner,
+      item: { quantity: 0, claimed_units: undefined },
+    });
+    expect(screen.getByRole('spinbutton')).toHaveValue(0);
+    expect(container.querySelector('.item-container')).not.toHaveClass(
+      'purchased'
+    );
+  });
+
+  it('PurchaseParam_MountsNoModal', () => {
+    renderItem({ ...owner, item: { quantity: 4 } }, 'purchaseItem=i1');
+    expect(screen.queryByTestId('modal-slot')).not.toBeInTheDocument();
   });
 });

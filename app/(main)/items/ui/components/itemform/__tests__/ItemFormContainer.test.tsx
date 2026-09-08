@@ -368,6 +368,52 @@ describe('ItemFormContainer', () => {
       expect(screen.getByText('Last look')).toBeInTheDocument();
     });
 
+    it('DefaultListId_ChecksThatListAndSubmitsIt', async () => {
+      const { createItem } = await import('@/lib/data/item.actions');
+      render(
+        <ItemFormContainer
+          lists={[
+            { id: 'l1', name: 'Birthday' } as never,
+            { id: 'l2', name: 'Christmas' } as never,
+          ]}
+          defaultListId="l2"
+          onClose={vi.fn()}
+        />
+      );
+      const user = await openManualViaFailure();
+      await fillManualItem(user);
+      await user.click(screen.getByRole('button', { name: /Lists/ }));
+      expect(screen.getByRole('checkbox', { name: 'Christmas' })).toBeChecked();
+      expect(
+        screen.getByRole('checkbox', { name: 'Birthday' })
+      ).not.toBeChecked();
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+      await user.click(screen.getByRole('button', { name: 'Create item' }));
+      await waitFor(() =>
+        expect(createItem).toHaveBeenCalledWith(
+          expect.objectContaining({
+            lists: [{ value: 'l2', label: 'Christmas' }],
+          })
+        )
+      );
+    });
+
+    it('DefaultListIdNotInThePicker_ChecksNothing', async () => {
+      render(
+        <ItemFormContainer
+          lists={[{ id: 'l1', name: 'Birthday' } as never]}
+          defaultListId="gone"
+          onClose={vi.fn()}
+        />
+      );
+      const user = await openManualViaFailure();
+      await fillManualItem(user);
+      await user.click(screen.getByRole('button', { name: /Lists/ }));
+      expect(
+        screen.getByRole('checkbox', { name: 'Birthday' })
+      ).not.toBeChecked();
+    });
+
     it('FullNavigation_FillsAdvancesVisitsTriageThenCreates', async () => {
       const { createItem } = await import('@/lib/data/item.actions');
       renderCreate();

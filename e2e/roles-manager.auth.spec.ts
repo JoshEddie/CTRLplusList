@@ -109,10 +109,9 @@ test('RolesManager_ManagerCreatesItemsAttachesAndArchives_EachStepReflected', as
     .getByRole('textbox', { name: 'Date', exact: true })
     .fill('2030-06-01');
   await page.getByRole('button', { name: 'Create List' }).click();
-  await expect(page).toHaveURL(/\/lists\/[^/]+\?edit=1&new=1$/);
-  const listId = page.url().match(/\/lists\/([^/]+)\?edit=1/)?.[1];
+  await expect(page).toHaveURL(/\/lists\/[^/?]+$/);
 
-  const cards = page.locator('.edit-mode-library .item');
+  const cards = page.locator('.item-container');
   await cards
     .filter({ hasText: renamed })
     .getByRole('button', { name: 'Increase' })
@@ -121,12 +120,11 @@ test('RolesManager_ManagerCreatesItemsAttachesAndArchives_EachStepReflected', as
     .filter({ hasText: secondItem })
     .getByRole('button', { name: 'Increase' })
     .click();
-  await page.getByRole('button', { name: /Add 2 items/ }).click();
-  await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page).toHaveURL(new RegExp(`/lists/${listId}$`));
+  const inListTab = page.getByRole('tab', { name: /^In this list/ });
+  await expect(inListTab).toHaveText('In this list · 2');
 
-  // The attach lands the viewer on the list page before its rows have
-  // streamed in, so both are awaited before the flow moves on.
+  // The rows have to have streamed in before the flow moves on.
+  await inListTab.click();
   await expect(page.locator('.items-browser .item-container')).toHaveCount(2);
 
   // Archive — `member` floor: it destroys nothing and the item stays attached.
@@ -159,9 +157,7 @@ test('RolesManager_ManagerOpensAListTheyManage_VisibilityPillDisabledAndUnchange
     .getByRole('textbox', { name: 'Date', exact: true })
     .fill('2030-06-01');
   await page.getByRole('button', { name: 'Create List' }).click();
-  await expect(page).toHaveURL(/\/lists\/[^/]+\?edit=1&new=1$/);
-  const listId = page.url().match(/\/lists\/([^/]+)\?edit=1/)?.[1];
-  await page.goto(`/lists/${listId}`);
+  await expect(page).toHaveURL(/\/lists\/[^/?]+$/);
 
   const pill = page.getByRole('button', { name: /Visibility:/ });
   // Disabled, not omitted: the surface states the capability exists.

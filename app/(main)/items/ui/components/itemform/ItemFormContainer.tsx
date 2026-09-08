@@ -1,7 +1,12 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
-import type { ItemStoreTable, ItemTable, ListTable } from '@/lib/types';
+import type {
+  ItemStoreTable,
+  ItemTable,
+  ListTable,
+  OptionType,
+} from '@/lib/types';
 import { useMemo, useState } from 'react';
 import DeleteItemButton from '../DeleteItemButton';
 import { Deck } from './deck/Deck';
@@ -35,6 +40,7 @@ const ItemFormContainer = ({
   item,
   returnTo,
   actingAs,
+  defaultListId,
   deleteDisabled = false,
   onClose,
   onSuccess,
@@ -42,6 +48,9 @@ const ItemFormContainer = ({
   lists: ListTable[];
   item?: EditItem;
   returnTo?: string;
+  // The list the form was opened from, checked in the picker before the owner
+  // sees it: creating the item and putting it on that list are one act.
+  defaultListId?: string;
   // Deleting the item takes the owner floor. Only the editing shape offers
   // the control, so the creating call sites pass nothing.
   deleteDisabled?: boolean;
@@ -54,8 +63,12 @@ const ItemFormContainer = ({
   onSuccess?: (id?: string) => void;
 }) => {
   const isEditing = !!item;
+  const preselected = useMemo<OptionType[]>(() => {
+    const list = lists.find((option) => option.id === defaultListId);
+    return list ? [{ value: list.id.toString(), label: list.name }] : [];
+  }, [lists, defaultListId]);
   const [viewModel, setViewModel] = useState<ItemViewModel>(() =>
-    item ? seedFromItem(item) : blankItem()
+    item ? seedFromItem(item) : blankItem('', preselected)
   );
   const [screen, setScreen] = useState<Screen>(isEditing ? 'preview' : 'start');
   const [listsSheetOpen, setListsSheetOpen] = useState(false);
@@ -94,12 +107,12 @@ const ItemFormContainer = ({
 
   const enterLinkless = () => {
     clearUrl();
-    setViewModel(blankItem());
+    setViewModel(blankItem('', preselected));
     setScreen('deck');
   };
 
   const buildByHand = () => {
-    setViewModel(blankItem(pastedUrl));
+    setViewModel(blankItem(pastedUrl, preselected));
     setManualVisited(new Set());
     setManualDraftLive(true);
     setScreen('manual');

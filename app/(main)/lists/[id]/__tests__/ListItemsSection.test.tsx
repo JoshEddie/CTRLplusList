@@ -13,7 +13,13 @@ import { makeProfile } from '@/test/helpers/profile';
 mockNextHeaders();
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
-vi.mock('@/lib/data/list', () => ({ getList: vi.fn() }));
+vi.mock('@/lib/data/list', () => ({
+  getList: vi.fn(),
+  getListsByProfile: vi.fn(async () => [{ id: 'l1', name: 'Birthday' }]),
+}));
+vi.mock('@/lib/data/profile.active', () => ({
+  actingAsName: vi.fn(async () => 'Owner'),
+}));
 vi.mock('@/lib/data/profile', () => ({
   getUserIdentity: vi.fn(),
   hasBlocked: vi.fn(),
@@ -38,8 +44,36 @@ const redirectMock = vi.hoisted(() =>
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
 
 vi.mock('@/app/(main)/items/ui/components/EmptyListCTA', () => ({
+  default: () => <div data-testid="empty-list-cta" />,
+}));
+vi.mock('../ListLibraryPanel', () => ({
   default: (p: { listId: string }) => (
-    <div data-testid="empty-list-cta" data-list-id={p.listId} />
+    <div data-testid="library-panel" data-list-id={p.listId} />
+  ),
+}));
+vi.mock('../ListOwnerTabs', () => ({
+  default: ({
+    children,
+    library,
+    ...p
+  }: {
+    listId: string;
+    inListCount: number;
+    lists: { id: string }[];
+    actingAs?: string;
+    library: React.ReactNode;
+    children: React.ReactNode;
+  }) => (
+    <div
+      data-testid="owner-tabs"
+      data-list-id={p.listId}
+      data-in-list-count={String(p.inListCount)}
+      data-lists={p.lists.map((l) => l.id).join(',')}
+      data-acting-as={p.actingAs ?? ''}
+    >
+      {children}
+      {library}
+    </div>
   ),
 }));
 vi.mock('@/app/(main)/items/ui/components/ItemsContainer', () => ({
@@ -93,6 +127,7 @@ beforeEach(() => {
     id: 'l1',
     profile_id: 'p-u1',
     visibility: 'public',
+    item_count: 3,
   } as never);
 });
 
@@ -119,9 +154,31 @@ describe('ListItemsSection', () => {
 
     it('Default_HandsTheContainerTheEmptyListDoor', async () => {
       render(await ListItemsSection(props('l1')));
-      expect(screen.getByTestId('empty-list-cta')).toHaveAttribute(
+      expect(screen.getByTestId('empty-list-cta')).toBeInTheDocument();
+    });
+
+    it('Default_WrapsTheSurfaceInTheBandWithTheEntryCountAndTheLibrary', async () => {
+      render(await ListItemsSection(props('l1')));
+      const band = screen.getByTestId('owner-tabs');
+      expect(band).toHaveAttribute('data-in-list-count', '3');
+      expect(band).toHaveAttribute('data-lists', 'l1');
+      expect(band).toHaveAttribute('data-acting-as', 'Owner');
+      expect(screen.getByTestId('library-panel')).toHaveAttribute(
         'data-list-id',
         'l1'
+      );
+    });
+
+    it('CountlessList_ReportsNoEntriesToTheBand', async () => {
+      vi.mocked(getList).mockResolvedValue({
+        id: 'l1',
+        profile_id: 'p-u1',
+        visibility: 'public',
+      } as never);
+      render(await ListItemsSection(props('l1')));
+      expect(screen.getByTestId('owner-tabs')).toHaveAttribute(
+        'data-in-list-count',
+        '0'
       );
     });
 
@@ -144,9 +201,10 @@ describe('ListItemsSection', () => {
       );
     });
 
-    it('Default_GetsNoEmptyListDoor', async () => {
+    it('Default_GetsNoEmptyListDoor-NoBand', async () => {
       render(await ListItemsSection(props('l1')));
       expect(screen.queryByTestId('empty-list-cta')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('owner-tabs')).not.toBeInTheDocument();
     });
 
     it('OwnerOnlyList_RendersNothing', async () => {
@@ -160,12 +218,13 @@ describe('ListItemsSection', () => {
     });
   });
 
-  describe('EditMode', () => {
-    it('Owner_RendersNothingSoTheModeOwnsTheItemSurface', async () => {
-      const { container } = render(
-        await ListItemsSection(props('l1', { edit: '1' }))
-      );
-      expect(container).toBeEmptyDOMElement();
+  // `?edit=1` named a staged session that no longer exists; a bookmark
+  // carrying it renders the ordinary page.
+  describe('StaleEditParam', () => {
+    it('Owner_RendersTheOrdinaryItemsContainerInsideTheBand', async () => {
+      render(await ListItemsSection(props('l1', { edit: '1' })));
+      expect(screen.getByTestId('items-container')).toBeInTheDocument();
+      expect(screen.getByTestId('owner-tabs')).toBeInTheDocument();
     });
 
     it('NonOwner_StillRendersTheOrdinaryItemsContainer', async () => {

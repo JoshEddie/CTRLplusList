@@ -20,15 +20,6 @@ vi.mock('../ListHeroSection', () => ({
     />
   ),
 }));
-vi.mock('../ListEditSection', () => ({
-  default: (props: { params: unknown; searchParams: unknown }) => (
-    <div
-      data-testid="edit-section"
-      data-has-params={String(!!props.params)}
-      data-has-search-params={String(!!props.searchParams)}
-    />
-  ),
-}));
 vi.mock('../ListItemsSection', () => ({
   default: (props: { params: unknown; searchParams: unknown }) => (
     <div
@@ -49,32 +40,25 @@ const PROPS = {
 describe('ListPage', () => {
   it('Render_MountsEverySectionWithForwardedPromises', () => {
     render(<ListPage {...PROPS} />);
-    for (const id of ['hero-section', 'items-section', 'edit-section']) {
+    for (const id of ['hero-section', 'items-section']) {
       const section = screen.getByTestId(id);
       expect(section).toHaveAttribute('data-has-params', 'true');
       expect(section).toHaveAttribute('data-has-search-params', 'true');
     }
   });
 
-  it('Render_HeroFallbackRail-ItemsFallbackPage-EditFallbackNull', () => {
+  it('Render_HeroFallbackRail-ItemsFallbackPage', () => {
     const main = ListPage(PROPS) as unknown as El;
     // Inspecting the returned RSC element tree (React elements, not DOM nodes).
     // eslint-disable-next-line testing-library/no-node-access
     const suspenses = (main.props.children as El[]).filter(
       (c) => c.type === Suspense
     );
-    expect(suspenses).toHaveLength(3);
-    const fallbacks = suspenses.map((s) => s.props.fallback as El | null);
-    expect(fallbacks.map((f) => f?.props.size)).toEqual([
-      'rail',
-      'page',
-      undefined,
-    ]);
-    // The edit section replaces the two above it, so its own boundary shows
-    // nothing rather than stacking a third spinner over their fallbacks.
-    expect(fallbacks[2]).toBeNull();
-    for (const f of fallbacks.slice(0, 2)) {
-      expect(f!.type).toBe(LoadingIndicator);
+    expect(suspenses).toHaveLength(2);
+    const fallbacks = suspenses.map((s) => s.props.fallback as El);
+    expect(fallbacks.map((f) => f.props.size)).toEqual(['rail', 'page']);
+    for (const f of fallbacks) {
+      expect(f.type).toBe(LoadingIndicator);
     }
   });
 });

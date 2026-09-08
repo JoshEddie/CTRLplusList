@@ -19,12 +19,14 @@ import toast from 'react-hot-toast';
 // and typing a two-digit quantity fires a write per keystroke without the
 // second one landing on a stale mirror.
 //
-// A write that changed the entry's membership deliberately skips the refresh.
+// A write that took the entry off the list deliberately skips the refresh.
 // Re-reading would take the card out from under the owner still standing on
 // it, and 0 has to be a state they can step back out of with the control that
 // put them there. `onPresence` is how the surface hears about that instead: the
 // move rows target a neighbour by id, so a card stepped to 0 has to stop
-// counting as one of the list's ends.
+// counting as one of the list's ends. A write that leaves an entry standing
+// refreshes, so the surfaces that count entries — the list's own body, the
+// band's tab — state what the list now holds.
 export function useListEntry(
   listId: string,
   itemId: string,
@@ -50,7 +52,7 @@ export function useListEntry(
         toast.error(result.message);
         return;
       }
-      if (previous > 0 && next > 0) router.refresh();
+      if (next > 0) router.refresh();
     });
   };
 

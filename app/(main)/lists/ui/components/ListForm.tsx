@@ -90,19 +90,15 @@ export default function ListForm({
           : await createList(data);
 
       if (result.success) {
-        if (isEditing) {
-          onSuccess?.();
-          if (onClose) {
-            onClose();
-            router.refresh();
-          } else {
-            router.push(`/lists/${result.id}`);
-          }
+        if (isEditing) onSuccess?.();
+        if (isEditing && onClose) {
+          onClose();
+          router.refresh();
         } else {
           // The page this form sits on outlives the push, so the shell has to
           // close itself or its scrim keeps the document from scrolling.
           onClose?.();
-          router.push(`/lists/${result.id}?edit=1&new=1`);
+          router.push(`/lists/${result.id}`);
         }
       }
 

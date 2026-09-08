@@ -131,8 +131,10 @@ beforeEach(() => {
 });
 
 describe('ListHeroSection', () => {
-  describe('EditMode', () => {
-    it('Owner_RendersNothingSoTheModeBandReplacesTheHero', async () => {
+  // `?edit=1` named a staged session that no longer exists; a bookmark
+  // carrying it renders the ordinary hero.
+  describe('StaleEditParam', () => {
+    it('Owner_StillRendersTheHero', async () => {
       vi.mocked(getList).mockResolvedValue({
         id: 'l1',
         profile_id: 'self-u-viewer',
@@ -140,10 +142,11 @@ describe('ListHeroSection', () => {
         item_count: 2,
         profile: { id: 'self-u-viewer', name: 'Owner' },
       } as never);
-      const { container } = render(
-        await ListHeroSection(props('l1', { edit: '1' }))
+      render(await ListHeroSection(props('l1', { edit: '1' })));
+      expect(screen.getByTestId('list-details')).toHaveAttribute(
+        'data-is-owner',
+        'true'
       );
-      expect(container).toBeEmptyDOMElement();
     });
 
     it('NonOwner_StillRendersTheHero', async () => {

@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 
+export const HERO_BAND_SLOT_ID = 'list-hero-band-slot';
 export const HERO_TOOLBAR_SLOT_ID = 'list-hero-toolbar-slot';
 export const HERO_SLOT_READY_EVENT = 'list-hero-slot-ready';
 
@@ -33,11 +34,16 @@ export default function ListHeroSurface({ title, kebab, children }: ListHeroSurf
     // state would re-render the server subtrees passed in as props.
     surface.classList.add('is-chrome');
 
-    // Imperative, not JSX: the slot must be absent from server HTML so a
-    // portal landing in it before hydration has no hydration surface to break.
-    const slot = document.createElement('div');
-    slot.id = HERO_TOOLBAR_SLOT_ID;
-    surface.appendChild(slot);
+    // Imperative, not JSX: a slot must be absent from server HTML so a portal
+    // landing in it before hydration has no hydration surface to break. The
+    // band's slot is appended first so the owner's tabs sit above the toolbar.
+    const addSlot = (id: string) => {
+      const slot = document.createElement('div');
+      slot.id = id;
+      surface.appendChild(slot);
+      return slot;
+    };
+    const slots = [addSlot(HERO_BAND_SLOT_ID), addSlot(HERO_TOOLBAR_SLOT_ID)];
     window.dispatchEvent(new Event(HERO_SLOT_READY_EVENT));
 
     // The sentinel sits above the hero and never animates, so its rect.top is
@@ -138,7 +144,7 @@ export default function ListHeroSurface({ title, kebab, children }: ListHeroSurf
       window.removeEventListener('focusin', onFocusChange);
       window.removeEventListener('focusout', onFocusChange);
       surface.classList.remove('is-chrome', 'is-collapsed');
-      slot.remove();
+      slots.forEach((slot) => slot.remove());
     };
   }, []);
 

@@ -33,9 +33,6 @@ export default async function ListHeroSection({
 
   const isOwner = identity?.activeProfile.id === list.profile_id;
 
-  // Edit mode replaces the hero with its own band; the two never coexist.
-  if (isOwner && sp.edit === '1') return null;
-
   const baseline = await getSpoilerBaseline(identity?.userId, list.profile_id);
   const tier = resolveSpoilerTier(baseline, sp);
   const viewerIsMember = await viewerIsProfileMember(

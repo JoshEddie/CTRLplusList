@@ -1,11 +1,9 @@
 'use client';
 
-import {
-  HERO_SLOT_READY_EVENT,
-  HERO_TOOLBAR_SLOT_ID,
-} from '@/app/(main)/lists/ui/components/ListHeroSurface';
+import { HERO_TOOLBAR_SLOT_ID } from '@/app/(main)/lists/ui/components/ListHeroSurface';
+import { useHeroSlot } from '@/app/(main)/lists/ui/components/useHeroSlot';
 import type { ItemDisplay, SpoilerTier } from '@/lib/types';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import ItemsToolbar from './ItemsToolbar';
 import type { BrowserMode } from './types';
@@ -29,15 +27,8 @@ export default function ToolbarSlot({
 }) {
   // On the list page the toolbar portals into the hero chrome's slot so it
   // rides the hero's shape changes in natural flow; anywhere without a slot
-  // (the items library) it renders inline. The slot's section hydrates
-  // independently, so re-check when the chrome announces itself.
-  const [slot, setSlot] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    const find = () => setSlot(document.getElementById(HERO_TOOLBAR_SLOT_ID));
-    find();
-    window.addEventListener(HERO_SLOT_READY_EVENT, find);
-    return () => window.removeEventListener(HERO_SLOT_READY_EVENT, find);
-  }, []);
+  // (the items library) it renders inline.
+  const slot = useHeroSlot(HERO_TOOLBAR_SLOT_ID);
 
   const storeOptions = useMemo(() => storeOptionsOf(items), [items]);
   const priced = useMemo(() => hasAnyPrice(items), [items]);

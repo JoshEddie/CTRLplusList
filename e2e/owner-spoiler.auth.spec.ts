@@ -135,29 +135,28 @@ test('ListHero_MemberClaimsAtProgressTier_MovesTheHeroClaimedCount', async ({
   await expect(label).toHaveText(`${Number(before) + 1} / ${total} claimed`);
 });
 
-// Edit mode is claim-free by construction rather than by a low tier:
+// The All items tab is claim-free by construction rather than by a low tier:
 // nothing on it resolves one, so the payload carries no claim state for
 // `?spoiler=` to lift. The baseline leg alone would pass just as well against
 // a page that merely inherited the member's `surprise` — the raised leg is
 // what separates the two. Same list as the flow above, so the withheld guest
 // claim it reveals there is present in this profile's library here.
-test('EditMode_MemberRaisesTierInTheURL_StillDisclosesNoClaimState', async ({
+test('AllItemsTab_MemberRaisesTierInTheURL_StillDisclosesNoClaimState', async ({
   page,
 }) => {
-  const EDIT_MODE = `${OWN_LIST}?edit=1`;
-
-  // A row has to be on screen before absence means anything: the assertions
-  // below are all counts of zero, which an unrendered list satisfies too.
+  // A card has to be on screen before absence means anything: the assertions
+  // below are all counts of zero, which an unrendered library satisfies too.
   const expectNoClaimState = async () => {
-    await expect(page.locator('li.edit-mode-item').first()).toBeVisible();
-    await expect(page.locator('.purchased-banner--spoiler')).toHaveCount(0);
+    await page.getByRole('tab', { name: 'All items' }).click();
+    await expect(page.locator('.item-container').first()).toBeVisible();
+    await expect(page.locator('.purchased-banner')).toHaveCount(0);
     await expect(page.locator('.item-container.purchased')).toHaveCount(0);
     await expect(page.locator('.item-container.has-my-claim')).toHaveCount(0);
   };
 
-  await page.goto(EDIT_MODE);
+  await page.goto(OWN_LIST);
   await expectNoClaimState();
 
-  await page.goto(`${EDIT_MODE}&spoiler=claims`);
+  await page.goto(`${OWN_LIST}?spoiler=claims`);
   await expectNoClaimState();
 });

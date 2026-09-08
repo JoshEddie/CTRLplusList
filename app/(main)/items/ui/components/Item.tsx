@@ -13,11 +13,7 @@ import OwnerActions, { type ListEnds } from './OwnerActions';
 import PurchaseModalSlot from './PurchaseModalSlot';
 import { useItemClaims } from './useItemClaims';
 import { useListEntry } from './useListEntry';
-import {
-  claimUnitsCeiling,
-  containerClasses,
-  resolveModalView,
-} from './utils';
+import { claimUnitsCeiling, containerClasses, resolveModalView } from './utils';
 
 export default function Item({
   item,
@@ -29,6 +25,7 @@ export default function Item({
   archivedView,
   listEnds,
   onEntryPresence,
+  claimless,
   preview,
 }: {
   item: ItemDisplay;
@@ -44,6 +41,8 @@ export default function Item({
   listEnds?: ListEnds;
   /** Reports the card on or off the list as its quantity crosses 0, so the surface can keep those ends naming entries that still exist. */
   onEntryPresence?: (itemId: string, onList: boolean) => void;
+  /** The surface names a list for entry writes but resolves no claims against it — the owner's library browser, where a card's quantity is the ask on one list and its claims span every one. */
+  claimless?: boolean;
   /** Render as a live preview inside the item form: no modal, no interactions. */
   preview?: boolean;
 }) {
@@ -87,8 +86,16 @@ export default function Item({
     router.replace(`${pathname}?${params.toString()}`);
   };
 
+  // Withdrawing the quantity withdraws the entry the hook keys every claim
+  // reading on — the same discriminator the item library resolves to when a
+  // card was read through no entry at all.
+  const claimItem = useMemo(
+    () => (claimless ? { ...item, quantity: undefined } : item),
+    [claimless, item]
+  );
+
   const claim = useItemClaims({
-    item,
+    item: claimItem,
     isOwner,
     tier,
     actor,
@@ -187,7 +194,7 @@ export default function Item({
         )}
       </div>
 
-      {!preview && showModal && (
+      {!preview && !claimless && showModal && (
         <PurchaseModalSlot
           view={modalView}
           claims={(!claimRoute && claim.revealedClaims) || claim.claims}

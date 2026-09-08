@@ -33,6 +33,11 @@ test('ListPage_OwnerRemovesItemViaItemMenu_ItemOffListButInLibrary', async ({
   // not race the write.
   await write;
   await page.goto(listUrl);
+  // A list holding nothing opens on All items, so the band's own count states
+  // the removal before its empty-list door is reached.
+  const inListTab = page.getByRole('tab', { name: /^In this list/ });
+  await expect(inListTab).toHaveText('In this list · 0');
+  await inListTab.click();
   await expect(
     page.getByRole('heading', { name: 'No items on this list yet' })
   ).toBeVisible();

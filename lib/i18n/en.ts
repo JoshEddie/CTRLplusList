@@ -4,6 +4,9 @@
 // lone `'` before a non-syntax character as literal, and swapping the glyph
 // would be a wording change.
 export const en = {
+  add_item_choose_existing: 'Choose from existing',
+  add_item_create_new: 'Create a new item',
+  add_item_label: 'Add item',
   buy_claim_aria_label: 'Buy & Claim — opens in new tab',
   buy_claim_label: 'Buy & Claim',
   byline_card_altvatar_link: 'View Altvatar',
@@ -98,9 +101,6 @@ export const en = {
   edit_mode_confirm_dismiss_label: 'Keep editing',
   edit_mode_discard_confirm_label: 'Discard',
   edit_mode_drag_handle_label: 'Drag to reorder',
-  edit_mode_library_empty_body:
-    'Create items first, then come back here to add them to this list.',
-  edit_mode_library_empty_title: 'No items in your library yet',
   edit_mode_library_no_matches: 'No items match.',
   edit_mode_list_empty: 'Your list is empty. Add any item from the Add items tab.',
   edit_mode_new_item_label: 'New item',
@@ -142,6 +142,9 @@ export const en = {
   item_menu_unarchive: 'Unarchive',
   item_menu_unarchive_loading: 'Unarchiving',
   item_menu_unarchive_success: 'Unarchived',
+  library_empty_body:
+    'Create items first, then come back here to add them to this list.',
+  library_empty_title: 'No items in your library yet',
   list_actions_label: 'List actions',
   list_date_label: 'Date',
   list_edit_label: 'Edit list',
@@ -154,6 +157,9 @@ export const en = {
   list_subtitle_label: 'Subtitle',
   list_subtitle_placeholder: 'e.g. Brandy Family',
   owner_name_placeholder: 'the owner',
+  owner_tab_all_items: 'All items',
+  owner_tab_in_list: 'In this list · {count, number}',
+  owner_tabs_label: 'List items',
   profile_shared_list_count:
     '{count, plural, one {# shared list} other {# shared lists}}',
   someone_name_placeholder: 'Someone',

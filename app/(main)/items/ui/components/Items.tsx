@@ -14,6 +14,7 @@ interface ItemsProps {
   archivedView?: boolean;
   listEnds?: ListEnds;
   onEntryPresence?: (itemId: string, onList: boolean) => void;
+  claimless?: boolean;
 }
 
 export default function Items({
@@ -26,6 +27,7 @@ export default function Items({
   archivedView,
   listEnds,
   onEntryPresence,
+  claimless,
 }: ItemsProps) {
   return (
     <div className="item-grid-container">
@@ -42,6 +44,7 @@ export default function Items({
               archivedView={archivedView}
               listEnds={listEnds}
               onEntryPresence={onEntryPresence}
+              claimless={claimless}
             />
           );
         })}

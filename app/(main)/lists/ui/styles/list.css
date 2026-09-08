@@ -643,6 +643,37 @@
   padding: 16px 28px;
 }
 
+/* The owner's band rides in the hero chrome's own slot, directly above the
+   toolbar's, so it pins with the hero instead of fighting it for the same
+   sticky offset. It never collapses: the chrome clips only its own layer. */
+.list-owner-band {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 0;
+  background-color: var(--light-color);
+}
+
+.list-owner-tabs {
+  flex: 1;
+  min-width: 0;
+}
+
+.list-owner-add {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.list-owner-add > .btn {
+  white-space: nowrap;
+}
+
+@media (min-width: 801px) {
+  .list-owner-band {
+    padding: 12px 28px 0;
+  }
+}
+
 @media (max-width: 800px) {
   .container--list-details .items-toolbar {
     padding: 12px 16px;

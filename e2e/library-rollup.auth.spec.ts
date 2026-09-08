@@ -54,20 +54,34 @@ test('ItemLibrary_FreshItemJoinsOneListThenGainsUnits_RollupBannerFollows', asyn
     .getByRole('textbox', { name: 'Date', exact: true })
     .fill('2030-06-01');
   await page.getByRole('button', { name: 'Create List' }).click();
-  await expect(page).toHaveURL(/\/lists\/[^/]+\?edit=1&new=1$/);
-  const listId = page.url().match(/\/lists\/([^/?]+)\?/)?.[1];
+  await expect(page).toHaveURL(/\/lists\/[^/?]+$/);
+  const listId = page.url().match(/\/lists\/([^/?]+)$/)?.[1];
   expect(listId).toBeTruthy();
 
-  // Three units on the one entry the item has.
-  const increase = page
-    .locator('.edit-mode-library .item', { hasText: name })
-    .getByRole('button', { name: 'Increase' });
-  await increase.click();
-  await increase.click();
-  await increase.click();
-  await page.getByRole('button', { name: /Add 1 item/ }).click();
-  await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page).toHaveURL(new RegExp(`/lists/${listId}$`));
+  // The card's number is the optimistic mirror, so every step below awaits the
+  // action's own round trip: each read that follows is a fresh server read and
+  // must not race the write's tag bump.
+  const listUrl = page.url();
+  const committed = async (act: () => Promise<void>) => {
+    const write = page.waitForResponse(
+      (r) => r.request().method() === 'POST' && r.url().startsWith(listUrl)
+    );
+    await act();
+    await write;
+  };
+
+  // Three units on the one entry the item has, committed as they are pressed.
+  const libraryCard = page.locator('.item-container', { hasText: name });
+  const increase = libraryCard.getByRole('button', { name: 'Increase' });
+  for (const value of ['1', '2', '3']) {
+    await committed(async () => {
+      await increase.click();
+      await expect(libraryCard.getByRole('spinbutton')).toHaveValue(value);
+    });
+  }
+  await expect(page.getByRole('tab', { name: /^In this list/ })).toHaveText(
+    'In this list · 1'
+  );
 
   await banner();
   await expect(card.locator('.purchased-banner')).toHaveText(
@@ -76,15 +90,12 @@ test('ItemLibrary_FreshItemJoinsOneListThenGainsUnits_RollupBannerFollows', asyn
 
   // The same entry, two units larger: the total follows the write and the list
   // count does not move, which is what separates a rollup from a recount.
-  await page.goto(`/lists/${listId}?edit=1`);
-  await page
-    .locator('li.edit-mode-item')
-    .filter({ hasText: name })
-    .getByRole('spinbutton')
-    .fill('5');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page).toHaveURL(new RegExp(`/lists/${listId}$`));
+  await page.goto(listUrl);
+  const listCard = page.locator('.item-container', { hasText: name });
+  await committed(async () => {
+    await listCard.getByRole('spinbutton').fill('5');
+    await expect(listCard.getByRole('spinbutton')).toHaveValue('5');
+  });
 
   await page.goto(`/lists/${listId}?spoiler=claims`);
   await expect(card.locator('.purchased-banner')).toHaveText('0 / 5 Claimed');

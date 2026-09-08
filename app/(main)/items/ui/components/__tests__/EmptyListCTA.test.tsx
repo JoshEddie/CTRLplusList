@@ -1,33 +1,32 @@
+import { OwnerTabsContext } from '@/app/(main)/lists/[id]/ownerTabs';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import EmptyListCTA from '../EmptyListCTA';
 
-const spHolder = vi.hoisted(() => ({
-  value: new URLSearchParams() as URLSearchParams | null,
-}));
-vi.mock('next/navigation', () => ({
-  useSearchParams: () => spHolder.value,
-}));
+const showLibrary = vi.fn();
+
+const renderCTA = () =>
+  render(
+    <OwnerTabsContext.Provider value={{ showLibrary, createItem: vi.fn() }}>
+      <EmptyListCTA />
+    </OwnerTabsContext.Provider>
+  );
+
+const door = () => screen.getByRole('button', { name: 'Choose Items' });
 
 describe('EmptyListCTA', () => {
-  it('Default_LinksIntoEditModeOnTheListRoute', () => {
-    spHolder.value = new URLSearchParams();
-    render(<EmptyListCTA listId="l1" />);
+  it('Render_NamesTheEmptyListAndOffersTheLibrary', () => {
+    renderCTA();
     expect(
       screen.getByRole('heading', { name: 'No items on this list yet' })
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Choose Items' })).toHaveAttribute(
-      'href',
-      '/lists/l1?edit=1'
-    );
+    expect(door()).toBeInTheDocument();
   });
 
-  it('UnderASpoilerParam_CarriesItIntoEditMode', () => {
-    spHolder.value = new URLSearchParams('spoiler=claims');
-    render(<EmptyListCTA listId="l1" />);
-    expect(screen.getByRole('link', { name: 'Choose Items' })).toHaveAttribute(
-      'href',
-      '/lists/l1?spoiler=claims&edit=1'
-    );
+  it('ClickTheDoor_SelectsTheAllItemsTab', async () => {
+    renderCTA();
+    await userEvent.click(door());
+    expect(showLibrary).toHaveBeenCalledTimes(1);
   });
 });

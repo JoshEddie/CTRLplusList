@@ -32,6 +32,8 @@ interface ItemsBrowserProps {
   baseline?: SpoilerTier;
   /** Rendered instead of the rows when there are no items at all — as opposed to none surviving the filters. */
   emptyState?: ReactNode;
+  /** The surface names a list for entry writes but resolves no claims against it. */
+  claimless?: boolean;
 }
 
 const VALID_SORT_ITEMS: SortKey[] = [
@@ -66,6 +68,7 @@ export default function ItemsBrowser({
   tier,
   baseline,
   emptyState,
+  claimless,
 }: ItemsBrowserProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -153,6 +156,7 @@ export default function ItemsBrowser({
             archivedView={archivedView}
             listEnds={listEnds}
             onEntryPresence={handleEntryPresence}
+            claimless={claimless}
           />
           <Pagination
             page={page}

@@ -45,7 +45,10 @@ const emptyStore = (link = ''): DeckStore => ({ name: '', link, price: '' });
 
 // A factory, not a shared const: each blank item gets its own store/list
 // objects so two sessions can't mutate one another's state.
-export function blankItem(seedUrl = ''): ItemViewModel {
+export function blankItem(
+  seedUrl = '',
+  lists: OptionType[] = []
+): ItemViewModel {
   return {
     id: '',
     name: '',
@@ -54,7 +57,7 @@ export function blankItem(seedUrl = ''): ItemViewModel {
     placeholder: null,
     description: '',
     store: emptyStore(seedUrl),
-    lists: [],
+    lists: [...lists],
   };
 }
 

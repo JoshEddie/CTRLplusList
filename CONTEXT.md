@@ -84,37 +84,25 @@ no list is visible to its owner only.
 **Item library**:
 A profile's entire item set, independent of any list.
 
-**Edit mode**:
-The owner's staged surface for changing what is on a list, reached at `?edit=1`
-on the list's own route rather than through a page of its own. It replaces the
-hero with a still band — the list's name and two tabs — and the item surface
-with one staged session. _In this list_ holds the entries in position order,
-one per line, reorderable by drag and never filtered or paginated; _Add items_
-is the item library exactly as the items page renders it (toolbar, card grid,
-pagination), with a quantity stepper standing where the claim actions stand
-elsewhere. Quantity is the membership control: a stepper reaching 0 is the
-removal, and any number above it is the add. A staged change marks its row or
-card where it already is; nothing crosses between tabs, and a removed entry
-keeps the index it held when saved, struck through, until Save. One Save
-commits the entries — membership, quantity and the whole order — and nothing
-else; the list row is the hero pencil's _Edit list_ modal's, which also carries
-the list's deletion. Cancel is the only revert, and Save, Cancel, Back, reload
-and any in-app link all confirm while anything is staged. No claim state
-renders here: a claim belongs to a list entry, not to an item, so a library
-card carries none this list could judge. It is no longer the only way in: on
-the list's ordinary surface an owner's card carries its own quantity stepper
-and an item menu holding move to top, move to bottom and remove from list,
-each committing as it is made.
-
-**Pending change**:
-An entry, as edit mode stages it, whose membership, quantity, or position
-differs from what is saved — added, removed, re-quantified, or moved. Marked by
-a dot beside the item name in _In this list_ and by the status line on a
-library card; a removed entry keeps its place, struck through, which is how the
-owner finds what they took off and puts it back. A drag marks only the row
-dragged — the rows it displaces are still where the owner put them, even
-though Save rewrites their positions along with it
-([ADR-0010](docs/adr/0010-sparse-fractional-indexing-for-list-order.md)).
+**Owner band**:
+The strip an owner gets below the hero on their own list, and nothing a viewer
+sees. It carries two tabs and an _Add item_ menu, rides inside the hero's own
+sticky chrome above the items toolbar, and never collapses. _In this list_ is
+the ordinary item surface everyone sees, plus the owner's card controls, and
+its label states the entry count. _All items_ replaces that surface with the
+item library exactly as the items page renders it — toolbar, card grid,
+pagination — every card carrying a quantity stepper reading **this list's**
+entry, or 0 for an item the list does not hold. The rolled-up ask, the list
+count and all claim state are stripped there: a claim belongs to one list
+entry, not to an item, so a library card carries none this list could judge,
+and a summed ask beside the stepper would name a number the stepper does not
+set. Archived items are excluded unless the list already holds them. The
+_Add item_ menu offers a new item or a pick from existing; choosing from
+existing selects _All items_, which is how the owner learns where that surface
+lives. Creating an item reuses the item form whole, this list preselected in
+its picker, and its save is the add. A list holding nothing opens on _All
+items_. Nothing here is staged and nothing needs saving — every entry write
+commits as it is made.
 
 **List entry**:
 An item's presence on one list, carrying the position it holds there, the

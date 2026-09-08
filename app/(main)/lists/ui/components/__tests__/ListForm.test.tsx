@@ -49,7 +49,7 @@ beforeEach(() => {
 
 describe('ListForm', () => {
   describe('Create', () => {
-    it('ValidSubmit_CallsCreateListWithTrimmedSubtitleNull-NavigatesToChooseItems', async () => {
+    it('ValidSubmit_CallsCreateListWithTrimmedSubtitleNull-NavigatesToTheNewList', async () => {
       const user = userEvent.setup();
       render(<ListForm />);
 
@@ -71,7 +71,7 @@ describe('ListForm', () => {
         })
       );
       expect(router.push).toHaveBeenCalledWith(
-        '/lists/new-1?edit=1&new=1'
+        '/lists/new-1'
       );
       expect(updateList).not.toHaveBeenCalled();
     });
