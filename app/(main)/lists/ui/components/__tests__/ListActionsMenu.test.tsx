@@ -34,9 +34,6 @@ function renderMenu(overrides: MenuOverrides = {}, meetsOwnerFloor = true) {
   return render(
     <ListActionsMenu
       list={list}
-      previewMode={overrides.previewMode ?? false}
-      previewHref="/lists/list-1?preview=1"
-      exitPreviewHref="/lists/list-1"
       isOwner={overrides.isOwner}
       prependedItems={overrides.prependedItems as ReactNode}
       disabled={!meetsOwnerFloor}
@@ -84,49 +81,33 @@ describe('ListActionsMenu', () => {
   });
 
   describe('Owner', () => {
-    it('NonPreview_RendersFullBaseMenuInOrder', async () => {
+    it('Default_RendersEditAndDeleteInOrder', async () => {
       const user = userEvent.setup();
-      renderMenu({ previewMode: false });
+      renderMenu();
       await openMenu(user);
       const items = screen.getAllByRole('menuitem').map((el) => el.textContent);
-      expect(items).toEqual(['Edit list', 'Preview as viewer', 'Delete list']);
+      expect(items).toEqual(['Edit list', 'Delete list']);
     });
 
-    // Claim visibility is adjusted from the items toolbar and from the
-    // viewer's baseline; a menu row would be a second, divergent entry point.
-    it('NonPreview_CarriesNoSpoilerRow', async () => {
+    // Claim visibility is adjusted from the hero tile and from the viewer's
+    // baseline; a menu row would be a second, divergent entry point.
+    it('Default_CarriesNoSpoilerRow', async () => {
       const user = userEvent.setup();
-      renderMenu({ previewMode: false });
+      renderMenu();
       await openMenu(user);
       expect(
         screen.queryByRole('menuitem', { name: /spoilers/i })
       ).not.toBeInTheDocument();
     });
 
-    it('PreviewModeFalse_RendersPreviewAsViewer', async () => {
+    // The default view already is what a viewer sees, so there is nothing to
+    // preview.
+    it('Default_CarriesNoPreviewRow', async () => {
       const user = userEvent.setup();
-      renderMenu({ previewMode: false });
+      renderMenu();
       await openMenu(user);
       expect(
-        screen.getByRole('menuitem', { name: 'Preview as viewer' })
-      ).toBeInTheDocument();
-    });
-
-    it('PreviewModeTrue_RendersExitPreview-SuppressesEditAndDelete', async () => {
-      const user = userEvent.setup();
-      renderMenu({ previewMode: true });
-      await openMenu(user);
-      expect(
-        screen.getByRole('menuitem', { name: 'Exit preview' })
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole('menuitem', { name: /spoilers/i })
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('menuitem', { name: 'Edit list' })
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('menuitem', { name: 'Delete list' })
+        screen.queryByRole('menuitem', { name: /[Pp]review/ })
       ).not.toBeInTheDocument();
     });
   });
@@ -138,15 +119,6 @@ describe('ListActionsMenu', () => {
       await openMenu(user);
       expect(
         screen.queryByRole('menuitem', { name: 'Edit list' })
-      ).not.toBeInTheDocument();
-    });
-
-    it('Default_SuppressesPreviewToggle', async () => {
-      const user = userEvent.setup();
-      renderMenu({ isOwner: false });
-      await openMenu(user);
-      expect(
-        screen.queryByRole('menuitem', { name: /[Pp]review/ })
       ).not.toBeInTheDocument();
     });
 
@@ -204,6 +176,20 @@ describe('ListActionsMenu', () => {
       await waitFor(() => expect(deleteList).toHaveBeenCalledWith('list-1'));
       await waitFor(() => expect(router.push).toHaveBeenCalledWith('/lists'));
       expect(toast.success).toHaveBeenCalledWith('List deleted successfully');
+    });
+
+    it('ConfirmFailureWithoutAnError_ToastsTheGenericMessage', async () => {
+      vi.mocked(deleteList).mockResolvedValue({
+        success: false,
+        message: '',
+      });
+      const user = userEvent.setup();
+      renderMenu();
+      await openDelete(user);
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledWith('Failed to delete list')
+      );
     });
 
     it('ConfirmFailure_ToastsError-NoNavigate', async () => {

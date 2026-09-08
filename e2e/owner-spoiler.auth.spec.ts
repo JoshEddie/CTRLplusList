@@ -24,8 +24,11 @@ test('ListHero_MemberRaisesTierViaSpoilerTile_RevealsWithheldClaim', async ({
   await page.goto(OWN_LIST);
   await expect(page.locator('.item-container').first()).toBeVisible();
 
-  // The baseline view: the owner-side spoiler banner names no claim at all.
-  await expect(page.locator('.purchased-banner--spoiler')).toHaveCount(0);
+  // The baseline view: every card carries the progress banner, but none of
+  // them states a count — the protected tier leaves them all on the bare ask.
+  await expect(
+    page.locator('.purchased-banner--spoiler', { hasText: 'claimed' })
+  ).toHaveCount(0);
 
   await raiseSpoilerTier(page, "Show what's claimed");
 
@@ -64,7 +67,9 @@ test('ListHero_MemberLeavesAndReturns_RestoresProtectedView', async ({
   await page.goto('/lists');
   await page.goto(OWN_LIST);
   await expect(page).not.toHaveURL(/spoiler=/);
-  await expect(page.locator('.purchased-banner--spoiler')).toHaveCount(0);
+  await expect(
+    page.locator('.purchased-banner--spoiler', { hasText: 'claimed' })
+  ).toHaveCount(0);
 });
 
 // A viewer list no other spec reads: this case CLAIMS, and the birthday list's
@@ -98,9 +103,9 @@ test('ListHero_MemberClaimsAtProgressTier_MovesTheHeroClaimedCount', async ({
   const unclaimed = page
     .locator('.item-container')
     .filter({
-      has: page.getByRole('button', { name: 'Add Claim', exact: true }),
+      has: page.getByRole('button', { name: 'Claim', exact: true }),
     })
-    .filter({ hasNotText: 'claimed' })
+    .filter({ has: page.locator('.purchased-banner', { hasText: /^0 \// }) })
     .first();
   const itemName = (await unclaimed.locator('.itemName').innerText()).trim();
 
@@ -116,7 +121,7 @@ test('ListHero_MemberClaimsAtProgressTier_MovesTheHeroClaimedCount', async ({
   // gates (the confirmation stands between the member and the disclosure, not
   // the tier).
   const card = page.locator('.item-container', { hasText: itemName });
-  await card.getByRole('button', { name: 'Add Claim', exact: true }).click();
+  await card.getByRole('button', { name: 'Claim', exact: true }).click();
   await page.getByRole('button', { name: 'Show me', exact: true }).click();
   await expect(page.locator('.claim-reveal-summary')).toBeVisible();
   await page
@@ -130,29 +135,29 @@ test('ListHero_MemberClaimsAtProgressTier_MovesTheHeroClaimedCount', async ({
   await expect(label).toHaveText(`${Number(before) + 1} / ${total} claimed`);
 });
 
-// Choose-items is claim-free by construction rather than by a low tier:
+// Edit mode is claim-free by construction rather than by a low tier:
 // nothing on it resolves one, so the payload carries no claim state for
 // `?spoiler=` to lift. The baseline leg alone would pass just as well against
 // a page that merely inherited the member's `surprise` — the raised leg is
 // what separates the two. Same list as the flow above, so the withheld guest
 // claim it reveals there is present in this profile's library here.
-test('ChooseItems_MemberRaisesTierInTheURL_StillDisclosesNoClaimState', async ({
+test('EditMode_MemberRaisesTierInTheURL_StillDisclosesNoClaimState', async ({
   page,
 }) => {
-  const CHOOSE_ITEMS = `${OWN_LIST}/choose-items`;
+  const EDIT_MODE = `${OWN_LIST}?edit=1`;
 
   // A row has to be on screen before absence means anything: the assertions
   // below are all counts of zero, which an unrendered list satisfies too.
   const expectNoClaimState = async () => {
-    await expect(page.locator('ul.choose-items-list li').first()).toBeVisible();
+    await expect(page.locator('li.edit-mode-item').first()).toBeVisible();
     await expect(page.locator('.purchased-banner--spoiler')).toHaveCount(0);
     await expect(page.locator('.item-container.purchased')).toHaveCount(0);
     await expect(page.locator('.item-container.has-my-claim')).toHaveCount(0);
   };
 
-  await page.goto(CHOOSE_ITEMS);
+  await page.goto(EDIT_MODE);
   await expectNoClaimState();
 
-  await page.goto(`${CHOOSE_ITEMS}?spoiler=claims`);
+  await page.goto(`${EDIT_MODE}&spoiler=claims`);
   await expectNoClaimState();
 });

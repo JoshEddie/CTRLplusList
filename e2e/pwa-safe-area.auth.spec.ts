@@ -120,7 +120,9 @@ test('AppFrame_ScrollLongPage_DocumentIsTheOnlyScroller', async ({ page }) => {
   // scroll container of its own.
   expect(
     await page.evaluate(() =>
-      Math.round(document.querySelector('.app-nav')!.getBoundingClientRect().top)
+      Math.round(
+        document.querySelector('.app-nav')!.getBoundingClientRect().top
+      )
     )
   ).toBe(0);
 });

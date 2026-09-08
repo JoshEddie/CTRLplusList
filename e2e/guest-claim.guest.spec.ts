@@ -21,7 +21,9 @@ test('GuestClaim_PublicList_RecordsGuestPurchase', async ({ page }) => {
   await expect(
     page.getByRole('heading', { name: "Grace's Birthday" }).first()
   ).toBeVisible();
-  await expect(page.getByText('Sign In', { exact: true }).first()).toBeVisible();
+  await expect(
+    page.getByText('Sign In', { exact: true }).first()
+  ).toBeVisible();
 
   // Open the purchase modal on a claimable item and take the "continue as
   // guest" branch. A per-run-unique name makes the recorded claim
@@ -29,30 +31,30 @@ test('GuestClaim_PublicList_RecordsGuestPurchase', async ({ page }) => {
   const guestName = `GuestE2E${Date.now()}`;
   const item = firstClaimableSingleItem(page);
   const itemName = (await item.locator('.itemName').innerText()).trim();
-  await item.getByRole('button', { name: 'Add Claim' }).click();
+  await item.getByRole('button', { name: 'Claim', exact: true }).click();
   await page.getByLabel('Your name').fill(guestName);
   await page.getByRole('button', { name: 'Claim as Guest' }).click();
 
-  // The guest_claims cookie marks the claim as the guest's own: "You claimed
-  // this" banner and Manage claim, never a third-party "Claimed by" line.
-  await expect(page.getByText('You claimed this')).toBeVisible();
+  // The guest_claims cookie marks the claim as the guest's own: Manage claim,
+  // never the bystander's Fully claimed pill.
+  const card = page.locator('.item-container', { hasText: itemName });
+  await expect(
+    card.getByRole('button', { name: 'Manage claim' })
+  ).toBeVisible();
 
   // The guest's claim persists across a fresh server render.
   await page.reload();
-  await expect(page.getByText('You claimed this')).toBeVisible();
+  await expect(card.locator('.purchased-banner')).toHaveText('1 / 1 Claimed');
   await expect(
-    page.getByRole('button', { name: 'Manage claim' })
+    card.getByRole('button', { name: 'Manage claim' })
   ).toBeVisible();
 
   // A browser without the guest_claims cookie sees the claim as someone
   // else's — a bare count, since no tier names a claiming party.
   await page.context().clearCookies();
   await page.reload();
-  await expect(
-    page
-      .locator('.item-container', { hasText: itemName })
-      .getByText('Claimed by 1 person')
-  ).toBeVisible();
+  await expect(card.locator('.purchased-banner')).toHaveText('1 / 1 Claimed');
+  await expect(card.getByText('Fully claimed')).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Manage claim' })
   ).not.toBeVisible();
@@ -61,7 +63,7 @@ test('GuestClaim_PublicList_RecordsGuestPurchase', async ({ page }) => {
 // The removal half of the guest round-trip: a guest who holds a claim opens
 // Manage claim, sees their own row labelled "{name} (you)" with the only
 // removal action on the item, and removes it. Removing the guest's last claim
-// closes the modal and returns the card to Add Claim; the claim is gone on a
+// closes the modal and returns the card to Claim; the claim is gone on a
 // fresh server render. Runs its own claim (the test above leaves its item
 // fully claimed), so the two never contend for the same card.
 test('GuestManageClaim_RemoveOwnRow_ReturnsCardToAddClaim', async ({
@@ -75,12 +77,12 @@ test('GuestManageClaim_RemoveOwnRow_ReturnsCardToAddClaim', async ({
   const item = firstClaimableSingleItem(page);
   const itemName = (await item.locator('.itemName').innerText()).trim();
   const guestName = `GuestRemoveE2E${Date.now()}`;
-  await item.getByRole('button', { name: 'Add Claim' }).click();
+  await item.getByRole('button', { name: 'Claim', exact: true }).click();
   await page.getByLabel('Your name').fill(guestName);
   await page.getByRole('button', { name: 'Claim as Guest' }).click();
 
   const card = page.locator('.item-container', { hasText: itemName });
-  await expect(card.getByText('You claimed this').first()).toBeVisible();
+  await expect(card.locator('.purchased-banner')).toHaveText('1 / 1 Claimed');
   const manage = card.getByRole('button', { name: 'Manage claim' });
   await expect(manage).toBeVisible();
 
@@ -98,17 +100,22 @@ test('GuestManageClaim_RemoveOwnRow_ReturnsCardToAddClaim', async ({
   // Removing the guest's only claim closes the modal and returns the card to
   // its claimable action set.
   await remove.click();
-  await expect(card.getByRole('button', { name: 'Add Claim' })).toBeVisible();
+  await expect(
+    card.getByRole('button', { name: 'Claim', exact: true })
+  ).toBeVisible();
   await expect(page.locator('.claim-modal')).toHaveCount(0);
-  await expect(card.getByText('You claimed this')).toHaveCount(0);
+  await expect(card.getByRole('button', { name: 'Manage claim' })).toHaveCount(
+    0
+  );
 
   // A fresh server render agrees: the claim is gone for the guest and for
-  // anyone else (no residual "Claimed by" line on the card at all).
+  // anyone else — the entry's count is back to nothing spoken for.
   await page.reload();
   const cardAfter = page.locator('.item-container', { hasText: itemName });
   await expect(
-    cardAfter.getByRole('button', { name: 'Add Claim' })
+    cardAfter.getByRole('button', { name: 'Claim', exact: true })
   ).toBeVisible();
-  await expect(cardAfter.getByText('Claimed by')).toHaveCount(0);
-  await expect(cardAfter.getByText('You claimed this')).toHaveCount(0);
+  await expect(cardAfter.locator('.purchased-banner')).toHaveText(
+    '0 / 1 Claimed'
+  );
 });

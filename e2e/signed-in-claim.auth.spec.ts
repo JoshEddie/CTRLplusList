@@ -12,16 +12,15 @@ import { firstClaimableSingleItem } from '../test/helpers/e2e/utils';
 // which are covered here (the attributed-picker path lives in
 // claim-attribution.auth.spec):
 //   1. 'Claim this gift'  — a one-tap self-claim → recorded as the viewer's
-//      own claim (purchaser = viewer) → shows "You claimed this".
+//      own claim (purchaser = viewer) → the card flips to Manage claim.
 //   2. name fallback        — a claim for a named non-user → recorded with the
-//      viewer as claimer and the typed name as guest label → the claimer's own
-//      banner reads "You claimed this for <name>" (other viewers see
-//      "Claimed by <name>").
+//      viewer as claimer and the typed name as guest label.
 //
-// Self-claim assertions are scoped by item name: seeded viewer claims on OTHER
-// items also read "You claimed this", so a bare match would not prove THIS claim
-// landed. The fallback assertion uses a per-run-unique purchaser name, so it is
-// unambiguous on its own.
+// No card surface names a claiming party, so both are asserted where the
+// claim is disclosed: the entry's progress banner for the count, and the
+// manage list for who holds it. Assertions are scoped by item name — seeded
+// viewer claims sit on OTHER items too — and the fallback uses a per-run-unique
+// purchaser name, so it is unambiguous on its own.
 const LIST = '/lists/dev-list-alice-wedding';
 const LIST_HEADING = "Alice's Wedding Registry";
 
@@ -34,19 +33,26 @@ test('SignedInClaim_SelfClaimOneTap_ShowsOwnClaim', async ({ page }) => {
   const item = firstClaimableSingleItem(page);
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
-  // Open the purchase modal via the card's "Add Claim" affordance; the
-  // primary CTA self-claims in one tap — no confirmation screen.
-  await item.getByRole('button', { name: 'Add Claim' }).click();
+  // Open the purchase modal via the card's "Claim" affordance; the primary
+  // CTA self-claims in one tap — no confirmation screen.
+  await item.getByRole('button', { name: 'Claim', exact: true }).click();
   await page.getByRole('button', { name: 'Claim this gift' }).click();
 
-  // The item reflects the viewer's own claim, and it persists across a fresh
-  // server render.
+  // The item reflects the viewer's own claim — the single unit spoken for and
+  // a claim they can manage — and it persists across a fresh server render.
   const claimed = page.locator('.item-container', { hasText: itemName });
-  await expect(claimed.getByText('You claimed this').first()).toBeVisible();
+  await expect(claimed.locator('.purchased-banner')).toHaveText(
+    '1 / 1 Claimed'
+  );
 
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
-  await expect(claimedAfter.getByText('You claimed this').first()).toBeVisible();
+  await expect(claimedAfter.locator('.purchased-banner')).toHaveText(
+    '1 / 1 Claimed'
+  );
+  await expect(
+    claimedAfter.getByRole('button', { name: 'Manage claim' })
+  ).toBeVisible();
 });
 
 test('SignedInClaim_ViewItemInEveryClaimState_ModalStillCarriesStoreRow', async ({
@@ -61,13 +67,12 @@ test('SignedInClaim_ViewItemInEveryClaimState_ModalStillCarriesStoreRow', async 
 
   // A claimable card with a complete store offers View item ↗ (new tab, store
   // URL) alongside the claim affordance — the price line stays inert metadata.
-  // Exclude viewer-claimed cards: they also carry a secondary "Add Claim",
-  // but their modal opens in the already-claimed state (no "Claim this gift").
+  // Exclude viewer-claimed cards: they also carry a secondary "Claim", but
+  // their modal opens in the already-claimed state (no "Claim this gift").
   const claimable = page
     .locator('.item-container')
-    .filter({ has: page.getByRole('button', { name: 'Add Claim' }) })
+    .filter({ has: page.getByRole('button', { name: 'Claim', exact: true }) })
     .filter({ hasNot: page.getByRole('button', { name: 'Manage claim' }) })
-    .filter({ hasNotText: 'You claimed this' })
     .filter({ has: page.locator('.item-store-metadata') })
     .first();
   const claimableView = claimable.getByRole('link', { name: viewItemName });
@@ -82,7 +87,7 @@ test('SignedInClaim_ViewItemInEveryClaimState_ModalStillCarriesStoreRow', async 
     .filter({ hasText: 'Fully claimed' })
     .first();
   // Two status regions can coexist on the card (the action-area pill and the
-  // "Claimed by …" banner) — assert the pill specifically.
+  // progress banner) — assert the pill specifically.
   await expect(
     fullyClaimed.getByRole('status').filter({ hasText: 'Fully claimed' })
   ).toBeVisible();
@@ -90,12 +95,12 @@ test('SignedInClaim_ViewItemInEveryClaimState_ModalStillCarriesStoreRow', async 
     fullyClaimed.getByRole('link', { name: viewItemName })
   ).toBeVisible();
   await expect(
-    fullyClaimed.getByRole('button', { name: 'Add Claim' })
+    fullyClaimed.getByRole('button', { name: 'Claim', exact: true })
   ).toHaveCount(0);
 
   // Opening the modal still surfaces the store row (cheapest store, new tab)
   // in the same surface as the claim CTA.
-  await claimable.getByRole('button', { name: 'Add Claim' }).click();
+  await claimable.getByRole('button', { name: 'Claim', exact: true }).click();
   const storeLink = page.locator('.modal-store-row').getByRole('link').first();
   await expect(storeLink).toBeVisible();
   await expect(storeLink).toHaveAttribute('target', '_blank');
@@ -119,25 +124,29 @@ test('SignedInClaim_NameFallbackForNonUser_ShowsClaimerBannerWithName', async ({
 
   // Open the purchase modal, expand the attributed-claim disclosure, and use
   // the "Someone not listed?" fallback for a purchaser without an account.
-  await item.getByRole('button', { name: 'Add Claim' }).click();
+  await item.getByRole('button', { name: 'Claim', exact: true }).click();
   await page
     .getByRole('button', { name: /Claiming for someone else\?/ })
     .click();
   await page.getByLabel('Someone not listed?').fill(purchaser);
   await page.getByRole('button', { name: `Confirm — ${purchaser}` }).click();
 
-  // The viewer asserted the claim (claimed_by_profile_id), so their banner names the
-  // third party; it persists on reload and never reads as a bare
-  // "You claimed this" (which would mean the claim was misattributed to the
-  // viewer as purchaser).
+  // The viewer asserted the claim (claimed_by_profile_id) for a third party,
+  // so the manage list — the one surface that names a claiming party — reads
+  // the typed name and credits the viewer as its recorder, never the viewer's
+  // own name as purchaser. It survives a fresh server render.
   const claimed = page.locator('.item-container', { hasText: itemName });
-  await expect(
-    claimed.getByText(`You claimed this for ${purchaser}`).first()
-  ).toBeVisible();
+  await expect(claimed.locator('.purchased-banner')).toHaveText(
+    '1 / 1 Claimed'
+  );
 
+  // The recorded claim closes the modal by dropping the query parameter;
+  // reloading before that lands would reopen it over the card.
+  await expect(page).not.toHaveURL(/purchaseItem/);
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
-  await expect(
-    claimedAfter.getByText(`You claimed this for ${purchaser}`).first()
-  ).toBeVisible();
+  await claimedAfter.getByRole('button', { name: 'Manage claim' }).click();
+  const row = page.locator('.claim-row', { hasText: purchaser });
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('Added by you');
 });

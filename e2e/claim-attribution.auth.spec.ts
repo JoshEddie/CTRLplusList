@@ -26,7 +26,7 @@ test('AttributedClaim_PickMutualFromPicker_PersistsBobAsPurchaser', async ({
   // Open the purchase modal and expand the collapsed disclosure; the picker
   // lists Alice's mutuals. Search narrows the live pool; tapping a row
   // selects it and Confirm records the claim — expand-inline, no second screen.
-  await item.getByRole('button', { name: 'Add Claim' }).click();
+  await item.getByRole('button', { name: 'Claim', exact: true }).click();
   await page
     .getByRole('button', { name: /Claiming for someone else\?/ })
     .click();
@@ -36,17 +36,22 @@ test('AttributedClaim_PickMutualFromPicker_PersistsBobAsPurchaser', async ({
     .getByRole('button', { name: 'Confirm — Bob Example', exact: true })
     .click();
 
-  // The viewer asserted the claim for Bob; the banner names the attributed
-  // user by their self-profile name (not a typed guest label) and the
-  // attribution survives a fresh server render.
+  // The claim lands on the entry's count. No card surface names a claiming
+  // party, so the attribution is read where it is disclosed: the manage list,
+  // after a fresh server render, which names Bob as the purchaser and the
+  // viewer as the one who recorded it.
   const claimed = page.locator('.item-container', { hasText: itemName });
-  await expect(
-    claimed.getByText('You claimed this for Bob Example').first()
-  ).toBeVisible();
+  await expect(claimed.locator('.purchased-banner')).toHaveText(
+    '1 / 1 Claimed'
+  );
 
+  // The recorded claim closes the modal by dropping the query parameter;
+  // reloading before that lands would reopen it over the card.
+  await expect(page).not.toHaveURL(/purchaseItem/);
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
-  await expect(
-    claimedAfter.getByText('You claimed this for Bob Example').first()
-  ).toBeVisible();
+  await claimedAfter.getByRole('button', { name: 'Manage claim' }).click();
+  const row = page.locator('.claim-row', { hasText: 'Bob Example' });
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('Added by you');
 });

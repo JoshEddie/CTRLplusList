@@ -1,10 +1,8 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
-import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
 import { archiveItem } from '@/lib/data/item.actions';
-import { removeListItem } from '@/lib/data/listItems.actions';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -12,7 +10,6 @@ import {
   MdArchive,
   MdModeEdit,
   MdMoreHoriz,
-  MdRemoveCircleOutline,
   MdUnarchive,
 } from 'react-icons/md';
 
@@ -20,22 +17,19 @@ export default function OwnerActions({
   itemId,
   showArchiveAction,
   archivedView,
-  listId,
   pathname,
   searchParams,
-  onArchived,
+  onChanged,
 }: {
   itemId: string;
   showArchiveAction?: boolean;
   archivedView?: boolean;
-  listId?: string;
   pathname: string;
   searchParams: ReadonlyURLSearchParams | null;
-  onArchived: () => void;
+  onChanged: () => void;
 }) {
   const kebabRef = useRef<HTMLButtonElement>(null);
   const [kebabOpen, setKebabOpen] = useState(false);
-  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
   const toggleArchive = async () => {
     const nextArchived = !archivedView;
@@ -44,19 +38,7 @@ export default function OwnerActions({
       success: nextArchived ? 'Archived' : 'Unarchived',
       error: 'Failed',
     });
-    if (result?.success) onArchived();
-  };
-
-  const handleRemoveConfirm = async () => {
-    /* v8 ignore next -- defensive: the Remove menu entry and its dialog only render when listId is present. */
-    if (!listId) return;
-    setShowRemoveConfirm(false);
-    const result = await toast.promise(removeListItem(listId, itemId), {
-      loading: 'Removing',
-      success: 'Removed from list',
-      error: 'Failed to remove',
-    });
-    if (result?.success) onArchived();
+    if (result?.success) onChanged();
   };
 
   return (
@@ -64,6 +46,7 @@ export default function OwnerActions({
       <Button
         ref={kebabRef}
         variant="ghost"
+        size='sm'
         className="item-owner-actions-kebab"
         aria-haspopup="menu"
         aria-expanded={kebabOpen}
@@ -101,30 +84,7 @@ export default function OwnerActions({
             {archivedView ? 'Unarchive' : 'Archive'}
           </MenuItem>
         )}
-        {listId && (
-          <MenuItem
-            tone="danger"
-            icon={<MdRemoveCircleOutline size={18} />}
-            onClick={() => {
-              setKebabOpen(false);
-              setShowRemoveConfirm(true);
-            }}
-          >
-            Remove from list
-          </MenuItem>
-        )}
       </Menu>
-      {listId && (
-        <ConfirmDialog
-          isOpen={showRemoveConfirm}
-          onClose={() => setShowRemoveConfirm(false)}
-          onConfirm={handleRemoveConfirm}
-          title="Remove from this list?"
-          message="The item only comes off this list — it stays in your item library."
-          confirmText="Remove"
-          cancelText="Cancel"
-        />
-      )}
     </div>
   );
 }

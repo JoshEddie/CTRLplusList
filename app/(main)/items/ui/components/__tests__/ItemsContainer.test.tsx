@@ -38,6 +38,7 @@ vi.mock('../ItemsBrowser', () => ({
     items: unknown[];
     initialPageSize?: number;
     user_name?: string | null;
+    emptyState?: React.ReactNode;
   }) => (
     <div
       data-testid="items-browser"
@@ -46,7 +47,9 @@ vi.mock('../ItemsBrowser', () => ({
       data-items={JSON.stringify(props.items)}
       data-initial-page-size={String(props.initialPageSize)}
       data-user-name={props.user_name ?? ''}
-    />
+    >
+      {props.emptyState}
+    </div>
   ),
 }));
 
@@ -157,6 +160,18 @@ describe('ItemsContainer', () => {
         screen.getByTestId('items-browser').getAttribute('data-items') as string
       );
       expect(items).toEqual(CLAIMED_LIST_ITEMS);
+    });
+  });
+
+  describe('EmptyState', () => {
+    it('EmptyStateGiven_ReachesTheBrowser', async () => {
+      render(
+        await ItemsContainer({
+          listId: 'list1',
+          emptyState: <div data-testid="empty-door" />,
+        })
+      );
+      expect(screen.getByTestId('empty-door')).toBeInTheDocument();
     });
   });
 

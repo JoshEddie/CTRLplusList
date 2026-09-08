@@ -1,5 +1,6 @@
-import { SortKey } from '@/lib/types';
-import { SHOW_LABELS, SORT_KEYS_BY_MODE, SORT_LABELS } from './toolbarConstants';
+import { ItemDisplay, SortKey } from '@/lib/types';
+import { displayPrice } from '../itemFilters';
+import { SORT_KEYS_BY_MODE, SORT_LABELS } from './toolbarConstants';
 import { BrowserMode, ChipDescriptor, FilterState, ParamPatch } from './types';
 
 export function buildQueryUrl(
@@ -60,7 +61,6 @@ export function priceChipLabel(priceMin: string, priceMax: string): string {
 export function countActiveFilters(s: FilterState): number {
   return (
     (s.sort !== s.defaultSort ? 1 : 0) +
-    (s.mode === 'choose' && s.show !== 'all' ? 1 : 0) +
     s.selectedStores.length +
     (s.priceMin || s.priceMax ? 1 : 0)
   );
@@ -82,16 +82,6 @@ export function buildChips(
       onClear: () => handlers.updateParams({ sort: null, page: null }),
     });
   }
-  if (s.mode === 'choose' && s.show !== 'all') {
-    const label = SHOW_LABELS[s.show];
-    if (label) {
-      chips.push({
-        key: 'show',
-        label,
-        onClear: () => handlers.updateParams({ show: null, page: null }),
-      });
-    }
-  }
   for (const store of s.selectedStores) {
     chips.push({
       key: `store:${store}`,
@@ -109,28 +99,14 @@ export function buildChips(
   return chips;
 }
 
-// Present-and-non-default, not merely present: `?sort=list_order` on a list
-// page names the default and narrows nothing.
-const FILTER_DEFAULTS: Record<string, string | undefined> = {
-  q: '',
-  store: undefined,
-  price_min: '',
-  price_max: '',
-  sort: undefined,
-  show: 'all',
-};
+export function storeOptionsOf(items: ItemDisplay[]): string[] {
+  const names = new Set<string>();
+  for (const item of items) {
+    if (item.store?.name) names.add(item.store.name);
+  }
+  return Array.from(names).sort((a, b) => a.localeCompare(b));
+}
 
-// Server-side counterpart to `countActiveFilters`, over raw search params: the
-// list page decides between the reorder and viewer layouts before any toolbar
-// state exists to build a `FilterState` from.
-export function hasActiveFilter(
-  searchParams: Record<string, string | string[] | undefined>,
-  defaultSort: SortKey
-): boolean {
-  return Object.entries(FILTER_DEFAULTS).some(([key, fallback]) => {
-    const raw = searchParams[key];
-    const values = Array.isArray(raw) ? raw : raw ? [raw] : [];
-    const inert = key === 'sort' ? defaultSort : fallback;
-    return values.some((value) => value !== '' && value !== inert);
-  });
+export function hasAnyPrice(items: ItemDisplay[]): boolean {
+  return items.some((item) => Number.isFinite(displayPrice(item)));
 }

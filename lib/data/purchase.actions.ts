@@ -1,133 +1,59 @@
 'use server';
 
-// TODO(#343): extract the duplicated literal to a constant, then drop this disable
-/* eslint-disable sonarjs/no-duplicate-string */
-
 import { db } from '@/db';
 import { items, purchases } from '@/db/schema';
-import { auth } from '@/lib/auth';
 import {
   canRemovePurchase,
-  claimConflictResponse,
-  duplicateClaimResponse,
-  getItemClaimSummary,
-  getRevealedItemClaims,
-  isEligiblePurchaser,
+  getEntryClaimSummary,
+  getRevealedEntryClaims,
 } from '@/lib/data/purchase';
 import {
-  GUEST_CLAIMS_COOKIE,
-  GUEST_CLAIMS_COOKIE_ATTRIBUTES,
-  appendGuestClaim,
-  parseGuestClaims,
-  pruneGuestClaim,
-} from '@/lib/data/purchase.cookie';
+  forgetGuestClaim,
+  readGuestClaims,
+  rememberGuestClaim,
+  resolveClaimIdentity,
+} from '@/lib/data/purchase.identity';
+import {
+  attributionRefusal,
+  noRoomResponse,
+  recordEntryClaim,
+  updateClaimUnitsWithinCapacity,
+} from '@/lib/data/purchase.write';
+import { EntryQuantitySchema } from '@/lib/data/listItems.schema';
 import { writableMembership } from '@/lib/data/profile.gate';
 import { authedIdentity } from '@/lib/data/user.session';
-import { isItemViewable } from '@/lib/listAccess';
-import { sqlstateOf } from '@/lib/sqlstate';
-import {
-  type ActionResponse,
-  type PurchaseView,
-  type UserIdentity,
-} from '@/lib/types';
+import { getMessage } from '@/lib/i18n/utils';
+import { isEntryViewable } from '@/lib/listAccess';
+import { type ActionResponse, type PurchaseView } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { eq } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
-import { cookies } from 'next/headers';
 
-// Postgres unique-violation error code.
-const PG_UNIQUE_VIOLATION = '23505';
-
-// Resolve who a createPurchase claim is authorized AS vs stored AS, producing
-// one of the four row shapes (claimed_by_profile_id = who asserted,
-// profile_id = the purchaser):
-//   self-claim:               asserter = caller's self-profile, purchaser = caller's self-profile
-//   attributed claim:         asserter = caller's self-profile, purchaser = purchased_by target
-//   authenticated guest name: asserter = caller's self-profile, purchaser = NULL, guest_name set
-//   signed-out guest:         asserter = NULL,                  purchaser = NULL, guest_name set
-// The asserter is always the session-resolved caller's self-profile — a claim
-// is a human act; the purchased_by target is a payload field but only an
-// attribution target (a profile id) — eligibility is re-verified against the
-// live follow/block graph before insert.
-async function resolveClaimIdentity(
-  rawGuestName: string | null,
-  purchasedBy: string | null
-): Promise<
-  | {
-      viewer: UserIdentity | null;
-      callerProfileId: string | null;
-      purchaserProfileId: string | null;
-      guestName: string | null;
-    }
-  | { error: ActionResponse }
-> {
-  const session = await auth();
-  const trimmed = rawGuestName?.trim() ?? '';
-  if (session?.user?.email) {
-    const identity = await authedIdentity();
-    if (!identity) {
-      return {
-        error: {
-          success: false,
-          message: 'User not found',
-          error: 'Unauthorized',
-        },
-      };
-    }
-    if (purchasedBy && trimmed) {
-      return {
-        error: {
-          success: false,
-          message: 'Cannot identify which claim to add',
-          error: 'Ambiguous purchaser',
-        },
-      };
-    }
-    if (purchasedBy) {
-      return {
-        viewer: identity,
-        callerProfileId: identity.selfProfile.id,
-        purchaserProfileId: purchasedBy,
-        guestName: null,
-      };
-    }
-    return trimmed
-      ? {
-          viewer: identity,
-          callerProfileId: identity.selfProfile.id,
-          purchaserProfileId: null,
-          guestName: trimmed,
-        }
-      : {
-          viewer: identity,
-          callerProfileId: identity.selfProfile.id,
-          purchaserProfileId: identity.selfProfile.id,
-          guestName: null,
-        };
-  }
-  if (purchasedBy || !trimmed) {
-    return {
-      error: {
-        success: false,
-        message: 'Cannot identify which claim to add',
-        error: 'Missing identity',
-      },
-    };
-  }
+// A claim covers at least one unit and at most what an entry can ask for, so
+// the entry's own bound is the units bound too — a claim can never legitimately
+// exceed the quantity it is measured against. Capacity narrows it further per
+// entry; this only rejects what is not a unit count at all.
+function invalidUnitsRefusal(units: number): ActionResponse | null {
+  if (EntryQuantitySchema.safeParse(units).success) return null;
   return {
-    viewer: null,
-    callerProfileId: null,
-    purchaserProfileId: null,
-    guestName: trimmed,
+    success: false,
+    message: getMessage('claim_units_invalid'),
+    error: getMessage('claim_error_invalid_units'),
   };
 }
 
 export async function createPurchase(data: {
   item_id: string;
+  list_id: string;
   guest_name: string | null;
   purchased_by?: string | null;
+  /** Units this claim covers. Absent means one — Buy & Claim and every single-quantity entry. */
+  units?: number;
 }): Promise<ActionResponse> {
   try {
+    const units = data.units ?? 1;
+    const invalid = invalidUnitsRefusal(units);
+    if (invalid) return invalid;
+
     const identity = await resolveClaimIdentity(
       data.guest_name,
       data.purchased_by ?? null
@@ -143,116 +69,65 @@ export async function createPurchase(data: {
     // purchaserProfileId + guestName identify the purchaser we STORE.
     const { viewer, callerProfileId, purchaserProfileId, guestName } = identity;
 
-    // Gate by viewability: items on lists the caller can't see are unclaimable.
-    // Indistinguishable from a missing item on purpose. Gated on the
-    // authenticated caller (not the stored attribution) so a blocked caller
-    // cannot slip a claim through the on-behalf path.
-    const viewable = await isItemViewable(data.item_id, viewer);
+    // Gate by the ENTRY's viewability: a claim belongs to an item's presence
+    // on one list, so what the caller may claim is an entry on a list they can
+    // see. An item reachable through some other list does not qualify, and an
+    // item on no list has no entry at all. Indistinguishable from a missing
+    // item on purpose. Gated on the authenticated caller (not the stored
+    // attribution) so a blocked caller cannot slip a claim through the
+    // on-behalf path.
+    const viewable = await isEntryViewable(data.list_id, data.item_id, viewer);
     if (!viewable) {
       return {
         success: false,
-        message: 'Item not found',
-        error: 'Item not found',
+        message: getMessage('claim_item_not_found'),
+        error: getMessage('claim_error_item_not_found'),
       };
     }
 
     const item = await db.query.items.findFirst({
       where: eq(items.id, data.item_id),
-      columns: { quantity_limit: true, profile_id: true },
+      columns: { profile_id: true },
     });
     if (!item) {
       return {
         success: false,
-        message: 'Item not found',
-        error: 'Item not found',
+        message: getMessage('claim_item_not_found'),
+        error: getMessage('claim_error_item_not_found'),
       };
     }
 
     const isAttributed =
       !!purchaserProfileId && purchaserProfileId !== callerProfileId;
     if (isAttributed) {
-      // Re-verify the attribution target against the live graph: must be an
-      // owner-mutual, no block edge with the claimer, and not the owner. The
-      // client picker is presentation only. A block/unfollow can land between
-      // this check and the insert below (neon-http: no transactions) —
-      // residual and harmless: removal rights are row-based, and the at-claim
-      // gate is best-effort by design.
-      const eligible = await isEligiblePurchaser(
+      const refusal = await attributionRefusal(
         item.profile_id,
         // callerProfileId is non-null here: purchased_by without a session is
         // rejected in resolveClaimIdentity.
         callerProfileId as string,
         purchaserProfileId
       );
-      if (!eligible) {
-        return {
-          success: false,
-          message: 'That person cannot be marked as the purchaser',
-          error: 'Ineligible purchaser',
-        };
-      }
+      if (refusal) return refusal;
     }
 
-    const existing = await db
-      .select({
-        id: purchases.id,
-        profile_id: purchases.profile_id,
-        guest_name: purchases.guest_name,
-      })
-      .from(purchases)
-      .where(eq(purchases.item_id, data.item_id));
-
-    const conflict = claimConflictResponse(
-      existing,
-      purchaserProfileId,
-      guestName,
-      item.quantity_limit,
+    const written = await recordEntryClaim(
+      {
+        listId: data.list_id,
+        itemId: data.item_id,
+        units,
+        purchaserProfileId,
+        callerProfileId,
+        guestName,
+      },
       isAttributed
     );
-    if (conflict) return conflict;
-
-    let insertedId: string;
-    try {
-      const [inserted] = await db
-        .insert(purchases)
-        .values({
-          id: nanoid(),
-          item_id: data.item_id,
-          profile_id: purchaserProfileId,
-          claimed_by_profile_id: callerProfileId,
-          guest_name: guestName,
-          purchased_at: new Date(),
-        })
-        .returning({ id: purchases.id });
-      insertedId = inserted.id;
-    } catch (insertError) {
-      // Partial unique index trip (purchases_item_profile_unique_idx): a
-      // duplicate purchaser slipped past the in-app check because two
-      // requests raced against distinct DB sessions. The capacity-race for
-      // guest claims / different users on a limited item is not closed at the
-      // DB layer (neon-http driver does not support interactive transactions,
-      // so SELECT … FOR UPDATE is not available). Accepted as a known
-      // limitation.
-      if (sqlstateOf(insertError) === PG_UNIQUE_VIOLATION) {
-        return duplicateClaimResponse(isAttributed);
-      }
-      throw insertError;
-    }
+    if ('refusal' in written) return written.refusal;
+    const insertedId = written.id;
 
     if (!callerProfileId) {
-      const store = await cookies();
-      const claims = appendGuestClaim(
-        parseGuestClaims(store.get(GUEST_CLAIMS_COOKIE)?.value),
-        insertedId,
-        // guestName is non-null here: the signed-out branch of
-        // resolveClaimIdentity rejects an empty name.
-        guestName as string
-      );
-      store.set(
-        GUEST_CLAIMS_COOKIE,
-        JSON.stringify(claims),
-        GUEST_CLAIMS_COOKIE_ATTRIBUTES
-      );
+      // guestName is non-null here: the signed-out branch of
+      // resolveClaimIdentity rejects an empty name.
+      await rememberGuestClaim(insertedId, guestName as string);
     }
 
     updateTags(
@@ -264,17 +139,113 @@ export async function createPurchase(data: {
 
     return {
       success: true,
-      message: 'Item marked as purchased successfully',
+      message: getMessage('claim_create_success'),
       id: insertedId,
     };
   } catch (error) {
     console.error('Error creating purchase:', error);
     return {
       success: false,
-      message: 'An error occurred while marking the item as purchased',
-      error: 'Failed to create purchase',
+      message: getMessage('claim_create_failed'),
+      error: getMessage('claim_error_create_failed'),
     };
   }
+}
+
+type ClaimRow = {
+  id: string;
+  item_id: string | null;
+  list_id: string | null;
+  units: number;
+  profile_id: string | null;
+  claimed_by_profile_id: string | null;
+};
+
+type AuthorizedClaim = {
+  row: ClaimRow;
+  ownerProfileId: string | null;
+  /** The signed-out caller's cookie, kept so a removal can prune it. Null for an authenticated caller. */
+  guestClaims: Awaited<ReturnType<typeof readGuestClaims>> | null;
+};
+
+// One gate for both ways a claim can be changed: dropping it and moving its
+// units. Editing units is a new capability for the item's owner, but not a new
+// rights question — who may change somebody else's claim is who may remove it,
+// and dropping a claim to zero units IS removing it.
+async function authorizeClaimMutation(
+  purchaseId: string
+): Promise<AuthorizedClaim | { refusal: ActionResponse }> {
+  const actorIdentity = await authedIdentity();
+  const actorMembership = actorIdentity
+    ? await writableMembership(
+        actorIdentity.userId,
+        actorIdentity.activeProfile.id
+      )
+    : null;
+
+  const row = await db.query.purchases.findFirst({
+    where: eq(purchases.id, purchaseId),
+    columns: {
+      id: true,
+      item_id: true,
+      list_id: true,
+      units: true,
+      profile_id: true,
+      claimed_by_profile_id: true,
+    },
+  });
+  if (!row) {
+    return {
+      refusal: {
+        success: false,
+        message: getMessage('claim_not_found'),
+        error: getMessage('claim_error_not_found'),
+      },
+    };
+  }
+
+  // A claim whose item was deleted keeps a null item reference, so there is
+  // no owner to compare against and no item tag to bump. The claim is still
+  // its holder's to drop.
+  const targetItem = row.item_id
+    ? await db.query.items.findFirst({
+        where: eq(items.id, row.item_id),
+        columns: { profile_id: true },
+      })
+    : undefined;
+
+  const guestClaims = actorIdentity ? null : await readGuestClaims();
+
+  if (
+    !canRemovePurchase(
+      row,
+      targetItem?.profile_id ?? null,
+      actorIdentity,
+      new Set(guestClaims?.purchases),
+      actorMembership?.role ?? null
+    )
+  ) {
+    return {
+      refusal: {
+        success: false,
+        message: getMessage('claim_not_yours'),
+        error: getMessage('claim_error_not_yours'),
+      },
+    };
+  }
+
+  return { row, ownerProfileId: targetItem?.profile_id ?? null, guestClaims };
+}
+
+function bumpClaimTags(claim: AuthorizedClaim) {
+  updateTags(
+    ...(claim.ownerProfileId
+      ? [cacheTags.itemsOfProfile(claim.ownerProfileId)]
+      : []),
+    ...(claim.row.profile_id
+      ? [cacheTags.purchasesOfProfile(claim.row.profile_id)]
+      : [])
+  );
 }
 
 type RemovePurchaseInput = { purchase_id: string };
@@ -286,103 +257,95 @@ export async function removePurchase(
     if (!data.purchase_id) {
       return {
         success: false,
-        message: 'Cannot identify which claim to remove',
-        error: 'Missing identity',
+        message: getMessage('claim_remove_unidentified'),
+        error: getMessage('claim_error_missing_identity'),
       };
     }
 
-    const actorIdentity = await authedIdentity();
-    const actorMembership = actorIdentity
-      ? await writableMembership(
-          actorIdentity.userId,
-          actorIdentity.activeProfile.id
-        )
-      : null;
+    const authorized = await authorizeClaimMutation(data.purchase_id);
+    if ('refusal' in authorized) return authorized.refusal;
 
-    const row = await db.query.purchases.findFirst({
-      where: eq(purchases.id, data.purchase_id),
-      columns: {
-        id: true,
-        item_id: true,
-        profile_id: true,
-        claimed_by_profile_id: true,
-      },
-    });
-    if (!row) {
-      return {
-        success: false,
-        message: 'Claim not found',
-        error: 'Not found',
-      };
+    await db.delete(purchases).where(eq(purchases.id, authorized.row.id));
+    if (authorized.guestClaims) {
+      await forgetGuestClaim(authorized.guestClaims, authorized.row.id);
     }
-
-    const targetItem = await db.query.items.findFirst({
-      where: eq(items.id, row.item_id),
-      columns: { profile_id: true },
-    });
-
-    let guestClaims = null;
-    if (!actorIdentity) {
-      const store = await cookies();
-      guestClaims = parseGuestClaims(store.get(GUEST_CLAIMS_COOKIE)?.value);
-    }
-
-    if (
-      !canRemovePurchase(
-        row,
-        targetItem?.profile_id ?? null,
-        actorIdentity,
-        new Set(guestClaims?.purchases),
-        actorMembership?.role ?? null
-      )
-    ) {
-      return {
-        success: false,
-        message: 'Not your claim',
-        error: 'Not your claim',
-      };
-    }
-
-    await db.delete(purchases).where(eq(purchases.id, row.id));
-    if (guestClaims) {
-      const store = await cookies();
-      store.set(
-        GUEST_CLAIMS_COOKIE,
-        JSON.stringify(pruneGuestClaim(guestClaims, row.id)),
-        GUEST_CLAIMS_COOKIE_ATTRIBUTES
-      );
-    }
-    updateTags(
-      ...(targetItem ? [cacheTags.itemsOfProfile(targetItem.profile_id)] : []),
-      ...(row.profile_id ? [cacheTags.purchasesOfProfile(row.profile_id)] : [])
-    );
+    bumpClaimTags(authorized);
     return {
       success: true,
-      message: 'Item marked as not purchased successfully',
+      message: getMessage('claim_delete_success'),
     };
   } catch (error) {
     console.error('Error removing purchase:', error);
     return {
       success: false,
-      message: 'An error occurred while removing the purchase',
-      error: 'Failed to remove purchase',
+      message: getMessage('claim_delete_failed'),
+      error: getMessage('claim_error_remove_failed'),
     };
   }
 }
 
-// What the claim affordance's reveal reaches: whether the item is spoken for
-// and what capacity remains, naming nobody.
-export async function claimSummaryForItem(itemId: string) {
-  return getItemClaimSummary(itemId);
+// Moves a claim within what its entry still has room for. Zero is not a unit
+// count a row can hold, so it routes to removal: dropping a claim to nothing IS
+// unclaiming, and leaving a zero-unit row would be a claim for nothing.
+export async function setPurchaseUnits(data: {
+  purchase_id: string;
+  units: number;
+}): Promise<ActionResponse> {
+  if (data.units === 0) return removePurchase({ purchase_id: data.purchase_id });
+  try {
+    const invalid = invalidUnitsRefusal(data.units);
+    if (invalid) return invalid;
+
+    const authorized = await authorizeClaimMutation(data.purchase_id);
+    if ('refusal' in authorized) return authorized.refusal;
+    const { row } = authorized;
+
+    // A claim detached from its entry — the item was deleted, or the list was
+    // — has no capacity to be measured against, so there is no number the edit
+    // could be checked for room in.
+    if (!row.list_id || !row.item_id) return noRoomResponse();
+
+    const moved = await updateClaimUnitsWithinCapacity({
+      id: row.id,
+      listId: row.list_id,
+      itemId: row.item_id,
+      units: data.units,
+    });
+    if (!moved) return noRoomResponse();
+
+    bumpClaimTags(authorized);
+    return {
+      success: true,
+      message: getMessage('claim_units_success'),
+    };
+  } catch (error) {
+    console.error('Error updating purchase units:', error);
+    return {
+      success: false,
+      message: getMessage('claim_units_failed'),
+      error: getMessage('claim_error_units_failed'),
+    };
+  }
+}
+
+// What the claim affordance's reveal reaches: whether the entry is spoken for
+// and what capacity remains, naming nobody. Gated by the same rule as its
+// sibling below — without it, possession of an item id was enough to read a
+// list's exact claim state at any tier.
+export async function claimSummaryForEntry(listId: string, itemId: string) {
+  const viewer = await authedIdentity();
+  if (!(await isEntryViewable(listId, itemId, viewer))) return null;
+  return getEntryClaimSummary(listId, itemId);
 }
 
 // What the owner's manage-claims reveal reaches. Naming the claiming parties is
 // no tier, so the stored baseline does not gate it — what gates it is the same
-// rule that decides whether the viewer may see the item at all.
-export async function revealedClaimsForItem(
+// rule that decides whether the viewer may see the entry at all.
+export async function revealedClaimsForEntry(
+  listId: string,
   itemId: string
 ): Promise<PurchaseView[]> {
   const viewer = await authedIdentity();
-  if (!(await isItemViewable(itemId, viewer))) return [];
-  return getRevealedItemClaims(itemId, viewer?.selfProfile.id);
+  if (!(await isEntryViewable(listId, itemId, viewer))) return [];
+  return getRevealedEntryClaims(listId, itemId, viewer?.selfProfile.id);
 }

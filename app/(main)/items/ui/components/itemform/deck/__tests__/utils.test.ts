@@ -200,7 +200,6 @@ describe('deckUtils', () => {
       description: '',
       store: { name: 'Lodge', link: 'https://lodge', price: '29.99' },
       lists: [],
-      qty: 1,
       ...over,
     });
 
@@ -263,7 +262,6 @@ describe('deckUtils', () => {
       description: '',
       store: { name: '', link: '', price: '' },
       lists: [],
-      qty: 1,
     });
 
     it('PristineBlank_IsNotDirty', () => {

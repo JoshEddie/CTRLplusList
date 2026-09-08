@@ -1,9 +1,12 @@
 import {
+  EntryCapacity,
   ProfileMembershipView,
   ItemDisplay,
   PurchaseView,
   SpoilerTier,
 } from '@/lib/types';
+import { atLeast } from '@/lib/spoilers';
+import { unitsClaimedLabel } from './utils';
 import ClaimsList from './purchasemodal/ClaimsList';
 import Modal from './purchasemodal/Modal';
 import ModalStoreRow from './purchasemodal/ModalStoreRow';
@@ -15,6 +18,7 @@ import PurchaseModalHeader from './purchasemodal/PurchaseModalHeader';
 export default function PurchaseModalSlot({
   view,
   claims,
+  capacity,
   viewerIsPurchaser,
   actor,
   isOwner,
@@ -25,20 +29,24 @@ export default function PurchaseModalSlot({
   onAttributedClaim,
   onGuestClaim,
   onRemoveClaim,
+  onUpdateUnits,
 }: {
   view: 'manage' | 'claim';
   /** Every sanitized claim on the item — the manage view lists them all, removal gated per row. */
   claims: PurchaseView[];
+  /** Null off a list, where there is nothing to claim against. */
+  capacity: EntryCapacity | null;
   viewerIsPurchaser: boolean;
   actor?: ProfileMembershipView;
   isOwner: boolean;
   tier: SpoilerTier;
   item: ItemDisplay;
   onClose: () => void;
-  onSelfClaim: () => void;
-  onAttributedClaim: (target: AttributedTarget) => void;
-  onGuestClaim: (name: string) => void;
+  onSelfClaim: (units: number) => void;
+  onAttributedClaim: (target: AttributedTarget, units: number) => void;
+  onGuestClaim: (name: string, units: number) => void;
   onRemoveClaim: (claim: PurchaseView) => void;
+  onUpdateUnits: (claim: PurchaseView, units: number) => void;
 }) {
   if (view === 'manage') {
     return (
@@ -51,7 +59,14 @@ export default function PurchaseModalSlot({
           <ClaimsList
             claims={claims}
             canRemove={(claim) => claim.by === 'self' || claim.claimedByViewer}
+            capacity={capacity}
+            unitsStatus={
+              capacity && atLeast(tier, 'claims')
+                ? unitsClaimedLabel(capacity.quantity, capacity.remaining)
+                : undefined
+            }
             onRemoveClaim={onRemoveClaim}
+            onUpdateUnits={onUpdateUnits}
           />
         </div>
       </Modal>
@@ -64,12 +79,14 @@ export default function PurchaseModalSlot({
         isOwner={isOwner}
         tier={tier}
         claims={claims}
+        capacity={capacity}
         viewerIsPurchaser={viewerIsPurchaser}
         item={item}
         onSelfClaim={onSelfClaim}
         onAttributedClaim={onAttributedClaim}
         onGuestClaim={onGuestClaim}
         onRemoveClaim={onRemoveClaim}
+        onUpdateUnits={onUpdateUnits}
       />
     </Modal>
   );

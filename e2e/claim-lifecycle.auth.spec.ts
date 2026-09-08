@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { multiUnitEntryWithRoom, openList } from '../test/helpers/e2e/utils';
 
 // Consolidated e2e coverage for the #234/#235/#260 surface (deferred from the
 // buy-and-claim-authed change): the ItemActions matrix spot-check, Buy & Claim's
@@ -12,23 +13,7 @@ const LIST_HEADING = "Bob's Holiday List";
 const BUY_CLAIM = 'Buy & Claim — opens in new tab';
 const VIEW_ITEM = 'View item — opens in new tab';
 
-async function gotoList(page: Page) {
-  await page.goto(LIST);
-  await expect(
-    page.getByRole('heading', { name: LIST_HEADING }).first()
-  ).toBeVisible();
-}
-
-// A multi-quantity item (claim counter rendered) the viewer can still claim
-// and has not already claimed — the slots-remain state #260 routes.
-function multiQuantityClaimable(page: Page) {
-  return page
-    .locator('.item-container')
-    .filter({ has: page.getByRole('button', { name: 'Add Claim' }) })
-    .filter({ has: page.locator('.claim-counter') })
-    .filter({ hasNotText: 'You claimed this' })
-    .first();
-}
+const gotoList = (page: Page) => openList(page, LIST, LIST_HEADING);
 
 // A claimable linked item without a viewer claim — the Buy & Claim state.
 function buyClaimable(page: Page) {
@@ -46,23 +31,28 @@ test('AddClaimWhileClaimed_RoutesToClaimFlow_ManageListRemovesPerClaim', async (
 }) => {
   await gotoList(page);
 
-  const item = multiQuantityClaimable(page);
+  const {
+    card: item,
+    claimed: before,
+    quantity,
+  } = await multiUnitEntryWithRoom(page, 2);
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
   // First claim: the ordinary one-tap self-claim.
-  await item.getByRole('button', { name: 'Add Claim' }).click();
+  await item.getByRole('button', { name: 'Claim', exact: true }).click();
   await page.getByRole('button', { name: 'Claim this gift' }).click();
   const claimed = page.locator('.item-container', { hasText: itemName });
-  await expect(claimed.getByText('You claimed this').first()).toBeVisible();
+  const banner = claimed.locator('.purchased-banner');
+  await expect(banner).toHaveText(`${before + 1} / ${quantity} Claimed`);
 
-  // Slots remain, so the card offers Manage claim (top) AND Add Claim (2-up).
+  // Slots remain, so the card offers Manage claim (top) AND Claim (2-up).
   await expect(
     claimed.getByRole('button', { name: 'Manage claim' })
   ).toBeVisible();
-  const addAgain = claimed.getByRole('button', { name: 'Add Claim' });
+  const addAgain = claimed.getByRole('button', { name: 'Claim', exact: true });
   await expect(addAgain).toBeVisible();
 
-  // Add Claim opens the CLAIM FLOW (not the manage state), carried by the
+  // Claim opens the CLAIM FLOW (not the manage state), carried by the
   // purchaseView=claim param. The viewer is already the recorded purchaser, so
   // the self-claim CTA is suppressed; the disclosure is the live path.
   await addAgain.click();
@@ -83,10 +73,8 @@ test('AddClaimWhileClaimed_RoutesToClaimFlow_ManageListRemovesPerClaim', async (
     .getByRole('button', { name: `Confirm — ${purchaser}`, exact: true })
     .click();
 
-  // The card banner enumerates both viewer-removable claims.
-  await expect(
-    claimed.getByText(`You claimed this, and for ${purchaser}`).first()
-  ).toBeVisible();
+  // Both claims are on the entry, so the banner counts both.
+  await expect(banner).toHaveText(`${before + 2} / ${quantity} Claimed`);
 
   // Manage claim lists the viewer's own claims as rows carrying removal
   // actions; no tier names another claimant, so theirs are a bare count.
@@ -105,12 +93,19 @@ test('AddClaimWhileClaimed_RoutesToClaimFlow_ManageListRemovesPerClaim', async (
     page.getByRole('button', { name: 'Remove your claim', exact: true })
   ).toBeVisible();
   await page.locator('.close-button').click();
+  await expect(page).not.toHaveURL(/purchaseItem/);
 
   // A fresh server render agrees: self-claim kept, additional claim gone.
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
-  await expect(claimedAfter.getByText('You claimed this').first()).toBeVisible();
-  await expect(page.getByText(`for ${purchaser}`)).toHaveCount(0);
+  await expect(claimedAfter.locator('.purchased-banner')).toHaveText(
+    `${before + 1} / ${quantity} Claimed`
+  );
+  await claimedAfter.getByRole('button', { name: 'Manage claim' }).click();
+  await expect(page.getByText('Test Viewer (you)')).toBeVisible();
+  await expect(page.locator('.claim-row', { hasText: purchaser })).toHaveCount(
+    0
+  );
 });
 
 test('BuyClaim_MatrixSpotCheck_KeptPathPersistsClaim', async ({
@@ -120,13 +115,15 @@ test('BuyClaim_MatrixSpotCheck_KeptPathPersistsClaim', async ({
   await gotoList(page);
 
   // Matrix spot-check (authenticated claimable linked item): Buy & Claim ↗ is
-  // the primary top slot with View item ↗ · Add Claim below it.
+  // the primary top slot with View item ↗ · Claim below it.
   const item = buyClaimable(page);
   const itemName = (await item.locator('.itemName').innerText()).trim();
   const buy = item.getByRole('link', { name: BUY_CLAIM });
   await expect(buy).toHaveClass(/primary/);
   await expect(item.getByRole('link', { name: VIEW_ITEM })).toBeVisible();
-  await expect(item.getByRole('button', { name: 'Add Claim' })).toBeVisible();
+  await expect(
+    item.getByRole('button', { name: 'Claim', exact: true })
+  ).toBeVisible();
 
   // Activating Buy & Claim opens the store in a NEW tab (real anchor) while
   // the wishlist tab records the claim and surfaces the undo popup.
@@ -149,11 +146,12 @@ test('BuyClaim_MatrixSpotCheck_KeptPathPersistsClaim', async ({
   await expect(
     claimed.getByRole('button', { name: 'Manage claim' })
   ).toBeVisible();
-  await expect(claimed.getByText('You claimed this').first()).toBeVisible();
 
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
-  await expect(claimedAfter.getByText('You claimed this').first()).toBeVisible();
+  await expect(
+    claimedAfter.getByRole('button', { name: 'Manage claim' })
+  ).toBeVisible();
 });
 
 test('BuyClaim_UndoPath_ReleasesClaim', async ({ page, context }) => {
@@ -174,6 +172,8 @@ test('BuyClaim_UndoPath_ReleasesClaim', async ({ page, context }) => {
   // its claimable action set.
   await page.getByRole('button', { name: 'No — undo claim' }).click();
   const card = page.locator('.item-container', { hasText: itemName });
-  await expect(card.getByText('You claimed this')).toHaveCount(0);
+  await expect(card.getByRole('button', { name: 'Manage claim' })).toHaveCount(
+    0
+  );
   await expect(card.getByRole('link', { name: BUY_CLAIM })).toBeVisible();
 });

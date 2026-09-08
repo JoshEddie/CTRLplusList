@@ -39,8 +39,6 @@ export interface ItemViewModel {
   description: string;
   store: DeckStore;
   lists: OptionType[];
-  /** null = unlimited; a number = a per-buyer limit. Defaults to a limit of 1. */
-  qty: number | null;
 }
 
 const emptyStore = (link = ''): DeckStore => ({ name: '', link, price: '' });
@@ -57,7 +55,6 @@ export function blankItem(seedUrl = ''): ItemViewModel {
     description: '',
     store: emptyStore(seedUrl),
     lists: [],
-    qty: 1,
   };
 }
 
@@ -90,13 +87,12 @@ export function seedFromFetch(
       currency: product.currency ?? null,
     },
     lists: [],
-    qty: 1,
   };
 }
 
 type SeedItem = Pick<
   ItemTable,
-  'id' | 'name' | 'description' | 'image_url' | 'quantity_limit'
+  'id' | 'name' | 'description' | 'image_url'
 > & {
   store: ItemStoreTable | null;
   lists: ListTable[];
@@ -124,7 +120,6 @@ export function seedFromItem(item: SeedItem): ItemViewModel {
       value: list.id.toString(),
       label: list.name,
     })),
-    qty: item.quantity_limit,
   };
 }
 
@@ -156,9 +151,8 @@ export function setStoreField(
 }
 
 // The single view-model → persisted-shape adapter (D2): selected photo becomes
-// the active image, the pool becomes image_candidates, qty maps to
-// quantity_limit, and store provenance is preserved. Existing create/edit
-// actions are unchanged.
+// the active image, the pool becomes image_candidates, and store provenance is
+// preserved. Existing create/edit actions are unchanged.
 export function toItemDetails(vm: ItemViewModel): ItemDetails {
   return {
     id: vm.id,
@@ -170,7 +164,6 @@ export function toItemDetails(vm: ItemViewModel): ItemDetails {
     image_candidates: vm.placeholder
       ? [...vm.photos.filter((url) => !isPlaceholderUri(url)), vm.placeholder]
       : vm.photos,
-    quantity_limit: vm.qty,
     store: {
       name: vm.store.name,
       link: vm.store.link,
@@ -196,7 +189,6 @@ export function toItemDisplay(vm: ItemViewModel): ItemDisplay {
     created_at: PREVIEW_TIMESTAMP,
     updated_at: PREVIEW_TIMESTAMP,
     profile_id: 'preview',
-    quantity_limit: vm.qty,
     store: vm.store,
   };
 }

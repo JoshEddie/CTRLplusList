@@ -1,0 +1,148 @@
+/* Number stepper primitive. One bordered row of five cells — jump to min, step
+   down, the number, step up, jump to max — sharing the field family's chrome
+   tokens so it sits beside a TextField without drifting from it. */
+
+.stepper_group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.stepper_label_row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stepper_label {
+  font-size: var(--field-label-font-size);
+  font-weight: 500;
+  color: var(--neutral-text-color);
+}
+
+.stepper_status,
+.stepper_description {
+  font-size: 13px;
+  color: var(--muted-text-color);
+}
+
+.stepper_status {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  align-items: stretch;
+  min-height: var(--field-min-height);
+  border: 1px solid var(--field-border-color);
+  border-radius: var(--field-radius);
+  background: var(--light-color);
+  overflow: hidden;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.stepper:focus-within {
+  border-color: var(--field-border-color-focus);
+  outline: var(--field-focus-ring-width) solid var(--field-focus-ring-color);
+}
+
+.stepper_jump,
+.stepper_step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--WCAG-input-size);
+  min-height: var(--WCAG-input-size);
+  padding: 0 4px;
+  border: none;
+  background: var(--primary-color-dark);
+  color: var(--light-color);
+  font-family: inherit;
+  font-weight: 500;
+  line-height: 1.1;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+
+.stepper_jump {
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A hairline in the row's own background: the jump ends share their fill with
+   the steps beside them, so without it four buttons read as two. */
+.stepper_jump:first-child {
+  border-right: 1px solid var(--light-color);
+}
+
+.stepper_jump:last-child {
+  border-left: 1px solid var(--light-color);
+}
+
+.stepper_step {
+  font-size: 20px;
+}
+
+/* The ceiling is stated by the ends going flat rather than by a message after
+   the fact, so the disabled treatment is the only thing carrying it. */
+.stepper_jump:disabled,
+.stepper_step:disabled {
+  background: var(--third-light-color);
+  color: var(--muted-text-color);
+  cursor: default;
+}
+
+.stepper_jump:focus-visible,
+.stepper_step:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) {
+  .stepper_jump:hover:not(:disabled),
+  .stepper_step:hover:not(:disabled) {
+    background: var(--primary-color);
+  }
+}
+
+.stepper_caption {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  opacity: 0.8;
+}
+
+.stepper_input {
+  min-width: 0;
+  border: none;
+  border-inline: 1px solid var(--field-border-color);
+  background: transparent;
+  outline: none;
+  color: var(--neutral-text-color);
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 500;
+  text-align: center;
+  padding: 0 4px;
+}
+
+/* The spinners are what the step buttons replace; leaving both offers two
+   controls for one number in a 44px-wide cell. */
+.stepper_input::-webkit-inner-spin-button,
+.stepper_input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.stepper_input {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

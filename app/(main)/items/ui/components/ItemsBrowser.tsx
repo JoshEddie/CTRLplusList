@@ -8,12 +8,12 @@ import {
   SpoilerTier,
 } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import Items from './Items';
 import ToolbarSlot from './itemsToolbar/ToolbarSlot';
 import Pagination from './Pagination';
-import { compareItems, displayPrice } from './itemFilters';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from './paginationConstants';
+import { browseItems, parseSort } from './itemFilters';
+import { useItemsPageSize } from './useItemsPageSize';
 
 type BrowserMode = 'items' | 'list';
 
@@ -28,6 +28,8 @@ interface ItemsBrowserProps {
   /** The viewer's resolved tier, and the baseline the library toggle writes deltas against. Baseline is present only where the toggle renders (the library). */
   tier?: SpoilerTier;
   baseline?: SpoilerTier;
+  /** Rendered instead of the rows when there are no items at all — as opposed to none surviving the filters. */
+  emptyState?: ReactNode;
 }
 
 const VALID_SORT_ITEMS: SortKey[] = [
@@ -51,13 +53,6 @@ const VALID_SORT_LIST: SortKey[] = [
   'price_desc',
 ];
 
-function normalizePageSize(value: number | undefined): number {
-  if (!value || !PAGE_SIZE_OPTIONS.includes(value as 12 | 24 | 48 | 96)) {
-    return DEFAULT_PAGE_SIZE;
-  }
-  return value;
-}
-
 export default function ItemsBrowser({
   items,
   mode,
@@ -68,6 +63,7 @@ export default function ItemsBrowser({
   archivedView,
   tier,
   baseline,
+  emptyState,
 }: ItemsBrowserProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -76,72 +72,21 @@ export default function ItemsBrowser({
   const defaultSort: SortKey = mode === 'list' ? 'list_order' : 'created_desc';
   const validSorts = mode === 'list' ? VALID_SORT_LIST : VALID_SORT_ITEMS;
 
-  const q = (searchParams?.get('q') ?? '').toLowerCase().trim();
-  const rawSort = searchParams?.get('sort') as SortKey | null;
-  const sort: SortKey =
-    rawSort && validSorts.includes(rawSort) ? rawSort : defaultSort;
-  const selectedStores = searchParams?.getAll('store') ?? [];
-  const priceMin = parseFloat(searchParams?.get('price_min') ?? '');
-  const priceMax = parseFloat(searchParams?.get('price_max') ?? '');
-  const hasPriceFilter = Number.isFinite(priceMin) || Number.isFinite(priceMax);
-  const rawPage = parseInt(searchParams?.get('page') ?? '1', 10);
-  const requestedPage = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const sort = parseSort(searchParams, validSorts, defaultSort);
   const view: 'grid' | 'list' =
     searchParams?.get('view') === 'list' ? 'list' : 'grid';
 
-  const [pageSize, setPageSize] = useState<number>(
-    normalizePageSize(initialPageSize)
+  const [pageSize, handlePageSizeChange] = useItemsPageSize(initialPageSize);
+
+  const {
+    rows: visible,
+    page,
+    totalPages,
+    matches,
+  } = useMemo(
+    () => browseItems(items, searchParams, sort, pageSize),
+    [items, searchParams, sort, pageSize]
   );
-
-  const handlePageSizeChange = (next: number) => {
-    const normalized = normalizePageSize(next);
-    setPageSize(normalized);
-    document.cookie = `items_page_size=${normalized}; path=/; max-age=31536000; SameSite=Lax`;
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    params.delete('page');
-    const queryString = params.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
-  };
-
-  const selectedStoresKey = selectedStores.join('|');
-
-  const filteredSorted = useMemo(() => {
-    let result = items;
-    if (q) {
-      result = result.filter((item) =>
-        `${item.name ?? ''} ${item.description ?? ''}`.toLowerCase().includes(q)
-      );
-    }
-    if (selectedStores.length > 0) {
-      const selectedSet = new Set(selectedStores);
-      result = result.filter(
-        (item) => !!item.store && selectedSet.has(item.store.name)
-      );
-    }
-    if (hasPriceFilter) {
-      const lo = Number.isFinite(priceMin) ? priceMin : -Infinity;
-      const hi = Number.isFinite(priceMax) ? priceMax : Infinity;
-      result = result.filter((item) => {
-        const p = displayPrice(item);
-        return Number.isFinite(p) && p >= lo && p <= hi;
-      });
-    }
-    if (sort === 'list_order') return result;
-    return [...result].sort((a, b) => compareItems(a, b, sort));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `selectedStores` is depended on via its `selectedStoresKey` projection to keep the deps array stable across array reorderings
-  }, [
-    items,
-    q,
-    selectedStoresKey,
-    hasPriceFilter,
-    priceMin,
-    priceMax,
-    sort,
-  ]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredSorted.length / pageSize));
-  const page = Math.min(Math.max(1, requestedPage), totalPages);
-  const visible = filteredSorted.slice((page - 1) * pageSize, page * pageSize);
 
   const clearFilters = () => {
     const params = new URLSearchParams(searchParams?.toString() || '');
@@ -156,13 +101,10 @@ export default function ItemsBrowser({
 
   return (
     <div className="items-browser">
-      <ToolbarSlot
-        items={items}
-        mode={mode}
-        tier={tier}
-        baseline={baseline}
-      />
-      {filteredSorted.length === 0 ? (
+      <ToolbarSlot items={items} mode={mode} tier={tier} baseline={baseline} />
+      {items.length === 0 && emptyState ? (
+        emptyState
+      ) : matches === 0 ? (
         <div className="items-empty-filtered">
           <p>No items match your filters.</p>
           <Button variant="secondary" onClick={clearFilters}>

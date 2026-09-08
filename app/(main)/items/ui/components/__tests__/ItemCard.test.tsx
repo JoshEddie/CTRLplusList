@@ -8,7 +8,9 @@ import { describe, expect, it, vi } from 'vitest';
 import ItemCard from '../ItemCard';
 
 vi.mock('@/lib/data/item.placeholder.actions', async () =>
-  (await import('../itemform/deck/__tests__/test-helpers')).placeholderActionsMock()
+  (
+    await import('../itemform/deck/__tests__/test-helpers')
+  ).placeholderActionsMock()
 );
 
 const STORE = { name: 'Amazon', link: 'https://a.example', price: '35.50' };
@@ -26,13 +28,11 @@ function renderCard(
     } as never,
     className: undefined,
     isOwner: false,
-    showPurchased: false,
-    showSpoilerInfo: false,
     viewerClaimed: false,
     fullyClaimed: false,
-    showCounter: true,
-    counterText: '0/3 claimed',
+    entryLine: '0/3 claimed',
     hasAnyClaim: false,
+    claimable: true,
     tier: 'claims',
     onPurchaseClick: vi.fn(),
     onAddClaimClick: vi.fn(),
@@ -42,7 +42,7 @@ function renderCard(
 }
 
 describe('ItemCard', () => {
-  it('Viewer_RendersAddClaim-CounterAndDescription', () => {
+  it('Viewer_RendersAddClaim-EntryLineAndDescription', () => {
     renderCard({
       item: {
         id: 'i1',
@@ -54,7 +54,7 @@ describe('ItemCard', () => {
     });
     expect(screen.getByText('A nice mug')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Add Claim' })
+      screen.getByRole('button', { name: 'Claim' })
     ).toBeInTheDocument();
     expect(screen.getByText('0/3 claimed')).toBeInTheDocument();
   });
@@ -62,7 +62,7 @@ describe('ItemCard', () => {
   it('ClaimClick_FiresAddClaimCallbackOnce', async () => {
     const user = userEvent.setup();
     const { props } = renderCard();
-    await user.click(screen.getByRole('button', { name: 'Add Claim' }));
+    await user.click(screen.getByRole('button', { name: 'Claim' }));
     expect(props.onAddClaimClick).toHaveBeenCalledTimes(1);
     expect(props.onPurchaseClick).not.toHaveBeenCalled();
   });
@@ -83,7 +83,7 @@ describe('ItemCard', () => {
     it('PriceLine_RendersUniformlyAcrossClaimStates', () => {
       for (const overrides of [
         { viewerClaimed: true },
-        { fullyClaimed: true, showPurchased: true },
+        { fullyClaimed: true },
         { isOwner: true },
       ]) {
         const { container, unmount } = renderCard({
@@ -106,7 +106,9 @@ describe('ItemCard', () => {
           store: { name: '', link: '', price: '12.00' },
         } as never,
       });
-      expect(container.querySelector('.item-price')).toHaveTextContent('$12.00');
+      expect(container.querySelector('.item-price')).toHaveTextContent(
+        '$12.00'
+      );
       expect(container.querySelector('.item-store-metadata')).toBeNull();
       expect(
         screen.queryByRole('link', { name: 'View item — opens in new tab' })
@@ -126,7 +128,7 @@ describe('ItemCard', () => {
       });
       expect(container.querySelector('.item-price-row')).toBeNull();
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
     });
 
@@ -162,7 +164,7 @@ describe('ItemCard', () => {
       for (const overrides of [
         {},
         { viewerClaimed: true },
-        { fullyClaimed: true, showPurchased: true },
+        { fullyClaimed: true },
         { isOwner: true },
       ]) {
         const { unmount } = renderCard({
@@ -191,7 +193,7 @@ describe('ItemCard', () => {
         item: { id: 'i1', name: 'Gift', store: STORE } as never,
       });
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
       expect(container.querySelector('.item-price')).toHaveTextContent(
         '$35.50'
@@ -204,22 +206,25 @@ describe('ItemCard', () => {
     expect(container.querySelector('.itemDescription')).toBeNull();
   });
 
+  it('EmptyEntryLine_OmitsTheLine', () => {
+    const { container } = renderCard({ entryLine: '' });
+    expect(container.querySelector('.item-entry-line')).toBeNull();
+  });
+
   describe('FullyClaimed', () => {
-    it('FullyClaimed_ShowsStatus-HidesCounter-KeepsPriceLine', () => {
+    it('FullyClaimed_ShowsStatus-KeepsPriceLine', () => {
       const { container } = renderCard({
         fullyClaimed: true,
-        showPurchased: true,
         item: { id: 'i1', name: 'Gift', store: STORE } as never,
       });
       expect(screen.getByRole('status')).toHaveTextContent('Fully claimed');
-      expect(screen.queryByText('0/3 claimed')).not.toBeInTheDocument();
       expect(container.querySelector('.item-price')).toHaveTextContent(
         '$35.50'
       );
     });
 
     it('FullyClaimedNoStore_RendersNoClickTarget', () => {
-      renderCard({ fullyClaimed: true, showPurchased: true });
+      renderCard({ fullyClaimed: true });
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
   });
@@ -260,8 +265,45 @@ describe('ItemCard', () => {
     });
   });
 
-  it('PurchasedOrSpoiler_MarksItemPurchased', () => {
-    const { container } = renderCard({ showSpoilerInfo: true });
+  describe('ActionsSlot', () => {
+    it('ActionsGiven_RenderInPlaceOfTheClaimActions', () => {
+      render(
+        <ItemCard
+          item={{ id: 'i1', name: 'Gift', store: STORE } as never}
+          entryLine="On this list"
+          actions={<button type="button">own-control</button>}
+        />
+      );
+      expect(
+        screen.getByRole('button', { name: 'own-control' })
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Claim' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: 'View item — opens in new tab' })
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('On this list')).toBeInTheDocument();
+    });
+
+    it('NoClaimPropsAndNoActions_RendersAViewOnlyCardWithNoClaimAffordance', () => {
+      render(
+        <ItemCard
+          item={{ id: 'i1', name: 'Gift', store: STORE } as never}
+          entryLine=""
+        />
+      );
+      expect(
+        screen.queryByRole('button', { name: 'Claim' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'View item — opens in new tab' })
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('FullyClaimed_MarksTheCardSpent', () => {
+    const { container } = renderCard({ fullyClaimed: true });
     expect(container.querySelector('.item.purchased')).toBeInTheDocument();
   });
 

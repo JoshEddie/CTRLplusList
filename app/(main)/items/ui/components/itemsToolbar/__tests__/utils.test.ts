@@ -1,12 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { FilterState } from '../types';
+import type { ItemDisplay } from '@/lib/types';
 import {
   buildChips,
   buildQueryUrl,
   countActiveFilters,
+  hasAnyPrice,
   patchedParams,
   priceChipLabel,
   sortOptionsFor,
+  storeOptionsOf,
   toggledStoreParams,
 } from '../utils';
 
@@ -15,7 +18,6 @@ function filterState(overrides: Partial<FilterState> = {}): FilterState {
     mode: 'items',
     sort: 'created_desc',
     defaultSort: 'created_desc',
-    show: 'all',
     selectedStores: [],
     priceMin: '',
     priceMax: '',
@@ -139,14 +141,6 @@ describe('countActiveFilters', () => {
     expect(countActiveFilters(filterState({ sort: 'name_asc' }))).toBe(1);
   });
 
-  it('ChooseShow_CountsOne', () => {
-    expect(
-      countActiveFilters(
-        filterState({ mode: 'choose', defaultSort: 'created_desc', show: 'on' })
-      )
-    ).toBe(1);
-  });
-
   it('SelectedStores_CountedPerStore', () => {
     expect(
       countActiveFilters(filterState({ selectedStores: ['Amazon', 'Etsy'] }))
@@ -184,29 +178,16 @@ describe('buildChips', () => {
     expect(updateParams).toHaveBeenCalledWith({ sort: null, page: null });
   });
 
-  it('ChooseShowOn_RendersShowChip', () => {
-    const chips = buildChips(
-      filterState({ mode: 'choose', defaultSort: 'created_desc', show: 'on' }),
-      noopHandlers
-    );
-    expect(chips.map((c) => c.label)).toEqual(['On the list']);
-  });
-
-  it('ChooseShowUnlabeledValue_RendersNoChip', () => {
-    const chips = buildChips(
-      filterState({ mode: 'choose', defaultSort: 'created_desc', show: 'bogus' }),
-      noopHandlers
-    );
-    expect(chips).toEqual([]);
-  });
-
   it('SelectedStores_RenderChipPerStoreClearingViaRemoveStore', () => {
     const removeStore = vi.fn();
-    const chips = buildChips(filterState({ selectedStores: ['Amazon', 'Etsy'] }), {
-      updateParams: vi.fn(),
-      removeStore,
-      clearPrice: vi.fn(),
-    });
+    const chips = buildChips(
+      filterState({ selectedStores: ['Amazon', 'Etsy'] }),
+      {
+        updateParams: vi.fn(),
+        removeStore,
+        clearPrice: vi.fn(),
+      }
+    );
     expect(chips.map((c) => c.label)).toEqual(['Amazon', 'Etsy']);
     chips[0].onClear();
     expect(removeStore).toHaveBeenCalledWith('Amazon');
@@ -214,12 +195,52 @@ describe('buildChips', () => {
 
   it('PriceBounds_RendersPriceChipClearingViaClearPrice', () => {
     const clearPrice = vi.fn();
-    const chips = buildChips(
-      filterState({ priceMin: '10', priceMax: '50' }),
-      { updateParams: vi.fn(), removeStore: vi.fn(), clearPrice }
-    );
+    const chips = buildChips(filterState({ priceMin: '10', priceMax: '50' }), {
+      updateParams: vi.fn(),
+      removeStore: vi.fn(),
+      clearPrice,
+    });
     expect(chips.map((c) => c.label)).toEqual(['$10–$50']);
     chips[0].onClear();
     expect(clearPrice).toHaveBeenCalledTimes(1);
+  });
+});
+
+const itemWithStore = (
+  id: string,
+  store: { name: string; price: string; link: string } | null
+) => ({ id, name: id, store }) as unknown as ItemDisplay;
+
+describe('storeOptionsOf', () => {
+  it('NamedStores_ReturnedOnceEachSortedByName', () => {
+    expect(
+      storeOptionsOf([
+        itemWithStore('a', { name: 'Target', price: '1', link: 'https://t' }),
+        itemWithStore('b', { name: 'Amazon', price: '1', link: 'https://a' }),
+        itemWithStore('c', { name: 'Target', price: '2', link: 'https://t' }),
+        itemWithStore('d', { name: '', price: '2', link: '' }),
+        itemWithStore('e', null),
+      ])
+    ).toEqual(['Amazon', 'Target']);
+  });
+});
+
+describe('hasAnyPrice', () => {
+  it('OneCompleteStore_True', () => {
+    expect(
+      hasAnyPrice([
+        itemWithStore('a', null),
+        itemWithStore('b', { name: 'Amazon', price: '5', link: 'https://a' }),
+      ])
+    ).toBe(true);
+  });
+
+  it('NoCompleteStore_False', () => {
+    expect(
+      hasAnyPrice([
+        itemWithStore('a', null),
+        itemWithStore('b', { name: '', price: '5', link: '' }),
+      ])
+    ).toBe(false);
   });
 });

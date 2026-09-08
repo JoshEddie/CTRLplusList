@@ -8,7 +8,7 @@ import { authedIdentity } from '@/lib/data/user.session';
 import { SpoilerTier } from '@/lib/types';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { cookies } from 'next/headers';
-import { Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import ItemsBrowser from './ItemsBrowser';
 import { readItemsPageSize } from '../../utils';
 
@@ -17,12 +17,15 @@ interface ItemsContainerProps {
   viewerSelfProfileId?: string;
   /** The viewer's resolved tier, forwarded rather than resolved here: it is database-backed, so resolving it beneath the cache boundary would key the cache on an input that can go stale. A signed-out list viewer forwards the maximal projection. */
   tier?: SpoilerTier;
+  /** What an empty list shows in place of its rows — the owner's call to action. */
+  emptyState?: ReactNode;
 }
 
 export default async function ItemsContainer({
   listId,
   viewerSelfProfileId,
   tier,
+  emptyState,
 }: ItemsContainerProps) {
   const identity = await authedIdentity();
 
@@ -51,6 +54,7 @@ export default async function ItemsContainer({
         tier={tier}
         actor={identity?.activeProfile}
         user_name={identity?.selfProfile.name}
+        emptyState={emptyState}
       />
     </Suspense>
   );

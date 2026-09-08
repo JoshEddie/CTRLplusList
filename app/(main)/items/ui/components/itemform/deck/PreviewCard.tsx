@@ -14,15 +14,12 @@ export function PreviewCard({ item }: { item: ItemViewModel }) {
       <ItemCard
         item={toItemDisplay(item)}
         isOwner
-        showPurchased={false}
-        showSpoilerInfo={false}
         viewerClaimed={false}
         fullyClaimed={false}
-        showCounter={false}
-        counterText=""
         hasAnyClaim={false}
         tier="surprise"
         viewOnly
+        claimable={false}
       />
     </div>
   );

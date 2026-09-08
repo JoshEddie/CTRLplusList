@@ -26,16 +26,11 @@ vi.mock('../VisibilityPicker', () => ({
 }));
 vi.mock('../ListActionsMenu', () => ({
   default: (props: {
-    spoilerHref?: string;
-    previewHref?: string;
-    exitPreviewHref?: string;
     disabled?: boolean;
     prependedItems?: React.ReactNode;
   }) => (
     <div
       data-testid="actions-menu-stub"
-      data-preview-href={props.previewHref}
-      data-exit-href={props.exitPreviewHref}
       data-disabled={props.disabled || undefined}
     >
       {props.prependedItems}
@@ -134,6 +129,7 @@ afterEach(() => {
 type Props = Parameters<typeof ListDetails>[0];
 
 const baseProps: Props = {
+  editHref: '/lists/list-7?edit=1',
   isOwner: true,
   list: makeList(),
   owner: {
@@ -215,14 +211,14 @@ describe('ListDetails', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('Owner_ActionsHaveChooseItemsThenKebab-NoEditButton', async () => {
+    it('Owner_ActionsHaveEditItemsThenKebab-NoEditListButton', async () => {
       const { actions, kebab } = await renderHero({
         list: sharedOwnerList({ id: 'list-7' }),
       });
-      const chooseItems = within(actions).getByRole('link', {
-        name: 'Choose items',
+      const editItems = within(actions).getByRole('link', {
+        name: 'Edit Items',
       });
-      expect(chooseItems).toHaveAttribute('href', '/lists/list-7/choose-items');
+      expect(editItems).toHaveAttribute('href', '/lists/list-7?edit=1');
       // Edit is never a hero button; it lives in the kebab menu, which closes
       // the actions cluster.
       expect(
@@ -324,81 +320,6 @@ describe('ListDetails', () => {
       ) as HTMLElement;
       expect(link).toHaveAttribute('href', '/altvatar/owner-profile-1');
       expect(link).toHaveTextContent('');
-    });
-  });
-
-  // With the spoiler toggle retired, the kebab carries the preview pair alone.
-  describe('NavHrefs', () => {
-    function kebabOf(container: HTMLElement) {
-      return container.querySelector(
-        '[data-testid="collapsed-kebab"] [data-testid="actions-menu-stub"]'
-      ) as HTMLElement;
-    }
-
-    it('OwnerView_ComputesPreviewAndExitHrefs', async () => {
-      const { container } = await renderHero({});
-      const kebab = kebabOf(container);
-      expect(kebab).toHaveAttribute(
-        'data-preview-href',
-        '/lists/list-1?preview=viewer'
-      );
-      expect(kebab).toHaveAttribute('data-exit-href', '/lists/list-1');
-    });
-
-    it('Preview_ComputesTheSamePreviewAndExitHrefs', async () => {
-      const { container } = await renderHero({ previewMode: true });
-      const kebab = kebabOf(container);
-      expect(kebab).toHaveAttribute(
-        'data-preview-href',
-        '/lists/list-1?preview=viewer'
-      );
-      expect(kebab).toHaveAttribute('data-exit-href', '/lists/list-1');
-    });
-
-    it('AnyMode_CarriesNoSpoilerHref', async () => {
-      const { container } = await renderHero({});
-      expect(kebabOf(container)).not.toHaveAttribute('data-spoiler-href');
-    });
-  });
-
-  describe('Preview', () => {
-    const previewProps: Partial<Props> = {
-      isOwner: true,
-      previewMode: true,
-      list: sharedOwnerList(),
-    };
-
-    it('Preview_RendersBannerWithExitLink', async () => {
-      const { container } = await renderHero(previewProps);
-      const banner = container.querySelector('.preview-banner') as HTMLElement;
-      expect(banner).toHaveAttribute('role', 'status');
-      const exit = within(banner).getByRole('link', { name: 'Exit preview' });
-      expect(exit).toHaveAttribute('href', '/lists/list-1');
-    });
-
-    it('Preview_HidesVisibilityClusterAndSecondaryActions', async () => {
-      const { hero } = await renderHero(previewProps);
-      expect(
-        hero.querySelector('[data-testid="visibility-picker-stub"]')
-      ).toBeNull();
-      expect(
-        within(hero).queryByRole('link', { name: 'Choose items' })
-      ).toBeNull();
-      expect(
-        within(hero).queryByRole('button', { name: 'Edit list' })
-      ).toBeNull();
-    });
-
-    it('Preview_KebabInRow1-NoActions-Row2HoldsMetaAlone', async () => {
-      const { hero, kebab, row2 } = await renderHero(previewProps);
-      // The kebab (its Exit-preview) is the only control; no actions cluster.
-      expect(
-        kebab.querySelector('[data-testid="actions-menu-stub"]')
-      ).toBeInTheDocument();
-      expect(kebab.parentElement).toHaveClass('list-hero-row');
-      expect(hero.querySelector('.list-hero-actions')).toBeNull();
-      expect(row2.children).toHaveLength(1);
-      expect(row2.firstElementChild).toHaveClass('list-hero-meta');
     });
   });
 
@@ -624,8 +545,8 @@ describe('ListDetails', () => {
 
   /**
    * Pins `list-hero-collapse` / `spoiler-visibility` — the Spoilers tile is
-   * offered only to a member viewing outside preview, beside the visibility
-   * picker for an owner and in the viewer controls for a non-owner member; its
+   * offered to any member, the owner included: beside the visibility picker
+   * for an owner and in the viewer controls for a non-owner member; its
    * strip-kebab twin hoists in lockstep.
    */
   describe('SpoilersTile', () => {
@@ -669,16 +590,6 @@ describe('ListDetails', () => {
         viewer_self_profile_id: 'viewer-profile-9',
         viewerIsMember: false,
         list: makeList({ shared: true, profile_id: 'owner-profile-1' }),
-      });
-      expect(
-        container.querySelector('[data-testid="spoiler-tile"]')
-      ).toBeNull();
-    });
-
-    it('PreviewMode_HidesTheTile', async () => {
-      const { container } = await renderHero({
-        list: sharedOwnerList(),
-        previewMode: true,
       });
       expect(
         container.querySelector('[data-testid="spoiler-tile"]')

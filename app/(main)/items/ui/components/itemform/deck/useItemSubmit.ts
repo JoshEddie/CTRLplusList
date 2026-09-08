@@ -13,7 +13,7 @@ export function useItemSubmit(
   item: ItemViewModel,
   isEditing: boolean,
   returnTo?: string,
-  onSuccess?: () => void
+  onSuccess?: (id?: string) => void
 ) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
@@ -29,7 +29,7 @@ export function useItemSubmit(
       if (result.success) {
         toast.success(`Item ${isEditing ? 'updated' : 'created'} successfully`);
         if (onSuccess) {
-          onSuccess();
+          onSuccess(result.id);
           router.refresh();
         } else {
           router.push(returnTo ?? '/items');

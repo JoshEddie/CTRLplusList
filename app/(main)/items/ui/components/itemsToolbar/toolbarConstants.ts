@@ -25,10 +25,7 @@ export const SHARED_SORT_KEYS: SortKey[] = [
 export const SORT_KEYS_BY_MODE: Record<BrowserMode, SortKey[]> = {
   items: ['created_desc', 'created_asc', ...SHARED_SORT_KEYS],
   list: ['list_order', ...SHARED_SORT_KEYS],
-  choose: ['created_desc', 'created_asc', ...SHARED_SORT_KEYS],
-};
-
-export const SHOW_LABELS: Record<string, string> = {
-  on: 'On the list',
-  off: 'Not on the list',
+  // Edit mode browses the library on its Add tab, so it sorts like the
+  // library — never by `list_order`, which names an order those rows are not in.
+  edit: ['created_desc', 'created_asc', ...SHARED_SORT_KEYS],
 };

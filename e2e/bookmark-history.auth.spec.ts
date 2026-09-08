@@ -32,7 +32,9 @@ test('Bookmark_ViewerBookmarksThenUnbookmarks_AppearsOnBookmarkSurfacesThenGone'
   // fires only after the server action commits, so wait for it before
   // navigating.
   await page.getByRole('button', { name: 'Bookmark list' }).click();
-  await expect(page.getByRole('button', { name: 'Remove bookmark' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Remove bookmark' })
+  ).toBeVisible();
   await expect(
     page.getByRole('status').filter({ hasText: 'Bookmarked' })
   ).toBeVisible();
@@ -53,7 +55,9 @@ test('Bookmark_ViewerBookmarksThenUnbookmarks_AppearsOnBookmarkSurfacesThenGone'
   // Unbookmark — back to the seeded negative; the bookmarks page drops it.
   await page.goto(LIST);
   await page.getByRole('button', { name: 'Remove bookmark' }).click();
-  await expect(page.getByRole('button', { name: 'Bookmark list' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Bookmark list' })
+  ).toBeVisible();
   await expect(
     page.getByRole('status').filter({ hasText: 'Bookmark removed' })
   ).toBeVisible();

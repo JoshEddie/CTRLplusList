@@ -53,7 +53,8 @@ vi.mock('next/navigation', () => ({
 
 // Import production source AFTER vi.mock hoisting takes effect.
 const { redirect } = await import('next/navigation');
-const { guardListViewable, isItemViewable } = await import('../listAccess');
+const { guardListViewable, isEntryViewable, isItemViewable } =
+  await import('../listAccess');
 
 // Canonical IDs. The seeded foundation entities are mirrored here so the
 // tests don't depend on running the prod seed script; pglite gets a fresh
@@ -74,6 +75,9 @@ const JACK = 'dev-friend-jack'; // not followed; owns the LINK list
 const CAROL = 'dev-friend-carol'; // not followed; will block viewer in setup
 
 const LIST_DAVE_OWNER = 'list-dave-owner';
+// Dave's second list, public — the same owner's item on two lists of differing
+// visibility, which is what separates entry viewability from item viewability.
+const LIST_DAVE_PUBLIC = 'list-dave-public';
 const LIST_JACK_LINK = 'list-jack-link';
 const LIST_ALICE_FOLLOWERS = 'list-alice-followers';
 const LIST_CAROL_FOLLOWERS = 'list-carol-followers';
@@ -132,6 +136,13 @@ beforeAll(async () => {
       occasion: 'Just Because',
       profile_id: P(DAVE),
       visibility: 'private',
+    },
+    {
+      id: LIST_DAVE_PUBLIC,
+      name: "Dave's public",
+      occasion: 'Just Because',
+      profile_id: P(DAVE),
+      visibility: 'public',
     },
     {
       id: LIST_JACK_LINK,
@@ -194,6 +205,7 @@ beforeAll(async () => {
     // iteration before the satisfying one.
     { list_id: LIST_DAVE_OWNER, item_id: ITEM_MULTI_LIST, position: 1 },
     { list_id: LIST_ALICE_FOLLOWERS, item_id: ITEM_MULTI_LIST, position: 1 },
+    { list_id: LIST_DAVE_PUBLIC, item_id: ITEM_MULTI_LIST, position: 1 },
     // ITEM_ON_VIEWERS_LIST_OTHER_OWNER on Dave's OWNER list (no access) AND
     // viewer's own private list (access via in-loop list-owner branch).
     // OWNER first so the loop runs a non-satisfying iteration before the
@@ -344,6 +356,83 @@ describe('listAccess', () => {
       expect(await isItemViewable('00000000-does-not-exist', V(VIEWER))).toBe(
         false
       );
+    });
+  });
+
+  // The claim gate. It asks about one entry rather than the item's best list,
+  // so reaching an item somewhere is not permission to claim it anywhere.
+  describe('isEntryViewable', () => {
+    it('PrivateListOtherOwner_ReturnsFalse', async () => {
+      expect(
+        await isEntryViewable(LIST_DAVE_OWNER, ITEM_ON_DAVE_OWNER, V(VIEWER))
+      ).toBe(false);
+    });
+
+    it('OwnersOwnPrivateList_ReturnsTrue', async () => {
+      expect(
+        await isEntryViewable(LIST_DAVE_OWNER, ITEM_ON_DAVE_OWNER, V(DAVE))
+      ).toBe(true);
+    });
+
+    it('PublicListAnonymousViewer_ReturnsTrue', async () => {
+      expect(
+        await isEntryViewable(
+          LIST_ALICE_FOLLOWERS,
+          ITEM_ON_ALICE_FOLLOWERS,
+          null
+        )
+      ).toBe(true);
+    });
+
+    it('OwnerBlockedViewer_ReturnsFalse', async () => {
+      expect(
+        await isEntryViewable(
+          LIST_CAROL_FOLLOWERS,
+          ITEM_ON_CAROL_FOLLOWERS,
+          V(VIEWER)
+        )
+      ).toBe(false);
+    });
+
+    // The item is reachable through Alice's public list, but the entry named
+    // here is on Dave's private one. Reachability is not the question.
+    it('PrivateEntryOfAnItemAlsoOnAPublicList_ReturnsFalse', async () => {
+      expect(await isItemViewable(ITEM_MULTI_LIST, V(VIEWER))).toBe(true);
+      expect(
+        await isEntryViewable(LIST_DAVE_OWNER, ITEM_MULTI_LIST, V(VIEWER))
+      ).toBe(false);
+    });
+
+    it('PublicEntryOfTheSameItem_ReturnsTrue', async () => {
+      expect(
+        await isEntryViewable(LIST_DAVE_PUBLIC, ITEM_MULTI_LIST, V(VIEWER))
+      ).toBe(true);
+    });
+
+    // No entry, no claim: the owner's own item, on no list at all.
+    it('ItemOnNoList_ReturnsFalseEvenForItsOwner', async () => {
+      expect(await isItemViewable(ITEM_NO_LISTS, V(DAVE))).toBe(true);
+      expect(
+        await isEntryViewable(LIST_DAVE_OWNER, ITEM_NO_LISTS, V(DAVE))
+      ).toBe(false);
+    });
+
+    // An entry pairing someone else's item with your list is not a thing
+    // anyone may claim against — the list reads narrow by the same rule.
+    it('EntryWhoseItemAndListDisagreeOnOwner_ReturnsFalse', async () => {
+      expect(
+        await isEntryViewable(
+          LIST_VIEWER_OWNER,
+          ITEM_ON_VIEWERS_LIST_OTHER_OWNER,
+          V(VIEWER)
+        )
+      ).toBe(false);
+    });
+
+    it('NonExistentListId_ReturnsFalse', async () => {
+      expect(
+        await isEntryViewable('no-such-list', ITEM_ON_DAVE_OWNER, V(DAVE))
+      ).toBe(false);
     });
   });
 });

@@ -7,9 +7,9 @@ import {
 import type { ItemDisplay, SpoilerTier } from '@/lib/types';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { displayPrice } from '../itemFilters';
 import ItemsToolbar from './ItemsToolbar';
 import type { BrowserMode } from './types';
+import { hasAnyPrice, storeOptionsOf } from './utils';
 
 // Where the toolbar mounts and what its facets are offered over. Shared by the
 // browser and the reorder layout: both render the same toolbar above the same
@@ -19,11 +19,13 @@ export default function ToolbarSlot({
   mode,
   tier,
   baseline,
+  showGridToggle,
 }: {
   items: ItemDisplay[];
   mode: BrowserMode;
   tier?: SpoilerTier;
   baseline?: SpoilerTier;
+  showGridToggle?: boolean;
 }) {
   // On the list page the toolbar portals into the hero chrome's slot so it
   // rides the hero's shape changes in natural flow; anywhere without a slot
@@ -37,28 +39,19 @@ export default function ToolbarSlot({
     return () => window.removeEventListener(HERO_SLOT_READY_EVENT, find);
   }, []);
 
-  const storeOptions = useMemo(() => {
-    const names = new Set<string>();
-    for (const item of items) {
-      if (item.store?.name) names.add(item.store.name);
-    }
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
-  }, [items]);
-
-  const hasAnyPrice = useMemo(
-    () => items.some((item) => Number.isFinite(displayPrice(item))),
-    [items]
-  );
+  const storeOptions = useMemo(() => storeOptionsOf(items), [items]);
+  const priced = useMemo(() => hasAnyPrice(items), [items]);
 
   const toolbar = (
     <ItemsToolbar
       mode={mode}
       storeOptions={storeOptions}
       showStoreSort={storeOptions.length > 0}
-      showPriceSort={hasAnyPrice}
-      showPriceFilter={hasAnyPrice}
+      showPriceSort={priced}
+      showPriceFilter={priced}
       tier={tier}
       baseline={baseline}
+      showGridToggle={showGridToggle}
     />
   );
 

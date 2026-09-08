@@ -1,11 +1,14 @@
 import ProfileAvatar, { facelessView } from '@/app/ui/components/ProfileAvatar';
 import { Button } from '@/app/ui/components/button';
+import { getMessage } from '@/lib/i18n/utils';
 import { timeAgo } from '@/lib/timeAgo';
-import { PurchaseView } from '@/lib/types';
+import { EntryCapacity, PurchaseView } from '@/lib/types';
 import { useState } from 'react';
+import { claimUnitsCeiling } from '../utils';
+import UnitsField from './UnitsField';
 
-// Bounded render: an unlimited-quantity item can carry
-// arbitrarily many claims, so the list never renders them all at once.
+// Bounded render: an entry asking for many units can carry as many claims, so
+// the list never renders them all at once.
 const INITIAL_VISIBLE = 10;
 const SEE_MORE_STEP = 10;
 
@@ -16,7 +19,10 @@ type NamedClaim = PurchaseView & { name: string };
 function rowLabel(claim: NamedClaim): string {
   const name = claim.name;
   if (claim.by !== 'self') return name;
-  return name === 'You' ? 'You' : `${name} (you)`;
+  // A nameless claim already carries the viewer's stand-in name, which says
+  // "you" on its own — suffixing it would read "You (you)".
+  if (name === getMessage('viewer_name_placeholder')) return name;
+  return getMessage('claim_row_name_own', { name });
 }
 
 // One meta line under the name: "Added by you · 3 hours ago" for attributed
@@ -26,30 +32,44 @@ function rowMeta(claim: PurchaseView): string | null {
   const when = claim.purchasedAt ? timeAgo(claim.purchasedAt) : '';
   const attribution =
     claim.by !== 'self' && claim.claimedByViewer
-      ? 'Added by you'
+      ? getMessage('claim_row_meta_added_by_viewer')
       : claim.claimerName
-        ? `Added by ${claim.claimerName}`
+        ? getMessage('claim_row_meta_added_by', { name: claim.claimerName })
         : null;
-  if (attribution) return when ? `${attribution} · ${when}` : attribution;
-  return when ? `claimed ${when}` : null;
+  if (attribution)
+    return when
+      ? getMessage('claim_row_meta_with_time', { attribution, when })
+      : attribution;
+  return when ? getMessage('claim_row_meta_claimed', { when }) : null;
 }
 
 export default function ClaimsList({
   claims,
   canRemove,
+  capacity,
+  unitsStatus,
   removalDisabled = false,
   onRemoveClaim,
+  onUpdateUnits,
 }: {
   claims: PurchaseView[];
   canRemove: (claim: PurchaseView) => boolean;
+  /** What is left of the entry's ask, which bounds how far a claim on it can be raised. Null off a list. */
+  capacity?: EntryCapacity | null;
+  /** What the entry already has spoken for. Passed rather than derived: capacity states a remainder at every tier, but below `claims` it is drawn from a withheld count and would read as a false zero. */
+  unitsStatus?: string;
   // Which removal a row offers depends on who is listed: the owner's list is
   // master unclaim and takes the owner floor, the manage view is the viewer's
   // own claims and takes none. The caller knows which it opened, so the floor
   // arrives decided rather than being read here.
   removalDisabled?: boolean;
   onRemoveClaim: (claim: PurchaseView) => void;
+  onUpdateUnits?: (claim: PurchaseView, units: number) => void;
 }) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
+  const [drafts, setDrafts] = useState<Record<string, number>>({});
+  const ceilingFor = (claim: PurchaseView) =>
+    claimUnitsCeiling(capacity, claim);
   if (claims.length === 0) return null;
   const sorted = [
     ...claims.filter((claim) => canRemove(claim)),
@@ -67,7 +87,7 @@ export default function ClaimsList({
   const remaining = named.length - visible.length;
   return (
     <div className="claims-section">
-      <p className="claims-section-label">Claimed by</p>
+      <p className="claims-section-label">{getMessage('claim_list_label')}</p>
       <ul className="claims-list">
         {visible.map((claim) => (
           <li key={claim.id} className="claim-row">
@@ -75,9 +95,7 @@ export default function ClaimsList({
                 that was typed is all there is to draw initials from. Account
                 linkage governs nothing here — a managed profile carries art on
                 the same terms as anyone else. */}
-            <ProfileAvatar
-              profile={claim.avatar ?? facelessView(claim.name)}
-            />
+            <ProfileAvatar profile={claim.avatar ?? facelessView(claim.name)} />
             <div className="claim-row-info">
               <span className="claim-row-name">{rowLabel(claim)}</span>
               {rowMeta(claim) && (
@@ -92,19 +110,37 @@ export default function ClaimsList({
                 onClick={() => onRemoveClaim(claim)}
                 aria-label={
                   claim.by === 'self'
-                    ? 'Remove your claim'
-                    : `Remove ${claim.name}'s claim`
+                    ? getMessage('claim_remove_own_aria_label')
+                    : getMessage('claim_remove_other_aria_label', {
+                        name: claim.name,
+                      })
                 }
               >
-                Remove
+                {getMessage('claim_remove_label')}
               </Button>
             )}
+            {canRemove(claim) &&
+              !removalDisabled &&
+              onUpdateUnits &&
+              ceilingFor(claim) > 1 && (
+                <UnitsField
+                  label={getMessage('claim_units_row_label')}
+                  status={unitsStatus}
+                  value={drafts[claim.id] ?? claim.units ?? 1}
+                  max={ceilingFor(claim)}
+                  saved={claim.units ?? 1}
+                  onChange={(next) =>
+                    setDrafts((prev) => ({ ...prev, [claim.id]: next }))
+                  }
+                  onSubmit={(units) => onUpdateUnits(claim, units)}
+                />
+              )}
           </li>
         ))}
       </ul>
       {withheld > 0 && (
         <p className="claims-withheld" role="status">
-          {withheld === 1 ? '1 other claim' : `${withheld} other claims`}
+          {getMessage('claim_withheld_others', { count: withheld })}
         </p>
       )}
       {remaining > 0 && (
@@ -114,7 +150,7 @@ export default function ClaimsList({
           className="claims-see-more"
           onClick={() => setVisibleCount((count) => count + SEE_MORE_STEP)}
         >
-          See more ({remaining})
+          {getMessage('claim_see_more', { count: remaining })}
         </Button>
       )}
     </div>

@@ -137,9 +137,4 @@ describe('useItemActions', () => {
     ]);
   });
 
-  it('SetQty_UpdatesQuantity', () => {
-    const { result } = renderHook(() => useHarness(blankItem()));
-    act(() => result.current.actions.setQty(null));
-    expect(result.current.item.qty).toBeNull();
-  });
 });

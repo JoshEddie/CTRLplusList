@@ -144,24 +144,84 @@ describe('getItemsByProfile', () => {
       });
     });
 
-    it('Surprise_ReturnsEmptyPurchases-HasPurchasesFalse', async () => {
+    it('Surprise_ReturnsEmptyPurchases', async () => {
       const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
         tier: 'surprise',
       });
       expect(rows[0].purchases).toEqual([]);
-      // `hasPurchases` now reflects only what the tier discloses: an item
-      // carrying only others' claims below `claims` reads as unclaimed.
-      expect(rows[0].hasPurchases).toBe(false);
     });
 
-    it('Claims_ReturnsBareCountEntry-HasPurchasesTrue', async () => {
+    it('Claims_ReturnsBareCountEntry', async () => {
       const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
         tier: 'claims',
       });
       expect(rows[0].purchases).toEqual([
         { id: 'p1', by: 'other', claimedByViewer: false },
       ]);
-      expect(rows[0].hasPurchases).toBe(true);
+    });
+  });
+
+  // The library card is read through no entry, so the pair it states is summed
+  // over every entry the item has, with `num_lists` saying how many.
+  describe('SummedOverEveryEntry', () => {
+    beforeEach(async () => {
+      await seedUsers(db, [{ id: 'owner' }, { id: 'claimer' }]);
+      await seedItem(db, { id: 'gift', user_id: 'owner' });
+      await seedList(db, { id: 'l1', user_id: 'owner' });
+      await seedList(db, { id: 'l2', user_id: 'owner' });
+      await seedListItem(db, {
+        list_id: 'l1',
+        item_id: 'gift',
+        position: 1,
+        quantity: 2,
+      });
+      await seedListItem(db, {
+        list_id: 'l2',
+        item_id: 'gift',
+        position: 1,
+        quantity: 3,
+      });
+      await seedPurchase(db, {
+        id: 'p1',
+        item_id: 'gift',
+        list_id: 'l1',
+        units: 2,
+        profile_id: selfProfileOf('claimer'),
+      });
+      await seedPurchase(db, {
+        id: 'p2',
+        item_id: 'gift',
+        list_id: 'l2',
+        units: 1,
+        profile_id: selfProfileOf('claimer'),
+      });
+    });
+
+    it('ItemOnTwoLists_SumsQuantityAndClaimedUnitsAcrossBoth', async () => {
+      const rows = await dal.getItemsByProfile(selfProfileOf('owner'));
+      expect(rows[0]).toMatchObject({
+        num_lists: 2,
+        quantity: 5,
+        claimed_units: 3,
+      });
+    });
+
+    it('TierBelowClaims_WithholdsTheClaimedUnitsButKeepsTheAsk', async () => {
+      const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
+        tier: 'progress',
+      });
+      expect(rows[0]).toMatchObject({ num_lists: 2, quantity: 5 });
+      expect(rows[0].claimed_units).toBeUndefined();
+    });
+
+    it('ItemOnNoList_CarriesNeitherAskNorListCount', async () => {
+      await seedItem(db, { id: 'orphan', user_id: 'owner' });
+
+      const orphan = (await dal.getItemsByProfile(selfProfileOf('owner'))).find(
+        (r) => r.id === 'orphan'
+      );
+      expect(orphan?.quantity).toBeUndefined();
+      expect(orphan?.num_lists).toBeUndefined();
     });
   });
 
@@ -178,7 +238,7 @@ describe('getItemsByProfile', () => {
 describe('getItemById', () => {
   it('ExistingItem_ReshapesListMembershipsWithPosition-SelectsLowestPricedStore', async () => {
     await seedUsers(db, [{ id: 'u' }]);
-    await seedItem(db, { id: 'i1', user_id: 'u', quantity_limit: 3 });
+    await seedItem(db, { id: 'i1', user_id: 'u' });
     await seedList(db, { id: 'l1', user_id: 'u' });
     await seedList(db, { id: 'l2', user_id: 'u' });
     await seedListItem(db, { list_id: 'l1', item_id: 'i1', position: 5 });
@@ -200,7 +260,6 @@ describe('getItemById', () => {
 
     const item = await dal.getItemById('i1', selfProfileOf('u'));
     expect(item?.id).toBe('i1');
-    expect(item?.quantity_limit).toBe(3);
     expect(item?.store?.name).toBe('second');
     const byListId = Object.fromEntries(
       (item?.lists ?? []).map((l) => [l.id, l.position])
@@ -309,27 +368,32 @@ describe('getItemsByListId', () => {
         { id: 'other', name: 'Otto' },
       ]);
       await seedList(db, { id: 'l1', user_id: 'owner' });
-      await seedItem(db, { id: 'i1', user_id: 'owner', quantity_limit: 2 });
-      await seedListItem(db, { list_id: 'l1', item_id: 'i1', position: 1 });
+      await seedItem(db, { id: 'i1', user_id: 'owner' });
+      await seedListItem(db, {
+        list_id: 'l1',
+        item_id: 'i1',
+        position: 1,
+        quantity: 2,
+      });
       await seedPurchase(db, {
         id: 'pv',
         item_id: 'i1',
+        list_id: 'l1',
         profile_id: selfProfileOf('viewer'),
       });
       await seedPurchase(db, {
         id: 'po',
         item_id: 'i1',
+        list_id: 'l1',
         profile_id: selfProfileOf('other'),
       });
     }
 
-    it('SurpriseNoViewerId_ReturnsEmptyPurchases-HasPurchasesFalse', async () => {
+    // No viewer id, so neither claim is held and the projection empties.
+    it('SurpriseNoViewerId_ReturnsEmptyPurchases', async () => {
       await seedClaimedItem();
       const rows = await dal.getItemsByListId('l1', { tier: 'surprise' });
       expect(rows[0].purchases).toEqual([]);
-      // No viewer id, so neither claim is held: `hasPurchases` reflects the
-      // empty projection rather than the unprojected rows.
-      expect(rows[0].hasPurchases).toBe(false);
     });
 
     it('Claims_ReturnsCountWithNoFirstName', async () => {
@@ -364,10 +428,63 @@ describe('getItemsByListId', () => {
       ]);
     });
 
+    it('Claims_CarriesTheEntrysQuantityAndClaimedUnits', async () => {
+      await seedClaimedItem();
+      const [row] = await dal.getItemsByListId('l1', { tier: 'claims' });
+      expect(row).toMatchObject({
+        list_id: 'l1',
+        quantity: 2,
+        claimed_units: 2,
+      });
+    });
+
+    // Units, not rows: with one unit per claim a sum and a count agree, so
+    // this is the only fixture that would fail if the read counted rows.
+    it('ClaimCoveringSeveralUnits_ClaimedUnitsExceedsTheClaimCount', async () => {
+      await seedClaimedItem();
+      await seedPurchase(db, {
+        id: 'pb',
+        item_id: 'i1',
+        list_id: 'l1',
+        units: 3,
+        guest_name: 'Bulk Buyer',
+      });
+
+      const [row] = await dal.getItemsByListId('l1', { tier: 'claims' });
+      expect(row.purchases).toHaveLength(3);
+      expect(row.claimed_units).toBe(5);
+    });
+
+    it('Surprise_WithholdsClaimedUnits', async () => {
+      await seedClaimedItem();
+      const [row] = await dal.getItemsByListId('l1', { tier: 'surprise' });
+      expect(row.claimed_units).toBeUndefined();
+    });
+
+    it('ClaimOnAnotherListOfASharedItem_IsNeitherProjectedNorCounted', async () => {
+      await seedClaimedItem();
+      await seedList(db, { id: 'l2', user_id: 'owner' });
+      await seedListItem(db, { list_id: 'l2', item_id: 'i1', position: 1 });
+      await seedPurchase(db, {
+        id: 'pe',
+        item_id: 'i1',
+        list_id: 'l2',
+        guest_name: 'Elsewhere',
+      });
+
+      const [row] = await dal.getItemsByListId('l1', { tier: 'claims' });
+      expect(row.purchases.map((p) => p.id).sort()).toEqual(['po', 'pv']);
+      expect(row.claimed_units).toBe(2);
+
+      const [otherRow] = await dal.getItemsByListId('l2', { tier: 'claims' });
+      expect(otherRow.purchases.map((p) => p.id)).toEqual(['pe']);
+      expect(otherRow.claimed_units).toBe(1);
+    });
+
     it('RawRead_IsNotExported', () => {
-      expect(
-        Object.keys(dal).filter((name) => name.startsWith('raw'))
-      ).toEqual([]);
+      expect(Object.keys(dal).filter((name) => name.startsWith('raw'))).toEqual(
+        []
+      );
     });
 
     it('NonOwnerWithViewerId_NamesTheirOwn-CountsTheOther', async () => {
@@ -378,6 +495,7 @@ describe('getItemsByListId', () => {
       const byId = Object.fromEntries(rows[0].purchases.map((p) => [p.id, p]));
       expect(byId.pv).toEqual({
         id: 'pv',
+        units: 1,
         by: 'self',
         name: 'Vic',
         claimedByViewer: false,
@@ -402,11 +520,17 @@ describe('getItemsByListId', () => {
       // keeps the entry so capacity stays derivable and drops the name.
       await seedUsers(db, [{ id: 'owner' }, { id: 'viewer' }]);
       await seedList(db, { id: 'l1', user_id: 'owner' });
-      await seedItem(db, { id: 'i1', user_id: 'owner', quantity_limit: 2 });
-      await seedListItem(db, { list_id: 'l1', item_id: 'i1', position: 1 });
+      await seedItem(db, { id: 'i1', user_id: 'owner' });
+      await seedListItem(db, {
+        list_id: 'l1',
+        item_id: 'i1',
+        position: 1,
+        quantity: 2,
+      });
       await seedPurchase(db, {
         id: 'pg',
         item_id: 'i1',
+        list_id: 'l1',
         guest_name: 'Gabby Guest',
       });
 

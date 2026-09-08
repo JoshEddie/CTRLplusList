@@ -49,7 +49,6 @@ function makeItem(id: string): ItemDisplay {
     created_at: new Date('2024-01-01T00:00:00Z'),
     updated_at: new Date('2024-01-01T00:00:00Z'),
     profile_id: 'p1',
-    quantity_limit: null,
   };
 }
 

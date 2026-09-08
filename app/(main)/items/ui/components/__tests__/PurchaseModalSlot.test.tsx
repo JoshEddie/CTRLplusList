@@ -40,6 +40,7 @@ const othersClaim: PurchaseView = {
 
 const ITEM = {
   id: 'i1',
+  list_id: 'l1',
   name: 'Fancy Mug',
   description: '',
   image_url: '',
@@ -54,6 +55,7 @@ function renderSlot(
   const props: React.ComponentProps<typeof PurchaseModalSlot> = {
     view: 'claim',
     claims: [],
+    capacity: { quantity: 1, remaining: 1 },
     viewerIsPurchaser: false,
     actor: undefined,
     isOwner: false,
@@ -64,6 +66,7 @@ function renderSlot(
     onAttributedClaim: vi.fn(),
     onGuestClaim: vi.fn(),
     onRemoveClaim: vi.fn(),
+    onUpdateUnits: vi.fn(),
     ...overrides,
   };
   return { props, ...render(<PurchaseModalSlot {...props} />) };
@@ -76,6 +79,25 @@ beforeEach(() => {
 
 describe('PurchaseModalSlot', () => {
   describe('ManageView', () => {
+    // Capacity states a remainder at every tier, but below `claims` it is
+    // subtracted from a withheld count — so the readout is the caller's to
+    // gate, and its absence is what keeps a false zero off the screen.
+    const multiUnit = {
+      view: 'manage' as const,
+      claims: [{ ...selfClaim, units: 2 }],
+      capacity: { quantity: 4, remaining: 2 },
+    };
+
+    it('ClaimsTier_ManageRowSaysWhatIsAlreadyClaimed', () => {
+      renderSlot({ ...multiUnit, tier: 'claims' });
+      expect(screen.getByText('2 of 4 claimed')).toBeInTheDocument();
+    });
+
+    it('BelowClaimsTier_ManageRowSaysNothingAboutWhatIsClaimed', () => {
+      renderSlot({ ...multiUnit, tier: 'surprise' });
+      expect(screen.queryByText(/of 4 claimed/)).not.toBeInTheDocument();
+    });
+
     it('TwoViewerClaims_RendersOneRowPerClaimWithItsRemoveAction', () => {
       renderSlot({ view: 'manage', claims: [selfClaim, attributedClaim] });
       expect(screen.getByText('Vicky (you)')).toBeInTheDocument();

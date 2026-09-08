@@ -71,9 +71,27 @@ describe('ListForm', () => {
         })
       );
       expect(router.push).toHaveBeenCalledWith(
-        '/lists/new-1/choose-items?new=1'
+        '/lists/new-1?edit=1&new=1'
       );
       expect(updateList).not.toHaveBeenCalled();
+    });
+
+    // The page the modal sits on outlives the push, so an open shell would
+    // keep its scrim — and the document's scroll lock — over the new list.
+    it('ValidSubmitAsModal_ClosesTheShellBeforeNavigating', async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      render(<ListForm onClose={onClose} />);
+
+      await user.type(nameField(), 'Gifts');
+      fireEvent.change(dateField(), { target: { value: '2030-05-01' } });
+      await user.click(screen.getByRole('button', { name: 'Create List' }));
+
+      await waitFor(() => expect(router.push).toHaveBeenCalled());
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(onClose.mock.invocationCallOrder[0]).toBeLessThan(
+        router.push.mock.invocationCallOrder[0]
+      );
     });
   });
 

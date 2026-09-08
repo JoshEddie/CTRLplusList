@@ -37,13 +37,9 @@ const redirectMock = vi.hoisted(() =>
 );
 vi.mock('next/navigation', () => ({ redirect: redirectMock }));
 
-vi.mock('@/app/(main)/items/ui/components/SortItemsContainer', () => ({
-  default: (p: { listId: string; tier?: string }) => (
-    <div
-      data-testid="sort-items-container"
-      data-list-id={p.listId}
-      data-tier={String(p.tier)}
-    />
+vi.mock('@/app/(main)/items/ui/components/EmptyListCTA', () => ({
+  default: (p: { listId: string }) => (
+    <div data-testid="empty-list-cta" data-list-id={p.listId} />
   ),
 }));
 vi.mock('@/app/(main)/items/ui/components/ItemsContainer', () => ({
@@ -51,13 +47,16 @@ vi.mock('@/app/(main)/items/ui/components/ItemsContainer', () => ({
     listId: string;
     viewerSelfProfileId?: string;
     tier?: string;
+    emptyState?: React.ReactNode;
   }) => (
     <div
       data-testid="items-container"
       data-list-id={p.listId}
       data-viewer-self-profile-id={p.viewerSelfProfileId ?? ''}
       data-tier={String(p.tier)}
-    />
+    >
+      {p.emptyState}
+    </div>
   ),
 }));
 
@@ -67,6 +66,12 @@ function props(id = 'l1', sp: Record<string, string> = {}) {
     searchParams: Promise.resolve(sp),
   };
 }
+
+const asViewer = () =>
+  vi.mocked(getUserIdByEmail).mockResolvedValue({
+    id: 'u2',
+    name: 'Viewer',
+  } as never);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -92,68 +97,82 @@ beforeEach(() => {
 });
 
 describe('ListItemsSection', () => {
-  it('OwnerSurpriseTierUnfiltered_MountsSortItemsContainer', async () => {
-    vi.mocked(getList).mockResolvedValue({
-      id: 'l1',
-      profile_id: 'p-u1',
-      visibility: 'private',
-    } as never);
-    render(await ListItemsSection(props('l1')));
-    const c = screen.getByTestId('sort-items-container');
-    expect(c).toHaveAttribute('data-list-id', 'l1');
-    expect(c).toHaveAttribute('data-tier', 'surprise');
+  // The owner's default view is a member's view: the same read-only surface,
+  // at the owner's own resolved tier, with the owner's empty-list door inside.
+  describe('Owner', () => {
+    it('Default_MountsTheReadOnlyItemsContainerAtTheOwnersTier', async () => {
+      render(await ListItemsSection(props('l1')));
+      const c = screen.getByTestId('items-container');
+      expect(c).toHaveAttribute('data-list-id', 'l1');
+      expect(c).toHaveAttribute('data-tier', 'surprise');
+      expect(c).toHaveAttribute('data-viewer-self-profile-id', 'p-u1');
+    });
+
+    it('RaisedTier_MountsTheSameContainerAtTheRaisedTier', async () => {
+      vi.mocked(getSpoilerBaseline).mockResolvedValue(MAXIMAL_TIER);
+      render(await ListItemsSection(props('l1')));
+      expect(screen.getByTestId('items-container')).toHaveAttribute(
+        'data-tier',
+        'claims'
+      );
+    });
+
+    it('Default_HandsTheContainerTheEmptyListDoor', async () => {
+      render(await ListItemsSection(props('l1')));
+      expect(screen.getByTestId('empty-list-cta')).toHaveAttribute(
+        'data-list-id',
+        'l1'
+      );
+    });
+
+    it('PreviewParam_IsIgnored-SameContainerSameTier', async () => {
+      render(await ListItemsSection(props('l1', { preview: 'viewer' })));
+      const c = screen.getByTestId('items-container');
+      expect(c).toHaveAttribute('data-tier', 'surprise');
+      expect(screen.getByTestId('empty-list-cta')).toBeInTheDocument();
+    });
   });
 
-  // Raising the tier changes what each row discloses, not which rows are
-  // present or their order, so the reorder layout stays put — only the filter
-  // condition leaves it.
-  it('OwnerRaisedTierUnfiltered_StillMountsSortItemsContainerAtRaisedTier', async () => {
-    vi.mocked(getSpoilerBaseline).mockResolvedValue(MAXIMAL_TIER);
-    render(await ListItemsSection(props('l1')));
-    const c = screen.getByTestId('sort-items-container');
-    expect(c).toHaveAttribute('data-tier', 'claims');
-    expect(screen.queryByTestId('items-container')).not.toBeInTheDocument();
+  describe('Viewer', () => {
+    beforeEach(asViewer);
+
+    it('Default_MountsItemsContainerWithViewerProfileId', async () => {
+      render(await ListItemsSection(props('l1')));
+      expect(screen.getByTestId('items-container')).toHaveAttribute(
+        'data-viewer-self-profile-id',
+        'p-u2'
+      );
+    });
+
+    it('Default_GetsNoEmptyListDoor', async () => {
+      render(await ListItemsSection(props('l1')));
+      expect(screen.queryByTestId('empty-list-cta')).not.toBeInTheDocument();
+    });
+
+    it('OwnerOnlyList_RendersNothing', async () => {
+      vi.mocked(getList).mockResolvedValue({
+        id: 'l1',
+        profile_id: 'p-u1',
+        visibility: 'private',
+      } as never);
+      const { container } = render(await ListItemsSection(props('l1')));
+      expect(container).toBeEmptyDOMElement();
+    });
   });
 
-  it('OwnerWithAStoreFilter_MountsItemsContainerInstead', async () => {
-    render(await ListItemsSection(props('l1', { store: 'Amazon' })));
-    expect(screen.getByTestId('items-container')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('sort-items-container')
-    ).not.toBeInTheDocument();
-  });
+  describe('EditMode', () => {
+    it('Owner_RendersNothingSoTheModeOwnsTheItemSurface', async () => {
+      const { container } = render(
+        await ListItemsSection(props('l1', { edit: '1' }))
+      );
+      expect(container).toBeEmptyDOMElement();
+    });
 
-  it('Viewer_MountsItemsContainerWithViewerProfileId', async () => {
-    vi.mocked(getUserIdByEmail).mockResolvedValue({
-      id: 'u2',
-      name: 'Viewer',
-    } as never);
-    render(await ListItemsSection(props('l1')));
-    const c = screen.getByTestId('items-container');
-    expect(c).toHaveAttribute('data-viewer-self-profile-id', 'p-u2');
-  });
-
-  // Preview renders claim information at the OWNER's own resolved tier, not at
-  // the tier a non-member would resolve to.
-  it('OwnerPreviewMode_MountsItemsContainerAtTheOwnersOwnTier', async () => {
-    render(await ListItemsSection(props('l1', { preview: 'viewer' })));
-    const c = screen.getByTestId('items-container');
-    expect(c).toHaveAttribute('data-tier', 'surprise');
-    expect(c).toHaveAttribute('data-viewer-self-profile-id', 'p-u1');
-  });
-
-  it('OwnerOnlyListNonOwner_RendersNothing', async () => {
-    vi.mocked(getUserIdByEmail).mockResolvedValue({
-      id: 'u2',
-      name: 'Viewer',
-    } as never);
-    vi.mocked(getList).mockResolvedValue({
-      id: 'l1',
-      profile_id: 'p-u1',
-      visibility: 'private',
-    } as never);
-    const { container } = render(await ListItemsSection(props('l1')));
-    expect(container).toBeEmptyDOMElement();
+    it('NonOwner_StillRendersTheOrdinaryItemsContainer', async () => {
+      asViewer();
+      render(await ListItemsSection(props('l1', { edit: '1' })));
+      expect(screen.getByTestId('items-container')).toBeInTheDocument();
+    });
   });
 
   describe('GuardRedirects', () => {
@@ -171,10 +190,7 @@ describe('ListItemsSection', () => {
     });
 
     it('BlockedViewer_RedirectsToLists', async () => {
-      vi.mocked(getUserIdByEmail).mockResolvedValue({
-        id: 'u2',
-        name: 'Viewer',
-      } as never);
+      asViewer();
       vi.mocked(hasBlocked).mockResolvedValue(true as never);
       await expect(ListItemsSection(props('l1'))).rejects.toThrow(
         'REDIRECT:/lists'

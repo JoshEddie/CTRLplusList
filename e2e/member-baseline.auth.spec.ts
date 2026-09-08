@@ -64,7 +64,9 @@ async function setAdministeredLevel(
   level: string
 ) {
   await openAdministeredRow(page, member);
-  await levelControl(page, `Claim visibility for ${member}`).selectOption(level);
+  await levelControl(page, `Claim visibility for ${member}`).selectOption(
+    level
+  );
   await expect(page.getByText('Claim visibility updated')).toBeVisible();
 }
 
@@ -118,7 +120,9 @@ test('MemberBaseline_OwnerRaisesTheirOwn_ReachesTheirRenderedList', async ({
   // nobody: that is the owner's manage-claims reveal, not a tier.
   await page.goto(LIST);
   await expect(page.getByText('Fully claimed').first()).toBeVisible();
-  await expect(page.getByText('Claimed by 1 person').first()).toBeVisible();
+  await expect(
+    page.locator('.purchased-banner', { hasText: '1 / 1 Claimed' }).first()
+  ).toBeVisible();
 
   // Restore the fixture.
   await setOwnLevel(page, 'surprise');

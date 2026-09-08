@@ -11,7 +11,7 @@ CTRLplusList — a family gift-list app (Next.js App Router, NextAuth/Google, Ne
 | Writing or running an e2e spec | [e2e/README.md](e2e/README.md) — the filename picks the Playwright project |
 | Deciding whether to extract, share, or split something | [docs/abstraction.md](docs/abstraction.md) |
 | Pages, components, CSS tokens | [docs/ui-conventions.md](docs/ui-conventions.md) |
-| Comments, file size, markdown | [docs/code-style.md](docs/code-style.md) |
+| Comments, file size, user-facing copy, markdown | [docs/code-style.md](docs/code-style.md) |
 | Landing, gates, commits | [docs/workflow.md](docs/workflow.md) |
 | Seeded UI states, local-mode internals, product-fetch mock | [docs/local-dev.md](docs/local-dev.md) |
 | Any domain term (profile, account, claim, spoiler, tier) | [CONTEXT.md](CONTEXT.md) |

@@ -4,6 +4,7 @@ import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import { Button } from '@/app/ui/components/button';
 import { SearchField, TextField } from '@/app/ui/components/field';
 import { type ClaimPicker } from '@/lib/data/user.actions';
+import { getMessage } from '@/lib/i18n/utils';
 import { useMemo, useState } from 'react';
 import { MdCheck, MdExpandLess, MdExpandMore } from 'react-icons/md';
 
@@ -54,7 +55,7 @@ export default function ClaimDisclosure({
   // Falsy rather than nullish: a profile's name is required but not non-empty,
   // and an unnamed member's confirm control has to say something.
   const confirmName = selected
-    ? selected.name || 'Someone'
+    ? selected.name || getMessage('someone_name_placeholder')
     : trimmedFreeText || null;
 
   const selectRow = (id: string) => {

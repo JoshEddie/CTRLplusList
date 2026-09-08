@@ -48,11 +48,9 @@ function renderSheet(overrides: Partial<SheetProps> = {}) {
   const props: SheetProps = {
     open: overrides.open ?? true,
     onClose: overrides.onClose ?? vi.fn(),
-    mode: overrides.mode ?? 'items',
     sort: overrides.sort ?? 'created_desc',
     defaultSort: overrides.defaultSort ?? 'created_desc',
     sortOptions: overrides.sortOptions ?? SORT_OPTIONS,
-    show: overrides.show ?? 'all',
     storeOptions: overrides.storeOptions ?? ['Amazon'],
     selectedStores: overrides.selectedStores ?? [],
     showPriceFilter: overrides.showPriceFilter ?? true,
@@ -98,7 +96,6 @@ describe('FiltersSheet', () => {
       expect(onClose).toHaveBeenCalledTimes(1);
     });
   });
-
 
   describe('Navigation', () => {
     const storeRow = () =>
@@ -261,45 +258,12 @@ describe('FiltersSheet', () => {
     });
   });
 
-  describe('ShowFacet', () => {
-    it('NonChooseMode_RendersNoShowSelect', () => {
-      renderSheet({ mode: 'items' });
+  describe('SortFacet', () => {
+    it('NoSortOptions_RendersNoSortSelect', () => {
+      renderSheet({ sortOptions: [] });
       expect(
-        screen.queryByRole('combobox', {
-          name: 'Show items by list membership',
-        })
+        screen.queryByRole('combobox', { name: 'Sort items' })
       ).not.toBeInTheDocument();
-    });
-
-    it('NonChooseMode_RendersNoPurchasesFacet', () => {
-      renderSheet({ mode: 'items' });
-      expect(
-        screen.queryByRole('combobox', { name: 'Purchases filter' })
-      ).not.toBeInTheDocument();
-    });
-
-    it('ChooseMode_RendersShowSelectWiredToUpdateParams', () => {
-      const updateParams = vi.fn();
-      renderSheet({ mode: 'choose', updateParams });
-      fireEvent.change(
-        screen.getByRole('combobox', {
-          name: 'Show items by list membership',
-        }),
-        { target: { value: 'on' } }
-      );
-      expect(updateParams).toHaveBeenCalledWith({ show: 'on', page: null });
-    });
-
-    it('ShowAllChosen_RemovesShowParam', () => {
-      const updateParams = vi.fn();
-      renderSheet({ mode: 'choose', show: 'on', updateParams });
-      fireEvent.change(
-        screen.getByRole('combobox', {
-          name: 'Show items by list membership',
-        }),
-        { target: { value: 'all' } }
-      );
-      expect(updateParams).toHaveBeenCalledWith({ show: null, page: null });
     });
   });
 

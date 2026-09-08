@@ -58,13 +58,13 @@ describe('bootPglite', () => {
       .values({ list_id: 'l1', item_id: 'i1', position: 0 });
     await db
       .insert(purchases)
-      .values({ id: 'p1', item_id: 'i1', profile_id: 'pr2' });
+      .values({ id: 'p1', item_id: 'i1', list_id: 'l1', profile_id: 'pr2' });
 
     let caught: unknown;
     try {
       await db
         .insert(purchases)
-        .values({ id: 'p2', item_id: 'i1', profile_id: 'pr2' });
+        .values({ id: 'p2', item_id: 'i1', list_id: 'l1', profile_id: 'pr2' });
     } catch (err) {
       caught = err;
     }

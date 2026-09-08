@@ -9,12 +9,9 @@ import { pinActingProfile } from './helpers/activeProfile';
 // control and then reloads, since the whole point of the change is that the
 // disabled control is not the enforcement.
 //
-// Item ordering is not driven here. dnd-kit's mouse sensor does not arm under
-// Playwright's synthetic input — the drag overlay never mounts, so `onDragStart`
-// never fires — and no spec in this suite has ever driven a drag. `updatePriority`
-// takes the same `member` floor as the writes below and is covered from dnd-kit's
-// own `onDragEnd` in `SortItems.test.tsx`, so the manager seat loses no role
-// coverage by leaving the gesture out.
+// Item ordering is not driven here: it is staged inside edit mode and lands
+// through the same `setListItems` write the attach below already exercises, so
+// the manager seat loses no role coverage by leaving the gesture out.
 //
 // Seed baseline: `dev-test-viewer` holds `manager` on `dev-profile-workshop`
 // ("Workshop Profile") and `owner` on `dev-profile-owned` ("Owned Profile").
@@ -40,7 +37,9 @@ async function createItem(page: Page, name: string): Promise<void> {
     .getByRole('textbox', { name: 'Product link' })
     .fill('https://example.com/e2e-roles');
   await page.getByRole('button', { name: 'Fetch Details' }).click();
-  await page.getByRole('button', { name: 'Fill in details manually →' }).click();
+  await page
+    .getByRole('button', { name: 'Fill in details manually →' })
+    .click();
 
   await page.getByRole('button', { name: /Item name/ }).click();
   await page.getByLabel('Item name').fill(name);
@@ -110,18 +109,25 @@ test('RolesManager_ManagerCreatesItemsAttachesAndArchives_EachStepReflected', as
     .getByRole('textbox', { name: 'Date', exact: true })
     .fill('2030-06-01');
   await page.getByRole('button', { name: 'Create List' }).click();
-  await expect(page).toHaveURL(/\/lists\/[^/]+\/choose-items\?new=1$/);
-  const listId = page.url().match(/\/lists\/([^/]+)\/choose-items/)?.[1];
+  await expect(page).toHaveURL(/\/lists\/[^/]+\?edit=1&new=1$/);
+  const listId = page.url().match(/\/lists\/([^/]+)\?edit=1/)?.[1];
 
-  const rows = page.locator('ul.choose-items-list li');
-  await rows.filter({ hasText: renamed }).getByRole('checkbox').check();
-  await rows.filter({ hasText: secondItem }).getByRole('checkbox').check();
-  await page.getByRole('button', { name: /Add 2 items to list/ }).click();
+  const cards = page.locator('.edit-mode-library .item');
+  await cards
+    .filter({ hasText: renamed })
+    .getByRole('button', { name: 'Increase' })
+    .click();
+  await cards
+    .filter({ hasText: secondItem })
+    .getByRole('button', { name: 'Increase' })
+    .click();
+  await page.getByRole('button', { name: /Add 2 items/ }).click();
+  await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page).toHaveURL(new RegExp(`/lists/${listId}$`));
 
   // The attach lands the viewer on the list page before its rows have
   // streamed in, so both are awaited before the flow moves on.
-  await expect(page.locator('.sortable-item')).toHaveCount(2);
+  await expect(page.locator('.items-browser .item-container')).toHaveCount(2);
 
   // Archive — `member` floor: it destroys nothing and the item stays attached.
   await page.goto('/items');
@@ -153,8 +159,8 @@ test('RolesManager_ManagerOpensAListTheyManage_VisibilityPillDisabledAndUnchange
     .getByRole('textbox', { name: 'Date', exact: true })
     .fill('2030-06-01');
   await page.getByRole('button', { name: 'Create List' }).click();
-  await expect(page).toHaveURL(/\/lists\/[^/]+\/choose-items\?new=1$/);
-  const listId = page.url().match(/\/lists\/([^/]+)\/choose-items/)?.[1];
+  await expect(page).toHaveURL(/\/lists\/[^/]+\?edit=1&new=1$/);
+  const listId = page.url().match(/\/lists\/([^/]+)\?edit=1/)?.[1];
   await page.goto(`/lists/${listId}`);
 
   const pill = page.getByRole('button', { name: /Visibility:/ });
@@ -203,7 +209,9 @@ test('RolesOwner_OwnerOpensTheEquivalentSurface_AffordancesOperable', async ({
 }) => {
   await page.goto(`/altvatar/${OWNED_PROFILE}`);
 
-  await expect(page.getByRole('button', { name: 'Edit Altvatar' })).toBeEnabled();
+  await expect(
+    page.getByRole('button', { name: 'Edit Altvatar' })
+  ).toBeEnabled();
   await expect(
     page.getByRole('button', { name: 'Invite someone' })
   ).not.toHaveAttribute('aria-disabled', 'true');
@@ -215,7 +223,9 @@ test('RolesOwner_OwnerOpensTheEquivalentSurface_AffordancesOperable', async ({
   // proved by editing rather than by the control's resting one. Nothing is
   // submitted, so the profile is left as the seed wrote it.
   await nameField.fill('Owned Profile edited');
-  await expect(page.getByRole('button', { name: 'Save Changes' })).toBeEnabled();
+  await expect(
+    page.getByRole('button', { name: 'Save Changes' })
+  ).toBeEnabled();
 
   // The roster's own controls are operable for an owner. Alice holds `manager`
   // on this profile per the seed, so a row other than the viewer's own is there

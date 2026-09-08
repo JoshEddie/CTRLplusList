@@ -39,7 +39,9 @@ test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted',
     .fill('https://example.com/e2e-item');
   await page.getByRole('button', { name: 'Fetch Details' }).click();
   await expect(page.getByText("We couldn't load that link")).toBeVisible();
-  await page.getByRole('button', { name: 'Fill in details manually →' }).click();
+  await page
+    .getByRole('button', { name: 'Fill in details manually →' })
+    .click();
   await expect(
     page.getByRole('heading', { name: 'Add the details' })
   ).toBeVisible();

@@ -1,22 +1,24 @@
 import { storeValid } from '@/lib/storeValidity';
 import { ItemDisplay, SpoilerTier } from '@/lib/types';
+import type { ReactNode } from 'react';
 import ItemActions from './ItemActions';
 import ItemPhoto from './ItemPhoto';
 import PriceLine from './PriceLine';
 
+// The claim props default to a bare viewer card so a surface that supplies its
+// own action block (edit mode's quantity stepper) states nothing about claims.
 export default function ItemCard({
   item,
   className,
-  isOwner,
-  showPurchased,
-  showSpoilerInfo,
-  viewerClaimed,
+  actions,
+  isOwner = false,
+  viewerClaimed = false,
   guestViewer,
-  fullyClaimed,
-  showCounter,
-  counterText,
-  hasAnyClaim,
-  tier,
+  fullyClaimed = false,
+  entryLine,
+  hasAnyClaim = false,
+  claimable = false,
+  tier = 'claims',
   showBuyClaim,
   viewOnly,
   onPurchaseClick,
@@ -25,17 +27,19 @@ export default function ItemCard({
 }: {
   item: ItemDisplay;
   className?: string;
-  isOwner: boolean;
-  showPurchased: boolean;
-  showSpoilerInfo: boolean;
-  viewerClaimed: boolean;
+  /** Replaces the claim action block wholesale where the card's job is not claiming. */
+  actions?: ReactNode;
+  isOwner?: boolean;
+  viewerClaimed?: boolean;
   /** Signed-out viewer — gates the claimed-guest Add Claim carve-out in ItemActions. */
   guestViewer?: boolean;
-  fullyClaimed: boolean;
-  showCounter: boolean;
-  counterText: string;
-  hasAnyClaim: boolean;
-  tier: SpoilerTier;
+  fullyClaimed?: boolean;
+  /** A line under the row, supplied by surfaces that have one (edit mode). Empty renders nothing. */
+  entryLine?: string;
+  hasAnyClaim?: boolean;
+  /** A list entry exists to claim against; see ItemActions. */
+  claimable?: boolean;
+  tier?: SpoilerTier;
   /** Authed non-owner Buy & Claim signal; absent on view-only surfaces. */
   showBuyClaim?: boolean;
   /** Non-interactive preview surfaces render only the live View item link. */
@@ -47,10 +51,14 @@ export default function ItemCard({
 }) {
   return (
     <div
-      className={`item ${className || ''} ${showPurchased || showSpoilerInfo ? 'purchased' : ''}`}
+      className={`item ${className || ''} ${fullyClaimed ? 'purchased' : ''}`}
       title={item.name || ''}
     >
-      <ItemPhoto itemId={item.id} name={item.name || ''} url={item.image_url || ''} />
+      <ItemPhoto
+        itemId={item.id}
+        name={item.name || ''}
+        url={item.image_url || ''}
+      />
       <div className="item-info">
         <div className="item-name-description">
           <h1 className="itemName">{item.name || ''}</h1>
@@ -59,23 +67,24 @@ export default function ItemCard({
           ) : null}
         </div>
         <PriceLine item={item} />
-        <ItemActions
-          isOwner={isOwner}
-          fullyClaimed={fullyClaimed}
-          viewerClaimed={viewerClaimed}
-          guestViewer={guestViewer}
-          hasAnyClaim={hasAnyClaim}
-          tier={tier}
-          showBuyClaim={showBuyClaim}
-          store={storeValid(item.store) ? (item.store ?? null) : null}
-          viewOnly={viewOnly}
-          onPurchaseClick={onPurchaseClick}
-          onAddClaimClick={onAddClaimClick}
-          onBuyClaimClick={onBuyClaimClick}
-        />
-        {showCounter && !isOwner && !showPurchased && (
-          <div className="claim-counter">{counterText}</div>
+        {actions ?? (
+          <ItemActions
+            isOwner={isOwner}
+            fullyClaimed={fullyClaimed}
+            viewerClaimed={viewerClaimed}
+            guestViewer={guestViewer}
+            hasAnyClaim={hasAnyClaim}
+            claimable={claimable}
+            tier={tier}
+            showBuyClaim={showBuyClaim}
+            store={storeValid(item.store) ? (item.store ?? null) : null}
+            viewOnly={viewOnly}
+            onPurchaseClick={onPurchaseClick}
+            onAddClaimClick={onAddClaimClick}
+            onBuyClaimClick={onBuyClaimClick}
+          />
         )}
+        {entryLine && <div className="item-entry-line">{entryLine}</div>}
       </div>
     </div>
   );

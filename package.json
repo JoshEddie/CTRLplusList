@@ -42,6 +42,7 @@
     "@vercel/speed-insights": "^1.2.0",
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.45.2",
+    "intl-messageformat": "^11.2.14",
     "next": "^16.2.4",
     "next-auth": "^5.0.0-beta.30",
     "openmoji": "^17.0.0",

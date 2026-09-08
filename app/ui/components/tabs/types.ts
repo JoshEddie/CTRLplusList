@@ -16,18 +16,19 @@ export interface TabButtonItem<T extends string = string> {
   id?: string;
 }
 
-type TabsBaseProps = {
+export interface LinkTabsProps {
+  items: readonly TabLinkItem[];
+  activeHref: string;
   size?: TabsSize;
   className?: string;
   'aria-label': string;
-};
+}
 
-export type TabsProps<T extends string> = TabsBaseProps &
-  (
-    | { items: readonly TabLinkItem[]; activeHref: string }
-    | {
-        items: readonly TabButtonItem<T>[];
-        value: T;
-        onChange: (value: T) => void;
-      }
-  );
+export interface TabsProps<T extends string> {
+  items: readonly TabButtonItem<T>[];
+  value: T;
+  onChange: (value: T) => void;
+  size?: TabsSize;
+  className?: string;
+  'aria-label': string;
+}

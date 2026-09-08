@@ -4,6 +4,7 @@ import { authedIdentity } from '@/lib/data/user.session';
 import { VISIBILITY } from '@/lib/visibility';
 import { Metadata } from 'next';
 import { Suspense } from 'react';
+import ListEditSection from './ListEditSection';
 import ListHeroSection from './ListHeroSection';
 import ListItemsSection from './ListItemsSection';
 
@@ -80,6 +81,9 @@ export default function ListPage({ params, searchParams }: Props) {
       </Suspense>
       <Suspense fallback={<LoadingIndicator size="page" />}>
         <ListItemsSection params={params} searchParams={searchParams} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <ListEditSection params={params} searchParams={searchParams} />
       </Suspense>
     </main>
   );

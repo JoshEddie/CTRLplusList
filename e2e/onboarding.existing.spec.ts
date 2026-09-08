@@ -51,9 +51,7 @@ test('Onboarding_ExistingArm_AccountMenuShowsEmailAndNoSwitchRows', async ({
   await expect(menu).toBeVisible();
 
   await expect(menu.getByText('unonboarded-existing@dev.local')).toBeVisible();
-  await expect(
-    menu.getByRole('menuitem', { name: /sign out/i })
-  ).toBeVisible();
+  await expect(menu.getByRole('menuitem', { name: /sign out/i })).toBeVisible();
 
   // No switch rows: the account holds one profile and app-frame offers a
   // single-profile viewer no switching.
@@ -81,7 +79,9 @@ test('Onboarding_ReloadBackdropAndEscape_LeaveTheGateStanding', async ({
 
   await expect(page.getByRole('button', { name: /close/i })).toHaveCount(0);
 
-  await page.getByTestId('onboarding-backdrop').click({ position: { x: 4, y: 4 } });
+  await page
+    .getByTestId('onboarding-backdrop')
+    .click({ position: { x: 4, y: 4 } });
   await expect(gate).toBeVisible();
 
   await page.keyboard.press('Escape');

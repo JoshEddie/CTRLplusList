@@ -76,7 +76,6 @@ export type ItemTable = {
   created_at: Date;
   updated_at: Date;
   profile_id: string;
-  quantity_limit: number | null;
   archived_at?: Date | null;
 };
 
@@ -99,6 +98,8 @@ export type SpoilerTier = 'surprise' | 'progress' | 'claims';
 
 export type PurchaseView = {
   id: string;
+  /** How many units the claim covers. Absent on another party's claim below a confirmed reveal, alongside the name — a per-claim count there would disclose more than the claims tier ever did. */
+  units?: number;
   by: 'self' | 'other';
   /** Absent on another party's claim, which every tier discloses as a bare count; present only on the viewer's own claims and on a confirmed reveal. */
   name?: string;
@@ -112,10 +113,22 @@ export type PurchaseView = {
   avatar?: ProfileAvatarView;
 };
 
+// A list entry's ask and what is left of it, in units. Null wherever there is
+// no entry — the item library, whose items span every list and some no list at
+// all — which is what withdraws every units control at once.
+export type EntryCapacity = { quantity: number; remaining: number };
+
 export type ItemDisplay = ItemTable & {
   store?: ItemStoreTable | null;
   purchases?: PurchaseView[];
-  hasPurchases?: boolean;
+  /** The entry this row was read through — a claim is made against it, so its absence (the item library) is what withdraws the claim affordance. */
+  list_id?: string;
+  /** Units asked for: the entry's own alongside `list_id`, or every entry's summed alongside `num_lists` on a library row. Absent for an item on no list. */
+  quantity?: number;
+  /** Units already claimed against that same scope, summed server-side (ADR-0016) so units never enter the claim projection. Withheld below the `claims` tier. */
+  claimed_units?: number;
+  /** How many entries `quantity` and `claimed_units` are summed over — present only on a library row, and what marks them as the summed reading. */
+  num_lists?: number;
 };
 
 export type SortKey =
@@ -136,7 +149,6 @@ export type ItemDetails = {
   image_url?: string | null;
   /** Fetched image-candidate pool; present only when the form session originated from a product fetch. */
   image_candidates?: string[];
-  quantity_limit: number | null;
   store: ItemStoreTable | null;
   lists: OptionType[];
 };

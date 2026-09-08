@@ -54,7 +54,7 @@
 
 .list-card,
 .more-card {
-  padding: 18px 20px;
+  padding: 16px;
 }
 
 .user-card,
@@ -93,12 +93,12 @@
 .user-card-avatar {
   position: absolute;
   left: 50%;
-  bottom: -28px;
+  top: 8px;
   transform: translateX(-50%);
-  width: 56px;
-  height: 56px;
+  width: 55px;
+  height: 55px;
   border-radius: 50%;
-  box-shadow: 0 0 0 3px var(--light-color);
+  border: 3px solid var(--light-color)
 }
 
 .user-card-avatar .altvatar-disc {
@@ -127,7 +127,7 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 32px 14px 14px;
+  padding: 30px 14px 14px;
   text-align: center;
 }
 .user-card-name {
@@ -367,7 +367,7 @@
   font-weight: 300;
   font-size: 26px;
   line-height: 1;
-  color: var(--heading-text-color);
+  color: var(--primary-color);
 }
 .rail-chevron {
   transition: transform 0.18s ease;
@@ -407,20 +407,28 @@
   padding-left: 4px;
   scrollbar-width: thin;
 }
+
 .list-card-row-item {
   flex-shrink: 0;
-  width: 236px;
+  width: 190px;
 }
-@media (min-width: 1700px) {
+
+@media (min-width: 800px) {
   .list-card-row-item {
-    width: 260px;
+    width: 236;
   }
 }
-@media (max-width: 800px) {
+
+@media (min-width: 1400px) {
+  .list-card-row {
+    display: grid;
+    grid-template-columns: repeat(6, calc(100%/6 - 10px));
+  }
   .list-card-row-item {
-    width: 190px;
+    width: auto;
   }
 }
+
 .list-card-row-empty {
   padding: 14px 0;
   color: var(--date-text-color);
@@ -457,7 +465,7 @@
   position: relative;
   overflow: hidden;
   justify-content: space-between;
-  gap: 14px;
+  gap: 4px;
 }
 .list-card-head {
   display: flex;
@@ -508,20 +516,15 @@
    accent, so a list is recognised by colour before its name is read. */
 .list-card-byline {
   display: inline-flex;
-  align-items: center;
+  align-items: flex-end;
   align-self: flex-start;
   max-width: 100%;
-  gap: 6px;
-  margin: 2px 0;
-  padding-right: 10px;
-  border-radius: 999px;
-  background-color: var(--accent-ink);
+  gap: 3px;
   /* background-color: color-mix(in srgb, var(--accent-disc) 40%, transparent); */
   font-family: var(--font-roboto-condensed);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 450;
   color: var(--accent-ink);
-  color: var(--light-color);
   min-width: 0;
   /* The disc is taller than the text line, so the row must not be squeezed by
      a height-constrained card — a shrunk row clips the disc flat. */
@@ -537,32 +540,24 @@
   text-overflow: ellipsis;
 }
 .list-card-byline-avatar {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--accent-ink);
 }
 .list-card-meta {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 8px;
 }
-.list-card-occasion {
-  font-family: var(--font-roboto-condensed);
-  font-weight: 600;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--meta-text-color);
-  background-color: var(--secondary-background-color);
-  border-radius: 20px;
-  padding: 3px 9px;
-}
+
 .list-card-date {
   font-family: var(--font-roboto-condensed);
-  font-size: 11px;
+  font-size: 12px;
   color: var(--date-text-color);
   white-space: nowrap;
-  flex-shrink: 0;
+  flex: 1;
+  text-align: right;
 }
 
 @media (max-width: 800px) {
@@ -604,7 +599,6 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  padding-bottom: 8px;
 }
 
 /* Shared full-page grid of list cards (My Lists, Bookmarks, History) */

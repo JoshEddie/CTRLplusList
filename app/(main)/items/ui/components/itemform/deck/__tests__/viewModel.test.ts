@@ -22,10 +22,6 @@ const fetchedProduct: ProductData = {
 
 describe('viewModel', () => {
   describe('blankItem', () => {
-    it('Default_QuantityIsLimitOfOne', () => {
-      expect(blankItem().qty).toBe(1);
-    });
-
     it('NoArgs_HasEmptyStore', () => {
       expect(blankItem().store).toEqual({ name: '', link: '', price: '' });
     });
@@ -94,10 +90,6 @@ describe('viewModel', () => {
       expect(vm.store.price_fetched_at).toBeNull();
     });
 
-    it('Always_DefaultsQuantityToOne', () => {
-      expect(seedFromFetch(fetchedProduct, 'https://x.test/p', 'T').qty).toBe(1);
-    });
-
     it('ImageUrlOnlyNoUrls_PoolIsActiveOnly', () => {
       const vm = seedFromFetch(
         { ...fetchedProduct, imageUrls: undefined },
@@ -150,12 +142,10 @@ describe('viewModel', () => {
           'https://example.com/a.jpg',
           'https://example.com/b.jpg',
         ],
-        quantity_limit: 3,
         store: baseStore,
         lists,
       });
       expect(vm.photoIndex).toBe(1);
-      expect(vm.qty).toBe(3);
       expect(vm.lists).toEqual([{ value: 'list-1', label: 'Birthday' }]);
     });
 
@@ -165,7 +155,6 @@ describe('viewModel', () => {
         name: 'Item',
         description: '',
         image_url: null,
-        quantity_limit: null,
         store: baseStore,
         lists: [],
       });
@@ -178,7 +167,6 @@ describe('viewModel', () => {
         name: 'Item',
         description: '',
         image_url: 'https://example.com/only.jpg',
-        quantity_limit: 1,
         store: null,
         lists: [],
       });
@@ -191,7 +179,6 @@ describe('viewModel', () => {
         name: 'Item',
         description: '',
         image_url: null,
-        quantity_limit: 1,
         store: null,
         lists: [],
       });
@@ -205,7 +192,6 @@ describe('viewModel', () => {
         description: '',
         image_url: 'https://example.com/elsewhere.jpg',
         image_candidates: ['https://example.com/a.jpg'],
-        quantity_limit: 1,
         store: null,
         lists: [],
       });
@@ -218,7 +204,6 @@ describe('viewModel', () => {
         name: 'Item',
         description: '',
         image_url: null,
-        quantity_limit: 1,
         store: { name: 's', link: 'l', price: '1' },
         lists: [],
       });
@@ -231,7 +216,6 @@ describe('viewModel', () => {
         name: 'Item',
         description: '',
         image_url: null,
-        quantity_limit: 1,
         store: {
           name: 's',
           link: 'l',
@@ -284,15 +268,6 @@ describe('viewModel', () => {
     it('NoPhotos_ActiveImageNull', () => {
       const vm = blankItem();
       expect(toItemDetails(vm).image_url).toBeNull();
-    });
-
-    it('DefaultQty_MapsToQuantityLimitOne', () => {
-      expect(toItemDetails(blankItem()).quantity_limit).toBe(1);
-    });
-
-    it('UnlimitedQty_MapsToNullQuantityLimit', () => {
-      const vm = { ...blankItem(), qty: null };
-      expect(toItemDetails(vm).quantity_limit).toBeNull();
     });
 
     it('FetchedStore_PreservesProvenance', () => {

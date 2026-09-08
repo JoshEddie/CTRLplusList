@@ -1,5 +1,7 @@
+import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { items, purchases } from '@/db/schema';
 import { ROLES } from '@/lib/data/profile.roles';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
@@ -110,7 +112,7 @@ describe('getItemsByPurchased', () => {
       { id: 'owner' },
       { id: 'other', name: 'Otto' },
     ]);
-    await seedItem(db, { id: 'shared', user_id: 'owner', quantity_limit: 2 });
+    await seedItem(db, { id: 'shared', user_id: 'owner' });
     await seedPurchase(db, {
       id: 'mine',
       item_id: 'shared',
@@ -126,6 +128,7 @@ describe('getItemsByPurchased', () => {
     const byId = Object.fromEntries(rows[0].purchases.map((p) => [p.id, p]));
     expect(byId.mine).toEqual({
       id: 'mine',
+      units: 1,
       by: 'self',
       name: 'Bea',
       claimedByViewer: false,
@@ -139,6 +142,30 @@ describe('getItemsByPurchased', () => {
       by: 'other',
       claimedByViewer: false,
     });
+  });
+
+  it('ClaimWhoseItemWasDeleted_IsOmitted-SurvivingClaimsStillListed', async () => {
+    await seedUsers(db, [{ id: 'buyer' }, { id: 'owner' }]);
+    await seedItem(db, { id: 'gone', user_id: 'owner' });
+    await seedItem(db, { id: 'kept', user_id: 'owner' });
+    await seedPurchase(db, {
+      id: 'orphan',
+      item_id: 'gone',
+      profile_id: selfProfileOf('buyer'),
+    });
+    await seedPurchase(db, {
+      id: 'live',
+      item_id: 'kept',
+      profile_id: selfProfileOf('buyer'),
+    });
+    await db.delete(items).where(eq(items.id, 'gone'));
+
+    const rows = await dal.getItemsByPurchased(selfProfileOf('buyer'));
+
+    expect(rows.map((r) => r.id)).toEqual(['kept']);
+    // The claim itself outlives its item — it is this page that has nothing
+    // to render for it yet.
+    expect(await db.select().from(purchases)).toHaveLength(2);
   });
 
   it('QueryThrows_RejectsWithRawError', async () => {
@@ -204,6 +231,7 @@ describe('sanitizePurchases', () => {
     purchased_at: CLAIMED_AT,
     id: 'p1',
     profile_id: 'bea',
+    units: 1,
     claimed_by_profile_id: 'carl',
     guest_name: null,
     purchaserProfile: {
@@ -219,6 +247,7 @@ describe('sanitizePurchases', () => {
       const [view] = dal.sanitizePurchases([attributedRow], 'bea', 'revealed');
       expect(view).toEqual({
         id: 'p1',
+        units: 1,
         purchasedAt: CLAIMED_AT,
         avatar: {
           name: 'Bea Buyer',
@@ -237,6 +266,7 @@ describe('sanitizePurchases', () => {
       const [view] = dal.sanitizePurchases([attributedRow], 'carl', 'revealed');
       expect(view).toEqual({
         id: 'p1',
+        units: 1,
         purchasedAt: CLAIMED_AT,
         avatar: {
           name: 'Bea Buyer',
@@ -252,9 +282,14 @@ describe('sanitizePurchases', () => {
     });
 
     it('UnrelatedViewer_MarkedOther-NamedInFull-RecorderNamed', () => {
-      const [view] = dal.sanitizePurchases([attributedRow], 'someone', 'revealed');
+      const [view] = dal.sanitizePurchases(
+        [attributedRow],
+        'someone',
+        'revealed'
+      );
       expect(view).toEqual({
         id: 'p1',
+        units: 1,
         purchasedAt: CLAIMED_AT,
         avatar: {
           name: 'Bea Buyer',
@@ -276,6 +311,7 @@ describe('sanitizePurchases', () => {
             id: 'p3',
             purchased_at: CLAIMED_AT,
             profile_id: 'own',
+            units: 1,
             claimed_by_profile_id: 'own',
             guest_name: null,
             purchaserProfile: { name: 'Olive Owner' },
@@ -287,6 +323,7 @@ describe('sanitizePurchases', () => {
       );
       expect(view).toEqual({
         id: 'p3',
+        units: 1,
         purchasedAt: CLAIMED_AT,
         avatar: {
           name: 'Olive Owner',
@@ -307,6 +344,7 @@ describe('sanitizePurchases', () => {
             id: 'p2',
             purchased_at: CLAIMED_AT,
             profile_id: null,
+            units: 1,
             claimed_by_profile_id: 'carl',
             guest_name: 'Mom',
             purchaserProfile: null,
@@ -318,6 +356,7 @@ describe('sanitizePurchases', () => {
       );
       expect(view).toEqual({
         id: 'p2',
+        units: 1,
         purchasedAt: CLAIMED_AT,
         by: 'other',
         name: 'Mom',
@@ -333,6 +372,7 @@ describe('sanitizePurchases', () => {
             id: 'p4',
             purchased_at: CLAIMED_AT,
             profile_id: null,
+            units: 1,
             claimed_by_profile_id: null,
             guest_name: 'Grandma',
             purchaserProfile: null,
@@ -344,20 +384,20 @@ describe('sanitizePurchases', () => {
       );
       expect(view).toEqual({
         id: 'p4',
+        units: 1,
         purchasedAt: CLAIMED_AT,
         by: 'other',
         name: 'Grandma',
         claimedByViewer: false,
       });
     });
-
   });
 
   describe('ClaimsTier', () => {
     it('OtherPartyClaim_ReturnsBareCountEntryWithNoIdentity', () => {
-      expect(dal.sanitizePurchases([attributedRow], 'someone', 'claims')).toEqual([
-        { id: 'p1', by: 'other', claimedByViewer: false },
-      ]);
+      expect(
+        dal.sanitizePurchases([attributedRow], 'someone', 'claims')
+      ).toEqual([{ id: 'p1', by: 'other', claimedByViewer: false }]);
     });
 
     it('TwoOtherPartyClaims_PreservesCountSoCapacityStaysDerivable', () => {
@@ -368,6 +408,27 @@ describe('sanitizePurchases', () => {
           'claims'
         )
       ).toHaveLength(2);
+    });
+
+    // The stub stays a bare presence flag: a per-row unit count here would
+    // turn "three people claimed" into "one person claimed three".
+    it('OtherPartyMultiUnitClaim_StubCarriesNoUnitCount', () => {
+      expect(
+        dal.sanitizePurchases(
+          [{ ...attributedRow, units: 4 }],
+          'someone',
+          'claims'
+        )
+      ).toEqual([{ id: 'p1', by: 'other', claimedByViewer: false }]);
+    });
+
+    it('ViewerOwnMultiUnitClaim_CarriesItsUnitCount', () => {
+      const [view] = dal.sanitizePurchases(
+        [{ ...attributedRow, units: 4 }],
+        'bea',
+        'claims'
+      );
+      expect(view.units).toBe(4);
     });
 
     it('ViewerOwnClaim_ReturnsFullSelfAlongsideStrippedOthers', () => {
@@ -451,6 +512,7 @@ describe('sanitizePurchases', () => {
       'claimerName',
       'purchasedAt',
       'avatar',
+      'units',
     ];
 
     it.each(['surprise', 'progress', 'claims', 'revealed'] as const)(
@@ -492,28 +554,35 @@ describe('getListClaimedCount', () => {
     await seedPurchase(db, {
       id: 'p1',
       item_id: 'i1',
+      list_id: 'l1',
       profile_id: selfProfileOf('cara'),
     });
     await seedPurchase(db, {
       id: 'p2',
       item_id: 'i2',
+      list_id: 'l1',
       profile_id: selfProfileOf('sam'),
     });
     vi.mocked(cacheTag).mockClear();
   });
 
   it('ListWithTwoOfThreeClaimed_ReportsTwoClaimedItems', async () => {
-    expect(await dal.getListClaimedCount('l1')).toEqual({ claimedItemCount: 2 });
+    expect(await dal.getListClaimedCount('l1')).toEqual({
+      claimedItemCount: 2,
+    });
   });
 
   it('OneItemClaimedTwice_CountsItOnce', async () => {
     await seedPurchase(db, {
       id: 'p1b',
       item_id: 'i1',
+      list_id: 'l1',
       profile_id: selfProfileOf('sam'),
     });
 
-    expect(await dal.getListClaimedCount('l1')).toEqual({ claimedItemCount: 2 });
+    expect(await dal.getListClaimedCount('l1')).toEqual({
+      claimedItemCount: 2,
+    });
   });
 
   // 13.4: the count reflects claims by others that a `surprise` viewer's
@@ -524,6 +593,7 @@ describe('getListClaimedCount', () => {
         id: 'p1',
         purchased_at: new Date(),
         profile_id: selfProfileOf('cara'),
+        units: 1,
         claimed_by_profile_id: selfProfileOf('cara'),
         guest_name: null,
         purchaserProfile: { name: 'Cara Lee' },
@@ -533,13 +603,37 @@ describe('getListClaimedCount', () => {
     expect(
       dal.sanitizePurchases(raw, selfProfileOf('stranger'), 'surprise')
     ).toEqual([]);
-    expect(await dal.getListClaimedCount('l1')).toEqual({ claimedItemCount: 2 });
+    expect(await dal.getListClaimedCount('l1')).toEqual({
+      claimedItemCount: 2,
+    });
+  });
+
+  // The defect this fixes: the join matched on the item alone, so a claim
+  // made on a different list that happened to share the item was counted here.
+  it('ClaimOnAnotherListOfASharedItem_IsNotCounted', async () => {
+    await seedList(db, { id: 'l2', user_id: 'owner' });
+    await seedListItem(db, { list_id: 'l2', item_id: 'i3', position: 1 });
+    await seedPurchase(db, {
+      id: 'p3',
+      item_id: 'i3',
+      list_id: 'l2',
+      profile_id: selfProfileOf('cara'),
+    });
+
+    expect(await dal.getListClaimedCount('l1')).toEqual({
+      claimedItemCount: 2,
+    });
+    expect(await dal.getListClaimedCount('l2')).toEqual({
+      claimedItemCount: 1,
+    });
   });
 
   it('ListWithNoClaims_ReportsZero', async () => {
     await seedList(db, { id: 'l2', user_id: 'owner' });
 
-    expect(await dal.getListClaimedCount('l2')).toEqual({ claimedItemCount: 0 });
+    expect(await dal.getListClaimedCount('l2')).toEqual({
+      claimedItemCount: 0,
+    });
   });
 
   // `claimedItemPoolTag` is the string purchase.actions.test asserts
@@ -587,100 +681,190 @@ describe('getListClaimedCount', () => {
 });
 
 /**
- * Pins `claim-attribution`'s reveal fetch: the confirmed item's badge-level
- * state, scoped to that item and carrying no identity.
+ * Pins `claim-attribution`'s reveal fetch: the confirmed entry's badge-level
+ * state, scoped to that entry and carrying no identity. Both numbers are
+ * units — the person count is nowhere near them.
  */
-describe('getItemClaimSummary', () => {
+describe('getEntryClaimSummary', () => {
   beforeEach(async () => {
     await seedUsers(db, [{ id: 'owner' }, { id: 'cara', name: 'Cara Lee' }]);
+    await seedList(db, { id: 'l1', user_id: 'owner' });
   });
 
-  it('LimitedItemWithOneClaim_ReportsTheCountAndTheRemainder', async () => {
-    await seedItem(db, { id: 'i1', user_id: 'owner', quantity_limit: 3 });
+  it('EntryWithOneClaim_ReportsClaimedUnitsAndTheRemainder', async () => {
+    await seedItem(db, { id: 'i1', user_id: 'owner' });
+    await seedListItem(db, {
+      list_id: 'l1',
+      item_id: 'i1',
+      position: 1,
+      quantity: 3,
+    });
     await seedPurchase(db, {
       id: 'p1',
       item_id: 'i1',
+      list_id: 'l1',
       profile_id: selfProfileOf('cara'),
     });
 
-    expect(await dal.getItemClaimSummary('i1')).toEqual({
-      claimCount: 1,
+    expect(await dal.getEntryClaimSummary('l1', 'i1')).toEqual({
+      claimedUnits: 1,
       remaining: 2,
     });
   });
 
-  it('UnlimitedItem_ReportsNullRemaining', async () => {
-    await seedItem(db, { id: 'i2', user_id: 'owner', quantity_limit: null });
-    await seedPurchase(db, { id: 'p2', item_id: 'i2', guest_name: 'Sam' });
+  // The one thing ADR-0016 asserts: capacity is measured in units, not in
+  // claim rows. Every other fixture carries one unit per claim, so a sum and a
+  // row count agree and neither test could tell them apart.
+  it('ClaimCoveringSeveralUnits_CountsUnitsRatherThanRows', async () => {
+    await seedItem(db, { id: 'i2', user_id: 'owner' });
+    await seedListItem(db, {
+      list_id: 'l1',
+      item_id: 'i2',
+      position: 1,
+      quantity: 5,
+    });
+    await seedPurchase(db, {
+      id: 'p2a',
+      item_id: 'i2',
+      list_id: 'l1',
+      units: 3,
+      guest_name: 'Bulk',
+    });
+    await seedPurchase(db, {
+      id: 'p2b',
+      item_id: 'i2',
+      list_id: 'l1',
+      profile_id: selfProfileOf('cara'),
+    });
 
-    expect(await dal.getItemClaimSummary('i2')).toEqual({
-      claimCount: 1,
-      remaining: null,
+    expect(await dal.getEntryClaimSummary('l1', 'i2')).toEqual({
+      claimedUnits: 4,
+      remaining: 1,
     });
   });
 
-  it('ClaimsBeyondTheLimit_FloorsRemainingAtZero', async () => {
-    await seedItem(db, { id: 'i3', user_id: 'owner', quantity_limit: 1 });
-    await seedPurchase(db, { id: 'p3', item_id: 'i3', guest_name: 'A' });
-    await seedPurchase(db, { id: 'p4', item_id: 'i3', guest_name: 'B' });
+  it('ClaimsBeyondTheQuantity_FloorsRemainingAtZero', async () => {
+    await seedItem(db, { id: 'i3', user_id: 'owner' });
+    await seedListItem(db, {
+      list_id: 'l1',
+      item_id: 'i3',
+      position: 1,
+      quantity: 1,
+    });
+    await seedPurchase(db, {
+      id: 'p3',
+      item_id: 'i3',
+      list_id: 'l1',
+      guest_name: 'A',
+    });
+    await seedPurchase(db, {
+      id: 'p4',
+      item_id: 'i3',
+      list_id: 'l1',
+      guest_name: 'B',
+    });
 
-    expect((await dal.getItemClaimSummary('i3'))?.remaining).toBe(0);
+    expect(await dal.getEntryClaimSummary('l1', 'i3')).toEqual({
+      claimedUnits: 2,
+      remaining: 0,
+    });
   });
 
-  it('QueryThrows_RejectsWithFailedToFetchItemClaimSummary', async () => {
+  it('ClaimOnAnotherListOfASharedItem_IsNotCounted', async () => {
+    await seedList(db, { id: 'l2', user_id: 'owner' });
+    await seedItem(db, { id: 'i5', user_id: 'owner' });
+    await seedListItem(db, { list_id: 'l1', item_id: 'i5', position: 1 });
+    await seedListItem(db, { list_id: 'l2', item_id: 'i5', position: 1 });
+    await seedPurchase(db, {
+      id: 'p6',
+      item_id: 'i5',
+      list_id: 'l2',
+      guest_name: 'Elsewhere',
+    });
+
+    expect(await dal.getEntryClaimSummary('l1', 'i5')).toEqual({
+      claimedUnits: 0,
+      remaining: 1,
+    });
+  });
+
+  it('QueryThrows_RejectsWithFailedToFetchEntryClaimSummary', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(db, 'select').mockImplementation(() => {
       throw new Error('boom');
     });
 
-    await expect(dal.getItemClaimSummary('i1')).rejects.toThrow(
-      'Failed to fetch item claim summary'
+    await expect(dal.getEntryClaimSummary('l1', 'i1')).rejects.toThrow(
+      'Failed to fetch entry claim summary'
     );
   });
 
-  it('UnknownItem_ReturnsNull', async () => {
-    expect(await dal.getItemClaimSummary('no-such-item')).toBeNull();
+  it('UnknownEntry_ReturnsNull', async () => {
+    expect(await dal.getEntryClaimSummary('l1', 'no-such-item')).toBeNull();
   });
 
-  it('ClaimedItem_NamesNobody', async () => {
-    await seedItem(db, { id: 'i4', user_id: 'owner', quantity_limit: 2 });
+  it('ClaimedEntry_NamesNobody', async () => {
+    await seedItem(db, { id: 'i4', user_id: 'owner' });
+    await seedListItem(db, {
+      list_id: 'l1',
+      item_id: 'i4',
+      position: 1,
+      quantity: 2,
+    });
     await seedPurchase(db, {
       id: 'p5',
       item_id: 'i4',
+      list_id: 'l1',
       profile_id: selfProfileOf('cara'),
     });
 
-    expect(Object.keys((await dal.getItemClaimSummary('i4')) ?? {})).toEqual([
-      'claimCount',
-      'remaining',
-    ]);
+    expect(
+      Object.keys((await dal.getEntryClaimSummary('l1', 'i4')) ?? {})
+    ).toEqual(['claimedUnits', 'remaining']);
   });
 });
 
 /**
  * Pins `claim-attribution`'s name reveal: the owner confirmed it, so every
- * claim on the item comes back named — the `claims` projection's bare-count
+ * claim on the entry comes back named — the `claims` projection's bare-count
  * entries are exactly what it exists to replace.
  */
-describe('getRevealedItemClaims', () => {
+describe('getRevealedEntryClaims', () => {
   beforeEach(async () => {
     await seedUsers(db, [
       { id: 'owner' },
       { id: 'cara', name: 'Cara Lee' },
       { id: 'dan', name: 'Dan Ash' },
     ]);
-    await seedItem(db, { id: 'i1', user_id: 'owner', quantity_limit: 3 });
+    await seedList(db, { id: 'l1', user_id: 'owner' });
+    await seedItem(db, { id: 'i1', user_id: 'owner' });
+    await seedListItem(db, {
+      list_id: 'l1',
+      item_id: 'i1',
+      position: 1,
+      quantity: 3,
+    });
   });
 
   it('OtherPartiesClaims_ComeBackNamedRatherThanAsBareCounts', async () => {
     await seedPurchase(db, {
       id: 'p1',
       item_id: 'i1',
+      list_id: 'l1',
       profile_id: selfProfileOf('cara'),
     });
-    await seedPurchase(db, { id: 'p2', item_id: 'i1', guest_name: 'Grandma' });
+    await seedPurchase(db, {
+      id: 'p2',
+      item_id: 'i1',
+      list_id: 'l1',
+      guest_name: 'Grandma',
+    });
 
-    const views = await dal.getRevealedItemClaims('i1', selfProfileOf('dan'));
+    const views = await dal.getRevealedEntryClaims(
+      'l1',
+      'i1',
+      selfProfileOf('dan')
+    );
 
     expect(views.map((view) => view.name).sort()).toEqual([
       'Cara Lee',
@@ -692,27 +876,45 @@ describe('getRevealedItemClaims', () => {
     await seedPurchase(db, {
       id: 'p1',
       item_id: 'i1',
+      list_id: 'l1',
       profile_id: selfProfileOf('cara'),
     });
 
-    const [view] = await dal.getRevealedItemClaims('i1', selfProfileOf('cara'));
+    const [view] = await dal.getRevealedEntryClaims(
+      'l1',
+      'i1',
+      selfProfileOf('cara')
+    );
 
     expect(view.by).toBe('self');
   });
 
-  it('ItemWithNoClaims_ReturnsEmpty', async () => {
-    expect(await dal.getRevealedItemClaims('i1', undefined)).toEqual([]);
+  it('ClaimOnAnotherListOfTheSameItem_IsNotNamed', async () => {
+    await seedList(db, { id: 'l2', user_id: 'owner' });
+    await seedListItem(db, { list_id: 'l2', item_id: 'i1', position: 1 });
+    await seedPurchase(db, {
+      id: 'p2',
+      item_id: 'i1',
+      list_id: 'l2',
+      guest_name: 'Elsewhere',
+    });
+
+    expect(await dal.getRevealedEntryClaims('l1', 'i1', undefined)).toEqual([]);
   });
 
-  it('QueryThrows_RejectsWithFailedToFetchRevealedItemClaims', async () => {
+  it('EntryWithNoClaims_ReturnsEmpty', async () => {
+    expect(await dal.getRevealedEntryClaims('l1', 'i1', undefined)).toEqual([]);
+  });
+
+  it('QueryThrows_RejectsWithFailedToFetchRevealedEntryClaims', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(db.query.purchases, 'findMany').mockImplementation(() => {
       throw new Error('boom');
     });
 
-    await expect(dal.getRevealedItemClaims('i1', undefined)).rejects.toThrow(
-      'Failed to fetch revealed item claims'
-    );
+    await expect(
+      dal.getRevealedEntryClaims('l1', 'i1', undefined)
+    ).rejects.toThrow('Failed to fetch revealed entry claims');
   });
 });
 
@@ -736,13 +938,25 @@ describe('canRemovePurchase', () => {
 
     it('RoleOwner_ReturnsTrue', () => {
       expect(
-        dal.canRemovePurchase(foreignClaim, OWNED, actor, noCookies, ROLES.owner)
+        dal.canRemovePurchase(
+          foreignClaim,
+          OWNED,
+          actor,
+          noCookies,
+          ROLES.owner
+        )
       ).toBe(true);
     });
 
     it('RoleManager_ReturnsFalse', () => {
       expect(
-        dal.canRemovePurchase(foreignClaim, OWNED, actor, noCookies, ROLES.manager)
+        dal.canRemovePurchase(
+          foreignClaim,
+          OWNED,
+          actor,
+          noCookies,
+          ROLES.manager
+        )
       ).toBe(false);
     });
   });

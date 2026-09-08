@@ -102,7 +102,6 @@ describe('ItemFormContainer', () => {
             {
               id: 'i1',
               name: 'Gift',
-              quantity_limit: 1,
               store: null,
               lists: [],
             } as never
@@ -124,7 +123,6 @@ describe('ItemFormContainer', () => {
             {
               id: 'i1',
               name: 'Gift',
-              quantity_limit: 1,
               store: null,
               lists: [],
             } as never
@@ -362,9 +360,7 @@ describe('ItemFormContainer', () => {
       );
       const user = await openManualViaFailure();
       await fillManualItem(user);
-      await user.click(
-        screen.getByRole('button', { name: /Lists & quantity/ })
-      );
+      await user.click(screen.getByRole('button', { name: /Lists/ }));
       expect(
         screen.getByRole('checkbox', { name: 'Birthday' })
       ).toBeInTheDocument();

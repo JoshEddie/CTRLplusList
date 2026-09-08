@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Tabs } from '@/app/ui/components/tabs';
+import { LinkTabs } from '@/app/ui/components/tabs';
 
 const TABS = [
   { label: 'My Lists', href: '/lists' },
@@ -18,7 +18,7 @@ export default function ListCollectionsNav({
   const pathname = usePathname();
   return (
     <div className="list-collections-nav pinned-page-chrome">
-      <Tabs
+      <LinkTabs
         className="list-collections-tabs"
         aria-label="List collections"
         items={TABS}

@@ -41,6 +41,13 @@ export default function ListCard({
             {list.name}
           </span>
         </div>
+        {list.subtitle ? (
+          <div className="list-card-subtitle">{list.subtitle}</div>
+        ) : (
+          <div className="list-card-subtitle-placeholder" aria-hidden />
+        )}
+      </div>
+      <div className="list-card-meta">
         {owner && (
           <div className="list-card-byline">
             <ProfileAvatar
@@ -50,18 +57,10 @@ export default function ListCard({
             <span className="list-card-byline-name">{owner.name}</span>
           </div>
         )}
-        {list.subtitle ? (
-          <div className="list-card-subtitle">{list.subtitle}</div>
-        ) : (
-          <div className="list-card-subtitle-placeholder" aria-hidden />
-        )}
-      </div>
-      <div className="list-card-meta">
-        <span className="list-card-occasion">{list.occasion}</span>
         <span className="list-card-date">
           {list.date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
+            year: '2-digit',
+            month: '2-digit',
             day: '2-digit',
             timeZone: 'UTC',
           })}

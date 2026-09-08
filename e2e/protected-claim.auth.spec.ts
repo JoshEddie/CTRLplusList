@@ -37,7 +37,7 @@ test('ProtectedList_SurpriseBaseline_DisclosesNoClaimButStillOffersAddClaim', as
   // The affordance renders anyway: recording a purchase never requires
   // leaving the page to flip a setting first.
   await expect(
-    page.getByRole('button', { name: 'Add Claim', exact: true }).first()
+    page.getByRole('button', { name: 'Claim', exact: true }).first()
   ).toBeVisible();
 });
 
@@ -48,16 +48,16 @@ test('ProtectedList_DeclineTheConfirmation_DisclosesNothing', async ({
   await expect(page.locator('.item-container').first()).toBeVisible();
 
   await page
-    .getByRole('button', { name: 'Add Claim', exact: true })
+    .getByRole('button', { name: 'Claim', exact: true })
     .first()
     .click();
   await expect(
-    page.getByRole('heading', { name: "This could spoil a surprise" })
+    page.getByRole('heading', { name: 'This could spoil a surprise' })
   ).toBeVisible();
 
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(
-    page.getByRole('heading', { name: "This could spoil a surprise" })
+    page.getByRole('heading', { name: 'This could spoil a surprise' })
   ).toHaveCount(0);
   await expect(page.getByText('Spoilers:')).toHaveCount(0);
 });
@@ -71,12 +71,12 @@ test('ProtectedList_ConfirmThenSelfClaim_PersistsTheOwnersOwnClaim', async ({
   const item = page
     .locator('.item-container')
     .filter({
-      has: page.getByRole('button', { name: 'Add Claim', exact: true }),
+      has: page.getByRole('button', { name: 'Claim', exact: true }),
     })
     .first();
   const itemName = (await item.locator('.itemName').innerText()).trim();
 
-  await item.getByRole('button', { name: 'Add Claim', exact: true }).click();
+  await item.getByRole('button', { name: 'Claim', exact: true }).click();
   await page.getByRole('button', { name: 'Show me', exact: true }).click();
 
   // The disclosure lands before the act: the CTA renders optimistically while
@@ -114,7 +114,7 @@ test('ProtectedList_ConfirmTheReveal_DisclosesTheBadgeStateAndNamesNobody', asyn
   await expect(page.locator('.item-container').first()).toBeVisible();
 
   await page
-    .getByRole('button', { name: 'Add Claim', exact: true })
+    .getByRole('button', { name: 'Claim', exact: true })
     .first()
     .click();
   await page.getByRole('button', { name: 'Show me', exact: true }).click();
@@ -148,7 +148,7 @@ test('ProtectedList_MasterUnclaimsAnothersClaim_RemovesItAfterReload', async ({
   // the owner's manage-claims reveal is what turns it into rows. Confirming it
   // is what puts a master-unclaim control on another party's claim.
   const card = page
-    .locator('.item-container', { hasText: 'claimed' })
+    .locator('.item-container')
     .filter({ has: page.getByRole('button', { name: 'Manage claims' }) })
     .first();
   await card.getByRole('button', { name: 'Manage claims' }).click();

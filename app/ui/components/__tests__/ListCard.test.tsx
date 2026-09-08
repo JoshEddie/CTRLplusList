@@ -5,12 +5,12 @@
  * the link and the labeled bookmark icon but cannot read class-named spans or
  * assert element absence by class; classed `document` queries are required.
  */
+import { ACCENT_PRESETS } from '@/lib/accent';
+import { makeProfile } from '@/test/helpers/profile';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ListCard from '../ListCard';
 import { makeList } from './test-helpers';
-import { makeProfile } from '@/test/helpers/profile';
-import { ACCENT_PRESETS } from '@/lib/accent';
 
 const ART = 'data:image/svg+xml;utf8,%3Csvg%2F%3E';
 
@@ -35,13 +35,6 @@ describe('ListCard', () => {
       expect(nameText).toHaveAttribute('title', 'Birthday Wishlist');
     });
 
-    it('Default_OccasionRendersInOccasionSpan', () => {
-      render(<ListCard list={makeList({ occasion: 'Christmas' })} />);
-      expect(document.querySelector('.list-card-occasion')).toHaveTextContent(
-        'Christmas'
-      );
-    });
-
     it('Date_RendersInUtcTimeZone-NotLocalDay', () => {
       // 00:30 UTC on Jan 1 falls on Dec 31 in any zone west of UTC; the
       // `timeZone: 'UTC'` formatting option must pin the displayed day to Jan 01.
@@ -49,7 +42,7 @@ describe('ListCard', () => {
         <ListCard list={makeList({ date: new Date('2025-01-01T00:30:00Z') })} />
       );
       expect(document.querySelector('.list-card-date')).toHaveTextContent(
-        'Jan 01, 2025'
+        '01/01/25'
       );
     });
   });
