@@ -36,10 +36,10 @@
     var(--primary-color-dark) 25%,
     var(--secondary-color-dark) 100%
   );
-  --heading-text-color: #1f2937;
-  --subtitle-text-color: #aaaaaa;
+  --heading-text-color: var(--secondary-color-dark);
+  --subtitle-text-color: #5f6470;
   --meta-text-color: #5f6470;
-  --date-text-color: #cccccc;
+  --date-text-color: #5f6470;
   --divider-color: #f0f0f8;
   --card-border-color: #ebebf5;
   --card-border-hover-color: #d4baf5;
@@ -70,7 +70,7 @@
   --spoiler-tint-claims: #f6d5c9;
   --tab-active-color: var(--primary-color);
 
-  --WCAG-input-size: 44px;
+  --WCAG-input-size: 40px;
   --WCAG-input-size-sm: 36px;
   /* The visible band: the slice of the layout viewport the soft keyboard is not
      covering. AppViewport overwrites both with exact pixels off visualViewport;
@@ -359,9 +359,9 @@ body {
 .error-boundary h3,
 .header .pageTitle,
 .list-private h1 {
-  font-size: 40px;
+  font-size: 35px;
   font-family: var(--font-crimson-pro);
-  font-weight: 100;
+  font-weight: 400;  
 }
 
 .empty-container p,

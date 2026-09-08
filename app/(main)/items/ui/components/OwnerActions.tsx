@@ -46,6 +46,7 @@ export default function OwnerActions({
       <Button
         ref={kebabRef}
         variant="ghost"
+        size='sm'
         className="item-owner-actions-kebab"
         aria-haspopup="menu"
         aria-expanded={kebabOpen}

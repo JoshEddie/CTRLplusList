@@ -1,9 +1,9 @@
 :root {
   --btn-radius: 8px;
-  --btn-padding-y: 10px;
+  --btn-padding-y: 0;
   --btn-padding-x: 20px;
-  --btn-font-size: 16px;
-  --btn-font-weight: 500;
+  --btn-font-size: 15px;
+  --btn-font-weight: 450;
   --btn-min-height: var(--WCAG-input-size);
   --btn-min-width: var(--WCAG-input-size);
   --btn-focus-ring-color: var(--primary-color);
@@ -88,20 +88,29 @@
   background-color: var(--primary-color-dark);  
   background: linear-gradient(
     120deg,
-    var(--secondary-color) 0%,
+    var(--primary-color) 0%,
     var(--primary-color-dark) 50%,
     var(--primary-color-dark) 100%
   );
   background-size: 400% 100%;
-  background-position: 100% 0%; /* solid primary-dark shows */
-  transition: background-position 0.5s ease;
+  background-position: 100% 0%;
+  transition: 0.5s ease;
   border-color: var(--primary-color-dark);
   color: #ffffff;
 }
 
 .btn.secondary {
-  border-color: var(--third-background-color);
   background-color: var(--third-background-color);
+    background: linear-gradient(
+    120deg,
+    var(--primary-color) 0%,
+    var(--third-background-color) 50%,
+    var(--third-background-color) 100%
+  );
+  background-size: 400% 100%;
+  background-position: 100% 0%;
+  transition: background-position 0.5s ease;
+  border-color: var(--primary-color-dark);
   color: var(--primary-text-color);
 }
 
@@ -171,15 +180,22 @@
 
 @media (hover: hover) {
   .btn.primary:hover {
-    background-position: 0% 0%; /* gradient fills from right */
+    background-position: 0% 0%;
     color: #ffffff;
-    border-color: var(--secondary-color);
+    border-color: var(--primary-color);
   }
 
   .btn.secondary:hover {
-    border-color: var(--secondary-color);
-    background-color: var(--secondary-color);
-    color: #ffffff;
+    border-color: var(--primary-color);
+    color: #ffffff; 
+    background: linear-gradient(
+      120deg,
+      var(--primary-color) 0%,
+      var(--primary-color-dark) 50%,
+      var(--primary-color-dark) 100%
+    );
+    background-size: 400% 100%;
+    background-position: 0% 0%;
   }
 
   .btn.ghost:hover {

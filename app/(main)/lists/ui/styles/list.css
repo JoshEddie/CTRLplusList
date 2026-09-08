@@ -289,8 +289,8 @@
 }
 
 .list-hero-byline-group .altvatar-disc {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
 }
 
 .list-hero-byline-text {
@@ -1013,7 +1013,7 @@
   grid-template-areas: 'changes pager save';
   align-items: center;
   gap: 16px;
-  padding: 10px 44px calc(10px + env(safe-area-inset-bottom));
+  padding: 10px 20px calc(10px + env(safe-area-inset-bottom));
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);
   border-top: 1px solid var(--card-border-color);
@@ -1257,8 +1257,8 @@
   flex-direction: column;
   justify-content: center;
   gap: 2px;
-  min-height: 44px;
-  padding: 6px 14px;
+  min-height: 40px;
+  padding: 0 12px;
   border-radius: 8px;
   border: 1px solid transparent;
   text-align: left;

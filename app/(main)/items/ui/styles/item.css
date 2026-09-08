@@ -8,7 +8,7 @@
 
 .item-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(248px, 100%), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(225px, 100%), 1fr));
   grid-auto-rows: min-content;
   gap: 12px;
 }
@@ -286,7 +286,6 @@
 /* Without this the value line wraps and the tile outgrows the search field. */
 .items-toolbar-cell--spoilers .hero-tile {
   height: 100%;
-  padding: 6px 10px;
 }
 
 .items-toolbar-cell--spoilers .hero-tile-value {
