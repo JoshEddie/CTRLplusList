@@ -1,5 +1,6 @@
 import { db } from '@/db';
 import { list_items } from '@/db/schema';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, asc, desc, eq, gt, lt } from 'drizzle-orm';
 
 export async function checkListBalance(listId: string): Promise<boolean> {
@@ -38,6 +39,11 @@ export async function rebalanceList(listId: string): Promise<void> {
   });
 
   await Promise.all(updates);
+
+  // Fired here rather than left to the mover: a rebalance rewrites every
+  // position in the list, so the keys it invalidates are its own and not the
+  // ones the write that tripped it already named.
+  updateTags(cacheTags.itemsOfList(listId));
 }
 
 // Integer fractional-index position for a moved item: the midpoint between the

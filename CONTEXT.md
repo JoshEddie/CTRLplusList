@@ -117,17 +117,21 @@ though Save rewrites their positions along with it
 An item's presence on one list, carrying the position it holds there, the
 quantity wanted there, and the claims made against it. An item on several lists
 has one entry per list, and the entries share nothing — adding an item to a list
-creates its entry at quantity 1. Stored as `list_items`, whose name reads like a
-pure join table even though what it carries belongs to the entry rather than to
-the item or the list.
+creates its entry at quantity 1. A claim outlives the entry it was made against:
+it holds its own nullable references rather than a key on the entry, so removing
+the entry leaves the claim standing. Stored as `list_items`, whose name reads
+like a pure join table even though what it carries belongs to the entry rather
+than to the item or the list.
 
 **Quantity**:
 How many of an item its owner wants **on one list** — the only quantity there
 is, since an item carries none of its own. The same item asked for once at a
-birthday and four times at Christmas is two entries with two quantities. Set
-only inside edit mode, where the entry's stepper is the one quantity control,
-and shown on every card the entry backs, whatever its value — summed over
-every entry on a library card, which is read through none. There is no unlimited quantity, and none above 99.
+birthday and four times at Christmas is two entries with two quantities. **0 is
+what "not on this list" means**: it is the absence of an entry rather than a
+value an entry can hold, so an item off a list and an item never added to it
+are one state. A stored quantity therefore runs from 1 to 99 — there is no
+unlimited quantity — and is shown on every card the entry backs, whatever its
+value, summed over every entry on a library card, which is read through none.
 Lowering it below what is already claimed succeeds quietly: refusing would tell
 an owner held below the claims tier that somebody has bought something
 ([ADR-0015](docs/adr/0015-behaviour-may-not-vary-on-spoiler-hidden-state.md)).

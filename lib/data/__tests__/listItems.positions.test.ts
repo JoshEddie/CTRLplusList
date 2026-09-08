@@ -3,9 +3,12 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { list_items } from '@/db/schema';
 import { bootPglite, resetDb } from '@/test/helpers/db';
+import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers } from '@/test/helpers/seedFollowGraph';
 
 import { seedItem, seedList, seedListItem, type TestDb } from './test-helpers';
+
+mockNextCache();
 
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock('@/db', () => ({
