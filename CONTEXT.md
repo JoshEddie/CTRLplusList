@@ -241,7 +241,8 @@ profile is never a follower.
 The profile a list's byline names, shown as a card: its name and look, the
 count of its lists this viewer can see, and a link to its Altvatar space. It
 gains **Follow** whenever the owning profile is not the viewer's own
-self-profile.
+self-profile, and an offer to switch **active profile** whenever the viewer's
+account holds a writable **membership** on it.
 
 **Block**:
 An edge between two profiles, always written and read with the blocker's

@@ -163,6 +163,7 @@ export const en = {
   stepper_max_label: 'Set to maximum, {value, number}',
   stepper_min_caption: 'MIN',
   stepper_min_label: 'Set to minimum, {value, number}',
+  switch_profile_label: 'Switch to {name}',
   view_item_aria_label: 'View item — opens in new tab',
   view_item_label: 'View item',
   view_item_label_short: 'View',

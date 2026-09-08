@@ -62,6 +62,7 @@ vi.mock('../BylineProfileCard', () => ({
     profileId: string;
     listCount: number;
     followState?: FollowState | null;
+    canSwitchProfile?: boolean;
     asMenuRow?: boolean;
   }) => (
     <div
@@ -69,6 +70,7 @@ vi.mock('../BylineProfileCard', () => ({
       data-profile-id={p.profileId}
       data-list-count={p.listCount}
       data-offers-follow={p.followState ? 'true' : undefined}
+      data-can-switch={p.canSwitchProfile ? 'true' : undefined}
     />
   ),
 }));
@@ -739,7 +741,8 @@ describe('ListDetails', () => {
       );
     });
 
-    it('MembershipOnTheOwningProfile_RendersTheOfferNamingIt', async () => {
+    // One read feeds two surfaces, so both are asserted off the one render.
+    it('MembershipOnTheOwningProfile_RendersTheOfferNamingIt-OffersTheSwitchOnTheProfileCard', async () => {
       vi.mocked(writableMembership).mockResolvedValue({
         name: 'Kiddo',
         role: ROLES.manager,
@@ -749,15 +752,22 @@ describe('ListDetails', () => {
 
       const offer = screen.getByTestId('switch-offer-stub');
       expect(offer).toHaveAttribute('data-profile-name', 'Kiddo');
+      expect(screen.getByTestId('byline-card')).toHaveAttribute(
+        'data-can-switch',
+        'true'
+      );
     });
 
-    it('NoMembershipOnTheOwningProfile_RendersNoOffer', async () => {
+    it('NoMembershipOnTheOwningProfile_RendersNoOffer-OffersNoSwitchOnTheProfileCard', async () => {
       vi.mocked(writableMembership).mockResolvedValue(null);
       await renderHero(asViewerOfSharedList);
 
       expect(
         screen.queryByTestId('switch-offer-stub')
       ).not.toBeInTheDocument();
+      expect(screen.getByTestId('byline-card')).not.toHaveAttribute(
+        'data-can-switch'
+      );
     });
 
     it('RaisedSpoilerTier_StillRendersTheOffer', async () => {

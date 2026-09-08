@@ -2,6 +2,7 @@
 
 import { Button } from '@/app/ui/components/button';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
+import { getMessage } from '@/lib/i18n/utils';
 import { useRef, useState } from 'react';
 import { MdModeEdit, MdMoreHoriz, MdSwapHoriz } from 'react-icons/md';
 
@@ -64,7 +65,7 @@ export default function ProfileCardMenu({
               onSwitch(profileId);
             }}
           >
-            Switch to {profileName}
+            {getMessage('switch_profile_label', { name: profileName })}
           </MenuItem>
         )}
         <MenuLinkItem

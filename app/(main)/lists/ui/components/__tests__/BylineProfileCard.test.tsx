@@ -1,7 +1,7 @@
 /**
- * The card's two content shapes turn on viewer identity — a stranger, and
- * someone who is not the owning profile's self — which is why they are proven
- * here rather than end-to-end.
+ * The card's three content shapes turn on viewer identity — a stranger, someone
+ * who is not the owning profile's self, and an account that may act as it —
+ * which is why they are proven here rather than end-to-end.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -24,6 +24,12 @@ vi.mock('next/navigation', async (importOriginal) => ({
 }));
 vi.mock('react-hot-toast', () => ({
   default: { success: vi.fn(), error: vi.fn() },
+}));
+// The switch and its confirmation belong to the provider wrapping `(main)`;
+// the card only asks it to run one.
+const { switchProfile } = vi.hoisted(() => ({ switchProfile: vi.fn() }));
+vi.mock('@/app/ui/components/ProfileSwitchProvider', () => ({
+  useProfileSwitch: () => switchProfile,
 }));
 
 const NOT_FOLLOWING = { following: false, requireDisclosure: false };
@@ -95,6 +101,32 @@ describe('BylineProfileCard', () => {
       expect(
         screen.getByRole('link', { name: 'View Altvatar' })
       ).toBeInTheDocument();
+    });
+
+    // The shapes are cumulative, and a writable membership on someone else's
+    // profile clears the not-self gate Follow turns on too — so this is the
+    // third shape as a viewer meets it, both actions at once.
+    // `skipHover` for the same reason the dismissal tests use it: jsdom lays
+    // nothing out, so userEvent's pointer routes to the card through the body.
+    it('CanSwitchProfile_OffersTheSwitchBesideFollow-RunsTheSwitchForTheProfile', async () => {
+      const user = userEvent.setup({ skipHover: true });
+      render(
+        <BylineProfileCard
+          {...baseProps}
+          followState={NOT_FOLLOWING}
+          canSwitchProfile
+        />
+      );
+      await user.click(trigger());
+
+      expect(
+        screen.getByRole('button', { name: 'Follow' })
+      ).toBeInTheDocument();
+      await user.click(
+        screen.getByRole('button', { name: 'Switch to Olivia Owner' })
+      );
+
+      expect(switchProfile).toHaveBeenCalledWith('owner-profile-1');
     });
   });
 

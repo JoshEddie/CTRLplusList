@@ -3,6 +3,7 @@
 import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import { Button, LinkButton } from '@/app/ui/components/button';
 import { MenuItem } from '@/app/ui/components/menu';
+import { useProfileSwitch } from '@/app/ui/components/ProfileSwitchProvider';
 import { useOutsideDismiss } from '@/app/ui/components/use-dismiss';
 import FollowControls from '@/app/(main)/users/ui/components/FollowControls';
 import type { FollowState } from '@/lib/data/follow';
@@ -13,15 +14,17 @@ import { useLayoutEffect, useRef, useState } from 'react';
 
 const EDGE_MARGIN_PX = 8;
 
-// One card, two content shapes: the profile's name, its viewer-visible list
+// One card, three content shapes: the profile's name, its viewer-visible list
 // count and its Altvatar space always; Follow whenever the owning profile is
-// not the viewer's own self-profile. Follow arrives as a slot because its
-// block gating is a server read.
+// not the viewer's own self-profile; a switch offer whenever the account can
+// act as it. Both extras arrive as props because each is a server read — a
+// block check and a membership row.
 export default function BylineProfileCard({
   profileId,
   owner,
   listCount,
   followState,
+  canSwitchProfile = false,
   asMenuRow = false,
 }: {
   profileId: string;
@@ -29,9 +32,12 @@ export default function BylineProfileCard({
   listCount: number;
   /** Absent where the profile is the viewer's own self, or either side blocks. */
   followState?: FollowState | null;
+  /** The account holds a writable membership on the owning profile. */
+  canSwitchProfile?: boolean;
   /** Renders the trigger as a kebab row, for the collapsed header. */
   asMenuRow?: boolean;
 }) {
+  const switchProfile = useProfileSwitch();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -83,9 +89,8 @@ export default function BylineProfileCard({
     onScroll: close,
   });
 
-  const label = getMessage('byline_card_open_label', {
-    name: owner.name || getMessage('owner_name_placeholder'),
-  });
+  const name = owner.name || getMessage('owner_name_placeholder');
+  const label = getMessage('byline_card_open_label', { name });
 
   // The first-follow disclosure is a modal dialog, which takes the pointer
   // with it — dismissing on that leave would close the card out from under
@@ -162,16 +167,26 @@ export default function BylineProfileCard({
             </div>
           </div>
           <div className="byline-card-actions">
-            <LinkButton variant="secondary" href={`/altvatar/${profileId}`}>
-              {getMessage('byline_card_altvatar_link')}
-            </LinkButton>
-            {followState && (
-              <FollowControls
-                profileId={profileId}
-                userName={owner.name}
-                initialFollowing={followState.following}
-                requireDisclosure={followState.requireDisclosure}
-              />
+            <div className="byline-card-links">
+              <LinkButton variant="secondary" href={`/altvatar/${profileId}`}>
+                {getMessage('byline_card_altvatar_link')}
+              </LinkButton>
+              {followState && (
+                <FollowControls
+                  profileId={profileId}
+                  userName={owner.name}
+                  initialFollowing={followState.following}
+                  requireDisclosure={followState.requireDisclosure}
+                />
+              )}
+            </div>
+            {canSwitchProfile && (
+              <Button
+                variant="primary"
+                onClick={() => switchProfile(profileId)}
+              >
+                {getMessage('switch_profile_label', { name })}
+              </Button>
             )}
           </div>
         </div>

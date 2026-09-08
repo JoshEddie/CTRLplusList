@@ -2,6 +2,7 @@
 
 import { Button } from '@/app/ui/components/button';
 import { useProfileSwitch } from '@/app/ui/components/ProfileSwitchProvider';
+import { getMessage } from '@/lib/i18n/utils';
 import { useState } from 'react';
 
 // Floating and dismissible rather than an interstitial, which would block on
@@ -46,7 +47,7 @@ export default function SwitchProfileOffer({
         </button>
       </div>
       <Button variant="primary" onClick={() => switchProfile(profileId)}>
-        Switch to {profileName}
+        {getMessage('switch_profile_label', { name: profileName })}
       </Button>
     </div>
   );

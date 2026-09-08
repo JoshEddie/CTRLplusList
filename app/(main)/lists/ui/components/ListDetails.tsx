@@ -99,6 +99,7 @@ export default async function ListDetails({
     owner,
     listCount: ownerProfile?.publicListCount ?? 0,
     followState,
+    canSwitchProfile: !!otherProfileMembership,
   };
 
   const updatedDisplay = timeAgo(list.updated_at);

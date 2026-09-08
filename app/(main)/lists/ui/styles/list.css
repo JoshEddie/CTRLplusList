@@ -411,10 +411,18 @@
 
 .byline-card-actions {
   display: grid;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+/* Altvatar and Follow share a row; the switch offer takes the full width
+   below it, so the act of becoming this profile never reads as a peer of
+   looking at it. */
+.byline-card-links {
+  display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   gap: 8px;
-  padding: 0 12px 12px;
 }
 
 .list-hero-action-row {
