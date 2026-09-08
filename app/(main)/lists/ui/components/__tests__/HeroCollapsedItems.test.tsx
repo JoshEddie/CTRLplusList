@@ -1,9 +1,6 @@
-/* eslint-disable testing-library/no-node-access, testing-library/no-container --
+/* eslint-disable testing-library/no-node-access --
  * The Share menu item exposes its icon as an `aria-hidden` `<svg>` with no
- * accessible name (tag query only), and the FollowDisclosureDialog's open
- * state lives on the native `<dialog>.open` property — a closed dialog is
- * outside the accessibility tree, so `container.querySelector('dialog')` is
- * the only path to assert disclosure gating.
+ * accessible name, so a tag query is the only path to it.
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -11,14 +8,12 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setListVisibility } from '@/lib/data/list.actions';
 import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
-import { followUser, unfollowUser } from '@/lib/data/profile.actions';
 import { Menu } from '@/app/ui/components/menu';
 import { ListTable } from '@/lib/types';
 import { VISIBILITY } from '@/lib/visibility';
 import toast from 'react-hot-toast';
 import {
   BookmarkMenuItem,
-  FollowMenuItem,
   ShareMenuItem,
   SpoilerMenuItems,
   VisibilityMenuItems,
@@ -30,11 +25,6 @@ vi.mock('@/lib/data/list.actions', () => ({
 vi.mock('@/lib/data/visit.actions', () => ({
   bookmarkList: vi.fn(),
   unbookmarkList: vi.fn(),
-}));
-
-vi.mock('@/lib/data/profile.actions', () => ({
-  followUser: vi.fn(),
-  unfollowUser: vi.fn(),
 }));
 
 const router = vi.hoisted(() => ({
@@ -83,24 +73,7 @@ function renderInMenu(node: ReactNode) {
   );
 }
 
-// FollowMenuItem renders a native <dialog>; jsdom does not implement
-// showModal/close, so stub them to flip the `open` property the tests read.
-const dialogProto = HTMLDialogElement.prototype as unknown as Record<
-  string,
-  unknown
->;
-const originals = {
-  showModal: dialogProto.showModal,
-  close: dialogProto.close,
-};
-
 beforeEach(() => {
-  dialogProto.showModal = vi.fn(function (this: HTMLDialogElement) {
-    this.open = true;
-  });
-  dialogProto.close = vi.fn(function (this: HTMLDialogElement) {
-    this.open = false;
-  });
   Object.defineProperty(navigator, 'share', {
     configurable: true,
     value: vi.fn().mockResolvedValue(undefined),
@@ -112,8 +85,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  dialogProto.showModal = originals.showModal;
-  dialogProto.close = originals.close;
   Object.defineProperty(navigator, 'share', {
     configurable: true,
     value: undefined,
@@ -426,139 +397,6 @@ describe('BookmarkMenuItem', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Bookmarked' }));
     expect(bookmarkList).toHaveBeenCalledTimes(1);
     resolve({ success: true, message: '' });
-  });
-});
-
-describe('FollowMenuItem', () => {
-  const props = {
-    ownerProfileId: 'owner-profile-1',
-    ownerName: 'Bob',
-    initialFollowing: false,
-    requireDisclosure: false,
-  };
-
-  describe('NotFollowing', () => {
-    it('Default_RendersFollow-IconSvg', () => {
-      renderInMenu(<FollowMenuItem {...props} />);
-      const item = screen.getByRole('menuitem', { name: 'Follow' });
-      expect(item).toBeInTheDocument();
-      expect(item.querySelector('svg')).not.toBeNull();
-    });
-
-    it('RequireDisclosure_ClickOpensDialog-NoImmediateFollow-ConfirmFollows', async () => {
-      vi.mocked(followUser).mockResolvedValue({ success: true, message: '' });
-      const user = userEvent.setup();
-      const { container } = renderInMenu(
-        <FollowMenuItem {...props} requireDisclosure={true} />
-      );
-      await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
-      expect(
-        (container.querySelector('dialog') as HTMLDialogElement).open
-      ).toBe(true);
-      expect(followUser).not.toHaveBeenCalled();
-      await user.click(screen.getByRole('button', { name: 'Follow' }));
-      await waitFor(() => expect(followUser).toHaveBeenCalledWith('owner-profile-1'));
-    });
-
-    it('RequireDisclosure_DialogCancelClosesWithoutFollowing', async () => {
-      const user = userEvent.setup();
-      const { container } = renderInMenu(
-        <FollowMenuItem {...props} requireDisclosure={true} />
-      );
-      await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
-      await user.click(screen.getByRole('button', { name: 'Cancel' }));
-      expect(
-        (container.querySelector('dialog') as HTMLDialogElement).open
-      ).toBe(false);
-      expect(followUser).not.toHaveBeenCalled();
-    });
-
-    it('NoDisclosure_ClickCallsFollowUser-OptimisticFollowing-ToastsFollowingName', async () => {
-      vi.mocked(followUser).mockResolvedValue({ success: true, message: '' });
-      const user = userEvent.setup();
-      renderInMenu(<FollowMenuItem {...props} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
-      expect(
-        screen.getByRole('menuitem', { name: 'Following' })
-      ).toBeInTheDocument();
-      await waitFor(() => expect(followUser).toHaveBeenCalledWith('owner-profile-1'));
-      await waitFor(() =>
-        expect(toast.success).toHaveBeenCalledWith('Following Bob')
-      );
-    });
-
-    it('NullOwnerNameNoDisclosure_FollowSuccess-ToastsFollowingUser', async () => {
-      vi.mocked(followUser).mockResolvedValue({ success: true, message: '' });
-      const user = userEvent.setup();
-      renderInMenu(<FollowMenuItem {...props} ownerName={null} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
-      await waitFor(() =>
-        expect(toast.success).toHaveBeenCalledWith('Following user')
-      );
-    });
-
-    it('WhilePending_SecondClickIsNoOp', async () => {
-      let resolve!: (v: { success: boolean; message: string }) => void;
-      vi.mocked(followUser).mockReturnValue(
-        new Promise((r) => {
-          resolve = r;
-        })
-      );
-      const user = userEvent.setup();
-      renderInMenu(<FollowMenuItem {...props} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
-      await user.click(screen.getByRole('menuitem', { name: 'Following' }));
-      expect(followUser).toHaveBeenCalledTimes(1);
-      resolve({ success: true, message: '' });
-    });
-
-    it('FollowFailure_RevertsToNotFollowing-ToastsError', async () => {
-      vi.mocked(followUser).mockResolvedValue({
-        success: false,
-        message: 'Cannot follow',
-      });
-      const user = userEvent.setup();
-      renderInMenu(<FollowMenuItem {...props} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
-      expect(
-        await screen.findByRole('menuitem', { name: 'Follow' })
-      ).toBeInTheDocument();
-      expect(toast.error).toHaveBeenCalledWith('Cannot follow');
-    });
-  });
-
-  describe('Following', () => {
-    it('Default_RendersFollowing-IconSvg', () => {
-      renderInMenu(<FollowMenuItem {...props} initialFollowing={true} />);
-      const item = screen.getByRole('menuitem', { name: 'Following' });
-      expect(item).toBeInTheDocument();
-      expect(item.querySelector('svg')).not.toBeNull();
-    });
-
-    it('Click_CallsUnfollowUser', async () => {
-      vi.mocked(unfollowUser).mockResolvedValue({ success: true, message: '' });
-      const user = userEvent.setup();
-      renderInMenu(<FollowMenuItem {...props} initialFollowing={true} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Following' }));
-      await waitFor(() => expect(unfollowUser).toHaveBeenCalledWith('owner-profile-1'));
-      await waitFor(() =>
-        expect(toast.success).toHaveBeenCalledWith('Unfollowed')
-      );
-    });
-
-    it('UnfollowFailure_RevertsToFollowing-ToastsError', async () => {
-      vi.mocked(unfollowUser).mockResolvedValue({
-        success: false,
-        message: 'Cannot unfollow',
-      });
-      const user = userEvent.setup();
-      renderInMenu(<FollowMenuItem {...props} initialFollowing={true} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Following' }));
-      expect(
-        await screen.findByRole('menuitem', { name: 'Following' })
-      ).toBeInTheDocument();
-      expect(toast.error).toHaveBeenCalledWith('Cannot unfollow');
-    });
   });
 });
 

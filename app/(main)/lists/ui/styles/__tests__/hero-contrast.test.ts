@@ -143,7 +143,7 @@ describe('heroContrast', () => {
 
     it('Byline_MeetsNormalTextAA', () => {
       const color = resolveColor(
-        declaration(listCss, '.list-hero-byline-link', 'color')
+        declaration(listCss, '.list-hero-byline-button.btn.link', 'color')
       );
       expect(ratioOverWorstCase(color)).toBeGreaterThanOrEqual(AA_NORMAL);
     });

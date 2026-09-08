@@ -230,6 +230,12 @@ The social graph is being reworked. These entries describe today's shape.
 An edge from an **account** to a **profile**. Asymmetric by construction: a
 profile is never a follower.
 
+**Byline profile card**:
+The profile a list's byline names, shown as a card: its name and look, the
+count of its lists this viewer can see, and a link to its Altvatar space. It
+gains **Follow** whenever the owning profile is not the viewer's own
+self-profile.
+
 **Block**:
 An edge between two profiles, always written and read with the blocker's
 self-profile. Beats visibility.

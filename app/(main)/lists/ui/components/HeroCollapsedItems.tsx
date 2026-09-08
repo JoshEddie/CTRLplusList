@@ -3,14 +3,12 @@
 // TODO(#343): split the extra components into their own files, then drop this disable
 /* eslint-disable react/no-multi-comp */
 
-import FollowDisclosureDialog from '@/app/(main)/users/ui/components/FollowDisclosureDialog';
 import { MenuItem, MenuItemRadio } from '@/app/ui/components/menu';
 import {
   SPOILER_TIER_ROWS,
   SpoilerRowIcon,
 } from '@/app/ui/components/spoiler-tier-rows';
 import { setListVisibility } from '@/lib/data/list.actions';
-import { followUser, unfollowUser } from '@/lib/data/profile.actions';
 import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
 import { withSpoilerParam } from '@/lib/spoilers';
 import { ListTable, type SpoilerTier } from '@/lib/types';
@@ -18,9 +16,9 @@ import { type ListVisibility } from '@/lib/visibility';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
-import { FaBookmark, FaCheck, FaPlus, FaRegBookmark } from 'react-icons/fa';
+import { FaBookmark, FaRegBookmark } from 'react-icons/fa';
 import { MdOutlineIosShare } from 'react-icons/md';
-import { VISIBILITY_ROWS } from './visibility-rows';
+import { VISIBILITY_ROWS, type VisibilityRow } from './visibility-rows';
 
 // ── Share ────────────────────────────────────────────────────────────────
 // Mirrors ShareButton's logic but renders as a <MenuItem>. The URL is built
@@ -77,7 +75,10 @@ export function VisibilityMenuItems({
   const [current, setCurrent] = useState<ListVisibility>(initialVisibility);
   const [isPending, startTransition] = useTransition();
 
-  const apply = (next: ListVisibility) => {
+  // Takes the row, not its value: the row already carries the toast copy, so
+  // looking it back up would only reintroduce a miss the caller cannot reach.
+  const apply = (row: VisibilityRow) => {
+    const next = row.value;
     if (next === current || isPending || disabled) return;
     const prev = current;
     setCurrent(next);
@@ -88,8 +89,7 @@ export function VisibilityMenuItems({
         toast.error(result.message);
         return;
       }
-      const row = VISIBILITY_ROWS.find((r) => r.value === next);
-      if (row) toast.success(row.toast);
+      toast.success(row.toast);
       router.refresh();
     });
   };
@@ -103,7 +103,7 @@ export function VisibilityMenuItems({
           description={row.description}
           checked={row.value === current}
           aria-disabled={isPending || disabled || undefined}
-          onSelect={() => apply(row.value)}
+          onSelect={() => apply(row)}
         >
           {row.label}
         </MenuItemRadio>
@@ -188,89 +188,5 @@ export function BookmarkMenuItem({
     >
       {bookmarked ? 'Bookmarked' : 'Bookmark'}
     </MenuItem>
-  );
-}
-
-// ── Follow ───────────────────────────────────────────────────────────────
-export function FollowMenuItem({
-  ownerProfileId,
-  ownerName,
-  initialFollowing,
-  requireDisclosure,
-}: {
-  ownerProfileId: string;
-  ownerName: string | null;
-  initialFollowing: boolean;
-  requireDisclosure: boolean;
-}) {
-  const router = useRouter();
-  const [following, setFollowing] = useState(initialFollowing);
-  const [isPending, startTransition] = useTransition();
-  const [dialogOpen, setDialogOpen] = useState(false);
-
-  const performFollow = () => {
-    setFollowing(true);
-    startTransition(async () => {
-      const result = await followUser(ownerProfileId);
-      if (!result.success) {
-        setFollowing(false);
-        toast.error(result.message);
-        return;
-      }
-      toast.success(`Following ${ownerName ?? 'user'}`);
-      router.refresh();
-    });
-  };
-
-  const performUnfollow = () => {
-    setFollowing(false);
-    startTransition(async () => {
-      const result = await unfollowUser(ownerProfileId);
-      if (!result.success) {
-        setFollowing(true);
-        toast.error(result.message);
-        return;
-      }
-      toast.success('Unfollowed');
-      router.refresh();
-    });
-  };
-
-  const handleClick = () => {
-    if (isPending) return;
-    if (following) {
-      performUnfollow();
-      return;
-    }
-    if (requireDisclosure) {
-      setDialogOpen(true);
-      return;
-    }
-    performFollow();
-  };
-
-  const label = following
-    ? 'Following'
-    : 'Follow';
-
-  return (
-    <>
-      <MenuItem
-        icon={following ? <FaCheck /> : <FaPlus />}
-        onClick={handleClick}
-        aria-disabled={isPending}
-      >
-        {label}
-      </MenuItem>
-      <FollowDisclosureDialog
-        open={dialogOpen}
-        ownerName={ownerName ?? 'this user'}
-        onConfirm={() => {
-          setDialogOpen(false);
-          performFollow();
-        }}
-        onCancel={() => setDialogOpen(false)}
-      />
-    </>
   );
 }

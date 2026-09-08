@@ -3,6 +3,7 @@ import { LinkButton } from '@/app/ui/components/button';
 import FollowContainer from './FollowContainer';
 import { isViewersOwnProfile } from '@/lib/activeProfile';
 import { accentVars } from '@/lib/accent';
+import { getMessage } from '@/lib/i18n/utils';
 import type { ProfileAvatarView, UserIdentity } from '@/lib/types';
 
 // Same accent band and inset disc the viewer's own profile space wears, so a
@@ -31,7 +32,9 @@ export default function ProfileHeader({
         <div className="profile-meta">
           <h1 className="profile-space-name">{profile.name}</h1>
           <div className="profile-stats">
-            {publicListCount} shared list{publicListCount === 1 ? '' : 's'}
+            {getMessage('profile_shared_list_count', {
+              count: publicListCount,
+            })}
           </div>
         </div>
         <div className="profile-actions">

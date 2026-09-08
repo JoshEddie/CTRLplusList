@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 export function useDismiss(
@@ -23,4 +24,45 @@ export function useDismiss(
     }
     if (closeHref) router.push(closeHref);
   };
+}
+
+// Outside-mousedown / Escape / scroll dismissal for popovers that are not a
+// <dialog>. Scroll is the caller's own callback: an anchor hidden out from
+// under an open popover (a collapsing sticky header, a closing accordion)
+// fires no event of its own, and what counts as gone differs by surface.
+// Capture phase because scroll does not bubble from nested scroll containers.
+export function useOutsideDismiss({
+  open,
+  contains,
+  dismiss,
+  onScroll,
+}: {
+  open: boolean;
+  contains: (target: Node) => boolean;
+  dismiss: () => void;
+  onScroll: () => void;
+}) {
+  const latest = useRef({ contains, dismiss, onScroll });
+  useEffect(() => {
+    latest.current = { contains, dismiss, onScroll };
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: MouseEvent) => {
+      if (!latest.current.contains(event.target as Node)) latest.current.dismiss();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') latest.current.dismiss();
+    };
+    const scroll = () => latest.current.onScroll();
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', scroll, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', scroll, { capture: true });
+    };
+  }, [open]);
 }

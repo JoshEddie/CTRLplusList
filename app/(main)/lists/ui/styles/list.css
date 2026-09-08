@@ -281,38 +281,140 @@
   margin: 4px 0;
 }
 
-.list-hero-byline-group {
+.byline-card-anchor {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 12px;
   min-width: 0;
 }
 
-.list-hero-byline-group .altvatar-disc {
+/* Shrink to the byline itself: stretched to the title column's width, the
+   hover target would open the card from anywhere on the row. */
+.list-hero-titleblock > .byline-card-anchor {
+  align-self: flex-start;
+  max-width: 100%;
+}
+
+.list-hero-byline-button.btn.link {
+  gap: 12px;
+  min-width: 0;
+  color: var(--light-color);
+  font-size: 16px;
+  text-align: left;
+}
+
+.list-hero-byline-button .altvatar-disc {
   width: 40px;
   height: 40px;
+  flex: none;
 }
 
-.list-hero-byline-text {
+.list-hero-byline-name {
+  word-break: break-word;
+}
+
+@media (hover: hover) {
+  .list-hero-byline-button:hover .list-hero-byline-name {
+    text-decoration: underline;
+  }
+}
+
+.list-hero-byline-button:focus-visible .list-hero-byline-name {
+  text-decoration: underline;
+}
+
+/* ── Byline profile card ──────────────────────────────────────────────────
+   The byline's popover, wearing the banded profile tile the Following rail
+   paints. It sits *over* the byline rather than below it, so the avatar and
+   name are never on screen twice, and the pointer's path from trigger to card
+   never crosses dead space. */
+.byline-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  width: 300px;
+  max-width: 100vw;
+  background-color: var(--light-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* Opened from the collapsed kebab the card is taken out to the viewport — that
+   menu clips its own overflow — and flies out to the menu's left from
+   coordinates the component measures. It has to clear the menu it came from. */
+.menu-popover .byline-card {
+  z-index: 60;
+}
+
+/* Everything between the card and the row that opened it is dead space —
+   the flyout's gap and the menu's own padding alike — and crossing it reads
+   as leaving the row, taking the card down on the way in. This spans the
+   corridor, so the pointer stays inside the card's own subtree the whole way. */
+.menu-popover .byline-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: var(--byline-card-bridge);
+}
+
+/* The accent gradient runs across the head with the disc straddling its lower
+   edge, so a profile is recognised by colour before its name is read. */
+/* Rounds its own top corners rather than being clipped by the card's
+   `overflow`, which would also cut off the flyout's gap bridge. */
+.byline-card-band {
+  position: relative;
+  height: 40px;
+  border-radius: 9px 9px 0 0;
+  background-image: var(--accent-bg);
+}
+
+.byline-card-avatar {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  border: 3px solid var(--light-color);
+}
+
+.byline-card-avatar .altvatar-disc {
+  width: 100%;
+  height: 100%;
+}
+
+.byline-card-meta {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  min-width: 0;
-  flex: 1 1 auto;
+  gap: 2px;
+  padding: 24px 12px 10px;
+  text-align: center;
 }
 
-.list-hero-byline-link {
-  color: var(--light-color);
-  text-decoration: none;
+.byline-card-name {
+  font-family: var(--font-crimson-pro);
   font-size: 16px;
-  font-weight: 500;
+  color: var(--accent-ink);
   line-height: 1.2;
   word-break: break-word;
 }
 
-.list-hero-byline-link:hover,
-.list-hero-byline-link:focus-visible {
-  text-decoration: underline;
+.byline-card-count {
+  font-family: var(--font-roboto-condensed);
+  font-size: 12px;
+  color: var(--muted-text-color);
+}
+
+.byline-card-actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+  padding: 0 12px 12px;
 }
 
 .list-hero-action-row {
@@ -731,6 +833,7 @@
   line-height: 1.4;
   color: var(--muted-text-color);
   overflow: hidden;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
@@ -1125,7 +1228,6 @@
 }
 
 .list-hero-titleblock,
-.list-hero-byline-group,
 .list-hero-meta,
 .list-hero-actions {
   grid-column: 1 / -1;
@@ -1150,10 +1252,6 @@
 
 .list-hero-title-line > .btn {
   flex: none;
-}
-
-.list-hero-byline-group {
-  order: 1;
 }
 
 .list-hero-actions {
@@ -1230,10 +1328,6 @@
   }
   .list-hero-titleblock {
     flex: 1 1 auto;
-  }
-  .list-hero-byline-group {
-    flex: 0 1 auto;
-    margin-left: auto;
   }
   .list-hero-actions {
     flex-wrap: wrap;

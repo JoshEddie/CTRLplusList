@@ -1,14 +1,11 @@
 // TODO(#343): split the extra components into their own files, then drop this disable
 /* eslint-disable react/no-multi-comp */
 
-import { hasBlocked } from '@/lib/data/profile';
-import { isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
 import { getBookmarkStatus } from '@/lib/data/visit';
 import { ListTable } from '@/lib/types';
 import { type ListVisibility } from '@/lib/visibility';
 import {
   BookmarkMenuItem,
-  FollowMenuItem,
   ShareMenuItem,
   VisibilityMenuItems,
 } from './HeroCollapsedItems';
@@ -38,57 +35,22 @@ export async function HeroCollapsedOwnerItems({
   );
 }
 
-// Viewer variant — pre-fetches bookmark + follow + block state so the
-// client MenuItems can be hydrated with the correct initial state.
-// Block-gating mirrors FollowContainer: if either party blocks, the
-// Follow row is suppressed.
+// Viewer variant — pre-fetches bookmark state so the client MenuItem can be
+// hydrated with it. Follow is not here: it lives inside the profile card the
+// byline row opens.
 export async function HeroCollapsedViewerItems({
   list,
-  ownerProfileId,
-  ownerName,
   viewerUserId,
-  viewerSelfProfileId,
 }: {
   list: ListTable;
-  ownerProfileId: string;
-  ownerName: string | null;
   viewerUserId: string;
-  viewerSelfProfileId: string;
 }) {
-  const [
-    bookmarked,
-    following,
-    blockedByOwner,
-    blockedByViewer,
-    hasAnyFollows,
-  ] = await Promise.all([
-    getBookmarkStatus(list.id, viewerUserId),
-    isFollowing({ userId: viewerUserId, followeeProfileId: ownerProfileId }),
-    hasBlocked({
-      blockerProfileId: ownerProfileId,
-      blockedProfileId: viewerSelfProfileId,
-    }),
-    hasBlocked({
-      blockerProfileId: viewerSelfProfileId,
-      blockedProfileId: ownerProfileId,
-    }),
-    viewerHasAnyFollows(viewerUserId),
-  ]);
-
-  const showFollow = !blockedByOwner && !blockedByViewer;
+  const bookmarked = await getBookmarkStatus(list.id, viewerUserId);
 
   return (
     <>
       <ShareMenuItem list={list} />
       <BookmarkMenuItem listId={list.id} initialBookmarked={bookmarked} />
-      {showFollow && (
-        <FollowMenuItem
-          ownerProfileId={ownerProfileId}
-          ownerName={ownerName}
-          initialFollowing={following}
-          requireDisclosure={!hasAnyFollows}
-        />
-      )}
     </>
   );
 }

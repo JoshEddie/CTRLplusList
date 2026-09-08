@@ -1,9 +1,9 @@
 // TODO(#343): split the extra components into their own files, then drop this disable
 /* eslint-disable react/no-multi-comp */
 
-import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
-import FollowContainer from '@/app/(main)/users/ui/components/FollowContainer';
 import SpoilerPicker from '@/app/ui/components/SpoilerPicker';
+import { getFollowState } from '@/lib/data/follow';
+import { getProfileForViewer } from '@/lib/data/profile';
 import { writableMembership } from '@/lib/data/profile.gate';
 import { atLeast } from '@/lib/spoilers';
 import { authedIdentity } from '@/lib/data/user.session';
@@ -18,7 +18,6 @@ import {
   resolveListVisibility,
   type ListVisibility,
 } from '@/lib/visibility';
-import Link from 'next/link';
 import BookmarkContainer from './BookmarkContainer';
 import ClaimProgress from './ClaimProgress';
 import EditListAction from './EditListAction';
@@ -29,6 +28,7 @@ import {
 import { SpoilerMenuItems } from './HeroCollapsedItems';
 import ListActionsMenu from './ListActionsMenu';
 import ListHeroSurface from './ListHeroSurface';
+import BylineProfileCard from './BylineProfileCard';
 import ShareButton from './ShareButton';
 import SwitchProfileOffer from './SwitchProfileOffer';
 import VisibilityPicker from './VisibilityPicker';
@@ -76,6 +76,31 @@ export default async function ListDetails({
       ? await writableMembership(identity.userId, list.profile_id)
       : null;
 
+  // Follow is keyed on the owning profile not being the viewer's own self —
+  // narrower than the viewer-controls gate, so following a managed profile the
+  // viewer owns keeps working while their own space never offers it.
+  const followState =
+    viewer_user_id &&
+    viewer_self_profile_id &&
+    viewer_self_profile_id !== list.profile_id
+      ? await getFollowState({
+          viewerUserId: viewer_user_id,
+          viewerSelfProfileId: viewer_self_profile_id,
+          ownerProfileId: list.profile_id,
+        })
+      : null;
+
+  // The card's list count is the profile page's own — the same shared-list
+  // tally, so the two surfaces never disagree about how much of a profile a
+  // viewer can reach.
+  const ownerProfile = await getProfileForViewer(list.profile_id, identity);
+  const cardProps = {
+    profileId: list.profile_id,
+    owner,
+    listCount: ownerProfile?.publicListCount ?? 0,
+    followState,
+  };
+
   const updatedDisplay = timeAgo(list.updated_at);
   const itemsDisplay = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
   const showOwnerControls = isOwner;
@@ -106,31 +131,28 @@ export default async function ListDetails({
     <SpoilerMenuItems tier={tier} baseline={baseline} />
   ) : null;
 
-  // The three prepends are independent and combine in one fragment: the
-  // Spoilers rows for any member viewer, then the owner OR viewer kebab set
-  // (mutually exclusive). A pure non-member gets none, leaving this null.
-  const collapsedPrepended: React.ReactNode =
-    showSpoilerTile || showOwnerControls || showViewerControls ? (
-      <>
-        {collapsedSpoilerItems}
-        {showOwnerControls && (
-          <HeroCollapsedOwnerItems
-            list={list}
-            visibility={visibility}
-            disabled={ownerFloorDisabled}
-          />
-        )}
-        {showViewerControls && (
-          <HeroCollapsedViewerItems
-            list={list}
-            ownerProfileId={list.profile_id}
-            ownerName={owner.name}
-            viewerUserId={viewer_user_id}
-            viewerSelfProfileId={viewer_self_profile_id}
-          />
-        )}
-      </>
-    ) : null;
+  // The collapsed kebab mirrors the expanded hero: the byline first, as the
+  // row that opens the same profile card, then the Spoilers rows for any
+  // member viewer, then the owner OR viewer set (mutually exclusive).
+  const collapsedPrepended: React.ReactNode = (
+    <>
+      <BylineProfileCard {...cardProps} asMenuRow />
+      {collapsedSpoilerItems}
+      {showOwnerControls && (
+        <HeroCollapsedOwnerItems
+          list={list}
+          visibility={visibility}
+          disabled={ownerFloorDisabled}
+        />
+      )}
+      {showViewerControls && (
+        <HeroCollapsedViewerItems
+          list={list}
+          viewerUserId={viewer_user_id}
+        />
+      )}
+    </>
+  );
 
   const collapsedKebab = (
     <ListActionsMenu
@@ -140,16 +162,6 @@ export default async function ListDetails({
       deleteDisabled={ownerFloorDisabled}
     />
   );
-
-  const follow = showViewerControls ? (
-    <FollowContainer
-      ownerProfileId={list.profile_id}
-      ownerName={owner.name}
-      viewerUserId={viewer_user_id}
-      viewerSelfProfileId={viewer_self_profile_id}
-      variant="on-dark"
-    />
-  ) : null;
 
   return (
     <>
@@ -175,12 +187,8 @@ export default async function ListDetails({
                     <p className="list-hero-subtitle">{list.subtitle}</p>
                   </div>
                 ) : null}
+                <BylineProfileCard {...cardProps} />
               </div>
-              <HeroByline
-                profileId={list.profile_id}
-                owner={owner}
-                follow={follow}
-              />
             </div>
             <div className="list-hero-row">
               {showActions && (
@@ -241,30 +249,6 @@ function HeroActions({
       {viewerUserId && (
         <BookmarkContainer list_id={list.id} user_id={viewerUserId} />
       )}
-    </div>
-  );
-}
-
-// The byline names the profile that owns the list, to every viewer — an owner
-// running more than one Altvatar needs it as much as a stranger does.
-function HeroByline({
-  profileId,
-  owner,
-  follow,
-}: {
-  profileId: string;
-  owner: ProfileAvatarView;
-  follow: React.ReactNode;
-}) {
-  return (
-    <div className="list-hero-byline-group">
-      <ProfileAvatar profile={owner} />
-      <div className="list-hero-byline-text">
-        <Link href={`/altvatar/${profileId}`} className="list-hero-byline-link">
-          {owner.name}
-        </Link>
-        {follow}
-      </div>
     </div>
   );
 }

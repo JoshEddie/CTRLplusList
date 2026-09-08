@@ -9,6 +9,8 @@ import { PROTECTED_TIER } from '@/lib/spoilers';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getFollowState, type FollowState } from '@/lib/data/follow';
+import { getProfileForViewer } from '@/lib/data/profile';
 import { writableMembership } from '@/lib/data/profile.gate';
 import { authedIdentity } from '@/lib/data/user.session';
 import { makeIdentity, makeProfile } from '@/test/helpers/profile';
@@ -53,9 +55,25 @@ vi.mock('@/lib/data/profile.gate', () => ({
 vi.mock('@/app/ui/components/ProfileAvatar', () => ({
   default: () => <div data-testid="avatar-stub" />,
 }));
-vi.mock('@/app/(main)/users/ui/components/FollowContainer', () => ({
-  default: () => <div data-testid="follow-stub" />,
+// The card is a client control owning its own popover (covered by its own
+// tests); inert here, so what ListDetails feeds it is what gets asserted.
+vi.mock('../BylineProfileCard', () => ({
+  default: (p: {
+    profileId: string;
+    listCount: number;
+    followState?: FollowState | null;
+    asMenuRow?: boolean;
+  }) => (
+    <div
+      data-testid={p.asMenuRow ? 'byline-card-row' : 'byline-card'}
+      data-profile-id={p.profileId}
+      data-list-count={p.listCount}
+      data-offers-follow={p.followState ? 'true' : undefined}
+    />
+  ),
 }));
+vi.mock('@/lib/data/profile', () => ({ getProfileForViewer: vi.fn() }));
+vi.mock('@/lib/data/follow', () => ({ getFollowState: vi.fn() }));
 vi.mock('../BookmarkContainer', () => ({
   default: () => <div data-testid="bookmark-stub" />,
 }));
@@ -121,6 +139,13 @@ beforeEach(() => {
     )
   );
   vi.mocked(writableMembership).mockResolvedValue(null);
+  vi.mocked(getFollowState).mockResolvedValue({
+    following: false,
+    requireDisclosure: false,
+  });
+  vi.mocked(getProfileForViewer).mockResolvedValue({
+    publicListCount: 9,
+  } as Awaited<ReturnType<typeof getProfileForViewer>>);
 });
 
 afterEach(() => {
@@ -186,8 +211,8 @@ describe('ListDetails', () => {
       const rows = container.querySelectorAll('.list-hero-main > .list-hero-row');
       expect(rows).toHaveLength(2);
       expectInOrder(rows[0], [
-        '.list-hero-titleblock',
-        '.list-hero-byline-group',
+        '.list-hero-title-line',
+        '[data-testid="byline-card"]',
       ]);
       expectInOrder(rows[1], [
         '.list-hero-actions',
@@ -239,15 +264,28 @@ describe('ListDetails', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('Owner_BylineNamesTheOwningProfile-NoFollow', async () => {
-      const { row1 } = await renderHero({ list: sharedOwnerList() });
-      const byline = row1.querySelector(
-        '.list-hero-byline-group'
+    // The owner looking at their own self-profile's list: the card names the
+    // profile and counts its lists, and offers no Follow.
+    it('OwnerIsTheOwningSelfProfile_CardCarriesTheListCount-NoFollow', async () => {
+      const { titleblock } = await renderHero({ list: sharedOwnerList() });
+      const card = titleblock.querySelector(
+        '[data-testid="byline-card"]'
       ) as HTMLElement;
+      expect(card).toHaveAttribute('data-profile-id', 'owner-profile-1');
+      expect(card).toHaveAttribute('data-list-count', '9');
+      expect(card).not.toHaveAttribute('data-offers-follow');
+    });
+
+    // Acting as a profile that is not the viewer's own self still reaches
+    // Follow — following a managed profile one owns is supported.
+    it('OwnerActingAsAManagedProfile_CardStillCarriesFollow', async () => {
+      const { titleblock } = await renderHero({
+        list: sharedOwnerList(),
+        viewer_self_profile_id: 'viewer-self-1',
+      });
       expect(
-        within(byline).getByRole('link', { name: 'Olivia Owner' })
-      ).toHaveAttribute('href', '/altvatar/owner-profile-1');
-      expect(byline.querySelector('[data-testid="follow-stub"]')).toBeNull();
+        titleblock.querySelector('[data-testid="byline-card"]')
+      ).toHaveAttribute('data-offers-follow', 'true');
     });
   });
 
@@ -260,9 +298,12 @@ describe('ListDetails', () => {
       list: makeList({ shared: true, profile_id: 'owner-profile-1' }),
     };
 
-    it('Viewer_Row1EndsWithByline-Row2HoldsShareThenBookmarkThenMeta', async () => {
-      const { row1, row2, actions } = await renderHero(viewerProps);
-      expect(row1.lastElementChild).toHaveClass('list-hero-byline-group');
+    it('Viewer_TitleblockEndsWithTheCard-Row2HoldsShareThenBookmarkThenMeta', async () => {
+      const { titleblock, row2, actions } = await renderHero(viewerProps);
+      expect(titleblock.lastElementChild).toHaveAttribute(
+        'data-testid',
+        'byline-card'
+      );
       expectInOrder(row2, ['.list-hero-actions', '.list-hero-meta']);
       expect(
         row2.querySelector('[data-testid="visibility-picker-stub"]')
@@ -287,20 +328,13 @@ describe('ListDetails', () => {
       ).toHaveAttribute('aria-label', 'Share list');
     });
 
-    it('Viewer_BylineHasAvatarLinkedNameFollow', async () => {
+    it('Viewer_CardCarriesFollowForTheOwningProfile', async () => {
       const { container } = await renderHero(viewerProps);
-      const byline = container.querySelector(
-        '.list-hero-byline-group'
+      const card = container.querySelector(
+        '[data-testid="byline-card"]'
       ) as HTMLElement;
-      const nameLink = within(byline).getByRole('link', {
-        name: 'Olivia Owner',
-      });
-      expect(nameLink).toHaveAttribute('href', '/altvatar/owner-profile-1');
-      expectInOrder(byline, [
-        '[data-testid="avatar-stub"]',
-        '.list-hero-byline-link',
-        '[data-testid="follow-stub"]',
-      ]);
+      expect(card).toHaveAttribute('data-profile-id', 'owner-profile-1');
+      expect(card).toHaveAttribute('data-offers-follow', 'true');
     });
 
     it('Viewer_HeroHasNoPencilOrKebab', async () => {
@@ -334,21 +368,11 @@ describe('ListDetails', () => {
         kebab.querySelector('[data-testid="collapsed-owner-items"]')
       ).toBeNull();
       expect(container.querySelector('.list-hero-actions')).toBeNull();
-      expect(
-        container.querySelector('.list-hero-byline-link')
-      ).toHaveTextContent('Olivia Owner');
-    });
-
-    it('UnnamedOwner_BylineLinkRendersWithEmptyName', async () => {
-      const { container } = await renderHero({
-        ...viewerProps,
-        owner: { name: '', accent: null, art: null, avatarStyle: null },
-      });
-      const link = container.querySelector(
-        '.list-hero-byline-link'
+      const card = container.querySelector(
+        '[data-testid="byline-card"]'
       ) as HTMLElement;
-      expect(link).toHaveAttribute('href', '/altvatar/owner-profile-1');
-      expect(link).toHaveTextContent('');
+      expect(card).toHaveAttribute('data-profile-id', 'owner-profile-1');
+      expect(card).not.toHaveAttribute('data-offers-follow');
     });
   });
 
@@ -655,6 +679,38 @@ describe('ListDetails', () => {
       expect(
         kebab.querySelector('[data-testid="spoiler-menu-items"]')
       ).toBeNull();
+    });
+  });
+
+  /**
+   * The collapsed kebab mirrors the expanded hero: the byline survives the
+   * collapse as a row opening the same card, and Follow is inside it rather
+   * than standing alone.
+   */
+  describe('CollapsedMenu', () => {
+    const kebab = () => screen.getByTestId('collapsed-kebab');
+
+    it('Owner_KebabLeadsWithTheProfileRowCarryingTheSameCardProps', async () => {
+      await renderHero({ list: sharedOwnerList() });
+      const row = kebab().querySelector(
+        '[data-testid="byline-card-row"]'
+      ) as HTMLElement;
+      expect(row).toHaveAttribute('data-profile-id', 'owner-profile-1');
+      expect(row).toHaveAttribute('data-list-count', '9');
+      expect(kebab().firstElementChild?.firstElementChild).toBe(row);
+    });
+
+    it('SignedOutViewer_KebabStillCarriesTheProfileRow', async () => {
+      await renderHero({
+        isOwner: false,
+        viewerIsMember: false,
+        viewer_user_id: undefined,
+        viewer_self_profile_id: undefined,
+        list: sharedOwnerList(),
+      });
+      expect(
+        kebab().querySelector('[data-testid="byline-card-row"]')
+      ).toBeInTheDocument();
     });
   });
 

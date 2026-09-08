@@ -6,6 +6,8 @@
 export const en = {
   buy_claim_aria_label: 'Buy & Claim — opens in new tab',
   buy_claim_label: 'Buy & Claim',
+  byline_card_altvatar_link: 'View Altvatar',
+  byline_card_open_label: 'About {name}',
   claim_add_error: 'Failed to add claim',
   claim_add_label: 'Claim',
   claim_add_loading: 'Adding claim',
@@ -138,6 +140,8 @@ export const en = {
   list_subtitle_label: 'Subtitle',
   list_subtitle_placeholder: 'e.g. Brandy Family',
   owner_name_placeholder: 'the owner',
+  profile_shared_list_count:
+    '{count, plural, one {# shared list} other {# shared lists}}',
   someone_name_placeholder: 'Someone',
   stepper_decrease_label: 'Decrease',
   stepper_increase_label: 'Increase',

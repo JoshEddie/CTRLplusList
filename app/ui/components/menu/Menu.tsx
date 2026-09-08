@@ -11,6 +11,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useOutsideDismiss } from '../use-dismiss';
 import './menu.css';
 
 // Must match the 6px offset in .menu-popover / .menu-popover--up (menu.css).
@@ -51,47 +52,25 @@ export const Menu = forwardRef<HTMLDivElement, MenuProps>(function Menu(
     setFlipUp(!fitsBelow && fitsAbove);
   }, [open, anchorRef]);
 
-  // Outside-click / Escape dismiss. The check ignores clicks on the anchor
-  // so that activating the trigger doesn't dismiss-then-reopen the menu.
-  useEffect(() => {
-    if (!open) return;
-    const dismiss = () => {
+  // The contains check ignores the anchor so that activating the trigger
+  // doesn't dismiss-then-reopen the menu. Scroll closes without focusing back
+  // — the anchor it would return to is the thing that went away.
+  useOutsideDismiss({
+    open,
+    contains: (target) =>
+      !!localRef.current?.contains(target) ||
+      !!anchorRef?.current?.contains(target),
+    dismiss: () => {
       onClose();
       anchorRef?.current?.focus();
-    };
-    const onPointer = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (localRef.current?.contains(target)) return;
-      if (anchorRef?.current?.contains(target)) return;
-      dismiss();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') dismiss();
-    };
-    // An anchor hidden out from under an open menu (a collapsing sticky
-    // header, a closing accordion) fires no event of its own, so the menu
-    // would keep its open state and reappear when the anchor returns.
-    // Closing without focusing back — the anchor is gone, so there is
-    // nothing to return focus to. Capture phase because scroll does not
-    // bubble from nested scroll containers.
-    const onScroll = () => {
+    },
+    onScroll: () => {
       const anchor = anchorRef?.current;
       if (anchor && !anchor.checkVisibility({ visibilityProperty: true })) {
         onClose();
       }
-    };
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    window.addEventListener('scroll', onScroll, {
-      capture: true,
-      passive: true,
-    });
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-      window.removeEventListener('scroll', onScroll, { capture: true });
-    };
-  }, [open, onClose, anchorRef]);
+    },
+  });
 
   useEffect(() => {
     if (!open) return;

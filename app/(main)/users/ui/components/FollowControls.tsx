@@ -72,7 +72,7 @@ export default function FollowControls({
       <FollowButton
         following={following}
         pending={isPending}
-        variant={variant}
+        variant={following ? variant : 'ghost'}
         onClick={handleClick}
       />
       <FollowDisclosureDialog
