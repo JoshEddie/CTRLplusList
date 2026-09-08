@@ -4,6 +4,7 @@
  * with no role; structural queries are the only way to assert them.
  */
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ItemDisplay, ItemStoreTable } from '@/lib/types';
 import ItemsBrowser from '../ItemsBrowser';
@@ -28,8 +29,34 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('../Item', () => ({
-  default: ({ item, tier }: { item: ItemDisplay; tier?: string }) => (
-    <div data-testid="item-stub" data-item-id={item.id} data-tier={String(tier)} />
+  default: ({
+    item,
+    tier,
+    listEnds,
+    onEntryPresence,
+  }: {
+    item: ItemDisplay;
+    tier?: string;
+    listEnds?: { first: string; last: string };
+    onEntryPresence?: (itemId: string, onList: boolean) => void;
+  }) => (
+    <div
+      data-testid="item-stub"
+      data-item-id={item.id}
+      data-tier={String(tier)}
+      data-list-ends={listEnds ? `${listEnds.first}:${listEnds.last}` : ''}
+    >
+      <button
+        type="button"
+        data-testid="item-off"
+        onClick={() => onEntryPresence?.(item.id, false)}
+      />
+      <button
+        type="button"
+        data-testid="item-on"
+        onClick={() => onEntryPresence?.(item.id, true)}
+      />
+    </div>
   ),
 }));
 vi.mock('../PriceFilterPopover', () => ({ default: () => <div /> }));
@@ -395,6 +422,89 @@ describe('ItemsBrowser', () => {
     it('AbsentTier_ReachesItemAsUndefined', () => {
       renderBrowser([makeItem('a')]);
       expect(tierOf()).toBe('undefined');
+    });
+  });
+
+  // The move rows act on the list's own order, so the ends are read off the
+  // whole list — not the page, and not what a filter left standing.
+  describe('ListEnds', () => {
+    const three = [makeItem('a'), makeItem('b'), makeItem('c')];
+
+    it('ListOrderSort_NamesFirstAndLastOfTheWholeList', () => {
+      renderBrowser(three);
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-list-ends',
+        'a:c'
+      );
+    });
+
+    it('FilterHidingTheFirstEntry_StillNamesItAsTheTop', () => {
+      nav.search = 'q=Item b';
+      renderBrowser(three);
+      expect(screen.getByTestId('item-stub')).toHaveAttribute(
+        'data-list-ends',
+        'a:c'
+      );
+    });
+
+    it('OtherSort_WithholdsTheEnds', () => {
+      nav.search = 'sort=name_desc';
+      renderBrowser(three);
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-list-ends',
+        ''
+      );
+    });
+
+    it('SingleEntry_WithholdsTheEnds', () => {
+      renderBrowser([makeItem('a')]);
+      expect(screen.getByTestId('item-stub')).toHaveAttribute(
+        'data-list-ends',
+        ''
+      );
+    });
+
+    // A card stepped to 0 stays put, so it is still in `items` — but it no
+    // longer holds an entry, and a move against it is a write that cannot land.
+    it('EntryReportedOffList_NamesTheNextSurvivorAsTheEnd', async () => {
+      const user = userEvent.setup();
+      renderBrowser(three);
+      await user.click(screen.getAllByTestId('item-off')[0]);
+      expect(screen.getAllByTestId('item-stub')[1]).toHaveAttribute(
+        'data-list-ends',
+        'b:c'
+      );
+    });
+
+    it('EntryReportedBackOnList_RestoresItAsTheEnd', async () => {
+      const user = userEvent.setup();
+      renderBrowser(three);
+      await user.click(screen.getAllByTestId('item-off')[0]);
+      await user.click(screen.getAllByTestId('item-on')[0]);
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-list-ends',
+        'a:c'
+      );
+    });
+
+    // Every successful write that left membership alone reports the presence
+    // the card already had, so the no-op has to stay a no-op.
+    it('EntryReportsThePresenceItAlreadyHad_LeavesTheEndsAlone', async () => {
+      const user = userEvent.setup();
+      renderBrowser(three);
+      await user.click(screen.getAllByTestId('item-on')[0]);
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-list-ends',
+        'a:c'
+      );
+    });
+
+    it('ItemsMode_WithholdsTheEnds', () => {
+      renderBrowser(three, { mode: 'items' });
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-list-ends',
+        ''
+      );
     });
   });
 

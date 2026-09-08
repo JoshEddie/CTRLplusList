@@ -567,6 +567,25 @@ describe('updatePriority', () => {
     ]);
   });
 
+  // Move-to-top halves toward 0 rather than opening a gap, so it compresses the
+  // low end of the list — the end a balance check reading only the two highest
+  // positions never inspects. Repeat it past the point a midpoint can still be
+  // placed and the rebalance has to fire, or two rows tie and the next move is
+  // refused as already-at-target.
+  it('RepeatedMoveToTop_RebalancesBeforePositionsCollide', async () => {
+    await seedListWith({ A: 2, B: 65536, C: 131072 });
+
+    const res = await actions.updatePriority('C', 'A', 'L');
+
+    expect(res.success).toBe(true);
+    const positions = (await listItemRows('L'))
+      .map((r) => r.position)
+      .sort((a, b) => a - b);
+    expect(new Set(positions).size).toBe(3);
+    expect(positions).toEqual([65536, 131072, 196608]);
+    expect(await positionOf('C')).toBe(65536);
+  });
+
   describe('UpdateRecency', () => {
     it('Move_LeavesUpdatedAtUnchanged', async () => {
       await seedListWith({ A: 65536, B: 131072, C: 196608 }, STALE);
@@ -620,18 +639,18 @@ describe('updatePriority', () => {
     });
   });
 
-  // checkListBalance's limit(2) scan is its own round-trip, so what it reads
-  // can differ from what the move validated. The stub targets that scan by its
+  // checkListBalance's gap scan is its own round-trip, so what it reads can
+  // differ from what the move validated. The stub targets that scan by its
   // (zero-arg select, list_items) pair — the caller's identity resolution
   // issues a zero-arg select of its own, which must still reach the real db.
-  function stubBalanceScan(limit: () => Promise<unknown>) {
+  function stubBalanceScan(orderBy: () => Promise<unknown>) {
     const realSelect = db.select.bind(db) as (...a: never[]) => never;
     vi.spyOn(db, 'select').mockImplementation(((...args: never[]) =>
       args.length === 0
         ? ({
             from: (table: unknown) =>
               table === list_items
-                ? { where: () => ({ orderBy: () => ({ limit }) }) }
+                ? { where: () => ({ orderBy }) }
                 : (realSelect() as { from: (t: unknown) => unknown }).from(
                     table
                   ),
@@ -778,11 +797,33 @@ describe('setListItemQuantity', () => {
     expect(res.error).toBe('Not found');
   });
 
-  it('ItemNotOnList_ReturnsNotFound-NoTagBump', async () => {
+  it('ItemNotOnList_InsertsEntryAtEndOfList-BumpsItemTag', async () => {
+    await seedItem(db, { id: 'B', user_id: OWNER.id });
+
+    const res = await actions.setListItemQuantity('L', 'B', 3);
+
+    expect(res).toMatchObject({ success: true, message: 'Quantity updated' });
+    const rows = await listItemRows('L');
+    expect(rows.find((r) => r.item_id === 'B')).toMatchObject({
+      quantity: 3,
+      position: 131072,
+    });
+    expect(updateTag).toHaveBeenCalledWith('items:id:B');
+  });
+
+  it('ForeignItem_ReturnsForbidden-NoInsert', async () => {
+    await seedItem(db, { id: 'THEIRS', user_id: OTHER.id });
+
+    const res = await actions.setListItemQuantity('L', 'THEIRS', 3);
+
+    expect(res.error).toBe('Forbidden');
+    expect(await listItemRows('L')).toHaveLength(1);
+  });
+
+  it('UnknownItem_ReturnsForbidden-NoInsert', async () => {
     const res = await actions.setListItemQuantity('L', 'ghost', 4);
-    expect(res.message).toBe('Item is not on this list');
-    expect(res.error).toBe('Not found');
-    expect(contentTagCalls(updateTag)).toEqual([]);
+    expect(res.error).toBe('Forbidden');
+    expect(await listItemRows('L')).toHaveLength(1);
   });
 
   describe('RejectedQuantities', () => {

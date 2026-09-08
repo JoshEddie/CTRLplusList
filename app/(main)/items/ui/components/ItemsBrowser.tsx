@@ -8,7 +8,7 @@ import {
   SpoilerTier,
 } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import Items from './Items';
 import ToolbarSlot from './itemsToolbar/ToolbarSlot';
 import Pagination from './Pagination';
@@ -16,6 +16,8 @@ import { browseItems, parseSort } from './itemFilters';
 import { useItemsPageSize } from './useItemsPageSize';
 
 type BrowserMode = 'items' | 'list';
+
+const EMPTY: ReadonlySet<string> = new Set();
 
 interface ItemsBrowserProps {
   items: ItemDisplay[];
@@ -78,6 +80,34 @@ export default function ItemsBrowser({
 
   const [pageSize, handlePageSizeChange] = useItemsPageSize(initialPageSize);
 
+  // Entries the owner has stepped to 0 since this surface was read. The cards
+  // stay put at 0 by design, so `items` still carries them and the ends below
+  // would otherwise go on naming a row that no longer exists — a move against
+  // it is a write that cannot land.
+  const [offList, setOffList] = useState<ReadonlySet<string>>(EMPTY);
+  const handleEntryPresence = useCallback((itemId: string, onList: boolean) => {
+    setOffList((prev) => {
+      if (prev.has(itemId) !== onList) return prev;
+      const next = new Set(prev);
+      if (onList) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  }, []);
+
+  // Read off the whole list rather than the page: moving to the top of the
+  // list's own order means the top of the list, not the top of what a filter
+  // left standing. Absent under any other sort, which the move would silently
+  // rewrite, and on a list too short to have two ends.
+  const onList = useMemo(
+    () => items.filter((item) => !offList.has(item.id)),
+    [items, offList]
+  );
+  const listEnds =
+    mode === 'list' && sort === 'list_order' && onList.length > 1
+      ? { first: onList[0].id, last: onList[onList.length - 1].id }
+      : undefined;
+
   const {
     rows: visible,
     page,
@@ -121,6 +151,8 @@ export default function ItemsBrowser({
             tier={tier}
             showArchiveAction={showArchiveAction}
             archivedView={archivedView}
+            listEnds={listEnds}
+            onEntryPresence={handleEntryPresence}
           />
           <Pagination
             page={page}

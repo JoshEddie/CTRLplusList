@@ -3,6 +3,7 @@
 import { Button } from '@/app/ui/components/button';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
 import { archiveItem } from '@/lib/data/item.actions';
+import { getMessage } from '@/lib/i18n/utils';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -10,8 +11,21 @@ import {
   MdArchive,
   MdModeEdit,
   MdMoreHoriz,
+  MdRemoveCircleOutline,
   MdUnarchive,
+  MdVerticalAlignBottom,
+  MdVerticalAlignTop,
 } from 'react-icons/md';
+
+/** The ends of the list's own order — absent while another sort overrides it. */
+export type ListEnds = { first: string; last: string };
+
+/** The entry rows, present only where the item holds one on the surface's list. At quantity 0 there is no entry to act on, so the whole group goes. */
+export type EntryActions = {
+  ends?: ListEnds;
+  move: (targetId: string) => void;
+  remove: () => void;
+};
 
 export default function OwnerActions({
   itemId,
@@ -20,6 +34,7 @@ export default function OwnerActions({
   pathname,
   searchParams,
   onChanged,
+  entry,
 }: {
   itemId: string;
   showArchiveAction?: boolean;
@@ -27,6 +42,7 @@ export default function OwnerActions({
   pathname: string;
   searchParams: ReadonlyURLSearchParams | null;
   onChanged: () => void;
+  entry?: EntryActions;
 }) {
   const kebabRef = useRef<HTMLButtonElement>(null);
   const [kebabOpen, setKebabOpen] = useState(false);
@@ -34,23 +50,40 @@ export default function OwnerActions({
   const toggleArchive = async () => {
     const nextArchived = !archivedView;
     const result = await toast.promise(archiveItem(itemId, nextArchived), {
-      loading: nextArchived ? 'Archiving' : 'Unarchiving',
-      success: nextArchived ? 'Archived' : 'Unarchived',
-      error: 'Failed',
+      loading: getMessage(
+        nextArchived
+          ? 'item_menu_archive_loading'
+          : 'item_menu_unarchive_loading'
+      ),
+      success: getMessage(
+        nextArchived
+          ? 'item_menu_archive_success'
+          : 'item_menu_unarchive_success'
+      ),
+      error: getMessage('item_menu_archive_error'),
     });
     if (result?.success) onChanged();
   };
+
+  const run = (act: () => void) => () => {
+    setKebabOpen(false);
+    act();
+  };
+
+  const ends = entry?.ends;
+  const showTop = !!ends && ends.first !== itemId;
+  const showBottom = !!ends && ends.last !== itemId;
 
   return (
     <div className="item-owner-actions-mobile">
       <Button
         ref={kebabRef}
         variant="ghost"
-        size='sm'
+        size="sm"
         className="item-owner-actions-kebab"
         aria-haspopup="menu"
         aria-expanded={kebabOpen}
-        aria-label="Item actions"
+        aria-label={getMessage('item_menu_label')}
         onClick={() => setKebabOpen((o) => !o)}
       >
         <MdMoreHoriz />
@@ -59,8 +92,34 @@ export default function OwnerActions({
         open={kebabOpen}
         onClose={() => setKebabOpen(false)}
         anchorRef={kebabRef}
-        aria-label="Item actions"
+        aria-label={getMessage('item_menu_label')}
       >
+        {showTop && (
+          <MenuItem
+            icon={<MdVerticalAlignTop size={18} />}
+            onClick={run(() => entry.move(ends.first))}
+          >
+            {getMessage('entry_move_top')}
+          </MenuItem>
+        )}
+        {showBottom && (
+          <MenuItem
+            icon={<MdVerticalAlignBottom size={18} />}
+            onClick={run(() => entry.move(ends.last))}
+          >
+            {getMessage('entry_move_bottom')}
+          </MenuItem>
+        )}
+        {entry && (
+          <MenuItem
+            tone="danger"
+            icon={<MdRemoveCircleOutline size={18} />}
+            onClick={run(entry.remove)}
+          >
+            {getMessage('entry_remove_label')}
+          </MenuItem>
+        )}
+        {entry && <div className="menu-separator" role="separator" />}
         <MenuLinkItem
           href={`/items/${itemId}?returnTo=${encodeURIComponent(
             pathname +
@@ -69,7 +128,7 @@ export default function OwnerActions({
           icon={<MdModeEdit size={18} />}
           onClick={() => setKebabOpen(false)}
         >
-          Edit
+          {getMessage('item_menu_edit')}
         </MenuLinkItem>
         {showArchiveAction && (
           <MenuItem
@@ -81,7 +140,9 @@ export default function OwnerActions({
               await toggleArchive();
             }}
           >
-            {archivedView ? 'Unarchive' : 'Archive'}
+            {getMessage(
+              archivedView ? 'item_menu_unarchive' : 'item_menu_archive'
+            )}
           </MenuItem>
         )}
       </Menu>

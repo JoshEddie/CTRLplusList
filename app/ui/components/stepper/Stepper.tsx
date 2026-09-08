@@ -18,6 +18,7 @@ export function Stepper({
   value,
   min = 1,
   max,
+  compact,
   onChange,
 }: {
   label: string;
@@ -28,6 +29,8 @@ export function Stepper({
   /** The floor a button can reach. 0 makes the bottom of the range a removal. */
   min?: number;
   max: number;
+  /** Drops the jump-to-end cells, leaving step down · number · step up. For a control that has to read as one compact row. */
+  compact?: boolean;
   onChange: (next: number) => void;
 }) {
   // What has been typed but not yet settled. Without it the input can never be
@@ -62,19 +65,25 @@ export function Stepper({
           {description}
         </p>
       )}
-      <div className="stepper" role="group" aria-label={label}>
-        <button
-          type="button"
-          className="stepper_jump"
-          disabled={atMin}
-          aria-label={getMessage('stepper_min_label', { value: min })}
-          onClick={() => commit(min)}
-        >
-          <span className="stepper_caption">
-            {getMessage('stepper_min_caption')}
-          </span>
-          {min}
-        </button>
+      <div
+        className={`stepper${compact ? ' stepper--compact' : ''}`}
+        role="group"
+        aria-label={label}
+      >
+        {!compact && (
+          <button
+            type="button"
+            className="stepper_jump"
+            disabled={atMin}
+            aria-label={getMessage('stepper_min_label', { value: min })}
+            onClick={() => commit(min)}
+          >
+            <span className="stepper_caption">
+              {getMessage('stepper_min_caption')}
+            </span>
+            {min}
+          </button>
+        )}
         <button
           type="button"
           className="stepper_step"
@@ -113,18 +122,20 @@ export function Stepper({
         >
           +
         </button>
-        <button
-          type="button"
-          className="stepper_jump"
-          disabled={atMax}
-          aria-label={getMessage('stepper_max_label', { value: max })}
-          onClick={() => commit(max)}
-        >
-          <span className="stepper_caption">
-            {getMessage('stepper_max_caption')}
-          </span>
-          {max}
-        </button>
+        {!compact && (
+          <button
+            type="button"
+            className="stepper_jump"
+            disabled={atMax}
+            aria-label={getMessage('stepper_max_label', { value: max })}
+            onClick={() => commit(max)}
+          >
+            <span className="stepper_caption">
+              {getMessage('stepper_max_caption')}
+            </span>
+            {max}
+          </button>
+        )}
       </div>
     </div>
   );

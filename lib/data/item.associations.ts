@@ -10,8 +10,9 @@ import {
   lists,
 } from '@/db/schema';
 import { touchLists } from '@/lib/data/list.touch';
+import { nextPosition } from '@/lib/data/listItems.positions';
 import { ADMIN_OPTIONAL, authedWriter } from '@/lib/data/profile.gate';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 
@@ -211,23 +212,10 @@ export async function updateItemLists(
         listIds.map(async (listId) => {
           if (currentListIds.has(listId)) return;
 
-          // Get the maximum position for the list and add 65536 for the new item
-          const result = await db
-            .select({
-              coalesce: sql<number>`COALESCE(MAX(${list_items.position}) + 65536, 65536)`,
-            })
-            .from(list_items)
-            .where(eq(list_items.list_id, listId))
-            .limit(1)
-            /* v8 ignore next -- the COALESCE in the query guarantees a row with a numeric value, so the ?. and ?? 65536 fallbacks are unreachable */
-            .then((result) => result[0]?.coalesce ?? 65536);
-
-          const maxPosition = Math.floor(result) as number;
-
           await db.insert(list_items).values({
             item_id: itemId,
             list_id: listId,
-            position: maxPosition,
+            position: await nextPosition(listId),
           });
         })
       );

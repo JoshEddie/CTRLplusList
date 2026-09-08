@@ -14,19 +14,13 @@ test('EditMode_OwnerStagesAddQuantityReorderAndRemoval_OneSavePersistsAll', asyn
   const listId = page.url().match(/\/lists\/([^/?]+)$/)?.[1];
   expect(listId).toBeTruthy();
 
-  // The default view carries no entry write: no handle, no per-row menu rows
-  // for quantity or removal.
+  // The default view reorders one entry at a time through the card menu, never
+  // by drag: the handle belongs to the staged session below.
   const firstCard = page.locator('.item-container', { hasText: firstItem });
   await expect(firstCard).toBeVisible();
   await expect(
     page.getByRole('button', { name: /Drag to reorder/ })
   ).toHaveCount(0);
-  await firstCard.getByRole('button', { name: 'Item actions' }).click();
-  await expect(page.getByRole('menuitem', { name: 'Quantity' })).toHaveCount(0);
-  await expect(
-    page.getByRole('menuitem', { name: 'Remove from list' })
-  ).toHaveCount(0);
-  await page.keyboard.press('Escape');
 
   // The hero carries no door into the staged session; its own URL is the way
   // in.

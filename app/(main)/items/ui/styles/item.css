@@ -191,6 +191,25 @@
   display: none;
 }
 
+/* ── ENTRY STEPPER ── the owner's membership control on the list's own
+   surface. It renders as the card's own footer, reading as one block with the
+   claim banner above it rather than as a control floating over the card: the
+   banner's bottom edge is the seam between them. Its floor of 0 is what takes
+   the item off the list, so it renders at every width — the item menu carries
+   no quantity row to fall back on. */
+.item-entry-stepper .stepper {
+  border: none;
+  /* The number cell is white on a white card, so the footer keeps the card's
+     own hairline as its top edge or the control dissolves into the body. */
+  border-top: 1.5px solid var(--card-border-color);
+  border-radius: 0 0 10px 10px;
+}
+
+/* Whatever the footer's last row is owns the card's bottom corners. */
+.purchased-banner:has(+ .item-entry-stepper) {
+  border-radius: 0;
+}
+
 /* Multi-claim counter shown to viewers */
 .item-entry-line {
   font-size: 12px;
@@ -908,6 +927,19 @@
   font-size: 13px;
 }
 
+/* Where the card is reshaped into a grid the stepper is a row inside the
+   card's padding rather than its bleeding edge, so it takes the primitive's
+   own chrome back. */
+.item-list .item-entry-stepper {
+  grid-column: 1 / -1;
+  grid-row: 5;
+}
+
+.item-list .item-entry-stepper .stepper {
+  border: 1px solid var(--field-border-color);
+  border-radius: var(--field-radius);
+}
+
 .item-list .item-entry-line {
   grid-column: 1 / -1;
   grid-row: 4;
@@ -1151,6 +1183,17 @@
 
   .item-grid .item-entry-line {
     display: none;
+  }
+
+  .item-list .item-entry-stepper,
+  .item-grid .item-entry-stepper {
+    grid-column: 1 / -1;
+    grid-row: 6;
+  }
+
+  .item-grid .item-entry-stepper .stepper {
+    border: 1px solid var(--field-border-color);
+    border-radius: var(--field-radius);
   }
 }
 

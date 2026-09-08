@@ -78,6 +78,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Three cells rather than five: no jump ends to sit outside the steps. */
+.stepper--compact {
+  grid-template-columns: auto 1fr auto;
+}
+
 /* A hairline in the row's own background: the jump ends share their fill with
    the steps beside them, so without it four buttons read as two. */
 .stepper_jump:first-child {

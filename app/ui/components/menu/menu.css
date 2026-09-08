@@ -153,3 +153,11 @@
   font-size: 12px;
   font-weight: 600;
 }
+
+/* Splits the rows that act on the item's place on this list from the row that
+   opens the item itself. */
+.menu-separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--divider-color);
+}

@@ -12,6 +12,11 @@ import {
   setPurchaseUnits,
   revealedClaimsForEntry,
 } from '@/lib/data/purchase.actions';
+import {
+  removeListItem,
+  setListItemQuantity,
+  updatePriority,
+} from '@/lib/data/listItems.actions';
 import Item from '../Item';
 import { makeProfile } from '@/test/helpers/profile';
 import { AMPLE_QUANTITY, LINKED_STORE, makeItem } from './test-helpers';
@@ -29,6 +34,12 @@ const router = vi.hoisted(() => ({
   refresh: vi.fn(),
 }));
 const sp = vi.hoisted(() => ({ value: new URLSearchParams() }));
+vi.mock('@/lib/data/listItems.actions', () => ({
+  removeListItem: vi.fn(),
+  setListItemQuantity: vi.fn(),
+  updatePriority: vi.fn(),
+}));
+
 vi.mock('next/navigation', () => ({
   useRouter: () => router,
   usePathname: () => '/lists/l1',
@@ -139,9 +150,29 @@ vi.mock('../OwnerActions', () => ({
       data-item-id={p.itemId as string}
       data-archived={String(p.archivedView)}
       data-show-archive={String(p.showArchiveAction)}
+      data-on-list={String(!!p.entry)}
+      data-list-ends={
+        (p.entry as { ends?: { first: string } } | undefined)?.ends?.first ?? ''
+      }
     >
       <button type="button" onClick={p.onChanged as () => void}>
         owner-changed
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          (p.entry as { move: (id: string) => void } | undefined)?.move('z9')
+        }
+      >
+        owner-move
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          (p.entry as { remove: () => void } | undefined)?.remove()
+        }
+      >
+        owner-remove
       </button>
     </div>
   ),
@@ -233,6 +264,9 @@ beforeEach(() => {
     id: 'srv-1',
   } as never);
   vi.mocked(removePurchase).mockResolvedValue({ success: true } as never);
+  vi.mocked(removeListItem).mockResolvedValue({ success: true } as never);
+  vi.mocked(setListItemQuantity).mockResolvedValue({ success: true } as never);
+  vi.mocked(updatePriority).mockResolvedValue({ success: true } as never);
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -1410,5 +1444,189 @@ describe('Item', () => {
       expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
       expect(router.replace).not.toHaveBeenCalled();
     });
+  });
+});
+
+// The owner's live entry controls on the list's own surface. Every write is
+// asserted through what the card shows afterwards, which is the whole point of
+// the mirror: the number moves before the server answers, and comes back if it
+// refuses.
+describe('ListEntry', () => {
+  const owner = { actor: actorOf('owner') };
+  const stepper = () => screen.getByRole('spinbutton');
+  const press = (name: string) => screen.getByRole('button', { name });
+
+  it('OwnerOnList_RendersStepperAtEntryQuantity-TellsMenuItIsOnTheList', () => {
+    renderItem({ ...owner, item: { quantity: 3 } });
+    expect(stepper()).toHaveValue(3);
+    expect(screen.getByTestId('owner-actions')).toHaveAttribute(
+      'data-on-list',
+      'true'
+    );
+  });
+
+  it('Viewer_RendersNoStepper', () => {
+    renderItem({ actor: actorOf('someone-else') });
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+  });
+
+  // A library row names no list, so its card offers nothing that would edit one.
+  it('OwnerOffList_RendersNoStepper', () => {
+    renderItem({ ...owner, item: { list_id: undefined, quantity: undefined } });
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+  });
+
+  it('Increase_CallsSetListItemQuantity-ShowsNextNumber-RouterRefresh', async () => {
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 2 } });
+    await user.click(press('Increase'));
+    expect(stepper()).toHaveValue(3);
+    await waitFor(() =>
+      expect(setListItemQuantity).toHaveBeenCalledWith('l1', 'i1', 3)
+    );
+    await waitFor(() => expect(router.refresh).toHaveBeenCalled());
+  });
+
+  // 0 is not a quantity an entry holds — it is the entry's absence, which is
+  // the removal the menu's own row performs.
+  it('SteppedToZero_CallsRemoveListItem-KeepsCardAtZero-NoRouterRefresh', async () => {
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 1 } });
+    await user.click(press('Decrease'));
+    await waitFor(() => expect(removeListItem).toHaveBeenCalledWith('l1', 'i1'));
+    expect(stepper()).toHaveValue(0);
+    expect(setListItemQuantity).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
+  });
+
+  it('SteppedBackUpFromZero_CallsSetListItemQuantityWithOne-ShowsOne', async () => {
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 1 } });
+    await user.click(press('Decrease'));
+    await waitFor(() => expect(removeListItem).toHaveBeenCalled());
+    await user.click(press('Increase'));
+    await waitFor(() =>
+      expect(setListItemQuantity).toHaveBeenCalledWith('l1', 'i1', 1)
+    );
+    expect(stepper()).toHaveValue(1);
+  });
+
+  it('ZeroQuantity_TellsMenuTheEntryIsGone', async () => {
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 1 } });
+    await user.click(press('Decrease'));
+    await waitFor(() =>
+      expect(screen.getByTestId('owner-actions')).toHaveAttribute(
+        'data-on-list',
+        'false'
+      )
+    );
+  });
+
+  it('QuantityWriteFails_RevertsNumber-ToastsMessage', async () => {
+    vi.mocked(setListItemQuantity).mockResolvedValue({
+      success: false,
+      message: 'Quantity must be a whole number between 1 and 99',
+    } as never);
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 2 } });
+    await user.click(press('Increase'));
+    await waitFor(() => expect(stepper()).toHaveValue(2));
+    const toast = (await import('react-hot-toast')).default;
+    expect(toast.error).toHaveBeenCalledWith(
+      'Quantity must be a whole number between 1 and 99'
+    );
+    expect(router.refresh).not.toHaveBeenCalled();
+  });
+
+  it('MenuRemove_CallsRemoveListItem-LeavesCardAtZero', async () => {
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 4 } });
+    await user.click(press('owner-remove'));
+    await waitFor(() => expect(removeListItem).toHaveBeenCalledWith('l1', 'i1'));
+    expect(stepper()).toHaveValue(0);
+  });
+
+  it('MenuMove_CallsUpdatePriorityWithTarget-RouterRefresh', async () => {
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 2 } });
+    await user.click(press('owner-move'));
+    await waitFor(() =>
+      expect(updatePriority).toHaveBeenCalledWith('i1', 'z9', 'l1')
+    );
+    await waitFor(() => expect(router.refresh).toHaveBeenCalled());
+  });
+
+  // Each write carries an absolute quantity, so a press arriving while another
+  // is in flight is written rather than dropped — which is what lets a typed
+  // two-digit quantity land both of its keystrokes.
+  it('SecondPressWhileWriting_WritesBothAndShowsTheLatest', async () => {
+    let settle: (r: unknown) => void = () => {};
+    vi.mocked(setListItemQuantity).mockReturnValueOnce(
+      new Promise((resolve) => {
+        settle = resolve;
+      }) as never
+    );
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 2 } });
+    await user.click(press('Increase'));
+    await user.click(press('Increase'));
+    expect(stepper()).toHaveValue(4);
+    expect(setListItemQuantity).toHaveBeenNthCalledWith(1, 'l1', 'i1', 3);
+    expect(setListItemQuantity).toHaveBeenNthCalledWith(2, 'l1', 'i1', 4);
+    settle({ success: true, message: 'ok' });
+  });
+
+  // A refusal that lands after the owner has moved on must not drag the number
+  // back to what it was two presses ago.
+  it('StaleFailure_LeavesTheNewerNumberStanding', async () => {
+    let refuse: (r: unknown) => void = () => {};
+    vi.mocked(setListItemQuantity).mockReturnValueOnce(
+      new Promise((resolve) => {
+        refuse = resolve;
+      }) as never
+    );
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 2 } });
+    await user.click(press('Increase'));
+    await user.click(press('Increase'));
+    refuse({ success: false, message: 'Nope' });
+    await waitFor(() =>
+      expect(setListItemQuantity).toHaveBeenCalledTimes(2)
+    );
+    expect(stepper()).toHaveValue(4);
+  });
+
+  // Below the claims tier the banner has nothing to say but the quantity, which
+  // is the number the stepper is already showing and editing.
+  it('WithheldBanner_SuppressedInFavourOfTheStepper', () => {
+    renderItem({ ...owner, item: { quantity: 3 }, tier: 'surprise' });
+    expect(screen.queryByTestId('claim-banners')).not.toBeInTheDocument();
+    expect(stepper()).toHaveValue(3);
+  });
+
+  it('RevealedBanner_KeptAboveTheStepper', () => {
+    renderItem({ ...owner, item: { quantity: 3 }, tier: 'claims' });
+    expect(screen.getByTestId('claim-banners')).toHaveAttribute(
+      'data-quantity',
+      '3'
+    );
+    expect(stepper()).toHaveValue(3);
+  });
+
+  it('Viewer_KeepsTheWithheldBanner', () => {
+    renderItem({ actor: actorOf('someone-else'), tier: 'surprise' });
+    expect(screen.getByTestId('claim-banners')).toHaveAttribute(
+      'data-withheld',
+      'true'
+    );
+  });
+
+  it('ListEnds_ReachTheMenu', () => {
+    renderItem({ ...owner, listEnds: { first: 'a', last: 'z' } });
+    expect(screen.getByTestId('owner-actions')).toHaveAttribute(
+      'data-list-ends',
+      'a'
+    );
   });
 });

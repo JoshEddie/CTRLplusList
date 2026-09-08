@@ -7,10 +7,12 @@ import { useMemo, useState } from 'react';
 import '../styles/item.css';
 import ClaimBanners from './ClaimBanners';
 import ClaimUndoPopup from './ClaimUndoPopup';
+import EntryStepper from './EntryStepper';
 import ItemCard from './ItemCard';
-import OwnerActions from './OwnerActions';
+import OwnerActions, { type ListEnds } from './OwnerActions';
 import PurchaseModalSlot from './PurchaseModalSlot';
 import { useItemClaims } from './useItemClaims';
+import { useListEntry } from './useListEntry';
 import {
   claimUnitsCeiling,
   containerClasses,
@@ -25,6 +27,8 @@ export default function Item({
   tier = 'claims',
   showArchiveAction,
   archivedView,
+  listEnds,
+  onEntryPresence,
   preview,
 }: {
   item: ItemDisplay;
@@ -36,6 +40,10 @@ export default function Item({
   tier?: SpoilerTier;
   showArchiveAction?: boolean;
   archivedView?: boolean;
+  /** The ends of the list's own order, for the owner's move rows. Absent off the list surface and while another sort overrides that order. */
+  listEnds?: ListEnds;
+  /** Reports the card on or off the list as its quantity crosses 0, so the surface can keep those ends naming entries that still exist. */
+  onEntryPresence?: (itemId: string, onList: boolean) => void;
   /** Render as a live preview inside the item form: no modal, no interactions. */
   preview?: boolean;
 }) {
@@ -53,6 +61,17 @@ export default function Item({
   const claimRoute = searchParams?.get('purchaseView') === 'claim';
 
   const isOwner = actor?.id === item.profile_id;
+
+  // The entry's own controls, live on the list's own surface. `list_id` is what
+  // names one: an item read through the library carries none, so its card
+  // offers nothing that would edit a list it does not name.
+  const entry = useListEntry(
+    item.list_id ?? '',
+    item.id,
+    item.quantity ?? 0,
+    onEntryPresence
+  );
+  const ownsEntry = isOwner && !!item.list_id && !preview;
 
   const handleModalOpen = (view?: 'claim') => {
     const params = new URLSearchParams(searchParams?.toString() || '');
@@ -139,7 +158,17 @@ export default function Item({
           onBuyClaimClick={preview ? undefined : claim.handleBuyClaim}
         />
 
-        {claim.banner && <ClaimBanners {...claim.banner} />}
+        {claim.banner && !(ownsEntry && claim.banner.withheld) && (
+          <ClaimBanners {...claim.banner} />
+        )}
+
+        {ownsEntry && (
+          <EntryStepper
+            name={item.name}
+            quantity={entry.quantity}
+            onChange={entry.setQuantity}
+          />
+        )}
 
         {isOwner && (
           <OwnerActions
@@ -149,6 +178,11 @@ export default function Item({
             pathname={pathname}
             searchParams={searchParams}
             onChanged={() => router.refresh()}
+            entry={
+              ownsEntry && entry.quantity > 0
+                ? { ends: listEnds, move: entry.moveTo, remove: entry.remove }
+                : undefined
+            }
           />
         )}
       </div>

@@ -2,6 +2,7 @@
 
 import { ProfileMembershipView, ItemDisplay, SpoilerTier } from '@/lib/types';
 import Item from './Item';
+import type { ListEnds } from './OwnerActions';
 
 interface ItemsProps {
   items: ItemDisplay[];
@@ -11,6 +12,8 @@ interface ItemsProps {
   tier?: SpoilerTier;
   showArchiveAction?: boolean;
   archivedView?: boolean;
+  listEnds?: ListEnds;
+  onEntryPresence?: (itemId: string, onList: boolean) => void;
 }
 
 export default function Items({
@@ -21,6 +24,8 @@ export default function Items({
   tier,
   showArchiveAction,
   archivedView,
+  listEnds,
+  onEntryPresence,
 }: ItemsProps) {
   return (
     <div className="item-grid-container">
@@ -35,6 +40,8 @@ export default function Items({
               tier={tier}
               showArchiveAction={showArchiveAction}
               archivedView={archivedView}
+              listEnds={listEnds}
+              onEntryPresence={onEntryPresence}
             />
           );
         })}

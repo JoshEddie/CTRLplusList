@@ -163,10 +163,11 @@ body {
   margin: 0;
 }
 
-/* Grouped: the edit-mode row's checkbox label span is visually hidden but kept
-   for assistive tech (its accessible name is the item name) — same clip
-   block, one home. */
+/* Grouped: the edit-mode row's checkbox label span and the entry stepper's
+   label row are visually hidden but kept for assistive tech (their accessible
+   names are the item name) — same clip block, one home. */
 .sr-only,
+.item-entry-stepper .stepper_label_row,
 .edit-mode-row .checkbox_field > span {
   position: absolute;
   width: 1px;

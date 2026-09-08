@@ -85,7 +85,7 @@ no list is visible to its owner only.
 A profile's entire item set, independent of any list.
 
 **Edit mode**:
-The owner's one surface for changing what is on a list, reached at `?edit=1`
+The owner's staged surface for changing what is on a list, reached at `?edit=1`
 on the list's own route rather than through a page of its own. It replaces the
 hero with a still band — the list's name and two tabs — and the item surface
 with one staged session. _In this list_ holds the entries in position order,
@@ -101,7 +101,10 @@ else; the list row is the hero pencil's _Edit list_ modal's, which also carries
 the list's deletion. Cancel is the only revert, and Save, Cancel, Back, reload
 and any in-app link all confirm while anything is staged. No claim state
 renders here: a claim belongs to a list entry, not to an item, so a library
-card carries none this list could judge.
+card carries none this list could judge. It is no longer the only way in: on
+the list's ordinary surface an owner's card carries its own quantity stepper
+and an item menu holding move to top, move to bottom and remove from list,
+each committing as it is made.
 
 **Pending change**:
 An entry, as edit mode stages it, whose membership, quantity, or position

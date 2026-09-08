@@ -121,14 +121,101 @@ describe('OwnerActions', () => {
     );
   });
 
-  // Entry writes belong to edit mode: the card's menu carries no row for the
-  // quantity or for removal, on the list page as on the library.
-  it('Default_OffersOnlyEditAndArchive', async () => {
+  // The item library names no list, so nothing that would edit one is offered.
+  it('OffList_OffersOnlyEditAndArchive-NoSeparator', async () => {
     const user = userEvent.setup();
     renderActions();
     await openKebab(user);
-    expect(
-      screen.getAllByRole('menuitem').map((el) => el.textContent)
-    ).toEqual(['Edit', 'Archive']);
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(
+      ['Edit item details', 'Archive']
+    );
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+  });
+
+  describe('OnList', () => {
+    const move = vi.fn();
+    const remove = vi.fn();
+    const onList = {
+      showArchiveAction: false,
+      entry: { ends: { first: 'first', last: 'last' }, move, remove },
+    };
+
+    it('Middle_OffersMoveTopMoveBottomRemoveThenEdit', async () => {
+      const user = userEvent.setup();
+      renderActions(onList);
+      await openKebab(user);
+      expect(
+        screen.getAllByRole('menuitem').map((el) => el.textContent)
+      ).toEqual([
+        'Move to top',
+        'Move to bottom',
+        'Remove from list',
+        'Edit item details',
+      ]);
+      expect(screen.getByRole('separator')).toBeInTheDocument();
+    });
+
+    it('FirstInListOrder_OmitsMoveToTop', async () => {
+      const user = userEvent.setup();
+      renderActions({ ...onList, itemId: 'first' });
+      await openKebab(user);
+      expect(
+        screen.queryByRole('menuitem', { name: 'Move to top' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('menuitem', { name: 'Move to bottom' })
+      ).toBeInTheDocument();
+    });
+
+    it('LastInListOrder_OmitsMoveToBottom', async () => {
+      const user = userEvent.setup();
+      renderActions({ ...onList, itemId: 'last' });
+      await openKebab(user);
+      expect(
+        screen.queryByRole('menuitem', { name: 'Move to bottom' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('menuitem', { name: 'Move to top' })
+      ).toBeInTheDocument();
+    });
+
+    // A non-list-order sort withholds the ends, so the moves that would
+    // silently rewrite the order the owner sorted by are not offered.
+    it('NoListEnds_OmitsBothMoveRows-KeepsRemove', async () => {
+      const user = userEvent.setup();
+      renderActions({ ...onList, entry: { move, remove } });
+      await openKebab(user);
+      expect(
+        screen.getAllByRole('menuitem').map((el) => el.textContent)
+      ).toEqual(['Remove from list', 'Edit item details']);
+    });
+
+    it('MoveToTop_CallsOnMoveWithFirstId-ClosesMenu', async () => {
+      const user = userEvent.setup();
+      renderActions(onList);
+      await openKebab(user);
+      await user.click(screen.getByRole('menuitem', { name: 'Move to top' }));
+      expect(move).toHaveBeenCalledWith('first');
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+
+    it('MoveToBottom_CallsOnMoveWithLastId', async () => {
+      const user = userEvent.setup();
+      renderActions(onList);
+      await openKebab(user);
+      await user.click(screen.getByRole('menuitem', { name: 'Move to bottom' }));
+      expect(move).toHaveBeenCalledWith('last');
+    });
+
+    it('Remove_CallsOnRemove-ClosesMenu', async () => {
+      const user = userEvent.setup();
+      renderActions(onList);
+      await openKebab(user);
+      await user.click(
+        screen.getByRole('menuitem', { name: 'Remove from list' })
+      );
+      expect(remove).toHaveBeenCalled();
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
   });
 });

@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { touchLists } from '@/lib/data/list.touch';
 import {
   checkListBalance,
+  nextPosition,
   rebalanceList,
   reorderPosition,
 } from '@/lib/data/listItems.positions';
@@ -13,92 +14,16 @@ import {
   ENTRY_QUANTITY_ERROR,
   EntryQuantitySchema,
 } from '@/lib/data/listItems.schema';
+import { getMessage } from '@/lib/i18n/utils';
 import { ADMIN_OPTIONAL, authedWriter } from '@/lib/data/profile.gate';
+import {
+  StagedEntriesSchema,
+  describeWrites,
+  stagedWrites,
+} from '@/lib/data/listItems.staged';
 import { type ActionResponse } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
-import { z } from 'zod';
-
-const StagedEntriesSchema = z.array(
-  z.object({ item_id: z.string().min(1), quantity: EntryQuantitySchema })
-);
-
-const POSITION_STRIDE = 65536;
-
-// The desired state arrives whole and ordered. Rows keep their positions when
-// the order they already hold is the order asked for (adds trailing it), so a
-// quantity-only edit or a pure add touches nothing else; any other order is
-// rewritten as clean multiples of the stride, which is why edit mode's Save
-// never needs the midpoint-and-rebalance path (ADR-0010).
-function desiredPositions(
-  existing: { item_id: string; position: number }[],
-  incoming: { item_id: string }[]
-): Map<string, number> {
-  const existingIds = new Set(existing.map((row) => row.item_id));
-  const incomingIds = new Set(incoming.map((entry) => entry.item_id));
-  const survivors = existing.filter((row) => incomingIds.has(row.item_id));
-  const inserts = incoming.filter((entry) => !existingIds.has(entry.item_id));
-  const kept = [...survivors, ...inserts].map((entry) => entry.item_id);
-  const asked = incoming.map((entry) => entry.item_id);
-  if (kept.join('\n') !== asked.join('\n')) {
-    return new Map(
-      asked.map((item_id, index) => [item_id, (index + 1) * POSITION_STRIDE])
-    );
-  }
-  const max = survivors.reduce((acc, row) => Math.max(acc, row.position), 0);
-  return new Map([
-    ...survivors.map((row) => [row.item_id, row.position] as const),
-    ...inserts.map(
-      (entry, index) =>
-        [entry.item_id, max + (index + 1) * POSITION_STRIDE] as const
-    ),
-  ]);
-}
-
-type EntryRow = { item_id: string; position: number; quantity: number };
-
-// The three write sets the desired state resolves to against what is saved.
-function stagedWrites(
-  list_id: string,
-  existing: EntryRow[],
-  incoming: { item_id: string; quantity: number }[]
-) {
-  const existingById = new Map(existing.map((row) => [row.item_id, row]));
-  const incomingIds = new Set(incoming.map((entry) => entry.item_id));
-  const positions = desiredPositions(existing, incoming);
-  const upserts = incoming
-    .map((entry) => ({
-      list_id,
-      item_id: entry.item_id,
-      quantity: entry.quantity,
-      position: positions.get(entry.item_id)!,
-    }))
-    .filter((row) => {
-      const current = existingById.get(row.item_id);
-      return (
-        !current ||
-        current.position !== row.position ||
-        current.quantity !== row.quantity
-      );
-    });
-  return {
-    toRemove: existing
-      .filter((row) => !incomingIds.has(row.item_id))
-      .map((row) => row.item_id),
-    toInsert: upserts
-      .filter((row) => !existingById.has(row.item_id))
-      .map((row) => row.item_id),
-    upserts,
-  };
-}
-
-function describeWrites(added: number, removed: number, updated: number) {
-  const parts: string[] = [];
-  if (added > 0) parts.push(`Added ${added}`);
-  if (removed > 0) parts.push(`removed ${removed}`);
-  if (updated > 0) parts.push(`updated ${updated}`);
-  return parts.join(', ');
-}
 
 export async function setListItems(
   list_id: string,
@@ -428,12 +353,29 @@ export async function setListItemQuantity(
         and(eq(list_items.list_id, list_id), eq(list_items.item_id, item_id))
       )
       .returning({ item_id: list_items.item_id });
-    if (updated.length === 0) {
-      return {
-        success: false,
-        message: 'Item is not on this list',
-        error: 'Not found',
-      };
+
+    // A quantity is set on the entry whether or not one exists yet: 0 is what
+    // "not on this list" means, so a card stepped back up from 0 asks for the
+    // row it deleted rather than failing on its absence.
+    const added = updated.length === 0;
+    if (added) {
+      const item = await db.query.items.findFirst({
+        where: eq(items.id, item_id),
+        columns: { profile_id: true },
+      });
+      if (!item || item.profile_id !== list.profile_id) {
+        return {
+          success: false,
+          message: getMessage('entry_foreign_item_error'),
+          error: 'Forbidden',
+        };
+      }
+      await db.insert(list_items).values({
+        list_id,
+        item_id,
+        quantity,
+        position: await nextPosition(list_id),
+      });
     }
 
     await touchLists([list_id]);
@@ -442,7 +384,9 @@ export async function setListItemQuantity(
       cacheTags.list(list_id),
       cacheTags.itemsOfList(list_id),
       cacheTags.listsOfProfile(list.profile_id),
-      cacheTags.itemsOfProfile(list.profile_id)
+      cacheTags.itemsOfProfile(list.profile_id),
+      // Only a membership change reaches the item's own read.
+      ...(added ? [cacheTags.item(item_id)] : [])
     );
 
     return { success: true, message: 'Quantity updated' };

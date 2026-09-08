@@ -1,21 +1,29 @@
 import { db } from '@/db';
 import { list_items } from '@/db/schema';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
-import { and, asc, desc, eq, gt, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, lt, sql } from 'drizzle-orm';
+
+const POSITION_STRIDE = 65536;
+
+// Positions are integers, so a midpoint only lands strictly between its
+// neighbours while they are at least two apart: at a gap of 1 the floor equals
+// the lower neighbour, and at 0 they are already tied. The whole list is
+// scanned rather than its top pair — move-to-bottom opens the gap it lands in,
+// but move-to-top halves toward 0 and compresses the other end, which a check
+// reading only the two highest positions never sees.
+const MIN_PLACEABLE_GAP = 2;
 
 export async function checkListBalance(listId: string): Promise<boolean> {
-  const result = await db
+  const rows = await db
     .select()
     .from(list_items)
     .where(eq(list_items.list_id, listId))
-    .orderBy(desc(list_items.position))
-    .limit(2);
+    .orderBy(asc(list_items.position));
 
-  if (result.length < 2) return false;
-
-  const [first, second] = result;
-  const minGap = 0.001;
-  return first.position - second.position < minGap;
+  return rows.some(
+    (row, index) =>
+      index > 0 && row.position - rows[index - 1].position < MIN_PLACEABLE_GAP
+  );
 }
 
 export async function rebalanceList(listId: string): Promise<void> {
@@ -26,7 +34,7 @@ export async function rebalanceList(listId: string): Promise<void> {
     .orderBy(asc(list_items.position));
 
   const updates = items.map((item: { item_id: string }, index: number) => {
-    const newPosition = (index + 1) * 65536;
+    const newPosition = (index + 1) * POSITION_STRIDE;
     return db
       .update(list_items)
       .set({ position: newPosition })
@@ -84,5 +92,19 @@ export async function reorderPosition(
     .limit(1);
   return result.length > 0
     ? Math.floor((result[0].position + targetPosition) / 2)
-    : targetPosition + 65536;
+    : targetPosition + POSITION_STRIDE;
+}
+
+// The position an entry appended to a list takes: one stride past the last one
+// held, or the stride itself on an empty list.
+export async function nextPosition(listId: string): Promise<number> {
+  const rows = await db
+    .select({
+      coalesce: sql<number>`COALESCE(MAX(${list_items.position}) + ${POSITION_STRIDE}, ${POSITION_STRIDE})`,
+    })
+    .from(list_items)
+    .where(eq(list_items.list_id, listId))
+    .limit(1);
+  /* v8 ignore next -- the COALESCE guarantees a single numeric row, so neither fallback is reachable. */
+  return Math.floor(rows[0]?.coalesce ?? POSITION_STRIDE);
 }
