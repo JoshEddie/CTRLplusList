@@ -599,7 +599,6 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  padding-bottom: 8px;
 }
 
 /* Shared full-page grid of list cards (My Lists, Bookmarks, History) */

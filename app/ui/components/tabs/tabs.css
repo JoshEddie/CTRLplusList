@@ -1,78 +1,179 @@
-/* Tab strip primitive. One stylesheet for both modes — a nav of links and a
-   tablist of buttons render the same strip; only the element differs. */
+/* Tab strip primitive. One stylesheet for both strips — a navigation of links
+   and a tablist of buttons render the same joined strip. Activeness is read off
+   the leaf's own ARIA, so no leaf carries a class and every structural change
+   lands here or in TabStrip. */
 
-.tabs {
-  display: flex;
-  align-items: stretch;
-  min-width: 0;
+.tabStrip {
+  width: 100%;
+  border-bottom: 2px solid var(--secondary-color-dark);
   overflow-x: auto;
   /* `overflow-x: auto` computes `overflow-y` to `auto` as well, which lets a
      strip scroll vertically against its own tab height. */
   overflow-y: hidden;
   scrollbar-width: none;
-  border-bottom: 1px solid var(--divider-color);
 }
 
-.tabs::-webkit-scrollbar {
+.tabStrip::-webkit-scrollbar {
   display: none;
 }
 
-.tabs-tab {
+.tabs-shell {
+  position: relative;
+  min-width: 0;
+  /* Inline-size containment, not a query container: it fixes the shell's width
+     to its parent so collapsing — which empties the row it measured — cannot
+     feed back into that measurement and oscillate. */
+  container-type: inline-size;
+}
+
+.tabs {
+  display: flex;
+  min-width: 0;
+}
+
+.tabs > * {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* Horizontal padding absorbs the gap between labels so the dead space
-     between two tabs belongs to one of them. */
-  padding: 0 12px;
-  background: none;
-  border: none;
-  /* The active underline overlaps the strip's own rule rather than stacking
-     under it. */
-  border-bottom: 2px solid transparent;
+  flex-shrink: 0;
+  padding: 0 var(--btn-padding-x);
   margin-bottom: -1px;
-  color: var(--meta-text-color);
-  text-decoration: none;
+  border: 1px solid var(--secondary-color-dark);
+  background: none;
+  color: var(--heading-text-color);
+  font-family: var(--font-roboto-condensed);
+  font-weight: 600;
   white-space: nowrap;
+  text-decoration: none;
   cursor: pointer;
   transition:
-    color 0.15s ease,
-    border-color 0.15s ease;
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+/* Adjacent cells share one edge instead of stacking two. */
+.tabs > * + * {
+  margin-left: -1px;
+}
+
+.tabs > *:first-child {
+  border-top-left-radius: var(--btn-radius);
+}
+
+.tabs > *:last-child {
+  border-top-right-radius: var(--btn-radius);
+}
+
+/* Flex items take `z-index` without positioning, so a raised cell keeps its own
+   edge on top of the neighbour it overlaps. */
+.tabs > *:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: -2px;
+  z-index: 2;
+}
+
+.tabs > [aria-current='page'],
+.tabs > [aria-selected='true'] {
+  background-color: var(--primary-color-dark);
+  border-color: var(--primary-color-dark);
+  color: #ffffff;
+  z-index: 1;
 }
 
 @media (hover: hover) {
-  .tabs-tab:hover {
-    color: var(--heading-text-color);
+  .tabs > *:hover,
+  .tabs > [aria-current='page']:hover,
+  .tabs > [aria-selected='true']:hover {
+    background-color: var(--primary-color);
+    color: var(--light-color);
   }
 }
 
-.tabs-tab:focus-visible {
-  outline: 2px solid var(--btn-focus-ring-color);
-  outline-offset: -2px;
-}
-
-.tabs-tab--active {
-  color: var(--primary-color);
-  border-bottom-color: var(--primary-color);
-}
-
-.tabs--default .tabs-tab {
+.tabs--default > * {
   min-height: var(--WCAG-input-size);
-  font-family: var(--font-crimson-pro);
-  font-weight: 300;
-  font-size: 18px;
-  line-height: 1;
+  font-size: 16px;
 }
 
-.tabs--sm .tabs-tab {
+.tabs--sm > * {
   min-height: var(--WCAG-input-size-sm);
-  font-family: var(--font-roboto-condensed);
-  font-weight: 600;
   font-size: 14px;
-  line-height: 1;
 }
 
-@media (min-width: 801px) {
-  .tabs--default .tabs-tab {
-    font-size: 22px;
-  }
+/* Collapse to a dropdown rather than scroll sideways. Whether the row fits is
+   measured in TabStrip, because no hand-written length knows how wide a label
+   renders. The active cell is the face: it wears the caret and opens the list,
+   so no separate trigger duplicates its label outside the strip.
+
+   TabStrip withholds `data-collapsed` when no cell is active, so every rule
+   below can assume a face exists. */
+
+.tabs-shell[data-collapsed] .tabStrip {
+  /* The strip floats out of flow, so the scroller keeps the row's height,
+     stops clipping the open list, and drops a rule that has no row under it. */
+  min-height: var(--WCAG-input-size);
+  overflow: visible;
+  border-bottom: none;
+}
+
+.tabs-shell[data-collapsed] .tabStrip:has(.tabs--sm) {
+  min-height: var(--WCAG-input-size-sm);
+}
+
+.tabs-shell[data-collapsed] .tabs {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  flex-direction: column;
+}
+
+.tabs-shell[data-collapsed] .tabs > * {
+  width: 100%;
+  margin: 0;
+  justify-content: flex-start;
+  border: 1px solid var(--primary-color-dark);
+  border-top: none;
+  border-radius: 0;
+}
+
+/* The rows are transparent against their card; floating over the page they need
+   a surface of their own. Scoped off the face, which keeps its filled state —
+   this selector outweighs the shared active rule. */
+.tabs-shell[data-collapsed] .tabs > *:not([aria-current='page']):not([aria-selected='true']) {
+  background-color: var(--light-color);
+}
+
+.tabs-shell[data-collapsed] .tabs > :last-child {
+  border-radius: 0 0 var(--btn-radius) var(--btn-radius);
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* The face leads the list whatever its DOM position, holds the whole rounded
+   shape while closed, and squares off to meet the list while open. */
+.tabs-shell[data-collapsed] .tabs > [aria-current='page'],
+.tabs-shell[data-collapsed] .tabs > [aria-selected='true'] {
+  order: -1;
+  justify-content: space-between;
+  border-top: 1px solid var(--primary-color-dark);
+  border-radius: var(--btn-radius);
+}
+
+.tabs-shell[data-collapsed][data-open] .tabs > [aria-current='page'],
+.tabs-shell[data-collapsed][data-open] .tabs > [aria-selected='true'] {
+  border-radius: var(--btn-radius) var(--btn-radius) 0 0;
+}
+
+.tabs-shell[data-collapsed] .tabs > [aria-current='page']::after,
+.tabs-shell[data-collapsed] .tabs > [aria-selected='true']::after {
+  content: '';
+  border: 5px solid transparent;
+  border-top-color: currentcolor;
+  /* The glyph's mass sits above its box centre once the bottom edge is
+     transparent; nudging down re-centres it against the label. */
+  margin-top: 5px;
+}
+
+.tabs-shell[data-collapsed]:not([data-open]) .tabs > *:not([aria-current='page']):not([aria-selected='true']) {
+  display: none;
 }

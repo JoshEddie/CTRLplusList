@@ -16,7 +16,7 @@ describe('EmptyListCTA', () => {
     expect(
       screen.getByRole('heading', { name: 'No items on this list yet' })
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Edit items' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Choose Items' })).toHaveAttribute(
       'href',
       '/lists/l1?edit=1'
     );
@@ -25,7 +25,7 @@ describe('EmptyListCTA', () => {
   it('UnderASpoilerParam_CarriesItIntoEditMode', () => {
     spHolder.value = new URLSearchParams('spoiler=claims');
     render(<EmptyListCTA listId="l1" />);
-    expect(screen.getByRole('link', { name: 'Edit items' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Choose Items' })).toHaveAttribute(
       'href',
       '/lists/l1?spoiler=claims&edit=1'
     );

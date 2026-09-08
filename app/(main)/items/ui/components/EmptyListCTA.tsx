@@ -14,7 +14,7 @@ export default function EmptyListCTA({ listId }: { listId: string }) {
       <p>{getMessage('list_empty_body')}</p>
       <LinkButton href={enterEditHref(listId, searchParams)} variant="primary">
         <MdChecklist size={18} />
-        {getMessage('list_edit_items_label')}
+        {getMessage('list_empty_button_label')}
       </LinkButton>
     </div>
   );

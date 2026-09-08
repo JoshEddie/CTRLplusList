@@ -15,3 +15,13 @@ afterEach(() => {
 // no-oping. Stubbed here rather than guarded in the components, whose call is
 // correct in a browser.
 Element.prototype.scrollTo = () => {};
+
+// jsdom implements no layout, so `ResizeObserver` is absent entirely and any
+// component that observes its own box throws on construction. Stubbed here
+// rather than guarded in the components, whose use is correct in a browser;
+// sizes all read 0 under jsdom, so an observed strip simply never collapses.
+globalThis.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};

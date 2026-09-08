@@ -216,7 +216,7 @@ describe('ListDetails', () => {
         list: sharedOwnerList({ id: 'list-7' }),
       });
       const editItems = within(actions).getByRole('link', {
-        name: 'Edit items',
+        name: 'Edit Items',
       });
       expect(editItems).toHaveAttribute('href', '/lists/list-7?edit=1');
       // Edit is never a hero button; it lives in the kebab menu, which closes
