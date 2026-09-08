@@ -17,7 +17,7 @@ const forceCollapse = () => {
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100);
 };
 
-const renderCollapsedAndOpen = async () => {
+const openCollapsedStrip = async () => {
   forceCollapse();
   render(
     <TabStrip role="tablist" aria-label="Filter">
@@ -118,7 +118,7 @@ describe('TabStrip', () => {
   });
 
   it('CollapsedFaceClicked_TogglesTheListOpenThenShut', async () => {
-    const shell = await renderCollapsedAndOpen();
+    const shell = await openCollapsedStrip();
 
     expect(shell).toHaveAttribute('data-collapsed', 'true');
     expect(shell).toHaveAttribute('data-open', 'true');
@@ -129,7 +129,7 @@ describe('TabStrip', () => {
   });
 
   it('OpenAndPointerDownOutside_ClosesTheList', async () => {
-    const shell = await renderCollapsedAndOpen();
+    const shell = await openCollapsedStrip();
 
     await userEvent.click(document.body);
 
@@ -137,7 +137,7 @@ describe('TabStrip', () => {
   });
 
   it('OpenAndEscapePressed_ClosesTheList', async () => {
-    const shell = await renderCollapsedAndOpen();
+    const shell = await openCollapsedStrip();
 
     await userEvent.keyboard('{Escape}');
 
