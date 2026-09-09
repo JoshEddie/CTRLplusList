@@ -125,7 +125,10 @@ export default function BylineProfileCard({
     <div
       ref={rootRef}
       className="byline-card-anchor"
-      onMouseEnter={() => setOpen(true)}
+      // Movement, not `mouseenter`: a navigation re-runs hit-testing under a
+      // pointer that never moved, so the byline landing beneath a parked
+      // cursor would open the card over the hero nobody pointed at.
+      onMouseMove={() => setOpen(true)}
       onMouseLeave={closeOnLeave}
     >
       {asMenuRow ? (

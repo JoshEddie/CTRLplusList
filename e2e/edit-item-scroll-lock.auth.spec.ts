@@ -14,9 +14,15 @@ test('EditItemModal_OwnerOpensFromKebabThenCloses_LibraryScrollsAgain', async ({
 }) => {
   await page.goto('/items');
   const scrollY = () => page.evaluate(() => window.scrollY);
+  // Re-wheels on every poll: a wheel is a one-shot, and hydration restores the
+  // scroll position, so a single tick landing before the route hydrates is
+  // silently undone and never retried.
+  const wheelThenScrollY = async () => {
+    await page.mouse.wheel(0, 400);
+    return scrollY();
+  };
 
-  await page.mouse.wheel(0, 400);
-  await expect.poll(scrollY).toBeGreaterThan(0);
+  await expect.poll(wheelThenScrollY).toBeGreaterThan(0);
   await page.evaluate(() => window.scrollTo(0, 0));
 
   await page.getByRole('button', { name: 'Item actions' }).first().click();
@@ -31,6 +37,5 @@ test('EditItemModal_OwnerOpensFromKebabThenCloses_LibraryScrollsAgain', async ({
   await close.click();
   await expect(page).toHaveURL(/\/items$/);
 
-  await page.mouse.wheel(0, 400);
-  await expect.poll(scrollY).toBeGreaterThan(0);
+  await expect.poll(wheelThenScrollY).toBeGreaterThan(0);
 });

@@ -63,9 +63,11 @@ export default function ListOwnerTabs({
       showReorder: canReorder
         ? () => {
             const params = new URLSearchParams(searchParams?.toString() || '');
-            params.delete('sort');
-            const query = params.toString();
-            router.replace(query ? `${pathname}?${query}` : pathname);
+            if (params.has('sort')) {
+              params.delete('sort');
+              const query = params.toString();
+              router.replace(query ? `${pathname}?${query}` : pathname);
+            }
             setTab('reorder');
           }
         : undefined,

@@ -181,13 +181,17 @@ describe('ListOwnerTabs', () => {
       expect(nav.replace).toHaveBeenCalledWith('/lists/l1');
     });
 
-    it('OpenedWithoutSearchParams_ReplacesWithTheBarePath', async () => {
+    // With no sort on there is nothing to drop, and a replace that changes no
+    // param still refreshes the tree — remounting the band under the press
+    // that opened the tab.
+    it('OpenedWithNoSortToDrop_SelectsTheTabWithoutNavigating', async () => {
       nav.query = null;
       renderTabs();
       await userEvent.click(
         screen.getByRole('button', { name: 'Reorder all items' })
       );
-      expect(nav.replace).toHaveBeenCalledWith('/lists/l1');
+      expect(screen.getByTestId('reorder')).toBeInTheDocument();
+      expect(nav.replace).not.toHaveBeenCalled();
     });
 
     it('SingleEntry_OffersNeitherTheTabNorTheMenuRow', () => {
