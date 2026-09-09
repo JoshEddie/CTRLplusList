@@ -68,7 +68,7 @@ const browser = () => screen.getByTestId('browser');
 const renderPanel = async () =>
   render(
     <OwnerTabsContext.Provider
-      value={{ showLibrary: vi.fn(), createItem: vi.fn() }}
+      value={{ showList: vi.fn(), showLibrary: vi.fn(), createItem: vi.fn() }}
     >
       {await ListLibraryPanel({
         listId: 'l1',

@@ -12,6 +12,7 @@ import {
   MdModeEdit,
   MdMoreHoriz,
   MdRemoveCircleOutline,
+  MdSwapVert,
   MdUnarchive,
   MdVerticalAlignBottom,
   MdVerticalAlignTop,
@@ -35,6 +36,7 @@ export default function OwnerActions({
   searchParams,
   onChanged,
   entry,
+  onReorderAll,
 }: {
   itemId: string;
   showArchiveAction?: boolean;
@@ -43,6 +45,8 @@ export default function OwnerActions({
   searchParams: ReadonlyURLSearchParams | null;
   onChanged: () => void;
   entry?: EntryActions;
+  /** Opens the list's reorder surface. Absent wherever that surface does not exist — off the list, or on a list too short to arrange. */
+  onReorderAll?: () => void;
 }) {
   const kebabRef = useRef<HTMLButtonElement>(null);
   const [kebabOpen, setKebabOpen] = useState(false);
@@ -110,6 +114,14 @@ export default function OwnerActions({
             {getMessage('entry_move_bottom')}
           </MenuItem>
         )}
+        {onReorderAll && (
+          <MenuItem
+            icon={<MdSwapVert size={18} />}
+            onClick={run(onReorderAll)}
+          >
+            {getMessage('entry_reorder_all')}
+          </MenuItem>
+        )}
         {entry && (
           <MenuItem
             tone="danger"
@@ -119,7 +131,9 @@ export default function OwnerActions({
             {getMessage('entry_remove_label')}
           </MenuItem>
         )}
-        {entry && <div className="menu-separator" role="separator" />}
+        {(entry || onReorderAll) && (
+          <div className="menu-separator" role="separator" />
+        )}
         <MenuLinkItem
           href={`/items/${itemId}?returnTo=${encodeURIComponent(
             pathname +

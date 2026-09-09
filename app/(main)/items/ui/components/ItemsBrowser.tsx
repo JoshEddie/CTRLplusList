@@ -7,8 +7,15 @@ import {
   SortKey,
   SpoilerTier,
 } from '@/lib/types';
+import { OwnerTabsContext } from '@/app/(main)/lists/[id]/ownerTabs';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import Items from './Items';
 import ToolbarSlot from './itemsToolbar/ToolbarSlot';
 import Pagination from './Pagination';
@@ -111,6 +118,12 @@ export default function ItemsBrowser({
       ? { first: onList[0].id, last: onList[onList.length - 1].id }
       : undefined;
 
+  // Offered under any sort, unlike the move rows: the reorder surface resets
+  // the sort as it opens, so it is the way back to an order the others hide.
+  // Null off the owner's own list, where there is no band to select a tab on.
+  const ownerTabs = useContext(OwnerTabsContext);
+  const onReorderAll = mode === 'list' ? ownerTabs?.showReorder : undefined;
+
   const {
     rows: visible,
     page,
@@ -156,6 +169,7 @@ export default function ItemsBrowser({
             archivedView={archivedView}
             listEnds={listEnds}
             onEntryPresence={handleEntryPresence}
+            onReorderAll={onReorderAll}
             claimless={claimless}
           />
           <Pagination

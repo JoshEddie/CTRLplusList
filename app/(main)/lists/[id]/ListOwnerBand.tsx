@@ -15,12 +15,15 @@ export default function ListOwnerBand({
   tab,
   onTabChange,
   inListCount,
+  showReorder,
   onCreate,
   onChooseExisting,
 }: {
   tab: OwnerTab;
   onTabChange: (tab: OwnerTab) => void;
   inListCount: number;
+  /** Whether the list holds enough entries for its order to be arrangeable. */
+  showReorder: boolean;
   onCreate: () => void;
   onChooseExisting: () => void;
 }) {
@@ -47,6 +50,16 @@ export default function ListOwnerBand({
             id: OWNER_TAB_IDS.library,
             panelId: OWNER_PANEL_ID,
           },
+          ...(showReorder
+            ? [
+                {
+                  label: getMessage('owner_tab_reorder'),
+                  value: 'reorder' as const,
+                  id: OWNER_TAB_IDS.reorder,
+                  panelId: OWNER_PANEL_ID,
+                },
+              ]
+            : []),
         ]}
       />
       <AddItemMenu onCreate={onCreate} onChooseExisting={onChooseExisting} />

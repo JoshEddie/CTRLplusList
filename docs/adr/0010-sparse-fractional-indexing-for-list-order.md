@@ -6,7 +6,6 @@ positions were the alternative and would need N updates per move — which, unde
 [0001](0001-no-interactive-database-transactions.md), means N non-atomic writes
 with no way to roll back a partial reorder.
 
-Edit mode's Save is the exception: it receives the whole ordering at once, so
-when that order differs from the saved one it rewrites every position as a
-clean multiple of the stride in one upsert, and the rebalance never fires on
-that path. An unchanged order leaves positions untouched.
+Every move is pairwise, including the ones the reorder surface makes: a drop
+and an arrow press both name the row moved past, so each is one write of one
+position rather than a rewrite of the whole list.

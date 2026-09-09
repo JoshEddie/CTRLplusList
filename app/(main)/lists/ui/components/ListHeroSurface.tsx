@@ -9,6 +9,9 @@ export const HERO_BAND_SLOT_ID = 'list-hero-band-slot';
 export const HERO_TOOLBAR_SLOT_ID = 'list-hero-toolbar-slot';
 export const HERO_SLOT_READY_EVENT = 'list-hero-slot-ready';
 
+/** Set on the document element for the length of a drag; while it is there the hero holds whatever state it is already in. */
+export const HERO_FREEZE_ATTR = 'data-hero-frozen';
+
 const SUSTAINED_PX = 40;
 const EXPAND_TRAVEL_PX = 350;
 const QUIET_MS = 500;
@@ -88,6 +91,16 @@ export default function ListHeroSurface({ title, kebab, children }: ListHeroSurf
 
     const onScroll = () => {
       const sentinelTop = sentinel.getBoundingClientRect().top;
+
+      // Frozen outranks the pin: a drag toward the top auto-scrolls the page,
+      // and re-expanding there would slide every drop target down under the
+      // pointer. The travel is re-baselined rather than banked, so the state
+      // held is the resolved one and the gesture is not replayed on release.
+      if (document.documentElement.hasAttribute(HERO_FREEZE_ATTR)) {
+        lastSentinelTop = sentinelTop;
+        settle();
+        return;
+      }
 
       // Sticky pinning holds surface.top at the live nav offset while the
       // sentinel keeps scrolling, so this gap is px-past-pin with no cached

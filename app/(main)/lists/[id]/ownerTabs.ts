@@ -2,8 +2,8 @@
 
 import { createContext, useContext } from 'react';
 
-/** The owner's working surface: the list itself, or their whole item library. */
-export type OwnerTab = 'list' | 'library';
+/** The owner's working surface: the list itself, their whole item library, or the list's order. */
+export type OwnerTab = 'list' | 'library' | 'reorder';
 
 export const OWNER_PANEL_ID = 'list-owner-panel';
 
@@ -11,11 +11,14 @@ export const OWNER_PANEL_ID = 'list-owner-panel';
 export const OWNER_TAB_IDS = {
   list: 'list-owner-tab-list',
   library: 'list-owner-tab-library',
+  reorder: 'list-owner-tab-reorder',
 } as const;
 
-/** What a surface rendered inside the panels can ask the band to do. */
+/** What a surface rendered inside the panels can ask the band to do. `showReorder` is absent on a list with nothing to arrange. */
 type OwnerTabsApi = {
+  showList: () => void;
   showLibrary: () => void;
+  showReorder?: () => void;
   createItem: () => void;
 };
 

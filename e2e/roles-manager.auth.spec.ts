@@ -9,9 +9,9 @@ import { pinActingProfile } from './helpers/activeProfile';
 // control and then reloads, since the whole point of the change is that the
 // disabled control is not the enforcement.
 //
-// Item ordering is not driven here: it is staged inside edit mode and lands
-// through the same `setListItems` write the attach below already exercises, so
-// the manager seat loses no role coverage by leaving the gesture out.
+// Item ordering is not driven here: it lands through `updatePriority`, whose
+// owner gate is the one the attach below already exercises, so the manager
+// seat loses no role coverage by leaving the gesture out.
 //
 // Seed baseline: `dev-test-viewer` holds `manager` on `dev-profile-workshop`
 // ("Workshop Profile") and `owner` on `dev-profile-owned` ("Owned Profile").

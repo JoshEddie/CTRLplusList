@@ -15,6 +15,7 @@ function renderBand(
       tab="list"
       onTabChange={onTabChange}
       inListCount={3}
+      showReorder
       onCreate={onCreate}
       onChooseExisting={onChooseExisting}
       {...overrides}
@@ -38,7 +39,7 @@ afterEach(() => {
 });
 
 describe('ListOwnerBand', () => {
-  it('Default_NamesBothTabsWithTheEntryCount-SelectsTheGivenTab', () => {
+  it('Default_NamesEveryTabWithTheEntryCount-SelectsTheGivenTab', () => {
     renderBand();
     expect(
       screen.getByRole('tab', { name: 'In this list · 3' })
@@ -47,6 +48,21 @@ describe('ListOwnerBand', () => {
       'aria-selected',
       'false'
     );
+    expect(screen.getByRole('tab', { name: 'Reorder' })).toBeInTheDocument();
+  });
+
+  // One entry has no order to arrange, so the tab that would render it is not
+  // offered at all.
+  it('ReorderUnavailable_OffersOnlyTheTwoItemTabs', () => {
+    renderBand({ showReorder: false, inListCount: 1 });
+    expect(screen.queryByRole('tab', { name: 'Reorder' })).toBeNull();
+    expect(screen.getAllByRole('tab')).toHaveLength(2);
+  });
+
+  it('ClickReorder_ReportsTheReorderTab', async () => {
+    const { onTabChange } = renderBand();
+    await userEvent.click(screen.getByRole('tab', { name: 'Reorder' }));
+    expect(onTabChange).toHaveBeenCalledWith('reorder');
   });
 
   it('ClickAllItems_ReportsTheLibraryTab', async () => {

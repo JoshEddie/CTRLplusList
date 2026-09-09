@@ -13,18 +13,12 @@ describe('getMessage', () => {
   });
 
   describe('PluralMessage', () => {
-    it('Count0_TakesTheExactZeroBranch', () => {
-      expect(getMessage('edit_mode_change_count', { count: 0 })).toBe(
-        'No changes'
-      );
-    });
-
     it.each([
-      [1, '1 change'],
-      [2, '2 changes'],
-      [1234, '1,234 changes'],
-    ])('Count%i_ReturnsTheChangePhrase', (count, expected) => {
-      expect(getMessage('edit_mode_change_count', { count })).toBe(expected);
+      [1, '1 other claim'],
+      [2, '2 other claims'],
+      [1234, '1,234 other claims'],
+    ])('Count%i_ReturnsTheClaimPhrase', (count, expected) => {
+      expect(getMessage('claim_withheld_others', { count })).toBe(expected);
     });
   });
 

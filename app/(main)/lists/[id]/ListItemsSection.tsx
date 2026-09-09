@@ -9,6 +9,7 @@ import { resolveSpoilerTier } from '@/lib/spoilers';
 import { VISIBILITY } from '@/lib/visibility';
 import ListLibraryPanel from './ListLibraryPanel';
 import ListOwnerTabs from './ListOwnerTabs';
+import ListReorderPanel from './ListReorderPanel';
 import type { ListSectionProps } from './types';
 
 export default async function ListItemsSection({
@@ -59,6 +60,11 @@ export default async function ListItemsSection({
       lists={await getListsByProfile(identity.activeProfile.id)}
       actingAs={await actingAsName(identity)}
       library={<ListLibraryPanel listId={id} actor={identity.activeProfile} />}
+      // Built only where the tab exists: the panel reads the whole list
+      // unpaged, which is work a single-entry list never shows.
+      reorder={
+        (list.item_count ?? 0) > 1 ? <ListReorderPanel listId={id} /> : null
+      }
     >
       {surface}
     </ListOwnerTabs>

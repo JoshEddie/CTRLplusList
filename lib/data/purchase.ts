@@ -294,8 +294,8 @@ export async function getListClaimedCount(listId: string) {
       )
       .where(eq(lists.id, listId));
 
-    // Claims land on items the list's own profile owns (setListItems refuses
-    // any other), so this is the same tag createPurchase / removePurchase
+    // Claims land on items the list's own profile owns (the entry writes
+    // refuse any other), so this is the same tag createPurchase / removePurchase
     // already fire — the read joins the writers' invalidation without any
     // writer gaining an obligation. Every row carries the one owning profile,
     // so the first is the whole answer.

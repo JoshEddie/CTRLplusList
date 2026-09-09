@@ -25,6 +25,7 @@ export default function Item({
   archivedView,
   listEnds,
   onEntryPresence,
+  onReorderAll,
   claimless,
   preview,
 }: {
@@ -41,6 +42,8 @@ export default function Item({
   listEnds?: ListEnds;
   /** Reports the card on or off the list as its quantity crosses 0, so the surface can keep those ends naming entries that still exist. */
   onEntryPresence?: (itemId: string, onList: boolean) => void;
+  /** Opens the list's reorder surface from the card's menu. Absent off that list, and on a list too short to arrange. */
+  onReorderAll?: () => void;
   /** The surface names a list for entry writes but resolves no claims against it — the owner's library browser, where a card's quantity is the ask on one list and its claims span every one. */
   claimless?: boolean;
   /** Render as a live preview inside the item form: no modal, no interactions. */
@@ -185,6 +188,7 @@ export default function Item({
             pathname={pathname}
             searchParams={searchParams}
             onChanged={() => router.refresh()}
+            onReorderAll={ownsEntry ? onReorderAll : undefined}
             entry={
               ownsEntry && entry.quantity > 0
                 ? { ends: listEnds, move: entry.moveTo, remove: entry.remove }

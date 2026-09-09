@@ -122,6 +122,18 @@ describe('OwnerActions', () => {
   });
 
   // The item library names no list, so nothing that would edit one is offered.
+  // The library's own card names no list, so nothing here rewrites one — but
+  // an entry-less card on a list still gets the way into the order.
+  it('NoEntryButReorderOffered_KeepsTheSeparatorAndTheRow', async () => {
+    const user = userEvent.setup();
+    renderActions({ showArchiveAction: false, onReorderAll: vi.fn() });
+    await openKebab(user);
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(
+      ['Reorder all items', 'Edit item details']
+    );
+    expect(screen.getByRole('separator')).toBeInTheDocument();
+  });
+
   it('OffList_OffersOnlyEditAndArchive-NoSeparator', async () => {
     const user = userEvent.setup();
     renderActions();
@@ -205,6 +217,35 @@ describe('OwnerActions', () => {
       await openKebab(user);
       await user.click(screen.getByRole('menuitem', { name: 'Move to bottom' }));
       expect(move).toHaveBeenCalledWith('last');
+    });
+
+    // Above the moves it shares a section with, and offered whether or not
+    // the ends are: the surface it opens resets the sort as it does.
+    it('ReorderOffered_LeadsTheOrderingSection', async () => {
+      const user = userEvent.setup();
+      renderActions({ ...onList, onReorderAll: vi.fn() });
+      await openKebab(user);
+      expect(
+        screen.getAllByRole('menuitem').map((el) => el.textContent)
+      ).toEqual([
+        'Move to top',
+        'Move to bottom',
+        'Reorder all items',
+        'Remove from list',
+        'Edit item details',
+      ]);
+    });
+
+    it('ReorderChosen_OpensTheSurface-ClosesMenu', async () => {
+      const user = userEvent.setup();
+      const onReorderAll = vi.fn();
+      renderActions({ ...onList, onReorderAll });
+      await openKebab(user);
+      await user.click(
+        screen.getByRole('menuitem', { name: 'Reorder all items' })
+      );
+      expect(onReorderAll).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     });
 
     it('Remove_CallsOnRemove-ClosesMenu', async () => {

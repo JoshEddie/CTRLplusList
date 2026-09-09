@@ -86,18 +86,30 @@ A profile's entire item set, independent of any list.
 
 **Owner band**:
 The strip an owner gets below the hero on their own list, and nothing a viewer
-sees. It carries two tabs and an _Add item_ menu, rides inside the hero's own
-sticky chrome above the items toolbar, and never collapses. _In this list_ is
-the ordinary item surface everyone sees, plus the owner's card controls, and
-its label states the entry count. _All items_ replaces that surface with the
+sees. It carries up to three tabs and an _Add item_ menu, rides inside the
+hero's own sticky chrome above the items toolbar, and never collapses. _In this
+list_ is the ordinary item surface everyone sees, plus the owner's card
+controls, and its label states the entry count. _All items_ replaces that surface with the
 item library exactly as the items page renders it — toolbar, card grid,
 pagination — every card carrying a quantity stepper reading **this list's**
 entry, or 0 for an item the list does not hold. The rolled-up ask, the list
 count and all claim state are stripped there: a claim belongs to one list
 entry, not to an item, so a library card carries none this list could judge,
 and a summed ask beside the stepper would name a number the stepper does not
-set. Archived items are excluded unless the list already holds them. The
-_Add item_ menu offers a new item or a pick from existing; choosing from
+set. Archived items are excluded unless the list already holds them.
+
+_Reorder_ is the third tab, offered only while the list holds more than one
+entry, and is where an owner arranges it by how much they want things. It shows
+every entry unpaged, unfiltered and in position order with the toolbar hidden —
+so a row can move past a page boundary, and because sorting and filtering have
+no meaning against a fixed order. A row carries a drag handle, its position, a
+thumbnail, the name with price and store, a quantity chip and up/down arrows,
+so a move never depends on a precise gesture. Each move is a write of its own
+and _Done_ is the only exit, because there is nothing left to save. Reaching the
+tab resets the sort, and the hero freezes in whatever state it is already in
+for the length of a drag rather than growing back under the pointer.
+
+The _Add item_ menu offers a new item or a pick from existing; choosing from
 existing selects _All items_, which is how the owner learns where that surface
 lives. Creating an item reuses the item form whole, this list preselected in
 its picker, and its save is the add. A list holding nothing opens on _All
@@ -172,7 +184,7 @@ can see, over the `purchases` table it is stored in.
 _Avoid_: purchase, buy — accurate for neither what the app does nor what it knows
 
 **Purchaser**:
-The profile a claim is recorded *for*.
+The profile a claim is recorded _for_.
 
 **Asserter**:
 The profile that recorded the claim. Usually the same as the purchaser, and
@@ -202,7 +214,7 @@ How much claim information a viewer is willing to see, ordered `surprise` →
 `progress` → `claims`. Held per account, per profile.
 
 **Baseline**:
-The tier a viewer's *account* holds on the profile that owns the content — never
+The tier a viewer's _account_ holds on the profile that owns the content — never
 the active profile's.
 
 **Profile spoiler default**:
@@ -214,7 +226,7 @@ What a viewer actually sees for a claim, after their tier is applied. Adds
 `revealed`, which is never stored and never comes from a URL.
 
 **Spoiler param**:
-A `?spoiler=` value, interpreted as a *delta from the viewer's baseline* — so the
+A `?spoiler=` value, interpreted as a _delta from the viewer's baseline_ — so the
 same link shows different things to different people.
 
 ## Social

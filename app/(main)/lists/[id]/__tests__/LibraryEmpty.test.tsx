@@ -8,7 +8,7 @@ const createItem = vi.fn();
 
 const renderEmpty = () =>
   render(
-    <OwnerTabsContext.Provider value={{ showLibrary: vi.fn(), createItem }}>
+    <OwnerTabsContext.Provider value={{ showList: vi.fn(), showLibrary: vi.fn(), createItem }}>
       <LibraryEmpty />
     </OwnerTabsContext.Provider>
   );

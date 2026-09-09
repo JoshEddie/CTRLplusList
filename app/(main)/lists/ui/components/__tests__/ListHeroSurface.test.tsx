@@ -1,6 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import ListHeroSurface, { HERO_TOOLBAR_SLOT_ID } from '../ListHeroSurface';
+import ListHeroSurface, {
+  HERO_FREEZE_ATTR,
+  HERO_TOOLBAR_SLOT_ID,
+} from '../ListHeroSurface';
 
 // jsdom resolves the surface's sticky `top` to 0, so pinning is modelled by
 // clamping its rect there while the sentinel's keeps scrolling: the gap
@@ -19,6 +22,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  document.documentElement.removeAttribute(HERO_FREEZE_ATTR);
 });
 
 function renderSurface() {
@@ -138,6 +142,43 @@ describe('ListHeroSurface', () => {
     scrollToDepth(30);
     scrollToDepth(60);
     expect(surface()).toHaveClass('is-collapsed');
+  });
+
+  // The freeze is a drag's, and a drag toward the top of a list auto-scrolls:
+  // the hero holds whatever state it is already in, expanded or collapsed,
+  // rather than swapping a drop target out from under the pointer.
+  describe('FrozenForADrag', () => {
+    const freeze = () =>
+      document.documentElement.setAttribute(HERO_FREEZE_ATTR, '');
+
+    it('ScrollingDownPastThreshold_StaysExpanded', () => {
+      renderSurface();
+      freeze();
+      scrollToDepth(300);
+      expect(surface()).not.toHaveClass('is-collapsed');
+    });
+
+    it('ReachingTheTop_StaysCollapsed', () => {
+      renderSurface();
+      scrollToDepth(300);
+      expect(surface()).toHaveClass('is-collapsed');
+      freeze();
+      scrollToDepth(0);
+      expect(surface()).toHaveClass('is-collapsed');
+    });
+
+    // The travel is re-baselined rather than banked, so the drag's own scroll
+    // is not replayed as a gesture the moment the row is dropped.
+    it('Released_DoesNotReplayTheDragsTravel', () => {
+      renderSurface();
+      scrollToDepth(2000);
+      expect(surface()).toHaveClass('is-collapsed');
+      freeze();
+      scrollToDepth(1500);
+      document.documentElement.removeAttribute(HERO_FREEZE_ATTR);
+      scrollToDepth(1490);
+      expect(surface()).toHaveClass('is-collapsed');
+    });
   });
 
   it('Unmount_RemovesListenerAndChromeState', () => {

@@ -8,6 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ItemDisplay, ItemStoreTable } from '@/lib/types';
 import ItemsBrowser from '../ItemsBrowser';
+import { OwnerTabsContext } from '@/app/(main)/lists/[id]/ownerTabs';
 import {
   HERO_SLOT_READY_EVENT,
   HERO_TOOLBAR_SLOT_ID,
@@ -34,17 +35,20 @@ vi.mock('../Item', () => ({
     tier,
     listEnds,
     onEntryPresence,
+    onReorderAll,
   }: {
     item: ItemDisplay;
     tier?: string;
     listEnds?: { first: string; last: string };
     onEntryPresence?: (itemId: string, onList: boolean) => void;
+    onReorderAll?: () => void;
   }) => (
     <div
       data-testid="item-stub"
       data-item-id={item.id}
       data-tier={String(tier)}
       data-list-ends={listEnds ? `${listEnds.first}:${listEnds.last}` : ''}
+      data-can-reorder={String(!!onReorderAll)}
     >
       <button
         type="button"
@@ -108,6 +112,29 @@ function renderBrowser(
       baseline={overrides.baseline}
       emptyState={overrides.emptyState}
     />
+  );
+}
+
+// The band the owner's list surface renders inside; anywhere else the context
+// is null and no card offers a way into a reorder tab that does not exist.
+function renderInBand(
+  items: ItemDisplay[],
+  { mode = 'list', arrangeable = true } = {} as {
+    mode?: BrowserProps['mode'];
+    arrangeable?: boolean;
+  }
+) {
+  return render(
+    <OwnerTabsContext.Provider
+      value={{
+        showList: vi.fn(),
+        showLibrary: vi.fn(),
+        showReorder: arrangeable ? vi.fn() : undefined,
+        createItem: vi.fn(),
+      }}
+    >
+      <ItemsBrowser items={items} mode={mode} />
+    </OwnerTabsContext.Provider>
   );
 }
 
@@ -555,6 +582,18 @@ describe('ItemsBrowser', () => {
       expect(nav.replace).toHaveBeenCalledWith('/items');
     });
 
+    // Rendered outside a client navigation context, where useSearchParams has
+    // nothing to hand back.
+    it('ChangePageSizeWithoutSearchParams_ReplacesWithTheBarePath', () => {
+      nav.search = null;
+      renderBrowser(many, { mode: 'list' });
+      fireEvent.change(
+        screen.getByRole('combobox', { name: 'Items per page' }),
+        { target: { value: '48' } }
+      );
+      expect(nav.replace).toHaveBeenCalledWith('/items');
+    });
+
     it('ChangePageSizeWithOtherParam_KeepsItAndRemovesPage', () => {
       nav.search = 'sort=name_asc&page=2';
       renderBrowser(many, { mode: 'list' });
@@ -622,6 +661,52 @@ describe('ItemsBrowser', () => {
       fireEvent(window, new Event(HERO_SLOT_READY_EVENT));
       expect(target.querySelector('.items-toolbar')).not.toBeNull();
       expect(container.querySelector('.items-toolbar')).toBeNull();
+    });
+  });
+
+  describe('ReorderDoor', () => {
+    // Offered under any sort, unlike the move rows: the surface it opens
+    // resets the sort as it does, so it is the way back to the list's order.
+    const firstCard = (sort: string) => {
+      nav.search = `sort=${sort}`;
+      renderInBand([makeItem('a'), makeItem('b')]);
+      return screen.getAllByTestId('item-stub')[0];
+    };
+
+    it('ListOrder_OffersTheWayIntoReorder', () => {
+      expect(firstCard('list_order')).toHaveAttribute(
+        'data-can-reorder',
+        'true'
+      );
+    });
+
+    // Unlike the move rows, which withhold themselves under any other sort.
+    it('AnotherSort_StillOffersTheWayIntoReorder', () => {
+      expect(firstCard('name_asc')).toHaveAttribute('data-can-reorder', 'true');
+    });
+
+    it('LibrarySurface_OffersNoWayIn', () => {
+      renderInBand([makeItem('a'), makeItem('b')], { mode: 'items' });
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-can-reorder',
+        'false'
+      );
+    });
+
+    it('ListTooShortToArrange_OffersNoWayIn', () => {
+      renderInBand([makeItem('a')], { arrangeable: false });
+      expect(screen.getByTestId('item-stub')).toHaveAttribute(
+        'data-can-reorder',
+        'false'
+      );
+    });
+
+    it('OutsideTheBand_OffersNoWayIn', () => {
+      renderBrowser([makeItem('a'), makeItem('b')], { mode: 'list' });
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-can-reorder',
+        'false'
+      );
     });
   });
 });

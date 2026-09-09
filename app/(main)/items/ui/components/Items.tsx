@@ -14,6 +14,7 @@ interface ItemsProps {
   archivedView?: boolean;
   listEnds?: ListEnds;
   onEntryPresence?: (itemId: string, onList: boolean) => void;
+  onReorderAll?: () => void;
   claimless?: boolean;
 }
 
@@ -27,6 +28,7 @@ export default function Items({
   archivedView,
   listEnds,
   onEntryPresence,
+  onReorderAll,
   claimless,
 }: ItemsProps) {
   return (
@@ -44,6 +46,7 @@ export default function Items({
               archivedView={archivedView}
               listEnds={listEnds}
               onEntryPresence={onEntryPresence}
+              onReorderAll={onReorderAll}
               claimless={claimless}
             />
           );
