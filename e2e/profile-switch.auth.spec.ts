@@ -56,13 +56,21 @@ test('ProfileSwitch_ViewerSwitchesFromTheAvatarDropdown_ListsRerenderAsThatProfi
   await expect(listNamed(page, OWNED_LIST).first()).toBeVisible();
   await expect(listNamed(page, SELF_LIST)).toHaveCount(0);
 
+  // The header streams through its own Suspense hole, after the list: open
+  // the menu only once the avatar is the new profile's, or the re-render
+  // lands on an open menu and drops it. Owned Profile has no seeded art, so
+  // its face is initials; Test Viewer's is its art.
+  const userMenu = page.getByRole('button', { name: 'User menu' });
+  await expect(userMenu.locator('.altvatar-disc-initials')).toHaveText('OP');
+
   // Switching back restores the seed's acting profile.
-  await page.getByRole('button', { name: 'User menu' }).click();
+  await userMenu.click();
   await page.getByRole('menuitem', { name: 'Test Viewer' }).click();
 
   await expect(page.getByText('Profile switched to Test Viewer')).toBeVisible();
   await expect(listNamed(page, SELF_LIST).first()).toBeVisible();
   await expect(listNamed(page, OWNED_LIST)).toHaveCount(0);
+  await expect(userMenu.getByTestId('altvatar-art')).toBeVisible();
 });
 
 test('ProfileSwitch_ViewerSwitchesFromAProfileCard_StaysOnProfilesWithTheMarkMoved', async ({

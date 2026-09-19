@@ -8,8 +8,11 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 // Short as well as narrow: the reorder surface is one row per entry, so a
 // taller viewport leaves too little below the fold for the hero's own
-// collapse heuristic to have anything to react to.
-const PHONE = { width: 390, height: 400 };
+// collapse heuristic to have anything to react to. Not shorter, though: the
+// band's opened strip ends ~470px down at this width, and a press aimed past
+// the fold scrolls the page — which is the hero collapsing on its own, not
+// the tab forcing it.
+const PHONE = { width: 390, height: 560 };
 
 async function createListWith(page: Page, name: string, count: number) {
   await page.goto('/lists');
@@ -74,7 +77,12 @@ async function onPhone(page: Page) {
   const listUrl = page.url();
   await page.setViewportSize(PHONE);
   await page.goto(listUrl);
-  await expect(page.locator('.list-owner-tabs')).toBeVisible();
+  // The band renders inline below the hero until hydration portals it into
+  // the chrome. Inline it sits below this short viewport, so a press aimed at
+  // it scrolls the page — and that scroll, not the tab, collapses the hero.
+  await expect(
+    page.locator('.list-hero-chrome .list-owner-tabs')
+  ).toBeVisible();
 }
 
 // dnd-kit's mouse sensor waits for 10px of travel before a drag begins, so the
@@ -191,14 +199,19 @@ test('ListReorder_HeroDuringADrag_HoldsTheStateItWasAlreadyIn', async ({
   await collapseHero(page);
 
   // A handle the pointer can actually reach: the viewport is short, so most
-  // rows sit below the fold and a press aimed there never lands.
+  // rows sit below the fold and a press aimed there never lands. Polled, not
+  // read once: the class flips at the start of the collapse animation, and the
+  // rows only rise into the window as the hero finishes shrinking.
   const handles = await page
     .locator('.reorder-item')
     .getByRole('button', { name: /^Drag / })
     .all();
-  const boxes = await Promise.all(handles.map((h) => h.boundingBox()));
-  const box = boxes.find((b) => b && b.y > 150 && b.y < 340);
-  if (!box) throw new Error('no reorder handle is in view');
+  const inView = async () => {
+    const boxes = await Promise.all(handles.map((h) => h.boundingBox()));
+    return boxes.find((b) => b && b.y > 150 && b.y < 340) ?? null;
+  };
+  await expect.poll(inView).not.toBeNull();
+  const box = (await inView())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 - 20);
