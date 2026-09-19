@@ -12,11 +12,9 @@ import UnitsField from './UnitsField';
 const INITIAL_VISIBLE = 10;
 const SEE_MORE_STEP = 10;
 
-type NamedClaim = PurchaseView & { name: string };
-
 // Long-form label is scoped to this list: the card and spoiler banners carry a
 // bare count instead.
-function rowLabel(claim: NamedClaim): string {
+function rowLabel(claim: PurchaseView): string {
   const name = claim.name;
   if (claim.by !== 'self') return name;
   // A nameless claim already carries the viewer's stand-in name, which says
@@ -75,16 +73,8 @@ export default function ClaimsList({
     ...claims.filter((claim) => canRemove(claim)),
     ...claims.filter((claim) => !canRemove(claim)),
   ];
-  // A projected-away claim carries nothing that may be shown — no avatar, name,
-  // date, attribution line or removal — so it is not a row at all, only a
-  // count. The missing name is the tell, not the viewer's removal rights: the
-  // owner may remove every claim on their item, named or not.
-  const named = sorted.filter(
-    (claim): claim is NamedClaim => claim.name !== undefined
-  );
-  const withheld = sorted.length - named.length;
-  const visible = named.slice(0, visibleCount);
-  const remaining = named.length - visible.length;
+  const visible = sorted.slice(0, visibleCount);
+  const remaining = sorted.length - visible.length;
   return (
     <div className="claims-section">
       <p className="claims-section-label">{getMessage('claim_list_label')}</p>
@@ -138,11 +128,6 @@ export default function ClaimsList({
           </li>
         ))}
       </ul>
-      {withheld > 0 && (
-        <p className="claims-withheld" role="status">
-          {getMessage('claim_withheld_others', { count: withheld })}
-        </p>
-      )}
       {remaining > 0 && (
         <Button
           variant="secondary"

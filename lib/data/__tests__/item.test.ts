@@ -151,12 +151,25 @@ describe('getItemsByProfile', () => {
       expect(rows[0].purchases).toEqual([]);
     });
 
-    it('Claims_ReturnsBareCountEntry', async () => {
+    it('Claims_ReturnsTheClaimNamedWithItsUnitsAndFace', async () => {
       const rows = await dal.getItemsByProfile(selfProfileOf('owner'), {
         tier: 'claims',
       });
       expect(rows[0].purchases).toEqual([
-        { id: 'p1', by: 'other', claimedByViewer: false },
+        {
+          id: 'p1',
+          units: 1,
+          by: 'other',
+          name: 'Cara Lee',
+          claimedByViewer: false,
+          purchasedAt: expect.any(Date),
+          avatar: {
+            name: 'Cara Lee',
+            accent: null,
+            art: '<svg id="cara" />',
+            avatarStyle: 'toon-head',
+          },
+        },
       ]);
     });
   });
@@ -396,14 +409,10 @@ describe('getItemsByListId', () => {
       expect(rows[0].purchases).toEqual([]);
     });
 
-    it('Claims_ReturnsCountWithNoFirstName', async () => {
+    it('Claims_NamesEveryClaimingParty', async () => {
       await seedClaimedItem();
       const rows = await dal.getItemsByListId('l1', { tier: 'claims' });
-      expect(rows[0].purchases).toHaveLength(2);
-      expect(rows[0].purchases.map((p) => p.name)).toEqual([
-        undefined,
-        undefined,
-      ]);
+      expect(rows[0].purchases.map((p) => p.name)).toEqual(['Vic', 'Otto']);
     });
 
     // The cached raw read is entered once for the list; each viewer's rows are
@@ -420,7 +429,7 @@ describe('getItemsByListId', () => {
         tier: 'claims',
       });
       // 'viewer' at surprise keeps only their own held claim; 'other' at
-      // claims sees both, their own as self and the viewer's as a bare count.
+      // claims sees both, their own as self and the viewer's named in full.
       expect(viewerRows[0].purchases.map((p) => p.by)).toEqual(['self']);
       expect(otherRows[0].purchases.map((p) => p.by)).toEqual([
         'other',
@@ -487,7 +496,7 @@ describe('getItemsByListId', () => {
       );
     });
 
-    it('NonOwnerWithViewerId_NamesTheirOwn-CountsTheOther', async () => {
+    it('NonOwnerWithViewerId_MarksTheirOwnSelf-NamesTheOther', async () => {
       await seedClaimedItem();
       const rows = await dal.getItemsByListId('l1', {
         viewerSelfProfileId: selfProfileOf('viewer'),
@@ -504,8 +513,12 @@ describe('getItemsByListId', () => {
       });
       expect(byId.po).toEqual({
         id: 'po',
+        units: 1,
         by: 'other',
+        name: 'Otto',
         claimedByViewer: false,
+        purchasedAt: expect.any(Date),
+        avatar: { name: 'Otto', accent: null, art: null, avatarStyle: null },
       });
     });
 
@@ -515,9 +528,9 @@ describe('getItemsByListId', () => {
       expect(rows[0].purchases.map((p) => p.by)).toEqual(['other', 'other']);
     });
 
-    it('NonOwnerGuestClaim_CollapsesToABareCount', async () => {
-      // A guest claim is another party's like any other: the maximal tier
-      // keeps the entry so capacity stays derivable and drops the name.
+    it('NonOwnerGuestClaim_CarriesTheTypedNameLikeAnyOtherParty', async () => {
+      // A free-text purchaser has no profile and so no face — the name that
+      // was typed is all the row carries, and the tier discloses it.
       await seedUsers(db, [{ id: 'owner' }, { id: 'viewer' }]);
       await seedList(db, { id: 'l1', user_id: 'owner' });
       await seedItem(db, { id: 'i1', user_id: 'owner' });
@@ -538,7 +551,14 @@ describe('getItemsByListId', () => {
         viewerSelfProfileId: selfProfileOf('viewer'),
       });
       expect(rows[0].purchases).toEqual([
-        { id: 'pg', by: 'other', claimedByViewer: false },
+        {
+          id: 'pg',
+          units: 1,
+          by: 'other',
+          name: 'Gabby Guest',
+          claimedByViewer: false,
+          purchasedAt: expect.any(Date),
+        },
       ]);
     });
   });

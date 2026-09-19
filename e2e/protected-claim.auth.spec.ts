@@ -17,6 +17,14 @@ import { raiseSpoilerTier } from './helpers/spoilers';
 // two never contend for the same row.
 const OWN_LIST = '/lists/dev-list-viewer-birthday';
 
+// A list the viewer is a MEMBER of rather than the owner of: `dev-test-viewer`
+// holds `manager` on `dev-profile-visibility` with no stored tier, so the
+// fully protected baseline governs there too — and every claim they make on it
+// is a holder's, not an owner's. The holder arc below claims and then removes
+// the same claim, so the seeded fixture `member-baseline.auth.spec` and
+// `cross-profile-spoilers.auth.spec` read is left exactly as it was found.
+const MEMBER_LIST = '/lists/dev-list-visibility-wishlist';
+
 test('ProtectedList_SurpriseBaseline_DisclosesNoClaimButStillOffersAddClaim', async ({
   page,
 }) => {
@@ -124,8 +132,9 @@ test('ProtectedList_ConfirmTheReveal_DisclosesTheBadgeStateAndNamesNobody', asyn
   await page.getByRole('button', { name: 'Show me', exact: true }).click();
 
   await expect(page.locator('.claim-reveal-summary')).toBeVisible();
-  // Unrevealed, the list renders only the rows that carry a name, and every
-  // one of those is the viewer's own; no other party is named or attributed.
+  // The claim route's reveal promises the count and no more, so it reads the
+  // page's own payload — and below `claims` that payload holds the viewer's
+  // claims and nobody else's.
   await expect(page.locator('.claim-modal')).not.toContainText('Added by');
   for (const name of await page
     .locator('.claim-modal .claim-row-name')
@@ -148,9 +157,10 @@ test('ProtectedList_MasterUnclaimsAnothersClaim_RemovesItAfterReload', async ({
   await raiseSpoilerTier(page, 'Claimed');
   await expect(page).toHaveURL(/spoiler=claims/);
 
-  // No tier names the claiming parties, so the card carries only a count and
-  // the owner's manage-claims reveal is what turns it into rows. Confirming it
-  // is what puts a master-unclaim control on another party's claim.
+  // The card carries a count and never a name, so the owner's manage-claims
+  // list is where the parties are named — and it asks first whenever another
+  // party is on the item, whatever the tier already disclosed. Confirming it is
+  // what puts a master-unclaim control on another party's claim.
   const card = page
     .locator('.item-container')
     .filter({ has: page.getByRole('button', { name: 'Manage claims' }) })
@@ -169,4 +179,72 @@ test('ProtectedList_MasterUnclaimsAnothersClaim_RemovesItAfterReload', async ({
   await page.reload();
   await expect(modal).toBeVisible();
   await expect(modal).not.toContainText('Added by Alice');
+});
+
+test('ProtectedList_HolderOpensManageClaim_OpensStraightIntoTheirOwnRow', async ({
+  page,
+}) => {
+  // The entry has to have room, and the protected baseline is exactly the
+  // state that cannot tell a full entry from an empty one — so the card is
+  // chosen through a transient `?spoiler=claims` delta (a URL adjustment, not
+  // a stored setting) and the arc proper runs back at the baseline.
+  await page.goto(`${MEMBER_LIST}?spoiler=claims`);
+  const unclaimed = page
+    .locator('.item-container')
+    .filter({ has: page.getByRole('button', { name: 'Claim', exact: true }) })
+    .filter({ has: page.locator('.purchased-banner', { hasText: /^0 \// }) })
+    .first();
+  await expect(unclaimed).toBeVisible();
+  const itemName = (await unclaimed.locator('.itemName').innerText()).trim();
+
+  await page.goto(MEMBER_LIST);
+  const card = page.locator('.item-container', { hasText: itemName });
+
+  // Add Claim keeps its confirmation below `claims`: the count reveal it leads
+  // to is what caps the claim rather than letting the member claim blind.
+  await card.getByRole('button', { name: 'Claim', exact: true }).click();
+  await page.getByRole('button', { name: 'Show me', exact: true }).click();
+  await expect(page.locator('.claim-reveal-summary')).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Claim this gift', exact: true })
+    .click();
+  await expect(page.getByText('Claim added successfully')).toBeVisible();
+  // The recorded claim settles by closing the modal — a `router.replace` that
+  // drops the parameter. Reloading before it lands carries the modal straight
+  // back, and its overlay then swallows the click below.
+  await expect(page).not.toHaveURL(/purchaseItem/);
+
+  // A fresh server render, then the holder's own door: it opens on the claim
+  // they just made with nothing asked first — the rows behind it are theirs,
+  // and their own claim is no surprise to them at any tier.
+  await page.reload();
+  const claimed = page.locator('.item-container', { hasText: itemName });
+  await claimed.getByRole('button', { name: 'Manage claim' }).click();
+  await expect(page.getByText('Test Viewer (you)')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'This could spoil a surprise' })
+  ).toHaveCount(0);
+  // Nothing about another party reaches a member held below `claims`, so there
+  // is not even a count of them.
+  await expect(page.locator('.claims-other-count')).toHaveCount(0);
+
+  // Restore the fixture: the claim was the viewer's, so removing it is the
+  // same row's own action.
+  await page
+    .getByRole('button', { name: 'Remove your claim', exact: true })
+    .click();
+  await expect(page.getByText('Claim removed successfully')).toBeVisible();
+  // Dropping the last claim settles the modal the same way.
+  await expect(page).not.toHaveURL(/purchaseItem/);
+  await page.reload();
+  // The card back in its unclaimed state is the settle signal: asserting the
+  // absence of Manage claim on its own would pass against a page that has not
+  // rendered the card yet.
+  const restored = page.locator('.item-container', { hasText: itemName });
+  await expect(
+    restored.getByRole('button', { name: 'Claim', exact: true })
+  ).toBeVisible();
+  await expect(
+    restored.getByRole('button', { name: 'Manage claim' })
+  ).toHaveCount(0);
 });

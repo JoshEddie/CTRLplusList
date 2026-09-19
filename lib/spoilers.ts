@@ -6,9 +6,10 @@
 import type { SpoilerTier } from '@/lib/types';
 
 // Ordered weakest to strongest: each tier admits everything below it.
-// surprise → nothing; progress → the list's claimed count; claims → per-item
-// badges and remaining capacity. Naming the claiming parties is no tier: it is
-// a per-act reveal the viewer confirms, which `ClaimProjection` carries.
+// surprise → nothing; progress → the list's claimed count; claims → every
+// claim on the item, whole: the purchaser named, its units, who recorded it
+// and when. Below `claims` the owner may still reach those names one item at
+// a time, through the confirmed reveal `ClaimProjection` carries.
 export const SPOILER_TIERS = [
   'surprise',
   'progress',
@@ -16,8 +17,9 @@ export const SPOILER_TIERS = [
 ] as const satisfies readonly SpoilerTier[];
 
 // What a projection of another party's claim may disclose. Every stored value
-// is a tier; `revealed` is reachable only by a viewer's explicit confirmation
-// in the claim modal, so it is never stored and never resolved from a URL.
+// is a tier; `revealed` discloses what `claims` does whatever the stored tier
+// withholds, and is reached only by the owner confirming the reveal in their
+// manage-claims list, so it is never stored and never resolved from a URL.
 export type ClaimProjection = SpoilerTier | 'revealed';
 
 // The fully protected default: a membership with no stored tier resolves here,

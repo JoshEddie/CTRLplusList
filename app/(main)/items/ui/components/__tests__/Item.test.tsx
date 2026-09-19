@@ -1069,15 +1069,28 @@ describe('Item', () => {
       }
     );
 
-    it.each(['surprise', 'progress'] as const)(
-      'ManageClaimBelowClaimsAt%s_IsAlsoIntercepted',
+    // A holder's Manage claim opens on their own rows, which every tier
+    // discloses — there is no disclosure to warn them about, so the
+    // interception is Add Claim's alone.
+    it.each(['surprise', 'progress', 'claims'] as const)(
+      'HolderManageClaimAt%s_OpensTheModalDirectly',
       async (tier) => {
         const user = userEvent.setup();
-        renderItem({ ...protectedViewer, tier });
+        renderItem({
+          ...protectedViewer,
+          tier,
+          item: {
+            profile_id: OWNER,
+            quantity: 3,
+            purchases: [
+              { id: 'pv', by: 'self', name: 'You', claimedByViewer: true },
+            ],
+          },
+        });
         await user.click(screen.getByRole('button', { name: 'card-claim' }));
 
-        expect(confirmation()).toBeInTheDocument();
-        expect(router.push).not.toHaveBeenCalled();
+        expect(confirmation()).not.toBeInTheDocument();
+        expect(router.push).toHaveBeenCalledWith('/lists/l1?purchaseItem=i1');
       }
     );
 
@@ -1090,16 +1103,6 @@ describe('Item', () => {
       expect(router.push).toHaveBeenCalledWith(
         '/lists/l1?purchaseItem=i1&purchaseView=claim'
       );
-      expect(confirmation()).not.toBeInTheDocument();
-    });
-
-    it('ConfirmFromManage_WritesThePurchaseParamWithoutViewParam', async () => {
-      const user = userEvent.setup();
-      renderItem(protectedViewer);
-      await user.click(screen.getByRole('button', { name: 'card-claim' }));
-      await user.click(screen.getByRole('button', { name: 'Show me' }));
-
-      expect(router.push).toHaveBeenCalledWith('/lists/l1?purchaseItem=i1');
       expect(confirmation()).not.toBeInTheDocument();
     });
 
@@ -1146,16 +1149,23 @@ describe('Item', () => {
   });
 
   /**
-   * Pins `claim-attribution` — no tier names the claiming parties, so the
-   * owner's manage-claims list asks before it discloses them, and the claim
-   * affordance never does.
+   * Pins `claim-attribution` — the owner's manage-claims list is the one view
+   * that names every party on their own item, so it is the one that asks first;
+   * the claim affordance never does, and a holder managing their own rows is
+   * not asked at all.
    */
   describe('OwnerNameReveal', () => {
-    // What the `claims` projection leaves of another party's claim.
-    const withheldClaim = {
+    const othersClaim = {
       id: 'px',
       by: 'other' as const,
+      name: 'Grandma',
       claimedByViewer: false,
+    };
+    const ownClaim = {
+      id: 'po',
+      by: 'self' as const,
+      name: 'You',
+      claimedByViewer: true,
     };
     const ownerAtClaims = {
       tier: 'claims' as const,
@@ -1163,14 +1173,21 @@ describe('Item', () => {
       item: {
         profile_id: OWNER,
         quantity: 3,
-        purchases: [withheldClaim],
+        purchases: [othersClaim],
       },
+    };
+    // Below `claims` the payload carries the owner's own claim and nothing
+    // else, so the reveal is what fetches the rest.
+    const ownerAtSurprise = {
+      ...ownerAtClaims,
+      tier: 'surprise' as const,
+      item: { profile_id: OWNER, quantity: 3, purchases: [ownClaim] },
     };
 
     const confirmation = () =>
       screen.queryByText('This could spoil a surprise');
 
-    it('OwnerWithAWithheldClaim_AsksBeforeNamingRatherThanOpeningDirectly', async () => {
+    it('OwnerWithAnotherPartysClaim_AsksBeforeNamingRatherThanOpeningDirectly', async () => {
       const user = userEvent.setup();
       renderItem(ownerAtClaims);
       await user.click(screen.getByRole('button', { name: 'card-claim' }));
@@ -1182,22 +1199,31 @@ describe('Item', () => {
       expect(router.push).not.toHaveBeenCalled();
     });
 
-    it('OwnerWithEveryClaimNamed_OpensDirectly', async () => {
+    it('OwnerBelowClaims_AsksTheSameWayWithNothingInThePayloadToName', async () => {
+      const user = userEvent.setup();
+      renderItem(ownerAtSurprise);
+      await user.click(screen.getByRole('button', { name: 'card-claim' }));
+
+      expect(
+        screen.getByText(/see exactly who has claimed this item, by name/)
+      ).toBeInTheDocument();
+    });
+
+    it('OwnerConfirm_WritesThePurchaseParamWithoutViewParam', async () => {
+      const user = userEvent.setup();
+      renderItem(ownerAtClaims);
+      await user.click(screen.getByRole('button', { name: 'card-claim' }));
+      await user.click(screen.getByRole('button', { name: 'Show me' }));
+
+      expect(router.push).toHaveBeenCalledWith('/lists/l1?purchaseItem=i1');
+      expect(confirmation()).not.toBeInTheDocument();
+    });
+
+    it('OwnerWithOnlyTheirOwnClaims_OpensDirectly', async () => {
       const user = userEvent.setup();
       renderItem({
         ...ownerAtClaims,
-        item: {
-          profile_id: OWNER,
-          quantity: 3,
-          purchases: [
-            {
-              id: 'po',
-              by: 'self' as const,
-              name: 'You',
-              claimedByViewer: true,
-            },
-          ],
-        },
+        item: { profile_id: OWNER, quantity: 3, purchases: [ownClaim] },
       });
       await user.click(screen.getByRole('button', { name: 'card-claim' }));
 
@@ -1205,11 +1231,9 @@ describe('Item', () => {
       expect(router.push).toHaveBeenCalledWith('/lists/l1?purchaseItem=i1');
     });
 
-    it('OpenModal_HandsTheModalTheNamedClaimsRatherThanTheWithheldOnes', async () => {
-      vi.mocked(revealedClaimsForEntry).mockResolvedValue([
-        { id: 'px', by: 'other', name: 'Grandma', claimedByViewer: false },
-      ]);
-      renderItem(ownerAtClaims, 'purchaseItem=i1');
+    it('OwnerBelowClaims_OpenModalHandsTheModalTheFetchedNames', async () => {
+      vi.mocked(revealedClaimsForEntry).mockResolvedValue([othersClaim]);
+      renderItem(ownerAtSurprise, 'purchaseItem=i1');
 
       await waitFor(() =>
         expect(screen.getByTestId('modal-slot')).toHaveAttribute(
@@ -1219,13 +1243,25 @@ describe('Item', () => {
       );
     });
 
+    // At `claims` every party arrived named with the page, so the modal reads
+    // the payload and the per-act reveal never runs.
+    it('OwnerAtClaims_OpenModalKeepsThePayloadsClaims-FetchesNoNames', () => {
+      renderItem(ownerAtClaims, 'purchaseItem=i1');
+
+      expect(screen.getByTestId('modal-slot')).toHaveAttribute(
+        'data-claim-names',
+        'Grandma'
+      );
+      expect(revealedClaimsForEntry).not.toHaveBeenCalled();
+    });
+
     it('RemovalAfterAReveal_DropsTheRowFromTheRevealedListRatherThanTheProjectedOne', async () => {
       const user = userEvent.setup();
       vi.mocked(revealedClaimsForEntry).mockResolvedValue([
-        { id: 'px', by: 'other', name: 'Grandma', claimedByViewer: false },
+        othersClaim,
         { id: 'py', by: 'other', name: 'Uncle', claimedByViewer: false },
       ]);
-      renderItem(ownerAtClaims, 'purchaseItem=i1');
+      renderItem(ownerAtSurprise, 'purchaseItem=i1');
       await waitFor(() =>
         expect(screen.getByTestId('modal-slot')).toHaveAttribute(
           'data-claims',
@@ -1246,21 +1282,21 @@ describe('Item', () => {
     });
 
     // The claim affordance's confirmation promises the count and no names, so
-    // the modal it opens reads the projected payload however nameless — even
-    // for the owner, whose two routes resolve to the same modal view.
+    // the modal it opens reads the projected payload — even for the owner,
+    // whose two routes resolve to the same modal view.
     it('OwnerOnTheClaimRoute_KeepsTheProjectedClaims-FetchesNoNames', () => {
-      renderItem(ownerAtClaims, 'purchaseItem=i1&purchaseView=claim');
+      renderItem(ownerAtSurprise, 'purchaseItem=i1&purchaseView=claim');
 
       expect(screen.getByTestId('modal-slot')).toHaveAttribute(
         'data-claim-names',
-        ''
+        'You'
       );
       expect(revealedClaimsForEntry).not.toHaveBeenCalled();
     });
 
     // The claim affordance stays at the minimum: whether the item is claimed,
     // never who claimed it.
-    it('NonOwnerAddClaimWithAWithheldClaim_NeitherAsksNorFetchesNames', async () => {
+    it('NonOwnerAddClaimWithAnotherPartysClaim_NeitherAsksNorFetchesNames', async () => {
       const user = userEvent.setup();
       renderItem({
         tier: 'claims',
@@ -1268,7 +1304,7 @@ describe('Item', () => {
         item: {
           profile_id: OWNER,
           quantity: 3,
-          purchases: [withheldClaim],
+          purchases: [othersClaim],
         },
       });
       await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
@@ -1277,7 +1313,11 @@ describe('Item', () => {
       expect(revealedClaimsForEntry).not.toHaveBeenCalled();
     });
 
-    it('NonOwnerModalWithAWithheldClaim_KeepsTheProjectedClaims', () => {
+    // At `claims` the holder's door opens on the whole projected set — their
+    // own rows to manage and the other party the modal counts under them — and
+    // still asks nothing: the confirmation is the owner's alone.
+    it('HolderAtClaims_ManageClaimOpensWithEveryClaimAndNoConfirmation', async () => {
+      const user = userEvent.setup();
       renderItem(
         {
           tier: 'claims',
@@ -1285,15 +1325,42 @@ describe('Item', () => {
           item: {
             profile_id: OWNER,
             quantity: 3,
-            purchases: [withheldClaim],
+            purchases: [ownClaim, othersClaim],
           },
         },
         'purchaseItem=i1'
       );
+      await user.click(screen.getByRole('button', { name: 'card-claim' }));
 
+      expect(confirmation()).not.toBeInTheDocument();
+      expect(screen.getByTestId('modal-slot')).toHaveAttribute(
+        'data-claims',
+        'po,px'
+      );
+    });
+
+    // A holder's door at every tier: their own rows, opened directly, with no
+    // second read of anybody else's.
+    it('HolderBelowClaims_ManageClaimOpensWithTheirOwnRowsAndNoFetch', async () => {
+      const user = userEvent.setup();
+      renderItem(
+        {
+          tier: 'surprise',
+          actor: actorOf('viewer'),
+          item: {
+            profile_id: OWNER,
+            quantity: 3,
+            purchases: [ownClaim],
+          },
+        },
+        'purchaseItem=i1'
+      );
+      await user.click(screen.getByRole('button', { name: 'card-claim' }));
+
+      expect(confirmation()).not.toBeInTheDocument();
       expect(screen.getByTestId('modal-slot')).toHaveAttribute(
         'data-claim-names',
-        ''
+        'You'
       );
       expect(revealedClaimsForEntry).not.toHaveBeenCalled();
     });

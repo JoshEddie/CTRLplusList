@@ -98,11 +98,11 @@ export type SpoilerTier = 'surprise' | 'progress' | 'claims';
 
 export type PurchaseView = {
   id: string;
-  /** How many units the claim covers. Absent on another party's claim below a confirmed reveal, alongside the name — a per-claim count there would disclose more than the claims tier ever did. */
+  /** How many units the claim covers. Carried by every projected row: a claim a viewer may see at all, they may see whole. */
   units?: number;
   by: 'self' | 'other';
-  /** Absent on another party's claim, which every tier discloses as a bare count; present only on the viewer's own claims and on a confirmed reveal. */
-  name?: string;
+  /** The purchaser's name — a profile's, or the free text a guest typed. */
+  name: string;
   /** The viewer asserted this claim (`claimed_by_profile_id`) — grants the unclaim affordance even when the purchaser is someone else. */
   claimedByViewer: boolean;
   /** The claimer's first name when the claimer differs from the purchaser. */

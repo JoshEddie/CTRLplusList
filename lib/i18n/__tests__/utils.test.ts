@@ -18,7 +18,7 @@ describe('getMessage', () => {
       [2, '2 other claims'],
       [1234, '1,234 other claims'],
     ])('Count%i_ReturnsTheClaimPhrase', (count, expected) => {
-      expect(getMessage('claim_withheld_others', { count })).toBe(expected);
+      expect(getMessage('claim_other_claims', { count })).toBe(expected);
     });
   });
 

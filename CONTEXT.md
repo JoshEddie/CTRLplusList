@@ -147,9 +147,10 @@ one unit unless its claimer says otherwise; the stepper that says otherwise is
 capped at what remains, and hidden wherever that leaves one number to pick — an
 entry asking for one, or one unit left of many. Units move up and down within
 what remains, and dropping a claim to zero *is* unclaiming — a zero-unit row is
-not representable. A per-claim unit count is visible only to the claim's holder
-and at the revealed tier; the claims tier
-keeps its bare presence flag. Claimed units are summed from the claims
+not representable. A per-claim unit count is visible to the claim's holder at
+every tier, to anyone at the claims tier — which projects each claim whole —
+and to an item's owner below it through the reveal their manage-claims list
+confirms. Claimed units are summed from the claims
 themselves, never kept as a separate running total
 ([ADR-0016](docs/adr/0016-claimed-units-are-summed-not-stored.md)).
 
@@ -222,8 +223,12 @@ The tier a new membership is seeded with. A seed only; never consulted again for
 a sitting member.
 
 **Claim projection**:
-What a viewer actually sees for a claim, after their tier is applied. Adds
-`revealed`, which is never stored and never comes from a URL.
+What a viewer actually sees for a claim, after their tier is applied. Below the
+claims tier only the claims a viewer holds survive it; at the claims tier every
+claim on the item does, whole — purchaser named and pictured, units, asserter,
+and when. Adds `revealed`, which discloses what the claims tier does whatever
+the stored tier withholds, reached only through the owner's manage-claims
+confirmation; it is never stored and never comes from a URL.
 
 **Spoiler param**:
 A `?spoiler=` value, interpreted as a _delta from the viewer's baseline_ — so the

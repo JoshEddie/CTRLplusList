@@ -97,7 +97,6 @@ export function overlayGuestClaims<T extends { purchases?: PurchaseView[] }>(
               ...p,
               claimedByViewer: true,
               by: 'self' as const,
-              name: p.name ?? claims?.name,
             }
           : p
       ),

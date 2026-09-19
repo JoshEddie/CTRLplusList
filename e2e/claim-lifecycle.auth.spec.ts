@@ -77,12 +77,12 @@ test('AddClaimWhileClaimed_RoutesToClaimFlow_ManageListRemovesPerClaim', async (
   await expect(banner).toHaveText(`${before + 2} / ${quantity} Claimed`);
 
   // Manage claim lists the viewer's own claims as rows carrying removal
-  // actions; no tier names another claimant, so theirs are a bare count.
+  // actions; everyone else on the entry is a count under the list, never a row.
   // Removing the additional claim keeps the self-claim (and the modal) intact.
   await claimed.getByRole('button', { name: 'Manage claim' }).click();
   await expect(page).not.toHaveURL(/purchaseView=claim/);
   await expect(page.getByText('Test Viewer (you)')).toBeVisible();
-  await expect(page.locator('.claims-withheld')).toBeVisible();
+  await expect(page.locator('.claims-other-count')).toBeVisible();
   await page
     .getByRole('button', { name: `Remove ${purchaser}'s claim`, exact: true })
     .click();

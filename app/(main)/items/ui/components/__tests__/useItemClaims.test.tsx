@@ -65,12 +65,6 @@ const assertedClaim = (id = 'c3'): PurchaseView => ({
   name: 'Sam',
   claimedByViewer: true,
 });
-const namelessClaim = (id = 'c4'): PurchaseView => ({
-  id,
-  by: 'other',
-  claimedByViewer: false,
-});
-
 type Props = Parameters<typeof useItemClaims>[0];
 
 function mount(overrides: Partial<Props> = {}) {
@@ -268,40 +262,42 @@ describe('SpoilerGates', () => {
     expect(result.current.countWithheld).toBe(false);
   });
 
-  it('OwnerWithANamelessClaim_WithholdsNames', () => {
-    const { result } = mount({
-      isOwner: true,
-      item: makeItem({
-        quantity: AMPLE_QUANTITY,
-        purchases: [namelessClaim()],
-      }),
-    });
-    expect(result.current.namesWithheld).toBe(true);
-  });
-
-  it('OwnerWithEveryClaimNamed_DoesNotWithholdNames', () => {
+  // The owner's confirmation is about other parties being named, so it keys on
+  // one of them being on the item — not on a row that happens to lack a name,
+  // which at `claims` no longer exists.
+  it('OwnerWithAnotherPartysClaim_AsksBeforeNaming', () => {
     const { result } = mount({
       isOwner: true,
       item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [othersClaim()] }),
     });
-    expect(result.current.namesWithheld).toBe(false);
+    expect(result.current.asksBeforeNaming).toBe(true);
+  });
+
+  it('OwnerWithOnlyTheirOwnClaims_NamesWithoutAsking', () => {
+    const { result } = mount({
+      isOwner: true,
+      item: makeItem({
+        quantity: AMPLE_QUANTITY,
+        purchases: [ownClaim(), assertedClaim()],
+      }),
+    });
+    expect(result.current.asksBeforeNaming).toBe(false);
   });
 
   // Naming is the owner's reveal alone; nobody else is offered it, so there is
   // nothing to withhold from them.
-  it('NonOwnerWithANamelessClaim_DoesNotWithholdNames', () => {
+  it('NonOwnerWithAnotherPartysClaim_NeverAsks', () => {
     const { result } = mount({
-      item: makeItem({
-        quantity: AMPLE_QUANTITY,
-        purchases: [namelessClaim()],
-      }),
+      item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [othersClaim()] }),
     });
-    expect(result.current.namesWithheld).toBe(false);
+    expect(result.current.asksBeforeNaming).toBe(false);
   });
 
-  it('OwnerBelowClaimsTier_WithholdsNames', () => {
+  // Below `claims` the payload carries no other party at all, so the count
+  // itself is what the confirmation stands in front of.
+  it('OwnerBelowClaimsTier_AsksBeforeNaming', () => {
     const { result } = mount({ isOwner: true, tier: 'surprise' });
-    expect(result.current.namesWithheld).toBe(true);
+    expect(result.current.asksBeforeNaming).toBe(true);
   });
 
 });
@@ -633,41 +629,47 @@ describe('BuyClaimUndo', () => {
   });
 });
 
+// The reveal is the owner's route to the names their tier withholds, so it
+// fetches exactly where the payload is missing them: below `claims`.
 describe('NameReveal', () => {
-  const withheld = () =>
-    makeItem({ quantity: AMPLE_QUANTITY, purchases: [namelessClaim()] });
+  const protectedOwner = {
+    isOwner: true,
+    tier: 'surprise' as SpoilerTier,
+    item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [ownClaim()] }),
+    revealNames: true,
+  };
 
-  it('OwnerRevealingNamelessStubs_LoadsTheNamedClaims', async () => {
+  it('OwnerBelowClaimsRevealing_LoadsTheClaimsTheTierWithheld', async () => {
     vi.mocked(revealedClaimsForEntry).mockResolvedValue([othersClaim()]);
-    const { result } = mount({
-      isOwner: true,
-      item: withheld(),
-      revealNames: true,
-    });
+    const { result } = mount(protectedOwner);
     await waitFor(() =>
       expect(result.current.revealedClaims).toEqual([othersClaim()])
     );
   });
 
   // The claim route promises a count and no names, so it reads the payload
-  // however nameless it arrives rather than asking the server for more.
+  // however little it carries rather than asking the server for more.
   it('RevealNotRequested_NeverFetchesTheNames', async () => {
-    const { result } = mount({
-      isOwner: true,
-      item: withheld(),
-      revealNames: false,
-    });
+    const { result } = mount({ ...protectedOwner, revealNames: false });
     await waitFor(() => expect(result.current.claims).toHaveLength(1));
     expect(revealedClaimsForEntry).not.toHaveBeenCalled();
     expect(result.current.revealedClaims).toBeNull();
   });
 
-  it('OwnerWithEveryClaimAlreadyNamed_NeverFetchesTheNames', async () => {
+  // At `claims` every party arrived with the page, named — there is nothing
+  // left for the reveal to go and get.
+  it('OwnerAtClaims_NeverFetchesTheNames', async () => {
     const { result } = mount({
-      isOwner: true,
+      ...protectedOwner,
+      tier: 'claims',
       item: makeItem({ quantity: AMPLE_QUANTITY, purchases: [othersClaim()] }),
-      revealNames: true,
     });
+    await waitFor(() => expect(result.current.claims).toHaveLength(1));
+    expect(revealedClaimsForEntry).not.toHaveBeenCalled();
+  });
+
+  it('NonOwnerBelowClaims_NeverFetchesTheNames', async () => {
+    const { result } = mount({ ...protectedOwner, isOwner: false });
     await waitFor(() => expect(result.current.claims).toHaveLength(1));
     expect(revealedClaimsForEntry).not.toHaveBeenCalled();
   });
@@ -677,11 +679,7 @@ describe('NameReveal', () => {
       othersClaim(),
       assertedClaim(),
     ]);
-    const { result } = mount({
-      isOwner: true,
-      item: withheld(),
-      revealNames: true,
-    });
+    const { result } = mount(protectedOwner);
     await waitFor(() => expect(result.current.revealedClaims).toHaveLength(2));
     await act(async () => {
       await result.current.removeClaim(othersClaim());

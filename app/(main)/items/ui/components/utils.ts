@@ -23,6 +23,20 @@ export function claimUnitsCeiling(
   return (capacity?.remaining ?? 0) + (claim.units ?? 1);
 }
 
+// Claims the viewer may act on, and the ones a view of "your claims" lists:
+// the claims they are the purchaser of, and the ones they recorded for someone
+// else. Both compare the self-profile, so neither takes the owner floor.
+export function heldByViewer(claim: PurchaseView): boolean {
+  return claim.by === 'self' || claim.claimedByViewer;
+}
+
+// One home for the complement: two surfaces read it for the same reason, and a
+// divergence between them would fail silently — the owner's confirmation would
+// stop matching the count the manage view renders under the list.
+export function othersClaimCount(claims: PurchaseView[]): number {
+  return claims.filter((claim) => !heldByViewer(claim)).length;
+}
+
 export function firstToken(name: string): string {
   return name.trim().split(/\s+/)[0];
 }

@@ -5,8 +5,9 @@ import {
   PurchaseView,
   SpoilerTier,
 } from '@/lib/types';
+import { getMessage } from '@/lib/i18n/utils';
 import { atLeast } from '@/lib/spoilers';
-import { unitsClaimedLabel } from './utils';
+import { heldByViewer, othersClaimCount, unitsClaimedLabel } from './utils';
 import ClaimsList from './purchasemodal/ClaimsList';
 import Modal from './purchasemodal/Modal';
 import ModalStoreRow from './purchasemodal/ModalStoreRow';
@@ -32,7 +33,7 @@ export default function PurchaseModalSlot({
   onUpdateUnits,
 }: {
   view: 'manage' | 'claim';
-  /** Every sanitized claim on the item — the manage view lists them all, removal gated per row. */
+  /** Every sanitized claim on the item. The manage view lists the viewer's own and counts the rest; the claim flow hands them all to the owner's master list. */
   claims: PurchaseView[];
   /** Null off a list, where there is nothing to claim against. */
   capacity: EntryCapacity | null;
@@ -49,16 +50,21 @@ export default function PurchaseModalSlot({
   onUpdateUnits: (claim: PurchaseView, units: number) => void;
 }) {
   if (view === 'manage') {
+    // The rows this view manages are the viewer's own and the ones they
+    // asserted — removing either compares the self-profile and takes no floor.
+    const held = claims.filter(heldByViewer);
+    // Below `claims` no other party is in the payload at all, so the line
+    // below falls away on the zero rather than on a tier this view would
+    // otherwise have to read.
+    const others = othersClaimCount(claims);
     return (
       <Modal onClose={onClose}>
         <div className="claim-modal">
           <PurchaseModalHeader item={item} />
           <ModalStoreRow store={item.store} />
-          {/* The viewer's own claims and the ones they asserted — removing
-              either compares the self-profile and takes no floor. */}
           <ClaimsList
-            claims={claims}
-            canRemove={(claim) => claim.by === 'self' || claim.claimedByViewer}
+            claims={held}
+            canRemove={() => true}
             capacity={capacity}
             unitsStatus={
               capacity && atLeast(tier, 'claims')
@@ -68,6 +74,11 @@ export default function PurchaseModalSlot({
             onRemoveClaim={onRemoveClaim}
             onUpdateUnits={onUpdateUnits}
           />
+          {others > 0 && (
+            <p className="claims-other-count" role="status">
+              {getMessage('claim_other_claims', { count: others })}
+            </p>
+          )}
         </div>
       </Modal>
     );

@@ -13,15 +13,19 @@ owner "you cannot do that, someone has claimed it" is not implementable as
 stated; it must either behave identically in both cases, or surface the
 difference only above `claims`.
 
-Only one part of the app actively enforces this. An owner below `claims` who
-opens Add claim or Manage claim is routed through `setPendingReveal` into a
-"This could spoil a surprise" confirmation, worded differently depending on
-whether the count or the claimers' names would be exposed — the disclosure is
-gated on consent rather than suppressed. `isFullyClaimed` is the other
-deliberate instance: derived from the entry's claimed-unit count, which the
-read withholds below `claims` alongside the claims themselves — so a `progress`
-viewer sees a fully-claimed item as claimable and the sold-out treatment never
-appears.
+Only one part of the app actively enforces this. A viewer below `claims` who
+opens Add claim is routed through `setPendingReveal` into a "This could spoil a
+surprise" confirmation before the count and the remaining capacity are fetched
+— the disclosure is gated on consent rather than suppressed. The owner's
+Manage claims carries the other confirmation, the one that promises names; it
+asks whenever another party is on the item or the count is withheld, never on a
+row that arrived without a name, so it varies on nothing the viewer's own tier
+conceals from them. A claim-holder's Manage claim asks nothing at any tier: it
+opens on rows they hold, which every tier discloses. `isFullyClaimed` is the
+other deliberate instance: derived from the entry's claimed-unit count, which
+the read withholds below `claims` alongside the claims themselves — so a
+`progress` viewer sees a fully-claimed item as claimable and the sold-out
+treatment never appears.
 
 Everywhere else the principle holds because nothing branches on claim state at
 all. That is the absence of a violation, not the presence of a guard: there is
