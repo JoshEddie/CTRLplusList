@@ -16,6 +16,7 @@ export function buttonClasses({
   return [
     'btn',
     variant,
+    size === 'xs' && 'btn-xs',
     size === 'sm' && 'btn-sm',
     icon && 'btn-icon',
     extra,

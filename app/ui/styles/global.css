@@ -72,6 +72,7 @@
 
   --WCAG-input-size: 40px;
   --WCAG-input-size-sm: 36px;
+  --WCAG-input-size-xs: 30px;
   /* The visible band: the slice of the layout viewport the soft keyboard is not
      covering. AppViewport overwrites both with exact pixels off visualViewport;
      these are the pre-JS fallbacks, where the band is the whole viewport.

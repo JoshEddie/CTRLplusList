@@ -14,6 +14,12 @@
   --btn-sm-min-height: var(--WCAG-input-size-sm);
   --btn-sm-min-width: var(--WCAG-input-size-sm);
 
+  --btn-xs-padding-y: 4px;
+  --btn-xs-padding-x: 10px;
+  --btn-xs-font-size: 12px;
+  --btn-xs-min-height: var(--WCAG-input-size-xs);
+  --btn-xs-min-width: var(--WCAG-input-size-xs);
+
   /* Chip tier — pill-shaped label + remove-×. Below the sm floor; relies
      on WCAG 2.5.8 spacing exception (chips are spaced from neighbors via
      the chip-row gap). */
@@ -66,6 +72,13 @@
   min-width: var(--btn-sm-min-width);
 }
 
+.btn-xs {
+  padding: var(--btn-xs-padding-y) var(--btn-xs-padding-x);
+  font-size: var(--btn-xs-font-size);
+  min-height: var(--btn-xs-min-height);
+  min-width: var(--btn-xs-min-width);
+}
+
 .btn.full {
   width: 100%;
 }
@@ -80,6 +93,10 @@
 
 .btn-sm.btn-icon {
   width: var(--btn-sm-min-height);
+}
+
+.btn-xs.btn-icon {
+  width: var(--btn-xs-min-height);
 }
 
 /* Variants */

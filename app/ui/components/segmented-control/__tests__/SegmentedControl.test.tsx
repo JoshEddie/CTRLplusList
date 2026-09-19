@@ -148,6 +148,24 @@ describe('SegmentedControl', () => {
         'segmented tone-on-dark'
       );
     });
+
+    it('SizeXs_RendersSizeXsClassOnContainer', () => {
+      render(
+        <SegmentedControl
+          value="a"
+          onChange={() => {}}
+          tone="on-dark"
+          size="xs"
+          aria-label="g"
+        >
+          <SegmentedOption value="a">A</SegmentedOption>
+        </SegmentedControl>
+      );
+      expect(screen.getByRole('radiogroup')).toHaveAttribute(
+        'class',
+        'segmented tone-on-dark size-xs'
+      );
+    });
   });
 
   describe('ContextProvision', () => {
@@ -524,6 +542,34 @@ describe('SegmentedControl', () => {
   });
 
   describe('KeyboardEdgeCases', () => {
+    it('ArrowRightOntoDisabledOption_KeepsSelectionAndFocus', () => {
+      const onChange = vi.fn();
+      render(
+        <SegmentedControl
+          value="a"
+          onChange={onChange}
+          tone="light"
+          aria-label="g"
+        >
+          <SegmentedOption value="a">A</SegmentedOption>
+          <SegmentedOption value="b" disabled>
+            B
+          </SegmentedOption>
+        </SegmentedControl>
+      );
+      const a = screen.getByRole('radio', { name: 'A' });
+      a.focus();
+      const event = new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        cancelable: true,
+        bubbles: true,
+      });
+      screen.getByRole('radiogroup').dispatchEvent(event);
+      expect(onChange).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(a);
+      expect(event.defaultPrevented).toBe(false);
+    });
+
     it('NoCheckedOption_ArrowRightSelectsFirst', () => {
       const onChange = vi.fn();
       render(

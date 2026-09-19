@@ -7,6 +7,6 @@ export type ButtonVariant =
   | 'white'
   | 'link';
 
-export type ButtonSize = 'sm' | 'md';
+export type ButtonSize = 'xs' | 'sm' | 'md';
 
 export type ButtonWidth = 'auto' | 'full';

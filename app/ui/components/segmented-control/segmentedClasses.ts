@@ -1,13 +1,17 @@
-import type { SegmentedTone } from './types';
+import type { SegmentedSize, SegmentedTone } from './types';
 
 export function segmentedGroupClasses({
   tone,
+  size,
   extra,
 }: {
   tone: SegmentedTone;
+  size?: SegmentedSize;
   extra?: string;
 }): string {
-  return ['segmented', `tone-${tone}`, extra].filter(Boolean).join(' ');
+  return ['segmented', `tone-${tone}`, size === 'xs' && 'size-xs', extra]
+    .filter(Boolean)
+    .join(' ');
 }
 
 export function segmentedOptionClasses({
