@@ -26,7 +26,7 @@ describe('SpoilerPicker', () => {
   it('Closed_TileShowsCurrentTierAndNoMenu', () => {
     render(<SpoilerPicker tier="progress" baseline="surprise" />);
     expect(trigger()).toHaveAccessibleName(
-      'Spoilers: Progress only. Click to change.'
+      'Spoilers: Progress. Click to change.'
     );
     expect(trigger()).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();

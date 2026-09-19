@@ -120,7 +120,7 @@ describe('ClaimVisibilitySection', () => {
       ).not.toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: /^Ollie/ })
-      ).toHaveTextContent('Surprise me');
+      ).toHaveTextContent('Surprise');
     });
 
     it('TriggerActivated_RevealsThatRowsControlAlone', async () => {
@@ -202,10 +202,10 @@ describe('ClaimVisibilitySection', () => {
 
       expect(
         screen.getByRole('button', { name: /^Ollie/ })
-      ).toHaveTextContent('Claims shown');
+      ).toHaveTextContent('Claimed');
       expect(
         screen.getByRole('button', { name: new RegExp(DEFAULT) })
-      ).toHaveTextContent('Surprise me');
+      ).toHaveTextContent('Surprise');
     });
   });
 

@@ -1,13 +1,10 @@
 // TODO(#343): split the extra components into their own files, then drop this disable
 /* eslint-disable react/no-multi-comp */
 
-import SpoilerPicker from '@/app/ui/components/SpoilerPicker';
 import { getFollowState } from '@/lib/data/follow';
 import { getProfileForViewer } from '@/lib/data/profile';
 import { writableMembership } from '@/lib/data/profile.gate';
-import { atLeast } from '@/lib/spoilers';
 import { authedIdentity } from '@/lib/data/user.session';
-import { timeAgo } from '@/lib/timeAgo';
 import {
   ListTable,
   type ProfileAvatarView,
@@ -19,16 +16,17 @@ import {
   type ListVisibility,
 } from '@/lib/visibility';
 import BookmarkContainer from './BookmarkContainer';
-import ClaimProgress from './ClaimProgress';
+import BylineProfileCard from './BylineProfileCard';
 import EditListAction from './EditListAction';
+import HeroMeta from './HeroMeta';
+import { SpoilerMenuItems } from './HeroCollapsedItems';
 import {
   HeroCollapsedOwnerItems,
   HeroCollapsedViewerItems,
 } from './HeroCollapsedItemsContainer';
-import { SpoilerMenuItems } from './HeroCollapsedItems';
+import HeroSpoilerControl from './HeroSpoilerControl';
 import ListActionsMenu from './ListActionsMenu';
 import ListHeroSurface from './ListHeroSurface';
-import BylineProfileCard from './BylineProfileCard';
 import ShareButton from './ShareButton';
 import SwitchProfileOffer from './SwitchProfileOffer';
 import VisibilityPicker from './VisibilityPicker';
@@ -102,8 +100,6 @@ export default async function ListDetails({
     canSwitchProfile: !!otherProfileMembership,
   };
 
-  const updatedDisplay = timeAgo(list.updated_at);
-  const itemsDisplay = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
   const showOwnerControls = isOwner;
   const showViewerControls =
     !isOwner && !!viewer_user_id && !!viewer_self_profile_id;
@@ -120,7 +116,7 @@ export default async function ListDetails({
   // it too: their default view is a member's view, at their own tier.
   const showSpoilerTile = viewerIsMember;
   const spoilerTile = showSpoilerTile ? (
-    <SpoilerPicker tier={tier} baseline={baseline} />
+    <HeroSpoilerControl tier={tier} baseline={baseline} />
   ) : null;
 
   // Compose the prepended kebab items shown on the sticky strip while the
@@ -147,10 +143,7 @@ export default async function ListDetails({
         />
       )}
       {showViewerControls && (
-        <HeroCollapsedViewerItems
-          list={list}
-          viewerUserId={viewer_user_id}
-        />
+        <HeroCollapsedViewerItems list={list} viewerUserId={viewer_user_id} />
       )}
     </>
   );
@@ -169,29 +162,20 @@ export default async function ListDetails({
       <ListHeroSurface title={list.name} kebab={collapsedKebab}>
         <div className="list-hero">
           <div className="list-hero-main">
-            <div className="list-hero-row">
-              <div className="list-hero-titleblock">
-                <div className="list-hero-title-line">
-                  <h1 className="list-hero-title">{list.name}</h1>
-                  {isOwner && (
-                    <EditListAction
-                      list={list}
-                      deleteDisabled={ownerFloorDisabled}
-                    />
-                  )}
-                </div>
-                {list.subtitle ? (
-                  <div className="list-hero-eyebrow-subtitle-wrapper">
-                    {list.occasion ? (
-                      <span className="list-hero-eyebrow">{list.occasion}</span>
-                    ) : null}{' '}
-                    <p className="list-hero-subtitle">{list.subtitle}</p>
-                  </div>
-                ) : null}
-                <BylineProfileCard {...cardProps} />
+            <h1 className="list-hero-title">{list.name}</h1>
+            {isOwner && (
+              <EditListAction list={list} deleteDisabled={ownerFloorDisabled} />
+            )}
+            {list.subtitle ? (
+              <div className="list-hero-eyebrow-subtitle-wrapper">
+                {list.occasion ? (
+                  <span className="list-hero-eyebrow">{list.occasion}</span>
+                ) : null}{' '}
+                <p className="list-hero-subtitle">{list.subtitle}</p>
               </div>
-            </div>
+            ) : null}
             <div className="list-hero-row">
+              <BylineProfileCard {...cardProps} />
               {showActions && (
                 <HeroActions
                   list={list}
@@ -206,17 +190,12 @@ export default async function ListDetails({
                 />
               )}
               {spoilerTile}
-              {/* The claimed count describes the list, not the visible item
-                set. At `surprise` the line carries item count and time alone. */}
-              <div className="list-hero-meta">
-                <span>
-                  {itemsDisplay}
-                  {updatedDisplay && <> · updated {updatedDisplay}</>}
-                </span>
-                {atLeast(tier, 'progress') && claimedCount !== undefined && (
-                  <ClaimProgress claimed={claimedCount} total={itemCount} />
-                )}
-              </div>
+              <HeroMeta
+                tier={tier}
+                claimedCount={claimedCount}
+                itemCount={itemCount}
+                updatedAt={list.updated_at}
+              />
             </div>
           </div>
         </div>

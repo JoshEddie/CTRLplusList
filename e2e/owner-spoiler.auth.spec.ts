@@ -30,7 +30,7 @@ test('ListHero_MemberRaisesTierViaSpoilerTile_RevealsWithheldClaim', async ({
     page.locator('.purchased-banner--spoiler', { hasText: 'claimed' })
   ).toHaveCount(0);
 
-  await raiseSpoilerTier(page, "Show what's claimed");
+  await raiseSpoilerTier(page, 'Claimed');
 
   // The raised tier is carried by the URL, and the withheld claim — a guest's,
   // which the baseline stripped from the payload — is now counted.
@@ -49,7 +49,7 @@ test('ListHero_MemberLeavesAndReturns_RestoresProtectedView', async ({
   await page.goto(OWN_LIST);
   await expect(page.locator('.item-container').first()).toBeVisible();
 
-  await raiseSpoilerTier(page, "Show what's claimed");
+  await raiseSpoilerTier(page, 'Claimed');
   await expect(page).toHaveURL(/spoiler=claims/);
   await expect(
     page.locator('.purchased-banner--spoiler').first()
@@ -92,14 +92,16 @@ test('ListHero_MemberClaimsAtProgressTier_MovesTheHeroClaimedCount', async ({
   // The count is item-distinct, so it only moves for an item nothing has
   // claimed yet — and `progress` is exactly the tier that cannot tell one
   // apart. `claims` names the unclaimed card; the flow proper runs below it.
-  // The tile's own face is the settle signal: the tier is a server render
+  // The active radio is the settle signal: the tier is a server render
   // reached by a router push, so a card read before it lands is still the
   // surprise-tier payload — one that discloses no claim on ANY card.
-  const tileFace = (label: string) =>
-    page.getByRole('button', { name: new RegExp(`^Spoilers: ${label}`) });
+  const activeRadio = (label: string) =>
+    page
+      .getByRole('radiogroup', { name: 'Spoilers' })
+      .getByRole('radio', { name: label, checked: true });
 
-  await raiseSpoilerTier(page, "Show what's claimed");
-  await expect(tileFace('Claims shown')).toBeVisible();
+  await raiseSpoilerTier(page, 'Claimed');
+  await expect(activeRadio('Claimed')).toBeVisible();
   const unclaimed = page
     .locator('.item-container')
     .filter({
@@ -109,10 +111,10 @@ test('ListHero_MemberClaimsAtProgressTier_MovesTheHeroClaimedCount', async ({
     .first();
   const itemName = (await unclaimed.locator('.itemName').innerText()).trim();
 
-  await raiseSpoilerTier(page, 'Show overall progress');
+  await raiseSpoilerTier(page, 'Progress');
   await expect(page).toHaveURL(/spoiler=progress/);
-  await expect(tileFace('Progress only')).toBeVisible();
-  const label = page.locator('.list-hero-progress-label');
+  await expect(activeRadio('Progress')).toBeVisible();
+  const label = page.locator('.list-hero-meta-label');
   const [, before, total] = /(\d+) \/ (\d+) claimed/.exec(
     await label.innerText()
   )!;
@@ -132,7 +134,7 @@ test('ListHero_MemberClaimsAtProgressTier_MovesTheHeroClaimedCount', async ({
   // A fresh server render at the same tier: the claim landed, so the hero
   // count landed with it.
   await page.goto(`${PROGRESS_LIST}?spoiler=progress`);
-  await expect(label).toHaveText(`${Number(before) + 1} / ${total} claimed`);
+  await expect(label).toContainText(`${Number(before) + 1} / ${total} claimed`);
 });
 
 // The All items tab is claim-free by construction rather than by a low tier:

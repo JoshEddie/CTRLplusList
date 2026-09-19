@@ -93,37 +93,40 @@
 
 .list-hero-eyebrow {
   align-self: flex-start;
-  padding: 3px 10px;
-  border-radius: 4px;
+  padding: 4px 12px;
+  border-radius: 8px;
   /* α≤0.03 keeps white eyebrow text ≥4.5:1 over the gradient worst-case
      (lightest) stop; a heavier fill lightens the pill below AA. Enforced by
      hero-contrast.test.ts. */
-  background-color: rgba(255, 255, 255, 0.03);
-  font-size: 12px;
+  background-color: var(--card-border-hover-color);
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  color: var(--light-color);
+  color: var(--primary-color-dark);
 }
 
-.list-hero-title {
+.list-hero-main .list-hero-title {
   font-family: var(--font-crimson-pro);
   font-weight: 400;
-  font-size: 28px;
+  font-size: 50px; /* clamp() fallback */
+  font-size: clamp(50px, 5cqi, 100px);
   color: var(--light-color);
   margin: 0;
-  line-height: 1.15;
+  line-height: 1;
   word-break: break-word;
+  padding-right: 34px;
 }
 
-@media (max-width: 800px) {
-  .list-hero-title {
-    font-size: 22px;
-  }
+.edit-list-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
 }
 
 .list-hero-eyebrow-subtitle-wrapper {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
@@ -287,24 +290,18 @@
   min-width: 0;
 }
 
-/* Shrink to the byline itself: stretched to the title column's width, the
-   hover target would open the card from anywhere on the row. */
-.list-hero-titleblock > .byline-card-anchor {
-  align-self: flex-start;
-  max-width: 100%;
-}
-
 .list-hero-byline-button.btn.link {
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
   color: var(--light-color);
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 400;
   text-align: left;
 }
 
 .list-hero-byline-button .altvatar-disc {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   flex: none;
 }
 
@@ -844,151 +841,57 @@
   }
 }
 
-
-/* ══ Hero composition ═════════════════════════════════════════════════════
-   Two rows: identity (title + pencil, byline), then controls (tiles, action
-   buttons, meta). Mobile-first — the rows dissolve (display: contents) into
-   one two-column stack where everything spans both columns except the two
-   tiles, which pair up. Desktop lays each row out with flex. */
 .list-hero-main {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding: 16px;
-}
-
-.list-hero-row {
-  display: contents;
-}
-
-.list-hero-titleblock,
-.list-hero-meta,
-.list-hero-actions {
-  grid-column: 1 / -1;
-}
-
-.list-hero-titleblock {
-  order: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
-/* The pencil sits beside the title at every width, so it rides the title's
-   own line rather than the action row. */
-.list-hero-title-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.list-hero-title-line > .btn {
-  flex: none;
-}
-
-.list-hero-actions {
-  order: 2;
-  display: flex;
   gap: 12px;
-}
-
-.list-hero-row > .visibility-picker,
-.list-hero-row > .spoiler-picker {
-  order: 3;
-  min-width: 0;
-}
-
-/* The pair is a pair only for an owner; a viewer's lone Spoilers tile takes
-   the whole width rather than leaving the second column empty. */
-.list-hero-row > .spoiler-picker {
-  grid-column: 1 / -1;
-}
-
-.list-hero-row > .visibility-picker ~ .spoiler-picker {
-  grid-column: auto;
-}
-
-.list-hero-row .hero-tile {
+  padding: 16px;
+  container-type: inline-size;
   width: 100%;
 }
 
-.list-hero-actions > .btn {
-  flex: 0 0 auto;
-}
-
-/* Icon-only on a phone: the row has to hold every control without scrolling,
-   and each button already carries its name in aria-label. */
-.list-hero-actions .label {
-  display: none;
+.list-hero-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .list-hero-meta {
-  order: 4;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  margin-left: auto;
+  gap: 10px;
+  min-width: 100%;
+  max-width: 100%;
   font-size: 14px;
   color: var(--light-color);
+}
+
+.list-hero-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 
 @media (min-width: 801px) {
   .list-hero-main {
     display: flex;
     flex-direction: column;
-    padding: 22px 24px 18px;
   }
-  /* Row 1 hangs from the top (byline level with the title); row 2 sits on
-     the bottom (bar / tile bottoms flush), as the grid's per-area
-     align-self did before. */
-  .list-hero-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  .list-hero-row:last-child {
-    align-items: flex-end;
-  }
-  .list-hero-row > *,
-  .list-hero-row > .visibility-picker,
-  .list-hero-row > .spoiler-picker {
-    order: 0;
-  }
-  .list-hero-row > .visibility-picker {
-    width: auto;
-  }
-  .list-hero-titleblock {
-    flex: 1 1 auto;
-  }
+
   .list-hero-actions {
     flex-wrap: wrap;
   }
-  .list-hero-actions .label {
-    display: inline;
-  }
-  /* Row 2 at the 801px floor is ~713px: tiles (~296) + actions leave the
-     meta ~265, so it floors at 200 (label + a usable bar) and takes the
-     remainder up to the mockup's bar width; the auto margin absorbs the
-     rest on wide screens. */
+
   .list-hero-meta {
-    flex: 1 1 auto;
-    margin-left: auto;
-    align-items: flex-end;
-    min-width: 200px;
-    max-width: 360px;
-  }
-  .list-hero-row .hero-tile {
-    width: auto;
+    min-width: 400px;
   }
 }
 
-/* ── Hero tiles (Visibility + Spoilers) ─────────────────────────────────────
-   The two-line tile shared by both pickers: an uppercase eyebrow over a value
-   line. Visibility is translucent-white on the gradient; Spoilers is filled
-   with its tier tint (set inline) over dark ink. */
+/* ── Hero tiles ─────────────────────────────────────────────────────────────
+   The two-line tile used by the toolbar SpoilerPicker popover. The hero
+   pickers are now SegmentedControls; these rules stay for the toolbar. */
 .hero-tile {
   display: flex;
   flex-direction: column;
@@ -1028,23 +931,12 @@
   margin-left: 2px;
 }
 
-.visibility-tile {
-  background: rgb(255 255 255 / 0.12);
-  border-color: rgb(255 255 255 / 0.45);
-  color: var(--light-color);
-}
-
-.visibility-tile:hover:not(:disabled) {
-  background: rgb(255 255 255 / 0.22);
-}
-
 .spoiler-tile {
   border-color: rgb(42 32 96 / 0.25);
   color: var(--primary-color-dark);
 }
 
-/* Anchor for each picker's popover menu. */
-.visibility-picker,
+/* Anchor for the toolbar SpoilerPicker popover. */
 .spoiler-picker {
   position: relative;
 }
@@ -1053,21 +945,6 @@
   left: 0;
   right: auto;
   min-width: min(280px, 90vw);
-}
-
-/* The hero's Spoilers tile sits in the right cell on mobile (beside
-   Visibility) and at the row's end on desktop, so its menu hangs left from
-   the tile's right edge. The items toolbar keeps the left anchor above. */
-.list-hero-row > .visibility-picker ~ .spoiler-picker .spoiler-menu {
-  left: auto;
-  right: 0;
-}
-
-@media (min-width: 801px) {
-  .list-hero-row > .spoiler-picker .spoiler-menu {
-    left: auto;
-    right: 0;
-  }
 }
 
 /* The tinted tier chip leading each Spoilers menu row (fill set inline),
@@ -1086,15 +963,8 @@
 }
 
 /* ── Claimed-count progress ────────────────────────────────────────────────
-   The meta column's bar + "N / M claimed", shown from the `progress` tier up.
-   White over the gradient for AA. Full width of the right-aligned meta column. */
-.list-hero-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-}
-
+   The meta line's bar, shown from the `progress` tier up. White over the
+   gradient for AA; takes the width the label leaves. */
 .list-hero-progress-track {
   position: relative;
   flex: 1 1 auto;
@@ -1113,8 +983,6 @@
   transition: width 0.3s ease;
 }
 
-.list-hero-progress-label {
-  font-size: 14px;
-  color: var(--light-color);
+.list-hero-meta-label {
   white-space: nowrap;
 }

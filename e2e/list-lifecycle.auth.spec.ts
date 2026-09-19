@@ -51,14 +51,14 @@ test('ListLifecycle_OwnerCreatesAndShares_StepsReflected', async ({ page }) => {
   ).toBeVisible();
 
   // Set visibility — a new list defaults to Hidden; promote it to Shared via
-  // the visibility picker and assert the trigger pill now reads "Shared". A
+  // the visibility control and assert "Shared" is now the checked option. A
   // fresh navigation first: the assertion above scrolled the list, and the
   // hero's controls sit behind its collapsed face once it has.
   await page.goto(`/lists/${listId}`);
-  await page.getByRole('button', { name: /Visibility:/ }).click();
-  await page.getByRole('menuitemradio', { name: 'Shared' }).click();
+  const visibility = page.getByRole('radiogroup', { name: 'Visibility' });
+  await visibility.getByRole('radio', { name: 'Shared' }).click();
   await expect(
-    page.getByRole('button', { name: /Visibility: Shared/ })
+    visibility.getByRole('radio', { name: 'Shared', checked: true })
   ).toBeVisible();
 
   // Share — the share affordance is only reachable once the list is no longer

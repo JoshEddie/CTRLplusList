@@ -10,7 +10,7 @@ import {
 
 describe('tierRowFor', () => {
   it('KnownTier_ReturnsItsRow', () => {
-    expect(tierRowFor('claims').label).toBe('Claims shown');
+    expect(tierRowFor('claims').label).toBe('Claimed');
   });
 
   it('UnknownStoredValue_FallsBackToTheProtectedRow', () => {

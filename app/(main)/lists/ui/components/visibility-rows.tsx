@@ -1,8 +1,8 @@
 import { VISIBILITY, type ListVisibility } from '@/lib/visibility';
 import { FaLink, FaLock, FaUsers } from 'react-icons/fa';
 
-// Single source of truth for the three-row visibility menu rendered by
-// both the `<VisibilityPicker>` popover (expanded hero) and the
+// Single source of truth for the three visibility options rendered by
+// both the `<VisibilityPicker>` segmented control (expanded hero) and the
 // `<VisibilityMenuItems>` group inside the collapsed-hero kebab. Both
 // surfaces show the same options, fire the same `setListVisibility`
 // action, and surface the same toast — so the row table lives here once.

@@ -47,8 +47,8 @@ describe('ShareButton', () => {
   it('Default_RendersShareListButtonWithIosShareIcon', () => {
     render(<ShareButton list={makeList()} />);
     const button = screen.getByRole('button', { name: 'Share list' });
-    expect(button).toHaveClass('btn', 'on-dark');
-    expect(button).toHaveTextContent('Share List');
+    expect(button).toHaveClass('btn', 'on-dark', 'btn-xs');
+    expect(button).toHaveTextContent('Share');
     // eslint-disable-next-line testing-library/no-node-access -- react-icons renders an unlabeled <svg>; querySelector is the only way to assert the icon is present.
     expect(button.querySelector('svg')).toBeInTheDocument();
   });

@@ -1,13 +1,13 @@
 'use client';
 
-import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
+import FollowControls from '@/app/(main)/users/ui/components/FollowControls';
 import { Button, LinkButton } from '@/app/ui/components/button';
 import { MenuItem } from '@/app/ui/components/menu';
+import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import { useProfileSwitch } from '@/app/ui/components/ProfileSwitchProvider';
 import { useOutsideDismiss } from '@/app/ui/components/use-dismiss';
-import FollowControls from '@/app/(main)/users/ui/components/FollowControls';
-import type { FollowState } from '@/lib/data/follow';
 import { accentVars } from '@/lib/accent';
+import type { FollowState } from '@/lib/data/follow';
 import { getMessage } from '@/lib/i18n/utils';
 import type { ProfileAvatarView } from '@/lib/types';
 import { useLayoutEffect, useRef, useState } from 'react';
@@ -143,6 +143,7 @@ export default function BylineProfileCard({
       ) : (
         <Button
           {...triggerProps}
+          size='xs'
           variant="link"
           className="list-hero-byline-button"
         >

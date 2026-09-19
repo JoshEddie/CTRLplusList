@@ -28,7 +28,9 @@ test('ProtectedList_SurpriseBaseline_DisclosesNoClaimButStillOffersAddClaim', as
   // (`dev-purchase-owner-self`), which is disclosed at every level — so
   // exactly one card offers management, and it is that one. Every other
   // claimed item is indistinguishable from an unclaimed one.
-  await expect(page.getByText('Spoilers:')).toHaveCount(0);
+  await expect(
+    page.locator('.purchased-banner--spoiler', { hasText: 'claimed' })
+  ).toHaveCount(0);
   await expect(
     page.getByRole('button', { name: 'Manage claims', exact: true })
   ).toHaveCount(1);
@@ -59,7 +61,9 @@ test('ProtectedList_DeclineTheConfirmation_DisclosesNothing', async ({
   await expect(
     page.getByRole('heading', { name: 'This could spoil a surprise' })
   ).toHaveCount(0);
-  await expect(page.getByText('Spoilers:')).toHaveCount(0);
+  await expect(
+    page.locator('.purchased-banner--spoiler', { hasText: 'claimed' })
+  ).toHaveCount(0);
 });
 
 test('ProtectedList_ConfirmThenSelfClaim_PersistsTheOwnersOwnClaim', async ({
@@ -141,7 +145,7 @@ test('ProtectedList_MasterUnclaimsAnothersClaim_RemovesItAfterReload', async ({
   await page.goto(OWN_LIST);
   await expect(page.locator('.item-container').first()).toBeVisible();
 
-  await raiseSpoilerTier(page, "Show what's claimed");
+  await raiseSpoilerTier(page, 'Claimed');
   await expect(page).toHaveURL(/spoiler=claims/);
 
   // No tier names the claiming parties, so the card carries only a count and

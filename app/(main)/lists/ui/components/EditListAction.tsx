@@ -24,6 +24,7 @@ export default function EditListAction({
         icon
         aria-label={label}
         onClick={() => setOpen(true)}
+        className='edit-list-button'
       >
         <MdModeEdit />
       </Button>

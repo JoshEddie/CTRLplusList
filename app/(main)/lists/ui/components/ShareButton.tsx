@@ -31,9 +31,9 @@ export default function ShareButton({ list }: { list: ListTable }) {
   };
 
   return (
-    <Button variant="on-dark" onClick={handleClick} aria-label="Share list">
+    <Button size='xs' variant="on-dark" onClick={handleClick} aria-label="Share list">
       <MdOutlineIosShare />
-      <span className="label">Share List</span>
+      <span className="label">Share</span>
     </Button>
   );
 }

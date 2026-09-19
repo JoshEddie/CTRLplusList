@@ -90,7 +90,7 @@ test('MemberBaseline_OwnerWritesAnothersRow_ReflectedOnReNavigation', async ({
   await openSpoilers(page);
   await expect(
     page.getByRole('button', { name: /^Test Viewer/ })
-  ).toContainText('Claims shown');
+  ).toContainText('Claimed');
   await openAdministeredRow(page, 'Test Viewer');
   await expect(
     levelControl(page, 'Claim visibility for Test Viewer')
@@ -101,7 +101,7 @@ test('MemberBaseline_OwnerWritesAnothersRow_ReflectedOnReNavigation', async ({
   await openSpoilers(page);
   await expect(
     page.getByRole('button', { name: /^Test Viewer/ })
-  ).toContainText('Surprise me');
+  ).toContainText('Surprise');
 });
 
 test('MemberBaseline_OwnerRaisesTheirOwn_ReachesTheirRenderedList', async ({

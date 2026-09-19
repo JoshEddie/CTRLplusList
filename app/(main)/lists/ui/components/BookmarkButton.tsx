@@ -40,6 +40,7 @@ export default function BookmarkButton({
 
   return (
     <Button
+      size='xs'
       variant="on-dark"
       pressed={bookmarked}
       aria-label={label}

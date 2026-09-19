@@ -9,7 +9,7 @@ import { FaBarsProgress, FaGift, FaTag } from 'react-icons/fa6';
 // render the same wording for the same stage. Copy and tints follow the
 // 2026-09-01 List Page mockup.
 //
-// `label` is the short tile/select face ("Surprise me"); `title` is the menu
+// `label` is the short face text ("Surprise"); `title` is the menu
 // row's fuller line ("Keep it a surprise"); `tint` is the CSS custom property
 // that colours the tile fill and the menu dot for that tier; `Icon` is the
 // glyph shown inside that dot and on the tile face.
@@ -23,19 +23,19 @@ export type SpoilerTierRow = {
 
 const ROWS: Record<SpoilerTier, Omit<SpoilerTierRow, 'value'>> = {
   surprise: {
-    label: 'Surprise me',
+    label: 'Surprise',
     title: 'Keep it a surprise',
     tint: 'var(--spoiler-tint-surprise)',
     Icon: FaGift,
   },
   progress: {
-    label: 'Progress only',
+    label: 'Progress',
     title: 'Show overall progress',
     tint: 'var(--spoiler-tint-progress)',
     Icon: FaBarsProgress,
   },
   claims: {
-    label: 'Claims shown',
+    label: 'Claimed',
     title: "Show what's claimed",
     tint: 'var(--spoiler-tint-claims)',
     Icon: FaTag,

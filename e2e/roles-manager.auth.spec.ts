@@ -139,7 +139,7 @@ test('RolesManager_ManagerCreatesItemsAttachesAndArchives_EachStepReflected', as
   await expect(renamedCard).toBeVisible();
 });
 
-test('RolesManager_ManagerOpensAListTheyManage_VisibilityPillDisabledAndUnchanged', async ({
+test('RolesManager_ManagerOpensAListTheyManage_VisibilityControlDisabledAndUnchanged', async ({
   page,
   context,
   baseURL,
@@ -159,22 +159,21 @@ test('RolesManager_ManagerOpensAListTheyManage_VisibilityPillDisabledAndUnchange
   await page.getByRole('button', { name: 'Create List' }).click();
   await expect(page).toHaveURL(/\/lists\/[^/?]+$/);
 
-  const pill = page.getByRole('button', { name: /Visibility:/ });
-  // Disabled, not omitted: the surface states the capability exists.
-  await expect(pill).toBeVisible();
-  await expect(pill).toBeDisabled();
+  const visibility = page.getByRole('radiogroup', { name: 'Visibility' });
+  // Disabled, not omitted: the surface states the capability exists, and
+  // every option is present but inert.
+  await expect(visibility).toBeVisible();
+  for (const name of ['Hidden', 'Private', 'Shared']) {
+    await expect(visibility.getByRole('radio', { name })).toBeDisabled();
+  }
 
   // Nothing to press: the control guards its own handler, so a browser cannot
   // reach the action past it. That the server and not the control is the
   // enforcement is pinned in the unit coverage of the gate's floor; what a
   // reload proves here is that the surface wrote nothing on the way.
-  await expect(page.getByRole('menuitemradio', { name: 'Shared' })).toHaveCount(
-    0
-  );
-
   await page.reload();
   await expect(
-    page.getByRole('button', { name: /Visibility: Hidden/ })
+    visibility.getByRole('radio', { name: 'Hidden', checked: true })
   ).toBeDisabled();
 });
 
