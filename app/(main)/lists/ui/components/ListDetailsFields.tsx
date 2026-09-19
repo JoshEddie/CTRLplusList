@@ -11,11 +11,13 @@ export default function ListDetailsFields({
   onChange,
   disabled,
   dateError,
+  errors,
 }: {
   draft: ListDetailsDraft;
   onChange: (patch: Partial<ListDetailsDraft>) => void;
   disabled?: boolean;
   dateError?: string;
+  errors?: Record<string, string[]>;
 }) {
   return (
     <>
@@ -26,6 +28,8 @@ export default function ListDetailsFields({
         value={draft.name}
         onChange={(e) => onChange({ name: e.target.value })}
         disabled={disabled}
+        maxLength={50}
+        error={errors?.name?.join(', ')}
       />
       <TextField
         label={getMessage('list_subtitle_label')}
@@ -35,6 +39,7 @@ export default function ListDetailsFields({
         disabled={disabled}
         placeholder={getMessage('list_subtitle_placeholder')}
         maxLength={120}
+        error={errors?.subtitle?.join(', ')}
       />
       <DatalistField
         label={getMessage('list_occasion_label')}
@@ -47,6 +52,7 @@ export default function ListDetailsFields({
         options={COMMON_OCCASIONS.map((o) => (
           <option key={o} value={o} />
         ))}
+        error={errors?.occasion?.join(', ')}
       />
       <DateField
         label={getMessage('list_date_label')}

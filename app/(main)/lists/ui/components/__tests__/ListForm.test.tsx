@@ -70,9 +70,7 @@ describe('ListForm', () => {
           date: new Date('2030-05-01'),
         })
       );
-      expect(router.push).toHaveBeenCalledWith(
-        '/lists/new-1'
-      );
+      expect(router.push).toHaveBeenCalledWith('/lists/new-1');
       expect(updateList).not.toHaveBeenCalled();
     });
 
@@ -239,6 +237,65 @@ describe('ListForm', () => {
       expect(router.push).not.toHaveBeenCalled();
     });
 
+    describe('ServerFieldError', () => {
+      const BANNER = 'Please correct the errors below';
+      const NAME_ERROR = 'Title must be at least 3 characters';
+
+      // testing-library forbids render in beforeEach, so the shared Arrange is
+      // a helper each test calls first.
+      async function submitTwoCharName() {
+        vi.mocked(createList).mockResolvedValue({
+          success: false,
+          message: BANNER,
+          errors: { name: [NAME_ERROR] },
+        } as never);
+        const user = userEvent.setup();
+        render(<ListForm />);
+        await user.type(nameField(), 'ab');
+        fireEvent.change(dateField(), { target: { value: '2030-05-01' } });
+        await user.click(screen.getByRole('button', { name: 'Create List' }));
+        await screen.findByText(NAME_ERROR);
+        return user;
+      }
+
+      it('ServerFieldError_RendersBannerAndTheErrorUnderItsField', async () => {
+        await submitTwoCharName();
+        expect(screen.getByText(BANNER)).toBeInTheDocument();
+        expect(nameField()).toHaveAccessibleDescription(NAME_ERROR);
+      });
+
+      it('EditTheFieldAfterAServerFieldError_ClearsTheErrorAndTheBanner', async () => {
+        const user = await submitTwoCharName();
+        await user.type(nameField(), 'c');
+        expect(screen.queryByText(NAME_ERROR)).toBeNull();
+        expect(screen.queryByText(BANNER)).toBeNull();
+      });
+
+      it('ServerDateError_SurfacesInTheDateFieldWhenTheLocalDateIsValid', async () => {
+        vi.mocked(createList).mockResolvedValue({
+          success: false,
+          message: BANNER,
+          errors: { date: ['Date is in the past'] },
+        } as never);
+        const user = userEvent.setup();
+        render(<ListForm />);
+        await user.type(nameField(), 'Gifts');
+        fireEvent.change(dateField(), { target: { value: '2030-05-01' } });
+        await user.click(screen.getByRole('button', { name: 'Create List' }));
+        expect(
+          await screen.findByText('Date is in the past')
+        ).toBeInTheDocument();
+      });
+
+      it('RevertTheFieldToTheSubmittedValue_RestoresTheError', async () => {
+        const user = await submitTwoCharName();
+        await user.type(nameField(), 'c');
+        await user.type(nameField(), '{Backspace}');
+        expect(screen.getByText(NAME_ERROR)).toBeInTheDocument();
+        expect(screen.getByText(BANNER)).toBeInTheDocument();
+      });
+    });
+
     it('ActionThrowsWithoutMessage_RendersGenericError', async () => {
       vi.mocked(createList).mockRejectedValue(new Error(''));
       const user = userEvent.setup();
@@ -278,16 +335,17 @@ describe('ListForm', () => {
       expect(screen.getByText('Please enter a valid date')).toBeInTheDocument();
     });
 
-    it('FixDateAfterFailedSubmit_SurfacesLingeringActionDateError', async () => {
+    it('FixDateAfterFailedSubmit_ClearsTheActionDateError', async () => {
       render(<ListForm />);
       submitForm();
       expect(
         await screen.findByText('Please enter a valid date')
       ).toBeInTheDocument();
-      // Clearing the local dateError (a valid onChange) leaves the action's
-      // returned errors.date to surface in the field.
+      // The action's errors.date was returned for the submitted value; a
+      // different value in the field has not been judged yet.
       fireEvent.change(dateField(), { target: { value: '2030-05-01' } });
-      expect(screen.getByText('Invalid date')).toBeInTheDocument();
+      expect(screen.queryByText('Invalid date')).toBeNull();
+      expect(screen.queryByText('Please enter a valid date')).toBeNull();
     });
   });
 

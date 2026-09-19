@@ -28,7 +28,7 @@ const ListSchema = z.object({
   name: z
     .string()
     .min(3, 'Title must be at least 3 characters')
-    .max(100, 'Title must be less than 100 characters'),
+    .max(50, 'Title must be less than 50 characters'),
 
   subtitle: z
     .string()
@@ -56,7 +56,7 @@ export async function createList(data: ListData): Promise<ActionResponse> {
     if (!validationResult.success) {
       return {
         success: false,
-        message: 'Validation failed',
+        message: 'Please correct the errors below',
         errors: validationResult.error.flatten().fieldErrors,
       };
     }
@@ -128,7 +128,7 @@ export async function updateList(
     if (!validationResult.success) {
       return {
         success: false,
-        message: 'Validation failed',
+        message: 'Please correct the errors below',
         errors: validationResult.error.flatten().fieldErrors,
       };
     }

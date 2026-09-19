@@ -53,6 +53,8 @@ export default function ListForm({
     date: list?.date ? dateInputValue(list.date) : '',
   }));
 
+  const [submitted, setSubmitted] = useState<ListDetailsDraft | null>(null);
+
   // Derived, not state: the field reports its own error as the value changes,
   // and the action reads the same value rather than a second copy.
   const dateError = dateFieldError(draft.date);
@@ -61,6 +63,8 @@ export default function ListForm({
     ActionResponse,
     FormData
   >(async () => {
+    setSubmitted({ ...draft });
+
     if (dateError) {
       return {
         success: false,
@@ -112,6 +116,20 @@ export default function ListForm({
     }
   }, initialState);
 
+  const activeErrors = state?.errors
+    ? Object.fromEntries(
+        Object.entries(state.errors).filter(
+          ([k, v]) =>
+            v &&
+            (!submitted ||
+              draft[k as keyof ListDetailsDraft] ===
+                submitted[k as keyof ListDetailsDraft])
+        )
+      )
+    : undefined;
+  const hasActiveErrors =
+    activeErrors != null && Object.keys(activeErrors).length > 0;
+
   const closeHref = isEditing && list ? `/lists/${list.id}` : '/lists';
   const forProfile = !isEditing && actingAs ? ` for ${actingAs}` : '';
 
@@ -123,7 +141,7 @@ export default function ListForm({
     >
       <form action={formAction}>
         <div className="form-shell-body">
-          {state?.message && !state.success && (
+          {state?.message && !state.success && (hasActiveErrors || !state.errors) && (
             <div style={{ marginBottom: 12 }}>
               <FieldError>{state.message}</FieldError>
             </div>
@@ -134,8 +152,11 @@ export default function ListForm({
             disabled={isPending}
             dateError={
               dateError ??
-              (state?.errors?.date ? state.errors.date.join(', ') : undefined)
+              (activeErrors?.date
+                ? (activeErrors.date as string[]).join(', ')
+                : undefined)
             }
+            errors={activeErrors}
           />
         </div>
 

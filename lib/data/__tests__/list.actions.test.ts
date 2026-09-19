@@ -120,6 +120,13 @@ describe('createList', () => {
       expect(await listRows()).toHaveLength(0);
     });
 
+    it('NameTooLong_ReturnsNameFieldError-NoRow', async () => {
+      const res = await actions.createList(makeList({ name: 'a'.repeat(51) }));
+      expect(res.success).toBe(false);
+      expect(res.errors?.name).toBeDefined();
+      expect(await listRows()).toHaveLength(0);
+    });
+
     it('SubtitleTooLong_ReturnsSubtitleFieldError-NoRow', async () => {
       const res = await actions.createList(
         makeList({ subtitle: 'a'.repeat(121) })
