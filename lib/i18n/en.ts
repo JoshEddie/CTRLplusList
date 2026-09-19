@@ -46,6 +46,7 @@ export const en = {
   claim_error_remove_failed: 'Failed to remove purchase',
   claim_error_unauthorized: 'Unauthorized',
   claim_error_units_failed: 'Failed to update claim units',
+  claim_facepile_more: '+{count, number}',
   claim_fully_claimed: 'Fully claimed',
   claim_guest_name_label: 'Your name',
   claim_guest_name_required: 'Please enter a name to continue',

@@ -90,9 +90,9 @@ export type ProfileCardView = ProfileAvatarView & {
 /**
  * What a viewer sees before they ask: a single three-stage tier, weakest
  * first. `surprise` hides everything; `progress` adds the list's claimed
- * count; `claims` adds per-item badges and remaining capacity. No tier names
- * the claiming parties — that is a per-act reveal the viewer confirms in the
- * claim modal. Ordering and vocabulary live in `lib/spoilers.ts`.
+ * count; `claims` adds remaining capacity and every claim on the item whole —
+ * the purchaser named and pictured, its units, who recorded it and when.
+ * Ordering and vocabulary live in `lib/spoilers.ts`.
  */
 export type SpoilerTier = 'surprise' | 'progress' | 'claims';
 

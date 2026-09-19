@@ -75,10 +75,10 @@ export default function Item({
   );
   const ownsEntry = isOwner && !!item.list_id && !preview;
 
-  const handleModalOpen = (view?: 'claim') => {
+  const handleModalOpen = (view?: 'claim' | 'roster') => {
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.set('purchaseItem', item.id);
-    if (view === 'claim') params.set('purchaseView', 'claim');
+    if (view) params.set('purchaseView', view);
     router.push(`${pathname}?${params.toString()}`);
   };
 
@@ -140,6 +140,17 @@ export default function Item({
     handleModalOpen('claim');
   };
 
+  // The item form's live preview draws a card rather than offering one, so
+  // every interaction it would carry is withdrawn in one place.
+  const handlers = preview
+    ? undefined
+    : {
+        purchase: handlePurchaseClick,
+        addClaim: handleAddClaimClick,
+        buyClaim: claim.handleBuyClaim,
+        roster: () => handleModalOpen('roster'),
+      };
+
   return (
     <>
       <div
@@ -165,13 +176,17 @@ export default function Item({
           tier={tier}
           showBuyClaim={claim.showBuyClaim}
           viewOnly={preview}
-          onPurchaseClick={preview ? undefined : handlePurchaseClick}
-          onAddClaimClick={preview ? undefined : handleAddClaimClick}
-          onBuyClaimClick={preview ? undefined : claim.handleBuyClaim}
+          onPurchaseClick={handlers?.purchase}
+          onAddClaimClick={handlers?.addClaim}
+          onBuyClaimClick={handlers?.buyClaim}
         />
 
         {claim.banner && !(ownsEntry && claim.banner.withheld) && (
-          <ClaimBanners {...claim.banner} />
+          <ClaimBanners
+            {...claim.banner}
+            claims={claim.claims}
+            onOpenRoster={handlers?.roster}
+          />
         )}
 
         {ownsEntry && (

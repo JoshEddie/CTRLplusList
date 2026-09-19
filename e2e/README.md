@@ -142,6 +142,11 @@ because the servers share one DB and each holds its own in-memory tag store.
 2. Name each test `<PageOrFlow>_<Action>_<ExpectedOutcome>` — three PascalCase
    parts (e.g. `PublicList_GuestOpensLinkListByUrl_RendersWithoutSession`).
 3. Assert against seeded state or same-server state only.
+4. Assert an entry banner's exact count against `.purchased-banner-text`, its
+   readout span — the banner itself also carries the facepile, whose initials
+   are text, so an exact match on `.purchased-banner` turns on whether the
+   claimer happens to have Altvatar art. The library card's banner never
+   carries one, so `library-rollup` matches the whole element.
 
 The two specs already here (`harness.auth.spec.ts`, `harness.guest.spec.ts`) are
 the harness self-tests — minimal proofs that each mode renders.

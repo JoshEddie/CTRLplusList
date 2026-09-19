@@ -44,7 +44,7 @@ test('GuestClaim_PublicList_RecordsGuestPurchase', async ({ page }) => {
 
   // The guest's claim persists across a fresh server render.
   await page.reload();
-  await expect(card.locator('.purchased-banner')).toHaveText('1 / 1 Claimed');
+  await expect(card.locator('.purchased-banner-text')).toHaveText('1 / 1 Claimed');
   await expect(
     card.getByRole('button', { name: 'Manage claim' })
   ).toBeVisible();
@@ -53,7 +53,7 @@ test('GuestClaim_PublicList_RecordsGuestPurchase', async ({ page }) => {
   // else's — a bare count, since no tier names a claiming party.
   await page.context().clearCookies();
   await page.reload();
-  await expect(card.locator('.purchased-banner')).toHaveText('1 / 1 Claimed');
+  await expect(card.locator('.purchased-banner-text')).toHaveText('1 / 1 Claimed');
   await expect(card.getByText('Fully claimed')).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Manage claim' })
@@ -82,7 +82,7 @@ test('GuestManageClaim_RemoveOwnRow_ReturnsCardToAddClaim', async ({
   await page.getByRole('button', { name: 'Claim as Guest' }).click();
 
   const card = page.locator('.item-container', { hasText: itemName });
-  await expect(card.locator('.purchased-banner')).toHaveText('1 / 1 Claimed');
+  await expect(card.locator('.purchased-banner-text')).toHaveText('1 / 1 Claimed');
   const manage = card.getByRole('button', { name: 'Manage claim' });
   await expect(manage).toBeVisible();
 
@@ -115,7 +115,52 @@ test('GuestManageClaim_RemoveOwnRow_ReturnsCardToAddClaim', async ({
   await expect(
     cardAfter.getByRole('button', { name: 'Claim', exact: true })
   ).toBeVisible();
-  await expect(cardAfter.locator('.purchased-banner')).toHaveText(
+  await expect(cardAfter.locator('.purchased-banner-text')).toHaveText(
     '0 / 1 Claimed'
   );
+});
+
+// The banner opens for a signed-out viewer exactly as it does for a member: a
+// guest resolves to the maximal tier, so the roster is theirs to read and
+// their cookie-held row is theirs to manage. Runs its own claim, and removes
+// it again, so it contends with neither test above for a card.
+test('GuestClaimRoster_OpensTheBanner_ShowsTheirOwnRowAsTheirs', async ({
+  page,
+}) => {
+  await page.goto('/lists/dev-list-grace-birthday');
+  await expect(
+    page.getByRole('heading', { name: "Grace's Birthday" }).first()
+  ).toBeVisible();
+
+  const item = firstClaimableSingleItem(page);
+  const itemName = (await item.locator('.itemName').innerText()).trim();
+  const guestName = `GuestRosterE2E${Date.now()}`;
+  await item.getByRole('button', { name: 'Claim', exact: true }).click();
+  await page.getByLabel('Your name').fill(guestName);
+  await page.getByRole('button', { name: 'Claim as Guest' }).click();
+
+  // The banner now has someone to show, so it is a button rather than the
+  // inert readout it was while the entry carried nothing.
+  const card = page.locator('.item-container', { hasText: itemName });
+  const banner = card.locator('button.purchased-banner');
+  await expect(banner).toHaveAttribute('aria-haspopup', 'dialog');
+
+  await banner.click();
+  await expect(page).toHaveURL(/purchaseView=roster/);
+  const roster = page.locator('.claim-modal');
+  await expect(roster.getByText(`${guestName} (you)`)).toBeVisible();
+
+  // Restore the fixture: the claim is the guest's, so the row's own action
+  // removes it — and dropping their last claim settles the sheet.
+  await roster
+    .getByRole('button', { name: 'Remove your claim', exact: true })
+    .click();
+  await expect(page.getByText('Claim removed successfully')).toBeVisible();
+  await expect(page).not.toHaveURL(/purchaseItem/);
+  await page.reload();
+  await expect(
+    page
+      .locator('.item-container', { hasText: itemName })
+      .getByRole('button', { name: 'Claim', exact: true })
+  ).toBeVisible();
 });
