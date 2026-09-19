@@ -11,7 +11,7 @@ vi.mock('next/link', async () => ({
 
 const LINKS: TabLinkItem[] = [
   { label: 'My Lists', href: '/lists' },
-  { label: 'Bookmarks', href: '/lists/bookmarks' },
+  { label: 'Saved', href: '/lists/bookmarks' },
 ];
 
 describe('LinkTabs', () => {
@@ -27,7 +27,7 @@ describe('LinkTabs', () => {
         .map((link) => [link.getAttribute('href'), link.textContent])
     ).toEqual([
       ['/lists', 'My Lists'],
-      ['/lists/bookmarks', 'Bookmarks'],
+      ['/lists/bookmarks', 'Saved'],
     ]);
     expect(nav).toContainElement(screen.getByRole('link', { name: 'My Lists' }));
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
@@ -42,7 +42,7 @@ describe('LinkTabs', () => {
       />
     );
 
-    expect(screen.getByRole('link', { name: 'Bookmarks' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Saved' })).toHaveAttribute(
       'aria-current',
       'page'
     );

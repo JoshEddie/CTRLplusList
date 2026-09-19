@@ -100,7 +100,7 @@ describe('ClearHistoryButton', () => {
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Clear non-bookmarked' })
+      screen.getByRole('button', { name: 'Clear unsaved' })
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Clear all' })
@@ -113,7 +113,7 @@ describe('ClearHistoryButton', () => {
     render(<ClearHistoryButton />);
     await user.click(screen.getByRole('button', { name: 'Clear history' }));
     await user.click(
-      screen.getByRole('button', { name: 'Clear non-bookmarked' })
+      screen.getByRole('button', { name: 'Clear unsaved' })
     );
     expect(clearVisitHistory).toHaveBeenCalledWith({
       includeBookmarked: false,
@@ -143,7 +143,7 @@ describe('ClearHistoryButton', () => {
     render(<ClearHistoryButton />);
     await user.click(screen.getByRole('button', { name: 'Clear history' }));
     await user.click(
-      screen.getByRole('button', { name: 'Clear non-bookmarked' })
+      screen.getByRole('button', { name: 'Clear unsaved' })
     );
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(toast.success).toHaveBeenCalledWith('History cleared');
@@ -170,7 +170,7 @@ describe('ClearHistoryButton', () => {
     render(<ClearHistoryButton />);
     await user.click(screen.getByRole('button', { name: 'Clear history' }));
     await user.click(
-      screen.getByRole('button', { name: 'Clear non-bookmarked' })
+      screen.getByRole('button', { name: 'Clear unsaved' })
     );
     // Action in flight, modal still open: a second clear is a no-op.
     await user.click(screen.getByRole('button', { name: 'Clear all' }));

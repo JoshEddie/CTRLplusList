@@ -87,6 +87,6 @@ describe('BookmarksRail', () => {
   it('NoBookmarks_PassesEmptyMessage', async () => {
     const tree = await BookmarksRail({ userId: 'viewer' });
     expect(tree.props.lists).toHaveLength(0);
-    expect(tree.props.emptyMessage).toBe('No bookmarks yet.');
+    expect(tree.props.emptyMessage).toBe('No saved lists yet.');
   });
 });

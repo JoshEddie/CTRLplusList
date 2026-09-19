@@ -10,6 +10,7 @@ import {
 } from '@/app/ui/components/spoiler-tier-rows';
 import { setListVisibility } from '@/lib/data/list.actions';
 import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
+import { getMessage } from '@/lib/i18n/utils';
 import { withSpoilerParam } from '@/lib/spoilers';
 import { ListTable, type SpoilerTier } from '@/lib/types';
 import { type ListVisibility } from '@/lib/visibility';
@@ -175,7 +176,7 @@ export function BookmarkMenuItem({
         toast.error(result.message);
         return;
       }
-      toast.success(next ? 'Bookmarked' : 'Bookmark removed');
+      toast.success(getMessage(next ? 'saved_add_toast' : 'saved_remove_toast'));
       router.refresh();
     });
   };
@@ -186,7 +187,7 @@ export function BookmarkMenuItem({
       onClick={toggle}
       aria-disabled={isPending}
     >
-      {bookmarked ? 'Bookmarked' : 'Bookmark'}
+      {getMessage(bookmarked ? 'saved_label' : 'saved_add_label')}
     </MenuItem>
   );
 }

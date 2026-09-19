@@ -29,9 +29,9 @@ const RAILS = [
   {
     token: 'Bookmarks',
     section: 'section.rail-bookmarks',
-    title: 'Bookmarks',
+    title: 'Saved',
     card: '.list-card',
-    emptyText: 'No bookmarks yet.',
+    emptyText: 'No saved lists yet.',
   },
   {
     token: 'RecentlyVisited',

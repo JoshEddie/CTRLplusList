@@ -100,7 +100,7 @@ test('AppFrame_ScrollLongPage_DocumentIsTheOnlyScroller', async ({ page }) => {
   await page.goto('/');
   // The rails stream in after the surface paints; the page is only long
   // enough to scroll once they have.
-  await expect(page.getByRole('heading', { name: 'Bookmarks' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Saved' })).toBeVisible();
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollHeight - window.innerHeight

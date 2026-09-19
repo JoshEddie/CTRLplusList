@@ -1,5 +1,6 @@
 import ListCardRow from '@/app/ui/components/ListCardRow';
 import { getBookmarkedListsByUser } from '@/lib/data/visit';
+import { getMessage } from '@/lib/i18n/utils';
 import { capRail } from './utils';
 
 export default async function BookmarksRail({ userId }: { userId: string }) {
@@ -17,7 +18,7 @@ export default async function BookmarksRail({ userId }: { userId: string }) {
     <ListCardRow
       lists={lists}
       showOwner
-      emptyMessage="No bookmarks yet."
+      emptyMessage={getMessage('saved_empty_short')}
       moreCount={moreCount}
       seeAllHref="/lists/bookmarks"
     />

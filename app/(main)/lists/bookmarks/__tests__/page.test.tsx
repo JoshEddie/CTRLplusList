@@ -16,6 +16,6 @@ describe('Page', () => {
   });
 
   it('Metadata_TitleIsBookmarks', () => {
-    expect(metadata.title).toBe('Bookmarks');
+    expect(metadata.title).toBe('Saved');
   });
 });

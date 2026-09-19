@@ -248,9 +248,10 @@ account holds a writable **membership** on it.
 An edge between two profiles, always written and read with the blocker's
 self-profile. Beats visibility.
 
-**Bookmark**:
-A saved list, stored as a timestamp on the viewer's visit row.
-_Avoid_: favorite — used only as the column name
+**Saved** (internally "bookmark"):
+A saved list, stored as a timestamp on the viewer's visit row. User-facing
+copy says "saved"; code and components still use "bookmark" internally.
+_Avoid_: favorite — used only as the DB column name
 
 **Visit**:
 The record that a viewer opened a list, with a count and a last-seen time.

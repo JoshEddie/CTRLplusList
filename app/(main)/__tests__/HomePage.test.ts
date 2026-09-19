@@ -101,7 +101,7 @@ describe('HomePage', () => {
     expect(got).toEqual([
       { name: 'my-lists', title: 'My Lists', seeAllHref: '/lists' },
       { name: 'following', title: 'Following', seeAllHref: '/following' },
-      { name: 'bookmarks', title: 'Bookmarks', seeAllHref: '/lists/bookmarks' },
+      { name: 'bookmarks', title: 'Saved', seeAllHref: '/lists/bookmarks' },
       {
         name: 'recently-visited',
         title: 'Recently visited',

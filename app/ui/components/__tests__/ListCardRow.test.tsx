@@ -71,15 +71,15 @@ describe('ListCardRow', () => {
         />
       );
       const items = document.querySelectorAll('.list-card-row-item');
-      expect(items[0].querySelector('[aria-label="Bookmarked"]')).not.toBeNull();
-      expect(items[1].querySelector('[aria-label="Bookmarked"]')).toBeNull();
+      expect(items[0].querySelector('[aria-label="Saved"]')).not.toBeNull();
+      expect(items[1].querySelector('[aria-label="Saved"]')).toBeNull();
     });
 
     it('NoBookmarkedIds_AllCardsUnbookmarked', () => {
       const lists = [makeList({ id: 'a' }), makeList({ id: 'b' })];
       render(<ListCardRow lists={lists} emptyMessage="empty" />);
       expect(
-        document.querySelectorAll('[aria-label="Bookmarked"]')
+        document.querySelectorAll('[aria-label="Saved"]')
       ).toHaveLength(0);
     });
   });

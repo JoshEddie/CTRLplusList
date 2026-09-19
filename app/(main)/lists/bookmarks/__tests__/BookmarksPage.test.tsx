@@ -59,7 +59,7 @@ describe('BookmarksPage', () => {
 
     it('NoBookmarks_RendersEmptyMessagePassThrough', async () => {
       render(await BookmarksPage());
-      expect(screen.getByText(/No bookmarks yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/No saved lists yet/i)).toBeInTheDocument();
       expect(screen.queryByTestId('list-card')).not.toBeInTheDocument();
     });
   });

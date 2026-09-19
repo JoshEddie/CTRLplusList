@@ -10,6 +10,7 @@ import {
 import { type ActionResponse } from '@/lib/types';
 import { VISIBILITY, fromDb } from '@/lib/visibility';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
+import { getMessage } from '@/lib/i18n/utils';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 
 export async function bookmarkList(list_id: string): Promise<ActionResponse> {
@@ -54,10 +55,10 @@ export async function bookmarkList(list_id: string): Promise<ActionResponse> {
       });
 
     updateTags(cacheTags.visitsOfUser(identity.userId));
-    return { success: true, message: 'Bookmarked' };
+    return { success: true, message: getMessage('saved_add_toast') };
   } catch (error) {
     console.error('Error bookmarking list:', error);
-    return { success: false, message: 'Failed to bookmark', error: 'Failed' };
+    return { success: false, message: getMessage('saved_add_error'), error: 'Failed' };
   }
 }
 
@@ -76,10 +77,10 @@ export async function unbookmarkList(list_id: string): Promise<ActionResponse> {
       );
 
     updateTags(cacheTags.visitsOfUser(userId));
-    return { success: true, message: 'Bookmark removed' };
+    return { success: true, message: getMessage('saved_remove_toast') };
   } catch (error) {
     console.error('Error unbookmarking list:', error);
-    return { success: false, message: 'Failed to unbookmark', error: 'Failed' };
+    return { success: false, message: getMessage('saved_remove_error'), error: 'Failed' };
   }
 }
 

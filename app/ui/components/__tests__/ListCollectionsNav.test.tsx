@@ -42,7 +42,7 @@ describe('ListCollectionsNav', () => {
           .map((tab) => [tab.getAttribute('href'), tab.textContent])
       ).toEqual([
         ['/lists', 'My Lists'],
-        ['/lists/bookmarks', 'Bookmarks'],
+        ['/lists/bookmarks', 'Saved'],
         ['/lists/history', 'Recently visited'],
         ['/following', 'Following'],
       ]);
@@ -52,7 +52,7 @@ describe('ListCollectionsNav', () => {
       vi.mocked(usePathname).mockReturnValue('/lists/bookmarks');
       render(<ListCollectionsNav />);
 
-      expect(screen.getByRole('link', { name: 'Bookmarks' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: 'Saved' })).toHaveAttribute(
         'aria-current',
         'page'
       );

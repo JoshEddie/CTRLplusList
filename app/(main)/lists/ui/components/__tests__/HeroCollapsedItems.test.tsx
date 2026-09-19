@@ -331,7 +331,7 @@ describe('BookmarkMenuItem', () => {
     renderInMenu(
       <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
     );
-    const item = screen.getByRole('menuitem', { name: 'Bookmark' });
+    const item = screen.getByRole('menuitem', { name: 'Save' });
     expect(item).toBeInTheDocument();
     expect(item.querySelector('svg')).not.toBeNull();
   });
@@ -339,7 +339,7 @@ describe('BookmarkMenuItem', () => {
   it('Bookmarked_RendersBookmarkedLabel', () => {
     renderInMenu(<BookmarkMenuItem listId="list-1" initialBookmarked={true} />);
     expect(
-      screen.getByRole('menuitem', { name: 'Bookmarked' })
+      screen.getByRole('menuitem', { name: 'Saved' })
     ).toBeInTheDocument();
   });
 
@@ -349,21 +349,21 @@ describe('BookmarkMenuItem', () => {
     renderInMenu(
       <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
     );
-    await user.click(screen.getByRole('menuitem', { name: 'Bookmark' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Save' }));
     expect(
-      screen.getByRole('menuitem', { name: 'Bookmarked' })
+      screen.getByRole('menuitem', { name: 'Saved' })
     ).toBeInTheDocument();
     await waitFor(() => expect(bookmarkList).toHaveBeenCalledWith('list-1'));
-    expect(toast.success).toHaveBeenCalledWith('Bookmarked');
+    expect(toast.success).toHaveBeenCalledWith('Saved');
   });
 
   it('ClickFromBookmarked_CallsUnbookmarkList-ToastsBookmarkRemoved', async () => {
     vi.mocked(unbookmarkList).mockResolvedValue({ success: true, message: '' });
     const user = userEvent.setup();
     renderInMenu(<BookmarkMenuItem listId="list-1" initialBookmarked={true} />);
-    await user.click(screen.getByRole('menuitem', { name: 'Bookmarked' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Saved' }));
     await waitFor(() => expect(unbookmarkList).toHaveBeenCalledWith('list-1'));
-    expect(toast.success).toHaveBeenCalledWith('Bookmark removed');
+    expect(toast.success).toHaveBeenCalledWith('List unsaved');
   });
 
   it('ClickFailure_RevertsState-ToastsError', async () => {
@@ -375,9 +375,9 @@ describe('BookmarkMenuItem', () => {
     renderInMenu(
       <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
     );
-    await user.click(screen.getByRole('menuitem', { name: 'Bookmark' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Save' }));
     expect(
-      await screen.findByRole('menuitem', { name: 'Bookmark' })
+      await screen.findByRole('menuitem', { name: 'Save' })
     ).toBeInTheDocument();
     expect(toast.error).toHaveBeenCalledWith('Failed');
   });
@@ -393,8 +393,8 @@ describe('BookmarkMenuItem', () => {
     renderInMenu(
       <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
     );
-    await user.click(screen.getByRole('menuitem', { name: 'Bookmark' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Bookmarked' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Save' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Saved' }));
     expect(bookmarkList).toHaveBeenCalledTimes(1);
     resolve({ success: true, message: '' });
   });

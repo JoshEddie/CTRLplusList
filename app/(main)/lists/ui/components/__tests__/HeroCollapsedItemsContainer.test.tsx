@@ -81,7 +81,7 @@ describe('HeroCollapsedOwnerItems', () => {
       screen.getByRole('menuitemradio', { name: /^Private/ })
     ).toHaveAttribute('aria-checked', 'true');
     expect(
-      screen.queryByRole('menuitem', { name: /Bookmark/ })
+      screen.queryByRole('menuitem', { name: /Save/ })
     ).not.toBeInTheDocument();
   });
 
@@ -107,7 +107,7 @@ describe('HeroCollapsedViewerItems', () => {
       screen.getByRole('menuitem', { name: 'Share List' })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('menuitem', { name: 'Bookmarked' })
+      screen.getByRole('menuitem', { name: 'Saved' })
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('menuitem', { name: /Follow/ })
@@ -120,7 +120,7 @@ describe('HeroCollapsedViewerItems', () => {
     );
     expect(getBookmarkStatus).toHaveBeenCalledWith('list-1', VIEWER_ID);
     expect(
-      screen.getByRole('menuitem', { name: 'Bookmark' })
+      screen.getByRole('menuitem', { name: 'Save' })
     ).toBeInTheDocument();
   });
 });

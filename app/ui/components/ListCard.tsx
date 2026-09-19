@@ -1,5 +1,6 @@
 import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import { accentVars } from '@/lib/accent';
+import { getMessage } from '@/lib/i18n/utils';
 import type { ProfileAvatarView } from '@/lib/types';
 import Link from 'next/link';
 import { FaBookmark } from 'react-icons/fa';
@@ -34,7 +35,7 @@ export default function ListCard({
           {bookmarked && (
             <FaBookmark
               className="list-card-bookmark-indicator"
-              aria-label="Bookmarked"
+              aria-label={getMessage('saved_indicator_label')}
             />
           )}
           <span className="list-card-name-text" title={list.name}>

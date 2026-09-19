@@ -18,7 +18,7 @@ test('ListCollections_ViewerOnPhone_ShowsOnlyTheActiveTabUntilOpened', async ({
 
   const nav = page.getByRole('navigation', { name: 'List collections' });
   await expect(nav.getByRole('link', { name: 'My Lists' })).toBeVisible();
-  await expect(nav.getByRole('link', { name: 'Bookmarks' })).toBeHidden();
+  await expect(nav.getByRole('link', { name: 'Saved' })).toBeHidden();
   await expect(nav.getByRole('link', { name: 'Following' })).toBeHidden();
 });
 
@@ -31,7 +31,7 @@ test('ListCollections_ViewerOpensCollapsedStrip_RevealsAndNavigatesToAnotherTab'
   const nav = page.getByRole('navigation', { name: 'List collections' });
   await nav.getByRole('link', { name: 'My Lists' }).click();
 
-  const bookmarks = nav.getByRole('link', { name: 'Bookmarks' });
+  const bookmarks = nav.getByRole('link', { name: 'Saved' });
   await expect(bookmarks).toBeVisible();
 
   await bookmarks.click();
@@ -39,7 +39,7 @@ test('ListCollections_ViewerOpensCollapsedStrip_RevealsAndNavigatesToAnotherTab'
   // These pages carry no heading — the strip is the page's title — so the proof
   // of arrival is that the collapsed face became the tab that was chosen.
   await expect(page).toHaveURL(/\/lists\/bookmarks$/);
-  await expect(nav.getByRole('link', { name: 'Bookmarks' })).toHaveAttribute(
+  await expect(nav.getByRole('link', { name: 'Saved' })).toHaveAttribute(
     'aria-current',
     'page'
   );
@@ -55,7 +55,7 @@ test('ListCollections_ViewerOnDesktop_ShowsEveryTabWithoutOpening', async ({
   const nav = page.getByRole('navigation', { name: 'List collections' });
   for (const name of [
     'My Lists',
-    'Bookmarks',
+    'Saved',
     'Recently visited',
     'Following',
   ]) {

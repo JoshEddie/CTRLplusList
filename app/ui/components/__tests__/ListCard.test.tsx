@@ -74,7 +74,7 @@ describe('ListCard', () => {
   describe('BookmarkIndicator', () => {
     it('Bookmarked_RendersLabeledIndicatorInsideName', () => {
       render(<ListCard list={makeList()} bookmarked />);
-      const indicator = document.querySelector('[aria-label="Bookmarked"]');
+      const indicator = document.querySelector('[aria-label="Saved"]');
       expect(indicator).toHaveClass('list-card-bookmark-indicator');
       expect(document.querySelector('.list-card-name')).toContainElement(
         indicator as HTMLElement
@@ -83,7 +83,7 @@ describe('ListCard', () => {
 
     it('NotBookmarked_NoIndicator', () => {
       render(<ListCard list={makeList()} />);
-      expect(document.querySelector('[aria-label="Bookmarked"]')).toBeNull();
+      expect(document.querySelector('[aria-label="Saved"]')).toBeNull();
     });
   });
 

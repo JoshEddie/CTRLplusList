@@ -1,5 +1,6 @@
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { authedIdentity } from '@/lib/data/user.session';
+import { getMessage } from '@/lib/i18n/utils';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import CollapsibleRail from './lists/ui/components/CollapsibleRail';
@@ -34,7 +35,7 @@ export default async function HomePage() {
 
       <CollapsibleRail
         name="bookmarks"
-        title="Bookmarks"
+        title={getMessage('saved_page_title')}
         seeAllHref="/lists/bookmarks"
       >
         <Suspense fallback={<LoadingIndicator size="rail" />}>

@@ -2,10 +2,11 @@
 
 import { usePathname } from 'next/navigation';
 import { LinkTabs } from '@/app/ui/components/tabs';
+import { getMessage } from '@/lib/i18n/utils';
 
 const TABS = [
   { label: 'My Lists', href: '/lists' },
-  { label: 'Bookmarks', href: '/lists/bookmarks' },
+  { label: getMessage('saved_page_title'), href: '/lists/bookmarks' },
   { label: 'Recently visited', href: '/lists/history' },
   { label: 'Following', href: '/following' },
 ];
