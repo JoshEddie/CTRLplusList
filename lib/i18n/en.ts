@@ -57,6 +57,8 @@ export const en = {
   claim_manage_viewer: 'Manage claim',
   claim_not_found: 'Claim not found',
   claim_not_yours: 'Not your claim',
+  claim_other_claims:
+    '{count, plural, one {1 other claim} other {# other claims}}',
   claim_remove_error: 'Failed to remove claim',
   claim_remove_label: 'Remove',
   claim_remove_loading: 'Removing claim',
@@ -84,8 +86,6 @@ export const en = {
   claim_units_update_label: 'Update',
   claim_units_update_to_label: 'Update to {units, number}',
   claim_user_not_found: 'User not found',
-  claim_withheld_others:
-    '{count, plural, one {1 other claim} other {# other claims}}',
   date_invalid: 'Please enter a valid date',
   date_year_floor: 'Please enter a year of 1900 or later',
   entry_foreign_item_error: "That item isn't in your library",

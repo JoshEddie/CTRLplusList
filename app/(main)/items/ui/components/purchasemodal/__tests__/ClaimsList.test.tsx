@@ -123,12 +123,12 @@ describe('ClaimsList', () => {
 });
 
 /**
- * Pins `claim-attribution` — a claim the projection stripped of its name is not
- * a row: the list renders the named rows in full and collapses the rest into a
- * count. Removal rights are not the tell — the owner may remove every claim on
- * their item, so a nameless row would still offer a Remove button.
+ * Pins `claim-attribution` — every claim that reaches this list is one the
+ * viewer may see named, so every one of them is a row. Deciding who is listed
+ * belongs to the caller: the manage view hands over the viewer's own claims and
+ * counts the rest itself, and the owner's master list hands over all of them.
  */
-describe('WithheldClaims', () => {
+describe('MixedParties', () => {
   const own = claim({
     id: 'mine',
     by: 'self',
@@ -136,69 +136,8 @@ describe('WithheldClaims', () => {
     claimedByViewer: true,
     purchasedAt: new Date('2026-08-01T00:00:00Z'),
   });
-  // What the `claims` projection leaves of another party's claim: an id and
-  // nothing else.
-  const others = [
-    claim({ id: 'o1', name: undefined }),
-    claim({ id: 'o2', name: undefined }),
-  ];
 
-  const renderWithheld = () =>
-    render(
-      <ClaimsList
-        claims={[own, ...others]}
-        canRemove={(c) => c.by === 'self' || c.claimedByViewer}
-        onRemoveClaim={vi.fn()}
-      />
-    );
-
-  it('ViewerOwnClaim_RendersInFullWithItsRemovalAction', () => {
-    renderWithheld();
-
-    expect(screen.getByText('Vic (you)')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Remove your claim' })
-    ).toBeInTheDocument();
-  });
-
-  it('OtherPartiesClaims_CollapseIntoACountCarryingNoIdentity', () => {
-    renderWithheld();
-
-    expect(screen.getByText('2 other claims')).toBeInTheDocument();
-    expect(screen.queryByText('Someone')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Added by/)).not.toBeInTheDocument();
-    expect(screen.getAllByRole('listitem')).toHaveLength(1);
-  });
-
-  it('OneOtherPartyClaim_ReadsSingular', () => {
-    render(
-      <ClaimsList
-        claims={[own, others[0]]}
-        canRemove={(c) => c.by === 'self'}
-        onRemoveClaim={vi.fn()}
-      />
-    );
-
-    expect(screen.getByText('1 other claim')).toBeInTheDocument();
-  });
-
-  // The owner's list passes `canRemove: () => true`, so removal rights cannot
-  // stand in for disclosure: a nameless claim stays a count either way.
-  it('NamelessClaimTheViewerMayRemove_StaysACountRatherThanASomeoneRow', () => {
-    render(
-      <ClaimsList
-        claims={[own, ...others]}
-        canRemove={() => true}
-        onRemoveClaim={vi.fn()}
-      />
-    );
-
-    expect(screen.getByText('2 other claims')).toBeInTheDocument();
-    expect(screen.queryByText('Someone')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('listitem')).toHaveLength(1);
-  });
-
-  it('EveryClaimNamed_RendersEveryRowInFullWithNoCount', () => {
+  const renderMixed = () =>
     render(
       <ClaimsList
         claims={[
@@ -206,14 +145,44 @@ describe('WithheldClaims', () => {
           claim({ id: 'o1', name: 'Grace', claimerName: 'Ida' }),
           claim({ id: 'o2', name: 'Sam' }),
         ]}
-        canRemove={(c) => c.by === 'self'}
+        canRemove={(c) => c.by === 'self' || c.claimedByViewer}
         onRemoveClaim={vi.fn()}
       />
     );
 
+  it('ViewerOwnClaim_RendersInFullWithItsRemovalAction', () => {
+    renderMixed();
+
+    expect(screen.getByText('Vic (you)')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Remove your claim' })
+    ).toBeInTheDocument();
+  });
+
+  it('OtherPartiesClaims_RenderAsNamedRowsWithTheirAttribution', () => {
+    renderMixed();
+
     expect(screen.getAllByRole('listitem')).toHaveLength(3);
     expect(screen.getByText('Grace')).toBeInTheDocument();
+    expect(screen.getByText('Sam')).toBeInTheDocument();
+    expect(screen.getByText('Added by Ida')).toBeInTheDocument();
+  });
+
+  // The count of everyone the list does not show is the manage view's own
+  // line; nothing this list is handed is a party it declines to name.
+  it('OtherPartiesClaims_CarryNoWithheldCountLine', () => {
+    renderMixed();
+
     expect(screen.queryByText(/other claim/)).not.toBeInTheDocument();
+  });
+
+  it('RowsTheViewerCannotRemove_KeepTheirNameAndLoseOnlyTheAction', () => {
+    renderMixed();
+
+    expect(
+      screen.queryByRole('button', { name: "Remove Grace's claim" })
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^Remove/ })).toHaveLength(1);
   });
 
   // A claim's units are editable wherever it is removable — the viewer's own

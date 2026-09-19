@@ -110,19 +110,33 @@ describe('PurchaseModalSlot', () => {
       ).toBeInTheDocument();
     });
 
-    it('MixedRemovability_ListsOthersClaimWithoutRemoveAction', () => {
+    /**
+     * The view manages the viewer's own claims: everyone else on the item is a
+     * count under the list, never a row. Below `claims` the payload carries no
+     * other party at all, so the line falls away on the zero rather than on a
+     * tier the view would have to read.
+     */
+    it('OtherPartysClaim_CountedUnderTheListRatherThanListed', () => {
       renderSlot({
         view: 'manage',
         claims: [selfClaim, attributedClaim, othersClaim],
       });
-      expect(screen.getAllByRole('listitem')).toHaveLength(3);
-      expect(screen.getByText('Frank')).toBeInTheDocument();
-      expect(
-        screen.queryByRole('button', { name: "Remove Frank's claim" })
-      ).not.toBeInTheDocument();
-      expect(screen.getAllByRole('button', { name: /^Remove/ })).toHaveLength(
-        2
-      );
+      expect(screen.getAllByRole('listitem')).toHaveLength(2);
+      expect(screen.queryByText('Frank')).not.toBeInTheDocument();
+      expect(screen.getByText('1 other claim')).toBeInTheDocument();
+    });
+
+    it('TwoOtherPartiesClaims_CountReadsPlural', () => {
+      renderSlot({
+        view: 'manage',
+        claims: [selfClaim, othersClaim, { ...othersClaim, id: 'po2' }],
+      });
+      expect(screen.getByText('2 other claims')).toBeInTheDocument();
+    });
+
+    it('NoOtherPartysClaim_RendersNoCountLine', () => {
+      renderSlot({ view: 'manage', claims: [selfClaim, attributedClaim] });
+      expect(screen.queryByText(/other claim/)).not.toBeInTheDocument();
     });
 
     it('SelfClaimWithDate_RendersRelativeDateMetaLine', () => {
@@ -159,20 +173,19 @@ describe('PurchaseModalSlot', () => {
       expect(screen.getByText('Claimed by')).toBeInTheDocument();
     });
 
-    it('RemovableAfterOthers_SortsViewerRemovableRowsFirst', () => {
-      renderSlot({ view: 'manage', claims: [othersClaim, selfClaim] });
-      const rows = screen.getAllByRole('listitem');
-      expect(rows[0]).toHaveTextContent('Vicky (you)');
-      expect(rows[1]).toHaveTextContent('Frank');
-    });
-
-    it('ThirteenClaims_RendersTenRowsAndSeeMoreWithRemainingCount', () => {
-      const many = Array.from({ length: 12 }, (_, i) => ({
-        ...othersClaim,
+    // A dozen claims the viewer asserted on one entry: every one is theirs to
+    // manage, so the bound is what keeps the list from rendering them at once.
+    const thirteenHeld = [
+      selfClaim,
+      ...Array.from({ length: 12 }, (_, i) => ({
+        ...attributedClaim,
         id: `pn${i}`,
         name: `Buyer${i}`,
-      }));
-      renderSlot({ view: 'manage', claims: [selfClaim, ...many] });
+      })),
+    ];
+
+    it('ThirteenClaims_RendersTenRowsAndSeeMoreWithRemainingCount', () => {
+      renderSlot({ view: 'manage', claims: thirteenHeld });
       expect(screen.getAllByRole('listitem')).toHaveLength(10);
       expect(
         screen.getByRole('button', { name: 'See more (3)' })
@@ -181,12 +194,7 @@ describe('PurchaseModalSlot', () => {
 
     it('SeeMoreClick_RevealsNextBatch-RemovesExhaustedControl', async () => {
       const user = userEvent.setup();
-      const many = Array.from({ length: 12 }, (_, i) => ({
-        ...othersClaim,
-        id: `pn${i}`,
-        name: `Buyer${i}`,
-      }));
-      renderSlot({ view: 'manage', claims: [selfClaim, ...many] });
+      renderSlot({ view: 'manage', claims: thirteenHeld });
       await user.click(screen.getByRole('button', { name: 'See more (3)' }));
       expect(screen.getAllByRole('listitem')).toHaveLength(13);
       expect(

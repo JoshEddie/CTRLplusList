@@ -14,8 +14,9 @@ import { raiseSpoilerTier } from './helpers/spoilers';
 // legacy guest row ("Grandma" on `dev-list-viewer-birthday-item-3`) is the
 // withheld claim this flow reveals as a count; protected-claim.auth.spec
 // mutates other claims on this list but never removes Grandma, so the
-// assertion holds whichever spec runs first. No tier names her — that is the
-// owner's manage-claims reveal, which protected-claim.auth.spec covers.
+// assertion holds whichever spec runs first. The banner never names her at any
+// tier — the parties are named in the owner's manage-claims list, which
+// protected-claim.auth.spec covers.
 const OWN_LIST = '/lists/dev-list-viewer-birthday';
 
 test('ListHero_MemberRaisesTierViaSpoilerTile_RevealsWithheldClaim', async ({

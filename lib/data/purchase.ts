@@ -10,7 +10,7 @@ import { accountsOfProfiles } from '@/lib/data/profile';
 import { getMessage } from '@/lib/i18n/utils';
 import { primaryStore } from '@/lib/storeValidity';
 import { avatarViewOf, withProfileAvatar } from '@/lib/data/profileAvatar';
-import { MAXIMAL_TIER, type ClaimProjection } from '@/lib/spoilers';
+import { PROTECTED_TIER, type ClaimProjection } from '@/lib/spoilers';
 import {
   ActionResponse,
   PurchaseView,
@@ -58,27 +58,17 @@ export function sanitizePurchases(
 
     // `surprise` and `progress` both conceal per-item claim state; `progress`
     // discloses only the list-level count, which the aggregate read derives.
+    // Above them the claim survives whole — a viewer at `claims` chose to see
+    // who has claimed what, and a row that reaches them is one they may read
+    // on the same terms as their own.
     if (!held && (projection === 'surprise' || projection === 'progress'))
       return views;
-    if (!held && projection === 'claims') {
-      // A bare presence flag: one stub per claim, carrying no unit count.
-      // Still one row each, so the owner's manage list has an entry per claim
-      // to reveal; capacity is read off the entry instead. A per-row unit
-      // count here would let three claims of one be read as one claim of
-      // three, which is more than this tier ever disclosed.
-      views.push({ id: p.id, by: 'other', claimedByViewer: false });
-      return views;
-    }
 
-    // Units ride only on a claim that is named: the holder's own, and every
-    // claim once a reveal is confirmed. The stub above carries none, so
-    // counting rows at the claims tier says how many claims exist and never
-    // how the units split between them.
     const view: PurchaseView = {
       id: p.id,
       units: p.units,
       by: isSelf ? ('self' as const) : ('other' as const),
-      name: p.purchaserProfile?.name ?? p.guest_name ?? undefined,
+      name: p.purchaserProfile?.name ?? p.guest_name ?? '',
       claimedByViewer,
       purchasedAt: p.purchased_at,
     };
@@ -243,12 +233,13 @@ export async function getItemsByPurchased(profileId?: string) {
     return claimedItems.map(({ stores, ...item }) => ({
       ...item,
       store: primaryStore(stores),
-      // A constant, not a resolved tier: the rows this read selects are ones
-      // the viewer purchased, so there is no surprise of theirs to protect and
-      // the input cannot go stale — which is why this read keeps sanitizing
-      // inside its cache. A sibling claim on the same item is still another
-      // party's, and the maximal tier names nobody.
-      purchases: sanitizePurchases(item.purchases, profileId, MAXIMAL_TIER),
+      // A constant, not a resolved tier: this page is the viewer's own record
+      // of what they claimed, and the fully protected projection is what
+      // leaves exactly that — a sibling claim on the same item belongs to a
+      // list whose tier is resolved nowhere near here. Being viewer-scoped by
+      // construction rather than by a resolved input is what lets this read
+      // keep sanitizing inside its own cache.
+      purchases: sanitizePurchases(item.purchases, profileId, PROTECTED_TIER),
     }));
   } catch (error) {
     console.error('Error fetching items:', error);

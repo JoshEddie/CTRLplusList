@@ -18,11 +18,11 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { AttributedTarget } from './purchasemodal/PurchaseFlowContainer';
+import { heldByViewer, othersClaimCount } from './utils';
 
-// A claim's own unit count where the viewer may see it, and one otherwise —
-// the claims-tier stub for another party's claim carries none. The fallback
-// only has to be stable, not true: the stubs are identical on both sides of
-// the delta this feeds, so whatever they contribute cancels.
+// A claim's own unit count, falling back to one for a row that carries none.
+// The fallback only has to be stable, not true: such a row is identical on
+// both sides of the delta this feeds, so whatever it contributes cancels.
 const sumUnits = (rows: PurchaseView[]) =>
   rows.reduce((total, row) => total + (row.units ?? 1), 0);
 
@@ -42,7 +42,7 @@ export function useItemClaims({
   tier: SpoilerTier;
   actor?: ProfileMembershipView;
   userName?: string | null;
-  /** The reveal that promises names is open, so nameless stubs must be re-read. */
+  /** The reveal that promises names is open, so a payload withholding them must be re-read. */
   revealNames: boolean;
   /** Closes the modal a claim was recorded or removed from. */
   onSettled: () => void;
@@ -51,7 +51,7 @@ export function useItemClaims({
   const propPurchasesKey = propPurchases
     .map(
       (p) =>
-        `${p.id}:${p.units ?? ''}:${p.name ?? ''}:${p.by}:${p.claimedByViewer}`
+        `${p.id}:${p.units ?? ''}:${p.name}:${p.by}:${p.claimedByViewer}`
     )
     .join('|');
   const [claims, setClaims] = useState<PurchaseView[]>(propPurchases);
@@ -69,8 +69,8 @@ export function useItemClaims({
     null
   );
 
-  // The row's own number, never summed from the projected claims — a
-  // per-claim unit count is not something the claims tier discloses. The local
+  // The row's own number, never summed from the projected claims — below
+  // `claims` the array is missing every claim but the viewer's own. The local
   // delta keeps an optimistic write visible until the page re-reads, and moves
   // with the units a claim covers rather than by one per row.
   const claimedUnits =
@@ -88,28 +88,29 @@ export function useItemClaims({
   const claimable = !!entry;
   const entryListId = entry?.listId;
 
-  // Claims this viewer can remove: their own (purchaser) or ones they
-  // asserted for someone else (claimed_by_profile_id).
-  const viewerClaims = useMemo(
-    () => claims.filter((p) => p.by === 'self' || p.claimedByViewer),
-    [claims]
-  );
+  const viewerClaims = useMemo(() => claims.filter(heldByViewer), [claims]);
   const hasViewerClaim = viewerClaims.length > 0;
   const hasAnyClaim = claims.length > 0;
 
   // The claim affordance's reveal is the count and the remaining capacity, which
-  // only a tier below `claims` withholds. The owner's manage-claims list is the
-  // one view that names the claiming parties, so it is also the one that has to
-  // ask when the payload kept them as nameless stubs.
+  // only a tier below `claims` withholds.
   const countWithheld = !atLeast(tier, 'claims');
-  const namesWithheld =
-    isOwner &&
-    (countWithheld || claims.some((claim) => claim.name === undefined));
+
+  // Below `claims` the payload carries no other party's claim at all, so the
+  // owner's confirmed reveal is what goes and fetches the names it promised.
+  const namesWithheld = isOwner && countWithheld;
+
+  // Whether that reveal asks first. It keys on another party being on the item
+  // — or on the count that stands in for them below `claims` — never on a row
+  // lacking a name, which at `claims` no longer exists. True at `claims` too,
+  // where nothing is withheld and the confirmation gates only the opening.
+  const asksBeforeNaming =
+    isOwner && (countWithheld || othersClaimCount(claims) > 0);
 
   // Keyed on the open modal rather than on the confirmation, so a direct link
   // to `?purchaseItem=` lands on the same disclosed set the dialog leads to.
   // The claim route is never that modal: its reveal promises the count and no
-  // names, so it reads the page's payload however nameless it arrives.
+  // names, so it reads the page's payload however little it carries.
   useEffect(() => {
     if (!revealNames || !namesWithheld || !item.id || !entryListId) return;
     let cancelled = false;
@@ -250,7 +251,7 @@ export function useItemClaims({
     hasAnyClaim,
     isFullyClaimed,
     countWithheld,
-    namesWithheld,
+    asksBeforeNaming,
     // The pair the row carries, at whichever scope it was read: one entry's on
     // a list, every entry's summed on the library, where `num_lists` says how
     // many. Null for an item on no list — nothing asked for anywhere.

@@ -1221,9 +1221,9 @@
   cursor: grabbing;
 }
 
-/* A claim the projection withheld: a count, carrying no avatar, name, date,
-   attribution line or removal action. */
-.claims-withheld,
+/* The parties a view counts rather than lists, and what a confirmed reveal
+   discloses about an entry: a line of muted text, never a row. */
+.claims-other-count,
 .claim-reveal-summary {
   margin: 0;
   color: var(--muted-text-color);

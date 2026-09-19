@@ -126,8 +126,10 @@ export default function Item({
     if (!item.id) return;
     /* v8 ignore next -- defensive: the claim affordance is disabled when fully claimed without a personal claim, so this early-return is unreachable from the UI. */
     if (!isOwner && claim.isFullyClaimed && !claim.hasViewerClaim) return;
-    if (claim.countWithheld || claim.namesWithheld)
-      return setPendingReveal('manage');
+    // Only the owner's list names parties the viewer is not, so only it asks.
+    // A holder reaches this affordance for their own rows, which every tier
+    // discloses — there is no surprise of theirs to warn them about.
+    if (claim.asksBeforeNaming) return setPendingReveal('manage');
     handleModalOpen();
   };
 
@@ -226,7 +228,7 @@ export default function Item({
           }
           title="This could spoil a surprise"
           message={
-            claim.namesWithheld && pendingReveal === 'manage'
+            pendingReveal === 'manage'
               ? "You'll see exactly who has claimed this item, by name."
               : "You'll see whether this item is already claimed — no names, just the count."
           }

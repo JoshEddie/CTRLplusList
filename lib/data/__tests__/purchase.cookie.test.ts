@@ -119,19 +119,15 @@ describe('overlayGuestClaims', () => {
     expect(result[1]).toBe(items[1]);
   });
 
-  // The projection strips the name off every claim that is not the viewer's
-  // own, and a guest has no viewer identity for it to recognise.
-  it('WithheldOwnClaim_TakesItsNameFromTheCookie', () => {
-    const withheld: PurchaseView = {
-      id: 'p1',
-      by: 'other',
-      claimedByViewer: false,
-    };
-    const [item] = overlayGuestClaims([{ purchases: [withheld] }], {
+  // A guest's claim is projected under the name they typed for it, which the
+  // cookie's own (most recently typed) name must not overwrite.
+  it('CookieNameDiffersFromTheClaims_KeepsTheNameOnTheRow', () => {
+    const [item] = overlayGuestClaims([{ purchases: [view('p1')] }], {
       ...valid,
+      name: 'Renamed Since',
       purchases: ['p1'],
     });
-    expect(item.purchases[0].name).toBe(valid.name);
+    expect(item.purchases[0].name).toBe('Someone');
   });
 
   it('NoCookie_ReturnsItemsUntouched', () => {

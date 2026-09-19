@@ -64,7 +64,10 @@ on it or switch to it**. The full seeded profile set is in
 (`dev-friend-bob`) can write the viewer's baseline without racing another spec.
 Workshop cannot serve: the reorder layout turns on the tier, so raising the
 viewer's Workshop baseline would race `roles-manager.auth.spec` for the window
-it is raised.
+it is raised. Its list is also the one seat where the viewer holds a membership
+below `claims` on a profile they do not own, so `protected-claim.auth.spec`
+runs the holder's claim arc there — claiming and then removing the same claim,
+leaving the seeded fixture as it found it.
 
 **One seat carries a raised claim-visibility tier.** The baseline is a single
 tier (`surprise` → `progress` → `claims`) stored as an

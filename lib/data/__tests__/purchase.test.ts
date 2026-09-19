@@ -106,7 +106,7 @@ describe('getItemsByPurchased', () => {
     expect(rows[0].store?.name).toBe('cheap');
   });
 
-  it('NonOwnerView_NamesTheViewersOwnPurchase-CountsTheOthers', async () => {
+  it('NonOwnerView_NamesTheViewersOwnPurchase-OmitsTheOthers', async () => {
     await seedUsers(db, [
       { id: 'buyer', name: 'Bea' },
       { id: 'owner' },
@@ -135,13 +135,10 @@ describe('getItemsByPurchased', () => {
       purchasedAt: expect.any(Date),
       avatar: { name: 'Bea', accent: null, art: null, avatarStyle: null },
     });
-    // A sibling claim on the same item is another party's; the history page
-    // names nobody the viewer did not claim for.
-    expect(byId.theirs).toEqual({
-      id: 'theirs',
-      by: 'other',
-      claimedByViewer: false,
-    });
+    // A sibling claim on the same item is another party's, and this page
+    // resolves no tier of the viewer's against the list it sits on — so it
+    // carries nothing about that claim at all, not even its presence.
+    expect(byId.theirs).toBeUndefined();
   });
 
   it('ClaimWhoseItemWasDeleted_IsOmitted-SurvivingClaimsStillListed', async () => {
@@ -394,32 +391,35 @@ describe('sanitizePurchases', () => {
   });
 
   describe('ClaimsTier', () => {
-    it('OtherPartyClaim_ReturnsBareCountEntryWithNoIdentity', () => {
+    it('OtherPartyClaim_NamedInFullWithItsRecorderAndDate', () => {
       expect(
         dal.sanitizePurchases([attributedRow], 'someone', 'claims')
-      ).toEqual([{ id: 'p1', by: 'other', claimedByViewer: false }]);
+      ).toEqual([
+        {
+          id: 'p1',
+          units: 1,
+          purchasedAt: CLAIMED_AT,
+          avatar: {
+            name: 'Bea Buyer',
+            accent: 'spice',
+            art: '<svg id="bea" />',
+            avatarStyle: 'toon-head',
+          },
+          by: 'other',
+          name: 'Bea Buyer',
+          claimedByViewer: false,
+          claimerName: 'Carl Claimer',
+        },
+      ]);
     });
 
-    it('TwoOtherPartyClaims_PreservesCountSoCapacityStaysDerivable', () => {
-      expect(
-        dal.sanitizePurchases(
-          [attributedRow, { ...attributedRow, id: 'p9' }],
-          'someone',
-          'claims'
-        )
-      ).toHaveLength(2);
-    });
-
-    // The stub stays a bare presence flag: a per-row unit count here would
-    // turn "three people claimed" into "one person claimed three".
-    it('OtherPartyMultiUnitClaim_StubCarriesNoUnitCount', () => {
-      expect(
-        dal.sanitizePurchases(
-          [{ ...attributedRow, units: 4 }],
-          'someone',
-          'claims'
-        )
-      ).toEqual([{ id: 'p1', by: 'other', claimedByViewer: false }]);
+    it('OtherPartyMultiUnitClaim_CarriesItsUnitCount', () => {
+      const [view] = dal.sanitizePurchases(
+        [{ ...attributedRow, units: 4 }],
+        'someone',
+        'claims'
+      );
+      expect(view.units).toBe(4);
     });
 
     it('ViewerOwnMultiUnitClaim_CarriesItsUnitCount', () => {
@@ -431,17 +431,47 @@ describe('sanitizePurchases', () => {
       expect(view.units).toBe(4);
     });
 
-    it('ViewerOwnClaim_ReturnsFullSelfAlongsideStrippedOthers', () => {
+    it('ViewerOwnClaim_ReturnsBothInFullMarkedSelfAndOther', () => {
       const views = dal.sanitizePurchases(
-        [attributedRow, { ...attributedRow, id: 'p9', profile_id: 'zoe' }],
+        [
+          attributedRow,
+          {
+            ...attributedRow,
+            id: 'p9',
+            profile_id: 'zoe',
+            purchaserProfile: { name: 'Zoe Zither' },
+          },
+        ],
         'bea',
         'claims'
       );
       expect(views).toEqual([
         expect.objectContaining({ id: 'p1', by: 'self', name: 'Bea Buyer' }),
-        { id: 'p9', by: 'other', claimedByViewer: false },
+        expect.objectContaining({ id: 'p9', by: 'other', name: 'Zoe Zither' }),
       ]);
     });
+  });
+
+  // Nothing the app writes produces a claim naming neither a profile nor a
+  // guest — `purchases` carries no CHECK forbidding it, so the projection
+  // still has to answer with the string its consumers require rather than
+  // letting an absent name reach a row.
+  it('RowNamingNeitherProfileNorGuest_ProjectsAnEmptyName', () => {
+    const [view] = dal.sanitizePurchases(
+      [
+        {
+          ...attributedRow,
+          profile_id: null,
+          claimed_by_profile_id: null,
+          guest_name: null,
+          purchaserProfile: null,
+          claimerProfile: null,
+        },
+      ],
+      'someone',
+      'claims'
+    );
+    expect(view.name).toBe('');
   });
 
   describe('SurpriseTier', () => {
