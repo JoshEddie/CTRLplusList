@@ -338,9 +338,7 @@ describe('BookmarkMenuItem', () => {
 
   it('Bookmarked_RendersBookmarkedLabel', () => {
     renderInMenu(<BookmarkMenuItem listId="list-1" initialBookmarked={true} />);
-    expect(
-      screen.getByRole('menuitem', { name: 'Saved' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Saved' })).toBeInTheDocument();
   });
 
   it('ClickFromNotBookmarked_OptimisticToggle-CallsBookmarkList-ToastsBookmarked', async () => {
@@ -350,9 +348,7 @@ describe('BookmarkMenuItem', () => {
       <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
     );
     await user.click(screen.getByRole('menuitem', { name: 'Save' }));
-    expect(
-      screen.getByRole('menuitem', { name: 'Saved' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Saved' })).toBeInTheDocument();
     await waitFor(() => expect(bookmarkList).toHaveBeenCalledWith('list-1'));
     expect(toast.success).toHaveBeenCalledWith('Saved');
   });
@@ -420,7 +416,8 @@ describe('SpoilerMenuItems', () => {
     renderInMenu(<SpoilerMenuItems tier="surprise" baseline="surprise" />);
     await user.click(row("Show what's claimed"));
     expect(router.replace).toHaveBeenCalledWith(
-      '/lists/list-1?page=2&spoiler=claims'
+      '/lists/list-1?page=2&spoiler=claims',
+      { scroll: false }
     );
   });
 
@@ -436,6 +433,8 @@ describe('SpoilerMenuItems', () => {
     sp.value = null;
     renderInMenu(<SpoilerMenuItems tier="claims" baseline="surprise" />);
     await user.click(row('Keep it a surprise'));
-    expect(router.replace).toHaveBeenCalledWith('/lists/list-1');
+    expect(router.replace).toHaveBeenCalledWith('/lists/list-1', {
+      scroll: false,
+    });
   });
 });

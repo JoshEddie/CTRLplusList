@@ -498,10 +498,12 @@ describe('Item', () => {
       renderItem({ item: { profile_id: OWNER }, actor: actorOf('viewer') });
       await user.click(screen.getByRole('button', { name: 'card-claim' }));
       expect(router.push).toHaveBeenCalledWith(
-        expect.stringContaining('purchaseItem=i1')
+        expect.stringContaining('purchaseItem=i1'),
+        { scroll: false }
       );
       expect(router.push).toHaveBeenCalledWith(
-        expect.not.stringContaining('purchaseView')
+        expect.not.stringContaining('purchaseView'),
+        { scroll: false }
       );
     });
 
@@ -510,10 +512,12 @@ describe('Item', () => {
       renderItem({ item: { profile_id: OWNER }, actor: actorOf('viewer') });
       await user.click(screen.getByRole('button', { name: 'card-add-claim' }));
       expect(router.push).toHaveBeenCalledWith(
-        expect.stringContaining('purchaseItem=i1')
+        expect.stringContaining('purchaseItem=i1'),
+        { scroll: false }
       );
       expect(router.push).toHaveBeenCalledWith(
-        expect.stringContaining('purchaseView=claim')
+        expect.stringContaining('purchaseView=claim'),
+        { scroll: false }
       );
     });
 
@@ -525,10 +529,12 @@ describe('Item', () => {
       );
       await user.click(screen.getByRole('button', { name: 'slot-close' }));
       expect(router.replace).toHaveBeenCalledWith(
-        expect.not.stringContaining('purchaseItem')
+        expect.not.stringContaining('purchaseItem'),
+        { scroll: false }
       );
       expect(router.replace).toHaveBeenCalledWith(
-        expect.not.stringContaining('purchaseView')
+        expect.not.stringContaining('purchaseView'),
+        { scroll: false }
       );
     });
 
@@ -541,7 +547,9 @@ describe('Item', () => {
         <Item item={makeItem({ id: undefined })} actor={actorOf('viewer')} />
       );
       await user.click(screen.getByRole('button', { name: 'slot-close' }));
-      expect(router.replace).toHaveBeenCalledWith('/lists/l1?');
+      expect(router.replace).toHaveBeenCalledWith('/lists/l1?', {
+        scroll: false,
+      });
     });
 
     it('NullItemName_ModalSlotGetsEmptyName', () => {
@@ -1074,7 +1082,11 @@ describe('Item', () => {
     });
 
     it('Preview_BannerIsHandedNoOpener', () => {
-      renderItem({ item: claimedItem, actor: actorOf('viewer'), preview: true });
+      renderItem({
+        item: claimedItem,
+        actor: actorOf('viewer'),
+        preview: true,
+      });
       expect(banners()).toHaveAttribute('data-opens', 'false');
     });
 
@@ -1082,7 +1094,8 @@ describe('Item', () => {
       renderItem({ item: claimedItem, actor: actorOf('viewer') });
       await openRoster();
       expect(router.push).toHaveBeenCalledWith(
-        '/lists/l1?purchaseItem=i1&purchaseView=roster'
+        '/lists/l1?purchaseItem=i1&purchaseView=roster',
+        { scroll: false }
       );
     });
 
@@ -1092,7 +1105,8 @@ describe('Item', () => {
       renderItem({ item: claimedItem, actor: actorOf(OWNER) });
       await openRoster();
       expect(router.push).toHaveBeenCalledWith(
-        '/lists/l1?purchaseItem=i1&purchaseView=roster'
+        '/lists/l1?purchaseItem=i1&purchaseView=roster',
+        { scroll: false }
       );
       expect(
         screen.queryByText('This could spoil a surprise')
@@ -1123,7 +1137,9 @@ describe('Item', () => {
         'purchaseItem=i1&purchaseView=roster'
       );
       await user.click(screen.getByRole('button', { name: 'slot-close' }));
-      expect(router.replace).toHaveBeenCalledWith('/lists/l1?');
+      expect(router.replace).toHaveBeenCalledWith('/lists/l1?', {
+        scroll: false,
+      });
       expect(card()).toHaveAttribute('data-has-any-claim', 'true');
       expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
       expect(banners()).toHaveAttribute('data-claimed', '2');
@@ -1182,7 +1198,9 @@ describe('Item', () => {
         await user.click(screen.getByRole('button', { name: 'card-claim' }));
 
         expect(confirmation()).not.toBeInTheDocument();
-        expect(router.push).toHaveBeenCalledWith('/lists/l1?purchaseItem=i1');
+        expect(router.push).toHaveBeenCalledWith('/lists/l1?purchaseItem=i1', {
+          scroll: false,
+        });
       }
     );
 
@@ -1193,7 +1211,8 @@ describe('Item', () => {
       await user.click(screen.getByRole('button', { name: 'Show me' }));
 
       expect(router.push).toHaveBeenCalledWith(
-        '/lists/l1?purchaseItem=i1&purchaseView=claim'
+        '/lists/l1?purchaseItem=i1&purchaseView=claim',
+        { scroll: false }
       );
       expect(confirmation()).not.toBeInTheDocument();
     });
@@ -1226,7 +1245,8 @@ describe('Item', () => {
 
       expect(confirmation()).not.toBeInTheDocument();
       expect(router.push).toHaveBeenCalledWith(
-        '/lists/l1?purchaseItem=i1&purchaseView=claim'
+        '/lists/l1?purchaseItem=i1&purchaseView=claim',
+        { scroll: false }
       );
     });
 
@@ -1307,7 +1327,9 @@ describe('Item', () => {
       await user.click(screen.getByRole('button', { name: 'card-claim' }));
       await user.click(screen.getByRole('button', { name: 'Show me' }));
 
-      expect(router.push).toHaveBeenCalledWith('/lists/l1?purchaseItem=i1');
+      expect(router.push).toHaveBeenCalledWith('/lists/l1?purchaseItem=i1', {
+        scroll: false,
+      });
       expect(confirmation()).not.toBeInTheDocument();
     });
 
@@ -1320,7 +1342,9 @@ describe('Item', () => {
       await user.click(screen.getByRole('button', { name: 'card-claim' }));
 
       expect(confirmation()).not.toBeInTheDocument();
-      expect(router.push).toHaveBeenCalledWith('/lists/l1?purchaseItem=i1');
+      expect(router.push).toHaveBeenCalledWith('/lists/l1?purchaseItem=i1', {
+        scroll: false,
+      });
     });
 
     it('OwnerBelowClaims_OpenModalHandsTheModalTheFetchedNames', async () => {
@@ -1545,7 +1569,8 @@ describe('Item', () => {
         expect(card()).toHaveAttribute('data-viewer-claimed', 'false')
       );
       expect(router.replace).toHaveBeenCalledWith(
-        expect.not.stringContaining('purchaseItem')
+        expect.not.stringContaining('purchaseItem'),
+        { scroll: false }
       );
     });
 
@@ -1653,7 +1678,9 @@ describe('ListEntry', () => {
     const user = userEvent.setup();
     renderItem({ ...owner, item: { quantity: 1 } });
     await user.click(press('Decrease'));
-    await waitFor(() => expect(removeListItem).toHaveBeenCalledWith('l1', 'i1'));
+    await waitFor(() =>
+      expect(removeListItem).toHaveBeenCalledWith('l1', 'i1')
+    );
     expect(stepper()).toHaveValue(0);
     expect(setListItemQuantity).not.toHaveBeenCalled();
     expect(router.refresh).not.toHaveBeenCalled();
@@ -1706,7 +1733,9 @@ describe('ListEntry', () => {
     const user = userEvent.setup();
     renderItem({ ...owner, item: { quantity: 4 } });
     await user.click(press('owner-remove'));
-    await waitFor(() => expect(removeListItem).toHaveBeenCalledWith('l1', 'i1'));
+    await waitFor(() =>
+      expect(removeListItem).toHaveBeenCalledWith('l1', 'i1')
+    );
     expect(stepper()).toHaveValue(0);
   });
 
@@ -1754,9 +1783,7 @@ describe('ListEntry', () => {
     await user.click(press('Increase'));
     await user.click(press('Increase'));
     refuse({ success: false, message: 'Nope' });
-    await waitFor(() =>
-      expect(setListItemQuantity).toHaveBeenCalledTimes(2)
-    );
+    await waitFor(() => expect(setListItemQuantity).toHaveBeenCalledTimes(2));
     expect(stepper()).toHaveValue(4);
   });
 

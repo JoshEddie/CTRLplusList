@@ -51,7 +51,8 @@ describe('SpoilerPicker', () => {
     await user.click(trigger());
     await user.click(row("Show what's claimed"));
     expect(router.replace).toHaveBeenCalledWith(
-      '/lists/list-1?page=2&spoiler=claims'
+      '/lists/list-1?page=2&spoiler=claims',
+      { scroll: false }
     );
     expect(trigger()).toHaveAttribute('aria-expanded', 'false');
   });
@@ -71,7 +72,9 @@ describe('SpoilerPicker', () => {
     render(<SpoilerPicker tier="claims" baseline="surprise" />);
     await user.click(trigger());
     await user.click(row('Keep it a surprise'));
-    expect(router.replace).toHaveBeenCalledWith('/lists/list-1');
+    expect(router.replace).toHaveBeenCalledWith('/lists/list-1', {
+      scroll: false,
+    });
   });
 
   it('Escape_ClosesMenu', async () => {
@@ -85,7 +88,11 @@ describe('SpoilerPicker', () => {
   it('LibraryRows_OmitProgress', async () => {
     const user = userEvent.setup();
     render(
-      <SpoilerPicker tier="claims" baseline="surprise" rows={LIBRARY_TIER_ROWS} />
+      <SpoilerPicker
+        tier="claims"
+        baseline="surprise"
+        rows={LIBRARY_TIER_ROWS}
+      />
     );
     await user.click(trigger());
     expect(screen.getAllByRole('menuitemradio')).toHaveLength(2);

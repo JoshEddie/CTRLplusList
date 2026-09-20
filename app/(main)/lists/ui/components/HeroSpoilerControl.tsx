@@ -8,9 +8,8 @@ import {
   SPOILER_TIER_ROWS,
   type SpoilerTierRow,
 } from '@/app/ui/components/spoiler-tier-rows';
-import { withSpoilerParam } from '@/lib/spoilers';
+import { useApplySpoilerTier } from '@/app/ui/components/use-spoiler-tier';
 import type { SpoilerTier } from '@/lib/types';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 export default function HeroSpoilerControl({
   tier,
@@ -21,19 +20,7 @@ export default function HeroSpoilerControl({
   baseline: SpoilerTier;
   rows?: readonly SpoilerTierRow[];
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const apply = (next: SpoilerTier) => {
-    if (next === tier) return;
-    const queryString = withSpoilerParam(
-      searchParams?.toString() || '',
-      next,
-      baseline
-    );
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
-  };
+  const apply = useApplySpoilerTier(tier, baseline);
 
   return (
     <SegmentedControl
