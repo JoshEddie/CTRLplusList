@@ -7,9 +7,8 @@ import {
   type SpoilerTierRow,
   tierRowFor,
 } from '@/app/ui/components/spoiler-tier-rows';
-import { withSpoilerParam } from '@/lib/spoilers';
+import { useApplySpoilerTier } from '@/app/ui/hooks/useApplySpoilerTier';
 import type { SpoilerTier } from '@/lib/types';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 // The transient claim-visibility control — the hero's Spoilers tile and the
@@ -27,21 +26,13 @@ export default function SpoilerPicker({
   baseline: SpoilerTier;
   rows?: readonly SpoilerTierRow[];
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const applyTier = useApplySpoilerTier(tier, baseline);
 
   const apply = (next: SpoilerTier) => {
     setOpen(false);
-    if (next === tier) return;
-    const queryString = withSpoilerParam(
-      searchParams?.toString() || '',
-      next,
-      baseline
-    );
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
+    applyTier(next);
   };
 
   const current = tierRowFor(tier);

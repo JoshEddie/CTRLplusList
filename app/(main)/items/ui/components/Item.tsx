@@ -1,7 +1,7 @@
 'use client';
 
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
-import { ProfileMembershipView, ItemDisplay, SpoilerTier } from '@/lib/types';
+import { ItemDisplay, ProfileMembershipView, SpoilerTier } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import '../styles/item.css';
@@ -79,14 +79,14 @@ export default function Item({
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.set('purchaseItem', item.id);
     if (view) params.set('purchaseView', view);
-    router.push(`${pathname}?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   const handleModalClose = () => {
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.delete('purchaseItem');
     params.delete('purchaseView');
-    router.replace(`${pathname}?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
   // Withdrawing the quantity withdraws the entry the hook keys every claim

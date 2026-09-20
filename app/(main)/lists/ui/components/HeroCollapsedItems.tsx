@@ -8,13 +8,13 @@ import {
   SPOILER_TIER_ROWS,
   SpoilerRowIcon,
 } from '@/app/ui/components/spoiler-tier-rows';
+import { useApplySpoilerTier } from '@/app/ui/hooks/useApplySpoilerTier';
 import { setListVisibility } from '@/lib/data/list.actions';
 import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
 import { getMessage } from '@/lib/i18n/utils';
-import { withSpoilerParam } from '@/lib/spoilers';
 import { ListTable, type SpoilerTier } from '@/lib/types';
 import { type ListVisibility } from '@/lib/visibility';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
 import { FaBookmark, FaRegBookmark } from 'react-icons/fa';
@@ -125,15 +125,7 @@ export function SpoilerMenuItems({
   tier: SpoilerTier;
   baseline: SpoilerTier;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  const apply = (next: SpoilerTier) => {
-    if (next === tier) return;
-    const qs = withSpoilerParam(searchParams?.toString() || '', next, baseline);
-    router.replace(qs ? `${pathname}?${qs}` : pathname);
-  };
+  const apply = useApplySpoilerTier(tier, baseline);
 
   return (
     <>

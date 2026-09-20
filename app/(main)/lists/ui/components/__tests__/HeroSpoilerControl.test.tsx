@@ -33,7 +33,8 @@ describe('HeroSpoilerControl', () => {
     render(<HeroSpoilerControl tier="surprise" baseline="surprise" />);
     await user.click(option(/Claimed/));
     expect(router.replace).toHaveBeenCalledWith(
-      '/lists/list-1?page=2&spoiler=claims'
+      '/lists/list-1?page=2&spoiler=claims',
+      { scroll: false }
     );
   });
 
@@ -49,7 +50,9 @@ describe('HeroSpoilerControl', () => {
     sp.value = null;
     render(<HeroSpoilerControl tier="claims" baseline="surprise" />);
     await user.click(option(/Surprise/));
-    expect(router.replace).toHaveBeenCalledWith('/lists/list-1');
+    expect(router.replace).toHaveBeenCalledWith('/lists/list-1', {
+      scroll: false,
+    });
   });
 
   it('ActiveOption_HasTintBackgroundStyle', () => {
