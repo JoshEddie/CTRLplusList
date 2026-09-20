@@ -98,7 +98,12 @@ test('ItemLibrary_FreshItemJoinsOneListThenGainsUnits_RollupBannerFollows', asyn
   });
 
   await page.goto(`/lists/${listId}?spoiler=claims`);
-  await expect(card.locator('.purchased-banner')).toHaveText('0 / 5 Claimed');
+  // At `claims` the owner's own card fuses the entry stepper into the banner
+  // (`.purchased-banner` then also carries the − / + controls), so the exact
+  // count is asserted on the readout span alone.
+  await expect(card.locator('.purchased-banner-text')).toHaveText(
+    '0 / 5 Claimed'
+  );
 
   await banner();
   await expect(card.locator('.purchased-banner')).toHaveText(

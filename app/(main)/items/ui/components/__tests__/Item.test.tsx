@@ -143,10 +143,25 @@ vi.mock('../ClaimBanners', () => ({
       data-withheld={String(p.withheld)}
       data-claims={(p.claims as { id: string }[]).map((c) => c.id).join(',')}
       data-opens={String(!!p.onOpenRoster)}
+      data-step={String(!!p.step)}
     >
       <button type="button" onClick={p.onOpenRoster as () => void}>
         banner-open-roster
       </button>
+      {!!p.step &&
+        [1, -1].map((d) => (
+          <button
+            key={d}
+            type="button"
+            onClick={() =>
+              (p.step as { onChange: (n: number) => void }).onChange(
+                Number(p.quantity) + d
+              )
+            }
+          >
+            banner-step-{d > 0 ? 'up' : 'down'}
+          </button>
+        ))}
     </div>
   ),
 }));
@@ -1838,6 +1853,57 @@ describe('ListEntry', () => {
       'data-list-ends',
       'a'
     );
+  });
+});
+
+// At the `claims` tier the owner's membership control fuses into the banner
+// — and the standalone stepper renders right alongside it, both mirroring the
+// same live quantity. Which one shows is a stylesheet's call per viewport, not
+// something this component decides, so both are present in every render here.
+describe('FusedFooter', () => {
+  const owner = { actor: actorOf('owner') };
+
+  it('OwnerOnListAtClaimsTier_BannerCarriesTheStep-StepperStillRenders', () => {
+    renderItem({ ...owner, item: { quantity: 2 } });
+    expect(banners()).toHaveAttribute('data-step', 'true');
+    expect(screen.getByRole('spinbutton')).toHaveValue(2);
+  });
+
+  it('StepUp_CallsSetListItemQuantity-BannerAndStepperMirrorTheSameLiveQuantity', async () => {
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 2 } });
+    await user.click(screen.getByRole('button', { name: 'banner-step-up' }));
+    expect(banners()).toHaveAttribute('data-quantity', '3');
+    expect(screen.getByRole('spinbutton')).toHaveValue(3);
+    await waitFor(() =>
+      expect(setListItemQuantity).toHaveBeenCalledWith('l1', 'i1', 3)
+    );
+    expect(banners()).toHaveAttribute('data-quantity', '3');
+    expect(screen.getByRole('spinbutton')).toHaveValue(3);
+  });
+
+  it('StepDownFromOne_CallsRemoveListItem-BannerAndStepperShowZero', async () => {
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 1 } });
+    await user.click(
+      screen.getByRole('button', { name: 'banner-step-down' })
+    );
+    await waitFor(() =>
+      expect(removeListItem).toHaveBeenCalledWith('l1', 'i1')
+    );
+    expect(banners()).toHaveAttribute('data-quantity', '0');
+    expect(screen.getByRole('spinbutton')).toHaveValue(0);
+  });
+
+  it('OwnerBelowClaimsTier_OmitsTheBanner-StepperStillRenders', () => {
+    renderItem({ ...owner, item: { quantity: 2 }, tier: 'progress' });
+    expect(screen.queryByTestId('claim-banners')).not.toBeInTheDocument();
+    expect(screen.getByRole('spinbutton')).toHaveValue(2);
+  });
+
+  it('Viewer_BannerCarriesNoStep', () => {
+    renderItem({ actor: actorOf('someone-else'), item: { quantity: 2 } });
+    expect(banners()).toHaveAttribute('data-step', 'false');
   });
 });
 

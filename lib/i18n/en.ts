@@ -19,7 +19,7 @@ export const en = {
   claim_as_guest_label: 'Claim as Guest',
   claim_circle_owner: 'your circle',
   claim_circle_viewer: "{name}'s circle",
-  claim_counter: '{claimed, number} / {quantity, number} Claimed',
+  claim_counter: '{claimed, number} / <qty>{quantity, number}</qty> Claimed',
   claim_counter_across: 'on {lists, plural, one {# list} other {# lists}}',
   claim_create_failed: 'An error occurred while marking the item as purchased',
   claim_create_success: 'Item marked as purchased successfully',

@@ -1,5 +1,10 @@
+// @vitest-environment jsdom
+// getRichMessage's parts are meant for JSX, so this one test group renders
+// them through Testing Library — the rest of this file stays plain `node`.
+import { render, screen } from '@testing-library/react';
+import { createElement } from 'react';
 import { describe, expect, it } from 'vitest';
-import { getMessage } from '../utils';
+import { getMessage, getRichMessage } from '../utils';
 
 describe('getMessage', () => {
   it('MessageWithoutArguments_ReturnsFullyClaimed', () => {
@@ -27,5 +32,23 @@ describe('getMessage', () => {
     ['claim_remove_other_aria_label' as const, "Remove Ada's claim"],
   ])('PossessiveName_RendersLiteralApostrophe', (key, expected) => {
     expect(getMessage(key, { name: 'Ada' })).toBe(expected);
+  });
+});
+
+describe('getRichMessage', () => {
+  it('TaggedMessage_WrapsTheTagsChunksWithTheGivenElement-RendersSurroundingText', () => {
+    const { container } = render(
+      createElement(
+        'span',
+        null,
+        getRichMessage('claim_counter', {
+          claimed: 2,
+          quantity: 5,
+          qty: (chunks) => createElement('b', { 'data-testid': 'qty' }, chunks),
+        })
+      )
+    );
+    expect(container.textContent).toBe('2 / 5 Claimed');
+    expect(screen.getByTestId('qty').textContent).toBe('5');
   });
 });

@@ -108,7 +108,12 @@ test('ListHero_MemberClaimsAtProgressTier_MovesTheHeroClaimedCount', async ({
     .filter({
       has: page.getByRole('button', { name: 'Claim', exact: true }),
     })
-    .filter({ has: page.locator('.purchased-banner', { hasText: /^0 \// }) })
+    // The owner's own card fuses the entry stepper into `.purchased-banner`
+    // at `claims`, which prefixes its text with the stepper's − glyph — so the
+    // "starts with 0 /" filter targets the readout span, which never does.
+    .filter({
+      has: page.locator('.purchased-banner-text', { hasText: /^0 \// }),
+    })
     .first();
   const itemName = (await unclaimed.locator('.itemName').innerText()).trim();
 

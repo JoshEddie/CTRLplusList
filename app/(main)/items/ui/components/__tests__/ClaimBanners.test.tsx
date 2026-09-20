@@ -5,6 +5,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { MAX_ENTRY_QUANTITY } from '@/lib/data/listItems.schema';
 import ClaimBanners from '../ClaimBanners';
 import { makeClaim } from './test-helpers';
 
@@ -14,7 +15,7 @@ type BannerProps = React.ComponentProps<typeof ClaimBanners>;
 // inferred from the props — the inert cases are the ones worth naming.
 function mountBanner(
   overrides: Partial<BannerProps> = {},
-  role: 'status' | 'button' = 'status'
+  role: 'status' | 'button' | 'group' = 'status'
 ) {
   render(
     <ClaimBanners
@@ -134,5 +135,84 @@ describe('ClaimBanners', () => {
         expect(screen.queryByRole('button')).not.toBeInTheDocument();
       }
     );
+  });
+
+  // The owner's membership control, fused around the readout: the disc and
+  // count stay the same readout, now flanked by the − and + that move the
+  // entry's own quantity.
+  describe('Step', () => {
+    const stepping = (
+      quantity: number,
+      onChange = vi.fn()
+    ): Partial<BannerProps> => ({
+      quantity,
+      step: { name: 'Puzzle', onChange },
+    });
+
+    it('Rendered_GroupLabelNamesTheEntry', () => {
+      const banner = mountBanner({ ...stepping(3), claimed: 1 }, 'group');
+      expect(banner).toHaveAccessibleName('Quantity for Puzzle');
+    });
+
+    it('ClickDecrease_CallsOnChangeWithQuantityMinusOne', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      mountBanner({ ...stepping(3, onChange), claimed: 1 }, 'group');
+      await user.click(screen.getByRole('button', { name: 'Decrease' }));
+      expect(onChange).toHaveBeenCalledWith(2);
+    });
+
+    it('ClickIncrease_CallsOnChangeWithQuantityPlusOne', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      mountBanner({ ...stepping(3, onChange), claimed: 1 }, 'group');
+      await user.click(screen.getByRole('button', { name: 'Increase' }));
+      expect(onChange).toHaveBeenCalledWith(4);
+    });
+
+    it('QuantityZero_DisablesDecrease', () => {
+      mountBanner({ ...stepping(0), claimed: 0 }, 'group');
+      expect(screen.getByRole('button', { name: 'Decrease' })).toBeDisabled();
+    });
+
+    it('QuantityAtMax_DisablesIncrease', () => {
+      mountBanner({ ...stepping(MAX_ENTRY_QUANTITY), claimed: 1 }, 'group');
+      expect(screen.getByRole('button', { name: 'Increase' })).toBeDisabled();
+    });
+
+    it('QuantityZero_PaintsAnEmptyDisc', () => {
+      const banner = mountBanner({ ...stepping(0), claimed: 0 }, 'group');
+      expect(progressOf(banner)).toBe('0');
+    });
+
+    it('Rendered_BoxesTheQuantityInItsOwnElement', () => {
+      const banner = mountBanner({ ...stepping(5), claimed: 2 }, 'group');
+      expect(banner.querySelector('.purchased-banner-qty')).toHaveTextContent(
+        '5'
+      );
+    });
+
+    it('NoClaims_ReadoutIsAStatus', () => {
+      mountBanner({ ...stepping(5), claimed: 2, claims: [] }, 'group');
+      expect(screen.getByRole('status')).toHaveTextContent('2 / 5 Claimed');
+    });
+
+    it('WithClaims_ReadoutOpensTheRoster-DoesNotCallOnChange', async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const onOpenRoster = vi.fn();
+      mountBanner(
+        {
+          ...stepping(5, onChange),
+          claimed: 2,
+          claims: [makeClaim('a'), makeClaim('b')],
+          onOpenRoster,
+        },
+        'group'
+      );
+      await user.click(screen.getByRole('button', { name: '2 / 5 Claimed' }));
+      expect(onOpenRoster).toHaveBeenCalledTimes(1);
+      expect(onChange).not.toHaveBeenCalled();
+    });
   });
 });

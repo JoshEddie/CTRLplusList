@@ -51,15 +51,9 @@
 }
 
 /* A card with an open menu (owner kebab or +N store popover) must paint
-   above later sibling cards/rows — siblings can form their own stacking
-   contexts (e.g. .purchased's opacity), which the popover's z-index alone
-   cannot cross. .menu-popover only exists in the DOM while open. */
+   above later sibling cards/rows .menu-popover only exists in the DOM while open. */
 .item-container:has(.menu-popover) {
   z-index: 30;
-}
-
-.item-container.purchased {
-  opacity: 0.85;
 }
 
 .item-container.purchased:hover {
@@ -1099,11 +1093,11 @@
   }
 }
 
-/* Grid view keeps the desktop photo-card grid down to 600px — its cards are
-   ~248px wide at any viewport, so they never hit the row's width problem.
-   Below 600 it adopts the same horizontal-card treatment as M1 above
-   ("if we're breaking up the row, lean into the card feel"). */
-@media (max-width: 599px) {
+/* Below this width the grid card turns horizontal: `display: contents` on the
+   wrappers flattens them so the photo, name, price and actions can be placed
+   on one grid. Photo and footer sit flush inside the card border, so their
+   outer radius is the card's minus its 1px border. */
+@media (max-width: 524px) {
   .item-grid {
     display: flex;
     flex-direction: column;
@@ -1117,11 +1111,9 @@
 
   .item-grid .item-container {
     display: grid;
-    grid-template-columns: 64px 1fr auto;
-    grid-template-rows: repeat(5, auto);
+    grid-template-columns: 120px 1fr auto;
     column-gap: 12px;
-    row-gap: 6px;
-    padding: 14px;
+    row-gap: 4px;
     background: var(--light-color);
     border: 1px solid var(--card-border-color);
     border-radius: 12px;
@@ -1138,21 +1130,24 @@
   }
 
   .item-grid .item-image-container {
-    width: 64px;
-    height: 64px;
-    grid-column: 1;
-    grid-row: 1 / 3;
+    border-radius: 11px;
+    grid-area: 1 / 1 / 4;
+    align-self: start;
+    width: 108px;
+    margin: 12px 0 0 12px;
   }
 
   .item-grid .item-name-description .itemName {
     grid-column: 2;
     grid-row: 1;
+    margin-top: 12px;
   }
 
   .item-grid .item-price-row {
     grid-column: 2 / -1;
     grid-row: 2;
     align-self: center;
+    margin-right: 14px;
   }
 
   .item-grid .item-price-row::after {
@@ -1160,17 +1155,21 @@
   }
 
   .item-grid .item-name-description .itemDescription {
-    grid-column: 1 / -1;
+    grid-column: 2 / -1;
     grid-row: 3;
-    padding-top: 4px;
+    align-self: start;
+    margin-right: 14px;
   }
 
   .item-grid .item-actions {
     grid-column: 1 / -1;
-    grid-row: 5;
+    grid-row: 4;
     align-self: center;
     justify-self: stretch;
     min-width: 0;
+    /* The block's own width: 100% ignores these margins; stretch honours them. */
+    width: auto;
+    margin: 8px 14px 12px;
   }
 
   /* Grid-as-list pulls the overlay kebab into the card's title row;
@@ -1183,23 +1182,78 @@
     position: relative;
     top: auto;
     right: auto;
+    margin: 8px 8px 0 0;
   }
 
-  .item-grid .purchased-banner {
+  /* The footer rows place themselves: a row named but left empty would still
+     open its gap below whichever footer the card does have. */
+  .item-grid .purchased-banner--spoiler {
+    grid-column: 1 / -1;
+    border-radius: 0 0 11px 11px;
+  }
+
+  .item-grid
+    .purchased-banner:not(.purchased-banner--stepping):has(
+      + .item-entry-stepper
+    ) {
+    border-radius: 0;
+  }
+
+  /* The stepping banner is the stepper here: one row, the steps at its ends,
+     the quantity boxed as the cell they move. */
+  .item-grid .purchased-banner--stepping {
+    min-height: var(--field-min-height);
+  }
+
+  .item-grid .purchased-banner--stepping + .item-entry-stepper {
     display: none;
   }
 
-  .item-grid .purchased-banner--spoiler {
-    display: flex;
+  .item-grid .purchased-banner-readout {
+    padding: 0 12px;
+    border-inline: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  }
+
+  .item-grid .purchased-banner-readout .purchased-banner-text {
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    border: 1.5px solid var(--success-border);
-    border-radius: 10px;
-    grid-column: 1 / -1;
-    grid-row: 4;
-    min-height: 36px;
-    font-size: 12px;
-    padding: 6px 10px;
+    gap: 5px;
+  }
+
+  .item-grid .purchased-banner--stepping .purchased-banner-qty {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 7px;
+    border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+    border-radius: 6px;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .item-grid .purchased-banner-step {
+    display: block;
+    min-width: var(--WCAG-input-size);
+    border: none;
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    font-size: 22px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .item-grid .purchased-banner-step:disabled {
+    color: color-mix(in srgb, currentColor 35%, transparent);
+    cursor: default;
+  }
+
+  .item-grid .purchased-banner-step:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
   }
 
   .item-grid .claimed-state {
@@ -1210,15 +1264,27 @@
     display: none;
   }
 
-  .item-list .item-entry-stepper,
-  .item-grid .item-entry-stepper {
+  .item-list .item-entry-stepper {
     grid-column: 1 / -1;
     grid-row: 6;
   }
 
+  /* The row gap would open the banner's seam, which the stepper sits on. */
+  .item-grid .item-entry-stepper {
+    grid-column: 1 / -1;
+    margin-top: -4px;
+  }
+
   .item-grid .item-entry-stepper .stepper {
-    border: 1px solid var(--field-border-color);
-    border-radius: var(--field-radius);
+    border: none;
+    border-top: 1.5px solid var(--card-border-color);
+    border-radius: 0 0 11px 11px;
+  }
+
+  @media (hover: hover) {
+    .item-grid .purchased-banner-step:hover:not(:disabled) {
+      background: var(--primary-color);
+    }
   }
 }
 
@@ -1255,3 +1321,56 @@
   font-size: 0.9rem;
 }
 
+/* The holder's count is the door to the roster: a <button> reset onto the
+   line above, with the facepile ahead of the text as its cue. The pile's ring
+   takes the surface colour — the modal body here, not the muted text. */
+.claims-other-count--opens {
+  --facepile-ring: var(--light-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ── STEPPING BANNER ── the owner's banner carrying the membership control:
+   step · readout · step. Only the horizontal card shows the steps (its block
+   above); everywhere else they are gone and the readout is the banner, its
+   padding moved down a level so the row's shape does not change. Last in the
+   file: every view restyles the banner at the same specificity, and the row's
+   shape has to hold in each of them. */
+.purchased-banner.purchased-banner--stepping {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  /* The end cells' hover fill is square; the banner's corners are not. */
+  overflow: hidden;
+}
+
+.purchased-banner-readout {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  min-width: 0;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.purchased-banner-readout .purchased-banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.purchased-banner-step {
+  display: none;
+}

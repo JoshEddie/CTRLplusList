@@ -145,8 +145,10 @@ because the servers share one DB and each holds its own in-memory tag store.
 4. Assert an entry banner's exact count against `.purchased-banner-text`, its
    readout span — the banner itself also carries the facepile, whose initials
    are text, so an exact match on `.purchased-banner` turns on whether the
-   claimer happens to have Altvatar art. The library card's banner never
-   carries one, so `library-rollup` matches the whole element.
+   claimer happens to have Altvatar art, and the owner's own card at the
+   claims tier carries the stepper's − and + in it as well (drawn only below
+   600px, in its text at every width). The library card's banner never
+   carries either, so `library-rollup` matches the whole element there.
 
 The two specs already here (`harness.auth.spec.ts`, `harness.guest.spec.ts`) are
 the harness self-tests — minimal proofs that each mode renders.

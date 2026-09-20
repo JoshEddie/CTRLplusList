@@ -142,6 +142,12 @@ export default function Item({
 
   const openRoster = () => handleModalOpen('roster');
 
+  // Where the owner may read the count, the banner carries the membership
+  // control too and its readout follows the number as it is pressed. Which of
+  // the two controls shows is the stylesheet's call: the horizontal card fuses
+  // them into one row, wider cards keep the stepper's own.
+  const fused = ownsEntry && !!claim.banner && !claim.banner.withheld;
+
   // The item form's live preview draws a card rather than offering one, so
   // every interaction it would carry is withdrawn in one place.
   const handlers = preview
@@ -186,8 +192,14 @@ export default function Item({
         {claim.banner && !(ownsEntry && claim.banner.withheld) && (
           <ClaimBanners
             {...claim.banner}
+            quantity={fused ? entry.quantity : claim.banner.quantity}
             claims={claim.claims}
             onOpenRoster={handlers?.roster}
+            step={
+              fused
+                ? { name: item.name, onChange: entry.setQuantity }
+                : undefined
+            }
           />
         )}
 

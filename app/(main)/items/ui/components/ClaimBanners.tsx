@@ -1,5 +1,6 @@
 import ProgressDisc from '@/app/ui/components/ProgressDisc';
-import { getMessage } from '@/lib/i18n/utils';
+import { MAX_ENTRY_QUANTITY } from '@/lib/data/listItems.schema';
+import { getMessage, getRichMessage } from '@/lib/i18n/utils';
 import type { PurchaseView } from '@/lib/types';
 import Facepile from './Facepile';
 
@@ -14,6 +15,7 @@ export default function ClaimBanners({
   lists,
   claims,
   onOpenRoster,
+  step,
 }: {
   claimed: number;
   quantity: number;
@@ -24,6 +26,8 @@ export default function ClaimBanners({
   claims: PurchaseView[];
   /** Opens the roster. Absent wherever the card offers no interaction at all. */
   onOpenRoster?: () => void;
+  /** The owner's membership control, fused around the readout: − and + at its ends, the quantity boxed as the number they move. */
+  step?: { name: string; onChange: (next: number) => void };
 }) {
   // The banner opens exactly where it has claims it may name: an entry that
   // carries at least one, at a tier that discloses them. The library card
@@ -34,34 +38,70 @@ export default function ClaimBanners({
 
   const readout = (
     <>
-      <ProgressDisc value={withheld ? 0 : claimed / quantity} />
+      <ProgressDisc value={withheld || !quantity ? 0 : claimed / quantity} />
       <span className="purchased-banner-text">
         {withheld
           ? getMessage('entry_quantity_wanted', { quantity })
-          : getMessage('claim_counter', { claimed, quantity })}
+          : getRichMessage('claim_counter', {
+              claimed,
+              quantity,
+              qty: (chunks) => (
+                <span className="purchased-banner-qty">{chunks}</span>
+              ),
+            })}
         {lists !== undefined &&
           ` ${getMessage('claim_counter_across', { lists })}`}
       </span>
     </>
   );
 
-  if (!opens) {
-    return (
-      <div className="purchased-banner purchased-banner--spoiler" role="status">
-        {readout}
-      </div>
-    );
-  }
+  const surface = step
+    ? 'purchased-banner-readout'
+    : 'purchased-banner purchased-banner--spoiler';
 
-  return (
+  const banner = opens ? (
     <button
       type="button"
-      className="purchased-banner purchased-banner--spoiler purchased-banner--opens"
+      className={`${surface} purchased-banner--opens`}
       aria-haspopup="dialog"
       onClick={onOpenRoster}
     >
       {readout}
       <Facepile claims={claims} />
     </button>
+  ) : (
+    <div className={surface} role="status">
+      {readout}
+    </div>
+  );
+
+  if (!step) return banner;
+
+  return (
+    <div
+      className="purchased-banner purchased-banner--spoiler purchased-banner--stepping"
+      role="group"
+      aria-label={getMessage('entry_stepper_label', { name: step.name })}
+    >
+      <button
+        type="button"
+        className="purchased-banner-step"
+        disabled={quantity <= 0}
+        aria-label={getMessage('stepper_decrease_label')}
+        onClick={() => step.onChange(quantity - 1)}
+      >
+        −
+      </button>
+      {banner}
+      <button
+        type="button"
+        className="purchased-banner-step"
+        disabled={quantity >= MAX_ENTRY_QUANTITY}
+        aria-label={getMessage('stepper_increase_label')}
+        onClick={() => step.onChange(quantity + 1)}
+      >
+        +
+      </button>
+    </div>
   );
 }

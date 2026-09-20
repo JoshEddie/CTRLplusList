@@ -1,4 +1,5 @@
 import IntlMessageFormat from 'intl-messageformat';
+import { createElement, Fragment, type ReactNode } from 'react';
 import { en } from './en';
 
 type MessageKey = keyof typeof en;
@@ -49,4 +50,18 @@ export function getMessage<K extends MessageKey>(
   return new IntlMessageFormat(en[key], 'en').format(
     params[0] as Record<string, string | number>
   ) as string;
+}
+
+// A message with tags, each tag's value the function that renders its chunks.
+export function getRichMessage<K extends MessageKey>(
+  key: K,
+  params: Record<string, string | number | ((chunks: ReactNode[]) => ReactNode)>
+): ReactNode {
+  return createElement(
+    Fragment,
+    null,
+    ...new IntlMessageFormat(en[key], 'en')
+      .formatToParts<ReactNode>(params)
+      .map((part) => part.value)
+  );
 }
