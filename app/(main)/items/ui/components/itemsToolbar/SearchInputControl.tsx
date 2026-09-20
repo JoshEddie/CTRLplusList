@@ -1,7 +1,9 @@
 'use client';
 
 import { SearchField } from '@/app/ui/components/field';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+const COMMIT_DEBOUNCE_MS = 200;
 
 export function SearchInputControl({
   initialQ,
@@ -11,14 +13,25 @@ export function SearchInputControl({
   onCommit: (next: string) => void;
 }) {
   const [value, setValue] = useState(initialQ);
+  const committedRef = useRef(initialQ);
+
+  // A commit echoes back as a new `initialQ` a tick or two later; adopting that
+  // echo would wipe out whatever was typed while it was in flight. Only a query
+  // this control did not write — back/forward, "Clear filters" — reseeds it.
+  useEffect(() => {
+    if (initialQ === committedRef.current) return;
+    committedRef.current = initialQ;
+    setValue(initialQ);
+  }, [initialQ]);
 
   useEffect(() => {
-    if (value === initialQ) return;
+    if (value === committedRef.current) return;
     const handle = setTimeout(() => {
+      committedRef.current = value;
       onCommit(value);
-    }, 200);
+    }, COMMIT_DEBOUNCE_MS);
     return () => clearTimeout(handle);
-  }, [value, initialQ, onCommit]);
+  }, [value, onCommit]);
 
   return (
     <SearchField

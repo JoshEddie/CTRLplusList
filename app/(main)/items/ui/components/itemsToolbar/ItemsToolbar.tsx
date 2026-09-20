@@ -76,9 +76,22 @@ export default function ItemsToolbar({
     [searchParams, router, pathname]
   );
 
+  // `q` is read back only by `parseItemFilters`, which filters in memory, so
+  // the URL is written through the history API rather than `router.replace`. A
+  // router navigation re-runs the server page, whose Suspense fallback then
+  // replaces the toolbar and unmounts the field the user is typing into.
   const commitSearch = useCallback(
-    (next: string) => updateParams({ q: next || null, page: null }),
-    [updateParams]
+    (next: string) => {
+      window.history.replaceState(
+        null,
+        '',
+        buildQueryUrl(
+          pathname,
+          patchedParams(searchParams, { q: next || null, page: null })
+        )
+      );
+    },
+    [searchParams, pathname]
   );
 
   // The sheet is a fixed overlay over a document that scrolls; without this
@@ -162,7 +175,7 @@ export default function ItemsToolbar({
           </div>
         )}
         <div className="items-search items-toolbar-cell--search">
-          <SearchInputControl key={q} initialQ={q} onCommit={commitSearch} />
+          <SearchInputControl initialQ={q} onCommit={commitSearch} />
         </div>
 
         <PopoverTrigger
