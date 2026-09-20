@@ -105,16 +105,24 @@ test('ClaimRoster_SwitchedToTheOwningProfile_EveryRowCarriesRemove', async ({
   // first, because the tier the account already holds is the whole consent.
   await pinActingProfile(context, OWNED_PROFILE, baseURL as string);
 
+  // All three seeded shapes, the viewer's own included — master unclaim reaches
+  // every row, so a matcher that only caught the possessive label would miss
+  // the one row whose button reads "Remove your claim".
   for (const itemId of [
     'dev-list-owned-wishlist-item-1',
+    'dev-list-owned-wishlist-item-2',
     'dev-list-owned-wishlist-item-3',
   ]) {
     await openRosterById(page, itemId);
     await expect(
       page.getByRole('heading', { name: 'This could spoil a surprise' })
     ).toHaveCount(0);
+    const rows = await roster(page).locator('.claim-row').count();
     await expect(
-      roster(page).getByRole('button', { name: /^Remove .*'s claim$/ })
+      roster(page).getByRole('button', { name: /^Remove / })
+    ).toHaveCount(rows);
+    await expect(
+      roster(page).getByRole('button', { name: /^Remove / }).first()
     ).toBeEnabled();
   }
 });

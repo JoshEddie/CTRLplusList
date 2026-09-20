@@ -74,6 +74,7 @@ export const en = {
   claim_row_meta_claimed: 'claimed {when}',
   claim_row_meta_with_time: '{attribution} · {when}',
   claim_row_name_own: '{name} (you)',
+  claim_row_units: '{units, plural, one {# unit} other {# units}}',
   claim_see_more: 'See more ({count})',
   claim_units_bought_label: 'How many did you buy?',
   claim_units_error: 'Failed to update claim',

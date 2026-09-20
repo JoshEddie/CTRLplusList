@@ -5,18 +5,16 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import type { PurchaseView } from '@/lib/types';
 import ClaimBanners from '../ClaimBanners';
+import { makeClaim } from './test-helpers';
 
-const claim = (id: string): PurchaseView => ({
-  id,
-  by: 'other',
-  name: `Claimer ${id}`,
-  claimedByViewer: false,
-});
+type BannerProps = React.ComponentProps<typeof ClaimBanners>;
 
+// Named per call so the expected role is stated by the test rather than
+// inferred from the props — the inert cases are the ones worth naming.
 function mountBanner(
-  overrides: Partial<React.ComponentProps<typeof ClaimBanners>> = {}
+  overrides: Partial<BannerProps> = {},
+  role: 'status' | 'button' = 'status'
 ) {
   render(
     <ClaimBanners
@@ -27,7 +25,7 @@ function mountBanner(
       {...overrides}
     />
   );
-  return screen.getByRole(overrides.claims?.length ? 'button' : 'status');
+  return screen.getByRole(role);
 }
 
 // The fraction the disc is painted from, read off the custom property the
@@ -77,35 +75,36 @@ describe('ClaimBanners', () => {
 
   /**
    * The banner opens exactly where it has claims it may name. Everywhere else
-   * — nothing claimed, a tier that withholds the count, and the library card,
-   * whose totals span every list and name no single entry — it is the status
-   * readout it has always been, with no cue that anything could open.
+   * — nothing claimed, a tier that withholds the count, the library card whose
+   * totals name no single entry, and the form's live preview, which is handed
+   * no opener — it is the status readout it has always been, with no cue that
+   * anything could open.
    */
   describe('OpensTheRoster', () => {
-    const claimed = {
+    const opening: Partial<BannerProps> = {
       claimed: 2,
       quantity: 4,
-      claims: [claim('a'), claim('b')],
+      claims: [makeClaim('a'), makeClaim('b')],
       onOpenRoster: vi.fn(),
     };
 
-    it('ClaimsTierWithClaims_IsAButtonAnnouncingItOpensADialog', () => {
-      const banner = mountBanner(claimed);
+    it('ClaimsTierWithClaims_AnnouncesItOpensADialog-NamesItselfByItsCount-CarriesOneDiscPerClaimer', () => {
+      const banner = mountBanner(opening, 'button');
       expect(banner).toHaveAttribute('aria-haspopup', 'dialog');
       expect(banner).toHaveAccessibleName('2 / 4 Claimed');
-    });
-
-    it('ClaimsTierWithClaims_CarriesOneDiscPerClaimer', () => {
-      expect(discsIn(mountBanner(claimed))).toHaveLength(2);
+      expect(discsIn(banner)).toHaveLength(2);
     });
 
     it('MoreClaimersThanTheFacepileDraws_ShowsThreeDiscsAndTheOverflow', () => {
-      const banner = mountBanner({
-        ...claimed,
-        claimed: 5,
-        quantity: 5,
-        claims: ['a', 'b', 'c', 'd', 'e'].map(claim),
-      });
+      const banner = mountBanner(
+        {
+          ...opening,
+          claimed: 5,
+          quantity: 5,
+          claims: ['a', 'b', 'c', 'd', 'e'].map((id) => makeClaim(id)),
+        },
+        'button'
+      );
       expect(discsIn(banner)).toHaveLength(3);
       expect(banner).toHaveTextContent('+2');
     });
@@ -113,47 +112,27 @@ describe('ClaimBanners', () => {
     it('Activation_FiresOnOpenRoster', async () => {
       const user = userEvent.setup();
       const onOpenRoster = vi.fn();
-      await user.click(mountBanner({ ...claimed, onOpenRoster }));
+      await user.click(mountBanner({ ...opening, onOpenRoster }, 'button'));
       expect(onOpenRoster).toHaveBeenCalledTimes(1);
     });
 
-    it('NoClaims_StaysAStatusReadoutWithNoFacepile', () => {
-      const banner = mountBanner({ ...claimed, claimed: 0, claims: [] });
-      expect(banner).toHaveAttribute('role', 'status');
-      expect(discsIn(banner)).toHaveLength(0);
-    });
+    // Each row is the one condition that withdraws the opening, against props
+    // that otherwise open — so the case, not the fixture, is what differs.
+    const inert: [string, Partial<BannerProps>][] = [
+      ['AZeroClaimEntry', { claimed: 0, claims: [] }],
+      ['ATierBelowClaims', { withheld: true }],
+      ['TheLibraryCard', { lists: 3 }],
+      ['ACardWithNoOpener', { onOpenRoster: undefined }],
+    ];
 
-    it('BelowClaimsTier_StaysAStatusReadoutWithNoFacepile', () => {
-      render(
-        <ClaimBanners
-          claimed={2}
-          quantity={4}
-          withheld
-          claims={claimed.claims}
-          onOpenRoster={vi.fn()}
-        />
-      );
-      const banner = screen.getByRole('status');
-      expect(discsIn(banner)).toHaveLength(0);
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    });
-
-    it('LibraryCard_StaysAStatusReadoutWithNoFacepile', () => {
-      render(<ClaimBanners {...claimed} withheld={false} lists={3} />);
-      const banner = screen.getByRole('status');
-      expect(discsIn(banner)).toHaveLength(0);
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    });
-
-    // The card's live preview inside the item form hands no opener, and a
-    // banner with nowhere to go must not advertise one.
-    it('NoOpenerGiven_StaysAStatusReadoutWithNoFacepile', () => {
-      render(
-        <ClaimBanners claimed={2} quantity={4} withheld={false} claims={claimed.claims} />
-      );
-      const banner = screen.getByRole('status');
-      expect(discsIn(banner)).toHaveLength(0);
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    });
+    it.each(inert)(
+      'On%s_StaysAStatusReadoutWithNoFacepile',
+      (_case, override) => {
+        const banner = mountBanner({ ...opening, ...override });
+        expect(banner).toHaveAttribute('role', 'status');
+        expect(discsIn(banner)).toHaveLength(0);
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+      }
+    );
   });
 });

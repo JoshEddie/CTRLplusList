@@ -1,7 +1,21 @@
+import { facelessView } from '@/app/ui/components/ProfileAvatar';
 import { getMessage } from '@/lib/i18n/utils';
 import { atLeast } from '@/lib/spoilers';
 import { priceAmount } from '@/lib/storeValidity';
-import { EntryCapacity, PurchaseView, SpoilerTier } from '@/lib/types';
+import {
+  EntryCapacity,
+  ProfileAvatarView,
+  PurchaseView,
+  SpoilerTier,
+} from '@/lib/types';
+
+// The disc a claim is drawn as. A free-text purchaser has no profile and so no
+// look: the name that was typed is all there is to draw initials from. Account
+// linkage governs nothing — a managed profile carries art on the same terms as
+// anyone else.
+export function claimAvatar(claim: PurchaseView): ProfileAvatarView {
+  return claim.avatar ?? facelessView(claim.name);
+}
 
 // What the entry already has spoken for, phrased for the label row beside a
 // units control. Derived from capacity rather than summed over the projected

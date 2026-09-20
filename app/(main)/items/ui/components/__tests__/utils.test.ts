@@ -1,5 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { claimedStatusLabel, formatStorePrice, resolveModalView } from '../utils';
+import {
+  claimAvatar,
+  claimedStatusLabel,
+  formatStorePrice,
+  resolveModalView,
+} from '../utils';
+import { makeClaim } from './test-helpers';
+
+describe('claimAvatar', () => {
+  it('PurchaserIsAProfile_ReturnsTheirOwnLook', () => {
+    const avatar = {
+      name: 'Alice Ames',
+      accent: 'rose',
+      art: 'data:image/svg+xml,art',
+      avatarStyle: null,
+    };
+    expect(claimAvatar(makeClaim('a', { name: 'Alice Ames', avatar }))).toBe(
+      avatar
+    );
+  });
+
+  // A free-text purchaser has no profile, so there is nothing but the typed
+  // name to draw from — the disc renders its initials off an unset look.
+  it('FreeTextPurchaser_ReturnsAnUnsetLookCarryingTheTypedName', () => {
+    expect(claimAvatar(makeClaim('a', { name: 'Grandma Jones' }))).toEqual({
+      name: 'Grandma Jones',
+      accent: null,
+      art: null,
+      avatarStyle: null,
+    });
+  });
+});
 
 describe('resolveModalView', () => {
   const resolve = (

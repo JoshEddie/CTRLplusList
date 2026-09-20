@@ -6,14 +6,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { PurchaseView } from '@/lib/types';
 import Facepile from '../Facepile';
-
-const claim = (id: string, overrides: Partial<PurchaseView> = {}): PurchaseView => ({
-  id,
-  by: 'other',
-  name: `Claimer ${id}`,
-  claimedByViewer: false,
-  ...overrides,
-});
+import { makeClaim as claim } from './test-helpers';
 
 function mountPile(claims: PurchaseView[]) {
   const { container } = render(<Facepile claims={claims} />);
@@ -52,26 +45,8 @@ describe('Facepile', () => {
     );
   });
 
-  it('ProfilePurchaser_DrawsTheirOwnArtRatherThanInitials', () => {
-    const pile = mountPile([
-      claim('a', {
-        name: 'Alice Ames',
-        avatar: {
-          name: 'Alice Ames',
-          accent: 'blue',
-          art: 'data:image/svg+xml,art',
-          avatarStyle: null,
-        },
-      }),
-    ]);
-    expect(pile.querySelector('img')).toHaveAttribute(
-      'src',
-      'data:image/svg+xml,art'
-    );
-  });
-
-  // A free-text purchaser has no profile and so no look: the typed name is all
-  // there is to draw from.
+  // The pile draws each claim through `claimAvatar`, whose own fallback rule is
+  // tested in utils; this pins that the resolved look reaches a disc.
   it('FreeTextPurchaser_DrawsInitialsFromTheTypedName', () => {
     const pile = mountPile([claim('a', { name: 'Grandma Jones' })]);
     expect(pile.querySelector('.altvatar-disc-initials')).toHaveTextContent(

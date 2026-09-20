@@ -1,4 +1,4 @@
-import type { ItemDisplay } from '@/lib/types';
+import type { ItemDisplay, PurchaseView } from '@/lib/types';
 
 // A store whose three fields all clear `storeComplete` — the state that unlocks
 // Buy & Claim. Shared so a price or link that stops qualifying breaks every
@@ -37,4 +37,20 @@ export function makeItem(overrides: Record<string, unknown> = {}): ItemDisplay {
     ...merged,
     claimed_units: merged.claimed_units ?? merged.purchases?.length ?? 0,
   } as never;
+}
+
+// Another party's claim, the shape every claim surface renders read-only.
+// Shared because the banner and the facepile both need a set of them and a
+// value that drifted between the two copies would fail silently.
+export function makeClaim(
+  id: string,
+  overrides: Partial<PurchaseView> = {}
+): PurchaseView {
+  return {
+    id,
+    by: 'other',
+    name: `Claimer ${id}`,
+    claimedByViewer: false,
+    ...overrides,
+  };
 }

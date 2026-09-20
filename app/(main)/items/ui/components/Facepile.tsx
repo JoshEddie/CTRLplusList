@@ -1,6 +1,7 @@
-import ProfileAvatar, { facelessView } from '@/app/ui/components/ProfileAvatar';
+import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import { getMessage } from '@/lib/i18n/utils';
 import type { PurchaseView } from '@/lib/types';
+import { claimAvatar } from './utils';
 import '../styles/facepile.css';
 
 // How many looks the pile draws before the rest become a count.
@@ -15,10 +16,7 @@ export default function Facepile({ claims }: { claims: PurchaseView[] }) {
   return (
     <span className="claim-facepile" aria-hidden>
       {shown.map((claim) => (
-        <ProfileAvatar
-          key={claim.id}
-          profile={claim.avatar ?? facelessView(claim.name)}
-        />
+        <ProfileAvatar key={claim.id} profile={claimAvatar(claim)} />
       ))}
       {rest > 0 && (
         <span className="claim-facepile-more">

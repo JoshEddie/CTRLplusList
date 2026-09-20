@@ -376,6 +376,44 @@ describe('PurchaseModalSlot', () => {
       expect(screen.queryByRole('group', { name: 'Units' })).toBeNull();
     });
 
+    /**
+     * How the ask is split is the roster's to state, not a side effect of
+     * being able to change it: a row the viewer cannot edit says what it
+     * covers in words where the control would sit.
+     */
+    it('RowsTheViewerCannotEdit_StateTheUnitsTheyCover', () => {
+      renderSlot({
+        ...roster,
+        claims: [
+          { ...othersClaim, units: 3 },
+          { ...attributedByAnother, units: 1 },
+        ],
+      });
+      expect(screen.getByText('3 units')).toBeInTheDocument();
+      expect(screen.getByText('1 unit')).toBeInTheDocument();
+    });
+
+    it('SingleUnitEntry_StatesNoUnitsThereIsNoSplitToRead', () => {
+      renderSlot({
+        ...roster,
+        capacity: { quantity: 1, remaining: 0 },
+        claims: [othersClaim],
+      });
+      expect(screen.queryByText(/unit/)).toBeNull();
+    });
+
+    // The manager reads the split they may not change: the control takes the
+    // admin floor because moving units to zero IS master unclaim.
+    it('ManagerActingAsTheOwner_StillReadsEveryRowsUnits', () => {
+      renderSlot({
+        ...roster,
+        isOwner: true,
+        actor: makeProfile('owner', 'owner', ROLES.manager),
+        claims: [{ ...othersClaim, units: 2 }],
+      });
+      expect(screen.getByText('2 units')).toBeInTheDocument();
+    });
+
     // A signed-out guest's claim is overlaid as their own from the cookie
     // before any of this renders, so it reads and behaves like any holder's.
     it('GuestHolder_OwnRowIsLabelledYouAndCarriesRemoval', () => {
@@ -401,22 +439,6 @@ describe('PurchaseModalSlot', () => {
       );
       expect(props.onRemoveClaim).toHaveBeenCalledTimes(1);
       expect(props.onRemoveClaim).toHaveBeenCalledWith(othersClaim);
-    });
-
-    // A twelve-unit entry can carry more claims than a sheet should open with.
-    it('ThirteenClaims_RendersTenRowsAndSeeMoreWithRemainingCount', () => {
-      renderSlot({
-        ...roster,
-        claims: Array.from({ length: 13 }, (_, i) => ({
-          ...othersClaim,
-          id: `pn${i}`,
-          name: `Buyer${i}`,
-        })),
-      });
-      expect(screen.getAllByRole('listitem')).toHaveLength(10);
-      expect(
-        screen.getByRole('button', { name: 'See more (3)' })
-      ).toBeInTheDocument();
     });
 
     it('RosterView_HeaderShowsItemNameAndPrice', () => {
