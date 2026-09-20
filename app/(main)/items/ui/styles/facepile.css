@@ -1,0 +1,28 @@
+/* Claim facepile — up to three claimers' looks, overlapped, then a count of
+   whoever is left. It rides on surfaces of different colours (the card's green
+   banner footer, the modal's white body), so it declares no background of its
+   own and its ring takes the surface colour through `currentColor`. */
+.claim-facepile {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.claim-facepile .altvatar-disc {
+  width: 22px;
+  height: 22px;
+  /* The ring is what keeps two overlapping discs apart where their accents
+     land close together. */
+  box-shadow: 0 0 0 1.5px currentColor;
+}
+
+.claim-facepile .altvatar-disc:not(:first-child) {
+  margin-left: -7px;
+}
+
+.claim-facepile-more {
+  margin-left: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

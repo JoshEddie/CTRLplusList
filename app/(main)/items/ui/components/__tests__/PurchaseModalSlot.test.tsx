@@ -37,6 +37,15 @@ const othersClaim: PurchaseView = {
   name: 'Frank',
   claimedByViewer: false,
 };
+// Somebody else's claim, recorded by a third party: the row the roster
+// attributes and the viewer may not touch.
+const attributedByAnother: PurchaseView = {
+  id: 'pb',
+  by: 'other',
+  name: 'Priya',
+  claimerName: 'Alice',
+  claimedByViewer: false,
+};
 
 const ITEM = {
   id: 'i1',
@@ -260,6 +269,180 @@ describe('PurchaseModalSlot', () => {
 
     it('ManageView_HeaderShowsItemNameAndPrice', () => {
       renderSlot({ view: 'manage', claims: [selfClaim] });
+      expect(
+        screen.getByRole('heading', { name: 'Fancy Mug' })
+      ).toBeInTheDocument();
+      expect(screen.getByText('$35.50')).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * The opened banner: every claim on the entry, whoever holds it. The tier is
+   * the consent, so nothing is asked here — the only thing the sheet decides is
+   * which rows the viewer may act on.
+   */
+  describe('RosterView', () => {
+    // Six wanted with five spoken for, against three listed rows: the count
+    // line can only be the entry's own sum (ADR-0016), never a sum over these.
+    const roster = {
+      view: 'roster' as const,
+      claims: [selfClaim, attributedClaim, othersClaim],
+      capacity: { quantity: 6, remaining: 1 },
+      actor: VIEWER,
+    };
+
+    // The sheet's own count line, told apart by its class from the identical
+    // status every row's units control repeats.
+    const rosterCount = () =>
+      screen.queryByText(/claimed$/, { selector: '.claim-roster-count' })
+        ?.textContent;
+
+    it('AnyViewer_ListsEveryClaimWhoeverHoldsIt', () => {
+      renderSlot(roster);
+      expect(screen.getAllByRole('listitem')).toHaveLength(3);
+      expect(screen.getByText('Vicky (you)')).toBeInTheDocument();
+      expect(screen.getByText('Grandma')).toBeInTheDocument();
+      expect(screen.getByText('Frank')).toBeInTheDocument();
+    });
+
+    it('ClaimRecordedByAnother_RowNamesWhoAddedIt', () => {
+      renderSlot({
+        ...roster,
+        claims: [{ ...othersClaim, claimerName: 'Alice' }],
+      });
+      expect(screen.getByText('Added by Alice')).toBeInTheDocument();
+    });
+
+    it('ClaimsTier_CountLineIsTheEntrysSumNotTheRowsListed', () => {
+      renderSlot(roster);
+      expect(rosterCount()).toBe('5 of 6 claimed');
+    });
+
+    // A deep link can reach the roster from under the tier that discloses the
+    // count, and the entry's remainder there is subtracted from a number the
+    // payload never carried.
+    it('BelowClaimsTier_StatesNoCount', () => {
+      renderSlot({ ...roster, tier: 'surprise' });
+      expect(rosterCount()).toBeUndefined();
+    });
+
+    it('OffAList_StatesNoCount', () => {
+      renderSlot({ ...roster, capacity: null });
+      expect(rosterCount()).toBeUndefined();
+    });
+
+    it('Owner_EveryRowCarriesRemoveAndUnits', () => {
+      renderSlot({ ...roster, isOwner: true });
+      expect(
+        screen.getAllByRole('button', { name: /^Remove/ })
+      ).toHaveLength(3);
+      expect(screen.getAllByRole('group', { name: 'Units' })).toHaveLength(3);
+    });
+
+    /**
+     * Master unclaim keeps its admin floor: a manager acting as the owning
+     * profile reads the roster whole and changes none of it. The units control
+     * goes with the removal — moving a claim to zero IS removing it.
+     */
+    it('ManagerActingAsTheOwner_RowsAreListedWithRemovalDisabled', () => {
+      renderSlot({
+        ...roster,
+        isOwner: true,
+        actor: makeProfile('owner', 'owner', ROLES.manager),
+      });
+      for (const remove of screen.getAllByRole('button', { name: /^Remove/ })) {
+        expect(remove).toBeDisabled();
+      }
+      expect(screen.queryByRole('group', { name: 'Units' })).toBeNull();
+    });
+
+    it('Holder_ActsOnTheirOwnAndAssertedRowsAndReadsTheRest', () => {
+      renderSlot(roster);
+      expect(
+        screen.getByRole('button', { name: 'Remove your claim' })
+      ).toBeEnabled();
+      expect(
+        screen.getByRole('button', { name: "Remove Grandma's claim" })
+      ).toBeEnabled();
+      expect(
+        screen.queryByRole('button', { name: "Remove Frank's claim" })
+      ).toBeNull();
+    });
+
+    it('Bystander_ReadsEveryRowAndActsOnNone', () => {
+      renderSlot({ ...roster, claims: [othersClaim, attributedByAnother] });
+      expect(screen.getAllByRole('listitem')).toHaveLength(2);
+      expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Units' })).toBeNull();
+    });
+
+    /**
+     * How the ask is split is the roster's to state, not a side effect of
+     * being able to change it: a row the viewer cannot edit says what it
+     * covers in words where the control would sit.
+     */
+    it('RowsTheViewerCannotEdit_StateTheUnitsTheyCover', () => {
+      renderSlot({
+        ...roster,
+        claims: [
+          { ...othersClaim, units: 3 },
+          { ...attributedByAnother, units: 1 },
+        ],
+      });
+      expect(screen.getByText('3 units')).toBeInTheDocument();
+      expect(screen.getByText('1 unit')).toBeInTheDocument();
+    });
+
+    it('SingleUnitEntry_StatesNoUnitsThereIsNoSplitToRead', () => {
+      renderSlot({
+        ...roster,
+        capacity: { quantity: 1, remaining: 0 },
+        claims: [othersClaim],
+      });
+      expect(screen.queryByText(/unit/)).toBeNull();
+    });
+
+    // The manager reads the split they may not change: the control takes the
+    // admin floor because moving units to zero IS master unclaim.
+    it('ManagerActingAsTheOwner_StillReadsEveryRowsUnits', () => {
+      renderSlot({
+        ...roster,
+        isOwner: true,
+        actor: makeProfile('owner', 'owner', ROLES.manager),
+        claims: [{ ...othersClaim, units: 2 }],
+      });
+      expect(screen.getByText('2 units')).toBeInTheDocument();
+    });
+
+    // A signed-out guest's claim is overlaid as their own from the cookie
+    // before any of this renders, so it reads and behaves like any holder's.
+    it('GuestHolder_OwnRowIsLabelledYouAndCarriesRemoval', () => {
+      renderSlot({
+        ...roster,
+        actor: undefined,
+        claims: [{ ...selfClaim, name: 'Sam Guest' }, othersClaim],
+      });
+      expect(screen.getByText('Sam Guest (you)')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Remove your claim' })
+      ).toBeEnabled();
+      expect(
+        screen.queryByRole('button', { name: "Remove Frank's claim" })
+      ).toBeNull();
+    });
+
+    it('RemoveActivation_FiresOnRemoveClaimWithThatRowOnly', async () => {
+      const user = userEvent.setup();
+      const { props } = renderSlot({ ...roster, isOwner: true });
+      await user.click(
+        screen.getByRole('button', { name: "Remove Frank's claim" })
+      );
+      expect(props.onRemoveClaim).toHaveBeenCalledTimes(1);
+      expect(props.onRemoveClaim).toHaveBeenCalledWith(othersClaim);
+    });
+
+    it('RosterView_HeaderShowsItemNameAndPrice', () => {
+      renderSlot(roster);
       expect(
         screen.getByRole('heading', { name: 'Fancy Mug' })
       ).toBeInTheDocument();

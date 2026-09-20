@@ -21,11 +21,19 @@ Manage claims carries the other confirmation, the one that promises names; it
 asks whenever another party is on the item or the count is withheld, never on a
 row that arrived without a name, so it varies on nothing the viewer's own tier
 conceals from them. A claim-holder's Manage claim asks nothing at any tier: it
-opens on rows they hold, which every tier discloses. `isFullyClaimed` is the
-other deliberate instance: derived from the entry's claimed-unit count, which
-the read withholds below `claims` alongside the claims themselves — so a
-`progress` viewer sees a fully-claimed item as claimable and the sold-out
-treatment never appears.
+opens on rows they hold, which every tier discloses.
+
+Two instances are deliberate. `isFullyClaimed` is derived from the entry's
+claimed-unit count, which the read withholds below `claims` alongside the claims
+themselves — so a `progress` viewer sees a fully-claimed item as claimable and
+the sold-out treatment never appears. The claim banner is the other: it is a
+button carrying a facepile exactly where the entry has at least one claim at the
+`claims` tier, and the `role="status"` readout it has always been everywhere
+else — at zero claims, below `claims`, and on the library card, whose totals
+name no single entry. The branch is the count the banner already states out
+loud: a viewer reading `2 of 3 claimed` learns nothing further from the banner
+also being pressable, and one held below it reads `3 wanted` on a claimed and an
+unclaimed entry alike.
 
 Everywhere else the principle holds because nothing branches on claim state at
 all. That is the absence of a violation, not the presence of a guard: there is

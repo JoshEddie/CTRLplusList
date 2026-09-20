@@ -208,6 +208,24 @@ right, since dropping one to zero is removing it.
 The set of people eligible to be named as a purchaser — the owner's mutual
 follows, minus blocks.
 
+**Roster**:
+Every claim on one **list entry**, listed. It is what the claim banner opens
+into, headed by the item and by the entry's own `N of M claimed` — summed from
+the entry, never over the rows on screen, since a long roster pages ten at a
+time ([ADR-0016](docs/adr/0016-claimed-units-are-summed-not-stored.md)). A row
+carries the purchaser's look and name, who added it where that is someone else,
+when it was made, and how many units it covers. Reached only at the claims tier,
+which is the whole of the consent — nothing is asked, the owner included. Rows
+the viewer may act on carry the same remove and units controls every other claim
+list draws: the owner acts on all of them, a holder on their own and the ones
+they asserted, and every remaining row is read-only.
+
+**Facepile**:
+Up to three claimers' looks, overlapping, then `+N` for whoever is left over.
+Purely decorative — the count beside it is what a screen reader announces — so
+it is the cue that a surface opens onto a **roster**, never the thing that says
+who is on an item.
+
 ## Spoilers
 
 **Spoiler tier**:

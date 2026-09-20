@@ -41,7 +41,7 @@ test('AttributedClaim_PickMutualFromPicker_PersistsBobAsPurchaser', async ({
   // after a fresh server render, which names Bob as the purchaser and the
   // viewer as the one who recorded it.
   const claimed = page.locator('.item-container', { hasText: itemName });
-  await expect(claimed.locator('.purchased-banner')).toHaveText(
+  await expect(claimed.locator('.purchased-banner-text')).toHaveText(
     '1 / 1 Claimed'
   );
 

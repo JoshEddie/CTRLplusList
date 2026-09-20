@@ -42,7 +42,7 @@ test('AddClaimWhileClaimed_RoutesToClaimFlow_ManageListRemovesPerClaim', async (
   await item.getByRole('button', { name: 'Claim', exact: true }).click();
   await page.getByRole('button', { name: 'Claim this gift' }).click();
   const claimed = page.locator('.item-container', { hasText: itemName });
-  const banner = claimed.locator('.purchased-banner');
+  const banner = claimed.locator('.purchased-banner-text');
   await expect(banner).toHaveText(`${before + 1} / ${quantity} Claimed`);
 
   // Slots remain, so the card offers Manage claim (top) AND Claim (2-up).
@@ -98,7 +98,7 @@ test('AddClaimWhileClaimed_RoutesToClaimFlow_ManageListRemovesPerClaim', async (
   // A fresh server render agrees: self-claim kept, additional claim gone.
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
-  await expect(claimedAfter.locator('.purchased-banner')).toHaveText(
+  await expect(claimedAfter.locator('.purchased-banner-text')).toHaveText(
     `${before + 1} / ${quantity} Claimed`
   );
   await claimedAfter.getByRole('button', { name: 'Manage claim' }).click();

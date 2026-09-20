@@ -141,7 +141,13 @@ vi.mock('../ClaimBanners', () => ({
       data-claimed={String(p.claimed)}
       data-quantity={String(p.quantity)}
       data-withheld={String(p.withheld)}
-    />
+      data-claims={(p.claims as { id: string }[]).map((c) => c.id).join(',')}
+      data-opens={String(!!p.onOpenRoster)}
+    >
+      <button type="button" onClick={p.onOpenRoster as () => void}>
+        banner-open-roster
+      </button>
+    </div>
   ),
 }));
 vi.mock('../OwnerActions', () => ({
@@ -1036,6 +1042,92 @@ describe('Item', () => {
         'purchaseItem=i1'
       );
       expect(slot()).toHaveAttribute('data-view', 'claim');
+    });
+  });
+
+  /**
+   * The opened banner. The roster is a reading of the entry, so it outranks
+   * both the ownership route to the add flow and the holder's manage view —
+   * everyone who taps the banner lands in the same sheet.
+   */
+  describe('BannerRoster', () => {
+    const claimedItem = {
+      profile_id: OWNER,
+      quantity: 3,
+      purchases: [
+        { id: 'pm', by: 'self', name: 'You', claimedByViewer: true },
+        { id: 'p1', by: 'other', name: 'Sam', claimedByViewer: false },
+      ],
+    };
+
+    const openRoster = async () => {
+      const user = userEvent.setup();
+      await user.click(
+        screen.getByRole('button', { name: 'banner-open-roster' })
+      );
+    };
+
+    it('EntrysClaims_ReachTheBannerForItsFacepile', () => {
+      renderItem({ item: claimedItem, actor: actorOf('viewer') });
+      expect(banners()).toHaveAttribute('data-claims', 'pm,p1');
+      expect(banners()).toHaveAttribute('data-opens', 'true');
+    });
+
+    it('Preview_BannerIsHandedNoOpener', () => {
+      renderItem({ item: claimedItem, actor: actorOf('viewer'), preview: true });
+      expect(banners()).toHaveAttribute('data-opens', 'false');
+    });
+
+    it('BannerActivation_PushesTheRosterView', async () => {
+      renderItem({ item: claimedItem, actor: actorOf('viewer') });
+      await openRoster();
+      expect(router.push).toHaveBeenCalledWith(
+        '/lists/l1?purchaseItem=i1&purchaseView=roster'
+      );
+    });
+
+    // The owner's own banner opens the same way: at `claims` the tier is the
+    // consent, so no confirmation stands between them and the roster.
+    it('OwnerBannerActivation_PushesTheRosterWithNoConfirmation', async () => {
+      renderItem({ item: claimedItem, actor: actorOf(OWNER) });
+      await openRoster();
+      expect(router.push).toHaveBeenCalledWith(
+        '/lists/l1?purchaseItem=i1&purchaseView=roster'
+      );
+      expect(
+        screen.queryByText('This could spoil a surprise')
+      ).not.toBeInTheDocument();
+    });
+
+    it('RosterParam_OpensTheSheetOnEveryClaim', () => {
+      renderItem(
+        { item: claimedItem, actor: actorOf('viewer') },
+        'purchaseItem=i1&purchaseView=roster'
+      );
+      expect(slot()).toHaveAttribute('data-view', 'roster');
+      expect(slot()).toHaveAttribute('data-claims', 'pm,p1');
+    });
+
+    it('OwnerWithRosterParam_OpensTheSheetRatherThanTheAddFlow', () => {
+      renderItem(
+        { item: claimedItem, actor: actorOf(OWNER) },
+        'purchaseItem=i1&purchaseView=roster'
+      );
+      expect(slot()).toHaveAttribute('data-view', 'roster');
+    });
+
+    it('CloseRoster_DropsBothParams-LeavesTheCardAsItWas', async () => {
+      const user = userEvent.setup();
+      renderItem(
+        { item: claimedItem, actor: actorOf('viewer') },
+        'purchaseItem=i1&purchaseView=roster'
+      );
+      await user.click(screen.getByRole('button', { name: 'slot-close' }));
+      expect(router.replace).toHaveBeenCalledWith('/lists/l1?');
+      expect(card()).toHaveAttribute('data-has-any-claim', 'true');
+      expect(card()).toHaveAttribute('data-viewer-claimed', 'true');
+      expect(banners()).toHaveAttribute('data-claimed', '2');
+      expect(banners()).toHaveAttribute('data-quantity', '3');
     });
   });
 

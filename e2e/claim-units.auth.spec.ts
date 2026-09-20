@@ -41,7 +41,7 @@ test('ListPage_OneClaimerTakesEveryUnitThenLowersIt_CounterFollowsTheUnits', asy
   // Every unit spoken for by one person: the entry reads as claimed rather than
   // still offering room.
   const claimedCard = page.locator('.item-container', { hasText: itemName });
-  await expect(claimedCard.locator('.purchased-banner')).toHaveText(
+  await expect(claimedCard.locator('.purchased-banner-text')).toHaveText(
     `${quantity} / ${quantity} Claimed`
   );
   // The recorded claim closes the modal by dropping the query parameter;
@@ -49,7 +49,7 @@ test('ListPage_OneClaimerTakesEveryUnitThenLowersIt_CounterFollowsTheUnits', asy
   await expect(page).not.toHaveURL(/purchaseItem/);
   await page.reload();
   const settled = page.locator('.item-container', { hasText: itemName });
-  await expect(settled.locator('.purchased-banner')).toHaveText(
+  await expect(settled.locator('.purchased-banner-text')).toHaveText(
     `${quantity} / ${quantity} Claimed`
   );
   await expect(
@@ -72,7 +72,7 @@ test('ListPage_OneClaimerTakesEveryUnitThenLowersIt_CounterFollowsTheUnits', asy
   await expect(
     lowered.getByRole('button', { name: 'Manage claim' })
   ).toBeVisible();
-  await expect(lowered.locator('.purchased-banner')).toHaveText(
+  await expect(lowered.locator('.purchased-banner-text')).toHaveText(
     `${claimed + 1} / ${quantity} Claimed`
   );
 });

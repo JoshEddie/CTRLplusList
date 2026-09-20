@@ -231,6 +231,24 @@
   color: var(--muted-text-color);
 }
 
+/* What a row covers where it cannot be edited: the same number the units
+   control would hold, stated instead of offered. */
+.claim-row-units {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--muted-text-color);
+}
+
+/* What the entry has spoken for, at the head of the roster sheet: what the
+   sheet is a breakdown of, rather than an aside to the list under it. */
+.claim-roster-count {
+  margin: 0;
+  color: var(--heading-text-color);
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
 /* How many units a claim covers. The stepper is five targets wide already, so
    Update goes under it rather than competing for the same row. */
 .claim-units {

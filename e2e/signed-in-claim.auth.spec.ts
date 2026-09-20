@@ -41,13 +41,13 @@ test('SignedInClaim_SelfClaimOneTap_ShowsOwnClaim', async ({ page }) => {
   // The item reflects the viewer's own claim — the single unit spoken for and
   // a claim they can manage — and it persists across a fresh server render.
   const claimed = page.locator('.item-container', { hasText: itemName });
-  await expect(claimed.locator('.purchased-banner')).toHaveText(
+  await expect(claimed.locator('.purchased-banner-text')).toHaveText(
     '1 / 1 Claimed'
   );
 
   await page.reload();
   const claimedAfter = page.locator('.item-container', { hasText: itemName });
-  await expect(claimedAfter.locator('.purchased-banner')).toHaveText(
+  await expect(claimedAfter.locator('.purchased-banner-text')).toHaveText(
     '1 / 1 Claimed'
   );
   await expect(
@@ -136,7 +136,7 @@ test('SignedInClaim_NameFallbackForNonUser_ShowsClaimerBannerWithName', async ({
   // the typed name and credits the viewer as its recorder, never the viewer's
   // own name as purchaser. It survives a fresh server render.
   const claimed = page.locator('.item-container', { hasText: itemName });
-  await expect(claimed.locator('.purchased-banner')).toHaveText(
+  await expect(claimed.locator('.purchased-banner-text')).toHaveText(
     '1 / 1 Claimed'
   );
 

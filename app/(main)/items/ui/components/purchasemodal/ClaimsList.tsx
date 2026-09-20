@@ -1,10 +1,10 @@
-import ProfileAvatar, { facelessView } from '@/app/ui/components/ProfileAvatar';
+import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import { Button } from '@/app/ui/components/button';
 import { getMessage } from '@/lib/i18n/utils';
 import { timeAgo } from '@/lib/timeAgo';
 import { EntryCapacity, PurchaseView } from '@/lib/types';
 import { useState } from 'react';
-import { claimUnitsCeiling } from '../utils';
+import { claimAvatar, claimUnitsCeiling } from '../utils';
 import UnitsField from './UnitsField';
 
 // Bounded render: an entry asking for many units can carry as many claims, so
@@ -68,6 +68,14 @@ export default function ClaimsList({
   const [drafts, setDrafts] = useState<Record<string, number>>({});
   const ceilingFor = (claim: PurchaseView) =>
     claimUnitsCeiling(capacity, claim);
+  // A row either sets its units or states them. Editing is the removal right
+  // again — dropping a claim to zero IS removing it — so it takes the same
+  // floor, and a ceiling of one leaves no number to pick.
+  const editable = (claim: PurchaseView) =>
+    canRemove(claim) && !removalDisabled && !!onUpdateUnits && ceilingFor(claim) > 1;
+  // Whether the entry is one a claim can cover part of. On an entry asking for
+  // one there is no split to read, and "1 unit" on every row would say nothing.
+  const splits = (capacity?.quantity ?? 1) > 1;
   if (claims.length === 0) return null;
   const sorted = [
     ...claims.filter((claim) => canRemove(claim)),
@@ -81,11 +89,7 @@ export default function ClaimsList({
       <ul className="claims-list">
         {visible.map((claim) => (
           <li key={claim.id} className="claim-row">
-            {/* A free-text purchaser has no profile and so no face: the name
-                that was typed is all there is to draw initials from. Account
-                linkage governs nothing here — a managed profile carries art on
-                the same terms as anyone else. */}
-            <ProfileAvatar profile={claim.avatar ?? facelessView(claim.name)} />
+            <ProfileAvatar profile={claimAvatar(claim)} />
             <div className="claim-row-info">
               <span className="claim-row-name">{rowLabel(claim)}</span>
               {rowMeta(claim) && (
@@ -109,22 +113,25 @@ export default function ClaimsList({
                 {getMessage('claim_remove_label')}
               </Button>
             )}
-            {canRemove(claim) &&
-              !removalDisabled &&
-              onUpdateUnits &&
-              ceilingFor(claim) > 1 && (
-                <UnitsField
-                  label={getMessage('claim_units_row_label')}
-                  status={unitsStatus}
-                  value={drafts[claim.id] ?? claim.units ?? 1}
-                  max={ceilingFor(claim)}
-                  saved={claim.units ?? 1}
-                  onChange={(next) =>
-                    setDrafts((prev) => ({ ...prev, [claim.id]: next }))
-                  }
-                  onSubmit={(units) => onUpdateUnits(claim, units)}
-                />
-              )}
+            {editable(claim) ? (
+              <UnitsField
+                label={getMessage('claim_units_row_label')}
+                status={unitsStatus}
+                value={drafts[claim.id] ?? claim.units ?? 1}
+                max={ceilingFor(claim)}
+                saved={claim.units ?? 1}
+                onChange={(next) =>
+                  setDrafts((prev) => ({ ...prev, [claim.id]: next }))
+                }
+                onSubmit={(units) => onUpdateUnits!(claim, units)}
+              />
+            ) : (
+              splits && (
+                <span className="claim-row-units">
+                  {getMessage('claim_row_units', { units: claim.units ?? 1 })}
+                </span>
+              )
+            )}
           </li>
         ))}
       </ul>

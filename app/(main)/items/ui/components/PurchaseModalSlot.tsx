@@ -6,8 +6,8 @@ import {
   SpoilerTier,
 } from '@/lib/types';
 import { getMessage } from '@/lib/i18n/utils';
-import { atLeast } from '@/lib/spoilers';
-import { heldByViewer, othersClaimCount, unitsClaimedLabel } from './utils';
+import { claimedStatusLabel, heldByViewer, othersClaimCount } from './utils';
+import ClaimRoster from './purchasemodal/ClaimRoster';
 import ClaimsList from './purchasemodal/ClaimsList';
 import Modal from './purchasemodal/Modal';
 import ModalStoreRow from './purchasemodal/ModalStoreRow';
@@ -32,8 +32,8 @@ export default function PurchaseModalSlot({
   onRemoveClaim,
   onUpdateUnits,
 }: {
-  view: 'manage' | 'claim';
-  /** Every sanitized claim on the item. The manage view lists the viewer's own and counts the rest; the claim flow hands them all to the owner's master list. */
+  view: 'manage' | 'claim' | 'roster';
+  /** Every sanitized claim on the item. The manage view lists the viewer's own and counts the rest; the roster and the claim flow hand them all to their lists. */
   claims: PurchaseView[];
   /** Null off a list, where there is nothing to claim against. */
   capacity: EntryCapacity | null;
@@ -49,6 +49,22 @@ export default function PurchaseModalSlot({
   onRemoveClaim: (claim: PurchaseView) => void;
   onUpdateUnits: (claim: PurchaseView, units: number) => void;
 }) {
+  if (view === 'roster') {
+    return (
+      <Modal onClose={onClose}>
+        <ClaimRoster
+          claims={claims}
+          capacity={capacity}
+          actor={actor}
+          isOwner={isOwner}
+          tier={tier}
+          item={item}
+          onRemoveClaim={onRemoveClaim}
+          onUpdateUnits={onUpdateUnits}
+        />
+      </Modal>
+    );
+  }
   if (view === 'manage') {
     // The rows this view manages are the viewer's own and the ones they
     // asserted — removing either compares the self-profile and takes no floor.
@@ -66,11 +82,7 @@ export default function PurchaseModalSlot({
             claims={held}
             canRemove={() => true}
             capacity={capacity}
-            unitsStatus={
-              capacity && atLeast(tier, 'claims')
-                ? unitsClaimedLabel(capacity.quantity, capacity.remaining)
-                : undefined
-            }
+            unitsStatus={claimedStatusLabel(capacity, tier)}
             onRemoveClaim={onRemoveClaim}
             onUpdateUnits={onUpdateUnits}
           />
