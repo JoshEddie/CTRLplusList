@@ -14,12 +14,14 @@ export const OWNER_TAB_IDS = {
   reorder: 'list-owner-tab-reorder',
 } as const;
 
-/** What a surface rendered inside the panels can ask the band to do. `showReorder` is absent on a list with nothing to arrange. */
+/** What a surface rendered inside the panels can ask the band to do. `showReorder` is absent on a list with nothing to arrange. `reveal` names an entry just created from the list tab that the list surface should bring into view, and `revealed` is how it reports having done so. */
 type OwnerTabsApi = {
   showList: () => void;
   showLibrary: () => void;
   showReorder?: () => void;
   createItem: () => void;
+  reveal?: string;
+  revealed: () => void;
 };
 
 export const OwnerTabsContext = createContext<OwnerTabsApi | null>(null);

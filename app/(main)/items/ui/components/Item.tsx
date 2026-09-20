@@ -206,9 +206,7 @@ export default function Item({
             claims={claim.claims}
             onOpenRoster={handlers?.roster}
             step={
-              fused
-                ? { name: item.name, onChange: stepQuantity }
-                : undefined
+              fused ? { name: item.name, onChange: stepQuantity } : undefined
             }
           />
         )}

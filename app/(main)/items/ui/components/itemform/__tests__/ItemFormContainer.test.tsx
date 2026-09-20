@@ -719,6 +719,31 @@ describe('ItemFormContainer', () => {
       vi.unstubAllGlobals();
     });
 
+    it('DefaultListId_SurvivesFetchAndSubmitsIt', async () => {
+      const { createItem } = await import('@/lib/data/item.actions');
+      fetchMock.mockResolvedValue(jsonOk(PRODUCT_RESPONSE));
+      render(
+        <ItemFormContainer
+          lists={[{ id: 'l2', name: 'Christmas' } as never]}
+          defaultListId="l2"
+          onClose={vi.fn()}
+        />
+      );
+      const user = await fetchUrl();
+      await screen.findByText("Here's what we pulled.");
+      await user.click(screen.getByRole('button', { name: "Let's go" }));
+      await user.click(screen.getByRole('button', { name: 'Continue' }));
+      await user.click(screen.getByRole('button', { name: 'Continue' }));
+      await user.click(screen.getByRole('button', { name: 'Create item' }));
+      await waitFor(() =>
+        expect(createItem).toHaveBeenCalledWith(
+          expect.objectContaining({
+            lists: [{ value: 'l2', label: 'Christmas' }],
+          })
+        )
+      );
+    });
+
     it('DeckExit_ReturnsToUrlEntry', async () => {
       fetchMock.mockResolvedValue(jsonOk(PRODUCT_RESPONSE));
       renderCreate();

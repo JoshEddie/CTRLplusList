@@ -112,8 +112,10 @@ for the length of a drag rather than growing back under the pointer.
 The _Add item_ menu offers a new item or a pick from existing; choosing from
 existing selects _All items_, which is how the owner learns where that surface
 lives. Creating an item reuses the item form whole, this list preselected in
-its picker, and its save is the add. A list holding nothing opens on _All
-items_. Nothing here is staged and nothing needs saving — every entry write
+its picker, and its save is the add. Saved from the list tab, the surface
+ends on the new entry — last page, list order, filters cleared — because an
+append on a long list would otherwise land pages past where the owner sits.
+A list holding nothing opens on _All items_. Nothing here is staged and nothing needs saving — every entry write
 commits as it is made.
 
 **List entry**:

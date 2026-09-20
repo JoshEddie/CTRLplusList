@@ -79,6 +79,7 @@ function renderList(items = ITEMS) {
         showLibrary: vi.fn(),
         showReorder: vi.fn(),
         createItem: vi.fn(),
+        revealed: vi.fn(),
       }}
     >
       <ReorderList listId="l1" items={items} />

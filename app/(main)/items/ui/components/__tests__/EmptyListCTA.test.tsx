@@ -8,7 +8,14 @@ const showLibrary = vi.fn();
 
 const renderCTA = () =>
   render(
-    <OwnerTabsContext.Provider value={{ showList: vi.fn(), showLibrary, createItem: vi.fn() }}>
+    <OwnerTabsContext.Provider
+      value={{
+        showList: vi.fn(),
+        showLibrary,
+        createItem: vi.fn(),
+        revealed: vi.fn(),
+      }}
+    >
       <EmptyListCTA />
     </OwnerTabsContext.Provider>
   );

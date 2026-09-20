@@ -44,6 +44,7 @@ vi.mock('../Item', () => ({
     onReorderAll?: () => void;
   }) => (
     <div
+      id={`item-${item.id}`}
       data-testid="item-stub"
       data-item-id={item.id}
       data-tier={String(tier)}
@@ -119,9 +120,11 @@ function renderBrowser(
 // is null and no card offers a way into a reorder tab that does not exist.
 function renderInBand(
   items: ItemDisplay[],
-  { mode = 'list', arrangeable = true } = {} as {
+  { mode = 'list', arrangeable = true, reveal, revealed = vi.fn() } = {} as {
     mode?: BrowserProps['mode'];
     arrangeable?: boolean;
+    reveal?: string;
+    revealed?: () => void;
   }
 ) {
   return render(
@@ -131,6 +134,8 @@ function renderInBand(
         showLibrary: vi.fn(),
         showReorder: arrangeable ? vi.fn() : undefined,
         createItem: vi.fn(),
+        reveal,
+        revealed,
       }}
     >
       <ItemsBrowser items={items} mode={mode} />
@@ -706,6 +711,59 @@ describe('ItemsBrowser', () => {
         'data-can-reorder',
         'false'
       );
+    });
+  });
+
+  describe('Reveal', () => {
+    const many = Array.from({ length: 30 }, (_, i) => makeItem(`i${i}`));
+    let scrollIntoView: ReturnType<typeof vi.fn<Element['scrollIntoView']>>;
+
+    beforeEach(() => {
+      nav.pathname = '/lists/l1';
+      scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+    });
+
+    it('EntryOffThePage_GoesToTheLastPageInListOrderWithFiltersCleared', () => {
+      nav.search = 'q=x&sort=price_asc&store=Acme&view=list&page=1';
+      const revealed = vi.fn();
+      renderInBand(many, { reveal: 'i29', revealed });
+      expect(nav.replace).toHaveBeenCalledWith('/lists/l1?view=list&page=2');
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      expect(revealed).not.toHaveBeenCalled();
+    });
+
+    it('EntryOffThePageOfAOnePageList_DropsThePageParam', () => {
+      nav.search = 'q=nomatch';
+      renderInBand([makeItem('a'), makeItem('b')], { reveal: 'b' });
+      expect(nav.replace).toHaveBeenCalledWith('/lists/l1');
+    });
+
+    it('EntryOnThePage_ScrollsToItsCardAndReports', () => {
+      nav.search = 'page=2';
+      const revealed = vi.fn();
+      renderInBand(many, { reveal: 'i29', revealed });
+      expect(scrollIntoView).toHaveBeenCalledOnce();
+      expect(scrollIntoView.mock.instances[0]).toBe(
+        document.getElementById('item-i29')
+      );
+      expect(revealed).toHaveBeenCalledOnce();
+      expect(nav.replace).not.toHaveBeenCalled();
+    });
+
+    it('EntryNotYetRead_Waits', () => {
+      const revealed = vi.fn();
+      renderInBand(many, { reveal: 'i99', revealed });
+      expect(nav.replace).not.toHaveBeenCalled();
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      expect(revealed).not.toHaveBeenCalled();
+    });
+
+    it('LibrarySurface_IgnoresTheReveal', () => {
+      const revealed = vi.fn();
+      renderInBand(many, { mode: 'items', reveal: 'i29', revealed });
+      expect(nav.replace).not.toHaveBeenCalled();
+      expect(revealed).not.toHaveBeenCalled();
     });
   });
 });

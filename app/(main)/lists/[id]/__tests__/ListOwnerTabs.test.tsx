@@ -39,12 +39,24 @@ const LISTS = [
 function InList() {
   const api = useContext(OwnerTabsContext);
   return (
-    <div data-testid="in-list" data-can-reorder={String(!!api?.showReorder)}>
+    <div
+      data-testid="in-list"
+      data-can-reorder={String(!!api?.showReorder)}
+      data-reveal={api?.reveal ?? ''}
+    >
       <button type="button" onClick={api?.showReorder}>
         Reorder all items
       </button>
+      <button type="button" onClick={api?.revealed}>
+        Revealed
+      </button>
     </div>
   );
+}
+
+function Library() {
+  const api = useContext(OwnerTabsContext);
+  return <div data-testid="library" data-reveal={api?.reveal ?? ''} />;
 }
 
 function Reorder() {
@@ -65,7 +77,7 @@ function renderTabs(inListCount = 2) {
       inListCount={inListCount}
       lists={LISTS}
       actingAs="Owner"
-      library={<div data-testid="library" />}
+      library={<Library />}
       reorder={<Reorder />}
     >
       <InList />
@@ -141,6 +153,33 @@ describe('ListOwnerTabs', () => {
       );
       act(() => (formProps.value?.onSuccess as () => void)());
       expect(screen.queryByTestId('item-form')).not.toBeInTheDocument();
+    });
+
+    it('SaveFromTheListTab_NamesTheEntryToRevealUntilTheSurfaceReports', async () => {
+      renderTabs();
+      await userEvent.click(screen.getByRole('button', { name: 'Add item' }));
+      await userEvent.click(
+        screen.getByRole('menuitem', { name: 'Create a new item' })
+      );
+      act(() => (formProps.value?.onSuccess as (id: string) => void)('i9'));
+      expect(screen.getByTestId('in-list')).toHaveAttribute(
+        'data-reveal',
+        'i9'
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Revealed' }));
+      expect(screen.getByTestId('in-list')).toHaveAttribute('data-reveal', '');
+    });
+
+    it('SaveFromTheLibraryTab_NamesNothingToReveal', async () => {
+      renderTabs(0);
+      await userEvent.click(screen.getByRole('button', { name: 'Add item' }));
+      await userEvent.click(
+        screen.getByRole('menuitem', { name: 'Create a new item' })
+      );
+      act(() => (formProps.value?.onSuccess as (id: string) => void)('i9'));
+      expect(screen.getByTestId('library')).toHaveAttribute('data-reveal', '');
+      await userEvent.click(screen.getByRole('tab', { name: /In this list/ }));
+      expect(screen.getByTestId('in-list')).toHaveAttribute('data-reveal', '');
     });
   });
 

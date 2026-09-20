@@ -91,7 +91,7 @@ const ItemFormContainer = ({
     returnToUrl,
   } = useProductFetch((vm) => {
     setManualDraftLive(false);
-    setViewModel(vm);
+    setViewModel({ ...vm, lists: preselected });
   }, setScreen);
   const actions = useItemActions(setViewModel);
   const { submit, isPending } = useItemSubmit(

@@ -47,6 +47,7 @@ export default function ListOwnerTabs({
     inListCount === 0 ? 'library' : 'list'
   );
   const [creating, setCreating] = useState(false);
+  const [revealId, setRevealId] = useState<string>();
 
   // One entry has no order to arrange, and a drop needs a visible neighbour to
   // compute a midpoint against.
@@ -72,13 +73,23 @@ export default function ListOwnerTabs({
           }
         : undefined,
       createItem: () => setCreating(true),
+      reveal: revealId,
+      revealed: () => setRevealId(undefined),
     }),
-    [canReorder, pathname, router, searchParams]
+    [canReorder, pathname, revealId, router, searchParams]
   );
 
   // The tab survives a list emptied down to one entry, so the panel falls back
   // rather than rendering a surface no tab is selected against.
   const active: OwnerTab = tab === 'reorder' && !canReorder ? 'list' : tab;
+
+  // The save appends, so on a long list the new entry lands pages past where
+  // the owner is sitting. Only the list tab has that problem: the library
+  // shows what was just made at the top.
+  const saved = (id?: string) => {
+    setCreating(false);
+    if (active === 'list') setRevealId(id);
+  };
 
   return (
     <OwnerTabsContext.Provider value={api}>
@@ -107,7 +118,7 @@ export default function ListOwnerTabs({
           onClose={() => setCreating(false)}
           // The form's save attaches the entry at quantity 1 and refreshes;
           // there is no separate add for this surface to perform.
-          onSuccess={() => setCreating(false)}
+          onSuccess={saved}
         />
       )}
     </OwnerTabsContext.Provider>

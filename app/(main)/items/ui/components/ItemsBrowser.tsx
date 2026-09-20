@@ -12,6 +12,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -144,6 +145,43 @@ export default function ItemsBrowser({
     const queryString = params.toString();
     router.replace(queryString ? `${pathname}?${queryString}` : pathname);
   };
+
+  // An entry just created from the band appends, so it sits on the last page
+  // under the list's own order and under no filter — the surface goes there
+  // first, then scrolls once the card is on the page. Centred rather than
+  // aligned to the top, which the pinned hero chrome would cover by a height
+  // that varies with what the toolbar wraps to.
+  const reveal = mode === 'list' ? ownerTabs?.reveal : undefined;
+  const revealed = ownerTabs?.revealed;
+  useEffect(() => {
+    if (!reveal) return;
+    if (visible.some((item) => item.id === reveal)) {
+      document
+        .getElementById(`item-${reveal}`)
+        ?.scrollIntoView({ block: 'center' });
+      revealed?.();
+      return;
+    }
+    if (!items.some((item) => item.id === reveal)) return;
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    ['q', 'store', 'price_min', 'price_max', 'sort', 'page'].forEach((key) =>
+      params.delete(key)
+    );
+    const last = Math.ceil(onList.length / pageSize);
+    if (last > 1) params.set('page', String(last));
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
+  }, [
+    reveal,
+    revealed,
+    visible,
+    items,
+    onList,
+    pageSize,
+    searchParams,
+    pathname,
+    router,
+  ]);
 
   return (
     <div className="items-browser">
