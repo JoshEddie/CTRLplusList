@@ -8,7 +8,7 @@ import {
   SPOILER_TIER_ROWS,
   SpoilerRowIcon,
 } from '@/app/ui/components/spoiler-tier-rows';
-import { useApplySpoilerTier } from '@/app/ui/components/use-spoiler-tier';
+import { useApplySpoilerTier } from '@/app/ui/hooks/useApplySpoilerTier';
 import { setListVisibility } from '@/lib/data/list.actions';
 import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
 import { getMessage } from '@/lib/i18n/utils';

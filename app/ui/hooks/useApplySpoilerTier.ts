@@ -1,5 +1,3 @@
-'use client';
-
 import { withSpoilerParam } from '@/lib/spoilers';
 import type { SpoilerTier } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

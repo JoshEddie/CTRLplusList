@@ -8,7 +8,7 @@ import {
   SPOILER_TIER_ROWS,
   type SpoilerTierRow,
 } from '@/app/ui/components/spoiler-tier-rows';
-import { useApplySpoilerTier } from '@/app/ui/components/use-spoiler-tier';
+import { useApplySpoilerTier } from '@/app/ui/hooks/useApplySpoilerTier';
 import type { SpoilerTier } from '@/lib/types';
 
 export default function HeroSpoilerControl({

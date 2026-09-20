@@ -7,9 +7,9 @@ import {
   type SpoilerTierRow,
   tierRowFor,
 } from '@/app/ui/components/spoiler-tier-rows';
+import { useApplySpoilerTier } from '@/app/ui/hooks/useApplySpoilerTier';
 import type { SpoilerTier } from '@/lib/types';
 import { useRef, useState } from 'react';
-import { useApplySpoilerTier } from './use-spoiler-tier';
 
 // The transient claim-visibility control — the hero's Spoilers tile and the
 // library's toggle both render it (2026-09-01 mockup): a two-line tile whose
