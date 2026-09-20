@@ -1675,6 +1675,8 @@ describe('ListEntry', () => {
   const owner = { actor: actorOf('owner') };
   const stepper = () => screen.getByRole('spinbutton');
   const press = (name: string) => screen.getByRole('button', { name });
+  const removePrompt = () =>
+    screen.queryByText('Remove this item from the list?');
 
   it('OwnerOnList_RendersStepperAtEntryQuantity-TellsMenuItIsOnTheList', () => {
     renderItem({ ...owner, item: { quantity: 3 } });
@@ -1708,11 +1710,32 @@ describe('ListEntry', () => {
   });
 
   // 0 is not a quantity an entry holds — it is the entry's absence, which is
-  // the removal the menu's own row performs.
-  it('SteppedToZero_CallsRemoveListItem-KeepsCardAtZero-NoRouterRefresh', async () => {
+  // the removal the menu's own row performs, so the press that reaches it asks.
+  it('SteppedToZero_AsksBeforeRemoving-StaysAtOneUntilConfirmed', async () => {
     const user = userEvent.setup();
     renderItem({ ...owner, item: { quantity: 1 } });
     await user.click(press('Decrease'));
+    expect(removePrompt()).toBeInTheDocument();
+    expect(stepper()).toHaveValue(1);
+    expect(removeListItem).not.toHaveBeenCalled();
+  });
+
+  it('SteppedToZeroCancelled_ClosesPrompt-StaysAtOne-NoWrite', async () => {
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 1 } });
+    await user.click(press('Decrease'));
+    await user.click(press('Cancel'));
+    expect(removePrompt()).not.toBeInTheDocument();
+    expect(stepper()).toHaveValue(1);
+    expect(removeListItem).not.toHaveBeenCalled();
+  });
+
+  it('SteppedToZeroConfirmed_CallsRemoveListItem-KeepsCardAtZero-NoRouterRefresh', async () => {
+    const user = userEvent.setup();
+    renderItem({ ...owner, item: { quantity: 1 } });
+    await user.click(press('Decrease'));
+    await user.click(press('Remove'));
+    expect(removePrompt()).not.toBeInTheDocument();
     await waitFor(() =>
       expect(removeListItem).toHaveBeenCalledWith('l1', 'i1')
     );
@@ -1725,6 +1748,7 @@ describe('ListEntry', () => {
     const user = userEvent.setup();
     renderItem({ ...owner, item: { quantity: 1 } });
     await user.click(press('Decrease'));
+    await user.click(press('Remove'));
     await waitFor(() => expect(removeListItem).toHaveBeenCalled());
     await user.click(press('Increase'));
     await waitFor(() =>
@@ -1740,6 +1764,7 @@ describe('ListEntry', () => {
     const user = userEvent.setup();
     renderItem({ ...owner, item: { quantity: 1 } });
     await user.click(press('Decrease'));
+    await user.click(press('Remove'));
     await waitFor(() =>
       expect(screen.getByTestId('owner-actions')).toHaveAttribute(
         'data-on-list',
@@ -1882,12 +1907,14 @@ describe('FusedFooter', () => {
     expect(screen.getByRole('spinbutton')).toHaveValue(3);
   });
 
-  it('StepDownFromOne_CallsRemoveListItem-BannerAndStepperShowZero', async () => {
+  it('StepDownFromOne_AsksThenCallsRemoveListItem-BannerAndStepperShowZero', async () => {
     const user = userEvent.setup();
     renderItem({ ...owner, item: { quantity: 1 } });
     await user.click(
       screen.getByRole('button', { name: 'banner-step-down' })
     );
+    expect(banners()).toHaveAttribute('data-quantity', '1');
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
     await waitFor(() =>
       expect(removeListItem).toHaveBeenCalledWith('l1', 'i1')
     );

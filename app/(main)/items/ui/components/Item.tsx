@@ -1,6 +1,7 @@
 'use client';
 
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
+import { getMessage } from '@/lib/i18n/utils';
 import { ItemDisplay, ProfileMembershipView, SpoilerTier } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -74,6 +75,12 @@ export default function Item({
     onEntryPresence
   );
   const ownsEntry = isOwner && !!item.list_id && !preview;
+
+  // Stepping to 0 is the removal the menu's own row performs, reached one
+  // press past 1 — so that press asks before it writes.
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const stepQuantity = (next: number) =>
+    next === 0 ? setConfirmRemove(true) : entry.setQuantity(next);
 
   const handleModalOpen = (view?: 'claim' | 'roster') => {
     const params = new URLSearchParams(searchParams?.toString() || '');
@@ -162,6 +169,9 @@ export default function Item({
   return (
     <>
       <div
+        // The preview draws the same item inside the edit modal, so only the
+        // surface's own card carries the anchor a reveal scrolls to.
+        id={preview ? undefined : `item-${item.id}`}
         className={containerClasses({
           className,
           isOwner,
@@ -197,7 +207,7 @@ export default function Item({
             onOpenRoster={handlers?.roster}
             step={
               fused
-                ? { name: item.name, onChange: entry.setQuantity }
+                ? { name: item.name, onChange: stepQuantity }
                 : undefined
             }
           />
@@ -207,7 +217,7 @@ export default function Item({
           <EntryStepper
             name={item.name}
             quantity={entry.quantity}
-            onChange={entry.setQuantity}
+            onChange={stepQuantity}
           />
         )}
 
@@ -263,6 +273,17 @@ export default function Item({
               : "You'll see whether this item is already claimed — no names, just the count."
           }
           confirmText="Show me"
+        />
+      )}
+
+      {confirmRemove && (
+        <ConfirmDialog
+          isOpen
+          onClose={() => setConfirmRemove(false)}
+          onConfirm={() => entry.setQuantity(0)}
+          title={getMessage('entry_remove_title')}
+          message={getMessage('entry_remove_message')}
+          confirmText={getMessage('entry_remove_confirm')}
         />
       )}
 

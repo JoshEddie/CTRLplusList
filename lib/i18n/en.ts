@@ -94,7 +94,11 @@ export const en = {
   entry_move_bottom: 'Move to bottom',
   entry_move_top: 'Move to top',
   entry_quantity_wanted: '{quantity, plural, other {# wanted}}',
+  entry_remove_confirm: 'Remove',
   entry_remove_label: 'Remove from list',
+  entry_remove_message:
+    'Setting the quantity to 0 takes it off this list. It stays in your library and can be readded at any time.',
+  entry_remove_title: 'Remove this item from the list?',
   entry_reorder_all: 'Reorder all items',
   entry_stepper_label: 'Quantity for {name}',
   hero_meta_claimed_count: '{claimed, number} / {total, number} claimed',
