@@ -59,6 +59,10 @@ vi.mock('../../StoreFilterPopover', () => ({
   ),
 }));
 
+const historyReplace = vi
+  .spyOn(window.history, 'replaceState')
+  .mockImplementation(() => {});
+
 type ToolbarProps = React.ComponentProps<typeof ItemsToolbar>;
 
 function renderToolbar(overrides: Partial<ToolbarProps> = {}) {
@@ -78,6 +82,7 @@ function renderToolbar(overrides: Partial<ToolbarProps> = {}) {
 
 beforeEach(() => {
   nav.replace.mockReset();
+  historyReplace.mockClear();
   nav.pathname = '/items';
   nav.search = '';
   nav.nullParams = false;
@@ -110,12 +115,25 @@ describe('ItemsToolbar', () => {
         vi.advanceTimersByTime(100);
       });
       fireEvent.change(input, { target: { value: 'gift' } });
-      expect(nav.replace).not.toHaveBeenCalled();
+      expect(historyReplace).not.toHaveBeenCalled();
       act(() => {
         vi.advanceTimersByTime(200);
       });
-      expect(nav.replace).toHaveBeenCalledTimes(1);
-      expect(nav.replace).toHaveBeenCalledWith('/items?q=gift');
+      expect(historyReplace).toHaveBeenCalledTimes(1);
+      expect(historyReplace).toHaveBeenCalledWith(null, '', '/items?q=gift');
+    });
+
+    it('SearchCommit_WritesHistoryWithoutRouterNavigation', () => {
+      renderToolbar();
+      fireEvent.change(
+        screen.getByRole('searchbox', { name: 'Search items' }),
+        { target: { value: 'gift' } }
+      );
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(historyReplace).toHaveBeenCalledWith(null, '', '/items?q=gift');
+      expect(nav.replace).not.toHaveBeenCalled();
     });
 
     it('SubDebounceWindow_NoCommit', () => {
@@ -127,7 +145,7 @@ describe('ItemsToolbar', () => {
       act(() => {
         vi.advanceTimersByTime(150);
       });
-      expect(nav.replace).not.toHaveBeenCalled();
+      expect(historyReplace).not.toHaveBeenCalled();
     });
 
     it('ClearButton_ResetsInputAndCommitsEmptyRemovingQAndPage', () => {
@@ -140,7 +158,7 @@ describe('ItemsToolbar', () => {
       act(() => {
         vi.advanceTimersByTime(200);
       });
-      expect(nav.replace).toHaveBeenCalledWith('/items');
+      expect(historyReplace).toHaveBeenCalledWith(null, '', '/items');
     });
   });
 
