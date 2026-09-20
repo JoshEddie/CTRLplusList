@@ -1,5 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockNextHeaders } from '@/test/helpers/next-headers';
 
 import { list_visits } from '@/db/schema';
 import { auth } from '@/lib/auth';
@@ -11,6 +12,7 @@ import { seedList as seedVisitList, seedVisit } from './seedVisitGraph';
 import { seedList, seedListVisit, type TestDb } from './test-helpers';
 
 mockNextCache();
+mockNextHeaders();
 
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock('@/db', () => ({
@@ -128,9 +130,9 @@ describe('ViewerOnSeededVisibilityGraph', () => {
       expect(row?.favorited_at).toBeInstanceOf(Date);
     });
 
-    it('Success_CallsUpdateTagListVisits', async () => {
+    it('Success_CallsUpdateTagViewerVisits', async () => {
       await actions.bookmarkList(PUBLIC_LIST);
-      expect(updateTag.mock.calls).toEqual([['list_visits']]);
+      expect(updateTag.mock.calls).toEqual([['list_visits:user:viewer']]);
     });
 
     it('NonOwnerPrivateList_ReturnsListNotViewable-NoRowInserted', async () => {
@@ -432,7 +434,7 @@ describe('OwnerWithPerTestSeeding', () => {
       expect(res.error).toBe('List not viewable');
     });
 
-    it('OwnList_InsertsVisitWithFavoritedAt-CallsUpdateTagListVisits', async () => {
+    it('OwnList_InsertsVisitWithFavoritedAt-CallsUpdateTagOwnerVisits', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id, visibility: 'private' });
       const res = await actions.bookmarkList('L');
       expect(res.success).toBe(true);
@@ -443,7 +445,7 @@ describe('OwnerWithPerTestSeeding', () => {
           favorited_at: expect.any(Date),
         }),
       ]);
-      expect(updateTag).toHaveBeenCalledWith('list_visits');
+      expect(updateTag).toHaveBeenCalledWith('list_visits:user:owner');
     });
 
     it('OtherOwnerPublicList_InsertsVisit', async () => {
@@ -484,7 +486,7 @@ describe('OwnerWithPerTestSeeding', () => {
       expect(res.error).toBe('Unauthorized');
     });
 
-    it('Bookmarked_NullsFavoritedAt-CallsUpdateTagListVisits', async () => {
+    it('Bookmarked_NullsFavoritedAt-CallsUpdateTagOwnerVisits', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });
       await seedListVisit(db, {
         user_id: OWNER.id,
@@ -495,7 +497,7 @@ describe('OwnerWithPerTestSeeding', () => {
       expect(res.success).toBe(true);
       const rows = await visitRows(OWNER.id);
       expect(rows[0].favorited_at).toBeNull();
-      expect(updateTag).toHaveBeenCalledWith('list_visits');
+      expect(updateTag).toHaveBeenCalledWith('list_visits:user:owner');
     });
 
     it('UpdateThrows_ReturnsFailed', async () => {
@@ -514,7 +516,7 @@ describe('OwnerWithPerTestSeeding', () => {
       expect(res.error).toBe('Unauthorized');
     });
 
-    it('IncludeBookmarked_DeletesAllRows-CallsUpdateTagListVisits', async () => {
+    it('IncludeBookmarked_DeletesAllRows-CallsUpdateTagOwnerVisits', async () => {
       await seedList(db, { id: 'L1', user_id: OWNER.id });
       await seedList(db, { id: 'L2', user_id: OWNER.id });
       await seedListVisit(db, {
@@ -526,7 +528,7 @@ describe('OwnerWithPerTestSeeding', () => {
       const res = await actions.clearVisitHistory({ includeBookmarked: true });
       expect(res.success).toBe(true);
       expect(await visitRows(OWNER.id)).toHaveLength(0);
-      expect(updateTag).toHaveBeenCalledWith('list_visits');
+      expect(updateTag).toHaveBeenCalledWith('list_visits:user:owner');
     });
 
     it('ExcludeBookmarked_DeletesNonBookmarked-NullsBookmarkedLastVisited', async () => {
@@ -572,7 +574,7 @@ describe('OwnerWithPerTestSeeding', () => {
       expect(res.message).toBe('No history row');
     });
 
-    it('Bookmarked_NullsLastVisited-RowSurvives-CallsUpdateTagListVisits', async () => {
+    it('Bookmarked_NullsLastVisited-RowSurvives-CallsUpdateTagOwnerVisits', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });
       await seedListVisit(db, {
         user_id: OWNER.id,
@@ -585,7 +587,7 @@ describe('OwnerWithPerTestSeeding', () => {
       const rows = await visitRows(OWNER.id);
       expect(rows).toHaveLength(1);
       expect(rows[0].last_visited_at).toBeNull();
-      expect(updateTag).toHaveBeenCalledWith('list_visits');
+      expect(updateTag).toHaveBeenCalledWith('list_visits:user:owner');
     });
 
     it('NonBookmarked_DeletesRow', async () => {

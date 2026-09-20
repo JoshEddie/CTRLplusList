@@ -1,0 +1,447 @@
+/* Profiles page + profile space. Colours and radii map onto the existing
+   token set; the only per-profile value is the accent, which is data and
+   arrives as `--accent-*` custom properties set on each surface's root. */
+
+.profiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+/* `overflow: visible` is load-bearing — the avatar hangs below the band, and
+   the menu opens past the card's own bounds. */
+.profile-card {
+  position: relative;
+  background-color: var(--background-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  overflow: visible;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+@media (hover: hover) {
+  .profile-card:hover {
+    border-color: var(--card-border-hover-color);
+    box-shadow: var(--card-shadow-hover);
+  }
+
+  /* The card already being acted as carries no click handler, so the pointer
+     is scoped away from it rather than advertising a click that does nothing. */
+  .profile-card:not(.is-active):hover {
+    cursor: pointer;
+  }
+}
+
+/* The active card paints the accent band across its whole face and holds the
+   body off its edges, so the accent reads as a frame around it. */
+.profile-card.is-active {
+  background-image: var(--accent-bg);
+  box-shadow: 0 10px 28px var(--accent-shadow);
+}
+
+.profile-card.is-active > .profile-card-body {
+  margin: 0 8px 8px;
+  padding: 38px 12px 14px;
+  background-color: rgb(255 255 255 / 0.9);
+  border-radius: 8px;
+}
+
+.profile-card-band {
+  position: relative;
+  height: 64px;
+  border-radius: 12px 12px 0 0;
+  background-image: var(--accent-bg);
+}
+
+.profile-card-menu {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.profile-card-avatar {
+  width: 72px;
+  height: 72px;
+  position: absolute;
+  left: 20px;
+  bottom: -32px;
+  box-shadow: 0 0 0 4px var(--background-color);
+}
+
+.profile-card-active {
+  position: absolute;
+  background: var(--accent-ink);
+  left: 74px;
+  bottom: -30px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--light-color);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 0 0 3px var(--background-color);
+}
+
+.profile-card-body {
+  padding: 38px 12px 14px;
+  margin: 0 8px 8px;
+}
+
+.profile-card-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.profile-card-name {
+  font-family: var(--font-crimson-pro);
+  font-weight: 300;
+  font-size: 24px;
+  color: var(--accent-ink);
+}
+
+.profile-card-role {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-text-color);
+}
+
+.profile-card-role.is-you {
+  color: var(--primary-color);
+}
+
+/* The line is reserved whether or not the profile has a tagline, so a row of
+   cards keeps its counts on one baseline. */
+.profile-card-tagline {
+  font-size: 13px;
+  color: var(--muted-text-color);
+  margin: 2px 0 10px;
+  min-height: 17px;
+}
+
+.profile-card-counts {
+  font-size: 11px;
+  color: var(--meta-text-color);
+}
+
+/* Accent picker — large circles so the colour reads, with the selection ring
+   held off the swatch by a background-coloured gap so it never sits against
+   the hue it is marking. */
+
+/* Full bleed: the band sits on the white surface's own top edge, not inside
+   the container's well, so it cancels the well's padding rather than
+   restating it. The card's band at the space's scale — the disc is set into
+   its lower edge the same way, held at the well's left margin the bleed just
+   cancelled. */
+.profile-space-band {
+  position: relative;
+  height: 64px;
+  background-image: var(--accent-bg);
+  margin: calc(var(--container-padding-top) * -1)
+    calc(var(--container-padding-x) * -1) 0;
+  border-radius: var(--app-surface-radius) var(--app-surface-radius) 0 0;
+}
+
+/* Clears the disc's overhang, so the name starts below it rather than beside
+   it — the card's stack, at the space's scale. */
+.profile-space-identity {
+  margin: 54px 0 24px;
+}
+
+.profile-space-avatar {
+  position: absolute;
+  left: var(--container-padding-x);
+  bottom: -42px;
+  display: inline-flex;
+  border: none;
+  padding: 0;
+  background: none;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px var(--background-color);
+}
+
+.profile-space-avatar .altvatar-disc {
+  width: 84px;
+  height: 84px;
+}
+
+.profile-space-avatar-edit {
+  cursor: pointer;
+}
+
+.profile-space-avatar-badge {
+  position: absolute;
+  right: -2px;
+  bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent-dark);
+  color: var(--light-color);
+  font-size: 15px;
+  box-shadow: 0 0 0 3px var(--background-color);
+}
+
+.profile-space-avatar-edit:hover .profile-space-avatar-badge,
+.profile-space-avatar-edit:focus-visible .profile-space-avatar-badge {
+  background: var(--accent-ink);
+}
+
+.profile-space-name {
+  font-family: var(--font-crimson-pro);
+  font-weight: 200;
+  font-size: 40px;
+  color: var(--primary-color);
+  line-height: 1.05;
+  margin: 0;
+}
+
+.profile-space-tagline {
+  font-size: 13px;
+  color: var(--muted-text-color);
+  margin: 4px 0 0;
+}
+
+.form-shell-body.profile-settings-form {
+  padding: 0;
+}
+
+.avatar_new-profile {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+}
+
+.new-profile-explainer {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted-text-color);
+}
+
+.profile-space-tabs {
+  margin: 16px 0;
+}
+
+.member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--card-border-color);
+}
+
+.member-row-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.member-row-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--neutral-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.member-row-you {
+  font-weight: 400;
+  color: var(--muted-text-color);
+}
+
+.member-row-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--meta-text-color);
+}
+
+.member-role-tag {
+  font-family: var(--font-roboto-condensed);
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.member-role-tag--owner {
+  background: var(--card-accent-background-color);
+  color: var(--primary-color);
+}
+
+.member-role-tag--manager {
+  background: var(--divider-color);
+  color: var(--neutral-text-color);
+}
+
+/* The menu popover is absolutely positioned against its nearest positioned
+   ancestor, so the row's control needs to be one. */
+.member-row-menu,
+.member-row-role-control {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* One set of acts, two shapes. The narrow row has no width for labelled
+   controls, so it carries the kebab alone; from 600px up the labels stand on
+   the row and the kebab would only duplicate them. */
+.member-row-controls {
+  display: none;
+}
+
+@media (min-width: 600px) {
+  .member-row-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .member-row-menu {
+    display: none;
+  }
+}
+
+/* A seat nobody has taken yet: the row is dimmed so the roster reads as
+   members first, offers second, without a second layout. */
+.member-row--pending {
+  color: var(--meta-text-color);
+}
+
+.member-row-pending-disc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px dashed var(--card-border-color);
+  color: var(--meta-text-color);
+}
+
+.member-row-avatar {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+/* Claim visibility — its own tab, because it writes account-keyed preference
+   rows where the rest of the space writes the profile. Gated per control: the
+   viewer's own row stays live while the rest disable. */
+.claim-visibility {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* The viewer's own baseline: open, and the only control here their role never
+   forbids. */
+.claim-visibility-own {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.claim-visibility-label {
+  margin: 0;
+  font-weight: 600;
+}
+
+.claim-visibility-hint {
+  margin: 0;
+  color: var(--muted-text-color);
+  font-size: 0.9rem;
+}
+
+.claim-visibility-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Everything the viewer merely administers, one collapsed row each: a profile
+   with several members would otherwise be a wall of identical control sets. */
+.claim-visibility-administered {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--card-border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.claim-visibility-row + .claim-visibility-row {
+  border-top: 1px solid var(--card-border-color);
+}
+
+.claim-visibility-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.claim-visibility-trigger:hover {
+  background-color: var(--secondary-background-color);
+}
+
+.claim-visibility-trigger:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: -2px;
+}
+
+.claim-visibility-row-title {
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The closed row still answers what it is set to. Pushed right so the titles
+   stay a scannable column. */
+.claim-visibility-row-summary {
+  margin-left: auto;
+  color: var(--muted-text-color);
+  font-size: 0.9rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.claim-visibility-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 12px 12px;
+}

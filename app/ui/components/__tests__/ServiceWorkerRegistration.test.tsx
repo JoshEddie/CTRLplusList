@@ -7,15 +7,30 @@ import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ServiceWorkerRegistration } from '../ServiceWorkerRegistration';
 
-function stubServiceWorker(register: ReturnType<typeof vi.fn>) {
+function stubServiceWorker(
+  register: ReturnType<typeof vi.fn>,
+  controller: object | null = null
+) {
+  const sw = Object.assign(new EventTarget(), { register, controller });
   Object.defineProperty(navigator, 'serviceWorker', {
     configurable: true,
-    value: { register },
+    value: sw,
   });
+  return sw;
+}
+
+function stubReload() {
+  const reload = vi.fn();
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    value: { ...window.location, reload },
+  });
+  return reload;
 }
 
 afterEach(() => {
   Reflect.deleteProperty(navigator, 'serviceWorker');
+  Reflect.deleteProperty(window, 'location');
   vi.restoreAllMocks();
 });
 
@@ -60,6 +75,37 @@ describe('ServiceWorkerRegistration', () => {
       const { container } = render(<ServiceWorkerRegistration />);
 
       expect(container.firstChild).toBeNull();
+    });
+
+    it('ControllerReplaced_ReloadsOntoNewRelease', () => {
+      const sw = stubServiceWorker(vi.fn().mockResolvedValue(undefined), {});
+      const reload = stubReload();
+
+      render(<ServiceWorkerRegistration />);
+      sw.dispatchEvent(new Event('controllerchange'));
+
+      expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    it('FirstInstallClaimsUncontrolledPage_DoesNotReload', () => {
+      const sw = stubServiceWorker(vi.fn().mockResolvedValue(undefined));
+      const reload = stubReload();
+
+      render(<ServiceWorkerRegistration />);
+      sw.dispatchEvent(new Event('controllerchange'));
+
+      expect(reload).not.toHaveBeenCalled();
+    });
+
+    it('Unmounted_StopsReloadingOnControllerChange', () => {
+      const sw = stubServiceWorker(vi.fn().mockResolvedValue(undefined), {});
+      const reload = stubReload();
+
+      const { unmount } = render(<ServiceWorkerRegistration />);
+      unmount();
+      sw.dispatchEvent(new Event('controllerchange'));
+
+      expect(reload).not.toHaveBeenCalled();
     });
 
     it('Rerendered_RegistersOnlyOnce', () => {

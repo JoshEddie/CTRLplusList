@@ -1,7 +1,6 @@
 /* eslint-disable testing-library/no-node-access --
- * The close affordance is a bare `<div className="close-button">` with no role
- * or accessible name, and the overlay is portaled to document.body, so classed
- * querySelector against document.body is the only path.
+ * The overlay is portaled to document.body, so structural assertions on the
+ * unnamed wrapper divs require classed querySelector against document.body.
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -51,9 +50,7 @@ describe('Modal', () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     render(<Modal onClose={onClose}>x</Modal>);
-    await user.click(
-      document.body.querySelector('.close-button') as HTMLElement
-    );
+    await user.click(screen.getByRole('button', { name: 'Close' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 

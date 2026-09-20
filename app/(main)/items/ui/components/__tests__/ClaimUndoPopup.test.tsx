@@ -12,8 +12,10 @@ function renderPopup(
 ) {
   const props: React.ComponentProps<typeof ClaimUndoPopup> = {
     isOpen: true,
+    maxUnits: 1,
     onClose: vi.fn(),
     onUndo: vi.fn(),
+    onUpdateUnits: vi.fn(),
     ...overrides,
   };
   return { props, ...render(<ClaimUndoPopup {...props} />) };
@@ -75,5 +77,45 @@ describe('ClaimUndoPopup', () => {
     await user.click(keepButton());
     expect(props.onClose).toHaveBeenCalledTimes(1);
     expect(props.onUndo).not.toHaveBeenCalled();
+  });
+
+  // Buy & Claim records one unit to keep the fast path fast; somebody who
+  // bought several raises the count here rather than unclaiming and restarting.
+  describe('RaisingTheCount', () => {
+    const unitsField = () => screen.getByRole('spinbutton');
+
+    it('NothingToRaiseTo_RendersNoUnitsControl', () => {
+      renderPopup({ maxUnits: 1 });
+      expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+    });
+
+    it('RoomToRaise_StartsAtTheOneUnitClaimedAndCapsAtTheCeiling', () => {
+      renderPopup({ maxUnits: 3 });
+      expect(unitsField()).toHaveValue(1);
+      expect(unitsField()).toHaveAttribute('max', '3');
+    });
+
+    it('StillTheOneUnitRecorded_LeavesUpdateInert', () => {
+      renderPopup({ maxUnits: 3 });
+      expect(screen.getByRole('button', { name: 'Update' })).toBeDisabled();
+    });
+
+    it('RaisedCountThenUpdate_ReportsItThenCloses', async () => {
+      const user = userEvent.setup();
+      const calls: string[] = [];
+      const { props } = renderPopup({
+        maxUnits: 3,
+        onUpdateUnits: vi.fn(() => calls.push('update')),
+        onClose: vi.fn(() => calls.push('close')),
+      });
+
+      await user.clear(unitsField());
+      await user.type(unitsField(), '3');
+      await user.click(screen.getByRole('button', { name: 'Update to 3' }));
+
+      expect(props.onUpdateUnits).toHaveBeenCalledWith(3);
+      expect(calls).toEqual(['update', 'close']);
+      expect(props.onUndo).not.toHaveBeenCalled();
+    });
   });
 });

@@ -3,9 +3,15 @@ import User from '../../(auth)/ui/components/User';
 import AppLogo from './AppLogo';
 import AppNav from './AppNav';
 
-export default function AppFrame({ children }: { children: React.ReactNode }) {
+export default function AppFrame({
+  children,
+  gated,
+}: {
+  children: React.ReactNode;
+  gated?: boolean;
+}) {
   return (
-    <div className="app-frame">
+    <div className="app-frame" {...(gated ? { 'data-gated': '' } : {})}>
       <header className="app-nav">
         <div className="app-nav-inner">
           <AppLogo />

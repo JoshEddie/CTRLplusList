@@ -4,13 +4,7 @@
  * (`.popover-trigger-count`) are asserted structurally where no stable role or
  * accessible name exists.
  */
-import {
-  act,
-  render,
-  screen,
-  fireEvent,
-  within,
-} from '@testing-library/react';
+import { act, render, screen, fireEvent, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ItemsToolbar from '../ItemsToolbar';
 
@@ -65,6 +59,10 @@ vi.mock('../../StoreFilterPopover', () => ({
   ),
 }));
 
+const historyReplace = vi
+  .spyOn(window.history, 'replaceState')
+  .mockImplementation(() => {});
+
 type ToolbarProps = React.ComponentProps<typeof ItemsToolbar>;
 
 function renderToolbar(overrides: Partial<ToolbarProps> = {}) {
@@ -76,12 +74,15 @@ function renderToolbar(overrides: Partial<ToolbarProps> = {}) {
       showPriceSort={overrides.showPriceSort ?? true}
       showPriceFilter={overrides.showPriceFilter ?? true}
       showGridToggle={overrides.showGridToggle}
+      tier={overrides.tier}
+      baseline={overrides.baseline}
     />
   );
 }
 
 beforeEach(() => {
   nav.replace.mockReset();
+  historyReplace.mockClear();
   nav.pathname = '/items';
   nav.search = '';
   nav.nullParams = false;
@@ -114,12 +115,25 @@ describe('ItemsToolbar', () => {
         vi.advanceTimersByTime(100);
       });
       fireEvent.change(input, { target: { value: 'gift' } });
-      expect(nav.replace).not.toHaveBeenCalled();
+      expect(historyReplace).not.toHaveBeenCalled();
       act(() => {
         vi.advanceTimersByTime(200);
       });
-      expect(nav.replace).toHaveBeenCalledTimes(1);
-      expect(nav.replace).toHaveBeenCalledWith('/items?q=gift');
+      expect(historyReplace).toHaveBeenCalledTimes(1);
+      expect(historyReplace).toHaveBeenCalledWith(null, '', '/items?q=gift');
+    });
+
+    it('SearchCommit_WritesHistoryWithoutRouterNavigation', () => {
+      renderToolbar();
+      fireEvent.change(
+        screen.getByRole('searchbox', { name: 'Search items' }),
+        { target: { value: 'gift' } }
+      );
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(historyReplace).toHaveBeenCalledWith(null, '', '/items?q=gift');
+      expect(nav.replace).not.toHaveBeenCalled();
     });
 
     it('SubDebounceWindow_NoCommit', () => {
@@ -131,7 +145,7 @@ describe('ItemsToolbar', () => {
       act(() => {
         vi.advanceTimersByTime(150);
       });
-      expect(nav.replace).not.toHaveBeenCalled();
+      expect(historyReplace).not.toHaveBeenCalled();
     });
 
     it('ClearButton_ResetsInputAndCommitsEmptyRemovingQAndPage', () => {
@@ -144,7 +158,7 @@ describe('ItemsToolbar', () => {
       act(() => {
         vi.advanceTimersByTime(200);
       });
-      expect(nav.replace).toHaveBeenCalledWith('/items');
+      expect(historyReplace).toHaveBeenCalledWith(null, '', '/items');
     });
   });
 
@@ -160,9 +174,9 @@ describe('ItemsToolbar', () => {
     it('ActiveFilters_CountBadgeEqualsActiveFilterCount', () => {
       nav.search = 'sort=name_asc&store=Amazon&price_min=5';
       const { container } = renderToolbar({ storeOptions: ['Amazon'] });
-      expect(container.querySelector('.popover-trigger-count')).toHaveTextContent(
-        '3'
-      );
+      expect(
+        container.querySelector('.popover-trigger-count')
+      ).toHaveTextContent('3');
     });
 
     it('Click_OpensSheetWithDialogRole', () => {
@@ -178,15 +192,6 @@ describe('ItemsToolbar', () => {
   });
 
   describe('SheetDismiss', () => {
-    it('CloseButton_ClosesSheet', () => {
-      renderToolbar();
-      openSheet();
-      fireEvent.click(screen.getByRole('button', { name: 'Close filters' }));
-      expect(
-        screen.queryByRole('dialog', { name: 'Filters' })
-      ).not.toBeInTheDocument();
-    });
-
     it('DoneButton_ClosesSheet', () => {
       renderToolbar();
       openSheet();
@@ -237,7 +242,7 @@ describe('ItemsToolbar', () => {
       expect(keydownAdds()).toBe(0);
       openSheet();
       expect(keydownAdds()).toBe(1);
-      fireEvent.click(screen.getByRole('button', { name: 'Close filters' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
       expect(keydownRemoves()).toBe(1);
       openSheet();
       expect(keydownAdds()).toBe(2);
@@ -245,6 +250,50 @@ describe('ItemsToolbar', () => {
       expect(keydownRemoves()).toBe(2);
       add.mockRestore();
       remove.mockRestore();
+    });
+  });
+
+  describe('SheetChrome', () => {
+    it('Clear_ReplaceDropsEveryFilterParam', () => {
+      nav.search = 'sort=name_asc&store=Amazon&price_min=5&page=3';
+      renderToolbar({ storeOptions: ['Amazon'] });
+      openSheet();
+      fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+      expect(nav.replace).toHaveBeenCalledWith('/items');
+    });
+
+    it('SheetOpen_LocksDocumentScrollUntilClosed', () => {
+      renderToolbar();
+      expect(document.documentElement).not.toHaveClass('has-open-sheet');
+      openSheet();
+      expect(document.documentElement).toHaveClass('has-open-sheet');
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      expect(document.documentElement).not.toHaveClass('has-open-sheet');
+    });
+
+    it('SheetClosed_ReturnsFocusToTheFiltersTrigger', () => {
+      renderToolbar();
+      openSheet();
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      expect(
+        screen.getByRole('button', { name: 'Open filters' })
+      ).toHaveFocus();
+    });
+
+    it('SheetReopened_StartsAtTheRootLevel', () => {
+      renderToolbar({ storeOptions: ['Amazon'] });
+      openSheet();
+      fireEvent.click(screen.getByRole('button', { name: 'Filter by store' }));
+      expect(screen.getByRole('dialog')).toHaveAttribute(
+        'aria-label',
+        'Stores'
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      openSheet();
+      expect(screen.getByRole('dialog')).toHaveAttribute(
+        'aria-label',
+        'Filters'
+      );
     });
   });
 
@@ -267,48 +316,14 @@ describe('ItemsToolbar', () => {
       expect(nav.replace).toHaveBeenCalledWith('/items');
     });
 
-    it('PurchasesHide_ReplaceRemovesPurchasesParam', () => {
-      nav.search = 'purchases=only';
-      renderToolbar();
-      fireEvent.change(
-        screen.getByRole('combobox', { name: 'Purchases filter' }),
-        { target: { value: 'hide' } }
-      );
-      expect(nav.replace).toHaveBeenCalledWith('/items');
-    });
-
-    it('PurchasesNonDefault_ReplaceSetsPurchasesRemovesPage', () => {
-      nav.search = 'page=2';
-      renderToolbar();
-      fireEvent.change(
-        screen.getByRole('combobox', { name: 'Purchases filter' }),
-        { target: { value: 'only' } }
-      );
-      expect(nav.replace).toHaveBeenCalledWith('/items?purchases=only');
-    });
-
-    it('ShowNonDefault_ReplaceSetsShowRemovesPage', () => {
-      nav.search = 'page=2';
-      renderToolbar({ mode: 'choose' });
-      fireEvent.change(
-        screen.getByRole('combobox', {
-          name: 'Show items by list membership',
-        }),
-        { target: { value: 'on' } }
-      );
-      expect(nav.replace).toHaveBeenCalledWith('/items?show=on');
-    });
-
-    it('ShowAll_ReplaceRemovesShowParam', () => {
-      nav.search = 'show=on';
-      renderToolbar({ mode: 'choose' });
-      fireEvent.change(
-        screen.getByRole('combobox', {
-          name: 'Show items by list membership',
-        }),
-        { target: { value: 'all' } }
-      );
-      expect(nav.replace).toHaveBeenCalledWith('/items');
+    it('ModeEdit_OffersTheLibrarySortsWithoutListOrder', () => {
+      renderToolbar({ mode: 'edit' });
+      const options = screen
+        .getAllByRole('option')
+        .map((option) => option.textContent);
+      expect(options[0]).toBe('Newest');
+      expect(options).toContain('Oldest');
+      expect(options).not.toContain('List order');
     });
   });
 
@@ -356,27 +371,6 @@ describe('ItemsToolbar', () => {
         search: 'sort=name_asc',
         labels: ['Name A–Z'],
         removeParamGone: 'sort',
-      },
-      {
-        name: 'ModeItemsPurchasesOnly',
-        mode: 'items',
-        search: 'purchases=only',
-        labels: ['Only purchased'],
-        removeParamGone: 'purchases',
-      },
-      {
-        name: 'ModeListPurchasesNone',
-        mode: 'list',
-        search: 'purchases=none',
-        labels: ['Only not purchased'],
-        removeParamGone: 'purchases',
-      },
-      {
-        name: 'ModeChooseShowOn',
-        mode: 'choose',
-        search: 'show=on',
-        labels: ['On the list'],
-        removeParamGone: 'show',
       },
       {
         name: 'ModeItemsStore',
@@ -434,38 +428,28 @@ describe('ItemsToolbar', () => {
         screen.queryByRole('region', { name: 'Active filters' })
       ).not.toBeInTheDocument();
     });
-
-    it('ModeListPurchasesUnlabeledValue_RendersNoChipRow', () => {
-      nav.search = 'purchases=reveal';
-      renderToolbar({ mode: 'list' });
-      expect(
-        screen.queryByRole('region', { name: 'Active filters' })
-      ).not.toBeInTheDocument();
-    });
-
-    it('ModeChooseShowUnlabeledValue_RendersNoChipRow', () => {
-      nav.search = 'show=bogus';
-      renderToolbar({ mode: 'choose' });
-      expect(
-        screen.queryByRole('region', { name: 'Active filters' })
-      ).not.toBeInTheDocument();
-    });
   });
 
   describe('DefaultsAndOptions', () => {
     it('ModeList_DefaultSortListOrder', () => {
       renderToolbar({ mode: 'list' });
       expect(
-        (screen.getByRole('combobox', { name: 'Sort items' }) as HTMLSelectElement)
-          .value
+        (
+          screen.getByRole('combobox', {
+            name: 'Sort items',
+          }) as HTMLSelectElement
+        ).value
       ).toBe('list_order');
     });
 
     it('ModeItems_DefaultSortCreatedDesc', () => {
       renderToolbar({ mode: 'items' });
       expect(
-        (screen.getByRole('combobox', { name: 'Sort items' }) as HTMLSelectElement)
-          .value
+        (
+          screen.getByRole('combobox', {
+            name: 'Sort items',
+          }) as HTMLSelectElement
+        ).value
       ).toBe('created_desc');
     });
 
@@ -486,13 +470,6 @@ describe('ItemsToolbar', () => {
           }) as HTMLInputElement
         ).value
       ).toBe('');
-      expect(
-        (
-          screen.getByRole('combobox', {
-            name: 'Purchases filter',
-          }) as HTMLSelectElement
-        ).value
-      ).toBe('hide');
       expect(
         screen.queryByRole('region', { name: 'Active filters' })
       ).not.toBeInTheDocument();
@@ -557,6 +534,72 @@ describe('ItemsToolbar', () => {
       renderToolbar({ storeOptions: ['Amazon'] });
       fireEvent.click(screen.getByText('store-clear'));
       expect(nav.replace).toHaveBeenCalledWith('/items');
+    });
+  });
+
+  /**
+   * The library's compact claim-visibility toggle renders to the left of
+   * search only on `mode='items'` with a resolved tier and baseline
+   * (`items-library-shell`). It is a display control, never a filter facet,
+   * so it carries no chip and no count. A list's control is the hero tile, so
+   * the list toolbar shows none of it.
+   */
+  describe('LibraryToggle', () => {
+    const spoilerTrigger = () =>
+      screen.queryByRole('button', { name: /^Spoilers:/ });
+
+    it('ModeItemsWithTierAndBaseline_RendersSpoilerToggleAheadOfSearch', () => {
+      const { container } = renderToolbar({
+        mode: 'items',
+        tier: 'surprise',
+        baseline: 'surprise',
+      });
+      expect(spoilerTrigger()).toBeInTheDocument();
+      const spoilerCell = container.querySelector(
+        '.items-toolbar-cell--spoilers'
+      ) as Element;
+      const searchCell = container.querySelector(
+        '.items-toolbar-cell--search'
+      ) as Element;
+      expect(
+        spoilerCell.compareDocumentPosition(searchCell) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    });
+
+    it('ModeItemsWithoutTierOrBaseline_RendersNoSpoilerToggle', () => {
+      renderToolbar({ mode: 'items' });
+      expect(spoilerTrigger()).not.toBeInTheDocument();
+    });
+
+    it('ModeListWithTierAndBaseline_RendersNoSpoilerToggle', () => {
+      renderToolbar({ mode: 'list', tier: 'surprise', baseline: 'surprise' });
+      expect(spoilerTrigger()).not.toBeInTheDocument();
+    });
+
+    it('ModeItemsWithTier_RendersNoClaimsOrPurchasesControl', () => {
+      renderToolbar({ mode: 'items', tier: 'surprise', baseline: 'surprise' });
+      expect(
+        screen.queryByRole('button', { name: 'Claims' })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('combobox', { name: 'Purchases filter' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('ModeItemsWithTier_TogglePresenceLeavesNoChipRowOrCountBadge', () => {
+      const { container } = renderToolbar({
+        mode: 'items',
+        tier: 'claims',
+        baseline: 'surprise',
+      });
+      expect(spoilerTrigger()).toBeInTheDocument();
+      expect(
+        container.querySelector('.items-toolbar-chips')
+      ).not.toBeInTheDocument();
+      expect(
+        container.querySelector('.popover-trigger-count')
+      ).not.toBeInTheDocument();
     });
   });
 });

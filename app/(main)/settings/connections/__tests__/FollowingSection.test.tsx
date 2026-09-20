@@ -29,13 +29,15 @@ vi.mock('next/link', async () => ({
 
 const FOLLOWING = [
   {
-    followee_id: 'fa',
-    followee: { id: 'fa', name: 'Alice', image: null },
+    follower_id: 'viewer',
+    followee_profile_id: 'self-fa',
+    followee: { id: 'self-fa', name: 'Alice', image: null },
     created_at: new Date(2026, 4, 19),
   },
   {
-    followee_id: 'fb',
-    followee: { id: 'fb', name: null, image: null },
+    follower_id: 'viewer',
+    followee_profile_id: 'self-fb',
+    followee: { id: 'self-fb', name: null, image: null },
     created_at: new Date(2026, 4, 20),
   },
 ];
@@ -79,9 +81,9 @@ describe('FollowingSection', () => {
       expect(screen.getAllByRole('listitem')).toHaveLength(2);
 
       const alice = screen.getByRole('link', { name: 'Alice' });
-      expect(alice).toHaveAttribute('href', '/user/fa');
+      expect(alice).toHaveAttribute('href', '/altvatar/self-fa');
       const unnamed = screen.getByRole('link', { name: 'Unnamed' });
-      expect(unnamed).toHaveAttribute('href', '/user/fb');
+      expect(unnamed).toHaveAttribute('href', '/altvatar/self-fb');
 
       expect(screen.getByText('May 19, 2026')).toBeInTheDocument();
 

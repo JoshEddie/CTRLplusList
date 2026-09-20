@@ -1,21 +1,19 @@
+import { ROLES } from '@/lib/data/profile.roles';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { auth } from '@/lib/auth';
 import { getItemById } from '@/lib/data/item';
-import { getListsByUser } from '@/lib/data/list';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { getListsByProfile } from '@/lib/data/list';
+import { authedIdentity } from '@/lib/data/user.session';
 import ItemFormBody from '../ItemFormBody';
+import { makeIdentity, makeProfile } from '@/test/helpers/profile';
 
-vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/item', () => ({
   getItemById: vi.fn(),
 }));
 vi.mock('@/lib/data/list', () => ({
-  getListsByUser: vi.fn(),
+  getListsByProfile: vi.fn(),
 }));
-vi.mock('@/lib/data/user', () => ({
-  getUserIdByEmail: vi.fn(),
-}));
+vi.mock('@/lib/data/user.session', () => ({ authedIdentity: vi.fn() }));
 
 const redirectMock = vi.hoisted(() =>
   vi.fn((url: string) => {
@@ -29,12 +27,14 @@ vi.mock('@/app/(main)/items/ui/components/itemform/ItemFormContainer', () => ({
     item: { id: string };
     lists: unknown[];
     returnTo?: string;
+    deleteDisabled?: boolean;
   }) => (
     <div
       data-testid="item-form"
       data-item-id={p.item.id}
       data-lists-count={String(p.lists.length)}
       data-return-to={p.returnTo ?? ''}
+      data-delete-disabled={String(!!p.deleteDisabled)}
     />
   ),
 }));
@@ -48,15 +48,11 @@ function props(id = 'i1', sp: { returnTo?: string } = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(auth).mockResolvedValue({
-    user: { email: 'owner@test.local' },
-  } as never);
-  vi.mocked(getUserIdByEmail).mockResolvedValue({
-    id: 'u1',
-    name: 'Owner',
-  } as never);
+  vi.mocked(authedIdentity).mockResolvedValue(
+    makeIdentity('u1', makeProfile('p1', 'Owner'))
+  );
   vi.mocked(getItemById).mockResolvedValue({ id: 'i1', name: 'Gift' } as never);
-  vi.mocked(getListsByUser).mockResolvedValue([
+  vi.mocked(getListsByProfile).mockResolvedValue([
     { id: 'l1' },
     { id: 'l2' },
   ] as never);
@@ -65,13 +61,9 @@ beforeEach(() => {
 describe('ItemFormBody', () => {
   describe('Guards', () => {
     it('Unauthenticated_RedirectsToRoot', async () => {
-      vi.mocked(auth).mockResolvedValue({ user: {} } as never);
+      vi.mocked(authedIdentity).mockResolvedValue(null);
       await expect(ItemFormBody(props())).rejects.toThrow('REDIRECT:/');
-    });
-
-    it('NoUser_RedirectsToRoot', async () => {
-      vi.mocked(getUserIdByEmail).mockResolvedValue(null as never);
-      await expect(ItemFormBody(props())).rejects.toThrow('REDIRECT:/');
+      expect(getItemById).not.toHaveBeenCalled();
     });
 
     it('NoItemNoReturnTo_RedirectsToItems', async () => {
@@ -98,13 +90,40 @@ describe('ItemFormBody', () => {
   });
 
   describe('Owner', () => {
-    it('LoadsItem_ForwardsItemListsUserAndSanitizedReturnTo', async () => {
+    it('LoadsItem_ForwardsItemListsProfileAndSanitizedReturnTo', async () => {
       render(await ItemFormBody(props('i1', { returnTo: '/lists/l1' })));
-      expect(getItemById).toHaveBeenCalledWith('i1', 'u1');
+      expect(getItemById).toHaveBeenCalledWith('i1', 'p1');
+      expect(getListsByProfile).toHaveBeenCalledWith('p1');
       const form = screen.getByTestId('item-form');
       expect(form).toHaveAttribute('data-item-id', 'i1');
       expect(form).toHaveAttribute('data-lists-count', '2');
       expect(form).toHaveAttribute('data-return-to', '/lists/l1');
+    });
+
+    it('Owner_DeleteNotDisabled', async () => {
+      render(await ItemFormBody(props()));
+      expect(screen.getByTestId('item-form')).toHaveAttribute(
+        'data-delete-disabled',
+        'false'
+      );
+    });
+  });
+
+  describe('Manager', () => {
+    beforeEach(() => {
+      vi.mocked(authedIdentity).mockResolvedValue(
+        makeIdentity(
+          'mgr-1',
+          makeProfile('mgr-self'),
+          makeProfile('p1', 'Owner', ROLES.manager)
+        )
+      );
+    });
+
+    it('Manager_DeleteDisabledPassedToForm', async () => {
+      render(await ItemFormBody(props()));
+      const form = screen.getByTestId('item-form');
+      expect(form).toHaveAttribute('data-delete-disabled', 'true');
     });
   });
 });

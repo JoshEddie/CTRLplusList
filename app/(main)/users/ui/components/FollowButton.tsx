@@ -1,27 +1,23 @@
 'use client';
 
-import { Button } from '@/app/ui/components/button';
 import type { ButtonVariant } from '@/app/ui/components/button';
+import { Button } from '@/app/ui/components/button';
 import { FaCheck, FaPlus } from 'react-icons/fa';
 
 export default function FollowButton({
   following,
-  userName,
   pending,
   variant = 'primary',
   onClick,
 }: {
   following: boolean;
-  userName: string | null;
   pending: boolean;
   variant?: ButtonVariant;
   onClick: () => void;
 }) {
   const label = following
     ? 'Following'
-    : userName
-      ? `Follow ${userName}`
-      : 'Follow';
+    : 'Follow';
 
   return (
     <Button

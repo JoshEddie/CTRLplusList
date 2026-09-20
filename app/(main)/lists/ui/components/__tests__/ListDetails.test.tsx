@@ -4,36 +4,78 @@
  * elements that carry no ARIA role; container.querySelector is the only way to
  * assert them. Interactive affordances are still queried by role / accessible
  * name. */
-import { render, within } from '@testing-library/react';
+import { ROLES } from '@/lib/data/profile.roles';
+import { PROTECTED_TIER } from '@/lib/spoilers';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { getFollowState, type FollowState } from '@/lib/data/follow';
+import { getProfileForViewer } from '@/lib/data/profile';
+import { writableMembership } from '@/lib/data/profile.gate';
+import { authedIdentity } from '@/lib/data/user.session';
+import { makeIdentity, makeProfile } from '@/test/helpers/profile';
 import ListDetails from '../ListDetails';
 import { makeList, type TestList } from './test-helpers';
 
 // Out-of-carve-out collaborators stubbed to inert nodes (§3.1). ShareButton
 // and EditListAction are real (in carve-out, §3.2).
 vi.mock('../VisibilityPicker', () => ({
-  default: () => <div data-testid="visibility-picker-stub" />,
-}));
-vi.mock('../ListActionsMenu', () => ({
-  default: (props: {
-    spoilerHref?: string;
-    previewHref?: string;
-    exitPreviewHref?: string;
-  }) => (
+  default: (props: { disabled?: boolean }) => (
     <div
-      data-testid="actions-menu-stub"
-      data-spoiler-href={props.spoilerHref}
-      data-preview-href={props.previewHref}
-      data-exit-href={props.exitPreviewHref}
+      data-testid="visibility-picker-stub"
+      data-disabled={props.disabled || undefined}
     />
   ),
 }));
-vi.mock('@/app/(main)/users/ui/components/Avatar', () => ({
+vi.mock('../ListActionsMenu', () => ({
+  default: (props: {
+    deleteDisabled?: boolean;
+    prependedItems?: React.ReactNode;
+  }) => (
+    <div
+      data-testid="actions-menu-stub"
+      data-disabled={props.deleteDisabled || undefined}
+    >
+      {props.prependedItems}
+    </div>
+  ),
+}));
+vi.mock('../SwitchProfileOffer', () => ({
+  default: (p: { profileId: string; profileName: string }) => (
+    <div
+      data-testid="switch-offer-stub"
+      data-profile-id={p.profileId}
+      data-profile-name={p.profileName}
+    />
+  ),
+}));
+vi.mock('@/lib/data/profile.gate', () => ({
+  writableMembership: vi.fn(),
+}));
+vi.mock('@/app/ui/components/ProfileAvatar', () => ({
   default: () => <div data-testid="avatar-stub" />,
 }));
-vi.mock('@/app/(main)/users/ui/components/FollowContainer', () => ({
-  default: () => <div data-testid="follow-stub" />,
+// The card is a client control owning its own popover (covered by its own
+// tests); inert here, so what ListDetails feeds it is what gets asserted.
+vi.mock('../BylineProfileCard', () => ({
+  default: (p: {
+    profileId: string;
+    listCount: number;
+    followState?: FollowState | null;
+    canSwitchProfile?: boolean;
+    asMenuRow?: boolean;
+  }) => (
+    <div
+      data-testid={p.asMenuRow ? 'byline-card-row' : 'byline-card'}
+      data-profile-id={p.profileId}
+      data-list-count={p.listCount}
+      data-offers-follow={p.followState ? 'true' : undefined}
+      data-can-switch={p.canSwitchProfile ? 'true' : undefined}
+    />
+  ),
 }));
+vi.mock('@/lib/data/profile', () => ({ getProfileForViewer: vi.fn() }));
+vi.mock('@/lib/data/follow', () => ({ getFollowState: vi.fn() }));
 vi.mock('../BookmarkContainer', () => ({
   default: () => <div data-testid="bookmark-stub" />,
 }));
@@ -41,25 +83,46 @@ vi.mock('../HeroCollapsedItemsContainer', () => ({
   HeroCollapsedOwnerItems: () => <div data-testid="collapsed-owner-items" />,
   HeroCollapsedViewerItems: () => <div data-testid="collapsed-viewer-items" />,
 }));
-vi.mock('../HeroCollapseShell', () => ({
+// The Spoilers control and its collapsed-kebab twin are client controls owning
+// their own behavior (covered by HeroSpoilerControl's own tests); here they
+// are inert nodes so ListDetails' placement / gating is what gets asserted.
+vi.mock('../HeroSpoilerControl', () => ({
+  default: (p: { tier: string; baseline: string }) => (
+    <div
+      data-testid="spoiler-tile"
+      data-tier={p.tier}
+      data-baseline={p.baseline}
+    />
+  ),
+}));
+vi.mock('../HeroCollapsedItems', () => ({
+  SpoilerMenuItems: (p: { tier: string; baseline: string }) => (
+    <div
+      data-testid="spoiler-menu-items"
+      data-tier={p.tier}
+      data-baseline={p.baseline}
+    />
+  ),
+}));
+vi.mock('../ListHeroSurface', () => ({
   default: ({
     title,
-    collapsedKebab,
+    kebab,
     children,
   }: {
     title: string;
-    collapsedKebab: React.ReactNode;
+    kebab: React.ReactNode;
     children: React.ReactNode;
   }) => (
-    <div data-testid="collapse-shell" data-title={title}>
+    <div data-testid="sticky-strip" data-title={title}>
+      <div data-testid="collapsed-kebab">{kebab}</div>
       {children}
-      <div data-testid="collapsed-kebab">{collapsedKebab}</div>
     </div>
   ),
 }));
 // EditListAction is real; its downstream form (owned by 4.9) is mocked away.
-vi.mock('@/app/(main)/lists/ui/components/ListFormContainer', () => ({
-  default: () => <div data-testid="list-form-container" />,
+vi.mock('@/app/(main)/lists/ui/components/ListFormContainer', async () => ({
+  default: (await import('./list-form-stub')).ListFormContainerStub,
 }));
 // ShareButton is real but calls useRouter at render and imports a server
 // action whose module initializes the DB at load — mock both boundaries.
@@ -67,6 +130,25 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
 }));
 vi.mock('@/lib/data/list.actions', () => ({ setListVisibility: vi.fn() }));
+vi.mock('@/lib/data/user.session', () => ({ authedIdentity: vi.fn() }));
+
+beforeEach(() => {
+  vi.mocked(authedIdentity).mockResolvedValue(
+    makeIdentity(
+      'owner-1',
+      makeProfile('owner-profile-1'),
+      makeProfile('owner-profile-1', 'Olivia Owner', ROLES.owner)
+    )
+  );
+  vi.mocked(writableMembership).mockResolvedValue(null);
+  vi.mocked(getFollowState).mockResolvedValue({
+    following: false,
+    requireDisclosure: false,
+  });
+  vi.mocked(getProfileForViewer).mockResolvedValue({
+    publicListCount: 9,
+  } as Awaited<ReturnType<typeof getProfileForViewer>>);
+});
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -77,9 +159,17 @@ type Props = Parameters<typeof ListDetails>[0];
 const baseProps: Props = {
   isOwner: true,
   list: makeList(),
-  owner_name: 'Olivia Owner',
-  owner_image: undefined,
-  viewer_id: 'owner-1',
+  owner: {
+    name: 'Olivia Owner',
+    accent: null,
+    art: null,
+    avatarStyle: null,
+  },
+  viewer_user_id: 'owner-1',
+  viewer_self_profile_id: 'owner-profile-1',
+  tier: PROTECTED_TIER,
+  baseline: PROTECTED_TIER,
+  viewerIsMember: true,
   itemCount: 3,
 };
 
@@ -90,13 +180,9 @@ async function renderHero(overrides: Partial<Props> = {}) {
 
 function heroOf(container: HTMLElement) {
   const hero = container.querySelector('.list-hero') as HTMLElement;
-  const identity = hero.querySelector(
-    '.list-hero-card-identity'
-  ) as HTMLElement;
-  const controls = hero.querySelector(
-    '.list-hero-card-controls'
-  ) as HTMLElement;
-  return { hero, identity, controls };
+  const actions = hero.querySelector('.list-hero-actions') as HTMLElement;
+  const row = hero.querySelector('.list-hero-row') as HTMLElement;
+  return { hero, actions, row };
 }
 
 function expectInOrder(scope: Element, selectors: string[]) {
@@ -116,260 +202,175 @@ const sharedOwnerList = (overrides: Partial<TestList> = {}) =>
 
 describe('ListDetails', () => {
   describe('Owner', () => {
-    it('Owner_RendersGridWithIdentityThenControls', async () => {
-      const { container } = await renderHero({ list: sharedOwnerList() });
-      const grid = container.querySelector('.list-hero-grid') as HTMLElement;
-      expect(grid.children[0]).toHaveClass('list-hero-card-identity');
-      expect(grid.children[1]).toHaveClass('list-hero-card-controls');
-    });
-
-    it('OwnerShared_IdentityTopHasSingleShareWrapper-WithPickerAndShare', async () => {
-      const { container, identity } = await renderHero({
+    it('Owner_MainHoldsTitleThenRow-RowHoldsBylineShareVisibilitySpoilersMeta', async () => {
+      const { container, hero, row } = await renderHero({
         list: sharedOwnerList(),
       });
       expect(
-        container.querySelectorAll('.list-hero-share-wrapper')
+        container.querySelectorAll('.list-hero-main > .list-hero-row')
       ).toHaveLength(1);
-      const wrapper = identity.querySelector(
-        '.list-hero-share-wrapper'
-      ) as HTMLElement;
-      expect(
-        wrapper.querySelector('[data-testid="visibility-picker-stub"]')
-      ).toBeInTheDocument();
-      expect(
-        within(wrapper).getByRole('button', { name: 'Share list' })
-      ).toBeInTheDocument();
-      expectInOrder(
-        identity.querySelector('.list-hero-identity-top') as HTMLElement,
-        ['.list-hero-share-wrapper', '.list-hero-title']
-      );
-    });
-
-    it('OwnerPrivate_ShareWrapperHasPickerOnly-NoShareButton', async () => {
-      const { identity } = await renderHero({
-        list: makeList({ shared: false }),
-      });
-      const wrapper = identity.querySelector(
-        '.list-hero-share-wrapper'
-      ) as HTMLElement;
-      expect(
-        wrapper.querySelector('[data-testid="visibility-picker-stub"]')
-      ).toBeInTheDocument();
-      expect(
-        within(wrapper).queryByRole('button', { name: 'Share list' })
-      ).not.toBeInTheDocument();
-    });
-
-    it('Owner_ControlsCardHasActionRowThenChooseItems', async () => {
-      const { controls } = await renderHero({
-        list: sharedOwnerList({ id: 'list-7' }),
-      });
-      const actionRow = controls.querySelector(
-        '.list-hero-action-row'
-      ) as HTMLElement;
-      expect(
-        within(actionRow).getByRole('button', { name: 'Edit list' })
-      ).toBeInTheDocument();
-      expect(
-        actionRow.querySelector('[data-testid="actions-menu-stub"]')
-      ).toBeInTheDocument();
-      const chooseItems = within(controls).getByRole('link', {
-        name: 'Choose items',
-      });
-      expect(chooseItems).toHaveAttribute('href', '/lists/list-7/choose-items');
-      expectInOrder(controls, [
-        '.list-hero-action-row',
-        'a[href="/lists/list-7/choose-items"]',
+      expectInOrder(hero, ['.list-hero-title', '.list-hero-row']);
+      expectInOrder(row, [
+        '[data-testid="byline-card"]',
+        '.list-hero-actions',
+        '[data-testid="visibility-picker-stub"]',
+        '[data-testid="spoiler-tile"]',
+        '.list-hero-meta',
       ]);
     });
 
-    it('Owner_ControlsCardHasNoShareButton', async () => {
-      const { controls } = await renderHero({ list: sharedOwnerList() });
+    it('OwnerShared_ActionsHaveShareButton', async () => {
+      const { actions } = await renderHero({ list: sharedOwnerList() });
       expect(
-        within(controls).queryByRole('button', { name: 'Share list' })
+        within(actions).getByRole('button', { name: 'Share list' })
+      ).toBeInTheDocument();
+    });
+
+    // Share is the owner's only button, so an owner-only list leaves the row
+    // with nothing to hold.
+    it('OwnerPrivate_RowHasPicker-OmitsTheActionsCluster', async () => {
+      const { row, container } = await renderHero({
+        list: makeList({ shared: false }),
+      });
+      expect(
+        row.querySelector('[data-testid="visibility-picker-stub"]')
+      ).toBeInTheDocument();
+      expect(container.querySelector('.list-hero-actions')).toBeNull();
+    });
+
+    it('Owner_PencilFollowsTheTitle', async () => {
+      const { hero } = await renderHero({ list: sharedOwnerList() });
+      expect(hero.querySelector('.list-hero-title')).toHaveTextContent(
+        'Birthday Wishlist'
+      );
+      expectInOrder(hero, ['.list-hero-title', '.edit-list-button']);
+      expect(
+        within(hero).getByRole('button', { name: 'Edit list' })
+      ).toBeInTheDocument();
+    });
+
+    // The kebab and its Edit-items door are gone: the pencil reaches the list
+    // form in one press, and the form carries Delete.
+    it('Owner_HeroHasNoKebabOrEditItemsLink', async () => {
+      const { hero } = await renderHero({ list: sharedOwnerList() });
+      expect(
+        hero.querySelector('[data-testid="actions-menu-stub"]')
+      ).toBeNull();
+      expect(
+        within(hero).queryByRole('link', { name: 'Edit Items' })
       ).not.toBeInTheDocument();
     });
 
-    it('Owner_NoBylineGroup', async () => {
-      const { container } = await renderHero({ list: sharedOwnerList() });
-      expect(
-        container.querySelector('.list-hero-byline-group')
-      ).not.toBeInTheDocument();
+    // The owner looking at their own self-profile's list: the card names the
+    // profile and counts its lists, and offers no Follow.
+    it('OwnerIsTheOwningSelfProfile_CardCarriesTheListCount-NoFollow', async () => {
+      const { row } = await renderHero({ list: sharedOwnerList() });
+      const card = row.querySelector(
+        '[data-testid="byline-card"]'
+      ) as HTMLElement;
+      expect(card).toHaveAttribute('data-profile-id', 'owner-profile-1');
+      expect(card).toHaveAttribute('data-list-count', '9');
+      expect(card).not.toHaveAttribute('data-offers-follow');
+    });
+
+    // Acting as a profile that is not the viewer's own self still reaches
+    // Follow — following a managed profile one owns is supported.
+    it('OwnerActingAsAManagedProfile_CardStillCarriesFollow', async () => {
+      const { row } = await renderHero({
+        list: sharedOwnerList(),
+        viewer_self_profile_id: 'viewer-self-1',
+      });
+      expect(row.querySelector('[data-testid="byline-card"]')).toHaveAttribute(
+        'data-offers-follow',
+        'true'
+      );
     });
   });
 
   describe('Viewer', () => {
     const viewerProps: Partial<Props> = {
       isOwner: false,
-      viewer_id: 'viewer-9',
-      list: makeList({ shared: true, user_id: 'owner-1' }),
+      viewer_user_id: 'viewer-9',
+      viewer_self_profile_id: 'viewer-profile-9',
+      viewerIsMember: false,
+      list: makeList({ shared: true, profile_id: 'owner-profile-1' }),
     };
 
-    it('Viewer_ControlsCardHasBylineThenDividerThenActionRow', async () => {
-      const { controls } = await renderHero(viewerProps);
-      expectInOrder(controls, [
-        '.list-hero-byline-group',
-        '.list-hero-divider',
-        '.list-hero-action-row',
+    it('Viewer_RowOpensWithTheCard-ThenShareThenBookmarkThenMeta', async () => {
+      const { row, actions } = await renderHero(viewerProps);
+      expect(row.firstElementChild).toHaveAttribute(
+        'data-testid',
+        'byline-card'
+      );
+      expectInOrder(row, ['.list-hero-actions', '.list-hero-meta']);
+      expect(
+        row.querySelector('[data-testid="visibility-picker-stub"]')
+      ).toBeNull();
+      expectInOrder(actions, [
+        'button[aria-label="Share list"]',
+        '[data-testid="bookmark-stub"]',
       ]);
     });
 
-    it('Viewer_BylineHasAvatarLinkedNameFollow', async () => {
-      const { container } = await renderHero(viewerProps);
-      const byline = container.querySelector(
-        '.list-hero-byline-group'
-      ) as HTMLElement;
-      const nameLink = within(byline).getByRole('link', {
-        name: 'Olivia Owner',
+    // Share is the cluster's fixed anchor: it opens the cluster whoever is
+    // looking, so no control ever lands where a different one just stood.
+    it('ViewerMember_ShareLeadsTheClusterAheadOfEveryViewerKeyedControl', async () => {
+      const { actions } = await renderHero({
+        ...viewerProps,
+        viewerIsMember: true,
+        tier: 'claims',
       });
-      expect(nameLink).toHaveAttribute('href', '/user/owner-1');
-      expectInOrder(byline, [
-        '[data-testid="avatar-stub"]',
-        '.list-hero-byline-link',
-        '[data-testid="follow-stub"]',
-      ]);
+      expect(actions.firstElementChild).toHaveAttribute(
+        'aria-label',
+        'Share list'
+      );
     });
 
-    it('Viewer_ActionRowHasShareAndBookmark', async () => {
-      const { controls } = await renderHero(viewerProps);
-      const actionRow = controls.querySelector(
-        '.list-hero-action-row'
-      ) as HTMLElement;
-      expect(
-        within(actionRow).getByRole('button', { name: 'Share list' })
-      ).toBeInTheDocument();
-      expect(
-        actionRow.querySelector('[data-testid="bookmark-stub"]')
-      ).toBeInTheDocument();
-      expect(
-        actionRow.querySelector('[data-testid="actions-menu-stub"]')
-      ).not.toBeInTheDocument();
-      expect(
-        within(actionRow).queryByRole('button', { name: 'Edit list' })
-      ).not.toBeInTheDocument();
-    });
-
-    it('Viewer_IdentityTopHasNoShareWrapper-NoPicker', async () => {
+    it('Viewer_CardCarriesFollowForTheOwningProfile', async () => {
       const { container } = await renderHero(viewerProps);
-      const hero = container.querySelector('.list-hero') as HTMLElement;
-      expect(hero.querySelector('.list-hero-share-wrapper')).toBeNull();
+      const card = container.querySelector(
+        '[data-testid="byline-card"]'
+      ) as HTMLElement;
+      expect(card).toHaveAttribute('data-profile-id', 'owner-profile-1');
+      expect(card).toHaveAttribute('data-offers-follow', 'true');
+    });
+
+    it('Viewer_HeroHasNoPencilOrKebab', async () => {
+      const { hero } = await renderHero(viewerProps);
+      expect(
+        hero.querySelector('[data-testid="actions-menu-stub"]')
+      ).not.toBeInTheDocument();
+      expect(
+        within(hero).queryByRole('button', { name: 'Edit list' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('Viewer_HasNoVisibilityPicker', async () => {
+      const { hero } = await renderHero(viewerProps);
       expect(
         hero.querySelector('[data-testid="visibility-picker-stub"]')
       ).toBeNull();
     });
 
-    it('UnnamedOwner_BylineLinkRendersWithEmptyName', async () => {
+    it('SignedOutViewer_StillSeesTheByline-NoActionsClusterAndNoKebabPrepends', async () => {
       const { container } = await renderHero({
         ...viewerProps,
-        owner_name: undefined,
+        viewer_user_id: undefined,
+        viewer_self_profile_id: undefined,
       });
-      const link = container.querySelector(
-        '.list-hero-byline-link'
-      ) as HTMLElement;
-      expect(link).toHaveAttribute('href', '/user/owner-1');
-      expect(link).toHaveTextContent('');
-    });
-  });
-
-  // The hero computes spoiler/preview/exit nav hrefs and hands them to the
-  // collapsed kebab; assert the exact strings across the showSpoilers ×
-  // previewMode matrix.
-  describe('NavHrefs', () => {
-    function kebabOf(container: HTMLElement) {
-      return container.querySelector(
-        '[data-testid="collapsed-kebab"] [data-testid="actions-menu-stub"]'
-      ) as HTMLElement;
-    }
-
-    const cases: [
-      string,
-      Partial<Props>,
-      { spoiler: string; preview: string; exit: string },
-    ][] = [
-      [
-        'NoSpoilerOwnerView',
-        {},
-        {
-          spoiler: '/lists/list-1?spoilers=1',
-          preview: '/lists/list-1?preview=viewer',
-          exit: '/lists/list-1',
-        },
-      ],
-      [
-        'NoSpoilerPreview',
-        { previewMode: true },
-        {
-          spoiler: '/lists/list-1?preview=viewer&spoilers=1',
-          preview: '/lists/list-1?preview=viewer',
-          exit: '/lists/list-1',
-        },
-      ],
-      [
-        'SpoilerOwnerView',
-        { showSpoilers: true },
-        {
-          spoiler: '/lists/list-1',
-          preview: '/lists/list-1?preview=viewer&spoilers=1',
-          exit: '/lists/list-1?spoilers=1',
-        },
-      ],
-      [
-        'SpoilerPreview',
-        { showSpoilers: true, previewMode: true },
-        {
-          spoiler: '/lists/list-1?preview=viewer',
-          preview: '/lists/list-1?preview=viewer&spoilers=1',
-          exit: '/lists/list-1?spoilers=1',
-        },
-      ],
-    ];
-
-    for (const [label, overrides, expected] of cases) {
-      it(`${label}_ComputesSpoilerPreviewExitHrefs`, async () => {
-        const { container } = await renderHero(overrides);
-        const kebab = kebabOf(container);
-        expect(kebab).toHaveAttribute('data-spoiler-href', expected.spoiler);
-        expect(kebab).toHaveAttribute('data-preview-href', expected.preview);
-        expect(kebab).toHaveAttribute('data-exit-href', expected.exit);
-      });
-    }
-  });
-
-  describe('Preview', () => {
-    const previewProps: Partial<Props> = {
-      isOwner: true,
-      previewMode: true,
-      list: sharedOwnerList(),
-    };
-
-    it('Preview_RendersBannerWithExitLink', async () => {
-      const { container } = await renderHero(previewProps);
-      const banner = container.querySelector('.preview-banner') as HTMLElement;
-      expect(banner).toHaveAttribute('role', 'status');
-      const exit = within(banner).getByRole('link', { name: 'Exit preview' });
-      expect(exit).toHaveAttribute('href', '/lists/list-1');
-    });
-
-    it('Preview_HidesVisibilityClusterAndSecondaryActions', async () => {
-      const { container } = await renderHero(previewProps);
-      const hero = container.querySelector('.list-hero') as HTMLElement;
-      expect(hero.querySelector('.list-hero-share-wrapper')).toBeNull();
+      const kebab = screen.getByTestId('collapsed-kebab');
       expect(
-        within(hero).queryByRole('link', { name: 'Choose items' })
+        kebab.querySelector('[data-testid="collapsed-viewer-items"]')
       ).toBeNull();
       expect(
-        within(hero).queryByRole('button', { name: 'Edit list' })
+        kebab.querySelector('[data-testid="collapsed-owner-items"]')
       ).toBeNull();
-    });
-
-    it('Preview_ControlsCardHasOnlyActionRowWithKebab', async () => {
-      const { controls } = await renderHero(previewProps);
-      const rows = controls.querySelectorAll('.list-hero-action-row');
-      expect(rows).toHaveLength(1);
-      expect(
-        rows[0].querySelector('[data-testid="actions-menu-stub"]')
-      ).toBeInTheDocument();
-      expect(controls.querySelector('.list-hero-byline-group')).toBeNull();
+      expect(container.querySelector('.list-hero-actions')).toBeNull();
+      const card = container.querySelector(
+        '[data-testid="byline-card"]'
+      ) as HTMLElement;
+      expect(card).toHaveAttribute('data-profile-id', 'owner-profile-1');
+      expect(card).not.toHaveAttribute('data-offers-follow');
     });
   });
 
@@ -418,85 +419,224 @@ describe('ListDetails', () => {
     });
   });
 
-  describe('Footer', () => {
-    function footText(container: HTMLElement) {
-      return (
-        container.querySelector('.list-hero-identity-foot') as HTMLElement
-      ).textContent;
-    }
-
-    // updated_at passed as an ISO string (as a raw DB read can be) exercises
-    // timeAgo's string-coercion branch.
-    it('MultipleItems_FooterShowsPluralCountAndUpdated', async () => {
-      const { container } = await renderHero({
-        itemCount: 12,
-        list: makeList({
-          updated_at: new Date().toISOString() as unknown as Date,
-        }),
-      });
-      expect(footText(container)).toMatch(/^12 items · updated /);
-    });
-
-    it('SingleItem_FooterShowsSingularItem', async () => {
-      const { container } = await renderHero({
-        itemCount: 1,
-        list: makeList({ updated_at: new Date() }),
-      });
-      expect(footText(container)).toMatch(/^1 item · updated /);
-    });
-
-    it('ZeroItems_FooterStillRenders', async () => {
-      const { container } = await renderHero({
-        itemCount: 0,
-        list: makeList({ updated_at: new Date() }),
-      });
-      expect(footText(container)).toMatch(/^0 items · updated /);
-    });
-
-    it('NoUpdatedAt_OmitsUpdatedTail', async () => {
-      const { container } = await renderHero({
-        itemCount: 5,
-        list: makeList({ updated_at: null as unknown as Date }),
-      });
-      expect(footText(container)).toBe('5 items');
-    });
-
-    describe('TimeAgoBuckets', () => {
-      const fixedNow = new Date('2030-06-15T12:00:00Z');
-
-      beforeEach(() => {
-        vi.useFakeTimers();
-        vi.setSystemTime(fixedNow);
-      });
-
-      afterEach(() => {
-        vi.useRealTimers();
-      });
-
-      const cases: [string, number, string][] = [
-        ['JustNow', 30, 'just now'],
-        ['Minutes', 5 * 60, '5 minutes ago'],
-        ['Hours', 2 * 3600, '2 hours ago'],
-        ['Days', 2 * 86400, '2 days ago'],
-        ['Weeks', 3 * 604800, '3 weeks ago'],
-        ['Months', 2 * 2592000, '2 months ago'],
-        ['Years', 2 * 31536000, '2 years ago'],
-      ];
-
-      it.each(cases)(
-        'Bucket%s_FooterShowsUpdatedAgo',
-        async (_label, deltaSeconds, expected) => {
-          const updated_at = new Date(fixedNow.getTime() - deltaSeconds * 1000);
-          const { container } = await renderHero({
-            itemCount: 4,
-            list: makeList({ updated_at }),
-          });
-          expect(
-            (container.querySelector('.list-hero-identity-foot') as HTMLElement)
-              .textContent
-          ).toBe(`4 items · updated ${expected}`);
-        }
+  describe('Manager', () => {
+    beforeEach(() => {
+      vi.mocked(authedIdentity).mockResolvedValue(
+        makeIdentity(
+          'mgr-1',
+          makeProfile('mgr-self'),
+          makeProfile('owner-profile-1', 'Olivia Owner', ROLES.manager)
+        )
       );
+    });
+
+    it('Manager_VisibilityPickerRendersDisabled', async () => {
+      const { row } = await renderHero({ list: sharedOwnerList() });
+      const picker = row.querySelector(
+        '[data-testid="visibility-picker-stub"]'
+      ) as HTMLElement;
+      expect(picker).toHaveAttribute('data-disabled', 'true');
+    });
+
+    it('ManagerOpensTheListForm_DeleteRendersDisabled', async () => {
+      const user = userEvent.setup();
+      const { hero } = await renderHero({ list: sharedOwnerList() });
+      await user.click(within(hero).getByRole('button', { name: 'Edit list' }));
+      expect(screen.getByTestId('list-form-container')).toHaveAttribute(
+        'data-delete-disabled',
+        'true'
+      );
+    });
+
+    it('Manager_CollapsedKebabDisabled', async () => {
+      const { container } = await renderHero({ list: sharedOwnerList() });
+      const kebab = container.querySelector(
+        '[data-testid="collapsed-kebab"] [data-testid="actions-menu-stub"]'
+      ) as HTMLElement;
+      expect(kebab).toHaveAttribute('data-disabled', 'true');
+    });
+  });
+
+  /**
+   * Pins `list-hero-collapse` / `spoiler-visibility` — the Spoilers tile is
+   * offered to any member, the owner included: beside the visibility picker
+   * for an owner and in the viewer controls for a non-owner member; its
+   * strip-kebab twin hoists in lockstep.
+   */
+  describe('SpoilersTile', () => {
+    it('OwnerMember_RendersTileAfterShareAndTheVisibilityPicker', async () => {
+      const { row } = await renderHero({ list: sharedOwnerList() });
+      const tile = row.querySelector(
+        '[data-testid="spoiler-tile"]'
+      ) as HTMLElement;
+      expect(tile).toBeInTheDocument();
+      expect(tile).toHaveAttribute('data-tier', 'surprise');
+      expect(tile).toHaveAttribute('data-baseline', 'surprise');
+      expectInOrder(row, [
+        '.list-hero-actions',
+        '[data-testid="visibility-picker-stub"]',
+        '[data-testid="spoiler-tile"]',
+      ]);
+    });
+
+    it('ViewerMember_RendersTileAfterTheActionsCluster', async () => {
+      const { row } = await renderHero({
+        isOwner: false,
+        viewer_user_id: 'viewer-9',
+        viewer_self_profile_id: 'viewer-profile-9',
+        viewerIsMember: true,
+        tier: 'claims',
+        baseline: 'surprise',
+        list: makeList({ shared: true, profile_id: 'owner-profile-1' }),
+      });
+      const tile = row.querySelector(
+        '[data-testid="spoiler-tile"]'
+      ) as HTMLElement;
+      expect(tile).toBeInTheDocument();
+      expect(tile).toHaveAttribute('data-tier', 'claims');
+      expectInOrder(row, [
+        '.list-hero-actions',
+        '[data-testid="spoiler-tile"]',
+        '.list-hero-meta',
+      ]);
+    });
+
+    it('NonMemberViewer_RendersNoTile', async () => {
+      const { container } = await renderHero({
+        isOwner: false,
+        viewer_user_id: 'viewer-9',
+        viewer_self_profile_id: 'viewer-profile-9',
+        viewerIsMember: false,
+        list: makeList({ shared: true, profile_id: 'owner-profile-1' }),
+      });
+      expect(
+        container.querySelector('[data-testid="spoiler-tile"]')
+      ).toBeNull();
+    });
+
+    it('OwnerMember_CollapsedKebabHoistsSpoilerMenuItems', async () => {
+      const { container } = await renderHero({ list: sharedOwnerList() });
+      const kebab = container.querySelector(
+        '[data-testid="collapsed-kebab"]'
+      ) as HTMLElement;
+      expect(
+        kebab.querySelector('[data-testid="spoiler-menu-items"]')
+      ).toBeInTheDocument();
+    });
+
+    it('NonMemberViewer_CollapsedKebabOmitsSpoilerMenuItems', async () => {
+      const { container } = await renderHero({
+        isOwner: false,
+        viewer_user_id: 'viewer-9',
+        viewer_self_profile_id: 'viewer-profile-9',
+        viewerIsMember: false,
+        list: makeList({ shared: true, profile_id: 'owner-profile-1' }),
+      });
+      const kebab = container.querySelector(
+        '[data-testid="collapsed-kebab"]'
+      ) as HTMLElement;
+      expect(
+        kebab.querySelector('[data-testid="spoiler-menu-items"]')
+      ).toBeNull();
+    });
+  });
+
+  /**
+   * The collapsed kebab mirrors the expanded hero: the byline survives the
+   * collapse as a row opening the same card, and Follow is inside it rather
+   * than standing alone.
+   */
+  describe('CollapsedMenu', () => {
+    const kebab = () => screen.getByTestId('collapsed-kebab');
+
+    it('Owner_KebabLeadsWithTheProfileRowCarryingTheSameCardProps', async () => {
+      await renderHero({ list: sharedOwnerList() });
+      const row = kebab().querySelector(
+        '[data-testid="byline-card-row"]'
+      ) as HTMLElement;
+      expect(row).toHaveAttribute('data-profile-id', 'owner-profile-1');
+      expect(row).toHaveAttribute('data-list-count', '9');
+      expect(kebab().firstElementChild?.firstElementChild).toBe(row);
+    });
+
+    it('SignedOutViewer_KebabStillCarriesTheProfileRow', async () => {
+      await renderHero({
+        isOwner: false,
+        viewerIsMember: false,
+        viewer_user_id: undefined,
+        viewer_self_profile_id: undefined,
+        list: sharedOwnerList(),
+      });
+      expect(
+        kebab().querySelector('[data-testid="byline-card-row"]')
+      ).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * Pins `list-hero-header` — the inline switch offer renders for a viewer
+   * holding a membership on the owning profile while acting as another, and is
+   * independent of the resolved spoiler state.
+   */
+  describe('SwitchOffer', () => {
+    const asViewerOfSharedList = {
+      isOwner: false,
+      list: sharedOwnerList(),
+      viewer_user_id: 'viewer-9',
+      viewer_self_profile_id: 'viewer-profile-9',
+    };
+
+    // The account runs the owning profile but is acting as another, which is
+    // the whole case the offer exists for.
+    beforeEach(() => {
+      vi.mocked(authedIdentity).mockResolvedValue(
+        makeIdentity(
+          'viewer-9',
+          makeProfile('viewer-profile-9'),
+          makeProfile('acting-profile-2', 'Other', ROLES.owner)
+        )
+      );
+    });
+
+    // One read feeds two surfaces, so both are asserted off the one render.
+    it('MembershipOnTheOwningProfile_RendersTheOfferNamingIt-OffersTheSwitchOnTheProfileCard', async () => {
+      vi.mocked(writableMembership).mockResolvedValue({
+        name: 'Kiddo',
+        role: ROLES.manager,
+        last_active_at: null,
+      });
+      await renderHero(asViewerOfSharedList);
+
+      const offer = screen.getByTestId('switch-offer-stub');
+      expect(offer).toHaveAttribute('data-profile-name', 'Kiddo');
+      expect(screen.getByTestId('byline-card')).toHaveAttribute(
+        'data-can-switch',
+        'true'
+      );
+    });
+
+    it('NoMembershipOnTheOwningProfile_RendersNoOffer-OffersNoSwitchOnTheProfileCard', async () => {
+      vi.mocked(writableMembership).mockResolvedValue(null);
+      await renderHero(asViewerOfSharedList);
+
+      expect(screen.queryByTestId('switch-offer-stub')).not.toBeInTheDocument();
+      expect(screen.getByTestId('byline-card')).not.toHaveAttribute(
+        'data-can-switch'
+      );
+    });
+
+    it('RaisedSpoilerTier_StillRendersTheOffer', async () => {
+      vi.mocked(writableMembership).mockResolvedValue({
+        name: 'Kiddo',
+        role: ROLES.manager,
+        last_active_at: null,
+      });
+      await renderHero({
+        ...asViewerOfSharedList,
+        tier: 'claims',
+      });
+
+      expect(screen.getByTestId('switch-offer-stub')).toBeInTheDocument();
     });
   });
 });

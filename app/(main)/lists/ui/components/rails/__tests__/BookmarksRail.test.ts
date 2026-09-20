@@ -4,7 +4,7 @@ import ListCardRow from '@/app/ui/components/ListCardRow';
 import { list_visits, lists } from '@/db/schema';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import { seedUsers, selfProfileOf } from '@/test/helpers/seedFollowGraph';
 
 mockNextCache();
 
@@ -42,7 +42,7 @@ async function seedBookmark(
     name: `Name ${listId}`,
     subtitle: list.subtitle ?? null,
     occasion: 'birthday',
-    user_id: 'owner',
+    profile_id: selfProfileOf('owner'),
   });
   await db.insert(list_visits).values({
     user_id: 'viewer',
@@ -75,12 +75,18 @@ describe('BookmarksRail', () => {
     expect(entry.subtitle).toBe('Sub');
     expect(entry.occasion).toBe('birthday');
     expect(entry.date).toBeInstanceOf(Date);
-    expect(entry.user).toEqual({ name: 'Olive' });
+    expect(entry.profile).toEqual({
+      id: 'self-owner',
+      name: 'Olive',
+      accent: null,
+      art: null,
+      avatarStyle: null,
+    });
   });
 
   it('NoBookmarks_PassesEmptyMessage', async () => {
     const tree = await BookmarksRail({ userId: 'viewer' });
     expect(tree.props.lists).toHaveLength(0);
-    expect(tree.props.emptyMessage).toBe('No bookmarks yet.');
+    expect(tree.props.emptyMessage).toBe('No saved lists yet.');
   });
 });

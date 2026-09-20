@@ -1,0 +1,212 @@
+import {
+  DYE_COLORS,
+  GARMENT_COLORS,
+  HAIR_COLORS,
+  SKIN_TONES,
+} from '@/lib/altvatar/palettes';
+import type { AltvatarStyle } from '@/lib/altvatar/types';
+import { NONE } from '@/lib/altvatar/types';
+
+// avataaars folds headwear into the same native axis as hair (`top`), so the
+// canonical `hair` axis carries both. Nothing pins a `style` option any more:
+// the v9 `circle` variant drew its own background disc inside the SVG, doubling
+// with the disc the avatar slot paints, and v10's canvas draws no disc at all.
+export const avataaarsStyle: AltvatarStyle = {
+  id: 'avataaars',
+  label: 'Avataaars',
+  enumAxes: {
+    hair: {
+      native: 'top',
+      probability: 'topProbability',
+      fallback: 'short-flat',
+      map: {
+        bob: 'bob',
+        bun: 'bun',
+        curly: 'curly',
+        curvy: 'curvy',
+        dreads: 'dreads',
+        frida: 'frida',
+        fro: 'fro',
+        'fro-band': 'froBand',
+        'long-mid': 'longButNotTooLong',
+        'mia-wallace': 'miaWallace',
+        'shaved-sides': 'shavedSides',
+        'straight-2': 'straight02',
+        'straight-1': 'straight01',
+        'straight-and-strand': 'straightAndStrand',
+        'dreads-1': 'dreads01',
+        'dreads-2': 'dreads02',
+        frizzle: 'frizzle',
+        shaggy: 'shaggy',
+        'shaggy-mullet': 'shaggyMullet',
+        'short-curly': 'shortCurly',
+        'short-flat': 'shortFlat',
+        'short-round': 'shortRound',
+        'short-waved': 'shortWaved',
+        sides: 'sides',
+        'the-caesar': 'theCaesar',
+        'the-caesar-and-side-part': 'theCaesarAndSidePart',
+        'big-hair': 'bigHair',
+      },
+    },
+    // Shares `top` with hair — avataaars draws both through one option — so it
+    // is declared as an overlay and resolved after it.
+    hat: {
+      native: 'top',
+      probability: 'topProbability',
+      overlay: true,
+      fallback: 'hat',
+      map: {
+        hat: 'hat',
+        hijab: 'hijab',
+        turban: 'turban',
+        'winter-hat-1': 'winterHat1',
+        'winter-hat-2': 'winterHat02',
+        'winter-hat-3': 'winterHat03',
+        'winter-hat-4': 'winterHat04',
+      },
+    },
+    eyes: {
+      native: 'eyes',
+      fallback: 'neutral',
+      map: {
+        closed: 'closed',
+        neutral: 'default',
+        happy: 'happy',
+        hearts: 'hearts',
+        side: 'side',
+        squint: 'squint',
+        surprised: 'surprised',
+        'wink-wacky': 'winkWacky',
+        wink: 'wink',
+        dizzy: 'xDizzy',
+      },
+    },
+    eyebrows: {
+      native: 'eyebrows',
+      fallback: 'neutral',
+      map: {
+        'angry-natural': 'angryNatural',
+        natural: 'defaultNatural',
+        flat: 'flatNatural',
+        frown: 'frownNatural',
+        'raised-natural': 'raisedExcitedNatural',
+        unibrow: 'unibrowNatural',
+        angry: 'angry',
+        neutral: 'default',
+        raised: 'raisedExcited',
+        'up-down': 'upDown',
+      },
+    },
+    mouth: {
+      native: 'mouth',
+      fallback: 'neutral',
+      map: {
+        neutral: 'default',
+        eating: 'eating',
+        grimace: 'grimace',
+        serious: 'serious',
+        smile: 'smile',
+        tongue: 'tongue',
+        twinkle: 'twinkle',
+      },
+    },
+    glasses: {
+      native: 'accessories',
+      probability: 'accessoriesProbability',
+      fallback: 'round',
+      map: {
+        kurt: 'kurt',
+        'prescription-1': 'prescription01',
+        'prescription-2': 'prescription02',
+        round: 'round',
+        sunglasses: 'sunglasses',
+        wayfarers: 'wayfarers',
+        eyepatch: 'eyepatch',
+      },
+    },
+    facialHair: {
+      native: 'facialHair',
+      probability: 'facialHairProbability',
+      fallback: 'beard-light',
+      map: {
+        'beard-light': 'beardLight',
+        'beard-majestic': 'beardMajestic',
+        'beard-medium': 'beardMedium',
+        'moustache-fancy': 'moustacheFancy',
+        'moustache-magnum': 'moustacheMagnum',
+      },
+    },
+    clothing: {
+      native: 'clothes',
+      fallback: 'shirt-crew-neck',
+      map: {
+        'blazer-and-shirt': 'blazerAndShirt',
+        'blazer-and-sweater': 'blazerAndSweater',
+        'collar-and-sweater': 'collarAndSweater',
+        'graphic-shirt': 'graphicShirt',
+        hoodie: 'hoodie',
+        overall: 'overall',
+        'shirt-crew-neck': 'shirtCrewNeck',
+        'shirt-scoop-neck': 'shirtScoopNeck',
+        'shirt-vneck': 'shirtVNeck',
+      },
+    },
+    clothingGraphic: {
+      native: 'clothesGraphic',
+      visibleWhen: { axis: 'clothing', value: 'graphic-shirt' },
+      fallback: 'bat',
+      map: {
+        bat: 'bat',
+        bear: 'bear',
+        cumbia: 'cumbia',
+        deer: 'deer',
+        diamond: 'diamond',
+        hola: 'hola',
+        pizza: 'pizza',
+        resist: 'resist',
+        skull: 'skull',
+        'skull-outline': 'skullOutline',
+      },
+    },
+  },
+  colorAxes: {
+    skinColor: {
+      native: ['skinColor'],
+      fallback: 'edb98a',
+      palette: SKIN_TONES,
+    },
+    hairColor: {
+      native: ['hairColor'],
+      fallback: '2c1b18',
+      palette: [...HAIR_COLORS, ...DYE_COLORS],
+    },
+    facialHairColor: {
+      native: ['facialHairColor'],
+      fallback: '2c1b18',
+      // Follows the hair until someone picks otherwise, and is not offered at
+      // all on a clean-shaven face.
+      inheritsFrom: 'hairColor',
+      visibleWhen: { axis: 'facialHair', value: NONE, negate: true },
+      palette: [...HAIR_COLORS, ...DYE_COLORS],
+    },
+    hatColor: {
+      native: ['hatColor'],
+      fallback: '262e33',
+      visibleWhen: { axis: 'hat', value: NONE, negate: true },
+      palette: GARMENT_COLORS,
+    },
+    glassesColor: {
+      native: ['accessoriesColor'],
+      fallback: '262e33',
+      // Not offered on a face wearing no glasses.
+      visibleWhen: { axis: 'glasses', value: NONE, negate: true },
+      palette: GARMENT_COLORS,
+    },
+    clothingColor: {
+      native: ['clothesColor'],
+      fallback: '3c4f5c',
+      palette: GARMENT_COLORS,
+    },
+  },
+};

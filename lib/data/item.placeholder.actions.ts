@@ -1,16 +1,23 @@
 'use server';
 
+// TODO(#343): extract the duplicated literal to a constant, then drop this disable
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import { db } from '@/db';
-import { item_images } from '@/db/schema';
-import { authedUserId, UNAUTHORIZED_RESPONSE } from '@/lib/data/user.session';
+import { item_images, items } from '@/db/schema';
+import {
+  authedIdentity,
+  authedUserId,
+  UNAUTHORIZED_RESPONSE,
+} from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
 import { generatePlaceholderArt } from '@/lib/placeholderArt';
 import { type ActionResponse } from '@/lib/types';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { updateTag } from 'next/cache';
 
-// Guest-callable by design (enumerated in server-endpoint-authorization): the
+// Guest-callable by design: the
 // payload is the item id alone and the stored row is fully server-derived, so
 // no session is required — only view authorization, the same gate the guest
 // purchase path uses. Concurrent mints race check-then-insert (no transactions
@@ -20,8 +27,8 @@ export async function mintItemPlaceholder(
   itemId: string
 ): Promise<ActionResponse & { url?: string }> {
   try {
-    const viewerId = await authedUserId();
-    const viewable = await isItemViewable(itemId, viewerId);
+    const viewer = await authedIdentity();
+    const viewable = await isItemViewable(itemId, viewer);
     if (!viewable) return UNAUTHORIZED_RESPONSE;
 
     const activeImage = () =>
@@ -36,7 +43,11 @@ export async function mintItemPlaceholder(
 
     const existing = await activeImage();
     if (existing) {
-      return { success: true, message: 'Image already exists', url: existing.url };
+      return {
+        success: true,
+        message: 'Image already exists',
+        url: existing.url,
+      };
     }
 
     const url = generatePlaceholderArt(itemId);
@@ -45,7 +56,15 @@ export async function mintItemPlaceholder(
       .values({ item_id: itemId, url, active: true })
       .onConflictDoNothing()
       .returning({ url: item_images.url });
-    updateTag('items');
+    const item = await db.query.items.findFirst({
+      where: eq(items.id, itemId),
+      columns: { profile_id: true },
+    });
+    updateTags(
+      cacheTags.item(itemId),
+      /* v8 ignore next 2 -- the missing-item arm: isItemViewable above already proved the row exists; the conditional only satisfies findFirst's `| undefined` return type. */
+      ...(item ? [cacheTags.itemsOfProfile(item.profile_id)] : [])
+    );
 
     const winner = inserted[0] ?? (await activeImage());
     return {
@@ -59,6 +78,34 @@ export async function mintItemPlaceholder(
       success: false,
       message: 'An error occurred while generating placeholder art',
       error: 'Failed to mint placeholder',
+    };
+  }
+}
+
+// Render-only fallback for a dead saved image URL. onError cannot
+// distinguish permanent link rot from a transient glitch or one-off hotlink
+// block, so nothing is persisted — the saved URL is retried on the next page
+// load. The deterministic itemId seed keeps the art identical to minted art
+// and stable across repeated failures.
+export async function fallbackItemPlaceholder(
+  itemId: string
+): Promise<ActionResponse & { url?: string }> {
+  try {
+    const viewer = await authedIdentity();
+    const viewable = await isItemViewable(itemId, viewer);
+    if (!viewable) return UNAUTHORIZED_RESPONSE;
+
+    return {
+      success: true,
+      message: 'Fallback art generated',
+      url: generatePlaceholderArt(itemId),
+    };
+  } catch (error) {
+    console.error('Error generating fallback placeholder:', error);
+    return {
+      success: false,
+      message: 'An error occurred while generating placeholder art',
+      error: 'Failed to generate fallback',
     };
   }
 }

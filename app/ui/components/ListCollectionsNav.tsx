@@ -1,11 +1,12 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { LinkTabs } from '@/app/ui/components/tabs';
+import { getMessage } from '@/lib/i18n/utils';
 
 const TABS = [
   { label: 'My Lists', href: '/lists' },
-  { label: 'Bookmarks', href: '/lists/bookmarks' },
+  { label: getMessage('saved_page_title'), href: '/lists/bookmarks' },
   { label: 'Recently visited', href: '/lists/history' },
   { label: 'Following', href: '/following' },
 ];
@@ -17,26 +18,13 @@ export default function ListCollectionsNav({
 }) {
   const pathname = usePathname();
   return (
-    <div className="list-collections-nav">
-      <nav className="list-collections-tabs" aria-label="List collections">
-        {TABS.map(({ label, href }) => {
-          const active = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={
-                active
-                  ? 'list-collections-tab list-collections-tab--active'
-                  : 'list-collections-tab'
-              }
-              aria-current={active ? 'page' : undefined}
-            >
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
+    <div className="list-collections-nav pinned-page-chrome">
+      <LinkTabs
+        className="list-collections-tabs"
+        aria-label="List collections"
+        items={TABS}
+        activeHref={pathname}
+      />
       {children && <div className="list-collections-actions">{children}</div>}
     </div>
   );

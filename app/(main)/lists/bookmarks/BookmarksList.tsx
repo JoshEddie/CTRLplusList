@@ -1,4 +1,5 @@
 import ListCard, { ListCardData } from '@/app/ui/components/ListCard';
+import { getMessage } from '@/lib/i18n/utils';
 
 export type BookmarkRowData = {
   user_id: string;
@@ -10,7 +11,7 @@ export default function BookmarksList({ rows }: { rows: BookmarkRowData[] }) {
   if (rows.length === 0) {
     return (
       <p className="bookmarks-empty">
-        No bookmarks yet. Open any shared list and tap Bookmark to save it here.
+        {getMessage('saved_empty')}
       </p>
     );
   }

@@ -1,7 +1,10 @@
 'use client';
 
 import { Button, LinkButton } from '@/app/ui/components/button';
-import type { ItemStoreTable } from '@/lib/types';
+import ViewItemLink, { storeLink } from './ViewItemLink';
+import { getMessage } from '@/lib/i18n/utils';
+import { atLeast } from '@/lib/spoilers';
+import type { ItemStoreTable, SpoilerTier } from '@/lib/types';
 import { MdCheck, MdOpenInNew } from 'react-icons/md';
 import '../styles/purchase.css';
 
@@ -12,10 +15,12 @@ type ItemActionsProps = {
   viewerClaimed: boolean;
   /** Signed-out viewer — a claimed guest is never offered Add Claim (cannot attribute, no repeat self-claim). */
   guestViewer?: boolean;
-  /** Owner's spoiler-gated claim entry — same modal, purchase-recording copy. */
-  showOwnerClaimAction: boolean;
-  /** Owner's spoiler-gated claim management — the modal lists removable claims. */
-  showOwnerManageAction: boolean;
+  /** The item carries claims the viewer's resolved tier discloses. */
+  hasAnyClaim: boolean;
+  /** A list entry exists to claim against. False on the item library, which spans every list and so names none. */
+  claimable: boolean;
+  /** The viewer's resolved tier (`spoiler-visibility`). */
+  tier: SpoilerTier;
   /** Authed non-owner Buy & Claim signal. */
   showBuyClaim?: boolean;
   /** The primary (lowest-priced complete) store, or null when none exists. */
@@ -37,8 +42,9 @@ export default function ItemActions({
   fullyClaimed,
   viewerClaimed,
   guestViewer,
-  showOwnerClaimAction,
-  showOwnerManageAction,
+  hasAnyClaim,
+  claimable,
+  tier,
   showBuyClaim,
   store,
   viewOnly,
@@ -46,19 +52,33 @@ export default function ItemActions({
   onAddClaimClick,
   onBuyClaimClick,
 }: ItemActionsProps) {
-  const showManage =
-    !viewOnly && (isOwner ? showOwnerManageAction : viewerClaimed);
-  const showStatus = !viewOnly && !isOwner && fullyClaimed && !viewerClaimed;
-  const ownerCanAdd = showOwnerClaimAction && !showOwnerManageAction;
+  // Below `claims` the action set may not vary with another party's claim:
+  // `Fully claimed`, `Manage claims` and the absence of `Buy & Claim` each
+  // state that an item carries claims, which is exactly what the tier
+  // withholds. A claim the VIEWER holds is no surprise to them, so it still
+  // reaches `Manage claim`.
+  const revealed = atLeast(tier, 'claims');
   const claimedGuest = !!guestViewer && viewerClaimed;
-  const nonOwnerCanAdd = !fullyClaimed && !claimedGuest;
-  const showAdd = !viewOnly && (isOwner ? ownerCanAdd : nonOwnerCanAdd);
+
+  // No entry, no claim: a claim is made against an item's presence on a list,
+  // so a surface that names none neither creates nor manages one. The library
+  // card totals its claims in the banner and offers nothing to act on.
+  const showManage =
+    !viewOnly &&
+    claimable &&
+    (viewerClaimed || (isOwner && revealed && hasAnyClaim));
+  const showStatus =
+    !viewOnly && revealed && !isOwner && fullyClaimed && !viewerClaimed;
+  const ownerCanAdd = revealed ? !fullyClaimed && !hasAnyClaim : !viewerClaimed;
+  const nonOwnerCanAdd = !claimedGuest && (!revealed || !fullyClaimed);
+  const showAdd =
+    !viewOnly && claimable && (isOwner ? ownerCanAdd : nonOwnerCanAdd);
   // Keyed on a navigable link, never mere store presence — a PRICED/linkless
   // item must keep its Add Claim-only action set (design D-Linkless-256).
-  const showBuy = !viewOnly && !!showBuyClaim && !!store?.link;
+  const showBuy = !viewOnly && revealed && !!showBuyClaim && !!store?.link;
   // Keyed on a navigable link, never mere store presence — a PRICED/linkless
   // store carries a price line but no View item link (item-actions spec).
-  const showView = !!store?.link;
+  const showView = !!storeLink(store);
   // When View item is the card's only action (owner spoilers off, view-only)
   // it is the primary intent — promote it from the subordinate secondary look.
   const viewIsOnlyAction = showView && !showManage && !showStatus && !showAdd;
@@ -74,13 +94,13 @@ export default function ItemActions({
           href={store.link}
           target="_blank"
           rel="noreferrer"
-          aria-label="Buy & Claim — opens in new tab"
+          aria-label={getMessage('buy_claim_aria_label')}
           onClick={(e) => {
             e.stopPropagation();
             onBuyClaimClick?.();
           }}
         >
-          <span>Buy &amp; Claim</span>
+          <span>{getMessage('buy_claim_label')}</span>
           <MdOpenInNew aria-hidden />
         </LinkButton>
       )}
@@ -90,7 +110,7 @@ export default function ItemActions({
           className="item-actions-claim"
           onClick={onPurchaseClick}
         >
-          {isOwner ? 'Manage claims' : 'Manage claim'}
+          {getMessage(isOwner ? 'claim_manage_owner' : 'claim_manage_viewer')}
         </Button>
       )}
       {showStatus && (
@@ -100,7 +120,7 @@ export default function ItemActions({
         >
           <span className="claimed-state-label">
             <MdCheck aria-hidden />
-            Fully claimed
+            {getMessage('claim_fully_claimed')}
           </span>
         </div>
       )}
@@ -110,25 +130,15 @@ export default function ItemActions({
           className="item-actions-add"
           onClick={onAddClaimClick}
         >
-          Add Claim
+          {getMessage('claim_add_label')}
         </Button>
       )}
-      {showView && (
-        <LinkButton
-          variant={viewIsOnlyAction ? 'primary' : 'secondary'}
-          className="item-actions-view"
-          href={store.link}
-          target="_blank"
-          rel="noreferrer"
-          aria-label="View item — opens in new tab"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <span>
-            View <span className="item-actions-view-label">item</span>
-          </span>
-          <MdOpenInNew aria-hidden />
-        </LinkButton>
-      )}
+      <ViewItemLink
+        store={store}
+        variant={viewIsOnlyAction ? 'primary' : 'secondary'}
+        className="item-actions-view"
+        onClick={(e) => e.stopPropagation()}
+      />
     </div>
   );
 }

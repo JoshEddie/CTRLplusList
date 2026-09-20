@@ -9,7 +9,9 @@ export default function ConnectionsPage() {
   return (
     <main className="container">
       <div className="connections-page">
-        <Header title="Connections" />
+        <div className="pinned-page-chrome">
+          <Header title="Connections" />
+        </div>
 
         <Suspense fallback={<LoadingIndicator size="rail" />}>
           <FollowingSection />

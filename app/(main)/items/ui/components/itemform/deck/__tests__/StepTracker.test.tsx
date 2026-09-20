@@ -5,7 +5,7 @@ import type { DeckStepState } from '../neededSteps';
 import { StepTracker } from '../StepTracker';
 
 const STEPS: DeckStepState[] = [
-  { step: 'title', complete: true },
+  { step: 'name', complete: true },
   { step: 'price', complete: true },
   { step: 'photo', complete: false },
   { step: 'note', complete: false },

@@ -1,15 +1,23 @@
 import { Suspense } from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mockNextHeaders } from '@/test/helpers/next-headers';
 
 import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import { seedUsers, selfProfileOf } from '@/test/helpers/seedFollowGraph';
 import MyListsGrid from '../ui/components/MyListsGrid';
 import NewListButton from '../ui/components/NewListButton';
 
 mockNextCache();
+mockNextHeaders();
+// Only the derivation this page forwards is stubbed; the membership read
+// stays real, because this suite resolves the identity against pglite.
+vi.mock('@/lib/data/profile.active', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/data/profile.active')>()),
+  actingAsName: vi.fn(),
+}));
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
 const redirectMock = vi.hoisted(() =>
@@ -72,7 +80,7 @@ describe('MyListsPage', () => {
     expect(redirectMock).toHaveBeenCalledWith('/');
   });
 
-  it('ViewerResolved_RendersNavWithNewListButton-WrapsGridInSuspenseWithViewerId', async () => {
+  it('ViewerResolved_RendersNavWithNewListButton-WrapsGridInSuspenseWithViewerProfileId', async () => {
     const tree = await renderWithViewer();
     const [nav, suspense] = childrenOf(tree);
 
@@ -82,6 +90,8 @@ describe('MyListsPage', () => {
     expect(suspense.type).toBe(Suspense);
     const inner = suspense.props.children as El;
     expect(inner.type).toBe(MyListsGrid);
-    expect((inner.props as { userId: string }).userId).toBe('viewer');
+    expect((inner.props as { profileId: string }).profileId).toBe(
+      selfProfileOf('viewer')
+    );
   });
 });

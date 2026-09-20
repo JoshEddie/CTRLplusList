@@ -2,20 +2,31 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { auth } from '@/lib/auth';
-import { getItemsByUser } from '@/lib/data/item';
-import { getListsByUser } from '@/lib/data/list';
+import { getItemsByProfile } from '@/lib/data/item';
+import { getListsByProfile } from '@/lib/data/list';
+import { getUserIdentity } from '@/lib/data/profile';
+import { getSpoilerBaseline } from '@/lib/data/profile.members';
 import { getUserIdByEmail } from '@/lib/data/user';
+import { PROTECTED_TIER } from '@/lib/spoilers';
 import Home from '../page';
+import { makeProfile } from '@/test/helpers/profile';
 
+vi.mock('@/lib/data/profile.active', () => ({ actingAsName: vi.fn() }));
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
 }));
+vi.mock('@/lib/data/profile', () => ({
+  getUserIdentity: vi.fn(),
+}));
+vi.mock('@/lib/data/profile.members', () => ({
+  getSpoilerBaseline: vi.fn(),
+}));
 vi.mock('@/lib/data/item', () => ({
-  getItemsByUser: vi.fn(),
+  getItemsByProfile: vi.fn(),
 }));
 vi.mock('@/lib/data/list', () => ({
-  getListsByUser: vi.fn(),
+  getListsByProfile: vi.fn(),
 }));
 
 const redirectMock = vi.hoisted(() =>
@@ -41,19 +52,23 @@ vi.mock('../ui/components/ItemsPage', () => ({
   default: (props: {
     items: unknown[];
     archivedItems?: unknown[];
-    user_id?: string;
+    actor?: { id: string };
     user_name?: string | null;
     lists?: unknown[];
     initialPageSize?: number;
+    tier?: string;
+    baseline?: string;
   }) => (
     <div
       data-testid="items-page"
       data-active-count={props.items.length}
       data-archived-count={props.archivedItems?.length ?? 0}
       data-initial-page-size={String(props.initialPageSize)}
-      data-user-id={props.user_id ?? ''}
+      data-profile-id={props.actor?.id ?? ''}
       data-user-name={props.user_name ?? ''}
       data-lists-count={props.lists?.length ?? 0}
+      data-tier={String(props.tier)}
+      data-baseline={String(props.baseline)}
     />
   ),
 }));
@@ -69,6 +84,7 @@ function callPage(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getSpoilerBaseline).mockResolvedValue(PROTECTED_TIER);
   cookieHolder.value = undefined;
   vi.mocked(auth).mockResolvedValue({
     user: { email: 'viewer@test.local' },
@@ -77,11 +93,16 @@ beforeEach(() => {
     id: 'viewer',
     name: 'Test Viewer',
   } as never);
-  vi.mocked(getItemsByUser).mockImplementation(
+  vi.mocked(getUserIdentity).mockResolvedValue({
+    userId: 'viewer',
+    selfProfile: makeProfile('viewer-profile', 'Test Viewer'),
+    activeProfile: makeProfile('viewer-profile', 'Test Viewer'),
+  });
+  vi.mocked(getItemsByProfile).mockImplementation(
     async (_id: string, opts?: { filter?: string }) =>
       (opts?.filter === 'archived' ? ARCHIVED : ACTIVE) as never
   );
-  vi.mocked(getListsByUser).mockResolvedValue([
+  vi.mocked(getListsByProfile).mockResolvedValue([
     { id: 'l1' },
     { id: 'l2' },
     { id: 'l3' },
@@ -103,49 +124,85 @@ describe('Page', () => {
       expect(redirectMock).toHaveBeenCalledWith('/');
     });
 
+    it('UserHasNoProfile_RedirectsToRoot', async () => {
+      vi.mocked(getUserIdentity).mockResolvedValue(null);
+      await expect(callPage()).rejects.toThrow('REDIRECT:/');
+      expect(redirectMock).toHaveBeenCalledWith('/');
+      expect(getItemsByProfile).not.toHaveBeenCalled();
+    });
+
     it('ViewerResolved_RendersMainItemsLibraryWrappingItemsPage', async () => {
       render(await callPage());
       const main = screen.getByRole('main');
       expect(main).toHaveClass('container', 'container--items-library');
       expect(main).toContainElement(screen.getByTestId('items-page'));
     });
+
+    it('ViewerResolved_ForwardsActingProfileId', async () => {
+      render(await callPage());
+      expect(screen.getByTestId('items-page')).toHaveAttribute(
+        'data-profile-id',
+        'viewer-profile'
+      );
+    });
+
+    it('ActingAsAManagedProfile_ReadsThatProfileButNamesTheHuman', async () => {
+      vi.mocked(getUserIdentity).mockResolvedValue({
+        userId: 'viewer',
+        selfProfile: makeProfile('viewer-profile', 'Test Viewer'),
+        activeProfile: makeProfile('kiddo', 'Kiddo Smith'),
+      });
+
+      render(await callPage());
+
+      expect(getItemsByProfile).toHaveBeenCalledWith('kiddo', {
+        filter: 'active',
+        tier: PROTECTED_TIER,
+      });
+      expect(getListsByProfile).toHaveBeenCalledWith('kiddo');
+      const page = screen.getByTestId('items-page');
+      expect(page).toHaveAttribute('data-profile-id', 'kiddo');
+      expect(page).toHaveAttribute('data-user-name', 'Test Viewer');
+    });
   });
 
-  describe('SpoilerParam', () => {
-    it('PurchasesReveal_ReadsWithShowSpoilersTrue', async () => {
-      await callPage({ purchases: 'reveal' });
-      expect(getItemsByUser).toHaveBeenCalledWith('viewer', {
-        filter: 'active',
-        showSpoilers: true,
-      });
-      expect(getItemsByUser).toHaveBeenCalledWith('viewer', {
-        filter: 'archived',
-        showSpoilers: true,
-      });
-    });
-
-    it('PurchasesOnly_ReadsWithShowSpoilersTrue', async () => {
-      await callPage({ purchases: 'only' });
-      expect(getItemsByUser).toHaveBeenCalledWith('viewer', {
-        filter: 'active',
-        showSpoilers: true,
-      });
-    });
-
-    it('PurchasesHide_ReadsWithShowSpoilersFalse', async () => {
-      await callPage({ purchases: 'hide' });
-      expect(getItemsByUser).toHaveBeenCalledWith('viewer', {
-        filter: 'active',
-        showSpoilers: false,
-      });
-    });
-
-    it('PurchasesAbsent_ReadsWithShowSpoilersFalse', async () => {
+  describe('SpoilerTier', () => {
+    it('Render_ResolvesFromTheMembershipOnTheActingProfile', async () => {
       await callPage();
-      expect(getItemsByUser).toHaveBeenCalledWith('viewer', {
-        filter: 'archived',
-        showSpoilers: false,
+      expect(getSpoilerBaseline).toHaveBeenCalledWith(
+        'viewer',
+        'viewer-profile'
+      );
+      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
+        filter: 'active',
+        tier: PROTECTED_TIER,
       });
+      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
+        filter: 'archived',
+        tier: PROTECTED_TIER,
+      });
+    });
+
+    it('NoSpoilerParam_ForwardsBaselineTierAndBaselineToItemsPage', async () => {
+      render(await callPage());
+      const page = screen.getByTestId('items-page');
+      expect(page).toHaveAttribute('data-tier', PROTECTED_TIER);
+      expect(page).toHaveAttribute('data-baseline', PROTECTED_TIER);
+    });
+
+    it('SpoilerParam_RaisesTheTierForThisRequestAlone', async () => {
+      await callPage({ spoiler: 'claims' });
+      expect(getItemsByProfile).toHaveBeenCalledWith('viewer-profile', {
+        filter: 'active',
+        tier: 'claims',
+      });
+    });
+
+    it('SpoilerParam_ForwardsRaisedTierButUnchangedBaselineToItemsPage', async () => {
+      render(await callPage({ spoiler: 'claims' }));
+      const page = screen.getByTestId('items-page');
+      expect(page).toHaveAttribute('data-tier', 'claims');
+      expect(page).toHaveAttribute('data-baseline', PROTECTED_TIER);
     });
   });
 
@@ -180,12 +237,12 @@ describe('Page', () => {
   describe('DualLoad', () => {
     it('Render_ReadsAndForwardsActiveAndArchivedSets', async () => {
       render(await callPage());
-      expect(getItemsByUser).toHaveBeenCalledWith(
-        'viewer',
+      expect(getItemsByProfile).toHaveBeenCalledWith(
+        'viewer-profile',
         expect.objectContaining({ filter: 'active' })
       );
-      expect(getItemsByUser).toHaveBeenCalledWith(
-        'viewer',
+      expect(getItemsByProfile).toHaveBeenCalledWith(
+        'viewer-profile',
         expect.objectContaining({ filter: 'archived' })
       );
       const stub = screen.getByTestId('items-page');
@@ -195,35 +252,11 @@ describe('Page', () => {
   });
 
   describe('ViewerDisplay', () => {
-    it('TwoTokenName_DerivesFirstAndLastInitial', async () => {
+    it('SelfProfileName_ReachesTheChildInFull', async () => {
       render(await callPage());
       expect(screen.getByTestId('items-page')).toHaveAttribute(
         'data-user-name',
-        'Test V'
-      );
-    });
-
-    it('OneTokenName_UsesFirstToken', async () => {
-      vi.mocked(getUserIdByEmail).mockResolvedValue({
-        id: 'viewer',
-        name: 'Madonna',
-      } as never);
-      render(await callPage());
-      expect(screen.getByTestId('items-page')).toHaveAttribute(
-        'data-user-name',
-        'Madonna'
-      );
-    });
-
-    it('NoName_DerivesEmpty', async () => {
-      vi.mocked(getUserIdByEmail).mockResolvedValue({
-        id: 'viewer',
-        name: null,
-      } as never);
-      render(await callPage());
-      expect(screen.getByTestId('items-page')).toHaveAttribute(
-        'data-user-name',
-        ''
+        'Test Viewer'
       );
     });
 
@@ -233,7 +266,7 @@ describe('Page', () => {
         'data-lists-count',
         '3'
       );
-      expect(getListsByUser).toHaveBeenCalledWith('viewer');
+      expect(getListsByProfile).toHaveBeenCalledWith('viewer-profile');
     });
   });
 });

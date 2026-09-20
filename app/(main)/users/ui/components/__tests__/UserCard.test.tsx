@@ -1,107 +1,81 @@
 /* eslint-disable testing-library/no-container, testing-library/no-node-access --
- * The avatar image carries `alt=""` (decorative, no `img` role) and the
- * avatar-initials / name / sub-line / badge elements carry only classes with no
- * role or accessible name. Classed `container.querySelector` is the only path
- * to assert avatar size, initials, and the sub-line variants.
+ * The band, avatar disc, name and sub-line carry only classes with no role or
+ * accessible name (the disc is `aria-hidden`), so classed
+ * `container.querySelector` is the only path to assert the card's structure.
  */
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import UserCard from '../UserCard';
+import { makeProfile } from '@/test/helpers/profile';
 
 vi.mock('next/link', async () => ({
   default: (await import('@/app/ui/components/__tests__/test-helpers'))
     .MockNextLink,
 }));
-vi.mock('next/image', async () => ({
-  default: (await import('@/app/ui/components/__tests__/test-helpers'))
-    .MockNextImage,
-}));
 
-const baseUser = { id: 'u1', name: 'Alice', image: null as string | null };
+const alice = makeProfile('u1', 'Alice');
 
 describe('UserCard', () => {
-  it('Default_LinksToUserIdRoute', () => {
-    render(<UserCard user={baseUser} />);
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/user/u1');
+  it('Default_LinksToProfileRoute', () => {
+    render(<UserCard profile={alice} />);
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/altvatar/u1');
   });
 
-  it('Compact_TogglesClassAndAvatarSize', () => {
-    const { container } = render(
-      <UserCard user={{ ...baseUser, image: 'a.png' }} compact />
+  it('Default_RendersNameAndAvatarDiscInBand', () => {
+    const { container } = render(<UserCard profile={alice} />);
+    expect(container.querySelector('.user-card-name')).toHaveTextContent(
+      'Alice'
     );
-    expect(screen.getByRole('link')).toHaveClass(
-      'user-card',
-      'user-card--compact'
-    );
-    expect(container.querySelector('img')).toHaveAttribute('width', '44');
-  });
-
-  it('NonCompact_AvatarSize64', () => {
-    const { container } = render(
-      <UserCard user={{ ...baseUser, image: 'a.png' }} />
-    );
-    expect(container.querySelector('img')).toHaveAttribute('width', '64');
-  });
-
-  it('HasImage_RendersImg', () => {
-    const { container } = render(
-      <UserCard user={{ ...baseUser, image: 'a.png' }} />
-    );
-    expect(container.querySelector('img')).toHaveAttribute('src', 'a.png');
-  });
-
-  it('NoImage_RendersInitials', () => {
-    const { container } = render(<UserCard user={baseUser} />);
     expect(
-      container.querySelector('.user-card-avatar-initials')
-    ).toHaveTextContent('A');
+      container.querySelector('.user-card-band .user-card-avatar .altvatar-disc')
+    ).not.toBeNull();
+  });
+
+  it('AccentSet_PaintsCardFromAccentVars', () => {
+    render(<UserCard profile={{ ...alice, accent: 'rose' }} />);
+    // --accent-bg is what the band and the disc both read; asserting it on the
+    // root proves the accent reached the card rather than only the disc.
+    expect(screen.getByRole('link').style.getPropertyValue('--accent-bg')).toBe(
+      'linear-gradient(120deg, #fbcfe8, #be123c)'
+    );
   });
 
   it('NewCountPositive_RendersBadgeWithAriaLabel', () => {
-    render(<UserCard user={baseUser} newCount={3} />);
+    render(<UserCard profile={alice} newCount={3} />);
     const badge = screen.getByLabelText('3 new');
     expect(badge).toHaveClass('user-card-badge');
     expect(badge).toHaveTextContent('3');
   });
 
   it('NewCountZero_NoBadge', () => {
-    const { container } = render(<UserCard user={baseUser} newCount={0} />);
+    const { container } = render(<UserCard profile={alice} newCount={0} />);
     expect(container.querySelector('.user-card-badge')).toBeNull();
   });
 
-  it('NonCompactSubLine_NewWhenSharedAndNewCountPositive', () => {
+  it('SharedAndNewCountPositive_SubLineCountsNew', () => {
     const { container } = render(
-      <UserCard user={baseUser} newCount={2} latestSharedAt={new Date()} />
+      <UserCard profile={alice} newCount={2} latestSharedAt={new Date()} />
     );
     expect(container.querySelector('.user-card-sub')).toHaveTextContent(
       '2 new'
     );
   });
 
-  it('NonCompactSubLine_ActiveWhenSharedAndNewCountZero', () => {
+  it('SharedAndNewCountZero_SubLineReadsActive', () => {
     const { container } = render(
-      <UserCard user={baseUser} newCount={0} latestSharedAt={new Date()} />
+      <UserCard profile={alice} newCount={0} latestSharedAt={new Date()} />
     );
     expect(container.querySelector('.user-card-sub')).toHaveTextContent(
       'Active'
     );
   });
 
-  it('NonCompactSubLine_NoSharedListsWhenNoLatestShared', () => {
+  it('NeverShared_SubLineIsMutedNoSharedLists', () => {
     const { container } = render(
-      <UserCard user={baseUser} latestSharedAt={null} />
+      <UserCard profile={alice} latestSharedAt={null} />
     );
     expect(
       container.querySelector('.user-card-sub-muted')
     ).toHaveTextContent('No shared lists');
-  });
-
-  it('NullName_RendersUnnamed', () => {
-    const { container } = render(
-      <UserCard user={{ ...baseUser, name: null }} />
-    );
-    expect(container.querySelector('.user-card-name')).toHaveTextContent(
-      'Unnamed'
-    );
   });
 });

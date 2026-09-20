@@ -8,6 +8,7 @@ type ButtonProps = Omit<
 > & {
   variant: ButtonVariant;
   size?: ButtonSize;
+  icon?: boolean;
   isLoading?: boolean;
   pressed?: boolean;
   width?: ButtonWidth
@@ -19,6 +20,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       variant,
       size,
       width,
+      icon,
       isLoading,
       pressed,
       className,
@@ -29,7 +31,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) {
-    const composed = buttonClasses({ variant, size, width, extra: className });
+    const composed = buttonClasses({ variant, size, width, icon, extra: className });
 
     return (
       <button

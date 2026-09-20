@@ -2,11 +2,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { archiveItem } from '@/lib/data/item.actions';
-import { removeListItem } from '@/lib/data/listItems.actions';
 import OwnerActions from '../OwnerActions';
 
 vi.mock('@/lib/data/item.actions', () => ({ archiveItem: vi.fn() }));
-vi.mock('@/lib/data/listItems.actions', () => ({ removeListItem: vi.fn() }));
 
 vi.mock('react-hot-toast', () => ({
   default: {
@@ -23,7 +21,7 @@ function renderActions(
     archivedView: false,
     pathname: '/lists/l1',
     searchParams: new URLSearchParams('q=x') as never,
-    onArchived: vi.fn(),
+    onChanged: vi.fn(),
     ...overrides,
   };
   return { props, ...render(<OwnerActions {...props} />) };
@@ -36,7 +34,6 @@ async function openKebab(user: ReturnType<typeof userEvent.setup>) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(archiveItem).mockResolvedValue({ success: true } as never);
-  vi.mocked(removeListItem).mockResolvedValue({ success: true } as never);
 });
 
 afterEach(() => vi.restoreAllMocks());
@@ -74,7 +71,7 @@ describe('OwnerActions', () => {
     );
     await user.click(screen.getByRole('menuitem', { name: 'Archive' }));
     expect(archiveItem).toHaveBeenCalledWith('i1', true);
-    await waitFor(() => expect(props.onArchived).toHaveBeenCalled());
+    await waitFor(() => expect(props.onChanged).toHaveBeenCalled());
   });
 
   it('ArchiveFails_DoesNotNotify', async () => {
@@ -84,7 +81,7 @@ describe('OwnerActions', () => {
     await openKebab(user);
     await user.click(screen.getByRole('menuitem', { name: 'Archive' }));
     await waitFor(() => expect(archiveItem).toHaveBeenCalled());
-    expect(props.onArchived).not.toHaveBeenCalled();
+    expect(props.onChanged).not.toHaveBeenCalled();
   });
 
   it('KebabEdit_ClosesMenu', async () => {
@@ -124,87 +121,142 @@ describe('OwnerActions', () => {
     );
   });
 
-  describe('RemoveFromList', () => {
-    it('NoListId_OmitsRemoveEntry', async () => {
+  // The item library names no list, so nothing that would edit one is offered.
+  // The library's own card names no list, so nothing here rewrites one — but
+  // an entry-less card on a list still gets the way into the order.
+  it('NoEntryButReorderOffered_KeepsTheSeparatorAndTheRow', async () => {
+    const user = userEvent.setup();
+    renderActions({ showArchiveAction: false, onReorderAll: vi.fn() });
+    await openKebab(user);
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(
+      ['Reorder all items', 'Edit item details']
+    );
+    expect(screen.getByRole('separator')).toBeInTheDocument();
+  });
+
+  it('OffList_OffersOnlyEditAndArchive-NoSeparator', async () => {
+    const user = userEvent.setup();
+    renderActions();
+    await openKebab(user);
+    expect(screen.getAllByRole('menuitem').map((el) => el.textContent)).toEqual(
+      ['Edit item details', 'Archive']
+    );
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+  });
+
+  describe('OnList', () => {
+    const move = vi.fn();
+    const remove = vi.fn();
+    const onList = {
+      showArchiveAction: false,
+      entry: { ends: { first: 'first', last: 'last' }, move, remove },
+    };
+
+    it('Middle_OffersMoveTopMoveBottomRemoveThenEdit', async () => {
       const user = userEvent.setup();
-      renderActions();
+      renderActions(onList);
       await openKebab(user);
       expect(
-        screen.queryByRole('menuitem', { name: 'Remove from list' })
+        screen.getAllByRole('menuitem').map((el) => el.textContent)
+      ).toEqual([
+        'Move to top',
+        'Move to bottom',
+        'Remove from list',
+        'Edit item details',
+      ]);
+      expect(screen.getByRole('separator')).toBeInTheDocument();
+    });
+
+    it('FirstInListOrder_OmitsMoveToTop', async () => {
+      const user = userEvent.setup();
+      renderActions({ ...onList, itemId: 'first' });
+      await openKebab(user);
+      expect(
+        screen.queryByRole('menuitem', { name: 'Move to top' })
       ).not.toBeInTheDocument();
-    });
-
-    it('ListId_MenuOrdersEditArchiveRemove-RemoveHasDangerTone', async () => {
-      const user = userEvent.setup();
-      renderActions({ listId: 'l1' });
-      await openKebab(user);
-      const entries = screen
-        .getAllByRole('menuitem')
-        .map((el) => el.textContent);
-      expect(entries).toEqual(['Edit', 'Archive', 'Remove from list']);
       expect(
-        screen.getByRole('menuitem', { name: 'Remove from list' }).className
-      ).toContain('danger');
-    });
-
-    it('ClickRemove_ClosesMenu-OpensConfirmDialogWithLibraryCopy', async () => {
-      const user = userEvent.setup();
-      renderActions({ listId: 'l1' });
-      await openKebab(user);
-      await user.click(
-        screen.getByRole('menuitem', { name: 'Remove from list' })
-      );
-      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-      expect(screen.getByText('Remove from this list?')).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          'The item only comes off this list — it stays in your item library.'
-        )
+        screen.getByRole('menuitem', { name: 'Move to bottom' })
       ).toBeInTheDocument();
-      expect(removeListItem).not.toHaveBeenCalled();
     });
 
-    it('ConfirmRemove_CallsRemoveListItem-NotifiesOnSuccess-ClosesDialog', async () => {
+    it('LastInListOrder_OmitsMoveToBottom', async () => {
       const user = userEvent.setup();
-      const { props } = renderActions({ listId: 'l1' });
+      renderActions({ ...onList, itemId: 'last' });
       await openKebab(user);
-      await user.click(
-        screen.getByRole('menuitem', { name: 'Remove from list' })
-      );
-      await user.click(screen.getByRole('button', { name: 'Remove' }));
-      expect(removeListItem).toHaveBeenCalledWith('l1', 'i1');
-      await waitFor(() => expect(props.onArchived).toHaveBeenCalled());
       expect(
-        screen.queryByText('Remove from this list?')
+        screen.queryByRole('menuitem', { name: 'Move to bottom' })
       ).not.toBeInTheDocument();
-    });
-
-    it('CancelRemove_ClosesDialog-NoActionCall', async () => {
-      const user = userEvent.setup();
-      const { props } = renderActions({ listId: 'l1' });
-      await openKebab(user);
-      await user.click(
-        screen.getByRole('menuitem', { name: 'Remove from list' })
-      );
-      await user.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(
-        screen.queryByText('Remove from this list?')
-      ).not.toBeInTheDocument();
-      expect(removeListItem).not.toHaveBeenCalled();
-      expect(props.onArchived).not.toHaveBeenCalled();
+        screen.getByRole('menuitem', { name: 'Move to top' })
+      ).toBeInTheDocument();
     });
 
-    it('RemoveFails_DoesNotNotify', async () => {
-      vi.mocked(removeListItem).mockResolvedValue({ success: false } as never);
+    // A non-list-order sort withholds the ends, so the moves that would
+    // silently rewrite the order the owner sorted by are not offered.
+    it('NoListEnds_OmitsBothMoveRows-KeepsRemove', async () => {
       const user = userEvent.setup();
-      const { props } = renderActions({ listId: 'l1' });
+      renderActions({ ...onList, entry: { move, remove } });
+      await openKebab(user);
+      expect(
+        screen.getAllByRole('menuitem').map((el) => el.textContent)
+      ).toEqual(['Remove from list', 'Edit item details']);
+    });
+
+    it('MoveToTop_CallsOnMoveWithFirstId-ClosesMenu', async () => {
+      const user = userEvent.setup();
+      renderActions(onList);
+      await openKebab(user);
+      await user.click(screen.getByRole('menuitem', { name: 'Move to top' }));
+      expect(move).toHaveBeenCalledWith('first');
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+
+    it('MoveToBottom_CallsOnMoveWithLastId', async () => {
+      const user = userEvent.setup();
+      renderActions(onList);
+      await openKebab(user);
+      await user.click(screen.getByRole('menuitem', { name: 'Move to bottom' }));
+      expect(move).toHaveBeenCalledWith('last');
+    });
+
+    // Above the moves it shares a section with, and offered whether or not
+    // the ends are: the surface it opens resets the sort as it does.
+    it('ReorderOffered_LeadsTheOrderingSection', async () => {
+      const user = userEvent.setup();
+      renderActions({ ...onList, onReorderAll: vi.fn() });
+      await openKebab(user);
+      expect(
+        screen.getAllByRole('menuitem').map((el) => el.textContent)
+      ).toEqual([
+        'Move to top',
+        'Move to bottom',
+        'Reorder all items',
+        'Remove from list',
+        'Edit item details',
+      ]);
+    });
+
+    it('ReorderChosen_OpensTheSurface-ClosesMenu', async () => {
+      const user = userEvent.setup();
+      const onReorderAll = vi.fn();
+      renderActions({ ...onList, onReorderAll });
+      await openKebab(user);
+      await user.click(
+        screen.getByRole('menuitem', { name: 'Reorder all items' })
+      );
+      expect(onReorderAll).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    });
+
+    it('Remove_CallsOnRemove-ClosesMenu', async () => {
+      const user = userEvent.setup();
+      renderActions(onList);
       await openKebab(user);
       await user.click(
         screen.getByRole('menuitem', { name: 'Remove from list' })
       );
-      await user.click(screen.getByRole('button', { name: 'Remove' }));
-      await waitFor(() => expect(removeListItem).toHaveBeenCalled());
-      expect(props.onArchived).not.toHaveBeenCalled();
+      expect(remove).toHaveBeenCalled();
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     });
   });
 });

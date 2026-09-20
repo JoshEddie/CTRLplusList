@@ -12,11 +12,13 @@ export default function DeleteItemButton({
   returnTo,
   onDeleted,
   archived = false,
+  disabled,
 }: {
   id: string;
   returnTo?: string;
   onDeleted?: () => void;
   archived?: boolean;
+  disabled: boolean;
 }) {
   const router = useRouter();
   const [showConfirm, setShowConfirm] = useState(false);
@@ -74,7 +76,11 @@ export default function DeleteItemButton({
 
   return (
     <>
-      <Button variant="danger" onClick={() => setShowConfirm(true)}>
+      <Button
+        variant="danger"
+        disabled={disabled}
+        onClick={() => setShowConfirm(true)}
+      >
         Delete
       </Button>
       <ConfirmDialog

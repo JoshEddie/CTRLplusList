@@ -2,14 +2,17 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { auth } from '@/lib/auth';
+import { getUserIdentity } from '@/lib/data/profile';
 import { getItemsByPurchased } from '@/lib/data/purchase';
 import { getUserIdByEmail } from '@/lib/data/user';
 import Purchased from '../page';
+import { makeProfile } from '@/test/helpers/profile';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
 }));
+vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
 vi.mock('@/lib/data/purchase', () => ({
   getItemsByPurchased: vi.fn(),
 }));
@@ -33,6 +36,11 @@ beforeEach(() => {
     user: { email: 'viewer@test.local' },
   } as never);
   vi.mocked(getUserIdByEmail).mockResolvedValue({ id: 'viewer' } as never);
+  vi.mocked(getUserIdentity).mockResolvedValue({
+    userId: 'viewer',
+    selfProfile: makeProfile('viewer-profile', 'Viewer'),
+    activeProfile: makeProfile('viewer-profile', 'Viewer'),
+  });
   vi.mocked(getItemsByPurchased).mockResolvedValue([] as never);
 });
 
@@ -53,9 +61,21 @@ describe('Purchased', () => {
   });
 
   describe('Render', () => {
-    it('ViewerResolved_ReadsPurchasedItemsForUserId', async () => {
+    it('ViewerResolved_ReadsPurchasedItemsForTheSelfProfile', async () => {
       await Purchased();
-      expect(getItemsByPurchased).toHaveBeenCalledWith('viewer');
+      expect(getItemsByPurchased).toHaveBeenCalledWith('viewer-profile');
+    });
+
+    it('ActingAsAManagedProfile_StillReadsTheSelfProfile', async () => {
+      vi.mocked(getUserIdentity).mockResolvedValue({
+        userId: 'viewer',
+        selfProfile: makeProfile('viewer-profile', 'Viewer'),
+        activeProfile: makeProfile('kiddo', 'Kiddo'),
+      });
+
+      await Purchased();
+
+      expect(getItemsByPurchased).toHaveBeenCalledWith('viewer-profile');
     });
 
     it('ViewerResolved_RendersPurchasedHeaderAndItemsInLibraryMain', async () => {

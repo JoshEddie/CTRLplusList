@@ -1,7 +1,8 @@
 'use client';
 
-import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
 import { Button } from '@/app/ui/components/button';
+import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
+import { getMessage } from '@/lib/i18n/utils';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
@@ -30,15 +31,16 @@ export default function BookmarkButton({
         toast.error(result.message);
         return;
       }
-      toast.success(next ? 'Bookmarked' : 'Bookmark removed');
+      toast.success(getMessage(next ? 'saved_add_toast' : 'saved_remove_toast'));
       router.refresh();
     });
   };
 
-  const label = bookmarked ? 'Remove bookmark' : 'Bookmark list';
+  const label = getMessage(bookmarked ? 'saved_remove_aria_label' : 'saved_add_aria_label');
 
   return (
     <Button
+      size='xs'
       variant="on-dark"
       pressed={bookmarked}
       aria-label={label}
@@ -46,7 +48,7 @@ export default function BookmarkButton({
       onClick={toggle}
     >
       {bookmarked ? <FaBookmark /> : <FaRegBookmark />}
-      <span className="label">{bookmarked ? 'Bookmarked' : 'Bookmark'}</span>
+      <span className="label">{getMessage(bookmarked ? 'saved_label' : 'saved_add_label')}</span>
     </Button>
   );
 }

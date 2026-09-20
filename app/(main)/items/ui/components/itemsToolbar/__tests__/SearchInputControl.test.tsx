@@ -52,6 +52,64 @@ describe('SearchInputControl', () => {
     expect(onCommit).not.toHaveBeenCalled();
   });
 
+  it('CommitEchoedBackWhileTyping_KeepsTheLaterKeystrokes', () => {
+    const onCommit = vi.fn();
+    const { rerender } = render(
+      <SearchInputControl initialQ="" onCommit={onCommit} />
+    );
+    const input = screen.getByRole('searchbox', { name: 'Search items' });
+
+    fireEvent.change(input, { target: { value: 'g' } });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(onCommit).toHaveBeenCalledWith('g');
+
+    fireEvent.change(input, { target: { value: 'gi' } });
+    rerender(<SearchInputControl initialQ="g" onCommit={onCommit} />);
+    expect((input as HTMLInputElement).value).toBe('gi');
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(onCommit).toHaveBeenLastCalledWith('gi');
+  });
+
+  it('CommitEchoedBackAsInitialQ_KeepsTheInputFocused', () => {
+    const onCommit = vi.fn();
+    const { rerender } = render(
+      <SearchInputControl initialQ="" onCommit={onCommit} />
+    );
+    const input = screen.getByRole('searchbox', { name: 'Search items' });
+    input.focus();
+
+    fireEvent.change(input, { target: { value: 'g' } });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    rerender(<SearchInputControl initialQ="g" onCommit={onCommit} />);
+
+    expect(screen.getByRole('searchbox', { name: 'Search items' })).toBe(input);
+    expect(input).toHaveFocus();
+  });
+
+  it('QueryChangedElsewhere_ReseedsInputWithoutRecommitting', () => {
+    const onCommit = vi.fn();
+    const { rerender } = render(
+      <SearchInputControl initialQ="gift" onCommit={onCommit} />
+    );
+    const input = screen.getByRole('searchbox', { name: 'Search items' });
+    expect((input as HTMLInputElement).value).toBe('gift');
+
+    rerender(<SearchInputControl initialQ="" onCommit={onCommit} />);
+    expect((input as HTMLInputElement).value).toBe('');
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
   it('ClearButton_ResetsInputThenCommitsEmpty', () => {
     const onCommit = vi.fn();
     render(<SearchInputControl initialQ="gift" onCommit={onCommit} />);

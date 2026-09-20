@@ -6,15 +6,6 @@
 
 :root {
   --ink-soft: #5d6470;
-  --good: #1c7146;
-  --good-bg: #e6f4ec;
-  --good-line: #bfe3cd;
-  --warn: #845309;
-  --warn-bg: #fbf1d9;
-  --warn-line: #ecd49a;
-  --error: #b91c1c;
-  --error-bg: #fbe5e2;
-  --error-line: #f0bdb6;
 }
 
 .deck-preview,
@@ -32,8 +23,6 @@
 .deck-actrow:focus-visible,
 .deck-triage-row:focus-visible,
 .deck-list-opt:focus-visible,
-.deck-stepper-btn:focus-visible,
-.deck-store-rm:focus-visible,
 .deck-trim-chip:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
@@ -71,7 +60,7 @@
 }
 
 .deck-row-icon.check {
-  color: var(--good);
+  color: var(--success-text);
 }
 
 .deck-row-icon.warning {
@@ -79,7 +68,7 @@
 }
 
 .deck-row-icon.error {
-  color: var(--error);
+  color: var(--danger-text);
 }
 
 .deck-row-title {
@@ -222,9 +211,9 @@
 }
 
 .deck-tier-good {
-  background: var(--good-bg);
-  border-color: var(--good-line);
-  color: var(--good);
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  color: var(--success-text);
 }
 
 .deck-tier-warn {
@@ -234,21 +223,14 @@
 }
 
 .deck-tier-error {
-  background: var(--error-bg);
-  border-color: var(--error-line);
-  color: var(--error);
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+  color: var(--danger-text);
 }
 
-.deck-title {
+.deck-name {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.deck-title-meta {
-  display: flex;
-  align-items: center;
-  justify-content: end;
   gap: 12px;
 }
 
@@ -285,36 +267,16 @@
   color: var(--neutral-text-color);
 }
 
-.deck-counter {
-  font-size: 13px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted-text-color);
-}
-
-.deck-counter-warn {
-  color: var(--warn);
-}
-
-.deck-counter-error {
-  color: var(--error);
-}
-
 .deck-note {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.deck-note .deck-counter,
 .deck-price {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.deck-note > .deck-counter {
-  align-self: flex-end;
 }
 
 /* ---- Preview body (card + actions) --------------------------------------- */
@@ -503,7 +465,7 @@
 }
 
 .deck-triage-status-good {
-  color: var(--good);
+  color: var(--success-text);
 }
 
 .deck-triage-status-warn {
@@ -511,50 +473,10 @@
 }
 
 .deck-triage-status-error {
-  color: var(--error);
+  color: var(--danger-text);
 }
 
-/* ---- Stores sheet -------------------------------------------------------- */
-
-.deck-store-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--card-border-color);
-  border-radius: 10px;
-}
-
-.deck-store-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.deck-store-num {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted-text-color);
-}
-
-.deck-store-rm {
-  width: var(--WCAG-input-size);
-  height: var(--WCAG-input-size);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--danger-color);
-  cursor: pointer;
-}
-
-.deck-store-rm:hover {
-  background: var(--error-bg);
-}
-
-/* ---- Lists & quantity sheet ---------------------------------------------- */
+/* ---- Lists sheet --------------------------------------------------------- */
 
 .deck-lists-group {
   display: flex;
@@ -596,47 +518,4 @@
   font-weight: 600;
 }
 
-.deck-qty {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.deck-qty-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted-text-color);
-}
-
-.deck-stepper {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.deck-stepper-btn {
-  width: var(--WCAG-input-size);
-  height: var(--WCAG-input-size);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  border: 1px solid var(--neutral-border-color);
-  border-radius: 8px;
-  background: var(--light-color);
-  color: var(--neutral-text-color);
-  cursor: pointer;
-}
-
-.deck-stepper-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.deck-stepper-value {
-  min-width: 2ch;
-  text-align: center;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
 

@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { normalizePageSize, readItemsPageSize, viewerDisplayName } from '../utils';
+import { normalizePageSize, readItemsPageSize } from '../utils';
 
 vi.mock('next/headers', () => ({ cookies: vi.fn() }));
 
@@ -51,25 +51,5 @@ describe('readItemsPageSize', () => {
   it('AbsentCookie_ReturnsDefault', async () => {
     mockCookie(undefined);
     await expect(readItemsPageSize()).resolves.toBe(24);
-  });
-});
-
-describe('viewerDisplayName', () => {
-  it('TwoTokenName_ReturnsFirstAndLastInitial', () => {
-    expect(viewerDisplayName('Test Viewer')).toBe('Test V');
-  });
-
-  it('MultiTokenName_UsesFirstTwoTokens', () => {
-    expect(viewerDisplayName('Ada B Lovelace')).toBe('Ada B');
-  });
-
-  it('SingleTokenName_ReturnsToken', () => {
-    expect(viewerDisplayName('Madonna')).toBe('Madonna');
-  });
-
-  it('EmptyOrNullName_ReturnsUndefined', () => {
-    expect(viewerDisplayName('')).toBeUndefined();
-    expect(viewerDisplayName(null)).toBeUndefined();
-    expect(viewerDisplayName(undefined)).toBeUndefined();
   });
 });

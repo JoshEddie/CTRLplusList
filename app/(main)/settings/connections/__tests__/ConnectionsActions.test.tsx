@@ -3,19 +3,19 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   blockUser,
-  removeFollower,
   unblockUser,
   unfollowUser,
-} from '@/lib/data/user.actions';
+} from '@/lib/data/profile.actions';
+import { removeFollower } from '@/lib/data/user.actions';
 import toast from 'react-hot-toast';
 import ConnectionsAction from '../ConnectionsActions';
 
-vi.mock('@/lib/data/user.actions', () => ({
+vi.mock('@/lib/data/profile.actions', () => ({
   unfollowUser: vi.fn(),
-  removeFollower: vi.fn(),
   blockUser: vi.fn(),
   unblockUser: vi.fn(),
 }));
+vi.mock('@/lib/data/user.actions', () => ({ removeFollower: vi.fn() }));
 
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
@@ -24,24 +24,38 @@ vi.mock('react-hot-toast', () => ({
   default: { success: vi.fn(), error: vi.fn() },
 }));
 
-const TARGET = 't-target';
+const ACCOUNT_ID = 'follower-account';
+const PROFILE_ID = 'target-profile';
 
 const CASES = [
   {
-    action: 'unfollow',
+    props: { action: 'unfollow', targetProfileId: PROFILE_ID },
+    id: PROFILE_ID,
+    idKind: 'TargetProfileId',
     label: 'Unfollow',
     fnName: 'UnfollowUser',
     mock: unfollowUser,
   },
   {
-    action: 'remove',
+    props: { action: 'remove', followerAccountId: ACCOUNT_ID },
+    id: ACCOUNT_ID,
+    idKind: 'FollowerAccountId',
     label: 'Remove',
     fnName: 'RemoveFollower',
     mock: removeFollower,
   },
-  { action: 'block', label: 'Block', fnName: 'BlockUser', mock: blockUser },
   {
-    action: 'unblock',
+    props: { action: 'block', targetProfileId: PROFILE_ID },
+    id: PROFILE_ID,
+    idKind: 'TargetProfileId',
+    label: 'Block',
+    fnName: 'BlockUser',
+    mock: blockUser,
+  },
+  {
+    props: { action: 'unblock', targetProfileId: PROFILE_ID },
+    id: PROFILE_ID,
+    idKind: 'TargetProfileId',
     label: 'Unblock',
     fnName: 'UnblockUser',
     mock: unblockUser,
@@ -60,7 +74,7 @@ describe('ConnectionsAction', () => {
   describe('Label', () => {
     for (const c of CASES) {
       it(`${c.label}Action_Renders${c.label}Button`, () => {
-        render(<ConnectionsAction action={c.action} targetId={TARGET} />);
+        render(<ConnectionsAction {...c.props} />);
         expect(
           screen.getByRole('button', { name: c.label })
         ).toBeInTheDocument();
@@ -70,14 +84,14 @@ describe('ConnectionsAction', () => {
 
   describe('Dispatch', () => {
     for (const c of CASES) {
-      it(`Click${c.label}_Calls${c.fnName}WithTargetId-ToastSuccess-RouterRefresh`, async () => {
+      it(`Click${c.label}_Calls${c.fnName}With${c.idKind}-ToastSuccess-RouterRefresh`, async () => {
         const user = userEvent.setup();
         vi.mocked(c.mock).mockResolvedValue({ success: true, message: 'done' });
-        render(<ConnectionsAction action={c.action} targetId={TARGET} />);
+        render(<ConnectionsAction {...c.props} />);
 
         await user.click(screen.getByRole('button', { name: c.label }));
 
-        await waitFor(() => expect(c.mock).toHaveBeenCalledWith(TARGET));
+        await waitFor(() => expect(c.mock).toHaveBeenCalledWith(c.id));
         expect(c.mock).toHaveBeenCalledTimes(1);
         await waitFor(() => expect(toast.success).toHaveBeenCalledWith('done'));
         expect(router.refresh).toHaveBeenCalledTimes(1);
@@ -93,7 +107,9 @@ describe('ConnectionsAction', () => {
         success: false,
         message: 'Cannot unfollow',
       });
-      render(<ConnectionsAction action="unfollow" targetId={TARGET} />);
+      render(
+        <ConnectionsAction action="unfollow" targetProfileId={PROFILE_ID} />
+      );
 
       await user.click(screen.getByRole('button', { name: 'Unfollow' }));
 
@@ -112,7 +128,7 @@ describe('ConnectionsAction', () => {
           resolve = r;
         })
       );
-      render(<ConnectionsAction action="block" targetId={TARGET} />);
+      render(<ConnectionsAction action="block" targetProfileId={PROFILE_ID} />);
       const btn = screen.getByRole('button', { name: 'Block' });
 
       await user.click(btn);

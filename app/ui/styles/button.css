@@ -1,9 +1,9 @@
 :root {
   --btn-radius: 8px;
-  --btn-padding-y: 10px;
+  --btn-padding-y: 0;
   --btn-padding-x: 20px;
-  --btn-font-size: 16px;
-  --btn-font-weight: 500;
+  --btn-font-size: 15px;
+  --btn-font-weight: 450;
   --btn-min-height: var(--WCAG-input-size);
   --btn-min-width: var(--WCAG-input-size);
   --btn-focus-ring-color: var(--primary-color);
@@ -13,6 +13,12 @@
   --btn-sm-font-size: 14px;
   --btn-sm-min-height: var(--WCAG-input-size-sm);
   --btn-sm-min-width: var(--WCAG-input-size-sm);
+
+  --btn-xs-padding-y: 4px;
+  --btn-xs-padding-x: 10px;
+  --btn-xs-font-size: 12px;
+  --btn-xs-min-height: var(--WCAG-input-size-xs);
+  --btn-xs-min-width: var(--WCAG-input-size-xs);
 
   /* Chip tier — pill-shaped label + remove-×. Below the sm floor; relies
      on WCAG 2.5.8 spacing exception (chips are spaced from neighbors via
@@ -39,7 +45,9 @@
   font-family: var(--font-roboto-condensed);
   font-weight: var(--btn-font-weight);
   word-break: normal;
-  overflow-wrap: anywhere;
+  /* break-word, not anywhere: word width stays in min-content sizing, so a
+     squeezed grid/flex slot wraps between words instead of splitting one. */
+  overflow-wrap: break-word;
   text-align: center;
   line-height: 1.2;
   min-height: var(--btn-min-height);
@@ -64,8 +72,31 @@
   min-width: var(--btn-sm-min-width);
 }
 
+.btn-xs {
+  padding: var(--btn-xs-padding-y) var(--btn-xs-padding-x);
+  font-size: var(--btn-xs-font-size);
+  min-height: var(--btn-xs-min-height);
+  min-width: var(--btn-xs-min-width);
+}
+
 .btn.full {
   width: 100%;
+}
+
+/* Icon-only shape — a disc at the size floor, for arrows and other
+   label-less controls. Composes with any variant. */
+.btn-icon {
+  width: var(--btn-min-height);
+  padding: 0;
+  border-radius: 50%;
+}
+
+.btn-sm.btn-icon {
+  width: var(--btn-sm-min-height);
+}
+
+.btn-xs.btn-icon {
+  width: var(--btn-xs-min-height);
 }
 
 /* Variants */
@@ -74,20 +105,29 @@
   background-color: var(--primary-color-dark);  
   background: linear-gradient(
     120deg,
-    var(--secondary-color) 0%,
+    var(--primary-color) 0%,
     var(--primary-color-dark) 50%,
     var(--primary-color-dark) 100%
   );
   background-size: 400% 100%;
-  background-position: 100% 0%; /* solid primary-dark shows */
-  transition: background-position 0.5s ease;
+  background-position: 100% 0%;
+  transition: 0.5s ease;
   border-color: var(--primary-color-dark);
   color: #ffffff;
 }
 
 .btn.secondary {
-  border-color: var(--third-background-color);
   background-color: var(--third-background-color);
+    background: linear-gradient(
+    120deg,
+    var(--primary-color) 0%,
+    var(--third-background-color) 50%,
+    var(--third-background-color) 100%
+  );
+  background-size: 400% 100%;
+  background-position: 100% 0%;
+  transition: background-position 0.5s ease;
+  border-color: var(--primary-color-dark);
   color: var(--primary-text-color);
 }
 
@@ -110,6 +150,18 @@
 }
 
 .btn.on-dark:focus-visible {
+  outline-color: #ffffff;
+}
+
+/* Solid counterpart to on-dark: the filled call-to-action on a dark surface,
+   where an outlined button reads as secondary. */
+.btn.white {
+  background-color: #ffffff;
+  border-color: #ffffff;
+  color: var(--primary-color-dark);
+}
+
+.btn.white:focus-visible {
   outline-color: #ffffff;
 }
 
@@ -145,15 +197,22 @@
 
 @media (hover: hover) {
   .btn.primary:hover {
-    background-position: 0% 0%; /* gradient fills from right */
+    background-position: 0% 0%;
     color: #ffffff;
-    border-color: var(--secondary-color);
+    border-color: var(--primary-color);
   }
 
   .btn.secondary:hover {
-    border-color: var(--secondary-color);
-    background-color: var(--secondary-color);
-    color: #ffffff;
+    border-color: var(--primary-color);
+    color: #ffffff; 
+    background: linear-gradient(
+      120deg,
+      var(--primary-color) 0%,
+      var(--primary-color-dark) 50%,
+      var(--primary-color-dark) 100%
+    );
+    background-size: 400% 100%;
+    background-position: 0% 0%;
   }
 
   .btn.ghost:hover {
@@ -170,7 +229,12 @@
 
   .btn.on-dark:hover {
     background-color: #ffffff;
-    color: var(--primary-color);
+    color: var(--secondary-color-dark);
+  }
+
+  .btn.white:hover {
+    background-color: transparent;
+    color: #ffffff;
   }
 
   .btn.on-dark[aria-pressed='true']:hover {
@@ -180,7 +244,7 @@
 
   .btn.primary[aria-pressed='true']:hover {
     background-color: transparent;
-    color: var(--primary-color);
+    color: #ffffff;
   }
 
   .btn.link:hover {
@@ -369,4 +433,59 @@
 .gsi-material-button:not(:disabled):hover .gsi-material-button-state {
   background-color: #303030;
   opacity: 8%;
+}
+
+/* ── Close affordance ─────────────────────────────────────────────────────
+   One disc for every floating surface (modals, deck screens, overlay
+   menus): geometry inherited from the deck-screen baseline — inset 16px
+   inside the surface's top-right corner, 36px visual expanded to the 44px
+   WCAG hit floor via ::before. The surface provides position: relative;
+   layout pivots are per-surface classes, the disc itself is never
+   restyled. */
+.close-button {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--light-color);
+  border: 1.5px solid var(--primary-color-dark);
+  color: var(--primary-color-dark);
+  font-size: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+  z-index: 4;
+}
+
+/* Expand the 36px visual to the 44px WCAG hit floor. */
+.close-button::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+}
+
+.close-button:hover {
+  background: var(--primary-color-dark);
+  color: var(--light-color);
+}
+
+.close-button:focus-visible {
+  outline: 2px solid var(--btn-focus-ring-color);
+  outline-offset: 2px;
+}
+
+/* Layout pivot for surfaces whose close sits in a header row beside a
+   title rather than floating over the surface's corner: the row places
+   it. `relative` (not `static`) keeps the ::before hit-target anchored
+   to the disc. */
+.close-button--in-flow {
+  position: relative;
+  top: auto;
+  right: auto;
+  flex: none;
 }

@@ -70,7 +70,7 @@ describe('Triage', () => {
     const user = userEvent.setup();
     const { onFocus } = setup();
     await user.click(screen.getByRole('button', { name: /Item name/ }));
-    expect(onFocus).toHaveBeenCalledWith('title');
+    expect(onFocus).toHaveBeenCalledWith('name');
   });
 
   it('ClickNoteRow_OpensNoteFocus', async () => {

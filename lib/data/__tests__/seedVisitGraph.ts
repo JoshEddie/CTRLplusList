@@ -1,5 +1,6 @@
 import { list_visits, lists } from '@/db/schema';
 import type { bootPglite } from '@/test/helpers/db';
+import { selfProfileOf } from '@/test/helpers/profile';
 
 type TestDb = Awaited<ReturnType<typeof bootPglite>>['db'];
 
@@ -15,7 +16,7 @@ export async function seedList(db: TestDb, list: SeedList): Promise<void> {
     id: list.id,
     name: list.name ?? list.id,
     occasion: 'birthday',
-    user_id: list.user_id,
+    profile_id: selfProfileOf(list.user_id),
     visibility: list.visibility ?? 'public',
   });
 }

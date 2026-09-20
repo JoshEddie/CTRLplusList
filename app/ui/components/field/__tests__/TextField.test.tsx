@@ -86,6 +86,42 @@ describe('TextField', () => {
     });
   });
 
+  describe('CounterAxis', () => {
+    it('CounterMax_RendersLengthOverMax', () => {
+      const { container } = render(
+        <TextField label="Name" value="abc" onChange={() => {}} counterMax={50} />
+      );
+      expect(container.querySelector('.form_field_counter')).toHaveTextContent(
+        '3/50'
+      );
+    });
+
+    it('CounterMaxWithUndefinedValue_CountsZero', () => {
+      const { container } = render(<TextField label="Name" counterMax={50} />);
+      expect(container.querySelector('.form_field_counter')).toHaveTextContent(
+        '0/50'
+      );
+    });
+
+    it('CounterOmitted_NoCounterRendered', () => {
+      const { container } = render(
+        <TextField label="Name" value="abc" onChange={() => {}} />
+      );
+      expect(container.querySelector('.form_field_counter')).toBeNull();
+    });
+  });
+
+  describe('InvalidAxis', () => {
+    it('InvalidTrue_SetsAriaInvalidWithoutMessage', () => {
+      const { container } = render(<TextField label="Name" invalid />);
+      expect(screen.getByLabelText('Name')).toHaveAttribute(
+        'aria-invalid',
+        'true'
+      );
+      expect(container.querySelector('.field_error')).toBeNull();
+    });
+  });
+
   describe('RefForwarding', () => {
     it('Ref_ResolvesToInputElement', () => {
       const ref = createRef<HTMLInputElement>();

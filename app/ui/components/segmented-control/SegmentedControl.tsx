@@ -11,15 +11,14 @@ import {
   useRef,
 } from 'react';
 import { segmentedGroupClasses } from './segmentedClasses';
-import type { SegmentedTone } from './types';
+import type { SegmentedSize, SegmentedTone } from './types';
 import './segmented-control.css';
 
-// React context kept generic via `unknown` then narrowed at the option call site
-// — generic forwardRef + context together don't compose cleanly in TS.
 interface SegmentedContextValue {
   value: unknown;
   onChange: (value: unknown) => void;
   tone: SegmentedTone;
+  size: SegmentedSize;
 }
 
 const SegmentedContext = createContext<SegmentedContextValue | null>(null);
@@ -38,8 +37,10 @@ type SegmentedControlProps<T extends string> = {
   value: T;
   onChange: (value: T) => void;
   tone: SegmentedTone;
+  size?: SegmentedSize;
   children: ReactNode;
   className?: string;
+  style?: React.CSSProperties;
 } & Pick<AriaAttributes, 'aria-label' | 'aria-labelledby'>;
 
 function SegmentedControlInner<T extends string>(
@@ -47,8 +48,10 @@ function SegmentedControlInner<T extends string>(
     value,
     onChange,
     tone,
+    size = 'sm',
     children,
     className,
+    style,
     ...aria
   }: SegmentedControlProps<T>,
   ref: React.Ref<HTMLDivElement>
@@ -82,7 +85,12 @@ function SegmentedControlInner<T extends string>(
         : (currentIndex - 1 + options.length) % options.length;
       const next = options[nextIndex];
       const nextValue = next?.dataset.value;
-      if (nextValue === undefined) return;
+      if (
+        nextValue === undefined ||
+        (next instanceof HTMLButtonElement && next.disabled)
+      ) {
+        return;
+      }
       e.preventDefault();
       (onChange as (v: unknown) => void)(nextValue);
       next.focus();
@@ -97,12 +105,14 @@ function SegmentedControlInner<T extends string>(
         value,
         onChange: onChange as (v: unknown) => void,
         tone,
+        size,
       }}
     >
       <div
         ref={localRef}
         role="radiogroup"
-        className={segmentedGroupClasses({ tone, extra: className })}
+        className={segmentedGroupClasses({ tone, size, extra: className })}
+        style={style}
         {...aria}
       >
         {children}

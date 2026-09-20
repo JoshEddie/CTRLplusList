@@ -7,7 +7,13 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 
-export default function DeleteListButton({ id }: { id: string }) {
+export default function DeleteListButton({
+  id,
+  disabled,
+}: {
+  id: string;
+  disabled: boolean;
+}) {
   const router = useRouter();
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -23,7 +29,11 @@ export default function DeleteListButton({ id }: { id: string }) {
 
   return (
     <>
-      <Button variant="danger" onClick={() => setShowConfirm(true)}>
+      <Button
+        variant="danger"
+        disabled={disabled}
+        onClick={() => setShowConfirm(true)}
+      >
         Delete
       </Button>
       <ConfirmDialog

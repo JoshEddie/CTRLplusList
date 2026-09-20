@@ -20,8 +20,12 @@ beforeEach(() => vi.clearAllMocks());
 afterEach(() => vi.restoreAllMocks());
 
 describe('useItemSubmit', () => {
-  it('CreateSuccessWithOnSuccess_CallsOnSuccessAndRefresh', async () => {
-    actions.createItem.mockResolvedValue({ success: true, message: 'ok' });
+  it('CreateSuccessWithOnSuccess_CallsOnSuccessWithTheNewIdAndRefresh', async () => {
+    actions.createItem.mockResolvedValue({
+      success: true,
+      message: 'ok',
+      id: 'new-1',
+    });
     const onSuccess = vi.fn();
     const { result } = renderHook(() =>
       useItemSubmit(blankItem(), false, undefined, onSuccess)
@@ -30,7 +34,7 @@ describe('useItemSubmit', () => {
       await result.current.submit();
     });
     expect(actions.createItem).toHaveBeenCalledOnce();
-    expect(onSuccess).toHaveBeenCalledOnce();
+    expect(onSuccess).toHaveBeenCalledExactlyOnceWith('new-1');
     expect(router.refresh).toHaveBeenCalledOnce();
     expect(toast.success).toHaveBeenCalledWith('Item created successfully');
   });

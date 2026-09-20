@@ -5,10 +5,14 @@
  * the link and the labeled bookmark icon but cannot read class-named spans or
  * assert element absence by class; classed `document` queries are required.
  */
-import { render } from '@testing-library/react';
+import { ACCENT_PRESETS } from '@/lib/accent';
+import { makeProfile } from '@/test/helpers/profile';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import ListCard from '../ListCard';
 import { makeList } from './test-helpers';
+
+const ART = 'data:image/svg+xml;utf8,%3Csvg%2F%3E';
 
 vi.mock('next/link', async () => ({
   default: (await import('./test-helpers')).MockNextLink,
@@ -31,13 +35,6 @@ describe('ListCard', () => {
       expect(nameText).toHaveAttribute('title', 'Birthday Wishlist');
     });
 
-    it('Default_OccasionRendersInOccasionSpan', () => {
-      render(<ListCard list={makeList({ occasion: 'Christmas' })} />);
-      expect(document.querySelector('.list-card-occasion')).toHaveTextContent(
-        'Christmas'
-      );
-    });
-
     it('Date_RendersInUtcTimeZone-NotLocalDay', () => {
       // 00:30 UTC on Jan 1 falls on Dec 31 in any zone west of UTC; the
       // `timeZone: 'UTC'` formatting option must pin the displayed day to Jan 01.
@@ -45,14 +42,16 @@ describe('ListCard', () => {
         <ListCard list={makeList({ date: new Date('2025-01-01T00:30:00Z') })} />
       );
       expect(document.querySelector('.list-card-date')).toHaveTextContent(
-        'Jan 01, 2025'
+        '01/01/25'
       );
     });
   });
 
   describe('Subtitle', () => {
     it('SubtitlePresent_RendersSubtitleDiv-NoPlaceholder', () => {
-      render(<ListCard list={makeList({ subtitle: 'For the whole family' })} />);
+      render(
+        <ListCard list={makeList({ subtitle: 'For the whole family' })} />
+      );
       expect(document.querySelector('.list-card-subtitle')).toHaveTextContent(
         'For the whole family'
       );
@@ -75,7 +74,7 @@ describe('ListCard', () => {
   describe('BookmarkIndicator', () => {
     it('Bookmarked_RendersLabeledIndicatorInsideName', () => {
       render(<ListCard list={makeList()} bookmarked />);
-      const indicator = document.querySelector('[aria-label="Bookmarked"]');
+      const indicator = document.querySelector('[aria-label="Saved"]');
       expect(indicator).toHaveClass('list-card-bookmark-indicator');
       expect(document.querySelector('.list-card-name')).toContainElement(
         indicator as HTMLElement
@@ -84,31 +83,88 @@ describe('ListCard', () => {
 
     it('NotBookmarked_NoIndicator', () => {
       render(<ListCard list={makeList()} />);
-      expect(document.querySelector('[aria-label="Bookmarked"]')).toBeNull();
+      expect(document.querySelector('[aria-label="Saved"]')).toBeNull();
     });
   });
 
   describe('OwnerByline', () => {
-    it('ShowOwnerTrueWithName_RendersByline', () => {
-      render(<ListCard list={makeList({ user: { name: 'Alice' } })} showOwner />);
-      expect(document.querySelector('.list-card-byline')).toHaveTextContent(
-        'Alice'
+    it('ShowOwnerTrueWithName_RendersBylineWithOwnerDisc', () => {
+      render(
+        <ListCard list={makeList({ profile: makeProfile('p1', 'Alice') })} showOwner />
       );
+      const byline = document.querySelector('.list-card-byline');
+      expect(byline).toHaveTextContent('Alice');
+      expect(byline?.querySelector('.list-card-byline-avatar')).not.toBeNull();
     });
 
     it('ShowOwnerFalse_NoByline-EvenWithName', () => {
-      render(<ListCard list={makeList({ user: { name: 'Alice' } })} />);
+      render(
+        <ListCard list={makeList({ profile: makeProfile('p1', 'Alice') })} />
+      );
       expect(document.querySelector('.list-card-byline')).toBeNull();
     });
 
-    it('ShowOwnerTrueButNullUser_NoByline', () => {
-      render(<ListCard list={makeList({ user: null })} showOwner />);
+    it('ShowOwnerTrueButNullProfile_NoByline', () => {
+      render(<ListCard list={makeList({ profile: null })} showOwner />);
       expect(document.querySelector('.list-card-byline')).toBeNull();
     });
 
-    it('ShowOwnerTrueButNullName_NoByline', () => {
-      render(<ListCard list={makeList({ user: { name: null } })} showOwner />);
-      expect(document.querySelector('.list-card-byline')).toBeNull();
+    it('OwnerProfileWithArt_BylineRendersThatProfilesArt', () => {
+      render(
+        <ListCard
+          list={makeList({
+            profile: {
+              ...makeProfile('p1', 'Alice'),
+              art: ART,
+              avatarStyle: 'avataaars',
+            },
+          })}
+          showOwner
+        />
+      );
+      expect(screen.getByTestId('altvatar-art')).toHaveAttribute('src', ART);
+    });
+
+    it('OwnerProfileWithNoArt_BylineRendersInitials', () => {
+      // The byline reads the profile and only the profile. There is no account
+      // hop behind it, so nothing here can branch on whether one exists.
+      render(
+        <ListCard list={makeList({ profile: makeProfile('p1', 'Alice') })} showOwner />
+      );
+      expect(screen.getByText('A')).toBeInTheDocument();
+      expect(screen.queryByTestId('altvatar-art')).toBeNull();
+    });
+  });
+
+  describe('AccentPill', () => {
+    it('OwnerHasAccent_CardCarriesAccentVars', () => {
+      render(
+        <ListCard
+          list={makeList({
+            profile: { ...makeProfile('p1', 'Alice'), accent: 'rose' },
+          })}
+        />
+      );
+      // The byline pill is painted from --accent-disc/--accent-ink, so the
+      // custom properties on the root are what carry the owner's colour to it.
+      const card = document.querySelector<HTMLElement>('a.list-card');
+      expect(card?.style.getPropertyValue('--accent-disc')).toBe(
+        ACCENT_PRESETS.rose.light
+      );
+      expect(card?.style.getPropertyValue('--accent-ink')).toBe(
+        ACCENT_PRESETS.rose.ink
+      );
+    });
+
+    it('NoOwnerAccent_PillFallsBackToTheIrisPreset', () => {
+      render(<ListCard list={makeList({ profile: null })} />);
+      const card = document.querySelector<HTMLElement>('a.list-card');
+      expect(card?.style.getPropertyValue('--accent-disc')).toBe(
+        ACCENT_PRESETS.iris.light
+      );
+      expect(card?.style.getPropertyValue('--accent-ink')).toBe(
+        ACCENT_PRESETS.iris.ink
+      );
     });
   });
 });

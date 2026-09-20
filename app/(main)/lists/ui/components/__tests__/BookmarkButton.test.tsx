@@ -43,7 +43,7 @@ describe('BookmarkButton', () => {
     render(<BookmarkButton listId="l1" initialBookmarked />);
     const button = screen.getByRole('button');
     expect(button).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('Bookmarked')).toBeInTheDocument();
+    expect(screen.getByText('Saved')).toBeInTheDocument();
     expect(screen.getByTestId('fa-bookmark')).toBeInTheDocument();
     expect(screen.queryByTestId('fa-reg-bookmark')).not.toBeInTheDocument();
   });
@@ -52,7 +52,7 @@ describe('BookmarkButton', () => {
     render(<BookmarkButton listId="l1" initialBookmarked={false} />);
     const button = screen.getByRole('button');
     expect(button).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByText('Bookmark')).toBeInTheDocument();
+    expect(screen.getByText('Save')).toBeInTheDocument();
     expect(screen.getByTestId('fa-reg-bookmark')).toBeInTheDocument();
     expect(screen.queryByTestId('fa-bookmark')).not.toBeInTheDocument();
   });
@@ -101,7 +101,7 @@ describe('BookmarkButton', () => {
     await user.click(button);
     await waitFor(() => expect(refreshMock).toHaveBeenCalledTimes(1));
     expect(button).toHaveAttribute('aria-pressed', 'true');
-    expect(toast.success).toHaveBeenCalledWith('Bookmarked');
+    expect(toast.success).toHaveBeenCalledWith('Saved');
   });
 
   it('ActionFailure_RollsBackOptimisticState-CallsToastError', async () => {

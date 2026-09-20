@@ -1,7 +1,7 @@
 /* eslint-disable testing-library/no-node-access, testing-library/no-container --
  * SignedOutMenu's open/close contract lives on unnamed wrapper divs: the
- * `.avatar-container.placeholder` toggle (no role), the `.close-button` div
- * (no role/text — only an icon), and the `.sign-in-page` AuthContainer wrap.
+ * `.avatar-container.placeholder` toggle (no role) and the `.sign-in-page`
+ * AuthContainer wrap.
  * Classed queries are the only path to assert the show/hide class transitions.
  */
 import { render, screen } from '@testing-library/react';
@@ -55,7 +55,7 @@ describe('UserMenu', () => {
       const { container } = render(<UserMenu session={null} />);
       await userEvent.click(screen.getByText('Sign In'));
       expect(container.querySelector('.sign-in-page')).toHaveClass('show');
-      await userEvent.click(container.querySelector('.close-button')!);
+      await userEvent.click(screen.getByRole('button', { name: 'Close' }));
       expect(container.querySelector('.sign-in-page')).not.toHaveClass('show');
     });
   });

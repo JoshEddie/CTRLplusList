@@ -5,6 +5,20 @@ import StoreFilterPopover from '../StoreFilterPopover';
 
 type Props = React.ComponentProps<typeof StoreFilterPopover>;
 
+// The search field only renders once the list is long enough to need it, so
+// the search cases run against a list past that threshold. Only Amazon and
+// Target contain an "a", keeping the narrowing assertions below intact.
+const SEARCHABLE_STORES = [
+  'Amazon',
+  'Target',
+  'Etsy',
+  'Best Buy',
+  'Costco',
+  'Home Depot',
+  'Nordstrom',
+  'REI',
+];
+
 function renderPopover(overrides: Partial<Props> = {}) {
   const onToggle = overrides.onToggle ?? vi.fn();
   const onClear = overrides.onClear ?? vi.fn();
@@ -70,7 +84,9 @@ describe('StoreFilterPopover', () => {
 
     it('Query_NarrowsCaseInsensitiveSubstring', async () => {
       const user = userEvent.setup();
-      const { onToggle, onClear } = renderPopover();
+      const { onToggle, onClear } = renderPopover({
+        storeOptions: SEARCHABLE_STORES,
+      });
       await openPanel(user);
       await user.type(screen.getByRole('searchbox'), 'a');
 
@@ -83,7 +99,7 @@ describe('StoreFilterPopover', () => {
 
     it('WhitespaceQuery_TreatedAsEmpty', async () => {
       const user = userEvent.setup();
-      renderPopover();
+      renderPopover({ storeOptions: SEARCHABLE_STORES });
       await openPanel(user);
       await user.type(screen.getByRole('searchbox'), '   ');
       for (const name of ['Amazon', 'Target', 'Etsy']) {
@@ -91,9 +107,24 @@ describe('StoreFilterPopover', () => {
       }
     });
 
+    it('FewOptions_OmitsSearchField', async () => {
+      const user = userEvent.setup();
+      renderPopover({ storeOptions: ['Amazon', 'Target', 'Etsy'] });
+      await openPanel(user);
+      expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: 'Etsy' })).toBeInTheDocument();
+    });
+
+    it('ManyOptions_RendersSearchField', async () => {
+      const user = userEvent.setup();
+      renderPopover({ storeOptions: SEARCHABLE_STORES });
+      await openPanel(user);
+      expect(screen.getByRole('searchbox')).toBeInTheDocument();
+    });
+
     it('SearchClearButton_ResetsQueryAndRestoresOptions', async () => {
       const user = userEvent.setup();
-      renderPopover();
+      renderPopover({ storeOptions: SEARCHABLE_STORES });
       await openPanel(user);
       await user.type(screen.getByRole('searchbox'), 'amazon');
       expect(screen.queryByRole('checkbox', { name: 'Etsy' })).not.toBeInTheDocument();
@@ -109,7 +140,7 @@ describe('StoreFilterPopover', () => {
   describe('EmptyState', () => {
     it('NoMatches_ShowsNoMatchingStores', async () => {
       const user = userEvent.setup();
-      renderPopover();
+      renderPopover({ storeOptions: SEARCHABLE_STORES });
       await openPanel(user);
       await user.type(screen.getByRole('searchbox'), 'zzz');
 
@@ -119,7 +150,7 @@ describe('StoreFilterPopover', () => {
 
     it('HasMatch_SuppressesEmptyState', async () => {
       const user = userEvent.setup();
-      renderPopover();
+      renderPopover({ storeOptions: SEARCHABLE_STORES });
       await openPanel(user);
       await user.type(screen.getByRole('searchbox'), 'a');
       expect(screen.queryByText('No matching stores')).not.toBeInTheDocument();

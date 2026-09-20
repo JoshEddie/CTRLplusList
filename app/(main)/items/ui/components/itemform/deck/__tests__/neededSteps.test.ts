@@ -14,7 +14,7 @@ function vm(over: Partial<ItemViewModel> = {}): ItemViewModel {
 describe('neededSteps', () => {
   it('CleanGoodTitlePriceStoreMultiImage_DoneStepsThenPhotoNote', () => {
     expect(neededSteps(vm())).toEqual([
-      { step: 'title', complete: true },
+      { step: 'name', complete: true },
       { step: 'price', complete: true },
       { step: 'store', complete: true },
       { step: 'photo', complete: false },
@@ -27,7 +27,7 @@ describe('neededSteps', () => {
       { step: 'price', complete: true },
       { step: 'store', complete: true },
       { step: 'photo', complete: false },
-      { step: 'title', complete: false },
+      { step: 'name', complete: false },
     ]);
   });
 
@@ -41,7 +41,7 @@ describe('neededSteps', () => {
       )
     ).toEqual([
       { step: 'photo', complete: false },
-      { step: 'title', complete: false },
+      { step: 'name', complete: false },
       { step: 'price', complete: false },
       { step: 'store', complete: false },
     ]);
@@ -53,7 +53,7 @@ describe('neededSteps', () => {
         vm({ store: { name: 's', link: 'https://shop', price: '' } })
       )
     ).toEqual([
-      { step: 'title', complete: true },
+      { step: 'name', complete: true },
       { step: 'store', complete: true },
       { step: 'photo', complete: false },
       { step: 'price', complete: false },
@@ -70,7 +70,7 @@ describe('neededSteps', () => {
         })
       )
     ).toEqual([
-      { step: 'title', complete: true },
+      { step: 'name', complete: true },
       { step: 'price', complete: true },
       { step: 'photo', complete: false },
       { step: 'store', complete: false },
@@ -81,7 +81,7 @@ describe('neededSteps', () => {
   it('SingleImage_PhotoStillNeedsAPick', () => {
     // Generated placeholder art means every flow carries a real photo choice.
     expect(neededSteps(vm({ photos: ['https://only'] }))).toEqual([
-      { step: 'title', complete: true },
+      { step: 'name', complete: true },
       { step: 'price', complete: true },
       { step: 'store', complete: true },
       { step: 'photo', complete: false },
@@ -102,7 +102,7 @@ describe('neededSteps', () => {
       )
     ).toEqual([
       { step: 'photo', complete: false },
-      { step: 'title', complete: false },
+      { step: 'name', complete: false },
       { step: 'price', complete: false },
     ]);
   });
@@ -113,7 +113,7 @@ describe('neededSteps', () => {
     expect(
       neededSteps(vm({ photos: [], store: { name: '', link: '', price: '' } }))
     ).toEqual([
-      { step: 'title', complete: true },
+      { step: 'name', complete: true },
       { step: 'photo', complete: false },
       { step: 'price', complete: false },
       { step: 'note', complete: false },
@@ -130,7 +130,7 @@ describe('neededSteps', () => {
 
   it('ZeroImages_PhotoIncompleteAfterDoneSteps', () => {
     expect(neededSteps(vm({ photos: [] }))).toEqual([
-      { step: 'title', complete: true },
+      { step: 'name', complete: true },
       { step: 'price', complete: true },
       { step: 'store', complete: true },
       { step: 'photo', complete: false },
@@ -158,15 +158,15 @@ describe('isStepValid', () => {
 
 describe('stepBlocked', () => {
   it('ErrorTierTitle_BlocksTitleStep', () => {
-    expect(stepBlocked('title', vm({ name: 'x'.repeat(120) }))).toBe(true);
+    expect(stepBlocked('name', vm({ name: 'x'.repeat(120) }))).toBe(true);
   });
 
   it('WarnTierTitle_DoesNotBlockTitleStep', () => {
-    expect(stepBlocked('title', vm({ name: 'x'.repeat(60) }))).toBe(false);
+    expect(stepBlocked('name', vm({ name: 'x'.repeat(60) }))).toBe(false);
   });
 
   it('GoodTitle_DoesNotBlockTitleStep', () => {
-    expect(stepBlocked('title', vm())).toBe(false);
+    expect(stepBlocked('name', vm())).toBe(false);
   });
 
   it('EmptyPrice_BlocksPriceStep', () => {

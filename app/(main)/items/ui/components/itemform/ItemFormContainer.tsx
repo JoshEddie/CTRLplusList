@@ -1,7 +1,12 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
-import type { ItemStoreTable, ItemTable, ListTable } from '@/lib/types';
+import type {
+  ItemStoreTable,
+  ItemTable,
+  ListTable,
+  OptionType,
+} from '@/lib/types';
 import { useMemo, useState } from 'react';
 import DeleteItemButton from '../DeleteItemButton';
 import { Deck } from './deck/Deck';
@@ -10,7 +15,7 @@ import { DeckScreen, DeckShell } from './deck/DeckShell';
 import { FocusEditor } from './deck/FocusEditor';
 import type { RowField } from './deck/focus';
 import { Preview } from './deck/Preview';
-import { ListsQtySheet } from './deck/sheets/ListsQtySheet';
+import { ListsSheet } from './deck/sheets/ListsSheet';
 import { FetchFailure } from './deck/FetchFailure';
 import { FillManually } from './deck/FillManually';
 import { Triage } from './deck/Triage';
@@ -19,11 +24,7 @@ import { useItemSubmit } from './deck/useItemSubmit';
 import { useProductFetch } from './deck/useProductFetch';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { isDirtyDraft, manualAdvanceReady, rowTiers } from './deck/utils';
-import {
-  blankItem,
-  seedFromItem,
-  type ItemViewModel,
-} from './deck/viewModel';
+import { blankItem, seedFromItem, type ItemViewModel } from './deck/viewModel';
 import { FetchingStep } from './FetchingStep';
 import { UrlEntryStep } from './UrlEntryStep';
 import type { Screen } from './utils';
@@ -38,18 +39,36 @@ const ItemFormContainer = ({
   lists,
   item,
   returnTo,
+  actingAs,
+  defaultListId,
+  deleteDisabled = false,
   onClose,
   onSuccess,
 }: {
   lists: ListTable[];
   item?: EditItem;
   returnTo?: string;
+  // The list the form was opened from, checked in the picker before the owner
+  // sees it: creating the item and putting it on that list are one act.
+  defaultListId?: string;
+  // Deleting the item takes the owner floor. Only the editing shape offers
+  // the control, so the creating call sites pass nothing.
+  deleteDisabled?: boolean;
+  // The active profile's name, supplied only for a viewer who runs more than
+  // one. The new item is owned by whichever profile the request acts as, so
+  // the shell's heading and the submit control both say which.
+  actingAs?: string;
   onClose?: () => void;
-  onSuccess?: () => void;
+  /** Receives the saved item's id. */
+  onSuccess?: (id?: string) => void;
 }) => {
   const isEditing = !!item;
+  const preselected = useMemo<OptionType[]>(() => {
+    const list = lists.find((option) => option.id === defaultListId);
+    return list ? [{ value: list.id.toString(), label: list.name }] : [];
+  }, [lists, defaultListId]);
   const [viewModel, setViewModel] = useState<ItemViewModel>(() =>
-    item ? seedFromItem(item) : blankItem()
+    item ? seedFromItem(item) : blankItem('', preselected)
   );
   const [screen, setScreen] = useState<Screen>(isEditing ? 'preview' : 'start');
   const [listsSheetOpen, setListsSheetOpen] = useState(false);
@@ -72,7 +91,7 @@ const ItemFormContainer = ({
     returnToUrl,
   } = useProductFetch((vm) => {
     setManualDraftLive(false);
-    setViewModel(vm);
+    setViewModel({ ...vm, lists: preselected });
   }, setScreen);
   const actions = useItemActions(setViewModel);
   const { submit, isPending } = useItemSubmit(
@@ -88,12 +107,12 @@ const ItemFormContainer = ({
 
   const enterLinkless = () => {
     clearUrl();
-    setViewModel(blankItem());
+    setViewModel(blankItem('', preselected));
     setScreen('deck');
   };
 
   const buildByHand = () => {
-    setViewModel(blankItem(pastedUrl));
+    setViewModel(blankItem(pastedUrl, preselected));
     setManualVisited(new Set());
     setManualDraftLive(true);
     setScreen('manual');
@@ -152,7 +171,7 @@ const ItemFormContainer = ({
     if (listsSheetOpen) {
       return (
         <DeckScreen
-          title="Lists & quantity"
+          title="Lists"
           foot={
             <Button
               variant="primary"
@@ -163,7 +182,7 @@ const ItemFormContainer = ({
             </Button>
           }
         >
-          <ListsQtySheet
+          <ListsSheet
             item={viewModel}
             actions={actions}
             listOptions={listOptions}
@@ -235,6 +254,7 @@ const ItemFormContainer = ({
             actions={actions}
             isEditing={isEditing}
             isPending={isPending}
+            actingAs={actingAs}
             onSubmit={submit}
             onOpenTriage={() => setScreen('triage')}
             onOpenStore={() => setFocus('store')}
@@ -247,6 +267,7 @@ const ItemFormContainer = ({
                   returnTo={returnTo}
                   onDeleted={onClose}
                   archived={item.archived_at != null}
+                  disabled={deleteDisabled}
                 />
               ) : undefined
             }
@@ -262,7 +283,13 @@ const ItemFormContainer = ({
       // screen (not the overlay) so opening a sheet/focus over preview doesn't
       // resize the modal.
       variant={screen === 'preview' ? 'wide' : 'default'}
-      moduleTitle={isEditing ? 'Edit item' : 'Add an item'}
+      moduleTitle={
+        isEditing
+          ? 'Edit item'
+          : actingAs
+            ? `Add an item for ${actingAs}`
+            : 'Add an item'
+      }
       closeHref={onClose ? undefined : (returnTo ?? '/items')}
       onClose={onClose}
     >

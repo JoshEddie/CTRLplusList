@@ -3,17 +3,23 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 // Real NextAuth, the Drizzle adapter, the Google provider, and the DB module
 // are all mocked so the test exercises ONLY the bypass seam in lib/auth.ts.
 // `realAuth` is the sentinel the flag-off path must delegate to.
-const { realAuth } = vi.hoisted(() => ({ realAuth: vi.fn() }));
+const { realAuth, captured } = vi.hoisted(() => ({
+  realAuth: vi.fn(),
+  captured: { config: undefined as { events?: Record<string, unknown> } | undefined },
+}));
 
 vi.mock('next-auth', () => ({
-  default: () => ({
-    handlers: {},
-    signIn: vi.fn(),
-    signOut: vi.fn(),
-    auth: realAuth,
-  }),
+  default: (config: { events?: Record<string, unknown> }) => {
+    captured.config = config;
+    return {
+      handlers: {},
+      signIn: vi.fn(),
+      signOut: vi.fn(),
+      auth: realAuth,
+    };
+  },
 }));
-vi.mock('next-auth/providers/google', () => ({ default: {} }));
+vi.mock('next-auth/providers/google', () => ({ default: () => ({}) }));
 vi.mock('@auth/drizzle-adapter', () => ({ DrizzleAdapter: () => ({}) }));
 vi.mock('@/db', () => ({ db: {} }));
 
@@ -49,15 +55,19 @@ describe('authBypass', () => {
     expect(realAuth).not.toHaveBeenCalled();
   });
 
-  it('BypassOnOtherSeededIdentity_ReturnsSessionForThatId', async () => {
+  it('BypassOnOtherSeededIdentity_CarriesThatIdentitysSeededEmail', async () => {
     vi.stubEnv('USE_PG_DRIVER', '1');
     vi.stubEnv('BYPASS_SESSION_USER', 'dev-friend-alice');
 
-    const { auth, BYPASS_USER_ID } = await loadAuth();
+    const { auth, BYPASS_USER_ID, BYPASS_USER_EMAIL } = await loadAuth();
     const session = await auth();
 
     expect(session?.user?.id).toBe('dev-friend-alice');
     expect(session?.user?.id).not.toBe(BYPASS_USER_ID);
+    // Actor resolution goes through the email, so a synthesized session
+    // missing it resolves to no actor and reads as logged out instead.
+    expect(session?.user?.email).toBe('alice@dev.local');
+    expect(session?.user?.email).not.toBe(BYPASS_USER_EMAIL);
   });
 
   it('BypassOff_DelegatesToRealNextAuth', async () => {
@@ -88,6 +98,29 @@ describe('authBypass', () => {
 
     expect(realAuth).toHaveBeenCalledWith(req, ctx);
     expect(result).toBe('REAL_HANDLER_RESULT');
+  });
+});
+
+describe('seedUserEmail', () => {
+  it.each([
+    ['dev-test-viewer', 'test-viewer@dev.local'],
+    ['dev-friend-alice', 'alice@dev.local'],
+    ['alice', 'alice@dev.local'],
+  ])('SeedId%s_StripsThePrefixAndAppendsTheDevDomain', async (id, email) => {
+    const { seedUserEmail } = await loadAuth();
+
+    expect(seedUserEmail(id)).toBe(email);
+  });
+});
+
+describe('nextAuthConfig', () => {
+  it('AccountCreation_WiresNoEventThatMintsAProfile', async () => {
+    await loadAuth();
+
+    // The gate's whole premise: a new account holds no profile until it
+    // onboards. Re-adding a `createUser` event that mints one would void that
+    // while every other test here stayed green.
+    expect(captured.config?.events?.createUser).toBeUndefined();
   });
 });
 
@@ -148,21 +181,5 @@ describe('jwtCallback', () => {
     jwtCallback({ token, user: {}, trigger: 'signIn' });
 
     expect(token.name).toBe('old');
-  });
-});
-
-describe('sessionCallback', () => {
-  it('AnySession_ReturnsSessionUnchanged', async () => {
-    const { sessionCallback } = await loadAuth();
-    const session = {
-      user: { id: 'u1', name: 'Alice' },
-      expires: '2099-01-01T00:00:00.000Z',
-    };
-
-    const result = await sessionCallback({
-      session,
-    } as Parameters<typeof sessionCallback>[0]);
-
-    expect(result).toBe(session);
   });
 });

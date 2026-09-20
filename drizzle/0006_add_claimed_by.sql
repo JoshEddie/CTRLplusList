@@ -1,4 +1,4 @@
--- Migration: expand-claim-attribution (openspec change)
+-- Migration: expand-claim-attribution
 --
 -- Adds `claimed_by` (who asserted the claim) alongside `user_id`, whose
 -- meaning sharpens to "the purchaser". Pre-existing rows with `user_id` set

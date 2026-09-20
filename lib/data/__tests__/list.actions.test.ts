@@ -1,15 +1,32 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearTestCookies,
+  mockNextHeaders,
+  setTestCookie,
+} from '@/test/helpers/next-headers';
 
 import { lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
+import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
 import type { ListVisibility } from '@/lib/visibility';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedManagedProfile,
+  seedMembership,
+  seedUsers,
+} from '@/test/helpers/seedFollowGraph';
 
-import { seedList, type TestDb } from './test-helpers';
+import {
+  contentTagCalls,
+  contentUpdateCalls,
+  seedList,
+  selfProfileOf,
+  type TestDb,
+} from './test-helpers';
 
 mockNextCache();
+mockNextHeaders();
 
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock('@/db', () => ({
@@ -62,6 +79,17 @@ function makeList(overrides: Partial<ListData> = {}): ListData {
 
 const listRows = () => db.select().from(lists);
 
+const MANAGED = 'kiddo';
+
+// The owner acting as a profile that is not their own. Every other case in
+// this file leaves the selection unset, which collapses the active profile
+// onto the self-profile and makes the two interchangeable.
+async function ownerActsAsManaged(role: 'owner' | 'manager' = 'owner') {
+  await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
+  await seedMembership(db, { user_id: OWNER.id, profile_id: MANAGED, role });
+  setTestCookie(ACTIVE_PROFILE_COOKIE, MANAGED);
+}
+
 beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
@@ -78,6 +106,7 @@ beforeEach(async () => {
   vi.restoreAllMocks();
   await resetDb(db);
   await seedUsers(db, [OWNER, OTHER]);
+  clearTestCookies();
   updateTag.mockClear();
   asOwner();
 });
@@ -86,6 +115,13 @@ describe('createList', () => {
   describe('ListSchemaValidation', () => {
     it('NameTooShort_ReturnsNameFieldError-NoRow', async () => {
       const res = await actions.createList(makeList({ name: 'ab' }));
+      expect(res.success).toBe(false);
+      expect(res.errors?.name).toBeDefined();
+      expect(await listRows()).toHaveLength(0);
+    });
+
+    it('NameTooLong_ReturnsNameFieldError-NoRow', async () => {
+      const res = await actions.createList(makeList({ name: 'a'.repeat(51) }));
       expect(res.success).toBe(false);
       expect(res.errors?.name).toBeDefined();
       expect(await listRows()).toHaveLength(0);
@@ -124,7 +160,21 @@ describe('createList', () => {
     });
   });
 
-  it('EmptySubtitle_InsertsRow-NullSubtitle-ReturnsId-CallsUpdateTagLists', async () => {
+  it('ActingAsAManagedProfile_OwnsTheNewListToThatProfile', async () => {
+    await ownerActsAsManaged();
+
+    const res = await actions.createList(makeList({ name: 'Kiddo Birthday' }));
+
+    expect(res.success).toBe(true);
+    const rows = await listRows();
+    expect(rows[0]).toMatchObject({
+      profile_id: MANAGED,
+      updated_by_user_id: OWNER.id,
+    });
+    expect(contentTagCalls(updateTag)).toEqual([[`lists:profile:${MANAGED}`]]);
+  });
+
+  it('EmptySubtitle_InsertsRow-NullSubtitle-ReturnsId-BumpsOwnerListsTag', async () => {
     const res = await actions.createList(
       makeList({ name: 'Birthday Bash', subtitle: '' })
     );
@@ -137,9 +187,12 @@ describe('createList', () => {
       id: res.id,
       name: 'Birthday Bash',
       subtitle: null,
-      user_id: OWNER.id,
+      profile_id: selfProfileOf(OWNER.id),
+      updated_by_user_id: OWNER.id,
     });
-    expect(updateTag).toHaveBeenCalledWith('lists');
+    expect(contentTagCalls(updateTag)).toEqual([
+      [`lists:profile:${selfProfileOf(OWNER.id)}`],
+    ]);
   });
 
   it('NonEmptySubtitle_PersistsSubtitle', async () => {
@@ -173,7 +226,18 @@ describe('updateList', () => {
     expect(res.error).toBe('Unauthorized');
   });
 
-  it('PartialUpdate_WritesProvidedFields-ReturnsId-CallsUpdateTagLists', async () => {
+  it('ActingAsAManagedProfile_RefusesTheSelfProfilesList', async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id, name: 'Old' });
+    await ownerActsAsManaged();
+
+    const res = await actions.updateList('L', { name: 'New Name' });
+
+    expect(res.error).toBe('Unauthorized');
+    const row = (await listRows()).find((l) => l.id === 'L');
+    expect(row).toMatchObject({ name: 'Old' });
+  });
+
+  it('PartialUpdate_WritesProvidedFields-ReturnsId-BumpsListAndOwnerTags', async () => {
     await seedList(db, {
       id: 'L',
       user_id: OWNER.id,
@@ -185,8 +249,15 @@ describe('updateList', () => {
     expect(res.id).toBe('L');
 
     const row = (await listRows()).find((l) => l.id === 'L');
-    expect(row).toMatchObject({ name: 'New Name', subtitle: 'keep me' });
-    expect(updateTag).toHaveBeenCalledWith('lists');
+    expect(row).toMatchObject({
+      name: 'New Name',
+      subtitle: 'keep me',
+      updated_by_user_id: OWNER.id,
+    });
+    expect(contentTagCalls(updateTag)).toEqual([
+      ['lists:id:L'],
+      [`lists:profile:${selfProfileOf(OWNER.id)}`],
+    ]);
   });
 
   it('AllFields_WritesSubtitleOccasionDate', async () => {
@@ -228,8 +299,8 @@ describe('updateList', () => {
       const res = await actions.updateList('L', { ...SEEDED });
 
       expect(res).toMatchObject({ success: true, id: 'L' });
-      expect(updateSpy).not.toHaveBeenCalled();
-      expect(updateTag).not.toHaveBeenCalled();
+      expect(contentUpdateCalls(updateSpy)).toEqual([]);
+      expect(contentTagCalls(updateTag)).toEqual([]);
       expect((await findL())?.updated_at.toISOString()).toBe(
         STALE.toISOString()
       );
@@ -242,7 +313,7 @@ describe('updateList', () => {
       });
 
       expect(res).toMatchObject({ success: true, id: 'L' });
-      expect(updateSpy).not.toHaveBeenCalled();
+      expect(contentUpdateCalls(updateSpy)).toEqual([]);
       expect((await findL())?.updated_at.toISOString()).toBe(
         STALE.toISOString()
       );
@@ -264,7 +335,7 @@ describe('updateList', () => {
       const res = await actions.updateList('L', { name: SEEDED.name });
 
       expect(res).toMatchObject({ success: true, id: 'L' });
-      expect(updateSpy).not.toHaveBeenCalled();
+      expect(contentUpdateCalls(updateSpy)).toEqual([]);
       expect((await findL())?.updated_at.toISOString()).toBe(
         STALE.toISOString()
       );
@@ -297,16 +368,18 @@ describe('updateList', () => {
     // Under neon-http the ownership check and the update are separate
     // round-trips; a concurrent delete can land between them, leaving
     // .returning() empty.
-    vi.spyOn(db, 'update').mockReturnValueOnce({
-      set: () => ({ where: () => ({ returning: async () => [] }) }),
-    } as never);
+    const realUpdate = db.update.bind(db);
+    vi.spyOn(db, 'update').mockImplementation(((table: never) =>
+      table === lists
+        ? { set: () => ({ where: () => ({ returning: async () => [] }) }) }
+        : realUpdate(table)) as never);
     const res = await actions.updateList('L', { name: 'New Name' });
     expect(res).toMatchObject({
       success: false,
       message: 'List not found',
       error: 'Not found',
     });
-    expect(updateTag).not.toHaveBeenCalled();
+    expect(contentTagCalls(updateTag)).toEqual([]);
   });
 
   it('UpdateThrows_ReturnsFailedToUpdateList', async () => {
@@ -320,12 +393,18 @@ describe('updateList', () => {
 });
 
 describe('deleteList', () => {
-  it('Owner_RemovesRow-CallsUpdateTagLists', async () => {
+  // The item pool is in the set because the cascade takes the list's entries
+  // with it, and a library card states its item's entries rolled up.
+  it('Owner_RemovesRow-BumpsListOwnerAndItemPoolTags', async () => {
     await seedList(db, { id: 'L', user_id: OWNER.id });
     const res = await actions.deleteList('L');
     expect(res.success).toBe(true);
     expect(await listRows()).toHaveLength(0);
-    expect(updateTag).toHaveBeenCalledWith('lists');
+    expect(contentTagCalls(updateTag)).toEqual([
+      ['lists:id:L'],
+      [`lists:profile:${selfProfileOf(OWNER.id)}`],
+      [`items:profile:${selfProfileOf(OWNER.id)}`],
+    ]);
   });
 
   it('NonExistent_ReturnsNotFound', async () => {
@@ -365,6 +444,47 @@ describe('deleteList', () => {
   });
 });
 
+// Which literal each call site passes, not merely that a floor exists: with
+// only the gate's own suite, widening `authedWriter('owner')` to `'member'` at
+// any of these sites leaves everything green.
+describe('RoleFloorAtTheCallSite', () => {
+  beforeEach(async () => {
+    await ownerActsAsManaged('manager');
+    await seedList(db, {
+      id: 'L',
+      user_id: OWNER.id,
+      profile_id: MANAGED,
+      visibility: 'private',
+    });
+  });
+
+  it('ManagerDeletesAList_ReturnsForbidden-RowPersists', async () => {
+    expect(await actions.deleteList('L')).toMatchObject({ error: 'Forbidden' });
+    expect(await listRows()).toHaveLength(1);
+  });
+
+  it('ManagerChangesVisibility_ReturnsForbidden-VisibilityUnchanged', async () => {
+    expect(await actions.setListVisibility('L', 'public')).toMatchObject({
+      error: 'Forbidden',
+    });
+    expect((await listRows()).find((l) => l.id === 'L')?.visibility).toBe(
+      'private'
+    );
+  });
+
+  it('ManagerUpdatesAList_Succeeds-NameWritten', async () => {
+    // The permitting direction: content writes take the member floor, so
+    // narrowing one of them to `owner` has to fail here.
+    expect(
+      (await actions.updateList('L', makeList({ name: 'Renamed list' })))
+        .success
+    ).toBe(true);
+    expect((await listRows()).find((l) => l.id === 'L')?.name).toBe(
+      'Renamed list'
+    );
+  });
+});
+
 describe('setListVisibility', () => {
   // dev code never reads `shared`, and `shared_at` is only observable in the
   // row — so transitions and the dual-write are asserted by reading 'L' back.
@@ -388,7 +508,7 @@ describe('setListVisibility', () => {
       expect(row?.visibility).toBe('private');
       expect(row?.shared).toBe(false);
       expect(row?.shared_at).toBeNull();
-      expect(updateTag).not.toHaveBeenCalled();
+      expect(contentTagCalls(updateTag)).toEqual([]);
     });
 
     it('UnknownEmail_ReturnsUnauthorized-RowUnchanged', async () => {
@@ -405,7 +525,7 @@ describe('setListVisibility', () => {
 
       expect(res).toMatchObject({ success: false, error: 'Unauthorized' });
       expect((await findL())?.visibility).toBe('private');
-      expect(updateTag).not.toHaveBeenCalled();
+      expect(contentTagCalls(updateTag)).toEqual([]);
     });
 
     it('NonOwner_ReturnsForbidden-RowUnchanged', async () => {
@@ -425,14 +545,14 @@ describe('setListVisibility', () => {
       expect(row?.visibility).toBe('private');
       expect(row?.shared).toBe(false);
       expect(row?.shared_at).toBeNull();
-      expect(updateTag).not.toHaveBeenCalled();
+      expect(contentTagCalls(updateTag)).toEqual([]);
     });
 
     it('NonExistentId_ReturnsNotFound', async () => {
       const res = await actions.setListVisibility('nope', 'public');
 
       expect(res).toMatchObject({ success: false, error: 'Not found' });
-      expect(updateTag).not.toHaveBeenCalled();
+      expect(contentTagCalls(updateTag)).toEqual([]);
     });
   });
 
@@ -459,7 +579,7 @@ describe('setListVisibility', () => {
       expect(row?.visibility).toBe('unlisted');
       expect(row?.shared).toBe(true);
       expect(row?.shared_at?.toISOString()).toBe(T.toISOString());
-      expect(updateTag).not.toHaveBeenCalled();
+      expect(contentTagCalls(updateTag)).toEqual([]);
     });
 
     it('EmptyStringValue_ReturnsValidation', async () => {
@@ -477,7 +597,7 @@ describe('setListVisibility', () => {
       );
 
       expect(res).toMatchObject({ success: false, error: 'Validation' });
-      expect(updateTag).not.toHaveBeenCalled();
+      expect(contentTagCalls(updateTag)).toEqual([]);
     });
 
     it('InvalidValueAndUnknownId_ReturnsValidation-NotNotFound', async () => {
@@ -489,7 +609,7 @@ describe('setListVisibility', () => {
       // Validation fails closed before the existence lookup, so the unknown id
       // never surfaces as 'Not found'.
       expect(res).toMatchObject({ success: false, error: 'Validation' });
-      expect(updateTag).not.toHaveBeenCalled();
+      expect(contentTagCalls(updateTag)).toEqual([]);
     });
   });
 
@@ -672,9 +792,23 @@ describe('setListVisibility', () => {
     const res = await actions.setListVisibility('L', 'public');
 
     expect(res.success).toBe(true);
-    expect((await findL())?.updated_at.toISOString()).toBe(
-      STALE.toISOString()
-    );
+    expect((await findL())?.updated_at.toISOString()).toBe(STALE.toISOString());
+  });
+
+  it('PrivateToPublic_LeavesUpdatedByUserIdUnstamped', async () => {
+    // Visibility is not a content edit, so it records no editor.
+    await seedList(db, {
+      id: 'L',
+      user_id: OWNER.id,
+      visibility: 'private',
+      shared: false,
+      shared_at: null,
+    });
+
+    const res = await actions.setListVisibility('L', 'public');
+
+    expect(res.success).toBe(true);
+    expect((await findL())?.updated_by_user_id).toBeNull();
   });
 
   describe('SuccessShapeAndRevalidation', () => {
@@ -692,7 +826,7 @@ describe('setListVisibility', () => {
       expect(res).toEqual({ success: true, message: 'Visibility updated' });
     });
 
-    it('ValidTransition_CallsUpdateTagListsOnce', async () => {
+    it('ValidTransition_BumpsListAndOwnerTagsOnce', async () => {
       await seedList(db, {
         id: 'L',
         user_id: OWNER.id,
@@ -703,7 +837,10 @@ describe('setListVisibility', () => {
 
       await actions.setListVisibility('L', 'public');
 
-      expect(updateTag.mock.calls).toEqual([['lists']]);
+      expect(contentTagCalls(updateTag)).toEqual([
+        ['lists:id:L'],
+        [`lists:profile:${selfProfileOf(OWNER.id)}`],
+      ]);
     });
 
     it('UpdateThrows_ReturnsFailed-NoUpdateTag', async () => {
@@ -727,7 +864,7 @@ describe('setListVisibility', () => {
       const row = await findL();
       expect(row?.visibility).toBe('private');
       expect(row?.shared_at).toBeNull();
-      expect(updateTag).not.toHaveBeenCalled();
+      expect(contentTagCalls(updateTag)).toEqual([]);
     });
   });
 });

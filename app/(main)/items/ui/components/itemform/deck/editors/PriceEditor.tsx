@@ -25,6 +25,7 @@ export function PriceEditor({
         label="Price"
         amount={priceToAmount(price)}
         onChange={(value) => onChange(amountToPrice(value))}
+        onClear={() => onChange('')}
         disabled={disabled}
       />
       {productUrl && (

@@ -11,12 +11,8 @@
   z-index: 100;
 }
 
+/* Panel chrome comes from the shared .dialog-panel class (global.css). */
 .confirm-dialog-content {
-  background-color: var(--background-color);
-  color: var(--primary-text-color);
-  border: 1px solid var(--primary-color);
-  padding: 1.5rem;
-  border-radius: 0.5rem;
   max-width: 24rem;
   width: 80%;
   z-index: 100;

@@ -1,5 +1,9 @@
+import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
+import { accentVars } from '@/lib/accent';
+import { getMessage } from '@/lib/i18n/utils';
+import type { ProfileAvatarView } from '@/lib/types';
 import Link from 'next/link';
-import { FaBookmark, FaUser } from 'react-icons/fa';
+import { FaBookmark } from 'react-icons/fa';
 
 export type ListCardData = {
   id: string;
@@ -7,7 +11,7 @@ export type ListCardData = {
   subtitle?: string | null;
   occasion: string;
   date: Date;
-  user?: { name: string | null } | null;
+  profile?: ProfileAvatarView | null;
 };
 
 export default function ListCard({
@@ -19,26 +23,25 @@ export default function ListCard({
   showOwner?: boolean;
   bookmarked?: boolean;
 }) {
-  const ownerName = showOwner ? list.user?.name : null;
+  const owner = showOwner ? list.profile : null;
   return (
-    <Link className="list-card" href={`/lists/${list.id}`}>
+    <Link
+      className="list-card"
+      href={`/lists/${list.id}`}
+      style={accentVars(list.profile?.accent)}
+    >
       <div className="list-card-head">
         <div className="list-card-name">
           {bookmarked && (
             <FaBookmark
               className="list-card-bookmark-indicator"
-              aria-label="Bookmarked"
+              aria-label={getMessage('saved_indicator_label')}
             />
           )}
           <span className="list-card-name-text" title={list.name}>
             {list.name}
           </span>
         </div>
-        {ownerName && (
-          <div className="list-card-byline">
-            <FaUser aria-hidden /> {ownerName}
-          </div>
-        )}
         {list.subtitle ? (
           <div className="list-card-subtitle">{list.subtitle}</div>
         ) : (
@@ -46,11 +49,19 @@ export default function ListCard({
         )}
       </div>
       <div className="list-card-meta">
-        <span className="list-card-occasion">{list.occasion}</span>
+        {owner && (
+          <div className="list-card-byline">
+            <ProfileAvatar
+              profile={owner}
+              className="list-card-byline-avatar"
+            />
+            <span className="list-card-byline-name">{owner.name}</span>
+          </div>
+        )}
         <span className="list-card-date">
           {list.date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
+            year: '2-digit',
+            month: '2-digit',
             day: '2-digit',
             timeZone: 'UTC',
           })}

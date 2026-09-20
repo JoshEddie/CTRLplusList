@@ -42,8 +42,8 @@ function jsonOk(body: unknown): Response {
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
-function renderCreate() {
-  return render(<ItemFormContainer lists={[]} onClose={vi.fn()} />);
+function renderCreate(props: { actingAs?: string } = {}) {
+  return render(<ItemFormContainer lists={[]} onClose={vi.fn()} {...props} />);
 }
 
 async function fetchUrl(url = 'https://www.amazon.com/dp/B0TEST') {
@@ -102,7 +102,6 @@ describe('ItemFormContainer', () => {
             {
               id: 'i1',
               name: 'Gift',
-              quantity_limit: 1,
               store: null,
               lists: [],
             } as never
@@ -113,9 +112,7 @@ describe('ItemFormContainer', () => {
       expect(
         screen.getByRole('button', { name: 'Save changes' })
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole('heading', { name: 'Gift' })
-      ).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Gift' })).toBeInTheDocument();
     });
 
     it('EditWithoutReturnTo_RendersPreview', () => {
@@ -126,7 +123,6 @@ describe('ItemFormContainer', () => {
             {
               id: 'i1',
               name: 'Gift',
-              quantity_limit: 1,
               store: null,
               lists: [],
             } as never
@@ -243,7 +239,9 @@ describe('ItemFormContainer', () => {
       expect(
         screen.queryByRole('button', { name: /Store/ })
       ).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^Price/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /^Price/ })
+      ).toBeInTheDocument();
     });
   });
 
@@ -277,6 +275,18 @@ describe('ItemFormContainer', () => {
       ).toBeInTheDocument();
       expect(screen.getByText('Add an item')).toBeInTheDocument();
       expect(screen.queryByText('Last look')).not.toBeInTheDocument();
+    });
+
+    it('MultiProfileViewer_HeadingRegionNamesTheProfileTheItemIsFor', () => {
+      renderCreate({ actingAs: 'Owned Profile' });
+      expect(
+        screen.getByText('Add an item for Owned Profile')
+      ).toBeInTheDocument();
+    });
+
+    it('SingleProfileViewer_HeadingRegionNamesNoProfile', () => {
+      renderCreate();
+      expect(screen.getByText('Add an item')).toBeInTheDocument();
     });
 
     it('ClickUseALinkInstead_ReturnsToUrlEntry', async () => {
@@ -326,9 +336,9 @@ describe('ItemFormContainer', () => {
       const user = await openManualViaFailure();
       await user.click(screen.getByRole('button', { name: /Photo/ }));
       await user.click(screen.getByRole('button', { name: 'Done' }));
-      expect(
-        screen.getByRole('button', { name: /Photo/ })
-      ).toHaveTextContent('No photo yet — add one.');
+      expect(screen.getByRole('button', { name: /Photo/ })).toHaveTextContent(
+        'No photo yet — add one.'
+      );
     });
 
     it('NoErrorAndEveryWarnVisited_AdvancesToPreview', async () => {
@@ -350,12 +360,58 @@ describe('ItemFormContainer', () => {
       );
       const user = await openManualViaFailure();
       await fillManualItem(user);
-      await user.click(screen.getByRole('button', { name: /Lists & quantity/ }));
+      await user.click(screen.getByRole('button', { name: /Lists/ }));
       expect(
         screen.getByRole('checkbox', { name: 'Birthday' })
       ).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: 'Done' }));
       expect(screen.getByText('Last look')).toBeInTheDocument();
+    });
+
+    it('DefaultListId_ChecksThatListAndSubmitsIt', async () => {
+      const { createItem } = await import('@/lib/data/item.actions');
+      render(
+        <ItemFormContainer
+          lists={[
+            { id: 'l1', name: 'Birthday' } as never,
+            { id: 'l2', name: 'Christmas' } as never,
+          ]}
+          defaultListId="l2"
+          onClose={vi.fn()}
+        />
+      );
+      const user = await openManualViaFailure();
+      await fillManualItem(user);
+      await user.click(screen.getByRole('button', { name: /Lists/ }));
+      expect(screen.getByRole('checkbox', { name: 'Christmas' })).toBeChecked();
+      expect(
+        screen.getByRole('checkbox', { name: 'Birthday' })
+      ).not.toBeChecked();
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+      await user.click(screen.getByRole('button', { name: 'Create item' }));
+      await waitFor(() =>
+        expect(createItem).toHaveBeenCalledWith(
+          expect.objectContaining({
+            lists: [{ value: 'l2', label: 'Christmas' }],
+          })
+        )
+      );
+    });
+
+    it('DefaultListIdNotInThePicker_ChecksNothing', async () => {
+      render(
+        <ItemFormContainer
+          lists={[{ id: 'l1', name: 'Birthday' } as never]}
+          defaultListId="gone"
+          onClose={vi.fn()}
+        />
+      );
+      const user = await openManualViaFailure();
+      await fillManualItem(user);
+      await user.click(screen.getByRole('button', { name: /Lists/ }));
+      expect(
+        screen.getByRole('checkbox', { name: 'Birthday' })
+      ).not.toBeChecked();
     });
 
     it('FullNavigation_FillsAdvancesVisitsTriageThenCreates', async () => {
@@ -372,9 +428,7 @@ describe('ItemFormContainer', () => {
       await user.click(screen.getByRole('button', { name: /Photo/ }));
       await user.click(screen.getByRole('button', { name: 'Done' }));
       expect(screen.getByText('Review anything')).toBeInTheDocument();
-      await user.click(
-        screen.getByRole('button', { name: /Back to preview/ })
-      );
+      await user.click(screen.getByRole('button', { name: /Back to preview/ }));
 
       // Preview → Store editor → rename the store → Done.
       await user.click(screen.getByRole('button', { name: /^Store/ }));
@@ -597,7 +651,9 @@ describe('ItemFormContainer', () => {
       );
       renderCreate();
       await fetchUrl();
-      expect(await screen.findByText("Here's what we pulled.")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Here's what we pulled.")
+      ).toBeInTheDocument();
       expect(screen.queryByText(/Auto-filled from/)).not.toBeInTheDocument();
     });
 
@@ -616,7 +672,11 @@ describe('ItemFormContainer', () => {
 
     it('AbortDuringPhotoPrune_DoesNotEnterDeck', async () => {
       // Hold the image probes open so we can cancel mid-prune, then resolve.
-      const probes: { onload: (() => void) | null; naturalWidth: number; naturalHeight: number }[] = [];
+      const probes: {
+        onload: (() => void) | null;
+        naturalWidth: number;
+        naturalHeight: number;
+      }[] = [];
       class HoldImage {
         naturalWidth = 0;
         naturalHeight = 0;
@@ -653,8 +713,35 @@ describe('ItemFormContainer', () => {
       });
 
       expect(screen.getByText(/Paste a product link/)).toBeInTheDocument();
-      expect(screen.queryByText("Here's what we pulled.")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Here's what we pulled.")
+      ).not.toBeInTheDocument();
       vi.unstubAllGlobals();
+    });
+
+    it('DefaultListId_SurvivesFetchAndSubmitsIt', async () => {
+      const { createItem } = await import('@/lib/data/item.actions');
+      fetchMock.mockResolvedValue(jsonOk(PRODUCT_RESPONSE));
+      render(
+        <ItemFormContainer
+          lists={[{ id: 'l2', name: 'Christmas' } as never]}
+          defaultListId="l2"
+          onClose={vi.fn()}
+        />
+      );
+      const user = await fetchUrl();
+      await screen.findByText("Here's what we pulled.");
+      await user.click(screen.getByRole('button', { name: "Let's go" }));
+      await user.click(screen.getByRole('button', { name: 'Continue' }));
+      await user.click(screen.getByRole('button', { name: 'Continue' }));
+      await user.click(screen.getByRole('button', { name: 'Create item' }));
+      await waitFor(() =>
+        expect(createItem).toHaveBeenCalledWith(
+          expect.objectContaining({
+            lists: [{ value: 'l2', label: 'Christmas' }],
+          })
+        )
+      );
     });
 
     it('DeckExit_ReturnsToUrlEntry', async () => {

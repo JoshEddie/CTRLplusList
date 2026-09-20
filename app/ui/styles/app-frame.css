@@ -1,15 +1,17 @@
-/* App frame — gradient nav + white-card surface. See openspec/changes/redesign-home-and-tokens. */
+/* App frame — gradient nav + white-card surface. */
 
 :root {
-  --app-nav-height: calc(60px + env(safe-area-inset-top));
-  --app-surface-bleed-top: 7px;
-  --app-sticky-top: calc(var(--app-nav-height) + var(--app-surface-bleed-top));
+  --app-nav-height: calc(65px + env(safe-area-inset-top));
+  /* Shared with full-bleed children, which have to round their own top
+     corners to the surface's — the surface does not clip them. */
+  --app-surface-radius: 14px;
+  --app-sticky-top: calc(var(--app-nav-height));
 }
 
 @media (max-width: 800px) {
   :root {
-    --app-nav-height: calc(54px + env(safe-area-inset-top));
-    --app-surface-bleed-top: 5px;
+    --app-nav-height: calc(59px + env(safe-area-inset-top));
+    --app-surface-radius: 12px;
   }
 }
 
@@ -18,11 +20,19 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
+  /* 100vh, not --app-viewport-fill or 100dvh: fill flaps by the keyboard
+     height on every visualViewport event, and dvh jumps when the Safari
+     toolbar collapses on input focus — both reflow the document mid-keyboard
+     animation (visible flash). vh is the stable large viewport on iOS. */
+  min-height: 100vh;
+  /* The fixed nav is out of flow; reserve its height so content starts
+     below it. */
+  padding-top: var(--app-nav-height);
 }
 
 /* Surface chain allows fixed-height children (e.g. container--items-library)
-   to compute height: calc(100vh - var(--app-sticky-top)) reliably. */
+   to compute height: calc(var(--app-viewport-fill) - var(--app-sticky-top))
+   reliably. */
 .app-surface-bleed,
 .app-surface {
   min-height: 0;
@@ -30,14 +40,65 @@
 
 /* Gradient nav bar */
 .app-nav {
-  position: sticky;
+  position: fixed;
   top: 0;
   z-index: 10;
+  width: 100%;
   display: flex;
-  height: calc(60px + env(safe-area-inset-top));
-  padding: env(safe-area-inset-top) 20px 0;
-  background-image: var(--page-frame-gradient);
+  height: var(--app-nav-height);
+  padding: env(safe-area-inset-top) 20px 5px;
+  background-color: var(--secondary-color-dark);
   flex-shrink: 0;
+}
+
+/* Fake pinned corner rounding: the surface scrolls, so its own border-radius
+   would scroll away with it. Instead the fixed nav hangs two canvas-colored
+   notches over the surface's top corners — radial gradients that carve a
+   rounded corner out of whatever scrolls beneath, so the rounding reads as
+   fixed in place under the nav. Inset must match .app-surface-bleed's side
+   padding and .app-surface's centered max-width. */
+.app-nav::before,
+.app-nav::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  width: var(--app-surface-radius);
+  height: var(--app-surface-radius);
+}
+
+.app-nav::before {
+  left: max(20px, calc((100% - 1700px) / 2));
+  background: radial-gradient(
+    circle at 100% 100%,
+    transparent calc(var(--app-surface-radius) - 0.5px),
+    var(--secondary-color-dark) var(--app-surface-radius)
+  );
+}
+
+.app-nav::after {
+  right: max(20px, calc((100% - 1700px) / 2));
+  background: radial-gradient(
+    circle at 0 100%,
+    transparent calc(var(--app-surface-radius) - 0.5px),
+    var(--secondary-color-dark) var(--app-surface-radius)
+  );
+}
+
+/* The notches carve corners into the white surface below the nav. When the
+   gate is showing there is no surface — the notches paint over the gate's
+   gradient background instead. */
+.app-frame[data-gated] .app-nav::before,
+.app-frame[data-gated] .app-nav::after {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .app-nav::before {
+    left: 12px;
+  }
+  .app-nav::after {
+    right: 12px;
+  }
 }
 
 .app-nav-inner {
@@ -52,8 +113,7 @@
 
 @media (max-width: 800px) {
   .app-nav {
-    height: calc(54px + env(safe-area-inset-top));
-    padding: env(safe-area-inset-top) 12px 0;
+    padding: env(safe-area-inset-top) 12px 5px;
   }
 }
 
@@ -229,6 +289,26 @@
   }
 }
 
+/* Page chrome pinned below the nav's bleed band. The band and the surface's
+   rounded top corners are the frame's (.app-nav's shadow and
+   .app-surface::before); the chrome only paints its own white backdrop,
+   rounded to match so its square corners never poke through the frame's.
+   The negative margin cancels the container's padding so the backdrop spans
+   the full surface width and the padding re-adds it for the content, keeping
+   the pinned and at-rest states pixel-identical. */
+.pinned-page-chrome {
+  position: sticky;
+  top: var(--app-sticky-top);
+  z-index: 3;
+  margin: calc(-1 * var(--container-padding-top))
+    calc(-1 * var(--container-padding-x)) 0;
+  padding: var(--container-padding-top) var(--container-padding-x) 0;
+  background-color: var(--light-color);
+  border-radius: var(--app-surface-radius) var(--app-surface-radius) 0 0;
+  border-bottom: 1px solid var(--divider-color);
+  margin-bottom: 16px;
+}
+
 /* Avatar slot (delegates to existing <User /> popover) */
 .app-nav-avatar {
   display: flex;
@@ -239,28 +319,22 @@
 .app-surface-bleed {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  padding: 7px 20px 0;
+  min-height: calc(100vh - var(--app-nav-height));
+  padding: 0 20px 0;
 }
 
 @media (max-width: 800px) {
   .app-surface-bleed {
-    padding: 5px 12px 0;
+    padding: 0 12px 0;
   }
 }
 
 .app-surface {
   flex: 1;
-  background-color: var(--light-color);
-  border-radius: 14px 14px 0 0;
   max-width: 1700px;
   width: 100%;
   margin: 0 auto;
-  box-shadow: var(--surface-shadow);
-}
-
-@media (max-width: 800px) {
-  .app-surface {
-    border-radius: 12px 12px 0 0;
-  }
+  background-color: var(--light-color);
+  border-radius: var(--app-surface-radius);
+  margin-bottom: 10px;
 }

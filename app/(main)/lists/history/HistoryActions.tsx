@@ -1,7 +1,11 @@
 'use client';
 
+// TODO(#343): split the extra components into their own files, then drop this disable
+/* eslint-disable react/no-multi-comp */
+
 import { clearVisitHistory, removeVisit } from '@/lib/data/visit.actions';
 import { Button } from '@/app/ui/components/button';
+import { getMessage } from '@/lib/i18n/utils';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
@@ -70,11 +74,11 @@ export function ClearHistoryButton() {
           <div className="history-clear-modal-inner">
             <p>Clear visit history?</p>
             <p className="history-clear-modal-hint">
-              Bookmarked lists can be preserved or cleared along with the rest.
+              {getMessage('saved_history_hint')}
             </p>
             <div className="history-clear-modal-actions">
               <Button variant="primary" onClick={() => clear(false)}>
-                Clear non-bookmarked
+                {getMessage('saved_history_clear_unsaved')}
               </Button>
               <Button variant="danger" onClick={() => clear(true)}>
                 Clear all

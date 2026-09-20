@@ -9,6 +9,13 @@
   border-radius: var(--btn-radius);
   overflow: hidden;
   height: var(--field-min-height);
+  width: 100%;
+}
+
+@media (min-width: 800px) {
+  .segmented {
+    width: fit-content;
+  }
 }
 
 .segmented-option {
@@ -91,4 +98,38 @@
 
 .segmented.tone-on-dark .segmented-option:focus-visible {
   outline-color: var(--light-color);
+}
+
+/* ── xs size — inline toolbar pickers (28px, 12px text) ────────────────────── */
+
+.segmented.size-xs {
+  height: var(--WCAG-input-size-xs);
+  border-radius: var(--btn-radius);
+  grid-auto-columns: auto;
+}
+
+.segmented.size-xs .segmented-option {
+  padding: var(--btn-xs-padding-y) var(--btn-xs-padding-x);
+  font-size: var(--btn-xs-font-size);
+  font-weight: var(--btn-font-weight);
+}
+
+.segmented.tone-on-dark.size-xs {
+  background-color: rgb(255 255 255 / 0.12);
+  border: 1px solid rgb(255 255 255 / 0.45);
+  padding: 0;
+  gap: 0;
+}
+
+.segmented.tone-on-dark.size-xs .segmented-option {
+  border-radius: 0;
+}
+
+.segmented.tone-on-dark.size-xs .segmented-option:not(:first-child) {
+  border-left: 1px solid rgb(255 255 255 / 0.3);
+}
+
+.segmented.tone-on-dark.size-xs .segmented-option.active {
+  background-color: var(--light-color);
+  color: var(--primary-color-dark);
 }

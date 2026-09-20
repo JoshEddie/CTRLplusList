@@ -15,6 +15,7 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '../../db';
 import { lists, users } from '../../db/schema';
+import { selfMemberships } from '../../lib/data/profile.identity';
 
 const VIEWER_ID = 'dev-test-viewer';
 
@@ -35,7 +36,8 @@ async function main(): Promise<void> {
   const viewerLists = await db
     .select({ id: lists.id })
     .from(lists)
-    .where(eq(lists.user_id, VIEWER_ID));
+    .innerJoin(selfMemberships, eq(selfMemberships.profile_id, lists.profile_id))
+    .where(eq(selfMemberships.user_id, VIEWER_ID));
   if (viewerLists.length === 0) {
     throw new Error('Seed missing: no viewer lists read through neon-http.');
   }

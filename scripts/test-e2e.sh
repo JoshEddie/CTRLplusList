@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Brings up the localhost e2e Postgres (schema + seed), builds the production
-# bundle once, then runs Playwright, which starts the two `next start` servers
+# bundle once, then runs Playwright, which starts the four `next start` servers
 # (see playwright.config.ts). The build lives HERE — before Playwright — because
 # Playwright starts the webServer (`next start`) during plugin setup, BEFORE it
 # runs globalSetup. A build wired into globalSetup therefore races the server

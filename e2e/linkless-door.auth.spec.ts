@@ -36,9 +36,13 @@ test('LinklessDoor_DeckWithoutStoreStepOrPrice_CreatesBareItem', async ({
   // The door lands straight on the photo card — no intro (nothing was
   // fetched), and the strip is placeholder art only, with the first thumb
   // pre-selected so the stage is never empty.
-  await expect(page.getByRole('heading', { name: 'Pick some art' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Pick some art' })
+  ).toBeVisible();
   await expect(page.getByRole('button', { name: "Let's go" })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /Use artwork/ })).toHaveCount(4);
+  await expect(page.getByRole('button', { name: /Use artwork/ })).toHaveCount(
+    4
+  );
   await expect(
     page.getByRole('button', { name: 'Use artwork 1' })
   ).toHaveAttribute('aria-pressed', 'true');
@@ -47,7 +51,9 @@ test('LinklessDoor_DeckWithoutStoreStepOrPrice_CreatesBareItem', async ({
   expect(fetchCalls).toBe(0);
 
   // The tracker carries Photo · Name · Price and no store step at all.
-  await expect(page.getByRole('button', { name: /The Price|Price step/ })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /The Price|Price step/ })
+  ).toBeVisible();
   await expect(
     page.getByRole('button', { name: /The Store|Store step/ })
   ).toHaveCount(0);

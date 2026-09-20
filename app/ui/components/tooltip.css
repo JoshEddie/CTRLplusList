@@ -1,0 +1,49 @@
+/* Tooltip primitive — the hover/focus bubble `TooltipWrapper` renders.
+   Lives with the component rather than in a consumer's stylesheet, so the
+   bubble is styled wherever the wrapper is used. */
+
+.tooltip-container {
+  position: relative;
+  display: inline-block;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.tooltip {
+  visibility: hidden;
+  width: 200px;
+  background-color: var(--neutral-text-color);
+  color: #fff;
+  text-align: center;
+  border-radius: 4px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 14px;
+  font-weight: normal;
+  pointer-events: none;
+}
+
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--neutral-text-color) transparent transparent transparent;
+}
+
+.tooltip-container:hover .tooltip,
+/* Keyboard reach: an aria-disabled control stays focusable, so a hover-only
+   reveal would hide the reason it is disabled from anyone not using a mouse. */
+.tooltip-container:focus-within .tooltip {
+  visibility: visible;
+  opacity: 1;
+}

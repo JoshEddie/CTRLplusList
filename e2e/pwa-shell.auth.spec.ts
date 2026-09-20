@@ -50,8 +50,8 @@ test('PwaShell_FetchManifest_MeetsInstallContract', async ({ request }) => {
   expect(manifest.start_url).toBe('/');
   expect(manifest.display).toBe('standalone');
   expect(manifest.orientation).toBe('portrait');
-  expect(manifest.background_color).toBe('#2a2060');
-  expect(manifest.theme_color).toBe('#2a2060');
+  expect(manifest.background_color).toBe('#05155d');
+  expect(manifest.theme_color).toBe('#05155d');
 
   for (const size of ['192', '512']) {
     for (const purpose of ['any', 'maskable']) {
@@ -71,10 +71,12 @@ test('PwaShell_FetchManifest_MeetsInstallContract', async ({ request }) => {
   }
 });
 
-// The iOS install path: Apple metas (status-bar-style black-translucent so
-// the app gradient shows through — regression 4f2225d) plus the manifest link
-// and viewport-fit=cover. Criteria-level only: no beforeinstallprompt
-// synthesis (headless prompt heuristics are version-dependent flake).
+// The iOS install path: Apple metas (status-bar-style black so iOS draws the
+// bar itself — black-translucent composited the page under it and iOS laid a
+// legibility scrim over the sampled top edge that only cleared on the first
+// navigation) plus the manifest link and viewport-fit=cover. Criteria-level
+// only: no beforeinstallprompt synthesis (headless prompt heuristics are
+// version-dependent flake).
 test('PwaShell_LoadRoute_CarriesInstallPathMetadata', async ({ page }) => {
   await page.goto('/');
 
@@ -94,7 +96,7 @@ test('PwaShell_LoadRoute_CarriesInstallPathMetadata', async ({ page }) => {
   );
   await expect(meta('apple-mobile-web-app-status-bar-style')).toHaveAttribute(
     'content',
-    'black-translucent'
+    'black'
   );
   await expect(meta('format-detection')).toHaveAttribute(
     'content',

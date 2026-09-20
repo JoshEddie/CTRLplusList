@@ -16,10 +16,3 @@ export async function readItemsPageSize(): Promise<number> {
   const store = await cookies();
   return normalizePageSize(store.get('items_page_size')?.value);
 }
-
-export function viewerDisplayName(
-  name: string | null | undefined
-): string | undefined {
-  const parts = name ? name.split(' ') : [];
-  return parts.length > 1 ? `${parts[0]} ${parts[1]?.[0]}` : parts[0];
-}

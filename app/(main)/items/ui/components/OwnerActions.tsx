@@ -1,10 +1,9 @@
 'use client';
 
-import { archiveItem } from '@/lib/data/item.actions';
-import { removeListItem } from '@/lib/data/listItems.actions';
 import { Button } from '@/app/ui/components/button';
-import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
 import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
+import { archiveItem } from '@/lib/data/item.actions';
+import { getMessage } from '@/lib/i18n/utils';
 import type { ReadonlyURLSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -13,51 +12,71 @@ import {
   MdModeEdit,
   MdMoreHoriz,
   MdRemoveCircleOutline,
+  MdSwapVert,
   MdUnarchive,
+  MdVerticalAlignBottom,
+  MdVerticalAlignTop,
 } from 'react-icons/md';
+
+/** The ends of the list's own order — absent while another sort overrides it. */
+export type ListEnds = { first: string; last: string };
+
+/** The entry rows, present only where the item holds one on the surface's list. At quantity 0 there is no entry to act on, so the whole group goes. */
+export type EntryActions = {
+  ends?: ListEnds;
+  move: (targetId: string) => void;
+  remove: () => void;
+};
 
 export default function OwnerActions({
   itemId,
   showArchiveAction,
   archivedView,
-  listId,
   pathname,
   searchParams,
-  onArchived,
+  onChanged,
+  entry,
+  onReorderAll,
 }: {
   itemId: string;
   showArchiveAction?: boolean;
   archivedView?: boolean;
-  listId?: string;
   pathname: string;
   searchParams: ReadonlyURLSearchParams | null;
-  onArchived: () => void;
+  onChanged: () => void;
+  entry?: EntryActions;
+  /** Opens the list's reorder surface. Absent wherever that surface does not exist — off the list, or on a list too short to arrange. */
+  onReorderAll?: () => void;
 }) {
   const kebabRef = useRef<HTMLButtonElement>(null);
   const [kebabOpen, setKebabOpen] = useState(false);
-  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
   const toggleArchive = async () => {
     const nextArchived = !archivedView;
     const result = await toast.promise(archiveItem(itemId, nextArchived), {
-      loading: nextArchived ? 'Archiving' : 'Unarchiving',
-      success: nextArchived ? 'Archived' : 'Unarchived',
-      error: 'Failed',
+      loading: getMessage(
+        nextArchived
+          ? 'item_menu_archive_loading'
+          : 'item_menu_unarchive_loading'
+      ),
+      success: getMessage(
+        nextArchived
+          ? 'item_menu_archive_success'
+          : 'item_menu_unarchive_success'
+      ),
+      error: getMessage('item_menu_archive_error'),
     });
-    if (result?.success) onArchived();
+    if (result?.success) onChanged();
   };
 
-  const handleRemoveConfirm = async () => {
-    /* v8 ignore next -- defensive: the Remove menu entry and its dialog only render when listId is present. */
-    if (!listId) return;
-    setShowRemoveConfirm(false);
-    const result = await toast.promise(removeListItem(listId, itemId), {
-      loading: 'Removing',
-      success: 'Removed from list',
-      error: 'Failed to remove',
-    });
-    if (result?.success) onArchived();
+  const run = (act: () => void) => () => {
+    setKebabOpen(false);
+    act();
   };
+
+  const ends = entry?.ends;
+  const showTop = !!ends && ends.first !== itemId;
+  const showBottom = !!ends && ends.last !== itemId;
 
   return (
     <div className="item-owner-actions-mobile">
@@ -68,7 +87,7 @@ export default function OwnerActions({
         className="item-owner-actions-kebab"
         aria-haspopup="menu"
         aria-expanded={kebabOpen}
-        aria-label="Item actions"
+        aria-label={getMessage('item_menu_label')}
         onClick={() => setKebabOpen((o) => !o)}
       >
         <MdMoreHoriz />
@@ -77,8 +96,44 @@ export default function OwnerActions({
         open={kebabOpen}
         onClose={() => setKebabOpen(false)}
         anchorRef={kebabRef}
-        aria-label="Item actions"
+        aria-label={getMessage('item_menu_label')}
       >
+        {showTop && (
+          <MenuItem
+            icon={<MdVerticalAlignTop size={18} />}
+            onClick={run(() => entry.move(ends.first))}
+          >
+            {getMessage('entry_move_top')}
+          </MenuItem>
+        )}
+        {showBottom && (
+          <MenuItem
+            icon={<MdVerticalAlignBottom size={18} />}
+            onClick={run(() => entry.move(ends.last))}
+          >
+            {getMessage('entry_move_bottom')}
+          </MenuItem>
+        )}
+        {onReorderAll && (
+          <MenuItem
+            icon={<MdSwapVert size={18} />}
+            onClick={run(onReorderAll)}
+          >
+            {getMessage('entry_reorder_all')}
+          </MenuItem>
+        )}
+        {entry && (
+          <MenuItem
+            tone="danger"
+            icon={<MdRemoveCircleOutline size={18} />}
+            onClick={run(entry.remove)}
+          >
+            {getMessage('entry_remove_label')}
+          </MenuItem>
+        )}
+        {(entry || onReorderAll) && (
+          <div className="menu-separator" role="separator" />
+        )}
         <MenuLinkItem
           href={`/items/${itemId}?returnTo=${encodeURIComponent(
             pathname +
@@ -87,7 +142,7 @@ export default function OwnerActions({
           icon={<MdModeEdit size={18} />}
           onClick={() => setKebabOpen(false)}
         >
-          Edit
+          {getMessage('item_menu_edit')}
         </MenuLinkItem>
         {showArchiveAction && (
           <MenuItem
@@ -99,33 +154,12 @@ export default function OwnerActions({
               await toggleArchive();
             }}
           >
-            {archivedView ? 'Unarchive' : 'Archive'}
-          </MenuItem>
-        )}
-        {listId && (
-          <MenuItem
-            tone="danger"
-            icon={<MdRemoveCircleOutline size={18} />}
-            onClick={() => {
-              setKebabOpen(false);
-              setShowRemoveConfirm(true);
-            }}
-          >
-            Remove from list
+            {getMessage(
+              archivedView ? 'item_menu_unarchive' : 'item_menu_archive'
+            )}
           </MenuItem>
         )}
       </Menu>
-      {listId && (
-        <ConfirmDialog
-          isOpen={showRemoveConfirm}
-          onClose={() => setShowRemoveConfirm(false)}
-          onConfirm={handleRemoveConfirm}
-          title="Remove from this list?"
-          message="The item only comes off this list — it stays in your item library."
-          confirmText="Remove"
-          cancelText="Cancel"
-        />
-      )}
     </div>
   );
 }

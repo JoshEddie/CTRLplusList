@@ -1,5 +1,10 @@
 import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearTestCookies,
+  mockNextHeaders,
+  setTestCookie,
+} from '@/test/helpers/next-headers';
 
 import {
   item_images,
@@ -9,10 +14,15 @@ import {
   lists,
 } from '@/db/schema';
 import { auth } from '@/lib/auth';
+import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
 import type { ItemDetails } from '@/lib/types';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedManagedProfile,
+  seedMembership,
+  seedUsers,
+} from '@/test/helpers/seedFollowGraph';
 
 import {
   seedItem,
@@ -20,10 +30,12 @@ import {
   seedItemStore,
   seedList,
   seedListItem,
+  selfProfileOf,
   type TestDb,
 } from './test-helpers';
 
 mockNextCache();
+mockNextHeaders();
 
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock('@/db', () => ({
@@ -67,7 +79,6 @@ function makeItem(overrides: Partial<ItemDetails> = {}): ItemDetails {
     id: 'placeholder-id',
     name: 'Valid Item Name',
     description: 'desc',
-    quantity_limit: null,
     // A complete store — the actions reject anything less.
     store: { name: 'Amazon', link: 'https://a.test', price: '10' },
     lists: [],
@@ -76,6 +87,17 @@ function makeItem(overrides: Partial<ItemDetails> = {}): ItemDetails {
 }
 
 const itemRows = () => db.select().from(items);
+
+const MANAGED = 'kiddo';
+
+// The owner acting as a profile that is not their own. Every other case in
+// this file leaves the selection unset, which collapses the active profile
+// onto the self-profile and makes the two interchangeable.
+async function ownerActsAsManaged(role: 'owner' | 'manager' = 'owner') {
+  await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
+  await seedMembership(db, { user_id: OWNER.id, profile_id: MANAGED, role });
+  setTestCookie(ACTIVE_PROFILE_COOKIE, MANAGED);
+}
 const listItemRows = (listId: string) =>
   db.select().from(list_items).where(eq(list_items.list_id, listId));
 const storeRows = (itemId: string) =>
@@ -103,6 +125,7 @@ beforeEach(async () => {
   vi.restoreAllMocks();
   await resetDb(db);
   await seedUsers(db, [OWNER, OTHER]);
+  clearTestCookies();
   updateTag.mockClear();
   asOwner();
 });
@@ -170,23 +193,10 @@ describe('createItem', () => {
       expect(await itemRows()).toHaveLength(0);
     });
 
-    it('QuantityLimitFractional_ReturnsQuantityFieldError-NoRow', async () => {
-      const res = await actions.createItem(makeItem({ quantity_limit: 1.5 }));
-      expect(res.success).toBe(false);
-      expect(res.errors?.quantity_limit).toBeDefined();
-      expect(await itemRows()).toHaveLength(0);
-    });
-
-    it('QuantityLimitZero_ReturnsQuantityFieldError-NoRow', async () => {
-      const res = await actions.createItem(makeItem({ quantity_limit: 0 }));
-      expect(res.success).toBe(false);
-      expect(res.errors?.quantity_limit).toBeDefined();
-      expect(await itemRows()).toHaveLength(0);
-    });
   });
 
   describe('Success', () => {
-    it('WithListsAndStore_InsertsItem-PlacesListItem-CallsUpdateTagItems', async () => {
+    it('WithListsAndStore_InsertsItem-PlacesListItem-BumpsOwnerItemsTag', async () => {
       await seedList(db, { id: 'L', user_id: OWNER.id });
       await seedItem(db, { id: 'existing', user_id: OWNER.id });
       await seedListItem(db, {
@@ -200,7 +210,6 @@ describe('createItem', () => {
           name: 'New Gift',
           description: '',
           image_url: 'https://img.test/x.png',
-          quantity_limit: 3,
           lists: [{ value: 'L', label: 'L' }],
           store: { name: 'Amazon', link: 'https://a.test', price: '10' },
         })
@@ -208,11 +217,12 @@ describe('createItem', () => {
       expect(res.success).toBe(true);
 
       const created = (await itemRows()).find((i) => i.name === 'New Gift')!;
+      expect(res.id).toBe(created.id);
       expect(created).toMatchObject({
         name: 'New Gift',
         description: '',
-        quantity_limit: 3,
-        user_id: OWNER.id,
+        profile_id: selfProfileOf(OWNER.id),
+        updated_by_user_id: OWNER.id,
       });
 
       const placed = (await listItemRows('L')).find(
@@ -229,7 +239,25 @@ describe('createItem', () => {
           order: 1,
         }),
       ]);
-      expect(updateTag).toHaveBeenCalledWith('items');
+      expect(updateTag).toHaveBeenCalledWith(
+        `items:profile:${selfProfileOf(OWNER.id)}`
+      );
+    });
+
+    it('ActingAsAManagedProfile_OwnsTheNewItemToThatProfile', async () => {
+      await ownerActsAsManaged();
+
+      const res = await actions.createItem(
+        makeItem({ name: 'Kiddo Gift', lists: [] })
+      );
+
+      expect(res.success).toBe(true);
+      const rows = await itemRows();
+      expect(rows[0]).toMatchObject({
+        profile_id: MANAGED,
+        updated_by_user_id: OWNER.id,
+      });
+      expect(updateTag).toHaveBeenCalledWith(`items:profile:${MANAGED}`);
     });
 
     it('NoLists_InsertsItemWithStore-DefaultsDescriptionEmpty', async () => {
@@ -243,11 +271,14 @@ describe('createItem', () => {
       expect(rows[0]).toMatchObject({
         name: 'Bare Item',
         description: '',
-        user_id: OWNER.id,
+        profile_id: selfProfileOf(OWNER.id),
+        updated_by_user_id: OWNER.id,
       });
       expect(await listItemRows('L')).toHaveLength(0);
       expect(await storeRows(rows[0].id)).toHaveLength(1);
-      expect(updateTag).toHaveBeenCalledWith('items');
+      expect(updateTag).toHaveBeenCalledWith(
+        `items:profile:${selfProfileOf(OWNER.id)}`
+      );
     });
 
     it('StoreProvenanceFields_PersistThroughCreate', async () => {
@@ -311,7 +342,12 @@ describe('createItem', () => {
       expect(res.success).toBe(true);
       const rows = await itemRows();
       expect(await storeRows(rows[0].id)).toEqual([
-        expect.objectContaining({ name: '', link: '', price: '12.50', order: 1 }),
+        expect.objectContaining({
+          name: '',
+          link: '',
+          price: '12.50',
+          order: 1,
+        }),
       ]);
     });
 
@@ -364,6 +400,19 @@ describe('updateItem', () => {
       expect(res.error).toBe('Unauthorized');
     });
 
+    it('ActingAsAManagedProfile_RefusesTheSelfProfilesItem', async () => {
+      await seedItem(db, { id: 'mine', user_id: OWNER.id, name: 'Mine' });
+      await ownerActsAsManaged();
+
+      const res = await actions.updateItem(
+        makeItem({ id: 'mine', name: 'Hacked' })
+      );
+
+      expect(res.error).toBe('Unauthorized');
+      const row = (await itemRows()).find((i) => i.id === 'mine');
+      expect(row?.name).toBe('Mine');
+    });
+
     it('ForeignItem_ReturnsUnauthorized-NoWrite', async () => {
       await seedItem(db, { id: 'foreign', user_id: OTHER.id, name: 'Theirs' });
       const res = await actions.updateItem(
@@ -392,7 +441,6 @@ describe('updateItem', () => {
         name: 'New Name',
         description: 'newdesc',
         image_url: 'https://i.test/p.png',
-        quantity_limit: 2,
         lists: undefined as unknown as ItemDetails['lists'],
       })
     );
@@ -421,12 +469,11 @@ describe('updateItem', () => {
   });
 
   describe('Success', () => {
-    it('PartialUpdate_WritesProvidedFields-DiffsListsAndStores-CallsUpdateTagItems', async () => {
+    it('PartialUpdate_WritesProvidedFields-DiffsListsAndStores-BumpsOwnerItemsTag', async () => {
       await seedItem(db, {
         id: 'I',
         user_id: OWNER.id,
         name: 'Old',
-        quantity_limit: 1,
       });
       await seedList(db, { id: 'L1', user_id: OWNER.id });
       await seedList(db, { id: 'L2', user_id: OWNER.id });
@@ -452,7 +499,6 @@ describe('updateItem', () => {
         makeItem({
           id: 'I',
           name: 'Updated',
-          quantity_limit: 5,
           lists: [{ value: 'L2', label: 'L2' }],
           store: { name: 'a1x', link: 'https://a.test', price: '12.99' },
         })
@@ -460,7 +506,10 @@ describe('updateItem', () => {
       expect(res.success).toBe(true);
 
       const row = (await itemRows()).find((i) => i.id === 'I');
-      expect(row).toMatchObject({ name: 'Updated', quantity_limit: 5 });
+      expect(row).toMatchObject({
+        name: 'Updated',
+        updated_by_user_id: OWNER.id,
+      });
 
       expect(await listItemRows('L1')).toHaveLength(0);
       expect(await listItemRows('L2')).toEqual([
@@ -478,7 +527,9 @@ describe('updateItem', () => {
           price: '12.99',
         }),
       ]);
-      expect(updateTag).toHaveBeenCalledWith('items');
+      expect(updateTag).toHaveBeenCalledWith(
+        `items:profile:${selfProfileOf(OWNER.id)}`
+      );
     });
 
     it('IncompleteStorePayload_ReturnsStoreFieldError-NoWrite', async () => {
@@ -552,7 +603,12 @@ describe('updateItem', () => {
       );
       expect(res.success).toBe(true);
       expect(await storeRows('I')).toEqual([
-        expect.objectContaining({ id: 'S1', name: '', link: '', price: '8.00' }),
+        expect.objectContaining({
+          id: 'S1',
+          name: '',
+          link: '',
+          price: '8.00',
+        }),
       ]);
     });
 
@@ -576,7 +632,6 @@ describe('updateItem', () => {
         user_id: OWNER.id,
         name: 'Keep',
         description: 'keepdesc',
-        quantity_limit: 4,
       });
       const res = await actions.updateItem({
         id: 'I',
@@ -589,7 +644,6 @@ describe('updateItem', () => {
       expect(row).toMatchObject({
         name: 'Keep',
         description: 'keepdesc',
-        quantity_limit: 4,
       });
       const rows = await imageRows('I');
       expect(rows.filter((r) => r.active).map((r) => r.url)).toEqual([
@@ -626,13 +680,22 @@ describe('updateItem', () => {
 });
 
 describe('archiveItem', () => {
-  it('Archive_SetsArchivedAtDate-CallsUpdateTagItems', async () => {
+  it('Archive_SetsArchivedAtDate-BumpsItemTag', async () => {
     await seedItem(db, { id: 'I', user_id: OWNER.id });
     const res = await actions.archiveItem('I', true);
     expect(res.success).toBe(true);
     const row = (await itemRows()).find((i) => i.id === 'I');
     expect(row?.archived_at).toBeInstanceOf(Date);
-    expect(updateTag).toHaveBeenCalledWith('items');
+    expect(updateTag).toHaveBeenCalledWith('items:id:I');
+  });
+
+  it('Archive_LeavesUpdatedByUserIdUnstamped', async () => {
+    // Archiving is a shelf move, not a content edit, so it records no editor.
+    await seedItem(db, { id: 'I', user_id: OWNER.id });
+    const res = await actions.archiveItem('I', true);
+    expect(res.success).toBe(true);
+    const row = (await itemRows()).find((i) => i.id === 'I');
+    expect(row?.updated_by_user_id).toBeNull();
   });
 
   it('Unarchive_ClearsArchivedAt', async () => {
@@ -679,12 +742,12 @@ describe('archiveItem', () => {
 });
 
 describe('deleteItem', () => {
-  it('Owner_RemovesRow-CallsUpdateTagItems', async () => {
+  it('Owner_RemovesRow-BumpsItemTag', async () => {
     await seedItem(db, { id: 'I', user_id: OWNER.id });
     const res = await actions.deleteItem('I');
     expect(res.success).toBe(true);
     expect(await itemRows()).toHaveLength(0);
-    expect(updateTag).toHaveBeenCalledWith('items');
+    expect(updateTag).toHaveBeenCalledWith('items:id:I');
   });
 
   it('NonOwner_ReturnsFailed-RowPersists', async () => {
@@ -719,7 +782,11 @@ describe('ImageCandidates', () => {
   describe('createItem', () => {
     it('FetchedCandidates_PersistsPoolInExtractorOrder-MarksActive', async () => {
       const res = await actions.createItem(
-        makeItem({ name: 'Fetched Gift', image_url: POOL[0], image_candidates: POOL })
+        makeItem({
+          name: 'Fetched Gift',
+          image_url: POOL[0],
+          image_candidates: POOL,
+        })
       );
       expect(res.success).toBe(true);
       const created = (await itemRows())[0];
@@ -730,7 +797,10 @@ describe('ImageCandidates', () => {
 
     it('ManualImageUrlNoCandidates_SavesSingleActiveRow', async () => {
       const res = await actions.createItem(
-        makeItem({ name: 'Manual Gift', image_url: 'https://img.test/manual.jpg' })
+        makeItem({
+          name: 'Manual Gift',
+          image_url: 'https://img.test/manual.jpg',
+        })
       );
       expect(res.success).toBe(true);
       const created = (await itemRows())[0];
@@ -786,9 +856,16 @@ describe('ImageCandidates', () => {
     });
 
     it('RefetchedCandidates_ReplacesPool-MarksActive', async () => {
-      const refetched = ['https://img.test/new0.jpg', 'https://img.test/new1.jpg'];
+      const refetched = [
+        'https://img.test/new0.jpg',
+        'https://img.test/new1.jpg',
+      ];
       const res = await actions.updateItem(
-        makeItem({ id: 'I', image_url: refetched[1], image_candidates: refetched })
+        makeItem({
+          id: 'I',
+          image_url: refetched[1],
+          image_candidates: refetched,
+        })
       );
       expect(res.success).toBe(true);
       const rows = await imageRows('I');
@@ -807,7 +884,9 @@ describe('ImageCandidates', () => {
       const rows = await imageRows('I');
       // The pool is preserved and the hand-entered URL is appended as active.
       expect(rows.map((r) => r.url)).toEqual([...POOL, handPicked]);
-      expect(rows.filter((r) => r.active).map((r) => r.url)).toEqual([handPicked]);
+      expect(rows.filter((r) => r.active).map((r) => r.url)).toEqual([
+        handPicked,
+      ]);
     });
 
     it('PoolDeleteThrows_ReturnsFailedToUpdateItem', async () => {
@@ -841,6 +920,31 @@ describe('ImageCandidates', () => {
   });
 });
 
+// Which literal each call site passes: deleting takes the owner floor, and
+// every other item write takes the member floor.
+describe('RoleFloorAtTheCallSite', () => {
+  beforeEach(async () => {
+    await ownerActsAsManaged('manager');
+    await seedItem(db, { id: 'I', user_id: OWNER.id, profile_id: MANAGED });
+  });
+
+  it('ManagerDeletesAnItem_ReturnsFailedToDeleteItem-RowPersists', async () => {
+    // The endpoint collapses the gate's refusal into its own thrown error, so
+    // the row surviving is what distinguishes a refusal from a delete.
+    expect(await actions.deleteItem('I')).toMatchObject({
+      error: 'Failed to delete item',
+    });
+    expect(await itemRows()).toHaveLength(1);
+  });
+
+  it('ManagerArchivesAnItem_Succeeds-StampsArchivedAt', async () => {
+    expect((await actions.archiveItem('I', true)).success).toBe(true);
+    expect(
+      (await itemRows()).find((i) => i.id === 'I')?.archived_at
+    ).not.toBeNull();
+  });
+});
+
 describe('UpdateRecency', () => {
   const STALE = new Date('2020-01-01T00:00:00.000Z');
 
@@ -859,7 +963,7 @@ describe('UpdateRecency', () => {
     await seedListItem(db, { list_id: 'M2', item_id: 'I', position: 65536 });
   });
 
-  it('DeleteItem_BumpsMemberLists-LeavesNonMemberUntouched-CallsUpdateTagLists', async () => {
+  it('DeleteItem_BumpsMemberLists-LeavesNonMemberUntouched-BumpsMemberListTags', async () => {
     const before = Date.now();
     const res = await actions.deleteItem('I');
     const after = Date.now();
@@ -871,7 +975,9 @@ describe('UpdateRecency', () => {
     expect(byId.M2.getTime()).toBeGreaterThanOrEqual(before);
     expect(byId.M2.getTime()).toBeLessThanOrEqual(after);
     expect(byId.OFF.toISOString()).toBe(STALE.toISOString());
-    expect(updateTag).toHaveBeenCalledWith('lists');
+    expect(updateTag).toHaveBeenCalledWith('lists:id:M1');
+    expect(updateTag).toHaveBeenCalledWith('lists:id:M2');
+    expect(updateTag).not.toHaveBeenCalledWith('lists:id:OFF');
   });
 
   it('UpdateItemFieldsOnly_LeavesAllUpdatedAtUnchanged', async () => {
@@ -902,4 +1008,3 @@ describe('UpdateRecency', () => {
     expect(byId.M2.toISOString()).toBe(STALE.toISOString());
   });
 });
-

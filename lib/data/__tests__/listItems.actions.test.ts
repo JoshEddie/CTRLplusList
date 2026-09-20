@@ -1,15 +1,34 @@
 import { eq } from 'drizzle-orm';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearTestCookies,
+  mockNextHeaders,
+  setTestCookie,
+} from '@/test/helpers/next-headers';
 
-import { list_items, lists } from '@/db/schema';
+import { items, list_items, lists, purchases } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedManagedProfile,
+  seedMembership,
+  seedUsers,
+  selfProfileOf,
+} from '@/test/helpers/seedFollowGraph';
+import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
 
-import { seedItem, seedList, seedListItem, type TestDb } from './test-helpers';
+import {
+  contentTagCalls,
+  seedItem,
+  seedList,
+  seedListItem,
+  seedPurchase,
+  type TestDb,
+} from './test-helpers';
 
 mockNextCache();
+mockNextHeaders();
 
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock('@/db', () => ({
@@ -29,7 +48,6 @@ vi.setConfig({ hookTimeout: 60000 });
 
 const OWNER = { id: 'owner', email: 'owner@test.local' };
 const OTHER = { id: 'other', email: 'other@test.local' };
-const GHOST_EMAIL = 'ghost@test.local';
 
 let db: TestDb;
 let actions: typeof import('@/lib/data/listItems.actions');
@@ -41,15 +59,18 @@ function asOwner() {
 function asOther() {
   vi.mocked(auth).mockResolvedValue({ user: { email: OTHER.email } } as never);
 }
-function asGhost() {
-  vi.mocked(auth).mockResolvedValue({ user: { email: GHOST_EMAIL } } as never);
-}
 function noSession() {
   vi.mocked(auth).mockResolvedValue(null as never);
 }
 
 const listItemRows = (listId: string) =>
   db.select().from(list_items).where(eq(list_items.list_id, listId));
+
+const MANAGED = 'kiddo';
+const STALE = new Date('2020-01-01T00:00:00.000Z');
+
+const updatedAtOfL = async () =>
+  (await db.select().from(lists).where(eq(lists.id, 'L')))[0].updated_at;
 
 beforeAll(async () => {
   const booted = await bootPglite();
@@ -67,168 +88,59 @@ beforeEach(async () => {
   vi.restoreAllMocks();
   await resetDb(db);
   await seedUsers(db, [OWNER, OTHER]);
+  clearTestCookies();
   updateTag.mockClear();
   asOwner();
 });
 
-describe('setListItems', () => {
-  it('NoSession_ReturnsUnauthorized', async () => {
-    noSession();
-    const res = await actions.setListItems('L', ['I']);
-    expect(res.error).toBe('Unauthorized');
-  });
-
-  it('MissingList_ReturnsNotFound', async () => {
-    const res = await actions.setListItems('nope', ['I']);
-    expect(res.error).toBe('Not found');
-  });
-
-  it('NonOwner_ReturnsForbidden', async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id });
-    asOther();
-    const res = await actions.setListItems('L', ['I']);
-    expect(res.error).toBe('Forbidden');
-  });
-
-  it('UnknownEmail_ReturnsForbidden', async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id });
-    asGhost();
-    const res = await actions.setListItems('L', ['I']);
-    expect(res.error).toBe('Forbidden');
-  });
-
-  it('EmptyItemId_ReturnsInvalidInput', async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id });
-    const res = await actions.setListItems('L', ['']);
-    expect(res.error).toBe('Invalid input');
-  });
-
-  it('NoChanges_ReturnsNoChanges', async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id });
-    await seedItem(db, { id: 'I', user_id: OWNER.id });
-    await seedListItem(db, { list_id: 'L', item_id: 'I', position: 65536 });
-    const res = await actions.setListItems('L', ['I']);
-    expect(res.message).toBe('No changes');
-  });
-
-  it('MixedAddRemove_WritesDiff-PlacesInsertsAtMaxPlus65536-ReportsCounts', async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id });
-    await seedItem(db, { id: 'A', user_id: OWNER.id });
-    await seedItem(db, { id: 'B', user_id: OWNER.id });
-    await seedItem(db, { id: 'C', user_id: OWNER.id });
-    await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
-    await seedListItem(db, { list_id: 'L', item_id: 'B', position: 131072 });
-
-    const res = await actions.setListItems('L', ['A', 'C']);
-    expect(res.success).toBe(true);
-    expect(res.message).toBe('Added 1, removed 1');
-
-    const rows = await listItemRows('L');
-    const byItem = Object.fromEntries(rows.map((r) => [r.item_id, r.position]));
-    expect(byItem).toEqual({ A: 65536, C: 131072 });
-    expect(updateTag).toHaveBeenCalledWith('items');
-    expect(updateTag).toHaveBeenCalledWith('lists');
-  });
-
-  it('PureAdd_PlacesAtMaxPlus65536-ReportsAddedOnly', async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id });
-    await seedItem(db, { id: 'A', user_id: OWNER.id });
-    await seedItem(db, { id: 'B', user_id: OWNER.id });
-    await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
-
-    const res = await actions.setListItems('L', ['A', 'B']);
-    expect(res.success).toBe(true);
-    expect(res.message).toBe('Added 1');
-    const byItem = Object.fromEntries(
-      (await listItemRows('L')).map((r) => [r.item_id, r.position])
-    );
-    expect(byItem).toEqual({ A: 65536, B: 131072 });
-  });
-
-  it('PureRemove_ReportsRemovedOnly', async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id });
-    await seedItem(db, { id: 'A', user_id: OWNER.id });
-    await seedItem(db, { id: 'B', user_id: OWNER.id });
-    await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
-    await seedListItem(db, { list_id: 'L', item_id: 'B', position: 131072 });
-
-    const res = await actions.setListItems('L', ['A']);
-    expect(res.success).toBe(true);
-    expect(res.message).toBe('removed 1');
-    expect((await listItemRows('L')).map((r) => r.item_id)).toEqual(['A']);
-  });
-
-  describe('UpdateRecency', () => {
-    const STALE = new Date('2020-01-01T00:00:00.000Z');
-
-    const updatedAtOfL = async () =>
-      (await db.select().from(lists).where(eq(lists.id, 'L')))[0].updated_at;
-
-    beforeEach(async () => {
-      await seedList(db, { id: 'L', user_id: OWNER.id, updated_at: STALE });
-      await seedItem(db, { id: 'A', user_id: OWNER.id });
-      await seedItem(db, { id: 'B', user_id: OWNER.id });
-      await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
-    });
-
-    it('NonEmptyDiff_BumpsUpdatedAt', async () => {
-      const before = Date.now();
-      const res = await actions.setListItems('L', ['A', 'B']);
-      const after = Date.now();
-
-      expect(res.success).toBe(true);
-      const t = (await updatedAtOfL()).getTime();
-      expect(t).toBeGreaterThanOrEqual(before);
-      expect(t).toBeLessThanOrEqual(after);
-    });
-
-    it('NoChanges_LeavesUpdatedAtUnchanged', async () => {
-      const res = await actions.setListItems('L', ['A']);
-
-      expect(res.message).toBe('No changes');
-      expect((await updatedAtOfL()).toISOString()).toBe(STALE.toISOString());
-    });
-
-    it('RemoveListItem_BumpsUpdatedAt', async () => {
-      const before = Date.now();
-      const res = await actions.removeListItem('L', 'A');
-      const after = Date.now();
-
-      expect(res.success).toBe(true);
-      const t = (await updatedAtOfL()).getTime();
-      expect(t).toBeGreaterThanOrEqual(before);
-      expect(t).toBeLessThanOrEqual(after);
-    });
-  });
-
-  it('SelectThrows_ReturnsFailedToSaveItems', async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id });
-    await seedItem(db, { id: 'A', user_id: OWNER.id });
-    vi.spyOn(db, 'delete').mockImplementation(() => {
-      throw new Error('boom');
-    });
-    await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
-    const res = await actions.setListItems('L', ['A', 'nonexistent']);
-    expect(res.error).toBe('Failed to save items');
-  });
-});
-
 describe('removeListItem', () => {
   beforeEach(async () => {
-    await seedList(db, { id: 'L', user_id: OWNER.id });
+    await seedList(db, { id: 'L', user_id: OWNER.id, updated_at: STALE });
     await seedItem(db, { id: 'A', user_id: OWNER.id });
     await seedItem(db, { id: 'B', user_id: OWNER.id });
     await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
     await seedListItem(db, { list_id: 'L', item_id: 'B', position: 131072 });
   });
 
-  it('Owner_DeletesOnlyTargetRow-BumpsItemsAndListsTags', async () => {
+  it('Owner_DeletesOnlyTargetRow-BumpsUpdatedAt-BumpsListMembershipPoolAndItemTags', async () => {
+    const before = Date.now();
     const res = await actions.removeListItem('L', 'A');
+    const after = Date.now();
+
     expect(res.success).toBe(true);
     expect(res.message).toBe('Removed from list');
     expect((await listItemRows('L')).map((r) => r.item_id)).toEqual(['B']);
-    expect(updateTag).toHaveBeenCalledWith('items');
-    expect(updateTag).toHaveBeenCalledWith('lists');
+    const t = (await updatedAtOfL()).getTime();
+    expect(t).toBeGreaterThanOrEqual(before);
+    expect(t).toBeLessThanOrEqual(after);
+    expect(updateTag).toHaveBeenCalledWith('lists:id:L');
+    expect(updateTag).toHaveBeenCalledWith('list_items:list:L');
+    expect(updateTag).toHaveBeenCalledWith(
+      `items:profile:${selfProfileOf(OWNER.id)}`
+    );
+    expect(updateTag).toHaveBeenCalledWith('items:id:A');
+  });
+
+  it('ClaimedEntry_KeepsItemInLibrary-KeepsClaim', async () => {
+    await seedPurchase(db, {
+      id: 'P',
+      item_id: 'A',
+      list_id: 'L',
+      units: 1,
+      guest_name: 'Josh',
+    });
+
+    const res = await actions.removeListItem('L', 'A');
+
+    expect(res.success).toBe(true);
+    expect((await db.select().from(items).where(eq(items.id, 'A'))).length).toBe(
+      1
+    );
+    const claims = await db
+      .select()
+      .from(purchases)
+      .where(eq(purchases.item_id, 'A'));
+    expect(claims).toMatchObject([{ id: 'P', list_id: 'L', units: 1 }]);
   });
 
   it('NoSession_ReturnsUnauthorized-NoDelete', async () => {
@@ -254,7 +166,7 @@ describe('removeListItem', () => {
     const res = await actions.removeListItem('L', 'ghost');
     expect(res.error).toBe('Not found');
     expect(res.message).toBe('Item is not on this list');
-    expect(updateTag).not.toHaveBeenCalled();
+    expect(contentTagCalls(updateTag)).toEqual([]);
   });
 
   it('DeleteThrows_ReturnsFailedToRemoveItem', async () => {
@@ -271,8 +183,11 @@ describe('removeListItem', () => {
 });
 
 describe('updatePriority', () => {
-  async function seedListWith(positions: Record<string, number>) {
-    await seedList(db, { id: 'L', user_id: OWNER.id });
+  async function seedListWith(
+    positions: Record<string, number>,
+    updated_at?: Date
+  ) {
+    await seedList(db, { id: 'L', user_id: OWNER.id, updated_at });
     for (const itemId of Object.keys(positions)) {
       await seedItem(db, { id: itemId, user_id: OWNER.id });
       await seedListItem(db, {
@@ -288,13 +203,37 @@ describe('updatePriority', () => {
     return rows.find((r) => r.item_id === itemId)?.position;
   }
 
+  it('ManagerReorders_Succeeds-PositionWritten', async () => {
+    // Ordering takes the member floor, like every other content write: pinned
+    // here so narrowing this call site to `owner` cannot pass unnoticed.
+    await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
+    await seedMembership(db, {
+      user_id: OWNER.id,
+      profile_id: MANAGED,
+      role: 'manager',
+    });
+    setTestCookie(ACTIVE_PROFILE_COOKIE, MANAGED);
+    await seedList(db, { id: 'L', user_id: OWNER.id, profile_id: MANAGED });
+    for (const [itemId, position] of Object.entries({ A: 65536, B: 131072 })) {
+      await seedItem(db, {
+        id: itemId,
+        user_id: OWNER.id,
+        profile_id: MANAGED,
+      });
+      await seedListItem(db, { list_id: 'L', item_id: itemId, position });
+    }
+
+    expect((await actions.updatePriority('A', 'B', 'L')).success).toBe(true);
+    expect(await positionOf('A')).toBeGreaterThan(131072);
+  });
+
   describe('HappyPaths', () => {
     it('MoveDownToMidpoint_SetsFloorMidpointBetweenTargetAndLowerNeighbor', async () => {
       await seedListWith({ A: 65536, B: 131072, C: 196608 });
       const res = await actions.updatePriority('C', 'B', 'L');
       expect(res.success).toBe(true);
       expect(await positionOf('C')).toBe(Math.floor((65536 + 131072) / 2));
-      expect(updateTag).toHaveBeenCalledWith('items');
+      expect(updateTag).toHaveBeenCalledWith('list_items:list:L');
     });
 
     it('MoveUpToMidpoint_SetsFloorMidpointBetweenTargetAndHigherNeighbor', async () => {
@@ -319,6 +258,18 @@ describe('updatePriority', () => {
     });
   });
 
+  it('Reorder_LeavesUpdatedByUserIdUnstamped', async () => {
+    // Reordering moves a row's position, not its content, so it names no
+    // editor on the moved item or on the list holding it.
+    await seedListWith({ A: 65536, B: 131072, C: 196608 });
+    const res = await actions.updatePriority('C', 'B', 'L');
+    expect(res.success).toBe(true);
+    const [item] = await db.select().from(items).where(eq(items.id, 'C'));
+    const [list] = await db.select().from(lists).where(eq(lists.id, 'L'));
+    expect(item.updated_by_user_id).toBeNull();
+    expect(list.updated_by_user_id).toBeNull();
+  });
+
   it('CollisionBelowMinGap_RebalancesAllToBaseSpacing-PreservesOrder', async () => {
     // A and B share the top position; moving D up to C produces a midpoint
     // that leaves the two highest rows tied, tripping checkListBalance.
@@ -336,26 +287,28 @@ describe('updatePriority', () => {
     ]);
   });
 
+  // Move-to-top halves toward 0 rather than opening a gap, so it compresses the
+  // low end of the list — the end a balance check reading only the two highest
+  // positions never inspects. Repeat it past the point a midpoint can still be
+  // placed and the rebalance has to fire, or two rows tie and the next move is
+  // refused as already-at-target.
+  it('RepeatedMoveToTop_RebalancesBeforePositionsCollide', async () => {
+    await seedListWith({ A: 2, B: 65536, C: 131072 });
+
+    const res = await actions.updatePriority('C', 'A', 'L');
+
+    expect(res.success).toBe(true);
+    const positions = (await listItemRows('L'))
+      .map((r) => r.position)
+      .sort((a, b) => a - b);
+    expect(new Set(positions).size).toBe(3);
+    expect(positions).toEqual([65536, 131072, 196608]);
+    expect(await positionOf('C')).toBe(65536);
+  });
+
   describe('UpdateRecency', () => {
-    const STALE = new Date('2020-01-01T00:00:00.000Z');
-
-    const updatedAtOfL = async () =>
-      (await db.select().from(lists).where(eq(lists.id, 'L')))[0].updated_at;
-
-    async function seedStaleListWith(positions: Record<string, number>) {
-      await seedList(db, { id: 'L', user_id: OWNER.id, updated_at: STALE });
-      for (const itemId of Object.keys(positions)) {
-        await seedItem(db, { id: itemId, user_id: OWNER.id });
-        await seedListItem(db, {
-          list_id: 'L',
-          item_id: itemId,
-          position: positions[itemId],
-        });
-      }
-    }
-
     it('Move_LeavesUpdatedAtUnchanged', async () => {
-      await seedStaleListWith({ A: 65536, B: 131072, C: 196608 });
+      await seedListWith({ A: 65536, B: 131072, C: 196608 }, STALE);
       const res = await actions.updatePriority('C', 'B', 'L');
 
       expect(res.success).toBe(true);
@@ -363,7 +316,7 @@ describe('updatePriority', () => {
     });
 
     it('MoveTriggeringRebalance_LeavesUpdatedAtUnchanged', async () => {
-      await seedStaleListWith({ D: 32768, C: 65536, A: 131072, B: 131072 });
+      await seedListWith({ D: 32768, C: 65536, A: 131072, B: 131072 }, STALE);
       const res = await actions.updatePriority('D', 'C', 'L');
 
       expect(res.success).toBe(true);
@@ -372,11 +325,11 @@ describe('updatePriority', () => {
   });
 
   describe('Guards', () => {
-    it('NonOwner_ReturnsUnauthorized-NoWrite', async () => {
+    it('NonOwner_ReturnsForbidden-NoWrite', async () => {
       await seedListWith({ A: 65536, B: 131072 });
       asOther();
       const res = await actions.updatePriority('A', 'B', 'L');
-      expect(res.error).toBe('Unauthorized');
+      expect(res.error).toBe('Forbidden');
       expect(await positionOf('A')).toBe(65536);
     });
 
@@ -385,6 +338,11 @@ describe('updatePriority', () => {
       noSession();
       const res = await actions.updatePriority('A', 'B', 'L');
       expect(res.error).toBe('Unauthorized');
+    });
+
+    it('MissingList_ReturnsNotFound', async () => {
+      const res = await actions.updatePriority('A', 'B', 'nope');
+      expect(res.error).toBe('Not found');
     });
 
     it('TargetNotMember_ReturnsItemOrTargetNotFound', async () => {
@@ -401,24 +359,28 @@ describe('updatePriority', () => {
     });
   });
 
-  // checkListBalance's limit(2) scan is its own round-trip, so a concurrent
-  // removal can shrink the list below 2 rows after the move was validated.
-  // Its bare db.select() is the only zero-arg select in the updatePriority
-  // flow (the position lookups all pass a field selection), which is what
-  // lets the stub target it alone.
-  it('ListShrinksBelowTwoRowsBeforeBalanceCheck_SkipsRebalance-StillSucceeds', async () => {
-    await seedListWith({ A: 65536, B: 131072, C: 196608 });
-    const realSelect = db.select.bind(db) as (...a: never[]) => unknown;
+  // checkListBalance's gap scan is its own round-trip, so what it reads can
+  // differ from what the move validated. The stub targets that scan by its
+  // (zero-arg select, list_items) pair — the caller's identity resolution
+  // issues a zero-arg select of its own, which must still reach the real db.
+  function stubBalanceScan(orderBy: () => Promise<unknown>) {
+    const realSelect = db.select.bind(db) as (...a: never[]) => never;
     vi.spyOn(db, 'select').mockImplementation(((...args: never[]) =>
       args.length === 0
         ? ({
-            from: () => ({
-              where: () => ({
-                orderBy: () => ({ limit: () => Promise.resolve([]) }),
-              }),
-            }),
+            from: (table: unknown) =>
+              table === list_items
+                ? { where: () => ({ orderBy }) }
+                : (realSelect() as { from: (t: unknown) => unknown }).from(
+                    table
+                  ),
           } as never)
         : realSelect(...args)) as never);
+  }
+
+  it('ListShrinksBelowTwoRowsBeforeBalanceCheck_SkipsRebalance-StillSucceeds', async () => {
+    await seedListWith({ A: 65536, B: 131072, C: 196608 });
+    stubBalanceScan(() => Promise.resolve([]));
 
     const res = await actions.updatePriority('C', 'B', 'L');
     // listItemRows uses a bare select too, so drop the stub before reading.
@@ -430,25 +392,15 @@ describe('updatePriority', () => {
   it('BalanceCheckSelectThrows_InjectedErrorPropagatesToActionFailure', async () => {
     await seedListWith({ A: 65536, B: 131072, C: 196608 });
     const boom = new Error('boom');
-    const realSelect = db.select.bind(db) as (...a: never[]) => unknown;
-    vi.spyOn(db, 'select').mockImplementation(((...args: never[]) =>
-      args.length === 0
-        ? ({
-            from: () => ({
-              where: () => ({
-                orderBy: () => ({ limit: () => Promise.reject(boom) }),
-              }),
-            }),
-          } as never)
-        : realSelect(...args)) as never);
+    stubBalanceScan(() => Promise.reject(boom));
     const consoleError = vi
       .spyOn(console, 'error')
       .mockImplementation(() => {});
 
     const res = await actions.updatePriority('C', 'B', 'L');
     expect(res.error).toBe('Failed to update item priority');
-    // The outer catch logs the same error instance — checkListBalance rethrew
-    // it rather than swallowing it.
+    // The outer catch logs the same error instance — checkListBalance let it
+    // propagate rather than swallowing it.
     expect(consoleError).toHaveBeenCalledWith('Database Error:', boom);
   });
 
@@ -472,8 +424,8 @@ describe('updatePriority', () => {
 
     const res = await actions.updatePriority('D', 'C', 'L');
     expect(res.error).toBe('Failed to update item priority');
-    // The outer catch logs the same error instance — rebalanceList rethrew it
-    // rather than swallowing it.
+    // The outer catch logs the same error instance — rebalanceList let it
+    // propagate rather than swallowing it.
     expect(consoleError).toHaveBeenCalledWith('Database Error:', boom);
   });
 
@@ -484,5 +436,139 @@ describe('updatePriority', () => {
     });
     const res = await actions.updatePriority('C', 'B', 'L');
     expect(res.error).toBe('Failed to update item priority');
+  });
+});
+
+describe('setListItemQuantity', () => {
+  const entryRow = async () =>
+    (await listItemRows('L')).find((r) => r.item_id === 'A');
+
+  beforeEach(async () => {
+    await seedList(db, { id: 'L', user_id: OWNER.id, updated_at: STALE });
+    await seedItem(db, { id: 'A', user_id: OWNER.id });
+    await seedListItem(db, { list_id: 'L', item_id: 'A', position: 65536 });
+  });
+
+  it('Owner_WritesQuantity-BumpsUpdatedAt-BumpsListMembershipAndPoolTags', async () => {
+    const before = Date.now();
+    const res = await actions.setListItemQuantity('L', 'A', 4);
+    const after = Date.now();
+
+    expect(res).toMatchObject({ success: true, message: 'Quantity updated' });
+    expect((await entryRow())?.quantity).toBe(4);
+    const t = (await updatedAtOfL()).getTime();
+    expect(t).toBeGreaterThanOrEqual(before);
+    expect(t).toBeLessThanOrEqual(after);
+    expect(updateTag).toHaveBeenCalledWith('lists:id:L');
+    expect(updateTag).toHaveBeenCalledWith('list_items:list:L');
+    expect(updateTag).toHaveBeenCalledWith(
+      `lists:profile:${selfProfileOf(OWNER.id)}`
+    );
+    expect(updateTag).toHaveBeenCalledWith(
+      `items:profile:${selfProfileOf(OWNER.id)}`
+    );
+  });
+
+  it('BelowClaimedUnits_WritesQuantity-ReturnsSameResponseAsUnclaimed', async () => {
+    await actions.setListItemQuantity('L', 'A', 4);
+    await seedPurchase(db, {
+      id: 'P',
+      item_id: 'A',
+      list_id: 'L',
+      units: 3,
+      guest_name: 'Josh',
+    });
+
+    const res = await actions.setListItemQuantity('L', 'A', 1);
+    expect(res).toMatchObject({ success: true, message: 'Quantity updated' });
+    expect((await entryRow())?.quantity).toBe(1);
+  });
+
+  it('OtherEntryOfSameItem_LeavesItsQuantityUnchanged', async () => {
+    await seedList(db, { id: 'L2', user_id: OWNER.id });
+    await seedListItem(db, { list_id: 'L2', item_id: 'A', position: 65536 });
+
+    await actions.setListItemQuantity('L', 'A', 4);
+
+    const [other] = await db
+      .select()
+      .from(list_items)
+      .where(eq(list_items.list_id, 'L2'));
+    expect(other.quantity).toBe(1);
+  });
+
+  it('NoSession_ReturnsUnauthorized-NoWrite', async () => {
+    noSession();
+    const res = await actions.setListItemQuantity('L', 'A', 4);
+    expect(res.error).toBe('Unauthorized');
+    expect((await entryRow())?.quantity).toBe(1);
+  });
+
+  it('NonOwner_ReturnsForbidden-NoWrite', async () => {
+    asOther();
+    const res = await actions.setListItemQuantity('L', 'A', 4);
+    expect(res.error).toBe('Forbidden');
+    expect((await entryRow())?.quantity).toBe(1);
+  });
+
+  it('MissingList_ReturnsNotFound', async () => {
+    const res = await actions.setListItemQuantity('nope', 'A', 4);
+    expect(res.message).toBe('List not found');
+    expect(res.error).toBe('Not found');
+  });
+
+  it('ItemNotOnList_InsertsEntryAtEndOfList-BumpsItemTag', async () => {
+    await seedItem(db, { id: 'B', user_id: OWNER.id });
+
+    const res = await actions.setListItemQuantity('L', 'B', 3);
+
+    expect(res).toMatchObject({ success: true, message: 'Quantity updated' });
+    const rows = await listItemRows('L');
+    expect(rows.find((r) => r.item_id === 'B')).toMatchObject({
+      quantity: 3,
+      position: 131072,
+    });
+    expect(updateTag).toHaveBeenCalledWith('items:id:B');
+  });
+
+  it('ForeignItem_ReturnsForbidden-NoInsert', async () => {
+    await seedItem(db, { id: 'THEIRS', user_id: OTHER.id });
+
+    const res = await actions.setListItemQuantity('L', 'THEIRS', 3);
+
+    expect(res.error).toBe('Forbidden');
+    expect(await listItemRows('L')).toHaveLength(1);
+  });
+
+  it('UnknownItem_ReturnsForbidden-NoInsert', async () => {
+    const res = await actions.setListItemQuantity('L', 'ghost', 4);
+    expect(res.error).toBe('Forbidden');
+    expect(await listItemRows('L')).toHaveLength(1);
+  });
+
+  describe('RejectedQuantities', () => {
+    it.each([0, -1, 1.5, 100])(
+      'Quantity%s_ReturnsInvalidInput-NoWrite',
+      async (quantity) => {
+        const res = await actions.setListItemQuantity('L', 'A', quantity);
+        expect(res.message).toBe(
+          'Quantity must be a whole number between 1 and 99'
+        );
+        expect(res.error).toBe('Invalid input');
+        expect((await entryRow())?.quantity).toBe(1);
+      }
+    );
+  });
+
+  it('UpdateThrows_ReturnsFailedToSetQuantity', async () => {
+    vi.spyOn(db, 'update').mockImplementation(() => {
+      throw new Error('boom');
+    });
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const res = await actions.setListItemQuantity('L', 'A', 4);
+    expect(res.error).toBe('Failed to set quantity');
+    expect(consoleError).toHaveBeenCalled();
   });
 });

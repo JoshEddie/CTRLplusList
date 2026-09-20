@@ -31,14 +31,24 @@ beforeEach(() => {
 });
 
 describe('DeleteListButton', () => {
+  it('BelowTheOwnerFloor_RendersDisabledAndOpensNoDialog', async () => {
+    const user = userEvent.setup();
+    render(<DeleteListButton id="list-9" disabled />);
+
+    const trigger = screen.getByRole('button', { name: 'Delete' });
+    expect(trigger).toBeDisabled();
+    await user.click(trigger);
+    expect(screen.queryByText('Confirm Delete')).not.toBeInTheDocument();
+  });
+
   it('Default_DialogClosed', () => {
-    render(<DeleteListButton id="list-9" />);
+    render(<DeleteListButton id="list-9" disabled={false} />);
     expect(screen.queryByText('Confirm Delete')).not.toBeInTheDocument();
   });
 
   it('ClickDelete_OpensConfirmDialog', async () => {
     const user = userEvent.setup();
-    render(<DeleteListButton id="list-9" />);
+    render(<DeleteListButton id="list-9" disabled={false} />);
     await openDialog(user);
     expect(screen.getByText('Confirm Delete')).toBeInTheDocument();
   });
@@ -46,7 +56,7 @@ describe('DeleteListButton', () => {
   it('Confirm_CallsDeleteList-ToastSuccess-NavigatesToLists', async () => {
     vi.mocked(deleteList).mockResolvedValue({ success: true } as never);
     const user = userEvent.setup();
-    render(<DeleteListButton id="list-9" />);
+    render(<DeleteListButton id="list-9" disabled={false} />);
     await openDialog(user);
     await user.click(confirmButton());
 
@@ -61,7 +71,7 @@ describe('DeleteListButton', () => {
       error: 'List has claimed items',
     } as never);
     const user = userEvent.setup();
-    render(<DeleteListButton id="list-9" />);
+    render(<DeleteListButton id="list-9" disabled={false} />);
     await openDialog(user);
     await user.click(confirmButton());
 
@@ -75,7 +85,7 @@ describe('DeleteListButton', () => {
   it('ConfirmFailureNoError_ToastsGenericError-NoNavigation', async () => {
     vi.mocked(deleteList).mockResolvedValue({ success: false } as never);
     const user = userEvent.setup();
-    render(<DeleteListButton id="list-9" />);
+    render(<DeleteListButton id="list-9" disabled={false} />);
     await openDialog(user);
     await user.click(confirmButton());
 
@@ -87,7 +97,7 @@ describe('DeleteListButton', () => {
 
   it('Cancel_ClosesDialog-NoDeleteListCall', async () => {
     const user = userEvent.setup();
-    render(<DeleteListButton id="list-9" />);
+    render(<DeleteListButton id="list-9" disabled={false} />);
     await openDialog(user);
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 

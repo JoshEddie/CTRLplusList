@@ -16,16 +16,8 @@ vi.mock('react-hot-toast', () => ({
   default: { success: vi.fn(), error: vi.fn() },
 }));
 
-function trigger() {
-  return screen.getByRole('button', { name: /Visibility:/ });
-}
-
-async function openAndSelect(
-  user: ReturnType<typeof userEvent.setup>,
-  name: RegExp
-) {
-  await user.click(trigger());
-  await user.click(screen.getByRole('menuitemradio', { name }));
+function option(name: RegExp) {
+  return screen.getByRole('radio', { name });
 }
 
 beforeEach(() => {
@@ -33,29 +25,53 @@ beforeEach(() => {
 });
 
 describe('VisibilityPicker', () => {
-  it('SelectDifferentRow_CallsSetVisibility-OptimisticLabel-ToastSuccess-RouterRefresh', async () => {
+  it('BelowTheOwnerFloor_RendersAllOptionsDisabled', () => {
+    render(
+      <VisibilityPicker
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled
+      />
+    );
+
+    for (const radio of screen.getAllByRole('radio')) {
+      expect(radio).toBeDisabled();
+    }
+  });
+
+  it('CurrentVisibility_AriaCheckedTrue', () => {
+    render(
+      <VisibilityPicker
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
+      />
+    );
+    expect(option(/Hidden/)).toHaveAttribute('aria-checked', 'true');
+    expect(option(/Shared/)).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('SelectDifferentOption_CallsSetVisibility-OptimisticUpdate-ToastSuccess-RouterRefresh', async () => {
     vi.mocked(setListVisibility).mockResolvedValue({
       success: true,
       message: '',
     });
     const user = userEvent.setup();
     render(
-      <VisibilityPicker listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityPicker
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
+      />
     );
-    expect(
-      screen.getByRole('button', { name: /Visibility: Hidden/ })
-    ).toBeInTheDocument();
 
-    await openAndSelect(user, /Shared/);
+    await user.click(option(/Shared/));
 
     expect(setListVisibility).toHaveBeenCalledWith(
       'list-1',
       VISIBILITY.FOLLOWERS
     );
-    // Optimistic: the trigger pill advances to the selected label immediately.
-    expect(
-      screen.getByRole('button', { name: /Visibility: Shared/ })
-    ).toBeInTheDocument();
+    expect(option(/Shared/)).toHaveAttribute('aria-checked', 'true');
     await waitFor(() =>
       expect(toast.success).toHaveBeenCalledWith(
         'Shared — your followers can now find it'
@@ -64,52 +80,46 @@ describe('VisibilityPicker', () => {
     expect(refreshMock).toHaveBeenCalledTimes(1);
   });
 
-  it('FailedApply_RollsBackPill-ToastError-NoRefresh', async () => {
+  it('FailedApply_RollsBackSelection-ToastError-NoRefresh', async () => {
     vi.mocked(setListVisibility).mockResolvedValue({
       success: false,
       message: 'Could not update visibility',
     });
     const user = userEvent.setup();
     render(
-      <VisibilityPicker listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityPicker
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
+      />
     );
 
-    await openAndSelect(user, /Shared/);
+    await user.click(option(/Shared/));
 
-    // Rolls back from the optimistic "Shared" to the prior "Hidden".
     expect(
-      await screen.findByRole('button', { name: /Visibility: Hidden/ })
+      await screen.findByRole('radio', { name: /Hidden/, checked: true })
     ).toBeInTheDocument();
     expect(toast.error).toHaveBeenCalledWith('Could not update visibility');
     expect(refreshMock).not.toHaveBeenCalled();
   });
 
-  it('ReselectCurrentRow_NoSetVisibilityCall', async () => {
+  it('ReselectCurrentOption_NoSetVisibilityCall', async () => {
     const user = userEvent.setup();
     render(
-      <VisibilityPicker listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityPicker
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
+      />
     );
 
-    await openAndSelect(user, /Hidden/);
+    await user.click(option(/Hidden/));
 
     expect(setListVisibility).not.toHaveBeenCalled();
     expect(refreshMock).not.toHaveBeenCalled();
   });
 
-  it('EscapeKey_ClosesMenu', async () => {
-    const user = userEvent.setup();
-    render(
-      <VisibilityPicker listId="list-1" initialVisibility={VISIBILITY.OWNER} />
-    );
-    await user.click(trigger());
-    expect(screen.getByRole('menu')).toBeInTheDocument();
-
-    await user.keyboard('{Escape}');
-
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-  });
-
-  it('PendingChange_DisablesMenuRows', async () => {
+  it('PendingChange_DisablesAllOptions', async () => {
     let resolveApply: (v: {
       success: boolean;
       message: string;
@@ -121,16 +131,17 @@ describe('VisibilityPicker', () => {
     );
     const user = userEvent.setup();
     render(
-      <VisibilityPicker listId="list-1" initialVisibility={VISIBILITY.OWNER} />
+      <VisibilityPicker
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
+      />
     );
 
-    await openAndSelect(user, /Shared/);
-    // The selection closed the menu while the transition is in flight; reopen
-    // it to observe the rows under the pending state.
-    await user.click(trigger());
+    await user.click(option(/Shared/));
 
-    for (const row of screen.getAllByRole('menuitemradio')) {
-      expect(row).toBeDisabled();
+    for (const radio of screen.getAllByRole('radio')) {
+      expect(radio).toBeDisabled();
     }
 
     resolveApply({ success: true, message: '' });

@@ -1,33 +1,33 @@
-import { hasBlocked, isFollowing, viewerHasAnyFollows } from '@/lib/data/user';
 import type { ButtonVariant } from '@/app/ui/components/button';
+import { getFollowState } from '@/lib/data/follow';
 import FollowControls from './FollowControls';
 
 export default async function FollowContainer({
-  ownerId,
+  ownerProfileId,
   ownerName,
-  viewerId,
+  viewerUserId,
+  viewerSelfProfileId,
   variant = 'primary',
 }: {
-  ownerId: string;
+  ownerProfileId: string;
   ownerName: string | null;
-  viewerId: string;
+  viewerUserId: string;
+  viewerSelfProfileId: string;
   variant?: ButtonVariant;
 }) {
-  const [following, blockedByOwner, blockedByViewer, hasAnyFollows] =
-    await Promise.all([
-      isFollowing({ userId: viewerId, followeeId: ownerId }),
-      hasBlocked({ userId: ownerId, blockedId: viewerId }),
-      hasBlocked({ userId: viewerId, blockedId: ownerId }),
-      viewerHasAnyFollows(viewerId),
-    ]);
-  if (blockedByOwner || blockedByViewer) return null;
+  const state = await getFollowState({
+    viewerUserId,
+    viewerSelfProfileId,
+    ownerProfileId,
+  });
+  if (!state) return null;
 
   return (
     <FollowControls
-      userId={ownerId}
+      profileId={ownerProfileId}
       userName={ownerName}
-      initialFollowing={following}
-      requireDisclosure={!hasAnyFollows}
+      initialFollowing={state.following}
+      requireDisclosure={state.requireDisclosure}
       variant={variant}
     />
   );

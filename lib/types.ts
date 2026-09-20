@@ -6,6 +6,48 @@ export type ActionResponse = {
   id?: string;
 };
 
+// `isSelf` is why grantability carries no field of its own: a link admits a
+// member, and the identity relation is not a membership anyone can hand out.
+// The records live in `lib/data/profile.roles`.
+export type RoleShape = {
+  value: string;
+  label: string;
+  isSelf: boolean;
+  admin: boolean;
+};
+
+// What the one avatar disc needs, and nothing more: the art where the profile
+// has any, the style that art was drawn in (a glyph style is painted from the
+// accent's ink rather than shown), the name its initials fall back to, and the
+// accent behind both. No account column is among them.
+export type ProfileAvatarView = {
+  name: string;
+  accent: string | null;
+  art: string | null;
+  avatarStyle: string | null;
+};
+
+export type ActorProfile = ProfileAvatarView & {
+  id: string;
+};
+
+export type ProfileMembershipView = ActorProfile & {
+  tagline: string | null;
+  role: RoleShape;
+  last_active_at: Date | null;
+};
+
+// The two profiles a request names, never one. Ownership columns and creation
+// take the active profile; anything naming the human takes the self-profile.
+// The active one is the membership `resolveIdentity` selected, role included,
+// so every affordance measured against that role reads it off the identity
+// rather than re-resolving it.
+export type UserIdentity = {
+  userId: string;
+  selfProfile: ActorProfile;
+  activeProfile: ProfileMembershipView;
+};
+
 export type ListTable = {
   id: string;
   name: string;
@@ -14,7 +56,7 @@ export type ListTable = {
   date: Date;
   created_at: Date;
   updated_at: Date;
-  user_id: string;
+  profile_id: string;
   shared: boolean;
 };
 
@@ -33,29 +75,60 @@ export type ItemTable = {
   image_url?: string | null;
   created_at: Date;
   updated_at: Date;
-  user_id: string;
-  quantity_limit: number | null;
+  profile_id: string;
   archived_at?: Date | null;
 };
 
+export type ProfileCardView = ProfileAvatarView & {
+  id: string;
+  tagline: string | null;
+  role: RoleShape;
+  listCount: number;
+  itemCount: number;
+};
+
+/**
+ * What a viewer sees before they ask: a single three-stage tier, weakest
+ * first. `surprise` hides everything; `progress` adds the list's claimed
+ * count; `claims` adds remaining capacity and every claim on the item whole —
+ * the purchaser named and pictured, its units, who recorded it and when.
+ * Ordering and vocabulary live in `lib/spoilers.ts`.
+ */
+export type SpoilerTier = 'surprise' | 'progress' | 'claims';
+
 export type PurchaseView = {
   id: string;
+  /** How many units the claim covers. Carried by every projected row: a claim a viewer may see at all, they may see whole. */
+  units?: number;
   by: 'self' | 'other';
-  firstName: string;
-  /** The viewer asserted this claim (`claimed_by`) — grants the unclaim affordance even when the purchaser is someone else. */
+  /** The purchaser's name — a profile's, or the free text a guest typed. */
+  name: string;
+  /** The viewer asserted this claim (`claimed_by_profile_id`) — grants the unclaim affordance even when the purchaser is someone else. */
   claimedByViewer: boolean;
-  /** Owner spoiler view only: the claimer's first name when the claimer differs from the purchaser. */
-  claimerFirstName?: string;
+  /** The claimer's first name when the claimer differs from the purchaser. */
+  claimerName?: string;
   /** Absent only on legacy fixtures — every persisted row carries it; optimistic rows stamp client time. */
   purchasedAt?: Date;
-  /** Purchaser's avatar URL when the purchaser is a linked account; null for guest-name claims. Optimistic rows omit it (initials render until the next server render). */
-  image?: string | null;
+  /** The purchaser profile's own face, where the purchaser is a profile. Absent for a free-text purchaser and on optimistic rows, both of which render initials. Account linkage does not govern it: a managed profile carries a face on the same terms as anyone else. */
+  avatar?: ProfileAvatarView;
 };
+
+// A list entry's ask and what is left of it, in units. Null wherever there is
+// no entry — the item library, whose items span every list and some no list at
+// all — which is what withdraws every units control at once.
+export type EntryCapacity = { quantity: number; remaining: number };
 
 export type ItemDisplay = ItemTable & {
   store?: ItemStoreTable | null;
   purchases?: PurchaseView[];
-  hasPurchases?: boolean;
+  /** The entry this row was read through — a claim is made against it, so its absence (the item library) is what withdraws the claim affordance. */
+  list_id?: string;
+  /** Units asked for: the entry's own alongside `list_id`, or every entry's summed alongside `num_lists` on a library row. Absent for an item on no list. */
+  quantity?: number;
+  /** Units already claimed against that same scope, summed server-side (ADR-0016) so units never enter the claim projection. Withheld below the `claims` tier. */
+  claimed_units?: number;
+  /** How many entries `quantity` and `claimed_units` are summed over — present only on a library row, and what marks them as the summed reading. */
+  num_lists?: number;
 };
 
 export type SortKey =
@@ -76,15 +149,8 @@ export type ItemDetails = {
   image_url?: string | null;
   /** Fetched image-candidate pool; present only when the form session originated from a product fetch. */
   image_candidates?: string[];
-  quantity_limit: number | null;
   store: ItemStoreTable | null;
   lists: OptionType[];
-};
-
-export type ListItemTable = {
-  list_id: string;
-  item_id: string;
-  position: number;
 };
 
 export type ItemStoreTable = {
@@ -97,18 +163,12 @@ export type ItemStoreTable = {
   currency?: string | null;
 };
 
-export type PurchaseTable = {
-  id: string;
-  item_id: string;
-  user_id: string | null;
-  claimed_by: string | null;
-  guest_name: string | null;
-  purchased_at: Date;
-  user: { name: string | null } | null;
-};
-
 export type OptionType = {
   value: string;
   label: string;
 };
 
+// The primitive decides neither when a secondary action is warranted nor what
+// it says — it renders what its consumer supplies. Which profile-scoped
+// surfaces supply one, and under what condition, is `active-profile`'s.
+export type EmptySecondaryAction = { href: string; label: string };

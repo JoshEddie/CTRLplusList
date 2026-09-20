@@ -1,33 +1,37 @@
+import EmptyListCTA from '@/app/(main)/items/ui/components/EmptyListCTA';
 import ItemsContainer from '@/app/(main)/items/ui/components/ItemsContainer';
-import SortItemsContainer from '@/app/(main)/items/ui/components/SortItemsContainer';
-import { auth } from '@/lib/auth';
-import { getList } from '@/lib/data/list';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { getList, getListsByProfile } from '@/lib/data/list';
+import { actingAsName } from '@/lib/data/profile.active';
+import { getSpoilerBaseline } from '@/lib/data/profile.members';
+import { authedIdentity } from '@/lib/data/user.session';
 import { guardListViewable } from '@/lib/listAccess';
+import { resolveSpoilerTier } from '@/lib/spoilers';
 import { VISIBILITY } from '@/lib/visibility';
-
-type Props = {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-};
+import ListLibraryPanel from './ListLibraryPanel';
+import ListOwnerTabs from './ListOwnerTabs';
+import ListReorderPanel from './ListReorderPanel';
+import type { ListSectionProps } from './types';
 
 export default async function ListItemsSection({
   params,
   searchParams,
-}: Props) {
-  const session = await auth();
-  const user = session?.user?.email
-    ? await getUserIdByEmail(session.user.email)
-    : null;
+}: ListSectionProps) {
+  const identity = await authedIdentity();
 
   const { id } = await params;
   const sp = await searchParams;
 
-  const list = await guardListViewable(await getList(id), user?.id ?? null);
+  const list = await guardListViewable(await getList(id), identity);
 
-  const isOwner = user?.id === list.user_id;
-  const previewMode = isOwner && sp.preview === 'viewer';
-  const showSpoilers = isOwner && sp.spoilers === '1';
+  const isOwner = identity?.activeProfile.id === list.profile_id;
+
+  // Membership on the owning profile, never the ownership comparison above: a
+  // viewer acting as another profile they also run is still the human the
+  // surprise is for.
+  const tier = resolveSpoilerTier(
+    await getSpoilerBaseline(identity?.userId, list.profile_id),
+    sp
+  );
 
   // Mirror the hero's visibility gate. When the hero surfaces <ListPrivate>,
   // the items section renders nothing so the page doesn't leak items below
@@ -36,23 +40,33 @@ export default async function ListItemsSection({
     return null;
   }
 
-  const effectiveOwner = isOwner && !previewMode;
-
-  return effectiveOwner ? (
-    <SortItemsContainer
-      listId={id}
-      isOwner={true}
-      showSpoilers={showSpoilers}
-    />
-  ) : (
+  // One item surface for everyone; the owner gets a band above it offering the
+  // other tab and the way onto this one.
+  const surface = (
     <ItemsContainer
       listId={id}
-      // In preview mode, route through the owner-sanitize path so the
-      // spoilers toggle fully gates visibility (off = nothing, on = full names)
-      // instead of leaking first names regardless.
-      isListOwner={previewMode}
-      viewerId={user?.id}
-      showSpoilers={showSpoilers}
+      viewerSelfProfileId={identity?.selfProfile.id}
+      tier={tier}
+      emptyState={isOwner ? <EmptyListCTA /> : undefined}
     />
+  );
+
+  if (!isOwner || !identity) return surface;
+
+  return (
+    <ListOwnerTabs
+      listId={id}
+      inListCount={list.item_count ?? 0}
+      lists={await getListsByProfile(identity.activeProfile.id)}
+      actingAs={await actingAsName(identity)}
+      library={<ListLibraryPanel listId={id} actor={identity.activeProfile} />}
+      // Built only where the tab exists: the panel reads the whole list
+      // unpaged, which is work a single-entry list never shows.
+      reorder={
+        (list.item_count ?? 0) > 1 ? <ListReorderPanel listId={id} /> : null
+      }
+    >
+      {surface}
+    </ListOwnerTabs>
   );
 }

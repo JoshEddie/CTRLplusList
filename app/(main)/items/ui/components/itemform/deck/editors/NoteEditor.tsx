@@ -29,18 +29,13 @@ export function NoteEditor({
         rows={2}
         maxLength={DESCRIPTION_MAX}
         placeholder="Short and specific — a size, color, or detail that matters."
+        counterMax={DESCRIPTION_MAX}
         error={
           over
             ? `Description must be ${DESCRIPTION_MAX} characters or fewer — trim it to save.`
             : undefined
         }
       />
-      <span
-        className={`deck-counter${over ? ' deck-counter-error' : ''}`}
-        aria-hidden="true"
-      >
-        {description.length}/{DESCRIPTION_MAX}
-      </span>
     </div>
   );
 }

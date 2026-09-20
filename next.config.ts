@@ -1,12 +1,12 @@
 import withSerwistInit from '@serwist/next';
 import type { NextConfig } from 'next';
+import { networkInterfaces } from 'node:os';
 
 const isDev = process.env.NODE_ENV === 'development';
 
 const withSerwist = withSerwistInit({
   swSrc: 'app/sw.ts',
   swDest: 'public/sw.js',
-  disable: isDev,
   additionalPrecacheEntries: [
     { url: '/manifest.webmanifest', revision: null },
     { url: '/icons/icon-192.png', revision: null },
@@ -14,34 +14,25 @@ const withSerwist = withSerwistInit({
   ],
 });
 
+// The dev server 403s /_next/* for any origin it wasn't started on, so a
+// phone hitting http://<lan-ip>:3000 renders the SSR HTML but loads no
+// chunks and never hydrates. Read this machine's own addresses rather than
+// pinning one DHCP will rotate.
+const lanOrigins = Object.values(networkInterfaces())
+  .flat()
+  .flatMap((iface) =>
+    iface?.family === 'IPv4' && !iface.internal ? [iface.address] : []
+  );
+
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  allowedDevOrigins: lanOrigins,
   typescript: { ignoreBuildErrors: true },
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'lh1.googleusercontent.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh2.googleusercontent.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com', // Google profile images
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh4.googleusercontent.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh5.googleusercontent.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh6.googleusercontent.com',
+        hostname: '*.googleusercontent.com', // Google profile images (lh1–lh6)
       },
     ],
   },

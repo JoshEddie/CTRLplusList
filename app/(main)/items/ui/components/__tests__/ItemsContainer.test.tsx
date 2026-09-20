@@ -2,27 +2,23 @@ import { render, screen } from '@testing-library/react';
 import { Suspense } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MAXIMAL_TIER } from '@/lib/spoilers';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import { auth } from '@/lib/auth';
-import { getItemsByListId, getItemsByUser } from '@/lib/data/item';
+import { getItemsByListId } from '@/lib/data/item';
+import { getUserIdentity } from '@/lib/data/profile';
 import { getUserIdByEmail } from '@/lib/data/user';
 import ItemsContainer from '../ItemsContainer';
+import { makeProfile } from '@/test/helpers/profile';
 
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
+vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({
   getUserIdByEmail: vi.fn(),
 }));
 vi.mock('@/lib/data/item', () => ({
-  getItemsByUser: vi.fn(),
   getItemsByListId: vi.fn(),
 }));
-
-const redirectMock = vi.hoisted(() =>
-  vi.fn((url: string) => {
-    throw new Error(`REDIRECT:${url}`);
-  })
-);
-vi.mock('next/navigation', () => ({ redirect: redirectMock }));
 
 const cookieHolder = vi.hoisted(() => ({
   store: new Map<string, string>(),
@@ -42,6 +38,7 @@ vi.mock('../ItemsBrowser', () => ({
     items: unknown[];
     initialPageSize?: number;
     user_name?: string | null;
+    emptyState?: React.ReactNode;
   }) => (
     <div
       data-testid="items-browser"
@@ -50,22 +47,14 @@ vi.mock('../ItemsBrowser', () => ({
       data-items={JSON.stringify(props.items)}
       data-initial-page-size={String(props.initialPageSize)}
       data-user-name={props.user_name ?? ''}
-    />
-  ),
-}));
-vi.mock('../Items', () => ({
-  default: (props: { items: unknown[]; user_name?: string | null }) => (
-    <div
-      data-testid="items"
-      data-item-count={props.items.length}
-      data-user-name={props.user_name ?? ''}
-    />
+    >
+      {props.emptyState}
+    </div>
   ),
 }));
 
 type El = { type: unknown; props: Record<string, unknown> };
 
-const VIEWER_ITEMS = [{ id: 'u1' }];
 const LIST_ITEMS = [{ id: 'li1' }, { id: 'li2' }];
 
 beforeEach(() => {
@@ -78,48 +67,28 @@ beforeEach(() => {
     id: 'viewer',
     name: 'Test Viewer',
   } as never);
-  vi.mocked(getItemsByUser).mockResolvedValue(VIEWER_ITEMS as never);
+  vi.mocked(getUserIdentity).mockResolvedValue({
+    userId: 'viewer',
+    selfProfile: makeProfile('self-viewer', 'Test Viewer'),
+    activeProfile: makeProfile('self-viewer', 'Test Viewer'),
+  });
   vi.mocked(getItemsByListId).mockResolvedValue(LIST_ITEMS as never);
 });
 
 describe('ItemsContainer', () => {
-  describe('AuthGuard', () => {
-    it('NoListIdAndNoUser_RedirectsToRoot', async () => {
-      vi.mocked(auth).mockResolvedValue({ user: {} } as never);
-      await expect(ItemsContainer({})).rejects.toThrow('REDIRECT:/');
-      expect(redirectMock).toHaveBeenCalledWith('/');
-    });
-  });
-
-  describe('LibraryBranch', () => {
-    it('NoListId_ReadsViewerItemsAndRendersItemsInsideSuspense', async () => {
-      const tree = (await ItemsContainer({})) as unknown as El;
-      expect(tree.type).toBe(Suspense);
-      render(tree as never);
-      expect(getItemsByUser).toHaveBeenCalledWith('viewer');
-      expect(getItemsByListId).not.toHaveBeenCalled();
-      expect(screen.getByTestId('items')).toHaveAttribute(
-        'data-item-count',
-        '1'
-      );
-    });
-  });
-
   describe('ListBranch', () => {
-    it('ListIdWithViewerOwnerSpoiler_ReadsListScopedWithThoseFlags', async () => {
+    it('ListIdWithViewerAndTier_ReadsListScopedWithBoth', async () => {
       cookieHolder.store.set('items_page_size', '48');
       render(
         await ItemsContainer({
           listId: 'list1',
-          isListOwner: true,
-          viewerId: 'v2',
-          showSpoilers: true,
+          viewerSelfProfileId: 'v2',
+          tier: MAXIMAL_TIER,
         })
       );
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
-        viewerId: 'v2',
-        isOwner: true,
-        showSpoilers: true,
+        viewerSelfProfileId: 'v2',
+        tier: MAXIMAL_TIER,
       });
       const browser = screen.getByTestId('items-browser');
       expect(browser).toHaveAttribute('data-mode', 'list');
@@ -127,26 +96,22 @@ describe('ItemsContainer', () => {
       expect(browser).toHaveAttribute('data-initial-page-size', '48');
     });
 
-    it('ListIdNoFlags_DefaultsViewerToUserOwnerFalseSpoilerFalse', async () => {
+    it('ListIdNoTier_DefaultsViewerToTheSelfProfile', async () => {
       render(await ItemsContainer({ listId: 'list1' }));
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
-        viewerId: 'viewer',
-        isOwner: false,
-        showSpoilers: false,
+        viewerSelfProfileId: 'self-viewer',
+        tier: undefined,
       });
-      expect(getItemsByUser).not.toHaveBeenCalled();
     });
   });
 
   describe('ListBranchUnauthenticated', () => {
-    it('ListIdNoViewer_DoesNotRedirectReadsWithNoViewerId', async () => {
+    it('ListIdNoViewer_ReadsWithNoViewerProfileId', async () => {
       vi.mocked(auth).mockResolvedValue({ user: {} } as never);
       render(await ItemsContainer({ listId: 'list1' }));
-      expect(redirectMock).not.toHaveBeenCalled();
       expect(getItemsByListId).toHaveBeenCalledWith('list1', {
-        viewerId: undefined,
-        isOwner: false,
-        showSpoilers: false,
+        viewerSelfProfileId: undefined,
+        tier: undefined,
       });
     });
   });
@@ -156,8 +121,13 @@ describe('ItemsContainer', () => {
       {
         id: 'i1',
         purchases: [
-          { id: 'p1', by: 'other', firstName: 'Gifty', claimedByViewer: false },
-          { id: 'p2', by: 'other', firstName: 'Someone', claimedByViewer: false },
+          { id: 'p1', by: 'other', name: 'Gifty', claimedByViewer: false },
+          {
+            id: 'p2',
+            by: 'other',
+            name: 'Someone',
+            claimedByViewer: false,
+          },
         ],
       },
     ];
@@ -179,8 +149,8 @@ describe('ItemsContainer', () => {
         screen.getByTestId('items-browser').getAttribute('data-items') as string
       );
       expect(items[0].purchases).toEqual([
-        { id: 'p1', by: 'self', firstName: 'Gifty', claimedByViewer: true },
-        { id: 'p2', by: 'other', firstName: 'Someone', claimedByViewer: false },
+        { id: 'p1', by: 'self', name: 'Gifty', claimedByViewer: true },
+        { id: 'p2', by: 'other', name: 'Someone', claimedByViewer: false },
       ]);
     });
 
@@ -193,9 +163,21 @@ describe('ItemsContainer', () => {
     });
   });
 
+  describe('EmptyState', () => {
+    it('EmptyStateGiven_ReachesTheBrowser', async () => {
+      render(
+        await ItemsContainer({
+          listId: 'list1',
+          emptyState: <div data-testid="empty-door" />,
+        })
+      );
+      expect(screen.getByTestId('empty-door')).toBeInTheDocument();
+    });
+  });
+
   describe('Suspense', () => {
-    it('LibraryBranch_FallbackIsPageLoadingIndicator', async () => {
-      const tree = (await ItemsContainer({})) as unknown as El;
+    it('ListBranch_FallbackIsPageLoadingIndicator', async () => {
+      const tree = (await ItemsContainer({ listId: 'list1' })) as unknown as El;
       expect(tree.type).toBe(Suspense);
       const fallback = tree.props.fallback as El;
       expect(fallback.type).toBe(LoadingIndicator);
@@ -204,11 +186,11 @@ describe('ItemsContainer', () => {
   });
 
   describe('ViewerDisplay', () => {
-    it('FirstLastInitial_ReachesChild', async () => {
-      render(await ItemsContainer({}));
-      expect(screen.getByTestId('items')).toHaveAttribute(
+    it('SelfProfileName_ReachesTheChildInFull', async () => {
+      render(await ItemsContainer({ listId: 'list1' }));
+      expect(screen.getByTestId('items-browser')).toHaveAttribute(
         'data-user-name',
-        'Test V'
+        'Test Viewer'
       );
     });
   });

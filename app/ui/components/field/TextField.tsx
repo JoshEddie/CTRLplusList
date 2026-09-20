@@ -15,6 +15,9 @@ type TextFieldProps = FieldWrapperProps & {
   type?: TextInputType;
   /** Layout-only class on the outer wrapper (never the input). */
   className?: string;
+  /** Enable the field-owned character counter (`length/max`). Does not clamp
+   *  input — pair with native `maxLength` when clamping is wanted. */
+  counterMax?: number;
 } & Omit<
     ComponentPropsWithRef<'input'>,
     | 'className'
@@ -32,12 +35,14 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
       label,
       description,
       error,
+      invalid,
       required,
       disabled,
       icon,
       iconPosition,
       type = 'text',
       className,
+      counterMax,
       ...inputProps
     },
     ref
@@ -47,11 +52,17 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
         label={label}
         description={description}
         error={error}
+        invalid={invalid}
         required={required}
         disabled={disabled}
         icon={icon}
         iconPosition={iconPosition}
         className={className}
+        counter={
+          counterMax === undefined
+            ? undefined
+            : { length: String(inputProps.value ?? '').length, max: counterMax }
+        }
       >
         <input
           ref={ref}

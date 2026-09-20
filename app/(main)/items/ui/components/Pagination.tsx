@@ -14,18 +14,8 @@ interface PaginationProps {
   onPageSizeChange: (next: number) => void;
 }
 
-function buildRange(page: number, totalPages: number): (number | 'gap')[] {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
-  }
-  const result: (number | 'gap')[] = [1];
-  const start = Math.max(2, page - 1);
-  const end = Math.min(totalPages - 1, page + 1);
-  if (start > 2) result.push('gap');
-  for (let i = start; i <= end; i++) result.push(i);
-  if (end < totalPages - 1) result.push('gap');
-  result.push(totalPages);
-  return result;
+function buildRange(page: number, totalPages: number): number[] {
+  return [...new Set([1, page, totalPages])].sort((a, b) => a - b);
 }
 
 export default function Pagination({
@@ -59,24 +49,18 @@ export default function Pagination({
       >
         <MdChevronLeft />
       </Button>
-      {range.map((entry, idx) =>
-        entry === 'gap' ? (
-          <span key={`gap-${idx}`} className="items-page-gap" aria-hidden>
-            …
-          </span>
-        ) : (
-          <Button
-            key={entry}
-            variant={entry === page ? 'primary' : 'ghost'}
-            size="sm"
-            onClick={() => goToPage(entry)}
-            aria-current={entry === page ? 'page' : undefined}
-            aria-label={`Page ${entry}`}
-          >
-            {entry}
-          </Button>
-        )
-      )}
+      {range.map((entry) => (
+        <Button
+          key={entry}
+          variant={entry === page ? 'primary' : 'ghost'}
+          size="sm"
+          onClick={() => goToPage(entry)}
+          aria-current={entry === page ? 'page' : undefined}
+          aria-label={`Page ${entry}`}
+        >
+          {entry}
+        </Button>
+      ))}
       <Button
         variant="ghost"
         size="sm"

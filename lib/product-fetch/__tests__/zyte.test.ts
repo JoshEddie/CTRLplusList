@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fetchZyte, isZyteConfigured } from '../zyte';
+import { fetchZyte } from '../zyte';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -33,17 +33,6 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
-});
-
-describe('isZyteConfigured', () => {
-  it('KeySet_ReturnsTrue', () => {
-    expect(isZyteConfigured()).toBe(true);
-  });
-
-  it('KeyUnset_ReturnsFalse', () => {
-    vi.stubEnv('ZYTE_API_KEY', '');
-    expect(isZyteConfigured()).toBe(false);
-  });
 });
 
 describe('fetchZyte', () => {

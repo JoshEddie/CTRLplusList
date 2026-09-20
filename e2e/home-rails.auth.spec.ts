@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 // Flow: per-rail content signal on the home page as the seeded viewer. Each
 // rail renders inside its own <Suspense> boundary, so a crashed or silently
-// empty rail read (getListsByUser, getFollowingFeedUsers,
+// empty rail read (getListsByProfile, getFollowingFeedProfiles,
 // getBookmarkedListsByUser, getVisitHistoryByUser) would pass any whole-page
 // assertion — these tests pin each rail individually.
 //
@@ -29,9 +29,9 @@ const RAILS = [
   {
     token: 'Bookmarks',
     section: 'section.rail-bookmarks',
-    title: 'Bookmarks',
+    title: 'Saved',
     card: '.list-card',
-    emptyText: 'No bookmarks yet.',
+    emptyText: 'No saved lists yet.',
   },
   {
     token: 'RecentlyVisited',

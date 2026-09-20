@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sqlstateOf } from '../sqlstate';
+import { constraintOf, sqlstateOf } from '../sqlstate';
 
 describe('sqlstateOf', () => {
   it('DirectStringCode_ReturnsCode', () => {
@@ -48,5 +48,45 @@ describe('sqlstateOf', () => {
 
   it('CauseObjectWithoutCode_ReturnsUndefined', () => {
     expect(sqlstateOf({ cause: {} })).toBeUndefined();
+  });
+});
+
+describe('constraintOf', () => {
+  it('DirectConstraintName_ReturnsName', () => {
+    expect(constraintOf({ constraint: 'some_idx' })).toBe('some_idx');
+  });
+
+  it('NestedCauseConstraintName_ReturnsCauseName', () => {
+    expect(constraintOf({ cause: { constraint: 'some_idx' } })).toBe(
+      'some_idx'
+    );
+  });
+
+  it('BothDirectAndCauseConstraint_PrefersDirect', () => {
+    expect(
+      constraintOf({ constraint: 'direct_idx', cause: { constraint: 'x' } })
+    ).toBe('direct_idx');
+  });
+
+  it('DirectNonStringConstraint_FallsThroughToCause', () => {
+    expect(
+      constraintOf({ constraint: 42, cause: { constraint: 'cause_idx' } })
+    ).toBe('cause_idx');
+  });
+
+  it('CauseWithNonStringConstraint_ReturnsUndefined', () => {
+    expect(constraintOf({ cause: { constraint: 42 } })).toBeUndefined();
+  });
+
+  it('ObjectWithoutConstraintOrCause_ReturnsUndefined', () => {
+    expect(constraintOf({ unrelated: true })).toBeUndefined();
+  });
+
+  it('NullInput_ReturnsUndefined', () => {
+    expect(constraintOf(null)).toBeUndefined();
+  });
+
+  it('StringInput_ReturnsUndefined', () => {
+    expect(constraintOf('some_idx')).toBeUndefined();
   });
 });

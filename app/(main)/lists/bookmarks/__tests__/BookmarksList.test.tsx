@@ -14,7 +14,7 @@ describe('BookmarksList', () => {
   describe('Empty', () => {
     it('NoRows_RendersEmptyMessageAndNoGrid', () => {
       render(<BookmarksList rows={[]} />);
-      expect(screen.getByText(/No bookmarks yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/No saved lists yet/i)).toBeInTheDocument();
       expect(screen.queryByRole('list')).not.toBeInTheDocument();
     });
   });

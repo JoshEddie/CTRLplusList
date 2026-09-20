@@ -1,29 +1,60 @@
+// TODO(#343): extract the duplicated literal to a constant, then drop this disable
+/* eslint-disable sonarjs/no-duplicate-string */
+
 import { db } from '@/db';
-import { items, list_items } from '@/db/schema';
+import { items, list_items, lists } from '@/db/schema';
 import { sanitizePurchases } from '@/lib/data/purchase';
 import { primaryStore } from '@/lib/storeValidity';
-import { ListTable } from '@/lib/types';
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+import { withProfileAvatar } from '@/lib/data/profileAvatar';
+import { atLeast, MAXIMAL_TIER } from '@/lib/spoilers';
+import { ListTable, SpoilerTier } from '@/lib/types';
+import { cacheTags, itemRowTags } from '@/lib/cacheTags';
+import { and, eq, exists, isNotNull, isNull, sql } from 'drizzle-orm';
 import { cacheTag } from 'next/cache';
 
-export async function getItemsByUser(
-  userId: string,
+// Uncached wrapper over a private cached raw read. The projection is
+// viewer-scoped and database-backed, so sanitizing inside the cache would key
+// it on an input that goes stale without this read's own tags firing
+// (`list-item-management`). The boundary the projection must precede is the
+// data-layer one, which the exported name still satisfies.
+export async function getItemsByProfile(
+  profileId: string,
   opts: {
     filter?: 'active' | 'archived' | 'all';
-    showSpoilers?: boolean;
+    tier?: SpoilerTier;
   } = {}
 ) {
+  const rows = await rawItemsByProfile(profileId, opts.filter ?? 'active');
+  const tier = opts.tier ?? MAXIMAL_TIER;
+  return rows.map((item) => ({
+    ...item,
+    purchases: sanitizePurchases(item.purchases, profileId, tier),
+    // Summed over every entry rather than read off one, but withheld by the
+    // rule getItemsByListId withholds by, and for the reason it sums rather
+    // than counting the projected array (ADR-0016).
+    claimed_units: atLeast(tier, 'claims') ? item.claimed_units : undefined,
+  }));
+}
+
+async function rawItemsByProfile(
+  profileId: string,
+  filter: 'active' | 'archived' | 'all'
+) {
   'use cache';
-  cacheTag('items');
+  cacheTag(
+    cacheTags.items,
+    cacheTags.profiles,
+    cacheTags.profileAvatars,
+    cacheTags.profilePreferences,
+    cacheTags.itemsOfProfile(profileId)
+  );
   try {
-    const filter = opts.filter ?? 'active';
-    const showSpoilers = opts.showSpoilers ?? false;
     const where =
       filter === 'active'
-        ? and(eq(items.user_id, userId), isNull(items.archived_at))
+        ? and(eq(items.profile_id, profileId), isNull(items.archived_at))
         : filter === 'archived'
-          ? and(eq(items.user_id, userId), isNotNull(items.archived_at))
-          : eq(items.user_id, userId);
+          ? and(eq(items.profile_id, profileId), isNotNull(items.archived_at))
+          : eq(items.profile_id, profileId);
 
     const result = await db.query.items.findMany({
       where,
@@ -31,16 +62,12 @@ export async function getItemsByUser(
         stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
         purchases: {
           with: {
-            user: {
-              columns: {
-                name: true,
-                image: true,
-              },
+            purchaserProfile: {
+              columns: { name: true },
+              with: withProfileAvatar,
             },
-            claimer: {
-              columns: {
-                name: true,
-              },
+            claimerProfile: {
+              columns: { name: true },
             },
           },
         },
@@ -52,16 +79,30 @@ export async function getItemsByUser(
           orderBy: (images, { asc }) => [asc(images.id)],
           limit: 1,
         },
+        // The item's entries: an item carries no quantity of its own, so the
+        // ask a library card states only exists as a sum over them.
+        list_items: { columns: { list_id: true, quantity: true } },
       },
       orderBy: (items, { desc }) => [desc(items.created_at)],
     });
 
-    return result.map(({ images, stores, ...item }) => ({
+    cacheTag(...itemRowTags(result));
+
+    return result.map(({ images, stores, list_items: entries, ...item }) => ({
       ...item,
       image_url: images[0]?.url ?? null,
       store: primaryStore(stores),
-      hasPurchases: item.purchases.length > 0,
-      purchases: sanitizePurchases(item.purchases, userId, true, showSpoilers),
+      // The same pair a list row carries, read at the library's scope: summed
+      // over every entry instead of taken from one. `num_lists` is how many
+      // that is, and its presence is what says which reading this is. All
+      // absent for an item on no list — no entries, nothing to sum.
+      ...(entries.length
+        ? {
+            num_lists: entries.length,
+            quantity: entries.reduce((sum, entry) => sum + entry.quantity, 0),
+            claimed_units: item.purchases.reduce((sum, p) => sum + p.units, 0),
+          }
+        : {}),
     }));
   } catch (error) {
     console.error('Error fetching items:', error);
@@ -69,12 +110,17 @@ export async function getItemsByUser(
   }
 }
 
-export async function getItemById(id: string, userId: string) {
+export async function getItemById(id: string, profileId: string) {
   'use cache';
-  cacheTag('items');
+  cacheTag(
+    cacheTags.items,
+    cacheTags.lists,
+    cacheTags.item(id),
+    cacheTags.itemsOfProfile(profileId)
+  );
   try {
     const result = await db.query.items.findFirst({
-      where: and(eq(items.id, id), eq(items.user_id, userId)),
+      where: and(eq(items.id, id), eq(items.profile_id, profileId)),
       with: {
         stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
         images: { orderBy: (images, { asc }) => [asc(images.id)] },
@@ -97,6 +143,14 @@ export async function getItemById(id: string, userId: string) {
         position: li.position,
       })
     );
+    // itemsOfList alongside list: the returned rows carry membership
+    // positions, which reorder writes bump via the membership tag only.
+    cacheTag(
+      ...lists.flatMap((list) => [
+        cacheTags.list(list.id),
+        cacheTags.itemsOfList(list.id),
+      ])
+    );
 
     const newResult = {
       id: result.id,
@@ -105,8 +159,7 @@ export async function getItemById(id: string, userId: string) {
       // Active image sourced from item_images (id-ordered, so a stray
       // double-active resolves deterministically), not items.image_url.
       image_url: result.images.find((image) => image.active)?.url ?? null,
-      quantity_limit: result.quantity_limit,
-      user_id: result.user_id,
+      profile_id: result.profile_id,
       created_at: result.created_at,
       updated_at: result.updated_at,
       archived_at: result.archived_at,
@@ -122,39 +175,85 @@ export async function getItemById(id: string, userId: string) {
   }
 }
 
+// Split for the reason `getItemsByProfile` is; see its wrapper.
 export async function getItemsByListId(
   listId: string,
   opts: {
-    viewerId?: string;
-    isOwner?: boolean;
-    showSpoilers?: boolean;
+    viewerSelfProfileId?: string;
+    tier?: SpoilerTier;
   } = {}
 ) {
+  const rows = await rawItemsByListId(listId);
+  const tier = opts.tier ?? MAXIMAL_TIER;
+  return rows.map(({ claimed_units, ...item }) => {
+    const purchases = sanitizePurchases(
+      item.purchases,
+      opts.viewerSelfProfileId,
+      tier
+    );
+    return {
+      ...item,
+      purchases,
+      // The entry's own number, summed before the projection rather than from
+      // it: a projected claim carries its units only where the viewer may see
+      // them, so the array is not the answer at every tier. Withheld with
+      // everything else the tier conceals — a count sent to a viewer whose
+      // claim array was emptied would be a passive leak.
+      claimed_units: atLeast(tier, 'claims') ? claimed_units : undefined,
+    };
+  });
+}
+
+async function rawItemsByListId(listId: string) {
   'use cache';
-  cacheTag('items');
+  cacheTag(
+    cacheTags.items,
+    cacheTags.profiles,
+    cacheTags.profileAvatars,
+    cacheTags.profilePreferences,
+    cacheTags.itemsOfList(listId),
+    // The owning profile below is part of this read's answer, so a list that
+    // changes hands has to invalidate it.
+    cacheTags.list(listId)
+  );
   try {
     const result = await db.query.list_items.findMany({
-      where: eq(list_items.list_id, listId),
+      where: and(
+        eq(list_items.list_id, listId),
+        // The item and the list must agree on whose they are — see getList,
+        // which narrows its item count by the same rule.
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(items)
+            .innerJoin(lists, eq(lists.id, list_items.list_id))
+            .where(
+              and(
+                eq(items.id, list_items.item_id),
+                eq(items.profile_id, lists.profile_id)
+              )
+            )
+        )
+      ),
       with: {
         item: {
           with: {
             stores: { orderBy: (stores, { asc }) => [asc(stores.order)] },
+            // Scoped to this list: claims belong to the entry, so the same
+            // item on another list contributes neither a badge nor capacity.
             purchases: {
+              where: (purchases, { eq }) => eq(purchases.list_id, listId),
               with: {
-                user: {
-                  columns: {
-                    name: true,
-                    image: true,
-                  },
+                purchaserProfile: {
+                  columns: { name: true },
+                  with: withProfileAvatar,
                 },
-                claimer: {
-                  columns: {
-                    name: true,
-                  },
+                claimerProfile: {
+                  columns: { name: true },
                 },
               },
             },
-            // Active image only — source for `image_url` (see getItemsByUser).
+            // Active image only — source for `image_url` (see getItemsByProfile).
             images: {
               where: (images, { eq }) => eq(images.active, true),
               orderBy: (images, { asc }) => [asc(images.id)],
@@ -166,17 +265,18 @@ export async function getItemsByListId(
       orderBy: (list_items, { asc }) => [asc(list_items.position)],
     });
 
-    return result.map(({ item: { images, stores, ...item } }) => ({
-      ...item,
-      image_url: images[0]?.url ?? null,
-      store: primaryStore(stores),
-      purchases: sanitizePurchases(
-        item.purchases,
-        opts.viewerId,
-        opts.isOwner ?? false,
-        opts.showSpoilers ?? false
-      ),
-    }));
+    cacheTag(...itemRowTags(result.map((row) => row.item)));
+
+    return result.map(
+      ({ list_id, quantity, item: { images, stores, ...item } }) => ({
+        ...item,
+        list_id,
+        quantity,
+        claimed_units: item.purchases.reduce((sum, p) => sum + p.units, 0),
+        image_url: images[0]?.url ?? null,
+        store: primaryStore(stores),
+      })
+    );
   } catch (error) {
     console.error('Error fetching items:', error);
     throw new Error('Failed to fetch items');

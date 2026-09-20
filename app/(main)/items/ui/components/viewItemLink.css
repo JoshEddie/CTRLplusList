@@ -1,0 +1,8 @@
+/* Two complete phrases rather than one with a word hidden out of it: a
+   translation shortens where its own grammar allows, which is not always by
+   dropping the last word. The long one is the default; a slot too narrow for
+   it swaps them from its own stylesheet, since which slot is too narrow is a
+   fact about the slot and not about the link. */
+.view-item-link-short {
+  display: none;
+}

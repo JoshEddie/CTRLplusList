@@ -1,9 +1,6 @@
-/* eslint-disable testing-library/no-node-access, testing-library/no-container --
+/* eslint-disable testing-library/no-node-access --
  * The Share menu item exposes its icon as an `aria-hidden` `<svg>` with no
- * accessible name (tag query only), and the FollowDisclosureDialog's open
- * state lives on the native `<dialog>.open` property — a closed dialog is
- * outside the accessibility tree, so `container.querySelector('dialog')` is
- * the only path to assert disclosure gating.
+ * accessible name, so a tag query is the only path to it.
  */
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -11,15 +8,14 @@ import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setListVisibility } from '@/lib/data/list.actions';
 import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
-import { followUser, unfollowUser } from '@/lib/data/user.actions';
 import { Menu } from '@/app/ui/components/menu';
 import { ListTable } from '@/lib/types';
 import { VISIBILITY } from '@/lib/visibility';
 import toast from 'react-hot-toast';
 import {
   BookmarkMenuItem,
-  FollowMenuItem,
   ShareMenuItem,
+  SpoilerMenuItems,
   VisibilityMenuItems,
 } from '../HeroCollapsedItems';
 
@@ -31,13 +27,19 @@ vi.mock('@/lib/data/visit.actions', () => ({
   unbookmarkList: vi.fn(),
 }));
 
-vi.mock('@/lib/data/user.actions', () => ({
-  followUser: vi.fn(),
-  unfollowUser: vi.fn(),
+const router = vi.hoisted(() => ({
+  refresh: vi.fn(),
+  push: vi.fn(),
+  replace: vi.fn(),
 }));
-
-const router = vi.hoisted(() => ({ refresh: vi.fn(), push: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => router }));
+const sp = vi.hoisted(() => ({
+  value: new URLSearchParams() as URLSearchParams | null,
+}));
+vi.mock('next/navigation', () => ({
+  useRouter: () => router,
+  usePathname: () => '/lists/list-1',
+  useSearchParams: () => sp.value,
+}));
 
 vi.mock('react-hot-toast', () => ({
   default: {
@@ -57,7 +59,7 @@ const baseList: ListTable = {
   date: new Date('2025-01-01'),
   created_at: new Date('2025-01-01'),
   updated_at: new Date('2025-01-01'),
-  user_id: 'owner-1',
+  profile_id: 'owner-profile-1',
   shared: true,
 };
 const publicList = { ...baseList, visibility: 'public' } as ListTable;
@@ -71,24 +73,7 @@ function renderInMenu(node: ReactNode) {
   );
 }
 
-// FollowMenuItem renders a native <dialog>; jsdom does not implement
-// showModal/close, so stub them to flip the `open` property the tests read.
-const dialogProto = HTMLDialogElement.prototype as unknown as Record<
-  string,
-  unknown
->;
-const originals = {
-  showModal: dialogProto.showModal,
-  close: dialogProto.close,
-};
-
 beforeEach(() => {
-  dialogProto.showModal = vi.fn(function (this: HTMLDialogElement) {
-    this.open = true;
-  });
-  dialogProto.close = vi.fn(function (this: HTMLDialogElement) {
-    this.open = false;
-  });
   Object.defineProperty(navigator, 'share', {
     configurable: true,
     value: vi.fn().mockResolvedValue(undefined),
@@ -100,8 +85,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  dialogProto.showModal = originals.showModal;
-  dialogProto.close = originals.close;
   Object.defineProperty(navigator, 'share', {
     configurable: true,
     value: undefined,
@@ -154,49 +137,15 @@ describe('ShareMenuItem', () => {
     expect(toast.promise).toHaveBeenCalled();
   });
 
-  it('NoVisibilityFieldShared_TreatsAsNonPrivate-SharesWithoutPromotion', async () => {
+  it('PrivateList_SharesWithoutVisibilityPromotion', async () => {
     const user = userEvent.setup();
-    // No `visibility` field → falls back to `shared` (true ⇒ link/non-private).
-    renderInMenu(<ShareMenuItem list={baseList} />);
+    renderInMenu(<ShareMenuItem list={privateList} />);
     await user.click(shareItem());
     expect(setListVisibility).not.toHaveBeenCalled();
-    expect(navigator.share).toHaveBeenCalled();
-  });
-
-  it('NoVisibilityFieldUnshared_TreatsAsPrivate-PromotesToLink', async () => {
-    vi.mocked(setListVisibility).mockResolvedValue({
-      success: true,
-      message: '',
+    expect(navigator.share).toHaveBeenCalledWith({
+      title: 'Birthday',
+      url: CANONICAL_URL,
     });
-    const user = userEvent.setup();
-    renderInMenu(<ShareMenuItem list={{ ...baseList, shared: false }} />);
-    await user.click(shareItem());
-    expect(setListVisibility).toHaveBeenCalledWith('list-1', VISIBILITY.LINK);
-  });
-
-  it('PrivateList_PromotesToLinkBeforeShare', async () => {
-    vi.mocked(setListVisibility).mockResolvedValue({
-      success: true,
-      message: '',
-    });
-    const user = userEvent.setup();
-    renderInMenu(<ShareMenuItem list={privateList} />);
-    await user.click(shareItem());
-    expect(setListVisibility).toHaveBeenCalledWith('list-1', VISIBILITY.LINK);
-    await waitFor(() => expect(navigator.share).toHaveBeenCalled());
-  });
-
-  it('PrivatePromoteFailure_ToastsEnableSharingError', async () => {
-    vi.mocked(setListVisibility).mockResolvedValue({
-      success: false,
-      message: 'denied',
-    });
-    const user = userEvent.setup();
-    renderInMenu(<ShareMenuItem list={privateList} />);
-    await user.click(shareItem());
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('Failed to enable sharing')
-    );
   });
 
   it('ClipboardReject_SwallowsErrorWithoutThrowing', async () => {
@@ -252,11 +201,29 @@ describe('VisibilityMenuItems', () => {
   const row = (label: string) =>
     screen.getByRole('menuitemradio', { name: new RegExp(`^${label}`) });
 
+  it('BelowTheOwnerFloor_RendersEveryRowDisabledAndWritesNothing', async () => {
+    const user = userEvent.setup();
+    renderInMenu(
+      <VisibilityMenuItems
+        listId="list-1"
+        initialVisibility={VISIBILITY.OWNER}
+        disabled
+      />
+    );
+
+    for (const el of screen.getAllByRole('menuitemradio')) {
+      expect(el).toHaveAttribute('aria-disabled', 'true');
+    }
+    await user.click(row('Shared'));
+    expect(setListVisibility).not.toHaveBeenCalled();
+  });
+
   it('Default_RendersThreeRadioRowsInSourceOrder', () => {
     renderInMenu(
       <VisibilityMenuItems
         listId="list-1"
         initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
       />
     );
     const labels = screen
@@ -270,6 +237,7 @@ describe('VisibilityMenuItems', () => {
       <VisibilityMenuItems
         listId="list-1"
         initialVisibility={VISIBILITY.LINK}
+        disabled={false}
       />
     );
     expect(row('Private')).toHaveAttribute('aria-checked', 'true');
@@ -287,6 +255,7 @@ describe('VisibilityMenuItems', () => {
       <VisibilityMenuItems
         listId="list-1"
         initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
       />
     );
     await user.click(row('Private'));
@@ -309,6 +278,7 @@ describe('VisibilityMenuItems', () => {
       <VisibilityMenuItems
         listId="list-1"
         initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
       />
     );
     await user.click(row('Private'));
@@ -324,6 +294,7 @@ describe('VisibilityMenuItems', () => {
       <VisibilityMenuItems
         listId="list-1"
         initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
       />
     );
     await user.click(row('Hidden'));
@@ -342,12 +313,15 @@ describe('VisibilityMenuItems', () => {
       <VisibilityMenuItems
         listId="list-1"
         initialVisibility={VISIBILITY.OWNER}
+        disabled={false}
       />
     );
     await user.click(row('Private'));
-    await waitFor(() => expect(row('Hidden')).toBeDisabled());
-    expect(row('Private')).toBeDisabled();
-    expect(row('Shared')).toBeDisabled();
+    await waitFor(() =>
+      expect(row('Hidden')).toHaveAttribute('aria-disabled', 'true')
+    );
+    expect(row('Private')).toHaveAttribute('aria-disabled', 'true');
+    expect(row('Shared')).toHaveAttribute('aria-disabled', 'true');
     resolve({ success: true, message: '' });
   });
 });
@@ -357,16 +331,14 @@ describe('BookmarkMenuItem', () => {
     renderInMenu(
       <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
     );
-    const item = screen.getByRole('menuitem', { name: 'Bookmark' });
+    const item = screen.getByRole('menuitem', { name: 'Save' });
     expect(item).toBeInTheDocument();
     expect(item.querySelector('svg')).not.toBeNull();
   });
 
   it('Bookmarked_RendersBookmarkedLabel', () => {
     renderInMenu(<BookmarkMenuItem listId="list-1" initialBookmarked={true} />);
-    expect(
-      screen.getByRole('menuitem', { name: 'Bookmarked' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Saved' })).toBeInTheDocument();
   });
 
   it('ClickFromNotBookmarked_OptimisticToggle-CallsBookmarkList-ToastsBookmarked', async () => {
@@ -375,21 +347,19 @@ describe('BookmarkMenuItem', () => {
     renderInMenu(
       <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
     );
-    await user.click(screen.getByRole('menuitem', { name: 'Bookmark' }));
-    expect(
-      screen.getByRole('menuitem', { name: 'Bookmarked' })
-    ).toBeInTheDocument();
+    await user.click(screen.getByRole('menuitem', { name: 'Save' }));
+    expect(screen.getByRole('menuitem', { name: 'Saved' })).toBeInTheDocument();
     await waitFor(() => expect(bookmarkList).toHaveBeenCalledWith('list-1'));
-    expect(toast.success).toHaveBeenCalledWith('Bookmarked');
+    expect(toast.success).toHaveBeenCalledWith('Saved');
   });
 
   it('ClickFromBookmarked_CallsUnbookmarkList-ToastsBookmarkRemoved', async () => {
     vi.mocked(unbookmarkList).mockResolvedValue({ success: true, message: '' });
     const user = userEvent.setup();
     renderInMenu(<BookmarkMenuItem listId="list-1" initialBookmarked={true} />);
-    await user.click(screen.getByRole('menuitem', { name: 'Bookmarked' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Saved' }));
     await waitFor(() => expect(unbookmarkList).toHaveBeenCalledWith('list-1'));
-    expect(toast.success).toHaveBeenCalledWith('Bookmark removed');
+    expect(toast.success).toHaveBeenCalledWith('List unsaved');
   });
 
   it('ClickFailure_RevertsState-ToastsError', async () => {
@@ -401,9 +371,9 @@ describe('BookmarkMenuItem', () => {
     renderInMenu(
       <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
     );
-    await user.click(screen.getByRole('menuitem', { name: 'Bookmark' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Save' }));
     expect(
-      await screen.findByRole('menuitem', { name: 'Bookmark' })
+      await screen.findByRole('menuitem', { name: 'Save' })
     ).toBeInTheDocument();
     expect(toast.error).toHaveBeenCalledWith('Failed');
   });
@@ -419,149 +389,52 @@ describe('BookmarkMenuItem', () => {
     renderInMenu(
       <BookmarkMenuItem listId="list-1" initialBookmarked={false} />
     );
-    await user.click(screen.getByRole('menuitem', { name: 'Bookmark' }));
-    await user.click(screen.getByRole('menuitem', { name: 'Bookmarked' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Save' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Saved' }));
     expect(bookmarkList).toHaveBeenCalledTimes(1);
     resolve({ success: true, message: '' });
   });
 });
 
-describe('FollowMenuItem', () => {
-  const props = {
-    ownerId: 'owner-1',
-    ownerName: 'Bob',
-    initialFollowing: false,
-    requireDisclosure: false,
-  };
+describe('SpoilerMenuItems', () => {
+  const row = (name: string) => screen.getByRole('menuitemradio', { name });
 
-  describe('NotFollowing', () => {
-    it('WithOwnerName_RendersFollowOwnerName-IconSvg', () => {
-      renderInMenu(<FollowMenuItem {...props} />);
-      const item = screen.getByRole('menuitem', { name: 'Follow Bob' });
-      expect(item).toBeInTheDocument();
-      expect(item.querySelector('svg')).not.toBeNull();
-    });
-
-    it('NullOwnerName_RendersFollow', () => {
-      renderInMenu(<FollowMenuItem {...props} ownerName={null} />);
-      expect(
-        screen.getByRole('menuitem', { name: 'Follow' })
-      ).toBeInTheDocument();
-    });
-
-    it('RequireDisclosure_ClickOpensDialog-NoImmediateFollow-ConfirmFollows', async () => {
-      vi.mocked(followUser).mockResolvedValue({ success: true, message: '' });
-      const user = userEvent.setup();
-      const { container } = renderInMenu(
-        <FollowMenuItem {...props} requireDisclosure={true} />
-      );
-      await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
-      expect(
-        (container.querySelector('dialog') as HTMLDialogElement).open
-      ).toBe(true);
-      expect(followUser).not.toHaveBeenCalled();
-      await user.click(screen.getByRole('button', { name: 'Follow' }));
-      await waitFor(() => expect(followUser).toHaveBeenCalledWith('owner-1'));
-    });
-
-    it('RequireDisclosure_DialogCancelClosesWithoutFollowing', async () => {
-      const user = userEvent.setup();
-      const { container } = renderInMenu(
-        <FollowMenuItem {...props} requireDisclosure={true} />
-      );
-      await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
-      await user.click(screen.getByRole('button', { name: 'Cancel' }));
-      expect(
-        (container.querySelector('dialog') as HTMLDialogElement).open
-      ).toBe(false);
-      expect(followUser).not.toHaveBeenCalled();
-    });
-
-    it('NoDisclosure_ClickCallsFollowUser-OptimisticFollowing-ToastsFollowingName', async () => {
-      vi.mocked(followUser).mockResolvedValue({ success: true, message: '' });
-      const user = userEvent.setup();
-      renderInMenu(<FollowMenuItem {...props} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
-      expect(
-        screen.getByRole('menuitem', { name: 'Following' })
-      ).toBeInTheDocument();
-      await waitFor(() => expect(followUser).toHaveBeenCalledWith('owner-1'));
-      await waitFor(() =>
-        expect(toast.success).toHaveBeenCalledWith('Following Bob')
-      );
-    });
-
-    it('NullOwnerNameNoDisclosure_FollowSuccess-ToastsFollowingUser', async () => {
-      vi.mocked(followUser).mockResolvedValue({ success: true, message: '' });
-      const user = userEvent.setup();
-      renderInMenu(<FollowMenuItem {...props} ownerName={null} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Follow' }));
-      await waitFor(() =>
-        expect(toast.success).toHaveBeenCalledWith('Following user')
-      );
-    });
-
-    it('WhilePending_SecondClickIsNoOp', async () => {
-      let resolve!: (v: { success: boolean; message: string }) => void;
-      vi.mocked(followUser).mockReturnValue(
-        new Promise((r) => {
-          resolve = r;
-        })
-      );
-      const user = userEvent.setup();
-      renderInMenu(<FollowMenuItem {...props} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
-      await user.click(screen.getByRole('menuitem', { name: 'Following' }));
-      expect(followUser).toHaveBeenCalledTimes(1);
-      resolve({ success: true, message: '' });
-    });
-
-    it('FollowFailure_RevertsToNotFollowing-ToastsError', async () => {
-      vi.mocked(followUser).mockResolvedValue({
-        success: false,
-        message: 'Cannot follow',
-      });
-      const user = userEvent.setup();
-      renderInMenu(<FollowMenuItem {...props} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Follow Bob' }));
-      expect(
-        await screen.findByRole('menuitem', { name: 'Follow Bob' })
-      ).toBeInTheDocument();
-      expect(toast.error).toHaveBeenCalledWith('Cannot follow');
-    });
+  beforeEach(() => {
+    sp.value = new URLSearchParams();
   });
 
-  describe('Following', () => {
-    it('Default_RendersFollowing-IconSvg', () => {
-      renderInMenu(<FollowMenuItem {...props} initialFollowing={true} />);
-      const item = screen.getByRole('menuitem', { name: 'Following' });
-      expect(item).toBeInTheDocument();
-      expect(item.querySelector('svg')).not.toBeNull();
-    });
+  it('Default_RendersThreeRowsWithCurrentTierChecked', () => {
+    renderInMenu(<SpoilerMenuItems tier="claims" baseline="surprise" />);
+    expect(screen.getAllByRole('menuitemradio')).toHaveLength(3);
+    expect(row("Show what's claimed")).toHaveAttribute('aria-checked', 'true');
+    expect(row('Keep it a surprise')).toHaveAttribute('aria-checked', 'false');
+  });
 
-    it('Click_CallsUnfollowUser', async () => {
-      vi.mocked(unfollowUser).mockResolvedValue({ success: true, message: '' });
-      const user = userEvent.setup();
-      renderInMenu(<FollowMenuItem {...props} initialFollowing={true} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Following' }));
-      await waitFor(() => expect(unfollowUser).toHaveBeenCalledWith('owner-1'));
-      await waitFor(() =>
-        expect(toast.success).toHaveBeenCalledWith('Unfollowed')
-      );
-    });
+  it('SelectOtherTier_ReplacesUrlKeepingExistingParams', async () => {
+    const user = userEvent.setup();
+    sp.value = new URLSearchParams('page=2');
+    renderInMenu(<SpoilerMenuItems tier="surprise" baseline="surprise" />);
+    await user.click(row("Show what's claimed"));
+    expect(router.replace).toHaveBeenCalledWith(
+      '/lists/list-1?page=2&spoiler=claims',
+      { scroll: false }
+    );
+  });
 
-    it('UnfollowFailure_RevertsToFollowing-ToastsError', async () => {
-      vi.mocked(unfollowUser).mockResolvedValue({
-        success: false,
-        message: 'Cannot unfollow',
-      });
-      const user = userEvent.setup();
-      renderInMenu(<FollowMenuItem {...props} initialFollowing={true} />);
-      await user.click(screen.getByRole('menuitem', { name: 'Following' }));
-      expect(
-        await screen.findByRole('menuitem', { name: 'Following' })
-      ).toBeInTheDocument();
-      expect(toast.error).toHaveBeenCalledWith('Cannot unfollow');
+  it('SelectCurrentTier_DoesNotNavigate', async () => {
+    const user = userEvent.setup();
+    renderInMenu(<SpoilerMenuItems tier="claims" baseline="surprise" />);
+    await user.click(row("Show what's claimed"));
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it('SelectBaselineWithNoSearchParams_ReplacesWithBarePath', async () => {
+    const user = userEvent.setup();
+    sp.value = null;
+    renderInMenu(<SpoilerMenuItems tier="claims" baseline="surprise" />);
+    await user.click(row('Keep it a surprise'));
+    expect(router.replace).toHaveBeenCalledWith('/lists/list-1', {
+      scroll: false,
     });
   });
 });

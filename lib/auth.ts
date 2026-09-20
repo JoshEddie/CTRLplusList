@@ -7,9 +7,7 @@ import { db } from '../db';
 type Callbacks = NonNullable<NextAuthConfig['callbacks']>;
 
 // Store the full name (first + last) when Google provides both — used for
-// disambiguation on the connections page. Other surfaces extract the first
-// name via firstNameOf() in lib/data/purchase.ts to preserve the casual tone
-// in purchase attribution and similar contexts.
+// disambiguation on the connections page.
 export const signInCallback: NonNullable<Callbacks['signIn']> = async ({
   user,
   profile,
@@ -34,25 +32,18 @@ export const jwtCallback: NonNullable<Callbacks['jwt']> = ({
   return token;
 };
 
-export const sessionCallback: NonNullable<Callbacks['session']> = async ({
-  session,
-}) => {
-  return session;
-};
-
 const nextAuth = NextAuth({
   theme: { logo: 'https://ctrlpluslist.com/ctrlpluslist_logo-hor-white.webp' },
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
   }),
-  providers: [Google],
+  providers: [Google({ authorization: { params: { prompt: 'select_account' } } })],
   session: { strategy: 'jwt' },
   trustHost: true, // Trust the host in development
   callbacks: {
     signIn: signInCallback,
     jwt: jwtCallback,
-    session: sessionCallback,
   },
 });
 
@@ -77,19 +68,21 @@ export const { handlers, signIn, signOut } = nextAuth;
 // Route-handler / middleware overloads (`auth(req, ctx)`, args.length > 0)
 // always pass through to real NextAuth, so the deployed auth path is unchanged.
 export const BYPASS_USER_ID = 'dev-test-viewer';
-export const BYPASS_USER_EMAIL = 'test-viewer@dev.local';
+// The one id → email rule, shared with the seed that writes the rows. Actor
+// resolution goes through the email — a real session carries no internal user
+// id, only the provider's — so a synthesized session missing it resolves to no
+// actor and is indistinguishable from being logged out, which is how every
+// non-default identity used to resolve to nothing.
+//
+// The `dev-` / `dev-friend-` prefixes are the seed's id scheme, not part of the
+// address: stripping them here is what lets this rule name the rows the seed
+// already wrote, so adopting it rewrites no seeded email.
+export const seedUserEmail = (userId: string) =>
+  `${userId.replace(/^dev-(friend-)?/, '')}@dev.local`;
+export const BYPASS_USER_EMAIL = seedUserEmail(BYPASS_USER_ID);
 // `BYPASS_SESSION_USER` set to this literal yields a logged-out request
 // (auth() ⇒ null). Mirrored as GUEST_SESSION_USER in e2e/helpers/constants.ts.
 export const GUEST_SESSION_USER = 'guest';
-// Inline SVG avatar matching the seeded user row — UserImage requires a
-// non-empty src (UserAvatarPopover passes `user.image || ''` and an empty
-// string triggers next/image "missing src" errors).
-const BYPASS_USER_IMAGE =
-  'data:image/svg+xml;utf8,' +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><circle cx="40" cy="40" r="40" fill="#5b21b6"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="system-ui,sans-serif" font-size="32" font-weight="600" fill="white">TV</text></svg>'
-  );
-
 function bypassEnabled(): boolean {
   return process.env.USE_PG_DRIVER === '1';
 }
@@ -99,23 +92,28 @@ function bypassEnabled(): boolean {
 // source. Bypass sessions never actually expire.
 const BYPASS_EXPIRES = '2099-01-01T00:00:00.000Z';
 
-// The default identity (`dev-test-viewer`) carries the full display fields the
-// preview UI expects; any other seeded id gets a minimal session (display
-// fields are resolved by the flow that introduces that identity). `guest` is
-// handled by the caller (⇒ null), never reaching here.
+// Every identity carries the email and a display name. In production OAuth
+// always provides both; the bypass must too, because surfaces that render for
+// a profile-less account (the onboarding gate's frame chrome) read
+// `session.user.name` to show the account's initials.
 function synthesizeSession(userId: string) {
-  if (userId === BYPASS_USER_ID) {
-    return {
-      user: {
-        id: BYPASS_USER_ID,
-        email: BYPASS_USER_EMAIL,
-        name: 'Test Viewer',
-        image: BYPASS_USER_IMAGE,
-      },
-      expires: BYPASS_EXPIRES,
-    };
-  }
-  return { user: { id: userId }, expires: BYPASS_EXPIRES };
+  return {
+    user: {
+      id: userId,
+      email: seedUserEmail(userId),
+      name: bypassDisplayName(userId),
+    },
+    expires: BYPASS_EXPIRES,
+  };
+}
+
+function bypassDisplayName(userId: string): string {
+  if (userId === BYPASS_USER_ID) return 'Test Viewer';
+  return userId
+    .replace(/^dev-(friend-)?/, '')
+    .split('-')
+    .map((w) => w[0].toUpperCase() + w.slice(1))
+    .join(' ');
 }
 
 export const auth: typeof nextAuth.auth = ((...args: unknown[]) => {

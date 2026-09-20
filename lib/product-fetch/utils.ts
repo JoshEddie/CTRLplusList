@@ -29,7 +29,11 @@ export function normalizePrice(value: unknown): string | undefined {
   }
   if (typeof value === 'string') {
     const trimmed = value.trim();
-    if (trimmed !== '' && Number.isFinite(Number(trimmed)) && Number(trimmed) > 0) {
+    if (
+      trimmed !== '' &&
+      Number.isFinite(Number(trimmed)) &&
+      Number(trimmed) > 0
+    ) {
       return trimmed;
     }
   }
@@ -44,11 +48,8 @@ export function normalizePrice(value: unknown): string | undefined {
 export function normalizeImageUrls(
   urls: (string | undefined)[]
 ): string[] | undefined {
-  const seen = new Set<string>();
-  for (const url of urls) {
-    if (!url || seen.has(url)) continue;
-    seen.add(url);
-    if (seen.size === MAX_IMAGE_CANDIDATES) break;
-  }
-  return seen.size > 0 ? [...seen] : undefined;
+  const unique = [
+    ...new Set(urls.filter((url): url is string => Boolean(url))),
+  ].slice(0, MAX_IMAGE_CANDIDATES);
+  return unique.length > 0 ? unique : undefined;
 }

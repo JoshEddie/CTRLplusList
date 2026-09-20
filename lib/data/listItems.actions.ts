@@ -1,158 +1,67 @@
 'use server';
 
 import { db } from '@/db';
-import { list_items, lists, users } from '@/db/schema';
-import { auth } from '@/lib/auth';
+import { items, list_items, lists } from '@/db/schema';
 import { touchLists } from '@/lib/data/list.touch';
 import {
   checkListBalance,
+  nextPosition,
   rebalanceList,
   reorderPosition,
 } from '@/lib/data/listItems.positions';
-import { authedUserId } from '@/lib/data/user.session';
+import {
+  ENTRY_QUANTITY_ERROR,
+  EntryQuantitySchema,
+} from '@/lib/data/listItems.schema';
+import { getMessage } from '@/lib/i18n/utils';
+import { ADMIN_OPTIONAL, authedWriter } from '@/lib/data/profile.gate';
 import { type ActionResponse } from '@/lib/types';
-import { and, eq, inArray, sql } from 'drizzle-orm';
-import { updateTag } from 'next/cache';
-import { z } from 'zod';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
+import { and, eq, inArray } from 'drizzle-orm';
 
-export async function setListItems(
-  list_id: string,
-  item_ids: string[]
-): Promise<ActionResponse> {
-  try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
-    }
-
-    const list = await db.query.lists.findFirst({
-      where: eq(lists.id, list_id),
-      columns: { user_id: true },
-    });
-    if (!list) {
-      return { success: false, message: 'List not found', error: 'Not found' };
-    }
-
-    const sessionUser = await db.query.users.findFirst({
-      where: eq(users.email, session.user.email),
-      columns: { id: true },
-    });
-    if (!sessionUser || sessionUser.id !== list.user_id) {
-      return {
+// The entry-write owner gate: the acted-as profile must own the list the entry
+// belongs to. A refusal here is 'Forbidden' — the entry writes answer a caller
+// without write access on the owning profile the same way.
+async function guardOwnedList(
+  list_id: string
+): Promise<{ profile_id: string } | { error: ActionResponse }> {
+  const actor = await authedWriter(ADMIN_OPTIONAL);
+  if ('error' in actor) {
+    return { error: actor.error };
+  }
+  const list = await db.query.lists.findFirst({
+    where: eq(lists.id, list_id),
+    columns: { profile_id: true },
+  });
+  if (!list) {
+    return {
+      error: { success: false, message: 'List not found', error: 'Not found' },
+    };
+  }
+  if (list.profile_id !== actor.identity.activeProfile.id) {
+    return {
+      error: {
         success: false,
         message: 'Unauthorized - list does not belong to you',
         error: 'Forbidden',
-      };
-    }
-
-    const parsed = z.array(z.string().min(1)).safeParse(item_ids);
-    if (!parsed.success) {
-      return {
-        success: false,
-        message: 'Invalid item selection',
-        error: 'Invalid input',
-      };
-    }
-
-    const incomingIds = new Set(parsed.data);
-    const existing = await db
-      .select({ item_id: list_items.item_id })
-      .from(list_items)
-      .where(eq(list_items.list_id, list_id));
-    const existingIds = new Set(existing.map((r) => r.item_id));
-
-    const toRemove = [...existingIds].filter((id) => !incomingIds.has(id));
-    const toInsert = [...incomingIds].filter((id) => !existingIds.has(id));
-
-    if (toRemove.length === 0 && toInsert.length === 0) {
-      return { success: true, message: 'No changes' };
-    }
-
-    if (toRemove.length > 0) {
-      await db
-        .delete(list_items)
-        .where(
-          and(
-            eq(list_items.list_id, list_id),
-            inArray(list_items.item_id, toRemove)
-          )
-        );
-    }
-
-    if (toInsert.length > 0) {
-      const baseResult = await db
-        .select({
-          base: sql<number>`COALESCE(MAX(${list_items.position}) + 65536, 65536)`,
-        })
-        .from(list_items)
-        .where(eq(list_items.list_id, list_id))
-        .limit(1);
-      /* v8 ignore next -- the COALESCE in the query guarantees a row with a numeric base, so the ?. and ?? 65536 fallbacks are unreachable */
-      const basePosition = Math.floor(baseResult[0]?.base ?? 65536);
-
-      await db.insert(list_items).values(
-        toInsert.map((item_id, index) => ({
-          list_id,
-          item_id,
-          position: basePosition + index * 65536,
-        }))
-      );
-    }
-
-    await touchLists([list_id]);
-
-    updateTag('items');
-    updateTag('lists');
-
-    const parts: string[] = [];
-    if (toInsert.length > 0) parts.push(`Added ${toInsert.length}`);
-    if (toRemove.length > 0) parts.push(`removed ${toRemove.length}`);
-
-    return {
-      success: true,
-      message: parts.join(', '),
-    };
-  } catch (error) {
-    console.error('Error setting list items:', error);
-    return {
-      success: false,
-      message: 'An error occurred while saving items',
-      error: 'Failed to save items',
+      },
     };
   }
+  return list;
 }
 
+// The owner's item pool rides along with the list tags on both writes that
+// change what an entry contributes to it: a library card sums quantity and
+// counts lists across every entry of the item, so a removal and a
+// re-quantification each leave that read answering differently.
 export async function removeListItem(
   list_id: string,
   item_id: string
 ): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
-      return {
-        success: false,
-        message: 'Unauthorized access',
-        error: 'Unauthorized',
-      };
-    }
-
-    const list = await db.query.lists.findFirst({
-      where: eq(lists.id, list_id),
-      columns: { user_id: true },
-    });
-    if (!list) {
-      return { success: false, message: 'List not found', error: 'Not found' };
-    }
-    if (list.user_id !== userId) {
-      return {
-        success: false,
-        message: 'Unauthorized - list does not belong to you',
-        error: 'Forbidden',
-      };
+    const list = await guardOwnedList(list_id);
+    if ('error' in list) {
+      return list.error;
     }
 
     const deleted = await db
@@ -171,8 +80,13 @@ export async function removeListItem(
 
     await touchLists([list_id]);
 
-    updateTag('items');
-    updateTag('lists');
+    updateTags(
+      cacheTags.list(list_id),
+      cacheTags.itemsOfList(list_id),
+      cacheTags.listsOfProfile(list.profile_id),
+      cacheTags.itemsOfProfile(list.profile_id),
+      cacheTags.item(item_id)
+    );
 
     return { success: true, message: 'Removed from list' };
   } catch (error) {
@@ -191,43 +105,25 @@ export async function updatePriority(
   listId: string
 ): Promise<ActionResponse> {
   try {
-    const userId = await authedUserId();
-    if (!userId) {
-      return {
-        success: false,
-        message: 'Unauthorized',
-        error: 'Unauthorized',
-      };
-    }
-    const list = await db.query.lists.findFirst({
-      where: eq(lists.id, listId),
-      columns: { user_id: true },
-    });
-    if (!list || list.user_id !== userId) {
-      return {
-        success: false,
-        message: 'Unauthorized - list does not belong to you',
-        error: 'Unauthorized',
-      };
+    const list = await guardOwnedList(listId);
+    if ('error' in list) {
+      return list.error;
     }
 
-    const itemPositionResult = await db
-      .select({ position: list_items.position })
+    const positionRows = await db
+      .select({ item_id: list_items.item_id, position: list_items.position })
       .from(list_items)
       .where(
-        and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
-      )
-      .limit(1);
+        and(
+          eq(list_items.list_id, listId),
+          inArray(list_items.item_id, [item_id, target_id])
+        )
+      );
 
-    const targetPositionResult = await db
-      .select({ position: list_items.position })
-      .from(list_items)
-      .where(
-        and(eq(list_items.list_id, listId), eq(list_items.item_id, target_id))
-      )
-      .limit(1);
+    const itemRow = positionRows.find((row) => row.item_id === item_id);
+    const targetRow = positionRows.find((row) => row.item_id === target_id);
 
-    if (!itemPositionResult[0] || !targetPositionResult[0]) {
+    if (!itemRow || !targetRow) {
       return {
         success: false,
         message: 'Item or target not found on this list',
@@ -235,8 +131,8 @@ export async function updatePriority(
       };
     }
 
-    const itemPosition = itemPositionResult[0].position;
-    const targetPosition = targetPositionResult[0].position;
+    const itemPosition = itemRow.position;
+    const targetPosition = targetRow.position;
 
     if (itemPosition === targetPosition) {
       return {
@@ -259,7 +155,7 @@ export async function updatePriority(
         and(eq(list_items.list_id, listId), eq(list_items.item_id, item_id))
       );
 
-    updateTag('items');
+    updateTags(cacheTags.itemsOfList(listId));
 
     if (await checkListBalance(listId)) {
       await rebalanceList(listId);
@@ -272,6 +168,83 @@ export async function updatePriority(
       success: false,
       message: 'Failed to update item priority',
       error: 'Failed to update item priority',
+    };
+  }
+}
+
+export async function setListItemQuantity(
+  list_id: string,
+  item_id: string,
+  quantity: number
+): Promise<ActionResponse> {
+  try {
+    const list = await guardOwnedList(list_id);
+    if ('error' in list) {
+      return list.error;
+    }
+
+    if (!EntryQuantitySchema.safeParse(quantity).success) {
+      return {
+        success: false,
+        message: ENTRY_QUANTITY_ERROR,
+        error: 'Invalid input',
+      };
+    }
+
+    // Unconditional on what is already claimed: refusing here would turn an
+    // ordinary edit into a disclosure that somebody has bought something,
+    // which an owner held below the claims tier must never be told (ADR-0015).
+    // An over-claimed entry is legal and transient.
+    const updated = await db
+      .update(list_items)
+      .set({ quantity })
+      .where(
+        and(eq(list_items.list_id, list_id), eq(list_items.item_id, item_id))
+      )
+      .returning({ item_id: list_items.item_id });
+
+    // A quantity is set on the entry whether or not one exists yet: 0 is what
+    // "not on this list" means, so a card stepped back up from 0 asks for the
+    // row it deleted rather than failing on its absence.
+    const added = updated.length === 0;
+    if (added) {
+      const item = await db.query.items.findFirst({
+        where: eq(items.id, item_id),
+        columns: { profile_id: true },
+      });
+      if (!item || item.profile_id !== list.profile_id) {
+        return {
+          success: false,
+          message: getMessage('entry_foreign_item_error'),
+          error: 'Forbidden',
+        };
+      }
+      await db.insert(list_items).values({
+        list_id,
+        item_id,
+        quantity,
+        position: await nextPosition(list_id),
+      });
+    }
+
+    await touchLists([list_id]);
+
+    updateTags(
+      cacheTags.list(list_id),
+      cacheTags.itemsOfList(list_id),
+      cacheTags.listsOfProfile(list.profile_id),
+      cacheTags.itemsOfProfile(list.profile_id),
+      // Only a membership change reaches the item's own read.
+      ...(added ? [cacheTags.item(item_id)] : [])
+    );
+
+    return { success: true, message: 'Quantity updated' };
+  } catch (error) {
+    console.error('Error setting list item quantity:', error);
+    return {
+      success: false,
+      message: 'An error occurred while setting the quantity',
+      error: 'Failed to set quantity',
     };
   }
 }

@@ -12,6 +12,8 @@ interface ConfirmDialogProps {
   message: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
+  /** Weight of the confirm button. Defaults to destructive. */
+  confirmVariant?: Extract<ButtonVariant, 'danger' | 'primary'>;
   /**
    * Optional reversible-alternative action. Rendered as a full-width button
    * above the Cancel/Confirm row — the recommended path when destructive
@@ -35,13 +37,14 @@ export default function ConfirmDialog({
   message,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
+  confirmVariant = 'danger',
   tertiary,
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
   return (
     <div className="confirm-dialog-overlay">
-      <div className="confirm-dialog-content">
+      <div className="dialog-panel confirm-dialog-content">
         <h3 className="confirm-dialog-title">{title}</h3>
         <p className="confirm-dialog-message">{message}</p>
         <div className="confirm-dialog-buttons">
@@ -60,7 +63,7 @@ export default function ConfirmDialog({
             {cancelText}
           </Button>
           <Button
-            variant="danger"
+            variant={confirmVariant}
             onClick={() => {
               onConfirm();
               onClose();

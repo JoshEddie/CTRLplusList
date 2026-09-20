@@ -16,8 +16,9 @@ function renderActions(
     isOwner: false,
     fullyClaimed: false,
     viewerClaimed: false,
-    showOwnerClaimAction: false,
-    showOwnerManageAction: false,
+    hasAnyClaim: false,
+    claimable: true,
+    tier: 'claims',
     store: STORE,
     onPurchaseClick: vi.fn(),
     onAddClaimClick: vi.fn(),
@@ -32,6 +33,32 @@ const buyClaim = () =>
   screen.queryByRole('link', { name: 'Buy & Claim — opens in new tab' });
 
 describe('ItemActions', () => {
+  // No entry, no claim: the item library names no list, so neither the
+  // affordance that creates a claim nor the one that manages an existing one
+  // is offered there.
+  describe('NoEntry', () => {
+    it('Unclaimed_RendersNoAddClaim', () => {
+      renderActions({ claimable: false });
+      expect(
+        screen.queryByRole('button', { name: 'Claim' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('OwnerWithClaims_RendersNoManageClaims', () => {
+      renderActions({ claimable: false, isOwner: true, hasAnyClaim: true });
+      expect(
+        screen.queryByRole('button', { name: 'Manage claims' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('ViewerHoldsAClaim_RendersNoManageClaim', () => {
+      renderActions({ claimable: false, viewerClaimed: true });
+      expect(
+        screen.queryByRole('button', { name: 'Manage claim' })
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('StateMatrix', () => {
     it('AuthedClaimableWithLink_RendersBuyClaimPrimaryOverViewAndAdd', () => {
       renderActions({ showBuyClaim: true });
@@ -40,7 +67,7 @@ describe('ItemActions', () => {
       expect(buy).toHaveClass('primary');
       expect(viewItem()).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
     });
 
@@ -48,7 +75,7 @@ describe('ItemActions', () => {
       renderActions();
       expect(buyClaim()).not.toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
     });
 
@@ -57,7 +84,7 @@ describe('ItemActions', () => {
       expect(buyClaim()).not.toBeInTheDocument();
       expect(viewItem()).not.toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
     });
 
@@ -78,7 +105,7 @@ describe('ItemActions', () => {
     it('NonOwnerClaimable_RendersAddClaimWithViewItem-NoManage', () => {
       renderActions();
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
       expect(
@@ -93,7 +120,7 @@ describe('ItemActions', () => {
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
     });
 
@@ -104,7 +131,7 @@ describe('ItemActions', () => {
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
       expect(
-        screen.queryByRole('button', { name: 'Add Claim' })
+        screen.queryByRole('button', { name: 'Claim' })
       ).not.toBeInTheDocument();
       expect(buyClaim()).not.toBeInTheDocument();
     });
@@ -112,7 +139,7 @@ describe('ItemActions', () => {
     it('GuestUnclaimed_KeepsAddClaimDespiteGuestViewer', () => {
       renderActions({ guestViewer: true });
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
     });
 
@@ -123,7 +150,7 @@ describe('ItemActions', () => {
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
       expect(
-        screen.queryByRole('button', { name: 'Add Claim' })
+        screen.queryByRole('button', { name: 'Claim' })
       ).not.toBeInTheDocument();
     });
 
@@ -137,17 +164,9 @@ describe('ItemActions', () => {
     it('NoStoreClaimable_RendersAddClaimWithoutViewItem', () => {
       renderActions({ store: null });
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
       expect(viewItem()).not.toBeInTheDocument();
-    });
-
-    it('OwnerSpoilersOff_RendersViewItemOnly-PromotedToPrimary', () => {
-      renderActions({ isOwner: true });
-      const link = viewItem();
-      expect(link).toBeInTheDocument();
-      expect(link).toHaveClass('primary');
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
     });
 
     it('ViewBesideOtherActions_KeepsSecondaryVariant', () => {
@@ -155,27 +174,86 @@ describe('ItemActions', () => {
       expect(viewItem()).toHaveClass('secondary');
     });
 
-    it('OwnerSpoilersOnClaimable_RendersAddClaimAndViewItem', () => {
-      renderActions({ isOwner: true, showOwnerClaimAction: true });
+    it('OwnerClaimsTierClaimable_RendersAddClaimAndViewItem', () => {
+      renderActions({ isOwner: true, tier: 'claims' });
       expect(
-        screen.getByRole('button', { name: 'Add Claim' })
+        screen.getByRole('button', { name: 'Claim' })
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
     });
 
-    it('OwnerSpoilersOnHasClaims_RendersManageClaimsAndViewItem', () => {
-      renderActions({ isOwner: true, showOwnerManageAction: true });
+    it('OwnerClaimsTierHasClaims_RendersManageClaimsAndViewItem', () => {
+      renderActions({
+        isOwner: true,
+        tier: 'claims',
+        hasAnyClaim: true,
+      });
       expect(
         screen.getByRole('button', { name: 'Manage claims' })
       ).toBeInTheDocument();
       expect(viewItem()).toBeInTheDocument();
     });
 
-    it('OwnerSpoilersOffNoStore_RendersNothing', () => {
-      const { container } = renderActions({ isOwner: true, store: null });
+    it('OwnerNoStoreViewOnly_RendersNothing', () => {
+      const { container } = renderActions({
+        isOwner: true,
+        viewOnly: true,
+        store: null,
+      });
       expect(container.firstChild).toBeNull();
     });
   });
+
+  // Below `claims` the action set may not vary with another party's claim:
+  // `Fully claimed`, `Manage claims`, and the absence of `Buy & Claim` each
+  // state the item carries a claim, which is exactly what the tier withholds.
+  // A claim the VIEWER holds is no surprise to them, so it still reaches
+  // `Manage claim`.
+  for (const tier of ['surprise', 'progress'] as const) {
+    describe(`BelowClaims${tier[0].toUpperCase()}${tier.slice(1)}`, () => {
+      const protectedProps = { tier };
+
+      it('UnclaimedItem_RendersAddClaimAndViewItem', () => {
+        renderActions(protectedProps);
+        expect(
+          screen.getByRole('button', { name: 'Claim' })
+        ).toBeInTheDocument();
+        expect(viewItem()).toBeInTheDocument();
+      });
+
+      it('FullyClaimedByOthers_RendersTheSameSetAsUnclaimed', () => {
+        renderActions({
+          ...protectedProps,
+          fullyClaimed: true,
+          hasAnyClaim: true,
+        });
+        expect(
+          screen.getByRole('button', { name: 'Claim' })
+        ).toBeInTheDocument();
+        expect(viewItem()).toBeInTheDocument();
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('button', { name: 'Manage claims' })
+        ).not.toBeInTheDocument();
+      });
+
+      it('ClaimableWithBuySignal_SuppressesBuyClaim', () => {
+        renderActions({ ...protectedProps, showBuyClaim: true });
+        expect(buyClaim()).not.toBeInTheDocument();
+      });
+
+      it('ViewerHoldsClaim_RendersManageClaim', () => {
+        renderActions({
+          ...protectedProps,
+          viewerClaimed: true,
+          hasAnyClaim: true,
+        });
+        expect(
+          screen.getByRole('button', { name: 'Manage claim' })
+        ).toBeInTheDocument();
+      });
+    });
+  }
 
   describe('ViewOnly', () => {
     it('ViewOnlyWithStore_RendersOnlyLiveViewItemAnchor-PromotedToPrimary', () => {
@@ -215,8 +293,9 @@ describe('ItemActions', () => {
             isOwner={false}
             fullyClaimed={false}
             viewerClaimed={false}
-            showOwnerClaimAction={false}
-            showOwnerManageAction={false}
+            hasAnyClaim={false}
+            claimable
+            tier="claims"
             store={STORE}
           />
         </div>
@@ -246,8 +325,9 @@ describe('ItemActions', () => {
             isOwner={false}
             fullyClaimed={false}
             viewerClaimed={false}
-            showOwnerClaimAction={false}
-            showOwnerManageAction={false}
+            hasAnyClaim={false}
+            claimable
+            tier="claims"
             showBuyClaim
             store={STORE}
             onBuyClaimClick={onBuyClaimClick}
@@ -272,7 +352,7 @@ describe('ItemActions', () => {
   it('AddClaimClick_FiresOnAddClaimClickOnce-NotOnPurchaseClick', async () => {
     const user = userEvent.setup();
     const { props } = renderActions();
-    await user.click(screen.getByRole('button', { name: 'Add Claim' }));
+    await user.click(screen.getByRole('button', { name: 'Claim' }));
     expect(props.onAddClaimClick).toHaveBeenCalledTimes(1);
     expect(props.onPurchaseClick).not.toHaveBeenCalled();
   });

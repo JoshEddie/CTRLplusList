@@ -6,13 +6,13 @@ import { IntroCard } from '../IntroCard';
 
 const ONE_LEFT: DeckStepState[] = [
   { step: 'photo', complete: true },
-  { step: 'title', complete: true },
+  { step: 'name', complete: true },
   { step: 'price', complete: true },
   { step: 'note', complete: false },
 ];
 
 const TWO_LEFT: DeckStepState[] = [
-  { step: 'title', complete: true },
+  { step: 'name', complete: true },
   { step: 'price', complete: true },
   { step: 'photo', complete: false },
   { step: 'note', complete: false },
@@ -20,7 +20,7 @@ const TWO_LEFT: DeckStepState[] = [
 
 const NONE_LEFT: DeckStepState[] = [
   { step: 'photo', complete: true },
-  { step: 'title', complete: true },
+  { step: 'name', complete: true },
   { step: 'price', complete: true },
 ];
 

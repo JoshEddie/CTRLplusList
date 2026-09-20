@@ -1,14 +1,32 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  clearTestCookies,
+  mockNextHeaders,
+  setTestCookie,
+} from '@/test/helpers/next-headers';
 
-import { lists } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { list_items, lists } from '@/db/schema';
 import { auth } from '@/lib/auth';
 import { bootPglite, resetDb } from '@/test/helpers/db';
 import { mockNextCache } from '@/test/helpers/next-cache';
-import { seedUsers } from '@/test/helpers/seedFollowGraph';
+import {
+  seedManagedProfile,
+  seedMembership,
+  seedUsers,
+} from '@/test/helpers/seedFollowGraph';
+import { ACTIVE_PROFILE_COOKIE } from '@/lib/data/profile.cookie';
 
-import { seedItem, seedList, seedListItem, type TestDb } from './test-helpers';
+import {
+  contentTagCalls,
+  seedItem,
+  seedList,
+  seedListItem,
+  type TestDb,
+} from './test-helpers';
 
 mockNextCache();
+mockNextHeaders();
 
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock('@/db', () => ({
@@ -63,6 +81,7 @@ beforeEach(async () => {
   vi.restoreAllMocks();
   await resetDb(db);
   await seedUsers(db, [OWNER, OTHER]);
+  clearTestCookies();
   updateTag.mockClear();
   asOwner();
 });
@@ -99,9 +118,9 @@ describe('updateItemStores', () => {
     });
   });
 
-  // Positional-sync behaviors the capped actions no longer exercise end to
+  // Positional-sync behavior the capped actions no longer exercise end to
   // end (they submit exactly one non-empty store) but the sync itself still
-  // implements: overflow rows insert in order, all-empty rows are skipped.
+  // implements: overflow rows insert in order.
   describe('PositionalSync', () => {
     const storeRows = async (itemId: string) => {
       const { item_stores } = await import('@/db/schema');
@@ -127,19 +146,6 @@ describe('updateItemStores', () => {
         expect.objectContaining({ name: 'a1', order: 1 }),
         expect.objectContaining({ name: 'a2', order: 2 }),
       ]);
-    });
-
-    it('AllEmptyStoreRow_IsSkippedNotInserted', async () => {
-      await seedItem(db, { id: 'I', user_id: OWNER.id });
-      await associations.updateItemStores(
-        [
-          { name: 'a1', link: 'https://a.test', price: '10' },
-          { name: '', link: '', price: '' },
-        ],
-        'I'
-      );
-      const rows = await storeRows('I');
-      expect(rows).toEqual([expect.objectContaining({ name: 'a1', order: 1 })]);
     });
   });
 });
@@ -176,6 +182,27 @@ describe('updateItemLists', () => {
     });
   });
 
+  it('ManagerChangesAnItemsLists_Succeeds-MembershipWritten', async () => {
+    // Association writes take the member floor, like every other content
+    // write: pinned so narrowing this call site to `owner` cannot pass.
+    const MANAGED = 'kiddo';
+    await seedManagedProfile(db, { id: MANAGED, name: 'Kiddo' });
+    await seedMembership(db, {
+      user_id: OWNER.id,
+      profile_id: MANAGED,
+      role: 'manager',
+    });
+    setTestCookie(ACTIVE_PROFILE_COOKIE, MANAGED);
+    await seedItem(db, { id: 'I', user_id: OWNER.id, profile_id: MANAGED });
+    await seedList(db, { id: 'A', user_id: OWNER.id, profile_id: MANAGED });
+
+    await associations.updateItemLists(['A'], 'I');
+
+    expect(
+      await db.select().from(list_items).where(eq(list_items.list_id, 'A'))
+    ).toHaveLength(1);
+  });
+
   describe('UpdateRecency', () => {
     const STALE = new Date('2020-01-01T00:00:00.000Z');
 
@@ -194,7 +221,7 @@ describe('updateItemLists', () => {
         (await db.select().from(lists)).map((r) => [r.id, r.updated_at])
       );
 
-    it('MixedAddRemove_BumpsGainingAndLosingLists-LeavesUnchangedListUntouched-CallsUpdateTagLists', async () => {
+    it('MixedAddRemove_BumpsGainingAndLosingLists-LeavesUnchangedListUntouched-BumpsChangedListTags', async () => {
       const before = Date.now();
       await associations.updateItemLists(['B', 'C'], 'I');
       const after = Date.now();
@@ -205,7 +232,9 @@ describe('updateItemLists', () => {
       expect(byId.B.getTime()).toBeGreaterThanOrEqual(before);
       expect(byId.B.getTime()).toBeLessThanOrEqual(after);
       expect(byId.C.toISOString()).toBe(STALE.toISOString());
-      expect(updateTag).toHaveBeenCalledWith('lists');
+      expect(updateTag).toHaveBeenCalledWith('lists:id:A');
+      expect(updateTag).toHaveBeenCalledWith('lists:id:B');
+      expect(updateTag).not.toHaveBeenCalledWith('lists:id:C');
     });
 
     it('UnchangedMembership_BumpsNoList-NoUpdateTag', async () => {
@@ -215,7 +244,7 @@ describe('updateItemLists', () => {
       expect(byId.A.toISOString()).toBe(STALE.toISOString());
       expect(byId.B.toISOString()).toBe(STALE.toISOString());
       expect(byId.C.toISOString()).toBe(STALE.toISOString());
-      expect(updateTag).not.toHaveBeenCalled();
+      expect(contentTagCalls(updateTag)).toEqual([]);
     });
   });
 });

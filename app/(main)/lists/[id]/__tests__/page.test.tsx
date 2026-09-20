@@ -9,6 +9,7 @@ import ListPage from '../page';
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/data/list', () => ({ getList: vi.fn() }));
 vi.mock('@/lib/data/user', () => ({ getUserIdByEmail: vi.fn() }));
+vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
 
 vi.mock('../ListHeroSection', () => ({
   default: (props: { params: unknown; searchParams: unknown }) => (
@@ -37,7 +38,7 @@ const PROPS = {
 };
 
 describe('ListPage', () => {
-  it('Render_MountsBothSectionsWithForwardedPromises', () => {
+  it('Render_MountsEverySectionWithForwardedPromises', () => {
     render(<ListPage {...PROPS} />);
     for (const id of ['hero-section', 'items-section']) {
       const section = screen.getByTestId(id);
@@ -54,10 +55,10 @@ describe('ListPage', () => {
       (c) => c.type === Suspense
     );
     expect(suspenses).toHaveLength(2);
-    const sizes = suspenses.map((s) => (s.props.fallback as El).props.size);
-    expect(sizes).toEqual(['rail', 'page']);
-    for (const s of suspenses) {
-      expect((s.props.fallback as El).type).toBe(LoadingIndicator);
+    const fallbacks = suspenses.map((s) => s.props.fallback as El);
+    expect(fallbacks.map((f) => f.props.size)).toEqual(['rail', 'page']);
+    for (const f of fallbacks) {
+      expect(f.type).toBe(LoadingIndicator);
     }
   });
 });

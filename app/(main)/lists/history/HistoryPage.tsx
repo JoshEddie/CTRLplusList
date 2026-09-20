@@ -1,18 +1,15 @@
 import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
-import { auth } from '@/lib/auth';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { authedUserId } from '@/lib/data/user.session';
 import { getVisitHistoryByUser } from '@/lib/data/visit';
 import { redirect } from 'next/navigation';
 import { ClearHistoryButton } from './HistoryActions';
 import HistoryList from './HistoryList';
 
 export default async function HistoryPage() {
-  const session = await auth();
-  if (!session?.user?.email) redirect('/');
-  const viewer = await getUserIdByEmail(session.user.email);
-  if (!viewer) redirect('/');
+  const viewerId = await authedUserId();
+  if (!viewerId) redirect('/');
 
-  const rows = await getVisitHistoryByUser(viewer.id, { limit: 100 });
+  const rows = await getVisitHistoryByUser(viewerId, { limit: 100 });
 
   return (
     <div className="history-page">

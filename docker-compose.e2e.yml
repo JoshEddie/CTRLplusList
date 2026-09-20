@@ -19,9 +19,3 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    networks:
-      - e2e-network
-
-networks:
-  e2e-network:
-    driver: bridge

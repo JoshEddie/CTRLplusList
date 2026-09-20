@@ -3,11 +3,11 @@ import {
   isLinkless,
   pricePairTier,
   storeTier,
-  titleTier,
+  nameTier,
 } from './utils';
 import type { ItemViewModel } from './viewModel';
 
-export type DeckStep = 'photo' | 'title' | 'price' | 'store' | 'note';
+export type DeckStep = 'photo' | 'name' | 'price' | 'store' | 'note';
 
 export interface DeckStepState {
   step: DeckStep;
@@ -23,8 +23,8 @@ export function isStepComplete(step: DeckStep, item: ItemViewModel): boolean {
       // Placeholder art means every flow carries a real choice (fetched image
       // vs generated art), so the photo pick always needs a human look.
       return false;
-    case 'title':
-      return titleTier(item.name).tier === 'good';
+    case 'name':
+      return nameTier(item.name).tier === 'good';
     case 'price':
       // A linkless empty price is a valid save state (BARE), but never a
       // pre-marked-done step — the door path must still land on the price card.
@@ -63,11 +63,11 @@ export function isStepValid(step: DeckStep, item: ItemViewModel): boolean {
 // deck under them. Completed steps order first; the deck opens at the first
 // incomplete one.
 export function neededSteps(item: ItemViewModel): DeckStepState[] {
-  const titleGood = titleTier(item.name).tier === 'good';
+  const nameGood = nameTier(item.name).tier === 'good';
 
   const steps: DeckStepState[] = [
     { step: 'photo', complete: isStepComplete('photo', item) },
-    { step: 'title', complete: titleGood },
+    { step: 'name', complete: nameGood },
     { step: 'price', complete: isStepComplete('price', item) },
   ];
   // Linkless items (the door path, linkless edits) carry no store step at
@@ -77,7 +77,7 @@ export function neededSteps(item: ItemViewModel): DeckStepState[] {
   }
   // A flagged title surfaces the note inline, so the standalone note step
   // only appears when the title is clean — never both.
-  if (titleGood) steps.push({ step: 'note', complete: isStepComplete('note', item) });
+  if (nameGood) steps.push({ step: 'note', complete: isStepComplete('note', item) });
 
   return [
     ...steps.filter((s) => s.complete),
@@ -89,8 +89,8 @@ export function neededSteps(item: ItemViewModel): DeckStepState[] {
 // and the tracker's forward lock so the two can't drift.
 export function stepBlocked(step: DeckStep, item: ItemViewModel): boolean {
   switch (step) {
-    case 'title':
-      return titleTier(item.name).tier === 'error';
+    case 'name':
+      return nameTier(item.name).tier === 'error';
     case 'price':
       return pricePairTier(item.store).tier !== 'good';
     case 'store':

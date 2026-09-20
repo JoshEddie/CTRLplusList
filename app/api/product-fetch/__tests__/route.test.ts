@@ -79,11 +79,13 @@ describe('AuthGate', () => {
     expect(fetchProduct).not.toHaveBeenCalled();
   });
 
-  it('UnknownSessionEmail_Returns401', async () => {
+  it('UnknownSessionEmail_Returns401-NoSeamCall', async () => {
     const POST = await loadRoute();
     vi.mocked(auth).mockResolvedValue(sessionFor('ghost@test.local'));
     const r = await POST(req({ url: 'https://example.com/p/1' }));
     expect(r.status).toBe(401);
+    expect(await r.json()).toEqual({ error: 'Unauthorized' });
+    expect(fetchProduct).not.toHaveBeenCalled();
   });
 });
 

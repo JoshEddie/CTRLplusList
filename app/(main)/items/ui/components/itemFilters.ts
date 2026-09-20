@@ -61,3 +61,97 @@ export function compareItems(
       return compareByPrice(a, b, sort);
   }
 }
+
+export interface ItemFilters {
+  q: string;
+  selectedStores: string[];
+  priceMin: number;
+  priceMax: number;
+  hasPriceFilter: boolean;
+}
+
+export function parseItemFilters(
+  searchParams: URLSearchParams | null
+): ItemFilters {
+  const q = (searchParams?.get('q') ?? '').toLowerCase().trim();
+  const selectedStores = searchParams?.getAll('store') ?? [];
+  const priceMin = parseFloat(searchParams?.get('price_min') ?? '');
+  const priceMax = parseFloat(searchParams?.get('price_max') ?? '');
+  const hasPriceFilter = Number.isFinite(priceMin) || Number.isFinite(priceMax);
+  return { q, selectedStores, priceMin, priceMax, hasPriceFilter };
+}
+
+export function filterItems(
+  items: ItemDisplay[],
+  filters: ItemFilters
+): ItemDisplay[] {
+  const { q, selectedStores, priceMin, priceMax, hasPriceFilter } = filters;
+  let result = items;
+  if (q) {
+    result = result.filter((item) =>
+      `${item.name ?? ''} ${item.description ?? ''}`.toLowerCase().includes(q)
+    );
+  }
+  if (selectedStores.length > 0) {
+    const selectedSet = new Set(selectedStores);
+    result = result.filter(
+      (item) => !!item.store && selectedSet.has(item.store.name)
+    );
+  }
+  if (hasPriceFilter) {
+    const lo = Number.isFinite(priceMin) ? priceMin : -Infinity;
+    const hi = Number.isFinite(priceMax) ? priceMax : Infinity;
+    result = result.filter((item) => {
+      const p = displayPrice(item);
+      return Number.isFinite(p) && p >= lo && p <= hi;
+    });
+  }
+  return result;
+}
+
+export function parseSort(
+  searchParams: URLSearchParams | null,
+  valid: readonly SortKey[],
+  fallback: SortKey
+): SortKey {
+  const raw = searchParams?.get('sort') as SortKey | null;
+  return raw && valid.includes(raw) ? raw : fallback;
+}
+
+export function parsePage(searchParams: URLSearchParams | null): number {
+  const raw = parseInt(searchParams?.get('page') ?? '1', 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : 1;
+}
+
+// A page past the end lands on the last one rather than on nothing.
+export function pageOf<T>(
+  rows: T[],
+  requestedPage: number,
+  pageSize: number
+): { rows: T[]; page: number; totalPages: number } {
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const page = Math.min(Math.max(1, requestedPage), totalPages);
+  return {
+    rows: rows.slice((page - 1) * pageSize, page * pageSize),
+    page,
+    totalPages,
+  };
+}
+
+/** The items page's reading of a search string: filtered, sorted, and paged. `list_order` leaves the input order alone. */
+export function browseItems(
+  items: ItemDisplay[],
+  searchParams: URLSearchParams | null,
+  sort: SortKey,
+  pageSize: number
+): { rows: ItemDisplay[]; page: number; totalPages: number; matches: number } {
+  const filtered = filterItems(items, parseItemFilters(searchParams));
+  const sorted =
+    sort === 'list_order'
+      ? filtered
+      : [...filtered].sort((a, b) => compareItems(a, b, sort));
+  return {
+    ...pageOf(sorted, parsePage(searchParams), pageSize),
+    matches: sorted.length,
+  };
+}

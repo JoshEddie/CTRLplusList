@@ -3,15 +3,13 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { contrastRatio } from '@/test/helpers/contrast';
 
-// Deck tier tokens live in deck.css; the shared palette (buy-link, primary,
-// muted, heading, …) still lives in global.css — resolve against both.
-const css = [
-  'app/ui/styles/global.css',
-  'app/(main)/items/ui/components/itemform/deck/deck.css',
-]
-  .map((p) => readFileSync(resolve(process.cwd(), p), 'utf8'))
-  .join('\n')
-  .replace(/\/\*[\s\S]*?\*\//g, '');
+// The deck consumes the consolidated global state palette (success/warn/
+// danger) plus the shared tokens (buy-link, primary, muted, heading, …) —
+// all resolved from global.css.
+const css = readFileSync(
+  resolve(process.cwd(), 'app/ui/styles/global.css'),
+  'utf8'
+).replace(/\/\*[\s\S]*?\*\//g, '');
 
 function rawToken(name: string): string {
   const m = new RegExp(`--${name}\\s*:\\s*([^;]+);`).exec(css);
@@ -41,26 +39,30 @@ describe('deckContrast', () => {
 
   describe('TierNoteOnWash', () => {
     it('GoodNote_MeetsAA', () => {
-      expect(meetsAA('good', 'good-bg')).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(meetsAA('success-text', 'success-bg')).toBeGreaterThanOrEqual(
+        AA_NORMAL
+      );
     });
     it('WarnNote_MeetsAA', () => {
       expect(meetsAA('warn', 'warn-bg')).toBeGreaterThanOrEqual(AA_NORMAL);
     });
     it('ErrorNote_MeetsAA', () => {
-      expect(meetsAA('error', 'error-bg')).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(meetsAA('danger-text', 'danger-bg')).toBeGreaterThanOrEqual(
+        AA_NORMAL
+      );
     });
   });
 
   describe('TierTextOnWhiteCard', () => {
     // Counters and Triage status pills sit on the white card, not the wash.
     it('GoodText_MeetsAAOnWhite', () => {
-      expect(meetsAA('good', WHITE)).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(meetsAA('success-text', WHITE)).toBeGreaterThanOrEqual(AA_NORMAL);
     });
     it('WarnText_MeetsAAOnWhite', () => {
       expect(meetsAA('warn', WHITE)).toBeGreaterThanOrEqual(AA_NORMAL);
     });
     it('ErrorText_MeetsAAOnWhite', () => {
-      expect(meetsAA('error', WHITE)).toBeGreaterThanOrEqual(AA_NORMAL);
+      expect(meetsAA('danger-text', WHITE)).toBeGreaterThanOrEqual(AA_NORMAL);
     });
   });
 

@@ -1,43 +1,54 @@
 'use client';
 
-import { createPurchase, removePurchase } from '@/lib/data/purchase.actions';
-import { ItemDisplay, PurchaseView } from '@/lib/types';
+import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
+import { getMessage } from '@/lib/i18n/utils';
+import { ItemDisplay, ProfileMembershipView, SpoilerTier } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import toast from 'react-hot-toast';
 import '../styles/item.css';
 import ClaimBanners from './ClaimBanners';
 import ClaimUndoPopup from './ClaimUndoPopup';
+import EntryStepper from './EntryStepper';
 import ItemCard from './ItemCard';
-import OwnerActions from './OwnerActions';
+import OwnerActions, { type ListEnds } from './OwnerActions';
 import PurchaseModalSlot from './PurchaseModalSlot';
-import { AttributedTarget } from './purchasemodal/PurchaseFlowContainer';
-import { storeComplete } from '@/lib/storeValidity';
-import { containerClasses, firstToken, resolveModalView } from './utils';
+import { useItemClaims } from './useItemClaims';
+import { useListEntry } from './useListEntry';
+import { claimUnitsCeiling, containerClasses, resolveModalView } from './utils';
 
 export default function Item({
   item,
   className,
-  user_id,
+  actor,
   user_name,
-  showSpoilers,
+  tier = 'claims',
   showArchiveAction,
   archivedView,
+  listEnds,
+  onEntryPresence,
+  onReorderAll,
+  claimless,
   preview,
-  listId,
 }: {
   item: ItemDisplay;
   className?: string;
-  user_id?: string;
+  /** The profile the request acts as, absent for a signed-out visitor. */
+  actor?: ProfileMembershipView;
   user_name?: string | null;
-  /** Owner's spoiler view is enabled — gates the owner claim/unclaim affordances. */
-  showSpoilers?: boolean;
+  /** The viewer's resolved tier (`spoiler-visibility`). Defaults to the maximal projection, which is what a non-member resolves to. */
+  tier?: SpoilerTier;
   showArchiveAction?: boolean;
   archivedView?: boolean;
+  /** The ends of the list's own order, for the owner's move rows. Absent off the list surface and while another sort overrides that order. */
+  listEnds?: ListEnds;
+  /** Reports the card on or off the list as its quantity crosses 0, so the surface can keep those ends naming entries that still exist. */
+  onEntryPresence?: (itemId: string, onList: boolean) => void;
+  /** Opens the list's reorder surface from the card's menu. Absent off that list, and on a list too short to arrange. */
+  onReorderAll?: () => void;
+  /** The surface names a list for entry writes but resolves no claims against it — the owner's library browser, where a card's quantity is the ask on one list and its claims span every one. */
+  claimless?: boolean;
   /** Render as a live preview inside the item form: no modal, no interactions. */
   preview?: boolean;
-  /** Owned-list context — enables the "Remove from list" owner action. */
-  listId?: string;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -48,215 +59,124 @@ export default function Item({
     [searchParams, item.id]
   );
 
-  // Ephemeral by design (claim-attribution spec): a reload lands on the
-  // persistent Manage claim affordance, never re-pops the undo nudge. Holds
-  // the just-recorded claim so undo can never retarget an older claim.
-  const [undoClaim, setUndoClaim] = useState<PurchaseView | null>(null);
+  // The owner's two routes resolve to the same modal view, so the affordance
+  // that opened it is the parameter itself.
+  const claimRoute = searchParams?.get('purchaseView') === 'claim';
 
-  const propPurchases = item.purchases ?? [];
-  const propPurchasesKey = propPurchases
-    .map((p) => `${p.id}:${p.firstName}:${p.by}:${p.claimedByViewer}`)
-    .join('|');
-  const [localPurchases, setLocalPurchases] =
-    useState<PurchaseView[]>(propPurchases);
-  const [prevPropKey, setPrevPropKey] = useState(propPurchasesKey);
-  if (propPurchasesKey !== prevPropKey) {
-    setPrevPropKey(propPurchasesKey);
-    setLocalPurchases(propPurchases);
-  }
+  const isOwner = actor?.id === item.profile_id;
 
-  const isOwner = user_id === item.user_id;
-  const quantityLimit = item.quantity_limit;
-  const claimCount = localPurchases.length;
-  const isFullyClaimed =
-    quantityLimit !== null &&
-    quantityLimit !== undefined &&
-    claimCount >= quantityLimit;
-
-  // Claims this viewer can remove: their own (purchaser) or ones they
-  // asserted for someone else (claimed_by).
-  const viewerClaims = useMemo(
-    () => localPurchases.filter((p) => p.by === 'self' || p.claimedByViewer),
-    [localPurchases]
+  // The entry's own controls, live on the list's own surface. `list_id` is what
+  // names one: an item read through the library carries none, so its card
+  // offers nothing that would edit a list it does not name.
+  const entry = useListEntry(
+    item.list_id ?? '',
+    item.id,
+    item.quantity ?? 0,
+    onEntryPresence
   );
-  const hasViewerClaim = viewerClaims.length > 0;
-  const viewerIsPurchaser = viewerClaims.some((p) => p.by === 'self');
-  const hasAnyClaim = claimCount > 0;
-  // "Sold out" treatment (strikethrough price, faded stores, hidden claim
-  // button) only fires when the item is fully claimed. Partial multi-claim
-  // and unlimited items still accept buyers, so stores + claim button stay
-  // live and price stays unstruck.
-  const showPurchased = isFullyClaimed && !isOwner;
-  // Owner only sees purchase state when spoilers are on (DAL returns empty otherwise)
-  const showSpoilerInfo = hasAnyClaim && isOwner;
-  const showOwnerClaimAction = isOwner && !!showSpoilers && !isFullyClaimed;
-  // Owner claim management (master unclaim) lives in the purchase modal's
-  // claims list; the card affordance is "Manage claims" once any claim exists.
-  const showOwnerManageAction = isOwner && !!showSpoilers && hasAnyClaim;
-  const showBuyClaim =
-    !!user_id &&
-    !isOwner &&
-    !isFullyClaimed &&
-    !hasViewerClaim &&
-    storeComplete(item.store);
+  const ownsEntry = isOwner && !!item.list_id && !preview;
+
+  // Stepping to 0 is the removal the menu's own row performs, reached one
+  // press past 1 — so that press asks before it writes.
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const stepQuantity = (next: number) =>
+    next === 0 ? setConfirmRemove(true) : entry.setQuantity(next);
+
+  const handleModalOpen = (view?: 'claim' | 'roster') => {
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.set('purchaseItem', item.id);
+    if (view) params.set('purchaseView', view);
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const handleModalClose = () => {
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    params.delete('purchaseItem');
+    params.delete('purchaseView');
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  // Withdrawing the quantity withdraws the entry the hook keys every claim
+  // reading on — the same discriminator the item library resolves to when a
+  // card was read through no entry at all.
+  const claimItem = useMemo(
+    () => (claimless ? { ...item, quantity: undefined } : item),
+    [claimless, item]
+  );
+
+  const claim = useItemClaims({
+    item: claimItem,
+    isOwner,
+    tier,
+    actor,
+    userName: user_name,
+    revealNames: showModal && !claimRoute,
+    onSettled: handleModalClose,
+  });
+
+  const { undoClaim } = claim;
 
   const modalView = resolveModalView({
     isOwner,
     purchaseView: searchParams?.get('purchaseView'),
-    hasViewerClaim,
+    hasViewerClaim: claim.hasViewerClaim,
   });
 
-  const claimSummary = useMemo(() => {
-    if (!hasAnyClaim) return '';
-    return localPurchases
-      .map((p) => (p.by === 'self' ? 'You' : p.firstName))
-      .join(', ');
-  }, [localPurchases, hasAnyClaim]);
-
-  const handleModalOpen = (view?: 'claim') => {
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    params.set('purchaseItem', item.id || '');
-    if (view === 'claim') params.set('purchaseView', 'claim');
-    router.push(`${pathname}?${params.toString()}`);
-  };
-
-  const handleModalClose = async () => {
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    params.delete('purchaseItem');
-    params.delete('purchaseView');
-    router.replace(`${pathname}?${params.toString()}`);
-  };
+  // Per activation, never persisted: it presents again on the next item, alters
+  // nothing behind it, and changes the resolved tier for nothing else.
+  const [pendingReveal, setPendingReveal] = useState<'manage' | 'claim' | null>(
+    null
+  );
 
   const handlePurchaseClick = () => {
     /* v8 ignore next -- defensive: item.id is always present for a persisted item. */
     if (!item.id) return;
     /* v8 ignore next -- defensive: the claim affordance is disabled when fully claimed without a personal claim, so this early-return is unreachable from the UI. */
-    if (!isOwner && isFullyClaimed && !hasViewerClaim) return;
+    if (!isOwner && claim.isFullyClaimed && !claim.hasViewerClaim) return;
+    // Only the owner's list names parties the viewer is not, so only it asks.
+    // A holder reaches this affordance for their own rows, which every tier
+    // discloses — there is no surprise of theirs to warn them about.
+    if (claim.asksBeforeNaming) return setPendingReveal('manage');
     handleModalOpen();
   };
 
   const handleAddClaimClick = () => {
     /* v8 ignore next -- defensive: item.id is always present for a persisted item. */
     if (!item.id) return;
+    if (claim.countWithheld) return setPendingReveal('claim');
     handleModalOpen('claim');
   };
 
-  // One home for claim removal: dispatch, toast copy, and local-state filter.
-  const removeClaim = async (claim: PurchaseView) => {
-    try {
-      const result = await toast.promise(
-        removePurchase({ purchase_id: claim.id }),
-        {
-          loading: 'Removing claim',
-          success: 'Claim removed successfully',
-          error: 'Failed to remove claim',
-        }
-      );
-      if (result?.success) {
-        setLocalPurchases((prev) => prev.filter((p) => p.id !== claim.id));
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Failed to remove purchase:', error);
-      return false;
-    }
-  };
+  const openRoster = () => handleModalOpen('roster');
 
-  const handleManageRemove = async (claim: PurchaseView) => {
-    const wasLast = viewerClaims.length <= 1;
-    const removed = await removeClaim(claim);
-    if (removed && wasLast) handleModalClose();
-  };
+  // Where the owner may read the count, the banner carries the membership
+  // control too and its readout follows the number as it is pressed. Which of
+  // the two controls shows is the stylesheet's call: the horizontal card fuses
+  // them into one row, wider cards keep the stepper's own.
+  const fused = ownsEntry && !!claim.banner && !claim.banner.withheld;
 
-  const recordClaim = async (
-    payload: {
-      item_id: string;
-      guest_name: string | null;
-      purchased_by?: string;
-    },
-    optimistic: Omit<PurchaseView, 'id'>,
-    onSettled: (succeeded: boolean, claim?: PurchaseView) => void = handleModalClose
-  ) => {
-    try {
-      const result = await toast.promise(createPurchase(payload), {
-        loading: 'Adding claim',
-        success: 'Claim added successfully',
-        error: (err: Error) => err?.message || 'Failed to add claim',
-      });
-      const id = result?.success ? result.id : undefined;
-      if (id) {
-        setLocalPurchases((prev) =>
-          prev.some((p) => p.id === id) ? prev : [...prev, { ...optimistic, id }]
-        );
-      } else if (!result?.success && result?.message) {
-        toast.error(result.message);
-      }
-      onSettled(!!id, id ? { ...optimistic, id } : undefined);
-    } catch (error) {
-      console.error('Failed to create purchase:', error);
-    }
-  };
-
-  const recordSelfClaim = (
-    onSettled?: (succeeded: boolean, claim?: PurchaseView) => void
-  ) =>
-    recordClaim(
-      { item_id: item.id || '', guest_name: null },
-      {
-        by: 'self',
-        firstName: firstToken(user_name || 'You'),
-        claimedByViewer: true,
-        purchasedAt: new Date(),
-      },
-      onSettled
-    );
-
-  const handleSelfClaim = () => recordSelfClaim();
-
-  const handleBuyClaim = () =>
-    recordSelfClaim((succeeded, claim) => {
-      if (succeeded && claim) setUndoClaim(claim);
-    });
-
-  const handleAttributedClaim = (target: AttributedTarget) =>
-    recordClaim(
-      { item_id: item.id || '', guest_name: null, purchased_by: target.id },
-      {
-        by: target.id === user_id ? 'self' : 'other',
-        firstName: firstToken(target.name || 'Someone'),
-        claimedByViewer: true,
-        purchasedAt: new Date(),
-      }
-    );
-
-  const handleGuestClaim = (name: string) =>
-    recordClaim(
-      { item_id: item.id || '', guest_name: name },
-      {
-        // Signed-out guest: the cookie written by the action makes this the
-        // viewer's own claim, matching the server overlay's by:'self' marking.
-        by: user_id ? 'other' : 'self',
-        firstName: firstToken(name),
-        claimedByViewer: true,
-        purchasedAt: new Date(),
-      }
-    );
-
-  const showCounter = quantityLimit !== 1;
-  const counterText =
-    quantityLimit == null
-      ? `${claimCount}/∞ claimed`
-      : `${claimCount}/${quantityLimit} claimed`;
+  // The item form's live preview draws a card rather than offering one, so
+  // every interaction it would carry is withdrawn in one place.
+  const handlers = preview
+    ? undefined
+    : {
+        purchase: handlePurchaseClick,
+        addClaim: handleAddClaimClick,
+        buyClaim: claim.handleBuyClaim,
+        roster: openRoster,
+      };
 
   return (
     <>
       <div
+        // The preview draws the same item inside the edit modal, so only the
+        // surface's own card carries the anchor a reveal scrolls to.
+        id={preview ? undefined : `item-${item.id}`}
         className={containerClasses({
           className,
           isOwner,
-          purchased: showPurchased || showSpoilerInfo,
-          hasMyClaim: hasViewerClaim,
+          purchased: claim.isFullyClaimed,
+          hasMyClaim: claim.hasViewerClaim,
           preview,
         })}
       >
@@ -264,69 +184,114 @@ export default function Item({
           item={item}
           className={className}
           isOwner={isOwner}
-          showPurchased={showPurchased}
-          showSpoilerInfo={showSpoilerInfo}
-          viewerClaimed={!isOwner && hasViewerClaim}
-          guestViewer={!user_id}
-          fullyClaimed={isFullyClaimed}
-          showCounter={showCounter}
-          counterText={counterText}
-          showOwnerClaimAction={showOwnerClaimAction}
-          showOwnerManageAction={showOwnerManageAction}
-          showBuyClaim={showBuyClaim}
+          // The owner is included: a claim the viewer holds is disclosed at
+          // every level, so it must reach the action matrix on their own list.
+          viewerClaimed={claim.hasViewerClaim}
+          guestViewer={!actor}
+          fullyClaimed={claim.isFullyClaimed}
+          hasAnyClaim={claim.hasAnyClaim}
+          claimable={claim.claimable}
+          tier={tier}
+          showBuyClaim={claim.showBuyClaim}
           viewOnly={preview}
-          onPurchaseClick={preview ? undefined : handlePurchaseClick}
-          onAddClaimClick={preview ? undefined : handleAddClaimClick}
-          onBuyClaimClick={preview ? undefined : handleBuyClaim}
+          onPurchaseClick={handlers?.purchase}
+          onAddClaimClick={handlers?.addClaim}
+          onBuyClaimClick={handlers?.buyClaim}
         />
 
-        <ClaimBanners
-          showPurchased={showPurchased}
-          myClaims={viewerClaims}
-          isOwner={isOwner}
-          showSpoilerInfo={showSpoilerInfo}
-          claims={localPurchases}
-          claimSummary={claimSummary}
-          counterText={counterText}
-        />
+        {claim.banner && !(ownsEntry && claim.banner.withheld) && (
+          <ClaimBanners
+            {...claim.banner}
+            quantity={fused ? entry.quantity : claim.banner.quantity}
+            claims={claim.claims}
+            onOpenRoster={handlers?.roster}
+            step={
+              fused ? { name: item.name, onChange: stepQuantity } : undefined
+            }
+          />
+        )}
+
+        {ownsEntry && (
+          <EntryStepper
+            name={item.name}
+            quantity={entry.quantity}
+            onChange={stepQuantity}
+          />
+        )}
 
         {isOwner && (
           <OwnerActions
             itemId={item.id}
             showArchiveAction={showArchiveAction}
             archivedView={archivedView}
-            listId={listId}
             pathname={pathname}
             searchParams={searchParams}
-            onArchived={() => router.refresh()}
+            onChanged={() => router.refresh()}
+            onReorderAll={ownsEntry ? onReorderAll : undefined}
+            entry={
+              ownsEntry && entry.quantity > 0
+                ? { ends: listEnds, move: entry.moveTo, remove: entry.remove }
+                : undefined
+            }
           />
         )}
       </div>
 
-      {!preview && showModal && (
+      {!preview && !claimless && showModal && (
         <PurchaseModalSlot
           view={modalView}
-          claims={localPurchases}
-          viewerIsPurchaser={viewerIsPurchaser}
-          user_id={user_id}
+          claims={(!claimRoute && claim.revealedClaims) || claim.claims}
+          capacity={claim.capacity}
+          viewerIsPurchaser={claim.viewerIsPurchaser}
+          actor={actor}
           isOwner={isOwner}
-          showSpoilers={!!showSpoilers}
-          ownerCanClaim={showOwnerClaimAction}
-          ownerClaims={isOwner && showSpoilers ? localPurchases : []}
+          tier={tier}
           item={item}
           onClose={handleModalClose}
-          onSelfClaim={handleSelfClaim}
-          onAttributedClaim={handleAttributedClaim}
-          onGuestClaim={handleGuestClaim}
-          onRemoveClaim={isOwner ? removeClaim : handleManageRemove}
+          onOpenRoster={openRoster}
+          onSelfClaim={claim.handleSelfClaim}
+          onAttributedClaim={claim.handleAttributedClaim}
+          onGuestClaim={claim.handleGuestClaim}
+          onRemoveClaim={isOwner ? claim.removeClaim : claim.handleManageRemove}
+          onUpdateUnits={claim.updateClaimUnits}
+        />
+      )}
+
+      {!preview && pendingReveal && (
+        <ConfirmDialog
+          isOpen
+          onClose={() => setPendingReveal(null)}
+          onConfirm={() =>
+            handleModalOpen(pendingReveal === 'claim' ? 'claim' : undefined)
+          }
+          title="This could spoil a surprise"
+          message={
+            pendingReveal === 'manage'
+              ? "You'll see exactly who has claimed this item, by name."
+              : "You'll see whether this item is already claimed — no names, just the count."
+          }
+          confirmText="Show me"
+        />
+      )}
+
+      {confirmRemove && (
+        <ConfirmDialog
+          isOpen
+          onClose={() => setConfirmRemove(false)}
+          onConfirm={() => entry.setQuantity(0)}
+          title={getMessage('entry_remove_title')}
+          message={getMessage('entry_remove_message')}
+          confirmText={getMessage('entry_remove_confirm')}
         />
       )}
 
       {!preview && undoClaim && (
         <ClaimUndoPopup
           isOpen
-          onClose={() => setUndoClaim(null)}
-          onUndo={() => removeClaim(undoClaim)}
+          maxUnits={claimUnitsCeiling(claim.capacity, undoClaim)}
+          onClose={claim.dismissUndo}
+          onUndo={() => claim.removeClaim(undoClaim)}
+          onUpdateUnits={(units) => claim.updateClaimUnits(undoClaim, units)}
         />
       )}
     </>

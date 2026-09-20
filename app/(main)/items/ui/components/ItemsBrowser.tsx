@@ -1,25 +1,47 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
-import { ItemDisplay, SortKey } from '@/lib/types';
+import {
+  ProfileMembershipView,
+  ItemDisplay,
+  SortKey,
+  SpoilerTier,
+} from '@/lib/types';
+import { OwnerTabsContext } from '@/app/(main)/lists/[id]/ownerTabs';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import Items from './Items';
-import ItemsToolbar from './itemsToolbar';
+import ToolbarSlot from './itemsToolbar/ToolbarSlot';
 import Pagination from './Pagination';
-import { compareItems, displayPrice } from './itemFilters';
-import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from './paginationConstants';
+import { browseItems, parseSort } from './itemFilters';
+import { useItemsPageSize } from './useItemsPageSize';
 
 type BrowserMode = 'items' | 'list';
+
+const EMPTY: ReadonlySet<string> = new Set();
 
 interface ItemsBrowserProps {
   items: ItemDisplay[];
   mode: BrowserMode;
   initialPageSize?: number;
-  user_id?: string;
+  actor?: ProfileMembershipView;
   user_name?: string | null;
   showArchiveAction?: boolean;
   archivedView?: boolean;
+  /** The viewer's resolved tier, and the baseline the library toggle writes deltas against. Baseline is present only where the toggle renders (the library). */
+  tier?: SpoilerTier;
+  baseline?: SpoilerTier;
+  /** Rendered instead of the rows when there are no items at all — as opposed to none surviving the filters. */
+  emptyState?: ReactNode;
+  /** The surface names a list for entry writes but resolves no claims against it. */
+  claimless?: boolean;
 }
 
 const VALID_SORT_ITEMS: SortKey[] = [
@@ -43,21 +65,18 @@ const VALID_SORT_LIST: SortKey[] = [
   'price_desc',
 ];
 
-function normalizePageSize(value: number | undefined): number {
-  if (!value || !PAGE_SIZE_OPTIONS.includes(value as 12 | 24 | 48 | 96)) {
-    return DEFAULT_PAGE_SIZE;
-  }
-  return value;
-}
-
 export default function ItemsBrowser({
   items,
   mode,
   initialPageSize,
-  user_id,
+  actor,
   user_name,
   showArchiveAction,
   archivedView,
+  tier,
+  baseline,
+  emptyState,
+  claimless,
 }: ItemsBrowserProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -66,105 +85,60 @@ export default function ItemsBrowser({
   const defaultSort: SortKey = mode === 'list' ? 'list_order' : 'created_desc';
   const validSorts = mode === 'list' ? VALID_SORT_LIST : VALID_SORT_ITEMS;
 
-  const q = (searchParams?.get('q') ?? '').toLowerCase().trim();
-  const rawSort = searchParams?.get('sort') as SortKey | null;
-  const sort: SortKey =
-    rawSort && validSorts.includes(rawSort) ? rawSort : defaultSort;
-  const selectedStores = searchParams?.getAll('store') ?? [];
-  const purchasesParam = searchParams?.get('purchases') ?? 'hide';
-  // Items-library mode renders the viewer's own items, so the spoilers
-  // reveal also unlocks the owner claim/unclaim affordances. List mode
-  // viewers are never the owner, so the flag is inert there.
-  const showSpoilers =
-    mode === 'items' &&
-    (purchasesParam === 'reveal' || purchasesParam === 'only');
-  const priceMin = parseFloat(searchParams?.get('price_min') ?? '');
-  const priceMax = parseFloat(searchParams?.get('price_max') ?? '');
-  const hasPriceFilter = Number.isFinite(priceMin) || Number.isFinite(priceMax);
-  const rawPage = parseInt(searchParams?.get('page') ?? '1', 10);
-  const requestedPage = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const sort = parseSort(searchParams, validSorts, defaultSort);
   const view: 'grid' | 'list' =
     searchParams?.get('view') === 'list' ? 'list' : 'grid';
 
-  const [pageSize, setPageSize] = useState<number>(
-    normalizePageSize(initialPageSize)
+  const [pageSize, handlePageSizeChange] = useItemsPageSize(initialPageSize);
+
+  // Entries the owner has stepped to 0 since this surface was read. The cards
+  // stay put at 0 by design, so `items` still carries them and the ends below
+  // would otherwise go on naming a row that no longer exists — a move against
+  // it is a write that cannot land.
+  const [offList, setOffList] = useState<ReadonlySet<string>>(EMPTY);
+  const handleEntryPresence = useCallback((itemId: string, onList: boolean) => {
+    setOffList((prev) => {
+      if (prev.has(itemId) !== onList) return prev;
+      const next = new Set(prev);
+      if (onList) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  }, []);
+
+  // Read off the whole list rather than the page: moving to the top of the
+  // list's own order means the top of the list, not the top of what a filter
+  // left standing. Absent under any other sort, which the move would silently
+  // rewrite, and on a list too short to have two ends.
+  const onList = useMemo(
+    () => items.filter((item) => !offList.has(item.id)),
+    [items, offList]
   );
+  const listEnds =
+    mode === 'list' && sort === 'list_order' && onList.length > 1
+      ? { first: onList[0].id, last: onList[onList.length - 1].id }
+      : undefined;
 
-  const handlePageSizeChange = (next: number) => {
-    const normalized = normalizePageSize(next);
-    setPageSize(normalized);
-    document.cookie = `items_page_size=${normalized}; path=/; max-age=31536000; SameSite=Lax`;
-    const params = new URLSearchParams(searchParams?.toString() || '');
-    params.delete('page');
-    const queryString = params.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
-  };
+  // Offered under any sort, unlike the move rows: the reorder surface resets
+  // the sort as it opens, so it is the way back to an order the others hide.
+  // Null off the owner's own list, where there is no band to select a tab on.
+  const ownerTabs = useContext(OwnerTabsContext);
+  const onReorderAll = mode === 'list' ? ownerTabs?.showReorder : undefined;
 
-  const storeOptions = useMemo(() => {
-    const names = new Set<string>();
-    for (const item of items) {
-      if (item.store?.name) names.add(item.store.name);
-    }
-    return Array.from(names).sort((a, b) => a.localeCompare(b));
-  }, [items]);
-
-  const hasAnyStore = storeOptions.length > 0;
-  const hasAnyPrice = useMemo(
-    () => items.some((item) => Number.isFinite(displayPrice(item))),
-    [items]
+  const {
+    rows: visible,
+    page,
+    totalPages,
+    matches,
+  } = useMemo(
+    () => browseItems(items, searchParams, sort, pageSize),
+    [items, searchParams, sort, pageSize]
   );
-
-  const selectedStoresKey = selectedStores.join('|');
-
-  const filteredSorted = useMemo(() => {
-    let result = items;
-    if (q) {
-      result = result.filter((item) =>
-        `${item.name ?? ''} ${item.description ?? ''}`.toLowerCase().includes(q)
-      );
-    }
-    if (selectedStores.length > 0) {
-      const selectedSet = new Set(selectedStores);
-      result = result.filter(
-        (item) => !!item.store && selectedSet.has(item.store.name)
-      );
-    }
-    if (purchasesParam === 'only') {
-      result = result.filter((item) => item.hasPurchases);
-    } else if (purchasesParam === 'none') {
-      result = result.filter((item) => !item.hasPurchases);
-    }
-    if (hasPriceFilter) {
-      const lo = Number.isFinite(priceMin) ? priceMin : -Infinity;
-      const hi = Number.isFinite(priceMax) ? priceMax : Infinity;
-      result = result.filter((item) => {
-        const p = displayPrice(item);
-        return Number.isFinite(p) && p >= lo && p <= hi;
-      });
-    }
-    if (sort === 'list_order') return result;
-    return [...result].sort((a, b) => compareItems(a, b, sort));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `selectedStores` is depended on via its `selectedStoresKey` projection to keep the deps array stable across array reorderings
-  }, [
-    items,
-    q,
-    selectedStoresKey,
-    purchasesParam,
-    hasPriceFilter,
-    priceMin,
-    priceMax,
-    sort,
-  ]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredSorted.length / pageSize));
-  const page = Math.min(Math.max(1, requestedPage), totalPages);
-  const visible = filteredSorted.slice((page - 1) * pageSize, page * pageSize);
 
   const clearFilters = () => {
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.delete('q');
     params.delete('store');
-    params.delete('purchases');
     params.delete('price_min');
     params.delete('price_max');
     params.delete('page');
@@ -172,16 +146,49 @@ export default function ItemsBrowser({
     router.replace(queryString ? `${pathname}?${queryString}` : pathname);
   };
 
+  // An entry just created from the band appends, so it sits on the last page
+  // under the list's own order and under no filter — the surface goes there
+  // first, then scrolls once the card is on the page. Centred rather than
+  // aligned to the top, which the pinned hero chrome would cover by a height
+  // that varies with what the toolbar wraps to.
+  const reveal = mode === 'list' ? ownerTabs?.reveal : undefined;
+  const revealed = ownerTabs?.revealed;
+  useEffect(() => {
+    if (!reveal) return;
+    if (visible.some((item) => item.id === reveal)) {
+      document
+        .getElementById(`item-${reveal}`)
+        ?.scrollIntoView({ block: 'center' });
+      revealed?.();
+      return;
+    }
+    if (!items.some((item) => item.id === reveal)) return;
+    const params = new URLSearchParams(searchParams?.toString() || '');
+    ['q', 'store', 'price_min', 'price_max', 'sort', 'page'].forEach((key) =>
+      params.delete(key)
+    );
+    const last = Math.ceil(onList.length / pageSize);
+    if (last > 1) params.set('page', String(last));
+    const queryString = params.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname);
+  }, [
+    reveal,
+    revealed,
+    visible,
+    items,
+    onList,
+    pageSize,
+    searchParams,
+    pathname,
+    router,
+  ]);
+
   return (
     <div className="items-browser">
-      <ItemsToolbar
-        mode={mode}
-        storeOptions={storeOptions}
-        showStoreSort={hasAnyStore}
-        showPriceSort={hasAnyPrice}
-        showPriceFilter={hasAnyPrice}
-      />
-      {filteredSorted.length === 0 ? (
+      <ToolbarSlot items={items} mode={mode} tier={tier} baseline={baseline} />
+      {items.length === 0 && emptyState ? (
+        emptyState
+      ) : matches === 0 ? (
         <div className="items-empty-filtered">
           <p>No items match your filters.</p>
           <Button variant="secondary" onClick={clearFilters}>
@@ -192,12 +199,16 @@ export default function ItemsBrowser({
         <>
           <Items
             items={visible}
-            user_id={user_id}
+            actor={actor}
             user_name={user_name}
             view={view}
-            showSpoilers={showSpoilers}
+            tier={tier}
             showArchiveAction={showArchiveAction}
             archivedView={archivedView}
+            listEnds={listEnds}
+            onEntryPresence={handleEntryPresence}
+            onReorderAll={onReorderAll}
+            claimless={claimless}
           />
           <Pagination
             page={page}

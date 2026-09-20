@@ -4,41 +4,73 @@
  * with no role; structural queries are the only way to assert them.
  */
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ItemDisplay, ItemStoreTable } from '@/lib/types';
 import ItemsBrowser from '../ItemsBrowser';
+import { OwnerTabsContext } from '@/app/(main)/lists/[id]/ownerTabs';
+import {
+  HERO_SLOT_READY_EVENT,
+  HERO_TOOLBAR_SLOT_ID,
+} from '@/app/(main)/lists/ui/components/ListHeroSurface';
 
 const nav = vi.hoisted(() => ({
   replace: vi.fn(),
   pathname: '/items',
-  search: '',
+  search: '' as string | null,
 }));
 
+// `null` stands for a render outside a client navigation context, where
+// useSearchParams has nothing to hand back.
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: nav.replace }),
   usePathname: () => nav.pathname,
-  useSearchParams: () => new URLSearchParams(nav.search),
+  useSearchParams: () =>
+    nav.search === null ? null : new URLSearchParams(nav.search),
 }));
 
 vi.mock('../Item', () => ({
   default: ({
     item,
-    showSpoilers,
+    tier,
+    listEnds,
+    onEntryPresence,
+    onReorderAll,
   }: {
     item: ItemDisplay;
-    showSpoilers?: boolean;
+    tier?: string;
+    listEnds?: { first: string; last: string };
+    onEntryPresence?: (itemId: string, onList: boolean) => void;
+    onReorderAll?: () => void;
   }) => (
     <div
+      id={`item-${item.id}`}
       data-testid="item-stub"
       data-item-id={item.id}
-      data-show-spoilers={String(showSpoilers)}
-    />
+      data-tier={String(tier)}
+      data-list-ends={listEnds ? `${listEnds.first}:${listEnds.last}` : ''}
+      data-can-reorder={String(!!onReorderAll)}
+    >
+      <button
+        type="button"
+        data-testid="item-off"
+        onClick={() => onEntryPresence?.(item.id, false)}
+      />
+      <button
+        type="button"
+        data-testid="item-on"
+        onClick={() => onEntryPresence?.(item.id, true)}
+      />
+    </div>
   ),
 }));
 vi.mock('../PriceFilterPopover', () => ({ default: () => <div /> }));
 vi.mock('../StoreFilterPopover', () => ({
   default: ({ storeOptions }: { storeOptions: string[] }) => (
-    <div data-testid="store-filter-stub" data-options={storeOptions.join(',')} />
+    <div
+      data-testid="store-filter-stub"
+      data-options={storeOptions.join(',')}
+    />
   ),
 }));
 
@@ -50,29 +82,64 @@ function store(
   return { name, price, link };
 }
 
-function makeItem(id: string, overrides: Partial<ItemDisplay> = {}): ItemDisplay {
+function makeItem(
+  id: string,
+  overrides: Partial<ItemDisplay> = {}
+): ItemDisplay {
   return {
     id,
     name: `Item ${id}`,
     description: '',
     created_at: new Date('2024-01-01T00:00:00Z'),
     updated_at: new Date('2024-01-01T00:00:00Z'),
-    user_id: 'u1',
-    quantity_limit: null,
+    profile_id: 'p1',
     ...overrides,
   };
 }
 
 type BrowserProps = React.ComponentProps<typeof ItemsBrowser>;
 
-function renderBrowser(items: ItemDisplay[], overrides: Partial<BrowserProps> = {}) {
+function renderBrowser(
+  items: ItemDisplay[],
+  overrides: Partial<BrowserProps> = {}
+) {
   return render(
     <ItemsBrowser
       items={items}
       mode={overrides.mode ?? 'list'}
       initialPageSize={overrides.initialPageSize}
-      user_id={overrides.user_id}
+      actor={overrides.actor}
+      tier={overrides.tier}
+      baseline={overrides.baseline}
+      emptyState={overrides.emptyState}
     />
+  );
+}
+
+// The band the owner's list surface renders inside; anywhere else the context
+// is null and no card offers a way into a reorder tab that does not exist.
+function renderInBand(
+  items: ItemDisplay[],
+  { mode = 'list', arrangeable = true, reveal, revealed = vi.fn() } = {} as {
+    mode?: BrowserProps['mode'];
+    arrangeable?: boolean;
+    reveal?: string;
+    revealed?: () => void;
+  }
+) {
+  return render(
+    <OwnerTabsContext.Provider
+      value={{
+        showList: vi.fn(),
+        showLibrary: vi.fn(),
+        showReorder: arrangeable ? vi.fn() : undefined,
+        createItem: vi.fn(),
+        reveal,
+        revealed,
+      }}
+    >
+      <ItemsBrowser items={items} mode={mode} />
+    </OwnerTabsContext.Provider>
   );
 }
 
@@ -104,57 +171,24 @@ describe('ItemsBrowser', () => {
       expect(visibleIds().sort()).toEqual(['a', 'b']);
     });
 
-    it('StoreFilter_OrWithinAndAcrossOtherFilters', () => {
-      nav.search = 'store=Amazon&store=Etsy&purchases=only';
+    it('MultiStore_KeepsItemsMatchingAnySelectedStore', () => {
+      nav.search = 'store=Amazon&store=Etsy';
       renderBrowser([
-        makeItem('amazonBought', {
-          store: store('Amazon', '20'),
-          hasPurchases: true,
-        }),
-        makeItem('etsyBought', {
-          store: store('Etsy', '20'),
-          hasPurchases: true,
-        }),
-        makeItem('amazonUnbought', {
-          store: store('Amazon', '20'),
-          hasPurchases: false,
-        }),
-        makeItem('otherBought', {
-          store: store('Other', '20'),
-          hasPurchases: true,
-        }),
+        makeItem('amazon', { store: store('Amazon', '20') }),
+        makeItem('etsy', { store: store('Etsy', '20') }),
+        makeItem('other', { store: store('Other', '20') }),
       ]);
-      expect(visibleIds().sort()).toEqual(['amazonBought', 'etsyBought']);
+      expect(visibleIds().sort()).toEqual(['amazon', 'etsy']);
     });
 
     it('DormantLegacyStoreName_NeitherMatchesNorAppearsAsOption', () => {
       // The DAL selected Amazon; the legacy second row (Etsy) never reaches
       // the UI, so filtering on it matches nothing and offers no option.
       nav.search = 'store=Etsy';
-      renderBrowser([
-        makeItem('legacy', { store: store('Amazon', '20') }),
-      ]);
+      renderBrowser([makeItem('legacy', { store: store('Amazon', '20') })]);
       expect(visibleIds()).toEqual([]);
       const stubs = screen.getAllByTestId('store-filter-stub');
       expect(stubs[0]).toHaveAttribute('data-options', 'Amazon');
-    });
-
-    it('PurchasesOnly_KeepsHasPurchases', () => {
-      nav.search = 'purchases=only';
-      renderBrowser([
-        makeItem('p', { hasPurchases: true }),
-        makeItem('q', { hasPurchases: false }),
-      ]);
-      expect(visibleIds()).toEqual(['p']);
-    });
-
-    it('PurchasesNone_KeepsNotHasPurchases', () => {
-      nav.search = 'purchases=none';
-      renderBrowser([
-        makeItem('p', { hasPurchases: true }),
-        makeItem('q', { hasPurchases: false }),
-      ]);
-      expect(visibleIds()).toEqual(['q']);
     });
 
     it('PriceRange_InclusiveExcludesNonFinitePrice', () => {
@@ -209,33 +243,23 @@ describe('ItemsBrowser', () => {
     });
 
     it('MultipleFilters_ComposeConjunctively', () => {
-      nav.search =
-        'q=gift&store=Amazon&purchases=only&price_min=10&price_max=50';
+      nav.search = 'q=gift&store=Amazon&price_min=10&price_max=50';
       renderBrowser([
         makeItem('match', {
           name: 'Gift',
           store: store('Amazon', '20'),
-          hasPurchases: true,
         }),
         makeItem('failStore', {
           name: 'Gift',
           store: store('Other', '20'),
-          hasPurchases: true,
-        }),
-        makeItem('failPurch', {
-          name: 'Gift',
-          store: store('Amazon', '20'),
-          hasPurchases: false,
         }),
         makeItem('failPrice', {
           name: 'Gift',
           store: store('Amazon', '200'),
-          hasPurchases: true,
         }),
         makeItem('failName', {
           name: 'Toy',
           store: store('Amazon', '20'),
-          hasPurchases: true,
         }),
       ]);
       expect(visibleIds()).toEqual(['match']);
@@ -257,10 +281,9 @@ describe('ItemsBrowser', () => {
     });
 
     it('ListOrder_PreservesInputOrder', () => {
-      renderBrowser(
-        [makeItem('a'), makeItem('b'), makeItem('c')],
-        { mode: 'list' }
-      );
+      renderBrowser([makeItem('a'), makeItem('b'), makeItem('c')], {
+        mode: 'list',
+      });
       expect(visibleIds()).toEqual(['a', 'b', 'c']);
     });
 
@@ -360,9 +383,8 @@ describe('ItemsBrowser', () => {
       ).toBeInTheDocument();
     });
 
-    it('ClearFilters_RemovesQStorePurchasesPricePageParams', () => {
-      nav.search =
-        'q=zzz&store=A&purchases=only&price_min=1&price_max=2&page=3';
+    it('ClearFilters_RemovesQStorePricePageParams', () => {
+      nav.search = 'q=zzz&store=A&price_min=1&price_max=2&page=3';
       renderBrowser([makeItem('a', { name: 'Gift' })]);
       fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
       expect(nav.replace).toHaveBeenCalledWith('/items');
@@ -376,31 +398,145 @@ describe('ItemsBrowser', () => {
     });
   });
 
-  describe('Spoilers', () => {
-    const spoilerFlag = () =>
-      screen.getByTestId('item-stub').getAttribute('data-show-spoilers');
-
-    it('ModeItemsPurchasesReveal_PassesShowSpoilersTrue', () => {
-      nav.search = 'purchases=reveal';
-      renderBrowser([makeItem('a')], { mode: 'items' });
-      expect(spoilerFlag()).toBe('true');
+  describe('EmptyState', () => {
+    it('NoItemsAtAll_RendersTheEmptyStateInsteadOfTheFilteredMessage', () => {
+      renderBrowser([], { emptyState: <div data-testid="empty-door" /> });
+      expect(screen.getByTestId('empty-door')).toBeInTheDocument();
+      expect(
+        screen.queryByText('No items match your filters.')
+      ).not.toBeInTheDocument();
     });
 
-    it('ModeItemsPurchasesOnly_PassesShowSpoilersTrue', () => {
-      nav.search = 'purchases=only';
-      renderBrowser([makeItem('a', { hasPurchases: true })], { mode: 'items' });
-      expect(spoilerFlag()).toBe('true');
+    it('ItemsFilteredToNone_KeepsTheFilteredMessageOverTheEmptyState', () => {
+      nav.search = 'q=zzz';
+      renderBrowser([makeItem('a', { name: 'Gift' })], {
+        emptyState: <div data-testid="empty-door" />,
+      });
+      expect(screen.queryByTestId('empty-door')).not.toBeInTheDocument();
+      expect(
+        screen.getByText('No items match your filters.')
+      ).toBeInTheDocument();
     });
 
-    it('ModeListPurchasesReveal_PassesShowSpoilersFalse', () => {
-      nav.search = 'purchases=reveal';
-      renderBrowser([makeItem('a')], { mode: 'list' });
-      expect(spoilerFlag()).toBe('false');
+    it('NoItemsAndNoEmptyState_FallsBackToTheFilteredMessage', () => {
+      renderBrowser([]);
+      expect(
+        screen.getByText('No items match your filters.')
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('SearchParamsNull', () => {
+    it('Render_ShowsTheGridInDefaultOrder', () => {
+      nav.search = null;
+      const { container } = renderBrowser([makeItem('a'), makeItem('b')]);
+      expect(container.querySelector('.item-grid')).not.toBeNull();
+      expect(visibleIds()).toEqual(['a', 'b']);
     });
 
-    it('ModeItemsNoPurchasesParam_PassesShowSpoilersFalse', () => {
-      renderBrowser([makeItem('a')], { mode: 'items' });
-      expect(spoilerFlag()).toBe('false');
+    it('ClearFilters_ReplacesWithTheBarePath', () => {
+      nav.search = null;
+      renderBrowser([]);
+      fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+      expect(nav.replace).toHaveBeenCalledWith('/items');
+    });
+  });
+
+  describe('Tier', () => {
+    const tierOf = () =>
+      screen.getByTestId('item-stub').getAttribute('data-tier');
+
+    it('ResolvedTier_ReachesEachItem', () => {
+      renderBrowser([makeItem('a')], { tier: 'claims' });
+      expect(tierOf()).toBe('claims');
+    });
+
+    it('AbsentTier_ReachesItemAsUndefined', () => {
+      renderBrowser([makeItem('a')]);
+      expect(tierOf()).toBe('undefined');
+    });
+  });
+
+  // The move rows act on the list's own order, so the ends are read off the
+  // whole list — not the page, and not what a filter left standing.
+  describe('ListEnds', () => {
+    const three = [makeItem('a'), makeItem('b'), makeItem('c')];
+
+    it('ListOrderSort_NamesFirstAndLastOfTheWholeList', () => {
+      renderBrowser(three);
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-list-ends',
+        'a:c'
+      );
+    });
+
+    it('FilterHidingTheFirstEntry_StillNamesItAsTheTop', () => {
+      nav.search = 'q=Item b';
+      renderBrowser(three);
+      expect(screen.getByTestId('item-stub')).toHaveAttribute(
+        'data-list-ends',
+        'a:c'
+      );
+    });
+
+    it('OtherSort_WithholdsTheEnds', () => {
+      nav.search = 'sort=name_desc';
+      renderBrowser(three);
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-list-ends',
+        ''
+      );
+    });
+
+    it('SingleEntry_WithholdsTheEnds', () => {
+      renderBrowser([makeItem('a')]);
+      expect(screen.getByTestId('item-stub')).toHaveAttribute(
+        'data-list-ends',
+        ''
+      );
+    });
+
+    // A card stepped to 0 stays put, so it is still in `items` — but it no
+    // longer holds an entry, and a move against it is a write that cannot land.
+    it('EntryReportedOffList_NamesTheNextSurvivorAsTheEnd', async () => {
+      const user = userEvent.setup();
+      renderBrowser(three);
+      await user.click(screen.getAllByTestId('item-off')[0]);
+      expect(screen.getAllByTestId('item-stub')[1]).toHaveAttribute(
+        'data-list-ends',
+        'b:c'
+      );
+    });
+
+    it('EntryReportedBackOnList_RestoresItAsTheEnd', async () => {
+      const user = userEvent.setup();
+      renderBrowser(three);
+      await user.click(screen.getAllByTestId('item-off')[0]);
+      await user.click(screen.getAllByTestId('item-on')[0]);
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-list-ends',
+        'a:c'
+      );
+    });
+
+    // Every successful write that left membership alone reports the presence
+    // the card already had, so the no-op has to stay a no-op.
+    it('EntryReportsThePresenceItAlreadyHad_LeavesTheEndsAlone', async () => {
+      const user = userEvent.setup();
+      renderBrowser(three);
+      await user.click(screen.getAllByTestId('item-on')[0]);
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-list-ends',
+        'a:c'
+      );
+    });
+
+    it('ItemsMode_WithholdsTheEnds', () => {
+      renderBrowser(three, { mode: 'items' });
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-list-ends',
+        ''
+      );
     });
   });
 
@@ -408,8 +544,7 @@ describe('ItemsBrowser', () => {
     it('ViewListParam_PassesListToItems', () => {
       nav.search = 'view=list';
       const { container } = renderBrowser([makeItem('a')]);
-      expect(container.querySelector('.item-list')).not.toBeNull();
-      expect(container.querySelector('.item-grid')).toBeNull();
+      expect(container.querySelector('.item-grid.item-list')).not.toBeNull();
     });
 
     it('ViewParamAbsentOrOther_PassesGridToItems', () => {
@@ -451,6 +586,18 @@ describe('ItemsBrowser', () => {
       expect(nav.replace).toHaveBeenCalledWith('/items');
     });
 
+    // Rendered outside a client navigation context, where useSearchParams has
+    // nothing to hand back.
+    it('ChangePageSizeWithoutSearchParams_ReplacesWithTheBarePath', () => {
+      nav.search = null;
+      renderBrowser(many, { mode: 'list' });
+      fireEvent.change(
+        screen.getByRole('combobox', { name: 'Items per page' }),
+        { target: { value: '48' } }
+      );
+      expect(nav.replace).toHaveBeenCalledWith('/items');
+    });
+
     it('ChangePageSizeWithOtherParam_KeepsItAndRemovesPage', () => {
       nav.search = 'sort=name_asc&page=2';
       renderBrowser(many, { mode: 'list' });
@@ -488,6 +635,135 @@ describe('ItemsBrowser', () => {
       nav.search = 'store=Amazon';
       rerender(<ItemsBrowser items={items} mode="list" />);
       expect(visibleIds()).toEqual(['amazon']);
+    });
+  });
+
+  describe('ToolbarSlot', () => {
+    function addSlot() {
+      const el = document.createElement('div');
+      el.id = HERO_TOOLBAR_SLOT_ID;
+      document.body.appendChild(el);
+      return el;
+    }
+
+    afterEach(() => {
+      document.getElementById(HERO_TOOLBAR_SLOT_ID)?.remove();
+    });
+
+    it('SlotPresent_ToolbarRendersInsideItRatherThanInline', () => {
+      const target = addSlot();
+      const { container } = renderBrowser([makeItem('a')], { mode: 'list' });
+      expect(target.querySelector('.items-toolbar')).not.toBeNull();
+      expect(container.querySelector('.items-toolbar')).toBeNull();
+    });
+
+    it('SlotAppearsAfterMount_ToolbarMovesInOnTheReadyEvent', () => {
+      const { container } = renderBrowser([makeItem('a')], { mode: 'list' });
+      expect(container.querySelector('.items-toolbar')).not.toBeNull();
+
+      const target = addSlot();
+      fireEvent(window, new Event(HERO_SLOT_READY_EVENT));
+      expect(target.querySelector('.items-toolbar')).not.toBeNull();
+      expect(container.querySelector('.items-toolbar')).toBeNull();
+    });
+  });
+
+  describe('ReorderDoor', () => {
+    // Offered under any sort, unlike the move rows: the surface it opens
+    // resets the sort as it does, so it is the way back to the list's order.
+    const firstCard = (sort: string) => {
+      nav.search = `sort=${sort}`;
+      renderInBand([makeItem('a'), makeItem('b')]);
+      return screen.getAllByTestId('item-stub')[0];
+    };
+
+    it('ListOrder_OffersTheWayIntoReorder', () => {
+      expect(firstCard('list_order')).toHaveAttribute(
+        'data-can-reorder',
+        'true'
+      );
+    });
+
+    // Unlike the move rows, which withhold themselves under any other sort.
+    it('AnotherSort_StillOffersTheWayIntoReorder', () => {
+      expect(firstCard('name_asc')).toHaveAttribute('data-can-reorder', 'true');
+    });
+
+    it('LibrarySurface_OffersNoWayIn', () => {
+      renderInBand([makeItem('a'), makeItem('b')], { mode: 'items' });
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-can-reorder',
+        'false'
+      );
+    });
+
+    it('ListTooShortToArrange_OffersNoWayIn', () => {
+      renderInBand([makeItem('a')], { arrangeable: false });
+      expect(screen.getByTestId('item-stub')).toHaveAttribute(
+        'data-can-reorder',
+        'false'
+      );
+    });
+
+    it('OutsideTheBand_OffersNoWayIn', () => {
+      renderBrowser([makeItem('a'), makeItem('b')], { mode: 'list' });
+      expect(screen.getAllByTestId('item-stub')[0]).toHaveAttribute(
+        'data-can-reorder',
+        'false'
+      );
+    });
+  });
+
+  describe('Reveal', () => {
+    const many = Array.from({ length: 30 }, (_, i) => makeItem(`i${i}`));
+    let scrollIntoView: ReturnType<typeof vi.fn<Element['scrollIntoView']>>;
+
+    beforeEach(() => {
+      nav.pathname = '/lists/l1';
+      scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+    });
+
+    it('EntryOffThePage_GoesToTheLastPageInListOrderWithFiltersCleared', () => {
+      nav.search = 'q=x&sort=price_asc&store=Acme&view=list&page=1';
+      const revealed = vi.fn();
+      renderInBand(many, { reveal: 'i29', revealed });
+      expect(nav.replace).toHaveBeenCalledWith('/lists/l1?view=list&page=2');
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      expect(revealed).not.toHaveBeenCalled();
+    });
+
+    it('EntryOffThePageOfAOnePageList_DropsThePageParam', () => {
+      nav.search = 'q=nomatch';
+      renderInBand([makeItem('a'), makeItem('b')], { reveal: 'b' });
+      expect(nav.replace).toHaveBeenCalledWith('/lists/l1');
+    });
+
+    it('EntryOnThePage_ScrollsToItsCardAndReports', () => {
+      nav.search = 'page=2';
+      const revealed = vi.fn();
+      renderInBand(many, { reveal: 'i29', revealed });
+      expect(scrollIntoView).toHaveBeenCalledOnce();
+      expect(scrollIntoView.mock.instances[0]).toBe(
+        document.getElementById('item-i29')
+      );
+      expect(revealed).toHaveBeenCalledOnce();
+      expect(nav.replace).not.toHaveBeenCalled();
+    });
+
+    it('EntryNotYetRead_Waits', () => {
+      const revealed = vi.fn();
+      renderInBand(many, { reveal: 'i99', revealed });
+      expect(nav.replace).not.toHaveBeenCalled();
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      expect(revealed).not.toHaveBeenCalled();
+    });
+
+    it('LibrarySurface_IgnoresTheReveal', () => {
+      const revealed = vi.fn();
+      renderInBand(many, { mode: 'items', reveal: 'i29', revealed });
+      expect(nav.replace).not.toHaveBeenCalled();
+      expect(revealed).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,11 +1,10 @@
 'use client';
 
-import { Button } from '@/app/ui/components/button';
-import { CheckboxField, SearchField } from '@/app/ui/components/field';
 import { PopoverTrigger } from '@/app/ui/components/popover-trigger';
 import { usePopoverDismiss } from '@/app/ui/hooks/usePopoverDismiss';
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { MdFilterList } from 'react-icons/md';
+import { StoreFilterPanel } from './StoreFilterPanel';
 
 interface StoreFilterPopoverProps {
   storeOptions: string[];
@@ -21,7 +20,6 @@ export default function StoreFilterPopover({
   onClear,
 }: StoreFilterPopoverProps) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
 
   usePopoverDismiss({
@@ -29,12 +27,6 @@ export default function StoreFilterPopover({
     onClose: () => setOpen(false),
     ref: rootRef,
   });
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return storeOptions;
-    return storeOptions.filter((name) => name.toLowerCase().includes(q));
-  }, [query, storeOptions]);
 
   const count = selectedStores.length;
 
@@ -50,50 +42,16 @@ export default function StoreFilterPopover({
         aria-haspopup="dialog"
       />
       {open && (
-        <div
-          className="store-filter-panel"
+        <StoreFilterPanel
           role="dialog"
           aria-label="Filter by store"
-        >
-          <SearchField
-            placeholder="Search stores..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onClear={() => setQuery('')}
-            autoFocus
-            aria-label="Search stores"
-          />
-          <ul className="store-filter-list">
-            {filtered.length === 0 && (
-              <li className="store-filter-empty">No matching stores</li>
-            )}
-            {filtered.map((name) => {
-              const checked = selectedStores.includes(name);
-              return (
-                <li key={name}>
-                  <CheckboxField
-                    label={name}
-                    checked={checked}
-                    onChange={() => onToggle(name)}
-                  />
-                </li>
-              );
-            })}
-          </ul>
-          <div className="store-filter-footer">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClear}
-              disabled={count === 0}
-            >
-              Clear
-            </Button>
-            <Button variant="primary" size="sm" onClick={() => setOpen(false)}>
-              Done
-            </Button>
-          </div>
-        </div>
+          storeOptions={storeOptions}
+          selectedStores={selectedStores}
+          onToggle={onToggle}
+          autoFocusSearch
+          onClear={onClear}
+          onClose={() => setOpen(false)}
+        />
       )}
     </div>
   );

@@ -1,16 +1,18 @@
-/* eslint-disable testing-library/no-node-access --
- * Modal's close affordance is a class-only `<div className="close-button">`
- * with no role, portaled to document.body.
- */
-import { render, screen } from '@testing-library/react';
+import { ROLES } from '@/lib/data/profile.roles';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getClaimPickerForItem } from '@/lib/data/user.actions';
 import { PurchaseView } from '@/lib/types';
 import PurchaseModalSlot from '../PurchaseModalSlot';
+import { makeProfile } from '@/test/helpers/profile';
 
 // user.actions is a 'use server' module whose import chain reaches the DB
 // driver; PurchaseFlowContainer only consumes the picker read.
+vi.mock('@/lib/data/purchase.actions', () => ({
+  claimSummaryForItem: vi.fn(),
+}));
+
 vi.mock('@/lib/data/user.actions', () => ({
   getClaimPickerForItem: vi.fn(),
   signInUser: vi.fn(),
@@ -19,30 +21,42 @@ vi.mock('@/lib/data/user.actions', () => ({
 const selfClaim: PurchaseView = {
   id: 'pm',
   by: 'self',
-  firstName: 'Vicky',
+  name: 'Vicky',
   claimedByViewer: true,
   purchasedAt: new Date(Date.now() - 2 * 86400000),
 };
 const attributedClaim: PurchaseView = {
   id: 'pa',
   by: 'other',
-  firstName: 'Grandma',
+  name: 'Grandma',
   claimedByViewer: true,
 };
 const othersClaim: PurchaseView = {
   id: 'po',
   by: 'other',
-  firstName: 'Frank',
+  name: 'Frank',
+  claimedByViewer: false,
+};
+// Somebody else's claim, recorded by a third party: the row the roster
+// attributes and the viewer may not touch.
+const attributedByAnother: PurchaseView = {
+  id: 'pb',
+  by: 'other',
+  name: 'Priya',
+  claimerName: 'Alice',
   claimedByViewer: false,
 };
 
 const ITEM = {
   id: 'i1',
+  list_id: 'l1',
   name: 'Fancy Mug',
   description: '',
   image_url: '',
   store: { name: 'Amazon', link: 'https://a.example', price: '35.50' },
 } as never;
+
+const VIEWER = makeProfile('viewer', 'viewer', ROLES.owner);
 
 function renderSlot(
   overrides: Partial<React.ComponentProps<typeof PurchaseModalSlot>> = {}
@@ -50,18 +64,19 @@ function renderSlot(
   const props: React.ComponentProps<typeof PurchaseModalSlot> = {
     view: 'claim',
     claims: [],
+    capacity: { quantity: 1, remaining: 1 },
     viewerIsPurchaser: false,
-    user_id: undefined,
+    actor: undefined,
     isOwner: false,
-    showSpoilers: false,
-    ownerCanClaim: false,
-    ownerClaims: [],
+    tier: 'claims',
     item: ITEM,
     onClose: vi.fn(),
+    onOpenRoster: vi.fn(),
     onSelfClaim: vi.fn(),
     onAttributedClaim: vi.fn(),
     onGuestClaim: vi.fn(),
     onRemoveClaim: vi.fn(),
+    onUpdateUnits: vi.fn(),
     ...overrides,
   };
   return { props, ...render(<PurchaseModalSlot {...props} />) };
@@ -74,6 +89,25 @@ beforeEach(() => {
 
 describe('PurchaseModalSlot', () => {
   describe('ManageView', () => {
+    // Capacity states a remainder at every tier, but below `claims` it is
+    // subtracted from a withheld count — so the readout is the caller's to
+    // gate, and its absence is what keeps a false zero off the screen.
+    const multiUnit = {
+      view: 'manage' as const,
+      claims: [{ ...selfClaim, units: 2 }],
+      capacity: { quantity: 4, remaining: 2 },
+    };
+
+    it('ClaimsTier_ManageRowSaysWhatIsAlreadyClaimed', () => {
+      renderSlot({ ...multiUnit, tier: 'claims' });
+      expect(screen.getByText('2 of 4 claimed')).toBeInTheDocument();
+    });
+
+    it('BelowClaimsTier_ManageRowSaysNothingAboutWhatIsClaimed', () => {
+      renderSlot({ ...multiUnit, tier: 'surprise' });
+      expect(screen.queryByText(/of 4 claimed/)).not.toBeInTheDocument();
+    });
+
     it('TwoViewerClaims_RendersOneRowPerClaimWithItsRemoveAction', () => {
       renderSlot({ view: 'manage', claims: [selfClaim, attributedClaim] });
       expect(screen.getByText('Vicky (you)')).toBeInTheDocument();
@@ -86,19 +120,63 @@ describe('PurchaseModalSlot', () => {
       ).toBeInTheDocument();
     });
 
-    it('MixedRemovability_ListsOthersClaimWithoutRemoveAction', () => {
+    /**
+     * The view manages the viewer's own claims: everyone else on the item is a
+     * facepile button under the list, never a row — the door to the roster.
+     * Below `claims` the payload carries no other party at all, so the button
+     * falls away on the zero rather than on a tier the view would have to read.
+     */
+    it('OtherPartysClaim_CountedUnderTheListRatherThanListed', () => {
       renderSlot({
         view: 'manage',
         claims: [selfClaim, attributedClaim, othersClaim],
       });
-      expect(screen.getAllByRole('listitem')).toHaveLength(3);
-      expect(screen.getByText('Frank')).toBeInTheDocument();
+      expect(screen.getAllByRole('listitem')).toHaveLength(2);
+      expect(screen.queryByText('Frank')).not.toBeInTheDocument();
       expect(
-        screen.queryByRole('button', { name: "Remove Frank's claim" })
-      ).not.toBeInTheDocument();
-      expect(screen.getAllByRole('button', { name: /^Remove/ })).toHaveLength(
-        2
+        screen.getByRole('button', { name: '1 other claim' })
+      ).toBeInTheDocument();
+    });
+
+    // The pile pictures the parties the button counts — the viewer's own rows
+    // are listed above it, not repeated in it.
+    it('OtherPartiesClaims_FacepileDrawsTheirLooksAndNotTheViewers', () => {
+      renderSlot({
+        view: 'manage',
+        claims: [selfClaim, attributedClaim, othersClaim, attributedByAnother],
+      });
+      const pile = within(
+        screen.getByRole('button', { name: '2 other claims' })
       );
+      expect(pile.getByText('F')).toBeInTheDocument();
+      expect(pile.getByText('P')).toBeInTheDocument();
+      expect(pile.queryByText('V')).not.toBeInTheDocument();
+      expect(pile.queryByText('G')).not.toBeInTheDocument();
+    });
+
+    it('TwoOtherPartiesClaims_CountReadsPlural', () => {
+      renderSlot({
+        view: 'manage',
+        claims: [selfClaim, othersClaim, { ...othersClaim, id: 'po2' }],
+      });
+      expect(
+        screen.getByRole('button', { name: '2 other claims' })
+      ).toBeInTheDocument();
+    });
+
+    it('OtherClaimsButtonPressed_OpensTheRoster', async () => {
+      const user = userEvent.setup();
+      const { props } = renderSlot({
+        view: 'manage',
+        claims: [selfClaim, othersClaim],
+      });
+      await user.click(screen.getByRole('button', { name: '1 other claim' }));
+      expect(props.onOpenRoster).toHaveBeenCalledOnce();
+    });
+
+    it('NoOtherPartysClaim_RendersNoRosterButton', () => {
+      renderSlot({ view: 'manage', claims: [selfClaim, attributedClaim] });
+      expect(screen.queryByText(/other claim/)).not.toBeInTheDocument();
     });
 
     it('SelfClaimWithDate_RendersRelativeDateMetaLine', () => {
@@ -124,7 +202,7 @@ describe('PurchaseModalSlot', () => {
     it('SelfFallbackNameYou_RendersPlainYouNotYouYou', () => {
       renderSlot({
         view: 'manage',
-        claims: [{ ...selfClaim, firstName: 'You', purchasedAt: undefined }],
+        claims: [{ ...selfClaim, name: 'You', purchasedAt: undefined }],
       });
       expect(screen.getByText('You')).toBeInTheDocument();
       expect(screen.queryByText('You (you)')).not.toBeInTheDocument();
@@ -135,20 +213,19 @@ describe('PurchaseModalSlot', () => {
       expect(screen.getByText('Claimed by')).toBeInTheDocument();
     });
 
-    it('RemovableAfterOthers_SortsViewerRemovableRowsFirst', () => {
-      renderSlot({ view: 'manage', claims: [othersClaim, selfClaim] });
-      const rows = screen.getAllByRole('listitem');
-      expect(rows[0]).toHaveTextContent('Vicky (you)');
-      expect(rows[1]).toHaveTextContent('Frank');
-    });
+    // A dozen claims the viewer asserted on one entry: every one is theirs to
+    // manage, so the bound is what keeps the list from rendering them at once.
+    const thirteenHeld = [
+      selfClaim,
+      ...Array.from({ length: 12 }, (_, i) => ({
+        ...attributedClaim,
+        id: `pn${i}`,
+        name: `Buyer${i}`,
+      })),
+    ];
 
     it('ThirteenClaims_RendersTenRowsAndSeeMoreWithRemainingCount', () => {
-      const many = Array.from({ length: 12 }, (_, i) => ({
-        ...othersClaim,
-        id: `pn${i}`,
-        firstName: `Buyer${i}`,
-      }));
-      renderSlot({ view: 'manage', claims: [selfClaim, ...many] });
+      renderSlot({ view: 'manage', claims: thirteenHeld });
       expect(screen.getAllByRole('listitem')).toHaveLength(10);
       expect(
         screen.getByRole('button', { name: 'See more (3)' })
@@ -157,12 +234,7 @@ describe('PurchaseModalSlot', () => {
 
     it('SeeMoreClick_RevealsNextBatch-RemovesExhaustedControl', async () => {
       const user = userEvent.setup();
-      const many = Array.from({ length: 12 }, (_, i) => ({
-        ...othersClaim,
-        id: `pn${i}`,
-        firstName: `Buyer${i}`,
-      }));
-      renderSlot({ view: 'manage', claims: [selfClaim, ...many] });
+      renderSlot({ view: 'manage', claims: thirteenHeld });
       await user.click(screen.getByRole('button', { name: 'See more (3)' }));
       expect(screen.getAllByRole('listitem')).toHaveLength(13);
       expect(
@@ -201,6 +273,24 @@ describe('PurchaseModalSlot', () => {
       ).not.toBeInTheDocument();
     });
 
+    /**
+     * The manage view lists the viewer's own claims, and removing one compares
+     * the self-profile with no floor — so a `manager` keeps it operable. The
+     * owner floor governs master unclaim, which is the owner's spoiler list in
+     * `PurchaseFlowContainer`, not this one.
+     */
+    it('ManagerActor_KeepsTheViewersOwnRemovalOperable', () => {
+      renderSlot({
+        view: 'manage',
+        actor: makeProfile('viewer', 'viewer', ROLES.manager),
+        claims: [selfClaim],
+      });
+
+      expect(
+        screen.getByRole('button', { name: 'Remove your claim' })
+      ).toBeEnabled();
+    });
+
     it('ManageView_StoreRowStillRendersLiveStoreLink', () => {
       renderSlot({ view: 'manage', claims: [selfClaim] });
       const link = screen.getByRole('link', { name: /Amazon/ });
@@ -217,10 +307,184 @@ describe('PurchaseModalSlot', () => {
     });
   });
 
+  /**
+   * The opened banner: every claim on the entry, whoever holds it. The tier is
+   * the consent, so nothing is asked here — the only thing the sheet decides is
+   * which rows the viewer may act on.
+   */
+  describe('RosterView', () => {
+    // Six wanted with five spoken for, against three listed rows: the count
+    // line can only be the entry's own sum (ADR-0016), never a sum over these.
+    const roster = {
+      view: 'roster' as const,
+      claims: [selfClaim, attributedClaim, othersClaim],
+      capacity: { quantity: 6, remaining: 1 },
+      actor: VIEWER,
+    };
+
+    // The sheet's own count line, told apart by its class from the identical
+    // status every row's units control repeats.
+    const rosterCount = () =>
+      screen.queryByText(/claimed$/, { selector: '.claim-roster-count' })
+        ?.textContent;
+
+    it('AnyViewer_ListsEveryClaimWhoeverHoldsIt', () => {
+      renderSlot(roster);
+      expect(screen.getAllByRole('listitem')).toHaveLength(3);
+      expect(screen.getByText('Vicky (you)')).toBeInTheDocument();
+      expect(screen.getByText('Grandma')).toBeInTheDocument();
+      expect(screen.getByText('Frank')).toBeInTheDocument();
+    });
+
+    it('ClaimRecordedByAnother_RowNamesWhoAddedIt', () => {
+      renderSlot({
+        ...roster,
+        claims: [{ ...othersClaim, claimerName: 'Alice' }],
+      });
+      expect(screen.getByText('Added by Alice')).toBeInTheDocument();
+    });
+
+    it('ClaimsTier_CountLineIsTheEntrysSumNotTheRowsListed', () => {
+      renderSlot(roster);
+      expect(rosterCount()).toBe('5 of 6 claimed');
+    });
+
+    // A deep link can reach the roster from under the tier that discloses the
+    // count, and the entry's remainder there is subtracted from a number the
+    // payload never carried.
+    it('BelowClaimsTier_StatesNoCount', () => {
+      renderSlot({ ...roster, tier: 'surprise' });
+      expect(rosterCount()).toBeUndefined();
+    });
+
+    it('OffAList_StatesNoCount', () => {
+      renderSlot({ ...roster, capacity: null });
+      expect(rosterCount()).toBeUndefined();
+    });
+
+    it('Owner_EveryRowCarriesRemoveAndUnits', () => {
+      renderSlot({ ...roster, isOwner: true });
+      expect(
+        screen.getAllByRole('button', { name: /^Remove/ })
+      ).toHaveLength(3);
+      expect(screen.getAllByRole('group', { name: 'Units' })).toHaveLength(3);
+    });
+
+    /**
+     * Master unclaim keeps its admin floor: a manager acting as the owning
+     * profile reads the roster whole and changes none of it. The units control
+     * goes with the removal — moving a claim to zero IS removing it.
+     */
+    it('ManagerActingAsTheOwner_RowsAreListedWithRemovalDisabled', () => {
+      renderSlot({
+        ...roster,
+        isOwner: true,
+        actor: makeProfile('owner', 'owner', ROLES.manager),
+      });
+      for (const remove of screen.getAllByRole('button', { name: /^Remove/ })) {
+        expect(remove).toBeDisabled();
+      }
+      expect(screen.queryByRole('group', { name: 'Units' })).toBeNull();
+    });
+
+    it('Holder_ActsOnTheirOwnAndAssertedRowsAndReadsTheRest', () => {
+      renderSlot(roster);
+      expect(
+        screen.getByRole('button', { name: 'Remove your claim' })
+      ).toBeEnabled();
+      expect(
+        screen.getByRole('button', { name: "Remove Grandma's claim" })
+      ).toBeEnabled();
+      expect(
+        screen.queryByRole('button', { name: "Remove Frank's claim" })
+      ).toBeNull();
+    });
+
+    it('Bystander_ReadsEveryRowAndActsOnNone', () => {
+      renderSlot({ ...roster, claims: [othersClaim, attributedByAnother] });
+      expect(screen.getAllByRole('listitem')).toHaveLength(2);
+      expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Units' })).toBeNull();
+    });
+
+    /**
+     * How the ask is split is the roster's to state, not a side effect of
+     * being able to change it: a row the viewer cannot edit says what it
+     * covers in words where the control would sit.
+     */
+    it('RowsTheViewerCannotEdit_StateTheUnitsTheyCover', () => {
+      renderSlot({
+        ...roster,
+        claims: [
+          { ...othersClaim, units: 3 },
+          { ...attributedByAnother, units: 1 },
+        ],
+      });
+      expect(screen.getByText('3 units')).toBeInTheDocument();
+      expect(screen.getByText('1 unit')).toBeInTheDocument();
+    });
+
+    it('SingleUnitEntry_StatesNoUnitsThereIsNoSplitToRead', () => {
+      renderSlot({
+        ...roster,
+        capacity: { quantity: 1, remaining: 0 },
+        claims: [othersClaim],
+      });
+      expect(screen.queryByText(/unit/)).toBeNull();
+    });
+
+    // The manager reads the split they may not change: the control takes the
+    // admin floor because moving units to zero IS master unclaim.
+    it('ManagerActingAsTheOwner_StillReadsEveryRowsUnits', () => {
+      renderSlot({
+        ...roster,
+        isOwner: true,
+        actor: makeProfile('owner', 'owner', ROLES.manager),
+        claims: [{ ...othersClaim, units: 2 }],
+      });
+      expect(screen.getByText('2 units')).toBeInTheDocument();
+    });
+
+    // A signed-out guest's claim is overlaid as their own from the cookie
+    // before any of this renders, so it reads and behaves like any holder's.
+    it('GuestHolder_OwnRowIsLabelledYouAndCarriesRemoval', () => {
+      renderSlot({
+        ...roster,
+        actor: undefined,
+        claims: [{ ...selfClaim, name: 'Sam Guest' }, othersClaim],
+      });
+      expect(screen.getByText('Sam Guest (you)')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Remove your claim' })
+      ).toBeEnabled();
+      expect(
+        screen.queryByRole('button', { name: "Remove Frank's claim" })
+      ).toBeNull();
+    });
+
+    it('RemoveActivation_FiresOnRemoveClaimWithThatRowOnly', async () => {
+      const user = userEvent.setup();
+      const { props } = renderSlot({ ...roster, isOwner: true });
+      await user.click(
+        screen.getByRole('button', { name: "Remove Frank's claim" })
+      );
+      expect(props.onRemoveClaim).toHaveBeenCalledTimes(1);
+      expect(props.onRemoveClaim).toHaveBeenCalledWith(othersClaim);
+    });
+
+    it('RosterView_HeaderShowsItemNameAndPrice', () => {
+      renderSlot(roster);
+      expect(
+        screen.getByRole('heading', { name: 'Fancy Mug' })
+      ).toBeInTheDocument();
+      expect(screen.getByText('$35.50')).toBeInTheDocument();
+    });
+  });
+
   describe('ClaimView', () => {
     it('ViewerIsPurchaser_HidesSelfClaimCta-KeepsDisclosureCollapsed', async () => {
       renderSlot({
-        user_id: 'viewer',
+        actor: VIEWER,
         claims: [selfClaim],
         viewerIsPurchaser: true,
       });
@@ -234,7 +498,7 @@ describe('PurchaseModalSlot', () => {
 
     it('ViewerClaimerOnly_KeepsSelfClaimCta', async () => {
       renderSlot({
-        user_id: 'viewer',
+        actor: VIEWER,
         claims: [attributedClaim],
         viewerIsPurchaser: false,
       });
@@ -253,7 +517,7 @@ describe('PurchaseModalSlot', () => {
   });
 
   it('NoClaimAuthenticated_RendersClaimFlowWithItemHeader', async () => {
-    renderSlot({ user_id: 'viewer' });
+    renderSlot({ actor: VIEWER });
     expect(
       screen.getByRole('heading', { name: 'Fancy Mug' })
     ).toBeInTheDocument();
@@ -265,11 +529,7 @@ describe('PurchaseModalSlot', () => {
   it('CloseAffordance_FiresOnClose', async () => {
     const user = userEvent.setup();
     const { props } = renderSlot({ view: 'manage', claims: [selfClaim] });
-    // Modal portals to document.body, so the close affordance is outside the
-    // render container.
-    await user.click(
-      document.body.querySelector('.close-button') as HTMLElement
-    );
+    await user.click(screen.getByRole('button', { name: 'Close' }));
     expect(props.onClose).toHaveBeenCalledTimes(1);
   });
 });

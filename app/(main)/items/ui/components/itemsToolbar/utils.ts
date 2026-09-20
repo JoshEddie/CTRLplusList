@@ -1,11 +1,6 @@
-import { SortKey } from '@/lib/types';
-import {
-  PURCHASES_LABELS_ITEMS,
-  PURCHASES_LABELS_LIST,
-  SHOW_LABELS,
-  SORT_KEYS_BY_MODE,
-  SORT_LABELS,
-} from './toolbarConstants';
+import { ItemDisplay, SortKey } from '@/lib/types';
+import { displayPrice } from '../itemFilters';
+import { SORT_KEYS_BY_MODE, SORT_LABELS } from './toolbarConstants';
 import { BrowserMode, ChipDescriptor, FilterState, ParamPatch } from './types';
 
 export function buildQueryUrl(
@@ -66,8 +61,6 @@ export function priceChipLabel(priceMin: string, priceMax: string): string {
 export function countActiveFilters(s: FilterState): number {
   return (
     (s.sort !== s.defaultSort ? 1 : 0) +
-    (s.mode !== 'choose' && s.purchases !== 'hide' ? 1 : 0) +
-    (s.mode === 'choose' && s.show !== 'all' ? 1 : 0) +
     s.selectedStores.length +
     (s.priceMin || s.priceMax ? 1 : 0)
   );
@@ -89,28 +82,6 @@ export function buildChips(
       onClear: () => handlers.updateParams({ sort: null, page: null }),
     });
   }
-  if (s.mode !== 'choose' && s.purchases !== 'hide') {
-    const labelMap =
-      s.mode === 'items' ? PURCHASES_LABELS_ITEMS : PURCHASES_LABELS_LIST;
-    const label = labelMap[s.purchases];
-    if (label) {
-      chips.push({
-        key: 'purchases',
-        label,
-        onClear: () => handlers.updateParams({ purchases: null, page: null }),
-      });
-    }
-  }
-  if (s.mode === 'choose' && s.show !== 'all') {
-    const label = SHOW_LABELS[s.show];
-    if (label) {
-      chips.push({
-        key: 'show',
-        label,
-        onClear: () => handlers.updateParams({ show: null, page: null }),
-      });
-    }
-  }
   for (const store of s.selectedStores) {
     chips.push({
       key: `store:${store}`,
@@ -126,4 +97,16 @@ export function buildChips(
     });
   }
   return chips;
+}
+
+export function storeOptionsOf(items: ItemDisplay[]): string[] {
+  const names = new Set<string>();
+  for (const item of items) {
+    if (item.store?.name) names.add(item.store.name);
+  }
+  return Array.from(names).sort((a, b) => a.localeCompare(b));
+}
+
+export function hasAnyPrice(items: ItemDisplay[]): boolean {
+  return items.some((item) => Number.isFinite(displayPrice(item)));
 }

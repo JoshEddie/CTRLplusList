@@ -1,25 +1,21 @@
 import Header from '@/app/ui/components/Header';
-import { auth } from '@/lib/auth';
 import { getItemsByPurchased } from '@/lib/data/purchase';
-import { getUserIdByEmail } from '@/lib/data/user';
+import { authedIdentity } from '@/lib/data/user.session';
 import { redirect } from 'next/navigation';
 import Items from '../items/ui/components/Items';
 
 export default async function Purchased() {
-  const session = await auth();
-  if (!session?.user?.email) {
+  const identity = await authedIdentity();
+  if (!identity) {
     redirect('/');
   }
 
-  const user = await getUserIdByEmail(session.user.email);
-  if (!user) {
-    redirect('/');
-  }
-
-  const items = await getItemsByPurchased(user.id);
+  const items = await getItemsByPurchased(identity.selfProfile.id);
   return (
     <main className="container container--items-library">
-      <Header title="Purchased" />
+      <div className="pinned-page-chrome">
+        <Header title="Purchased" />
+      </div>
       <Items items={items} />
     </main>
   );

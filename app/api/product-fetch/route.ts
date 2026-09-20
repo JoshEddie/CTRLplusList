@@ -1,13 +1,10 @@
-import { db } from '@/db';
-import { users } from '@/db/schema';
-import { auth } from '@/lib/auth';
+import { authedUserId } from '@/lib/data/user.session';
 import { fetchProduct } from '@/lib/product-fetch';
 import {
   RATE_LIMITED_SCENARIO,
   mockScenarioOf,
 } from '@/lib/product-fetch/mock';
 import { isPrivateHostname } from '@/lib/product-fetch/utils';
-import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 // Vercel Hobby's hard cap. The seam's own abort budget (FETCH_TIMEOUT_MS)
@@ -54,16 +51,8 @@ function validateUrl(url: unknown): URL | null {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.email) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const sessionUser = await db.query.users.findFirst({
-    where: eq(users.email, session.user.email),
-    columns: { id: true },
-  });
-  if (!sessionUser) {
+  const userId = await authedUserId();
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -87,7 +76,7 @@ export async function POST(request: Request) {
   if (mockScenario === RATE_LIMITED_SCENARIO) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  if (mockScenario === null && !checkRateLimit(sessionUser.id)) {
+  if (mockScenario === null && !checkRateLimit(userId)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 

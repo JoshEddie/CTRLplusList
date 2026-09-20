@@ -29,6 +29,7 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
       label,
       description,
       error,
+      invalid,
       required,
       disabled,
       icon,
@@ -46,6 +47,7 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
         label={label}
         description={description}
         error={error}
+        invalid={invalid}
         required={required}
         disabled={disabled}
         icon={icon}

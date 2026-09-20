@@ -28,6 +28,7 @@ export const DatalistField = forwardRef<HTMLInputElement, DatalistFieldProps>(
       label,
       description,
       error,
+      invalid,
       required,
       disabled,
       icon,
@@ -45,6 +46,7 @@ export const DatalistField = forwardRef<HTMLInputElement, DatalistFieldProps>(
           label={label}
           description={description}
           error={error}
+        invalid={invalid}
           required={required}
           disabled={disabled}
           icon={icon}
