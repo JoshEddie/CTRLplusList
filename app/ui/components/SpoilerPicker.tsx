@@ -30,8 +30,6 @@ export default function SpoilerPicker({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const applyTier = useApplySpoilerTier(tier, baseline);
 
-  // The menu closes on any pick, including re-picking the tier already set,
-  // which writes nothing.
   const apply = (next: SpoilerTier) => {
     setOpen(false);
     applyTier(next);

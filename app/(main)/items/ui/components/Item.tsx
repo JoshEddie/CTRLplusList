@@ -1,7 +1,7 @@
 'use client';
 
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
-import { ProfileMembershipView, ItemDisplay, SpoilerTier } from '@/lib/types';
+import { ItemDisplay, ProfileMembershipView, SpoilerTier } from '@/lib/types';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import '../styles/item.css';
@@ -75,10 +75,6 @@ export default function Item({
   );
   const ownsEntry = isOwner && !!item.list_id && !preview;
 
-  // `scroll: false` on both: the sheet is a parameter on the page already
-  // under the reader, and Next scrolls a navigation to the top of the page
-  // unless told not to. Left on, opening the sheet returns the document to
-  // the top, which the hero reads as a scroll to the pin and springs open on.
   const handleModalOpen = (view?: 'claim' | 'roster') => {
     const params = new URLSearchParams(searchParams?.toString() || '');
     params.set('purchaseItem', item.id);
