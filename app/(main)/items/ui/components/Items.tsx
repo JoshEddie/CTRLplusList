@@ -31,9 +31,11 @@ export default function Items({
   onReorderAll,
   claimless,
 }: ItemsProps) {
+  // Every surface is the grid; the list view is a modifier that turns the
+  // grid into rows once the viewport can hold one (item.css, LIST VIEW).
   return (
     <div className="item-grid-container">
-      <div className={view === 'list' ? 'item-list' : 'item-grid'}>
+      <div className={view === 'list' ? 'item-grid item-list' : 'item-grid'}>
         {items.map((item) => {
           return (
             <Item

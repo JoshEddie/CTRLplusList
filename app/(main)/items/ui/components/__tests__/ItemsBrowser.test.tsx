@@ -539,8 +539,7 @@ describe('ItemsBrowser', () => {
     it('ViewListParam_PassesListToItems', () => {
       nav.search = 'view=list';
       const { container } = renderBrowser([makeItem('a')]);
-      expect(container.querySelector('.item-list')).not.toBeNull();
-      expect(container.querySelector('.item-grid')).toBeNull();
+      expect(container.querySelector('.item-grid.item-list')).not.toBeNull();
     });
 
     it('ViewParamAbsentOrOther_PassesGridToItems', () => {

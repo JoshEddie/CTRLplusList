@@ -375,8 +375,7 @@
 }
 
 /* Medium 600–900px: the filter controls take a line of their own beneath
-   search and split it evenly. Ordered last so the view toggle, which follows
-   them in the DOM, stays up on the first line. */
+   search and split it evenly. */
 @media (min-width: 600px) and (max-width: 900px) {
   .items-toolbar-filters-group {
     order: 1;
@@ -389,14 +388,20 @@
   }
 }
 
+/* The list row needs 900px, so below that the toggle offers nothing: the
+   list surface is the grid there (LIST VIEW, below). The primitive stays
+   mounted so a `?view=` preference survives a resize back up. */
+@media (max-width: 899px) {
+  .items-toolbar-cell--view {
+    display: none;
+  }
+}
+
 /* Mobile <600px: single-row toolbar [search][filters].
    The MdTune icon is universally read as "filters" — at this breakpoint
    the trigger shrinks to icon-only (label visually hidden, width: auto)
    so the search field gets nearly the full row width without needing
-   any focus-expand interaction. Grid view-toggle is hidden at this
-   breakpoint (item cards always render as the single-column list
-   layout — see the item-grid → list-behavior stanza in the mobile
-   block further down). The four filter controls are relocated into
+   any focus-expand interaction. The four filter controls are relocated into
    a bottom sheet that the icon trigger opens. Active non-default
    filters render as chips in a sub-row beneath the toolbar. */
 @media (max-width: 599px) {
@@ -418,13 +423,6 @@
      only shrink to fit beside the two icons rather than wrap below them. */
   .items-toolbar-cell--search {
     flex-basis: 0;
-  }
-
-  /* Hide the SegmentedControl-bearing view-toggle cell on mobile. The
-     primitive is still mounted (so desktop's `?view=` URL preference
-     survives a viewport resize back up), just visually hidden here. */
-  .items-toolbar-cell--view {
-    display: none;
   }
 
   /* Show the Filters PopoverTrigger on mobile. Visual treatment is
@@ -748,344 +746,130 @@
 /* The grid/list view toggle is the SegmentedControl primitive
    (tone=light); container styling lives in segmented-control.css. */
 
-/* ── LIST VIEW (single-column row layout) ──
-   Reuses the same Item.tsx markup; CSS reshapes the card into a horizontal row. */
-.item-list {
-  display: flex;
-  flex-direction: column;
-}
+/* ── LIST VIEW ── one row per item, from 900px up. The list container is
+   also `.item-grid`, so below 900 the list surface is the grid — the vertical
+   card, then the horizontal card — and neither needs a second copy here.
+   Columns: thumb | name over price | claim control | actions | kebab. The
+   description takes a full-width row of its own beneath the line, rendered in
+   full, so the cells never squeeze it. The owner's claim control is the fused
+   stepper (STEPPING BANNER, below); the separate stepper shows only where the
+   banner is withheld. */
+@media (min-width: 900px) {
+  .item-grid.item-list {
+    --card-horizontal: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
 
-/* Row-view outer grid (≥600px):
-   col1: image (52px, spans content rows 1-2)
-   col2: name (row1) + price line + leader-dots (row2)
-   col3: owner-side claim pill when the resolved level reveals it
-         (spans rows 1-2; col 3 only)
-   col4: ItemActions block (spans rows 1-2; contents owned by item-actions)
-   col5: owner-actions kebab (final column, owner only)
-   row3: description (spans cols 1/-1, full-width footer line)
-   row4: item-entry-line if present (spans cols 1/-1) */
-.item-list .item-container {
-  display: grid;
-  grid-template-columns: 52px 1fr auto auto auto;
-  grid-template-rows: auto auto;
-  column-gap: 8px;
-  row-gap: 2px;
-  align-items: center;
-  padding: 11px 14px;
-  border: none;
-  border-bottom: 1px solid var(--card-border-color);
-  border-radius: 0;
-  background-color: transparent;
-}
+  .item-list .item,
+  .item-list .item-info,
+  .item-list .item-name-description {
+    display: contents;
+  }
 
-.item-list .item-container:hover {
-  background-color: var(--card-hover-background-color);
-  border-color: var(--card-border-color);
-  box-shadow: none;
-  transform: none;
-}
-
-.item-list .item-container:last-child {
-  border-bottom: none;
-}
-
-.item-list .item-container.purchased {
-  background-color: var(--success-bg);
-  opacity: 1;
-}
-
-/* Flatten .item, .item-info, AND .item-name-description into the outer
-   grid so all leaf cells (name, description, price line, item-actions,
-   owner-actions) sit in the same coordinate space.
-   This lets the description take its own full-width row underneath the
-   name/price/pill content. */
-.item-list .item,
-.item-list .item-info,
-.item-list .item-name-description {
-  display: contents;
-}
-
-.item-list .item-image-container {
-  width: 52px;
-  height: 52px;
-  aspect-ratio: 1 / 1;
-  border-radius: 8px;
-  overflow: hidden;
-  grid-column: 1;
-  grid-row: 1 / 3;
-  border-right: none;
-}
-
-.item-list .item-name-description .itemName {
-  grid-column: 2;
-  grid-row: 1;
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-/* Description occupies its own full-width row beneath the
-   image/name/price/pill area. Image spans rows 1-2 only, so row 3 is
-   wide-open for the description text. Rendered in full (no clamp) — the
-   100-char cap keeps it within the ~2-line budget (item-decision-deck). */
-.item-list .item-name-description .itemDescription {
-  grid-column: 1 / -1;
-  grid-row: 3;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--muted-text-color);
-  white-space: normal;
-  padding-top: 4px;
-  margin: 0;
-  min-width: 0;
-}
-
-/* Price + leader-dots row (D3). The ::after pseudo grows to fill the
-   horizontal space between the price text and the tall pill column,
-   drawing a dotted leader. Pseudo-elements are not in the
-   accessibility tree, so no aria-hidden needed. */
-.item-list .item-price-row {
-  grid-column: 2;
-  grid-row: 2;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 0;
-  min-width: 0;
-}
-
-.item-list .item-price-row::after {
-  content: '';
-  flex: 1;
-  /* 2px dotted in muted-text-color so the leader actually reads as a
-     dotted line across the row. The earlier 1px in --card-border-color
-     was nearly invisible at typical viewing distance. */
-  border-bottom: 2px dotted var(--muted-text-color);
-  opacity: 0.5;
-}
-
-/* Leader dots are owner-only: they connect the price to the owner's tall
-   buy-pill. Non-owner rows carry the inert store-metadata text on the price row instead — no pill to lead to. */
-.item-list .item-container:not(.owner) .item-price-row::after {
-  display: none;
-}
-
-.item-list .item-price {
-  font-size: 30px;
-  line-height: 1;
-}
-
-/* ItemActions block spans both content rows in col 4, with the whole action
-   set on ONE line: the card grid's stacked full-width rows would make a row's
-   height depend on which actions the item happens to offer (View alone,
-   View + Add, Manage + View, Buy + View + Add), which is what breaks the
-   uniform row rhythm. Card surfaces keep the stack — there the full-width
-   button IS the design. The buttons stay at design-system dimensions —
-   page-scoped CSS handles placement, not dimensions/typography
-   (button-system contract). */
-.item-list .item-actions {
-  grid-column: 4;
-  grid-row: 1 / 3;
-  align-self: center;
-  display: flex;
-  width: auto;
-  min-width: 165px;
-}
-
-/* The card grid gives every action `width: 100%`; as flex items that
-   over-subscribes the line, so each one shrinks below its label and the
-   text wraps, growing the button past its design height. On the row line
-   they size to their own content and the name column yields instead. */
-.item-list .item-actions > * {
-  width: auto;
-  flex: none;
-}
-
-/* View item is the subordinate action, so it leads from the left in every
-   row-view set — matching the two-up pair's reading order. */
-.item-list .item-actions > .item-actions-view {
-  order: -1;
-}
-
-/* Owner-actions kebab keeps its own final column on the row. Stay the
-   popover's positioning ancestor (relative, not static) so the menu opens
-   under the kebab, not under the whole card. */
-.item-list .item-owner-actions-mobile {
-  grid-column: 5;
-  grid-row: 1 / 3;
-  align-self: center;
-  position: relative;
-  top: auto;
-  right: auto;
-}
-
-/* Non-owner claim banners are footers for grid view only; in row view
-   their information lives on the row itself (wide "Fully claimed" pill,
-   Manage your claim). The owner-spoiler banner stays — it
-   carries the per-claim master-unclaim affordances — as a col-3 pill so
-   the owner-actions kebab (col 4) remains visible. */
-.item-list .purchased-banner {
-  display: none;
-}
-
-.item-list .purchased-banner--spoiler {
-  grid-column: 3;
-  grid-row: 1 / 3;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border: 1.5px solid var(--success-border);
-  border-radius: 10px;
-  background: var(--success-bg);
-  color: var(--success-text);
-  font-weight: 600;
-  font-size: 13px;
-}
-
-/* Where the card is reshaped into a grid the stepper is a row inside the
-   card's padding rather than its bleeding edge, so it takes the primitive's
-   own chrome back. */
-.item-list .item-entry-stepper {
-  grid-column: 1 / -1;
-  grid-row: 5;
-}
-
-.item-list .item-entry-stepper .stepper {
-  border: 1px solid var(--field-border-color);
-  border-radius: var(--field-radius);
-}
-
-.item-list .item-entry-line {
-  grid-column: 1 / -1;
-  grid-row: 4;
-  margin-top: 0;
-}
-
-/* M1 (<=900px) — horizontal-card layout for the ROW view
-   (.item-list). Grid view is excluded: its cards are
-   ~248px wide at any viewport, so it keeps the desktop photo card down to
-   600px and takes this treatment only below 600 (block below).
-
-   The earlier attempt to compress the 5-column desktop grid horizontally
-   produced unreadable cramming at 380px (name column squeezed to ~80px,
-   2-char name truncation, price clipping). The same cramming reaches all
-   the way up to ~735px: at min-content the owner row spends 34 (drag
-   handle) + 28 (padding) + 32 (gaps) + 52 (image) + ~108 (spoiler pill)
-   + ~203 (two-button action line) + 44 (kebab) before the name gets a
-   pixel, so the boundary sits at 900 (with the toolbar's), not 600.
-
-   The horizontal-card pattern stacks vertically instead: image upper-left
-   spans rows 1-2; title on row 1 beside the kebab, price on row 2 (no
-   leader) spanning to the card edge; description full-width row 3;
-   spoiler banner row 4; action row 5. Every one of those five gets its
-   own row — the earlier four-row version placed the actions and the
-   spoiler banner in the same cell, and they overlapped.
-
-   Per user direction "if we're breaking up the row, lean into the card
-   feel" — each row gets a full border, rounded corners, and margin
-   separation instead of the 1px row-divider. */
-@media (max-width: 900px) {
   .item-list .item-container {
     display: grid;
-    grid-template-columns: 64px 1fr auto;
-    grid-template-rows: repeat(5, auto);
-    column-gap: 12px;
-    row-gap: 6px;
-    padding: 14px;
-    background: var(--light-color);
-    border: 1px solid var(--card-border-color);
-    border-radius: 12px;
-    margin-bottom: 10px;
-  }
-
-  .edit-mode-row .item-container {
+    grid-template-columns: 52px minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto auto auto;
+    column-gap: 14px;
+    align-items: center;
+    height: auto;
+    padding: 10px 12px;
     border: none;
+    border-bottom: 1px solid var(--card-border-color);
+    border-radius: 0;
   }
 
-  /* Row hover/divider treatment doesn't apply when rows are cards. */
   .item-list .item-container:hover {
-    background: var(--light-color);
-    border-color: var(--card-border-hover-color);
+    background-color: var(--card-hover-background-color);
+    box-shadow: none;
   }
 
   .item-list .item-container:last-child {
-    margin-bottom: 0;
+    border-bottom: none;
   }
 
-  /* Image upper-left, spans top two rows (title + price). */
   .item-list .item-image-container {
-    width: 64px;
-    height: 64px;
-    grid-column: 1;
-    grid-row: 1 / 3;
+    grid-area: 1 / 1 / 3 / 2;
+    width: 52px;
+    height: 52px;
+    aspect-ratio: 1;
+    border-radius: 8px;
   }
 
-  /* Title row 1 beside the kebab, price row 2 spanning to the card edge
-     (col 3 is free below row 1). */
-  .item-list .item-name-description .itemName {
-    grid-column: 2;
-    grid-row: 1;
+  .item-list .itemName {
+    grid-area: 1 / 2;
+    min-width: 0;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .item-list .item-price-row {
-    grid-column: 2 / -1;
-    grid-row: 2;
-    align-self: center;
+    grid-area: 2 / 2;
+    margin: 2px 0;
   }
 
-  /* No leader at mobile — there's no horizontal room. */
-  .item-list .item-price-row::after {
-    display: none;
+  .item-list .item-price {
+    font-size: 15px;
   }
 
-  /* Description full-width on row 3 (below image+title+price stack),
-     rendered in full — no clamp (item-decision-deck). */
-  .item-list .item-name-description .itemDescription {
-    grid-column: 1 / -1;
-    grid-row: 3;
-    padding-top: 4px;
+  .item-list .itemDescription {
+    grid-area: 3 / 1 / 4 / -1;
+    padding-top: 6px;
+    line-height: 1.4;
   }
 
-  /* Action row (row 5) — the full card width, full labels, big tap
-     targets, for owner and non-owner alike. Sharing a row with the
-     kebab or the spoiler pill is what made them collide. */
+  /* The card's footer as a chip in the row: same navy, same parts, its own
+     corners. Wins the radius back from the stepper-follows rule above. */
+  .item-list .purchased-banner {
+    grid-area: 1 / 3 / 3 / 4;
+    width: auto;
+    min-height: var(--WCAG-input-size);
+    padding: 0 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .item-list .item-entry-stepper {
+    grid-area: 1 / 3 / 3 / 4;
+  }
+
+  .item-list .item-entry-stepper .stepper {
+    border: 1px solid var(--field-border-color);
+    border-radius: var(--field-radius);
+  }
+
+  .item-list .item-entry-stepper .stepper_input {
+    width: 44px;
+  }
+
+  /* The whole action set on one line, sized to its labels; the name column
+     yields instead. View item is the subordinate action, so it leads. */
   .item-list .item-actions {
-    /* Back to the stacked card grid — the row-view single line above only
-       applies above this breakpoint, and these are cards. */
-    display: grid;
-    grid-column: 1 / -1;
-    grid-row: 5;
-    align-self: center;
-    justify-self: stretch;
-    min-width: 0;
+    grid-area: 1 / 4 / 3 / 5;
+    display: flex;
+    width: auto;
+    gap: 8px;
   }
 
-  /* Kebab top-right, on the title row — the only row with a spare column.
-     It is the card's chrome, not one of its actions. */
+  .item-list .item-actions > * {
+    width: auto;
+    flex: none;
+  }
+
+  .item-list .item-actions > .item-actions-view {
+    order: -1;
+  }
+
   .item-list .item-owner-actions-mobile {
-    grid-column: 3;
-    grid-row: 1;
-    align-self: start;
-    justify-self: end;
-  }
-
-  /* Fully-claimed pill rides inside the ItemActions block; only its
-     height compacts at mobile. */
-  .item-list .claimed-state {
-    min-height: 36px;
-  }
-
-  /* Spoiler banner gets its own full-width row above the actions. */
-  .item-list .purchased-banner--spoiler {
-    grid-column: 1 / -1;
-    grid-row: 4;
-    min-height: 36px;
-    font-size: 12px;
-    padding: 6px 10px;
+    grid-area: 1 / 5 / 3 / 6;
+    position: relative;
+    top: auto;
+    right: auto;
   }
 
   .item-list .item-entry-line {
@@ -1099,6 +883,7 @@
    outer radius is the card's minus its 1px border. */
 @media (max-width: 524px) {
   .item-grid {
+    --card-horizontal: 1;
     display: flex;
     flex-direction: column;
   }
@@ -1150,10 +935,6 @@
     margin-right: 14px;
   }
 
-  .item-grid .item-price-row::after {
-    display: none;
-  }
-
   .item-grid .item-name-description .itemDescription {
     grid-column: 2 / -1;
     grid-row: 3;
@@ -1199,74 +980,12 @@
     border-radius: 0;
   }
 
-  /* The stepping banner is the stepper here: one row, the steps at its ends,
-     the quantity boxed as the cell they move. */
-  .item-grid .purchased-banner--stepping {
-    min-height: var(--field-min-height);
-  }
-
-  .item-grid .purchased-banner--stepping + .item-entry-stepper {
-    display: none;
-  }
-
-  .item-grid .purchased-banner-readout {
-    padding: 0 12px;
-    border-inline: 1px solid color-mix(in srgb, currentColor 25%, transparent);
-  }
-
-  .item-grid .purchased-banner-readout .purchased-banner-text {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  .item-grid .purchased-banner--stepping .purchased-banner-qty {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 28px;
-    height: 24px;
-    padding: 0 7px;
-    border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
-    border-radius: 6px;
-    background: color-mix(in srgb, currentColor 12%, transparent);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .item-grid .purchased-banner-step {
-    display: block;
-    min-width: var(--WCAG-input-size);
-    border: none;
-    background: none;
-    color: inherit;
-    font-family: inherit;
-    font-size: 22px;
-    font-weight: 500;
-    cursor: pointer;
-  }
-
-  .item-grid .purchased-banner-step:disabled {
-    color: color-mix(in srgb, currentColor 35%, transparent);
-    cursor: default;
-  }
-
-  .item-grid .purchased-banner-step:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: -2px;
-  }
-
   .item-grid .claimed-state {
     min-height: 36px;
   }
 
   .item-grid .item-entry-line {
     display: none;
-  }
-
-  .item-list .item-entry-stepper {
-    grid-column: 1 / -1;
-    grid-row: 6;
   }
 
   /* The row gap would open the banner's seam, which the stepper sits on. */
@@ -1279,12 +998,6 @@
     border: none;
     border-top: 1.5px solid var(--card-border-color);
     border-radius: 0 0 11px 11px;
-  }
-
-  @media (hover: hover) {
-    .item-grid .purchased-banner-step:hover:not(:disabled) {
-      background: var(--primary-color);
-    }
   }
 }
 
@@ -1337,11 +1050,14 @@
 }
 
 /* ── STEPPING BANNER ── the owner's banner carrying the membership control:
-   step · readout · step. Only the horizontal card shows the steps (its block
-   above); everywhere else they are gone and the readout is the banner, its
-   padding moved down a level so the row's shape does not change. Last in the
-   file: every view restyles the banner at the same specificity, and the row's
-   shape has to hold in each of them. */
+   step · readout · step. The steps show only where the card is horizontal —
+   the mobile card and the list row — and each of those flips one switch,
+   `--card-horizontal`, on its container; the style query below reads it so
+   the control is written once. Everywhere else the steps are gone, the
+   readout is the banner with its padding moved down a level so the row's
+   shape does not change, and the card's own stepper row follows. Last in the
+   file: every view restyles the banner at the same specificity, and the
+   row's shape has to hold in each of them. */
 .purchased-banner.purchased-banner--stepping {
   display: flex;
   align-items: stretch;
@@ -1373,4 +1089,70 @@
 
 .purchased-banner-step {
   display: none;
+}
+
+/* One row, the steps at its ends, the quantity boxed as the cell they move.
+   A browser without style queries keeps the fallback above — banner, then
+   the stepper row — which is the same control, unfused. */
+@container style(--card-horizontal: 1) {
+  .purchased-banner--stepping {
+    min-height: var(--WCAG-input-size);
+  }
+
+  .purchased-banner--stepping + .item-entry-stepper {
+    display: none;
+  }
+
+  .purchased-banner-readout {
+    padding: 0 12px;
+    border-inline: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  }
+
+  .purchased-banner-readout .purchased-banner-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .purchased-banner--stepping .purchased-banner-qty {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 7px;
+    border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+    border-radius: 6px;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .purchased-banner-step {
+    display: block;
+    min-width: var(--WCAG-input-size);
+    border: none;
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    font-size: 22px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .purchased-banner-step:disabled {
+    color: color-mix(in srgb, currentColor 35%, transparent);
+    cursor: default;
+  }
+
+  .purchased-banner-step:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+  }
+
+  @media (hover: hover) {
+    .purchased-banner-step:hover:not(:disabled) {
+      background: var(--primary-color);
+    }
+  }
 }

@@ -54,13 +54,12 @@ function makeItem(id: string): ItemDisplay {
 
 describe('Items', () => {
   describe('ViewMode', () => {
-    it('ViewList_RendersItemListClass', () => {
+    it('ViewList_RendersItemListClassOnTheGrid', () => {
       const { container } = render(
         <Items items={[makeItem('a')]} view="list" />
       );
       expect(container.querySelector('.item-grid-container')).not.toBeNull();
-      expect(container.querySelector('.item-list')).not.toBeNull();
-      expect(container.querySelector('.item-grid')).toBeNull();
+      expect(container.querySelector('.item-grid.item-list')).not.toBeNull();
     });
 
     it('ViewGrid_RendersItemGridClass', () => {
