@@ -210,9 +210,11 @@ follows, minus blocks.
 
 **Roster**:
 Every claim on one **list entry**, listed. It is what the claim banner opens
-into, headed by the item and by the entry's own `N of M claimed` — summed from
-the entry, never over the rows on screen, since a long roster pages ten at a
-time ([ADR-0016](docs/adr/0016-claimed-units-are-summed-not-stored.md)). A row
+into, and what a holder's `Manage claim` steps through to from the facepile
+button counting the rows it does not list. Headed by the item and by the
+entry's own `N of M claimed` — summed from the entry, never over the rows on
+screen, since a long roster pages ten at a time
+([ADR-0016](docs/adr/0016-claimed-units-are-summed-not-stored.md)). A row
 carries the purchaser's look and name, who added it where that is someone else,
 when it was made, and how many units it covers. Reached only at the claims tier,
 which is the whole of the consent — nothing is asked, the owner included. Rows

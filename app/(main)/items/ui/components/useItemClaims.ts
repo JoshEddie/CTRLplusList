@@ -18,7 +18,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { AttributedTarget } from './purchasemodal/PurchaseFlowContainer';
-import { heldByViewer, othersClaimCount } from './utils';
+import { heldByViewer, othersClaims } from './utils';
 
 // A claim's own unit count, falling back to one for a row that carries none.
 // The fallback only has to be stable, not true: such a row is identical on
@@ -105,7 +105,7 @@ export function useItemClaims({
   // lacking a name, which at `claims` no longer exists. True at `claims` too,
   // where nothing is withheld and the confirmation gates only the opening.
   const asksBeforeNaming =
-    isOwner && (countWithheld || othersClaimCount(claims) > 0);
+    isOwner && (countWithheld || othersClaims(claims).length > 0);
 
   // Keyed on the open modal rather than on the confirmation, so a direct link
   // to `?purchaseItem=` lands on the same disclosed set the dialog leads to.

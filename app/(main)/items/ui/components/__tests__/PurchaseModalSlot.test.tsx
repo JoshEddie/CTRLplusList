@@ -1,5 +1,5 @@
 import { ROLES } from '@/lib/data/profile.roles';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getClaimPickerForItem } from '@/lib/data/user.actions';
@@ -71,6 +71,7 @@ function renderSlot(
     tier: 'claims',
     item: ITEM,
     onClose: vi.fn(),
+    onOpenRoster: vi.fn(),
     onSelfClaim: vi.fn(),
     onAttributedClaim: vi.fn(),
     onGuestClaim: vi.fn(),
@@ -121,9 +122,9 @@ describe('PurchaseModalSlot', () => {
 
     /**
      * The view manages the viewer's own claims: everyone else on the item is a
-     * count under the list, never a row. Below `claims` the payload carries no
-     * other party at all, so the line falls away on the zero rather than on a
-     * tier the view would have to read.
+     * facepile button under the list, never a row — the door to the roster.
+     * Below `claims` the payload carries no other party at all, so the button
+     * falls away on the zero rather than on a tier the view would have to read.
      */
     it('OtherPartysClaim_CountedUnderTheListRatherThanListed', () => {
       renderSlot({
@@ -132,7 +133,25 @@ describe('PurchaseModalSlot', () => {
       });
       expect(screen.getAllByRole('listitem')).toHaveLength(2);
       expect(screen.queryByText('Frank')).not.toBeInTheDocument();
-      expect(screen.getByText('1 other claim')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: '1 other claim' })
+      ).toBeInTheDocument();
+    });
+
+    // The pile pictures the parties the button counts — the viewer's own rows
+    // are listed above it, not repeated in it.
+    it('OtherPartiesClaims_FacepileDrawsTheirLooksAndNotTheViewers', () => {
+      renderSlot({
+        view: 'manage',
+        claims: [selfClaim, attributedClaim, othersClaim, attributedByAnother],
+      });
+      const pile = within(
+        screen.getByRole('button', { name: '2 other claims' })
+      );
+      expect(pile.getByText('F')).toBeInTheDocument();
+      expect(pile.getByText('P')).toBeInTheDocument();
+      expect(pile.queryByText('V')).not.toBeInTheDocument();
+      expect(pile.queryByText('G')).not.toBeInTheDocument();
     });
 
     it('TwoOtherPartiesClaims_CountReadsPlural', () => {
@@ -140,10 +159,22 @@ describe('PurchaseModalSlot', () => {
         view: 'manage',
         claims: [selfClaim, othersClaim, { ...othersClaim, id: 'po2' }],
       });
-      expect(screen.getByText('2 other claims')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: '2 other claims' })
+      ).toBeInTheDocument();
     });
 
-    it('NoOtherPartysClaim_RendersNoCountLine', () => {
+    it('OtherClaimsButtonPressed_OpensTheRoster', async () => {
+      const user = userEvent.setup();
+      const { props } = renderSlot({
+        view: 'manage',
+        claims: [selfClaim, othersClaim],
+      });
+      await user.click(screen.getByRole('button', { name: '1 other claim' }));
+      expect(props.onOpenRoster).toHaveBeenCalledOnce();
+    });
+
+    it('NoOtherPartysClaim_RendersNoRosterButton', () => {
       renderSlot({ view: 'manage', claims: [selfClaim, attributedClaim] });
       expect(screen.queryByText(/other claim/)).not.toBeInTheDocument();
     });

@@ -61,8 +61,8 @@ export function heldByViewer(claim: PurchaseView): boolean {
 // One home for the complement: two surfaces read it for the same reason, and a
 // divergence between them would fail silently — the owner's confirmation would
 // stop matching the count the manage view renders under the list.
-export function othersClaimCount(claims: PurchaseView[]): number {
-  return claims.filter((claim) => !heldByViewer(claim)).length;
+export function othersClaims(claims: PurchaseView[]): PurchaseView[] {
+  return claims.filter((claim) => !heldByViewer(claim));
 }
 
 export function firstToken(name: string): string {

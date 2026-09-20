@@ -237,6 +237,9 @@ vi.mock('../PurchaseModalSlot', () => ({
       >
         modal-remove-first
       </button>
+      <button type="button" onClick={p.onOpenRoster as () => void}>
+        slot-open-roster
+      </button>
       <button type="button" onClick={p.onClose as () => void}>
         slot-close
       </button>
@@ -984,6 +987,23 @@ describe('Item', () => {
       );
       expect(slot()).toHaveAttribute('data-view', 'manage');
       expect(slot()).toHaveAttribute('data-claims', 'pm,pa,p1');
+    });
+
+    // Pushed, not replaced, on the same item parameter: the roster stacks on
+    // the manage view so the back gesture returns to it.
+    it('ManageViewStepsThrough_PushesTheRosterOnTheSameItem', async () => {
+      const user = userEvent.setup();
+      renderItem(
+        { item: claimedItem, actor: actorOf('viewer') },
+        'purchaseItem=i1'
+      );
+      await user.click(
+        screen.getByRole('button', { name: 'slot-open-roster' })
+      );
+      expect(router.push).toHaveBeenCalledWith(
+        '/lists/l1?purchaseItem=i1&purchaseView=roster',
+        { scroll: false }
+      );
     });
 
     it('ViewerWithClaimsViewParamClaim_OpensClaimFlow-MarksViewerIsPurchaser', () => {

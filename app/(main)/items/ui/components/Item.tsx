@@ -140,6 +140,8 @@ export default function Item({
     handleModalOpen('claim');
   };
 
+  const openRoster = () => handleModalOpen('roster');
+
   // The item form's live preview draws a card rather than offering one, so
   // every interaction it would carry is withdrawn in one place.
   const handlers = preview
@@ -148,7 +150,7 @@ export default function Item({
         purchase: handlePurchaseClick,
         addClaim: handleAddClaimClick,
         buyClaim: claim.handleBuyClaim,
-        roster: () => handleModalOpen('roster'),
+        roster: openRoster,
       };
 
   return (
@@ -226,6 +228,7 @@ export default function Item({
           tier={tier}
           item={item}
           onClose={handleModalClose}
+          onOpenRoster={openRoster}
           onSelfClaim={claim.handleSelfClaim}
           onAttributedClaim={claim.handleAttributedClaim}
           onGuestClaim={claim.handleGuestClaim}

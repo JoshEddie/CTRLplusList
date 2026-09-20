@@ -6,7 +6,8 @@ import {
   SpoilerTier,
 } from '@/lib/types';
 import { getMessage } from '@/lib/i18n/utils';
-import { claimedStatusLabel, heldByViewer, othersClaimCount } from './utils';
+import { claimedStatusLabel, heldByViewer, othersClaims } from './utils';
+import Facepile from './Facepile';
 import ClaimRoster from './purchasemodal/ClaimRoster';
 import ClaimsList from './purchasemodal/ClaimsList';
 import Modal from './purchasemodal/Modal';
@@ -26,6 +27,7 @@ export default function PurchaseModalSlot({
   tier,
   item,
   onClose,
+  onOpenRoster,
   onSelfClaim,
   onAttributedClaim,
   onGuestClaim,
@@ -43,6 +45,8 @@ export default function PurchaseModalSlot({
   tier: SpoilerTier;
   item: ItemDisplay;
   onClose: () => void;
+  /** Switches the open sheet to the roster view. */
+  onOpenRoster: () => void;
   onSelfClaim: (units: number) => void;
   onAttributedClaim: (target: AttributedTarget, units: number) => void;
   onGuestClaim: (name: string, units: number) => void;
@@ -69,10 +73,10 @@ export default function PurchaseModalSlot({
     // The rows this view manages are the viewer's own and the ones they
     // asserted — removing either compares the self-profile and takes no floor.
     const held = claims.filter(heldByViewer);
-    // Below `claims` no other party is in the payload at all, so the line
+    // Below `claims` no other party is in the payload at all, so the button
     // below falls away on the zero rather than on a tier this view would
     // otherwise have to read.
-    const others = othersClaimCount(claims);
+    const others = othersClaims(claims);
     return (
       <Modal onClose={onClose}>
         <div className="claim-modal">
@@ -86,10 +90,15 @@ export default function PurchaseModalSlot({
             onRemoveClaim={onRemoveClaim}
             onUpdateUnits={onUpdateUnits}
           />
-          {others > 0 && (
-            <p className="claims-other-count" role="status">
-              {getMessage('claim_other_claims', { count: others })}
-            </p>
+          {others.length > 0 && (
+            <button
+              type="button"
+              className="claims-other-count claims-other-count--opens"
+              onClick={onOpenRoster}
+            >
+              <Facepile claims={others} />
+              {getMessage('claim_other_claims', { count: others.length })}
+            </button>
           )}
         </div>
       </Modal>
