@@ -14,6 +14,7 @@ const eslintConfig = [
       'dist/**',
       'public/sw.js',
       'coverage/**',
+      'test-results/**'
     ],
   },
   ...nextCoreWebVitals,

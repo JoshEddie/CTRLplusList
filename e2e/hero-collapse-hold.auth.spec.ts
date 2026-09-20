@@ -27,10 +27,13 @@ const hero = (page: Page) => page.locator('.list-hero-chrome');
 // scroll position, so a single tick landing before the route hydrates is
 // silently undone and never retried.
 //
-// Returns only once the offset has stopped moving. The class flips at the
-// start of the collapse, while the wheel that tipped it is still settling —
-// and a menu opened on a page that is still scrolling dismisses itself on the
-// next tick.
+// Returns only once the offset has stopped moving and the collapse has
+// finished animating. The class flips at the start of the collapse, while the
+// wheel that tipped it is still settling — and a menu opened on a page that
+// is still scrolling dismisses itself on the next tick. Until the transition
+// ends the fading expanded layer still covers the strip, so a click there
+// fails Playwright's hit check and its retry scrolls the target into view —
+// on a stuck sticky element, that is a scroll to the top.
 async function collapseHero(page: Page): Promise<number> {
   await expect
     .poll(async () => {
@@ -48,6 +51,13 @@ async function collapseHero(page: Page): Promise<number> {
       return held;
     })
     .toBe(true);
+
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelector('.list-hero-shape')
+        ?.getAnimations({ subtree: true }).length === 0
+  );
 
   expect(previous).toBeGreaterThan(0);
   return previous;
