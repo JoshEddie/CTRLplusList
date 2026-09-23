@@ -1008,3 +1008,39 @@ describe('UpdateRecency', () => {
     expect(byId.M2.toISOString()).toBe(STALE.toISOString());
   });
 });
+
+describe('getItemForEdit', () => {
+  beforeEach(async () => {
+    await seedItem(db, { id: 'I', user_id: OWNER.id, name: 'Owned Gift' });
+    await seedList(db, { id: 'L', user_id: OWNER.id, name: 'Birthday' });
+  });
+
+  it('Owner_ReturnsItem-ProfileLists-DeleteEnabled', async () => {
+    const res = await actions.getItemForEdit('I');
+    expect(res?.item.name).toBe('Owned Gift');
+    expect(res?.lists.map((l) => l.id)).toEqual(['L']);
+    expect(res?.deleteDisabled).toBe(false);
+  });
+
+  it('NonOwner_ReturnsNull', async () => {
+    asOther();
+    expect(await actions.getItemForEdit('I')).toBeNull();
+  });
+
+  it('NoSession_ReturnsNull', async () => {
+    noSession();
+    expect(await actions.getItemForEdit('I')).toBeNull();
+  });
+
+  it('UnknownId_ReturnsNull', async () => {
+    expect(await actions.getItemForEdit('missing')).toBeNull();
+  });
+
+  it('ManagerActsAsManagedProfile_ReturnsDeleteDisabled', async () => {
+    await ownerActsAsManaged('manager');
+    await seedItem(db, { id: 'M', user_id: OWNER.id, profile_id: MANAGED });
+    const res = await actions.getItemForEdit('M');
+    expect(res?.item.id).toBe('M');
+    expect(res?.deleteDisabled).toBe(true);
+  });
+});

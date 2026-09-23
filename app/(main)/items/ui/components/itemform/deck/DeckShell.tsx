@@ -1,11 +1,8 @@
 'use client';
 
-// TODO(#343): split the extra components into their own files, then drop this disable
-/* eslint-disable react/no-multi-comp */
-
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { CloseButton } from '@/app/ui/components/button';
-import { useDismiss } from '@/app/ui/components/use-dismiss';
 import { useScrollLock } from '@/app/ui/hooks/useScrollLock';
 import './deck-screen.css';
 
@@ -14,37 +11,47 @@ type Variant = 'default' | 'wide';
 export function DeckShell({
   moduleTitle,
   variant = 'default',
-  closeHref,
   onClose,
+  onEscape,
   children,
 }: {
   moduleTitle: string;
   variant?: Variant;
-  closeHref?: string;
-  onClose?: () => void;
+  onClose: () => void;
+  /** Escape dismisses only where the caller supplies it — a shell holding an unguarded draft must not lose it to a stray key. */
+  onEscape?: () => void;
   children: ReactNode;
 }) {
-  const dismiss = useDismiss(onClose, closeHref);
   useScrollLock();
+
+  useEffect(() => {
+    if (!onEscape) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onEscape();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onEscape]);
 
   const cls =
     variant === 'wide'
       ? 'modal-shell modal-shell-wide deck-screen'
       : 'modal-shell deck-screen';
 
-  return (
+  // Portaled for the reason Modal is: an ancestor's containment or iOS
+  // WebKit's composited layers would otherwise trap the fixed overlay.
+  return createPortal(
     <div
       className="modal-overlay-scrim deck-screen-overlay"
       onClick={(e) => {
-        if (e.target === e.currentTarget) dismiss();
+        if (e.target === e.currentTarget) onClose();
       }}
     >
       <div className={cls}>
-        <CloseButton onClick={dismiss} className="deck-screen-close-pivot" />
+        <CloseButton onClick={onClose} className="deck-screen-close-pivot" />
         <span className="deck-screen-module-title">{moduleTitle}</span>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

@@ -42,8 +42,28 @@ function jsonOk(body: unknown): Response {
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
-function renderCreate(props: { actingAs?: string } = {}) {
-  return render(<ItemFormContainer lists={[]} onClose={vi.fn()} {...props} />);
+function renderEdit() {
+  const onClose = vi.fn();
+  render(
+    <ItemFormContainer
+      lists={[]}
+      item={{ id: 'i1', name: 'Gift', store: null, lists: [] } as never}
+      onClose={onClose}
+      onSuccess={vi.fn()}
+    />
+  );
+  return { onClose };
+}
+
+function renderCreate(props: { actingAs?: string; onClose?: () => void } = {}) {
+  return render(
+    <ItemFormContainer
+      lists={[]}
+      onClose={vi.fn()}
+      onSuccess={vi.fn()}
+      {...props}
+    />
+  );
 }
 
 async function fetchUrl(url = 'https://www.amazon.com/dp/B0TEST') {
@@ -95,43 +115,103 @@ describe('ItemFormContainer', () => {
     });
 
     it('EditMode_OpensPreviewSeededWithSaveChanges', () => {
-      render(
-        <ItemFormContainer
-          lists={[]}
-          item={
-            {
-              id: 'i1',
-              name: 'Gift',
-              store: null,
-              lists: [],
-            } as never
-          }
-          returnTo="/items"
-        />
-      );
+      renderEdit();
       expect(
         screen.getByRole('button', { name: 'Save changes' })
       ).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: 'Gift' })).toBeInTheDocument();
     });
+  });
 
-    it('EditWithoutReturnTo_RendersPreview', () => {
-      render(
-        <ItemFormContainer
-          lists={[]}
-          item={
-            {
-              id: 'i1',
-              name: 'Gift',
-              store: null,
-              lists: [],
-            } as never
-          }
-        />
+  describe('EditCloseGuard', () => {
+    const DISCARD = 'Discard your changes?';
+
+    async function renameItem(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(
+        screen.getByRole('button', { name: /Need to change something/ })
       );
-      expect(
-        screen.getByRole('button', { name: 'Save changes' })
-      ).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /Item name/ }));
+      await user.clear(screen.getByLabelText('Item name'));
+      await user.type(screen.getByLabelText('Item name'), 'Renamed');
+      await user.click(screen.getByRole('button', { name: 'Done' }));
+    }
+
+    it('CleanClose_CallsOnClose-NoPrompt', async () => {
+      const user = userEvent.setup();
+      const { onClose } = renderEdit();
+      await user.click(screen.getByRole('button', { name: 'Close' }));
+      expect(onClose).toHaveBeenCalledOnce();
+      expect(screen.queryByText(DISCARD)).not.toBeInTheDocument();
+    });
+
+    describe('DirtyForm', () => {
+      async function renderDirtyEdit() {
+        const user = userEvent.setup();
+        const { onClose } = renderEdit();
+        await renameItem(user);
+        return { user, onClose };
+      }
+
+      it('CloseButton_OpensDiscardPrompt-NoOnClose', async () => {
+        const { user, onClose } = await renderDirtyEdit();
+        await user.click(screen.getByRole('button', { name: 'Close' }));
+        expect(screen.getByText(DISCARD)).toBeInTheDocument();
+        expect(onClose).not.toHaveBeenCalled();
+      });
+
+      it('EscapeKey_OpensDiscardPrompt-NoOnClose', async () => {
+        const { user, onClose } = await renderDirtyEdit();
+        await user.keyboard('{Escape}');
+        expect(screen.getByText(DISCARD)).toBeInTheDocument();
+        expect(onClose).not.toHaveBeenCalled();
+      });
+
+      it('Discard_CallsOnClose', async () => {
+        const { user, onClose } = await renderDirtyEdit();
+        await user.click(screen.getByRole('button', { name: 'Close' }));
+        await user.click(screen.getByRole('button', { name: 'Discard' }));
+        expect(onClose).toHaveBeenCalledOnce();
+      });
+
+      it('KeepEditing_ClosesPrompt-KeepsEdit-NoOnClose', async () => {
+        const { user, onClose } = await renderDirtyEdit();
+        await user.click(screen.getByRole('button', { name: 'Close' }));
+        await user.click(screen.getByRole('button', { name: 'Keep editing' }));
+        expect(screen.queryByText(DISCARD)).not.toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /Item name/ })
+        ).toHaveTextContent('Renamed');
+        expect(onClose).not.toHaveBeenCalled();
+      });
+    });
+
+    it('CreateModeWithInput_ClosesWithoutPrompt', async () => {
+      const onClose = vi.fn();
+      renderCreate({ onClose });
+      const user = userEvent.setup();
+      await user.type(screen.getByLabelText(/Product link/), 'https://a.test');
+      await user.click(screen.getByRole('button', { name: 'Close' }));
+      expect(onClose).toHaveBeenCalledOnce();
+      expect(screen.queryByText(DISCARD)).not.toBeInTheDocument();
+    });
+
+    it('CreateModeEscapeKey_DoesNotClose', async () => {
+      const onClose = vi.fn();
+      renderCreate({ onClose });
+      const user = userEvent.setup();
+      await user.type(screen.getByLabelText(/Product link/), 'https://a.test');
+      await user.keyboard('{Escape}');
+      expect(onClose).not.toHaveBeenCalled();
+      expect(screen.getByLabelText(/Product link/)).toHaveValue(
+        'https://a.test'
+      );
+    });
+
+    it('CleanEditEscapeKey_CallsOnClose', async () => {
+      const user = userEvent.setup();
+      const { onClose } = renderEdit();
+      await user.keyboard('{Escape}');
+      expect(onClose).toHaveBeenCalledOnce();
     });
   });
 
@@ -356,6 +436,7 @@ describe('ItemFormContainer', () => {
         <ItemFormContainer
           lists={[{ id: 'l1', name: 'Birthday' } as never]}
           onClose={vi.fn()}
+          onSuccess={vi.fn()}
         />
       );
       const user = await openManualViaFailure();
@@ -378,6 +459,7 @@ describe('ItemFormContainer', () => {
           ]}
           defaultListId="l2"
           onClose={vi.fn()}
+          onSuccess={vi.fn()}
         />
       );
       const user = await openManualViaFailure();
@@ -404,6 +486,7 @@ describe('ItemFormContainer', () => {
           lists={[{ id: 'l1', name: 'Birthday' } as never]}
           defaultListId="gone"
           onClose={vi.fn()}
+          onSuccess={vi.fn()}
         />
       );
       const user = await openManualViaFailure();
@@ -727,6 +810,7 @@ describe('ItemFormContainer', () => {
           lists={[{ id: 'l2', name: 'Christmas' } as never]}
           defaultListId="l2"
           onClose={vi.fn()}
+          onSuccess={vi.fn()}
         />
       );
       const user = await fetchUrl();

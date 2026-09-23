@@ -9,14 +9,12 @@ import toast from 'react-hot-toast';
 
 export default function DeleteItemButton({
   id,
-  returnTo,
   onDeleted,
   archived = false,
   disabled,
 }: {
   id: string;
-  returnTo?: string;
-  onDeleted?: () => void;
+  onDeleted: () => void;
   archived?: boolean;
   disabled: boolean;
 }) {
@@ -32,12 +30,8 @@ export default function DeleteItemButton({
       });
 
       if (result?.success) {
-        if (onDeleted) {
-          onDeleted();
-          router.refresh();
-        } else {
-          router.push(returnTo ?? '/items');
-        }
+        onDeleted();
+        router.refresh();
       }
     } catch (error) {
       console.error('Error deleting item:', error);
@@ -52,12 +46,8 @@ export default function DeleteItemButton({
         error: 'Failed to archive',
       });
       if (result?.success) {
-        if (onDeleted) {
-          onDeleted();
-          router.refresh();
-        } else {
-          router.push(returnTo ?? '/items');
-        }
+        onDeleted();
+        router.refresh();
       }
     } catch (error) {
       console.error('Error archiving item:', error);

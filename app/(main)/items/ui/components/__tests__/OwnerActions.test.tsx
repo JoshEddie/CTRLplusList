@@ -6,6 +6,16 @@ import OwnerActions from '../OwnerActions';
 
 vi.mock('@/lib/data/item.actions', () => ({ archiveItem: vi.fn() }));
 
+vi.mock('../itemform/EditItemOverlay', () => ({
+  default: (p: { itemId: string; onClose: () => void }) => (
+    <div role="dialog" aria-label={`Editing ${p.itemId}`}>
+      <button type="button" onClick={p.onClose}>
+        close overlay
+      </button>
+    </div>
+  ),
+}));
+
 vi.mock('react-hot-toast', () => ({
   default: {
     promise: <T,>(p: Promise<T>) => p,
@@ -19,8 +29,6 @@ function renderActions(
     itemId: 'i1',
     showArchiveAction: true,
     archivedView: false,
-    pathname: '/lists/l1',
-    searchParams: new URLSearchParams('q=x') as never,
     onChanged: vi.fn(),
     ...overrides,
   };
@@ -61,14 +69,10 @@ describe('OwnerActions', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('Kebab_OpensMenuWithReturnToEditLink-ArchiveDispatches', async () => {
+  it('KebabArchive_DispatchesArchiveTrue-NotifiesChanged', async () => {
     const user = userEvent.setup();
     const { props } = renderActions();
     await openKebab(user);
-    expect(screen.getByRole('menuitem', { name: /Edit/ })).toHaveAttribute(
-      'href',
-      expect.stringContaining('/items/i1?returnTo=')
-    );
     await user.click(screen.getByRole('menuitem', { name: 'Archive' }));
     expect(archiveItem).toHaveBeenCalledWith('i1', true);
     await waitFor(() => expect(props.onChanged).toHaveBeenCalled());
@@ -84,7 +88,7 @@ describe('OwnerActions', () => {
     expect(props.onChanged).not.toHaveBeenCalled();
   });
 
-  it('KebabEdit_ClosesMenu', async () => {
+  it('KebabEdit_ClosesMenu-OpensEditOverlayForItem', async () => {
     const user = userEvent.setup();
     renderActions();
     await openKebab(user);
@@ -92,6 +96,18 @@ describe('OwnerActions', () => {
     expect(
       screen.queryByRole('menuitem', { name: 'Archive' })
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Editing i1' })
+    ).toBeInTheDocument();
+  });
+
+  it('EditOverlayClose_UnmountsOverlay', async () => {
+    const user = userEvent.setup();
+    renderActions();
+    await openKebab(user);
+    await user.click(screen.getByRole('menuitem', { name: /Edit/ }));
+    await user.click(screen.getByRole('button', { name: 'close overlay' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('ArchivedViewKebab_ShowsUnarchiveEntry-DispatchesArchiveFalse', async () => {
@@ -109,16 +125,6 @@ describe('OwnerActions', () => {
     expect(screen.getByRole('menu')).toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-  });
-
-  it('NoSearchParams_BuildsEditLinkWithoutQuery', async () => {
-    const user = userEvent.setup();
-    renderActions({ searchParams: null });
-    await openKebab(user);
-    expect(screen.getByRole('menuitem', { name: /Edit/ })).toHaveAttribute(
-      'href',
-      `/items/i1?returnTo=${encodeURIComponent('/lists/l1')}`
-    );
   });
 
   // The item library names no list, so nothing that would edit one is offered.

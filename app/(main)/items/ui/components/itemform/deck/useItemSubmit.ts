@@ -7,13 +7,11 @@ import toast from 'react-hot-toast';
 import { toItemDetails, type ItemViewModel } from './viewModel';
 
 // Maps the view-model to the persisted shape and flows through the existing
-// create/edit actions unchanged (D2). Navigation mirrors the retired
-// useItemForm: onSuccess (modal) refreshes in place; otherwise push returnTo.
+// create/edit actions unchanged (D2).
 export function useItemSubmit(
   item: ItemViewModel,
   isEditing: boolean,
-  returnTo?: string,
-  onSuccess?: (id?: string) => void
+  onSuccess: (id?: string) => void
 ) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
@@ -28,13 +26,8 @@ export function useItemSubmit(
 
       if (result.success) {
         toast.success(`Item ${isEditing ? 'updated' : 'created'} successfully`);
-        if (onSuccess) {
-          onSuccess(result.id);
-          router.refresh();
-        } else {
-          router.push(returnTo ?? '/items');
-          router.refresh();
-        }
+        onSuccess(result.id);
+        router.refresh();
       } else {
         toast.error(result.message || 'An error occurred');
       }

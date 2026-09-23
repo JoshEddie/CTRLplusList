@@ -1,8 +1,7 @@
 /**
- * Pins `list-item-management` — "The `returnTo` value SHALL be validated as a
- * same-origin relative path before use", now the one home both that boundary
- * and `signInUser`'s `redirectTo` share. The rule is judged against what URL
- * parsing makes of the string, so the cases the parser rewrites are substance.
+ * Pins the same-origin rule `signInUser`'s `redirectTo` depends on. The rule
+ * is judged against what URL parsing makes of the string, so the cases the
+ * parser rewrites are substance.
  */
 import { describe, expect, it } from 'vitest';
 

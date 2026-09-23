@@ -1,10 +1,9 @@
 'use client';
 
 import { Button } from '@/app/ui/components/button';
-import { Menu, MenuItem, MenuLinkItem } from '@/app/ui/components/menu';
+import { Menu, MenuItem } from '@/app/ui/components/menu';
 import { archiveItem } from '@/lib/data/item.actions';
 import { getMessage } from '@/lib/i18n/utils';
-import type { ReadonlyURLSearchParams } from 'next/navigation';
 import { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import {
@@ -17,6 +16,7 @@ import {
   MdVerticalAlignBottom,
   MdVerticalAlignTop,
 } from 'react-icons/md';
+import EditItemOverlay from './itemform/EditItemOverlay';
 
 /** The ends of the list's own order — absent while another sort overrides it. */
 export type ListEnds = { first: string; last: string };
@@ -32,8 +32,6 @@ export default function OwnerActions({
   itemId,
   showArchiveAction,
   archivedView,
-  pathname,
-  searchParams,
   onChanged,
   entry,
   onReorderAll,
@@ -41,8 +39,6 @@ export default function OwnerActions({
   itemId: string;
   showArchiveAction?: boolean;
   archivedView?: boolean;
-  pathname: string;
-  searchParams: ReadonlyURLSearchParams | null;
   onChanged: () => void;
   entry?: EntryActions;
   /** Opens the list's reorder surface. Absent wherever that surface does not exist — off the list, or on a list too short to arrange. */
@@ -50,6 +46,7 @@ export default function OwnerActions({
 }) {
   const kebabRef = useRef<HTMLButtonElement>(null);
   const [kebabOpen, setKebabOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const toggleArchive = async () => {
     const nextArchived = !archivedView;
@@ -134,16 +131,12 @@ export default function OwnerActions({
         {(entry || onReorderAll) && (
           <div className="menu-separator" role="separator" />
         )}
-        <MenuLinkItem
-          href={`/items/${itemId}?returnTo=${encodeURIComponent(
-            pathname +
-              (searchParams?.toString() ? `?${searchParams.toString()}` : '')
-          )}`}
+        <MenuItem
           icon={<MdModeEdit size={18} />}
-          onClick={() => setKebabOpen(false)}
+          onClick={run(() => setEditing(true))}
         >
           {getMessage('item_menu_edit')}
-        </MenuLinkItem>
+        </MenuItem>
         {showArchiveAction && (
           <MenuItem
             icon={
@@ -160,6 +153,9 @@ export default function OwnerActions({
           </MenuItem>
         )}
       </Menu>
+      {editing && (
+        <EditItemOverlay itemId={itemId} onClose={() => setEditing(false)} />
+      )}
     </div>
   );
 }

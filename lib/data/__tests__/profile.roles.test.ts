@@ -2,7 +2,7 @@
  * Pins `profile-permissions` — "A role SHALL carry its own rights": the rights
  * a surface reads off a role record, and the single home its stored value has.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 
@@ -48,13 +48,16 @@ const ROLE_NAME_RULE =
 function sourceFiles(): string[] {
   return execFileSync(
     'git',
-    ['ls-files', 'lib/*.ts', 'lib/**/*.ts', 'app/**/*.ts', 'app/**/*.tsx', 'db/*.ts', 'scripts/*.ts'],
+    // The working tree, not the index: untracked files count, and a deletion
+    // not yet staged is gone.
+    ['ls-files', '--cached', '--others', '--exclude-standard', 'lib/*.ts', 'lib/**/*.ts', 'app/**/*.ts', 'app/**/*.tsx', 'db/*.ts', 'scripts/*.ts'],
     { encoding: 'utf8' }
   )
     .split('\n')
     .filter(
       (path) =>
         path &&
+        existsSync(path) &&
         !path.includes('__tests__') &&
         !path.includes('.test.') &&
         !MAPPING_BOUNDARY.includes(path)

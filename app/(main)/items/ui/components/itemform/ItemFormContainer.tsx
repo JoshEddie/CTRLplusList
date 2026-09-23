@@ -23,7 +23,13 @@ import { useItemActions } from './deck/useItemActions';
 import { useItemSubmit } from './deck/useItemSubmit';
 import { useProductFetch } from './deck/useProductFetch';
 import ConfirmDialog from '@/app/ui/components/ConfirmDialog';
-import { isDirtyDraft, manualAdvanceReady, rowTiers } from './deck/utils';
+import { getMessage } from '@/lib/i18n/utils';
+import {
+  differsFromSaved,
+  isDirtyDraft,
+  manualAdvanceReady,
+  rowTiers,
+} from './deck/utils';
 import { blankItem, seedFromItem, type ItemViewModel } from './deck/viewModel';
 import { FetchingStep } from './FetchingStep';
 import { UrlEntryStep } from './UrlEntryStep';
@@ -38,7 +44,6 @@ type EditItem = ItemTable & {
 const ItemFormContainer = ({
   lists,
   item,
-  returnTo,
   actingAs,
   defaultListId,
   deleteDisabled = false,
@@ -47,7 +52,6 @@ const ItemFormContainer = ({
 }: {
   lists: ListTable[];
   item?: EditItem;
-  returnTo?: string;
   // The list the form was opened from, checked in the picker before the owner
   // sees it: creating the item and putting it on that list are one act.
   defaultListId?: string;
@@ -58,18 +62,19 @@ const ItemFormContainer = ({
   // one. The new item is owned by whichever profile the request acts as, so
   // the shell's heading and the submit control both say which.
   actingAs?: string;
-  onClose?: () => void;
+  onClose: () => void;
   /** Receives the saved item's id. */
-  onSuccess?: (id?: string) => void;
+  onSuccess: (id?: string) => void;
 }) => {
   const isEditing = !!item;
   const preselected = useMemo<OptionType[]>(() => {
     const list = lists.find((option) => option.id === defaultListId);
     return list ? [{ value: list.id.toString(), label: list.name }] : [];
   }, [lists, defaultListId]);
-  const [viewModel, setViewModel] = useState<ItemViewModel>(() =>
+  const [seed] = useState<ItemViewModel>(() =>
     item ? seedFromItem(item) : blankItem('', preselected)
   );
+  const [viewModel, setViewModel] = useState(seed);
   const [screen, setScreen] = useState<Screen>(isEditing ? 'preview' : 'start');
   const [listsSheetOpen, setListsSheetOpen] = useState(false);
   const [focus, setFocus] = useState<RowField | null>(null);
@@ -80,6 +85,7 @@ const ItemFormContainer = ({
   // Distinguishes a manual-authored draft from fetch-seeded values: only the
   // former is user-entered work the discard prompt guards.
   const [manualDraftLive, setManualDraftLive] = useState(false);
+  const [discardPromptOpen, setDiscardPromptOpen] = useState(false);
 
   const {
     pastedUrl,
@@ -94,16 +100,15 @@ const ItemFormContainer = ({
     setViewModel({ ...vm, lists: preselected });
   }, setScreen);
   const actions = useItemActions(setViewModel);
-  const { submit, isPending } = useItemSubmit(
-    viewModel,
-    isEditing,
-    returnTo,
-    onSuccess
-  );
+  const { submit, isPending } = useItemSubmit(viewModel, isEditing, onSuccess);
   const listOptions = useMemo(
     () => lists.map((l) => ({ value: l.id.toString(), label: l.name })),
     [lists]
   );
+
+  const editDirty = isEditing && differsFromSaved(viewModel, seed);
+  const requestClose = () =>
+    editDirty ? setDiscardPromptOpen(true) : onClose();
 
   const enterLinkless = () => {
     clearUrl();
@@ -264,7 +269,6 @@ const ItemFormContainer = ({
               item ? (
                 <DeleteItemButton
                   id={item.id}
-                  returnTo={returnTo}
                   onDeleted={onClose}
                   archived={item.archived_at != null}
                   disabled={deleteDisabled}
@@ -285,13 +289,13 @@ const ItemFormContainer = ({
       variant={screen === 'preview' ? 'wide' : 'default'}
       moduleTitle={
         isEditing
-          ? 'Edit item'
+          ? getMessage('item_edit_title')
           : actingAs
             ? `Add an item for ${actingAs}`
             : 'Add an item'
       }
-      closeHref={onClose ? undefined : (returnTo ?? '/items')}
-      onClose={onClose}
+      onClose={requestClose}
+      onEscape={isEditing ? requestClose : undefined}
     >
       {body()}
       <ConfirmDialog
@@ -302,6 +306,15 @@ const ItemFormContainer = ({
         message="Keep filling it in, or start over?"
         confirmText="Start over"
         cancelText="Keep filling"
+      />
+      <ConfirmDialog
+        isOpen={discardPromptOpen}
+        onClose={() => setDiscardPromptOpen(false)}
+        onConfirm={onClose}
+        title={getMessage('item_edit_discard_title')}
+        message={getMessage('item_edit_discard_message')}
+        confirmText={getMessage('item_edit_discard_confirm')}
+        cancelText={getMessage('item_edit_discard_cancel')}
       />
     </DeckShell>
   );

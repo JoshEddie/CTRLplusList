@@ -8,6 +8,8 @@ import {
   updateItemLists,
   updateItemStores,
 } from '@/lib/data/item.associations';
+import { getItemById } from '@/lib/data/item';
+import { getListsByProfile } from '@/lib/data/list';
 import { touchLists } from '@/lib/data/list.touch';
 import { ItemSchema } from '@/lib/data/item.schema';
 import { validateStore } from '@/lib/data/item.store';
@@ -16,6 +18,7 @@ import {
   ADMIN_OPTIONAL,
   authedWriter,
 } from '@/lib/data/profile.gate';
+import { authedIdentity } from '@/lib/data/user.session';
 import { type ActionResponse, ItemDetails } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { eq } from 'drizzle-orm';
@@ -270,4 +273,14 @@ export async function deleteItem(id: string) {
       error: 'Failed to delete item',
     };
   }
+}
+
+export async function getItemForEdit(id: string) {
+  const identity = await authedIdentity();
+  if (!identity) return null;
+  const { activeProfile } = identity;
+  const item = await getItemById(id, activeProfile.id);
+  if (!item) return null;
+  const lists = await getListsByProfile(activeProfile.id);
+  return { item, lists, deleteDisabled: !activeProfile.role.admin };
 }

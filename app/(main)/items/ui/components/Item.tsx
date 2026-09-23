@@ -224,8 +224,6 @@ export default function Item({
             itemId={item.id}
             showArchiveAction={showArchiveAction}
             archivedView={archivedView}
-            pathname={pathname}
-            searchParams={searchParams}
             onChanged={() => router.refresh()}
             onReorderAll={ownsEntry ? onReorderAll : undefined}
             entry={

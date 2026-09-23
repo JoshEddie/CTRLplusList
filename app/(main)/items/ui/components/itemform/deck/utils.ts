@@ -8,7 +8,11 @@ import {
   type TierResult,
 } from '@/lib/storeValidity';
 import type { RowField } from './focus';
-import type { DeckStore, ItemViewModel } from './viewModel';
+import {
+  toItemDetails,
+  type DeckStore,
+  type ItemViewModel,
+} from './viewModel';
 
 export type { Tier, TierResult } from '@/lib/storeValidity';
 export type { RowField } from './focus';
@@ -111,6 +115,23 @@ export function isDirtyDraft(item: ItemViewModel): boolean {
     item.store.name.trim() !== '' ||
     item.store.price.trim() !== ''
   );
+}
+
+// Compared in the persisted shape, so list order and absent-vs-null store
+// provenance don't read as edits.
+function savedShape(item: ItemViewModel): string {
+  const details = toItemDetails(item);
+  return JSON.stringify({
+    ...details,
+    lists: details.lists.map((list) => list.value).sort(),
+  });
+}
+
+export function differsFromSaved(
+  item: ItemViewModel,
+  saved: ItemViewModel
+): boolean {
+  return savedShape(item) !== savedShape(saved);
 }
 
 export const LINKLESS_PRICE_NOTE = 'No price — saves without one';
