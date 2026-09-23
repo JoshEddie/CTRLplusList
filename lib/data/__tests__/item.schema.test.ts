@@ -174,4 +174,34 @@ describe('ItemSchema', () => {
       ).toBe(false);
     });
   });
+  describe('image_framing_by_url', () => {
+    const framed = (framing: Record<string, unknown>) =>
+      ItemSchema.safeParse({
+        ...base,
+        image_framing_by_url: {
+          'https://img.test/a.jpg': {
+            focal_x: 50,
+            focal_y: 50,
+            fit: 'cover',
+            ...framing,
+          },
+        },
+      }).success;
+
+    it('InRangeFocalAndContainFit_Accepts', () => {
+      expect(framed({ focal_x: 0, focal_y: 100, fit: 'contain' })).toBe(true);
+    });
+
+    it('FocalAbove100_Rejects', () => {
+      expect(framed({ focal_x: 101 })).toBe(false);
+    });
+
+    it('FractionalFocal_Rejects', () => {
+      expect(framed({ focal_y: 12.5 })).toBe(false);
+    });
+
+    it('CssFillFit_Rejects', () => {
+      expect(framed({ fit: 'fill' })).toBe(false);
+    });
+  });
 });

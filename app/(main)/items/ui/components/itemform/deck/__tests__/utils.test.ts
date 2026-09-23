@@ -198,6 +198,7 @@ describe('deckUtils', () => {
       photos: ['https://img/a.jpg'],
       photoIndex: 0,
       placeholder: null,
+      framing: {},
       description: '',
       store: { name: 'Lodge', link: 'https://lodge', price: '29.99' },
       lists: [],
@@ -260,6 +261,7 @@ describe('deckUtils', () => {
       photos: [],
       photoIndex: 0,
       placeholder: null,
+      framing: {},
       description: '',
       store: { name: '', link: '', price: '' },
       lists: [
@@ -296,6 +298,7 @@ describe('deckUtils', () => {
       photos: [],
       photoIndex: 0,
       placeholder: null,
+      framing: {},
       description: '',
       store: { name: '', link: '', price: '' },
       lists: [],

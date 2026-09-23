@@ -15,6 +15,11 @@ import { ADMIN_OPTIONAL, authedWriter } from '@/lib/data/profile.gate';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
+import {
+  framingByUrl,
+  framingFor,
+  type FramingByUrl,
+} from '@/lib/imageFraming';
 
 // Internal write helpers for item ↔ store / item ↔ list associations, invoked
 // only by the item actions. Deliberately NOT in a 'use server' module:
@@ -126,13 +131,15 @@ export async function updateItemStores(
 // image_url) is always folded into the set so "every image the user picked" is
 // persisted, including a hand-entered URL outside the fetched candidate set;
 // the row whose url matches it is the only one flagged active (none if
-// activeUrl is empty). The neon-http driver has no transactions, so a crash
+// activeUrl is empty). Each row takes its framing from `framing`, centred and
+// filled where it has none. The neon-http driver has no transactions, so a crash
 // between delete and insert can leave an empty pool — accepted residual; the
 // next save repopulates.
 export async function replaceItemImages(
   candidates: string[],
   activeUrl: string | null,
-  itemId: string
+  itemId: string,
+  framing: FramingByUrl
 ): Promise<void> {
   try {
     const urls = [...candidates];
@@ -146,6 +153,7 @@ export async function replaceItemImages(
           item_id: itemId,
           url,
           active: url === activeUrl,
+          ...framingFor(framing, url),
         }))
       );
     }
@@ -155,16 +163,18 @@ export async function replaceItemImages(
   }
 }
 
-// Existing pool URLs in id order — used by updateItem to preserve the
-// pool when a save carries no candidate list (a manual edit that didn't
-// refetch), while still re-pointing the active image.
-export async function getItemImageUrls(itemId: string): Promise<string[]> {
+// The stored pool in id order with each image's framing — what a save that
+// leaves either out keeps.
+export async function getItemImagePool(itemId: string) {
   const rows = await db
-    .select({ url: item_images.url })
+    .select()
     .from(item_images)
     .where(eq(item_images.item_id, itemId))
     .orderBy(asc(item_images.id));
-  return rows.map((r) => r.url);
+  return {
+    urls: rows.map((r) => r.url),
+    framingByUrl: framingByUrl(rows),
+  };
 }
 
 export async function updateItemLists(

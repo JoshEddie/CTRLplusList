@@ -1,3 +1,8 @@
+import {
+  framingFor,
+  type FramingByUrl,
+  type ImageFraming,
+} from '@/lib/imageFraming';
 import { isPlaceholderUri } from '@/lib/placeholderArt.shared';
 import type { ProductData } from '@/lib/product-fetch/types';
 import type {
@@ -36,6 +41,8 @@ export interface ItemViewModel {
    * the view-model, so they can never persist.
    */
   placeholder: string | null;
+  /** Framing per photo URL, so each candidate keeps its own; a photo without an entry is centred and filled. */
+  framing: FramingByUrl;
   description: string;
   store: DeckStore;
   lists: OptionType[];
@@ -55,6 +62,7 @@ export function blankItem(
     photos: [],
     photoIndex: 0,
     placeholder: null,
+    framing: {},
     description: '',
     store: emptyStore(seedUrl),
     lists: [...lists],
@@ -77,6 +85,7 @@ export function seedFromFetch(
     photos,
     photoIndex: 0,
     placeholder: null,
+    framing: {},
     // Descriptions are deliberately not seeded — extracted copy is marketing
     // junk or the wrong page block on some sites. The user authors their
     // own note.
@@ -100,6 +109,7 @@ type SeedItem = Pick<
   store: ItemStoreTable | null;
   lists: ListTable[];
   image_candidates?: string[];
+  image_framing_by_url?: FramingByUrl;
 };
 
 export function seedFromItem(item: SeedItem): ItemViewModel {
@@ -117,6 +127,7 @@ export function seedFromItem(item: SeedItem): ItemViewModel {
     // A previously saved placeholder is an ordinary pool image now; the
     // transient-selection slot starts clear.
     placeholder: null,
+    framing: item.image_framing_by_url ?? {},
     description: item.description ?? '',
     store: item.store ? toDeckStore(item.store) : emptyStore(),
     lists: item.lists.map((list) => ({
@@ -153,6 +164,14 @@ export function setStoreField(
   return next;
 }
 
+// Null where the active image is placeholder art, which is generated for the
+// card and so is never framed.
+export function activeFraming(vm: ItemViewModel): ImageFraming | null {
+  const url = vm.placeholder ?? vm.photos[vm.photoIndex];
+  if (!url || isPlaceholderUri(url)) return null;
+  return framingFor(vm.framing, url);
+}
+
 // The single view-model → persisted-shape adapter (D2): selected photo becomes
 // the active image, the pool becomes image_candidates, and store provenance is
 // preserved. Existing create/edit actions are unchanged.
@@ -167,6 +186,11 @@ export function toItemDetails(vm: ItemViewModel): ItemDetails {
     image_candidates: vm.placeholder
       ? [...vm.photos.filter((url) => !isPlaceholderUri(url)), vm.placeholder]
       : vm.photos,
+    // Every photo's framing, defaults included: the server keeps stored
+    // framing for any URL left out, so an omitted reset would never land.
+    image_framing_by_url: Object.fromEntries(
+      vm.photos.map((url) => [url, framingFor(vm.framing, url)])
+    ),
     store: {
       name: vm.store.name,
       link: vm.store.link,
@@ -189,6 +213,7 @@ export function toItemDisplay(vm: ItemViewModel): ItemDisplay {
     name: vm.name,
     description: vm.description,
     image_url: vm.placeholder ?? vm.photos[vm.photoIndex] ?? null,
+    image_framing: activeFraming(vm),
     created_at: PREVIEW_TIMESTAMP,
     updated_at: PREVIEW_TIMESTAMP,
     profile_id: 'preview',

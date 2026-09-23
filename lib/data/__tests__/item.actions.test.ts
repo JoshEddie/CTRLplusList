@@ -24,7 +24,9 @@ import {
   seedUsers,
 } from '@/test/helpers/seedFollowGraph';
 
+import { framingOf } from '@/lib/imageFraming';
 import {
+  frameItemImage,
   seedItem,
   seedItemImages,
   seedItemStore,
@@ -816,6 +818,24 @@ describe('ImageCandidates', () => {
       expect(await imageRows(created.id)).toHaveLength(0);
     });
 
+    it('FramingByUrl_PersistsEachImagesFraming', async () => {
+      const res = await actions.createItem(
+        makeItem({
+          image_url: POOL[0],
+          image_candidates: POOL.slice(0, 2),
+          image_framing_by_url: {
+            [POOL[1]]: { focal_x: 10, focal_y: 90, fit: 'contain' },
+          },
+        })
+      );
+      expect(res.success).toBe(true);
+      const rows = await imageRows((await itemRows())[0].id);
+      expect(rows.map(framingOf)).toEqual([
+        { focal_x: 50, focal_y: 50, fit: 'cover' },
+        { focal_x: 10, focal_y: 90, fit: 'contain' },
+      ]);
+    });
+
     it('SixteenCandidates_ReturnsImageCandidatesFieldError-NoRow', async () => {
       const res = await actions.createItem(
         makeItem({
@@ -887,6 +907,50 @@ describe('ImageCandidates', () => {
       expect(rows.filter((r) => r.active).map((r) => r.url)).toEqual([
         handPicked,
       ]);
+    });
+
+    describe('Framing', () => {
+      const STORED = { focal_x: 20, focal_y: 80, fit: 'contain' } as const;
+
+      beforeEach(async () => {
+        await frameItemImage(db, 'I', POOL[1], STORED);
+      });
+
+      it('CandidatesWithFraming_PersistsPayloadFraming', async () => {
+        const res = await actions.updateItem(
+          makeItem({
+            id: 'I',
+            image_url: POOL[1],
+            image_candidates: POOL,
+            image_framing_by_url: {
+              [POOL[1]]: { focal_x: 50, focal_y: 50, fit: 'cover' },
+              [POOL[2]]: { focal_x: 0, focal_y: 100, fit: 'cover' },
+            },
+          })
+        );
+        expect(res.success).toBe(true);
+        const rows = await imageRows('I');
+        expect(rows.map(framingOf).slice(1, 3)).toEqual([
+          { focal_x: 50, focal_y: 50, fit: 'cover' },
+          { focal_x: 0, focal_y: 100, fit: 'cover' },
+        ]);
+      });
+
+      it('NoCandidatesField_PreservesStoredFraming', async () => {
+        const res = await actions.updateItem(
+          makeItem({ id: 'I', name: 'Renamed', image_url: POOL[1] })
+        );
+        expect(res.success).toBe(true);
+        expect(framingOf((await imageRows('I'))[1])).toEqual(STORED);
+      });
+
+      it('CandidatesWithoutFraming_PreservesStoredFramingByUrl', async () => {
+        const res = await actions.updateItem(
+          makeItem({ id: 'I', image_url: POOL[1], image_candidates: [POOL[1]] })
+        );
+        expect(res.success).toBe(true);
+        expect((await imageRows('I')).map(framingOf)).toEqual([STORED]);
+      });
     });
 
     it('PoolDeleteThrows_ReturnsFailedToUpdateItem', async () => {

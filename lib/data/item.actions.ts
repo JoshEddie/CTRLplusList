@@ -3,7 +3,7 @@
 import { db } from '@/db';
 import { items, list_items } from '@/db/schema';
 import {
-  getItemImageUrls,
+  getItemImagePool,
   replaceItemImages,
   updateItemLists,
   updateItemStores,
@@ -69,7 +69,8 @@ export async function createItem(data: ItemDetails): Promise<ActionResponse> {
     await replaceItemImages(
       validatedData.image_candidates ?? [],
       validatedData.image_url || null,
-      id
+      id,
+      validatedData.image_framing_by_url ?? {}
     );
 
     updateTags(
@@ -145,14 +146,19 @@ export async function updateItem(data: ItemDetails): Promise<ActionResponse> {
     await updateItemStores(storeResult.stores, data.id);
     // Re-sync images when the payload carries image fields. Without a candidate
     // list (a manual edit that didn't refetch), preserve the existing pool and
-    // only re-point the active image.
+    // only re-point the active image; framing the payload omits is kept too.
+    // A URL that reappears is still the same image, so it keeps its framing.
     if (
       validatedData.image_url !== undefined ||
       validatedData.image_candidates !== undefined
     ) {
-      const base =
-        validatedData.image_candidates ?? (await getItemImageUrls(data.id));
-      await replaceItemImages(base, validatedData.image_url || null, data.id);
+      const stored = await getItemImagePool(data.id);
+      await replaceItemImages(
+        validatedData.image_candidates ?? stored.urls,
+        validatedData.image_url || null,
+        data.id,
+        { ...stored.framingByUrl, ...validatedData.image_framing_by_url }
+      );
     }
 
     updateTags(

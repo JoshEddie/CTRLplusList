@@ -135,4 +135,31 @@ describe('ItemPhoto', () => {
       expect(fallbackItemPlaceholder).not.toHaveBeenCalled();
     });
   });
+
+  describe('Framing', () => {
+    const renderFramed = () =>
+      render(
+        <ItemPhoto
+          itemId="i1"
+          name="Tea kettle"
+          url="https://img.test/kettle.jpg"
+          framing={{ focal_x: 20, focal_y: 80, fit: 'cover' }}
+        />
+      );
+
+    it('FramedUrl_PositionsImageAtFocalPoint', () => {
+      renderFramed();
+      expect(screen.getByRole('img', { name: 'Tea kettle' })).toHaveStyle({
+        objectPosition: '20% 80%',
+      });
+    });
+
+    it('DeadFramedUrl_FallbackArtRendersUnframed', async () => {
+      renderFramed();
+      fireEvent.error(screen.getByRole('img', { name: 'Tea kettle' }));
+      const img = await screen.findByRole('img', { name: 'Tea kettle' });
+      await waitFor(() => expect(img).toHaveAttribute('src', FALLBACK_URI));
+      expect(img.style.objectPosition).toBe('');
+    });
+  });
 });

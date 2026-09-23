@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ReorderRow from '../ReorderRow';
 
 vi.mock('@/app/(main)/items/ui/components/ItemPhoto', () => ({
-  default: () => <div data-testid="photo" />,
+  default: ({ framing }: { framing?: { fit: string } | null }) => (
+    <div data-testid="photo" data-fit={framing?.fit} />
+  ),
 }));
 
 const sortable = vi.hoisted(() => ({
@@ -130,5 +132,15 @@ describe('ReorderRow', () => {
       screen.getByRole('button', { name: /Drag\s+to reorder/ })
     ).toBeInTheDocument();
     expect(screen.getByText('×0')).toBeInTheDocument();
+  });
+
+  it('FramedItem_PassesFramingToPhoto', () => {
+    renderRow({
+      item: {
+        ...ITEM,
+        image_framing: { focal_x: 50, focal_y: 50, fit: 'contain' },
+      } as never,
+    });
+    expect(screen.getByTestId('photo')).toHaveAttribute('data-fit', 'contain');
   });
 });

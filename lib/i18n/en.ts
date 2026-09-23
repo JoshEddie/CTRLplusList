@@ -138,6 +138,13 @@ export const en = {
   owner_tab_in_list: 'In this list · {count, number}',
   owner_tab_reorder: 'Reorder',
   owner_tabs_label: 'List items',
+  photo_fit_fill: 'Fill',
+  photo_fit_fit: 'Fit',
+  photo_fit_label: 'How the photo sits in its card',
+  photo_focal_hint: 'Drag the photo to choose what stays in view.',
+  photo_focal_label:
+    'Photo position, {x}% across and {y}% down. Drag the photo or use the arrow keys to move it.',
+  photo_selected_alt: 'Selected product image',
   profile_shared_list_count:
     '{count, plural, one {# shared list} other {# shared lists}}',
   reorder_done_label: 'Done',

@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { PhotoEditor } from '../PhotoEditor';
 import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
+import { DEFAULT_FRAMING, type ImageFraming } from '@/lib/imageFraming';
 
 // The pool reaching PhotoEditor is already pruned upstream (prunePhotos at
 // fetch time), so this only tests presentation/selection of what it's given.
@@ -24,6 +25,8 @@ function renderEditor(
     onSelectPlaceholder: vi.fn(),
     onReroll: vi.fn(),
     onAddPhoto: vi.fn(),
+    framing: null as ImageFraming | null,
+    onFramingChange: vi.fn(),
     ...overrides,
   };
   render(<PhotoEditor {...props} />);
@@ -248,6 +251,155 @@ describe('PhotoEditor', () => {
       );
       renderEditor({ photos: [...full, ART[0]] });
       expect(screen.getByLabelText('Add an image by URL')).toBeInTheDocument();
+    });
+  });
+
+  describe('Framing', () => {
+    const panner = () => screen.getByRole('button', { name: /Photo position/ });
+
+    // jsdom lays nothing out, so the image's natural size and the frame's
+    // box are stated; pointer capture is a browser behaviour jsdom lacks.
+    function layOut(natural: [number, number]) {
+      const img = screen.getByAltText('Selected product image');
+      Object.defineProperties(img, {
+        naturalWidth: { value: natural[0] },
+        naturalHeight: { value: natural[1] },
+      });
+      const button = panner();
+      button.setPointerCapture = vi.fn();
+      vi.spyOn(button, 'getBoundingClientRect').mockReturnValue({
+        left: 0,
+        top: 0,
+        width: 400,
+        height: 300,
+      } as DOMRect);
+    }
+
+    const dragFrom100 = (to: { clientX: number; clientY: number }) => {
+      fireEvent.pointerDown(panner(), { clientX: 200, clientY: 100 });
+      fireEvent.pointerMove(panner(), to);
+    };
+
+    it('NoFraming_OffersNeitherControl', () => {
+      renderEditor();
+      expect(
+        screen.queryByRole('radiogroup', {
+          name: 'How the photo sits in its card',
+        })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /Photo position/ })
+      ).not.toBeInTheDocument();
+    });
+
+    it('FilledPhoto_PreviewCropsAtStoredPosition', () => {
+      renderEditor({ framing: { focal_x: 20, focal_y: 80, fit: 'cover' } });
+      expect(screen.getByAltText('Selected product image')).toHaveStyle({
+        objectFit: 'cover',
+        objectPosition: '20% 80%',
+      });
+    });
+
+    // A 1:2 photo filling a 400×300 frame renders 400×800: 500px of vertical
+    // slack, none horizontal.
+    const renderLaidOut = (natural: [number, number]) => {
+      const view = renderEditor({ framing: DEFAULT_FRAMING });
+      layOut(natural);
+      return view;
+    };
+
+    describe('FilledTallPhoto', () => {
+
+      it('DraggedDown_RevealsTopByDragOverSlack', () => {
+        const { onFramingChange } = renderLaidOut([300, 600]);
+        dragFrom100({ clientX: 200, clientY: 200 });
+        expect(onFramingChange).toHaveBeenLastCalledWith({
+          focal_x: 50,
+          focal_y: 30,
+          fit: 'cover',
+        });
+      });
+
+      it('DraggedSideways_UncroppedAxisStaysPut', () => {
+        const { onFramingChange } = renderLaidOut([300, 600]);
+        dragFrom100({ clientX: 350, clientY: 100 });
+        expect(onFramingChange).toHaveBeenLastCalledWith(DEFAULT_FRAMING);
+      });
+
+      it('DraggedPastEdge_ClampsAtTop', () => {
+        const { onFramingChange } = renderLaidOut([300, 600]);
+        dragFrom100({ clientX: 200, clientY: 2000 });
+        expect(onFramingChange).toHaveBeenLastCalledWith({
+          focal_x: 50,
+          focal_y: 0,
+          fit: 'cover',
+        });
+      });
+
+      it('PointerReleased_LaterMoveReportsNothing', () => {
+        const { onFramingChange } = renderLaidOut([300, 600]);
+        fireEvent.pointerDown(panner(), { clientX: 200, clientY: 100 });
+        fireEvent.pointerUp(panner());
+        fireEvent.pointerMove(panner(), { clientX: 200, clientY: 200 });
+        expect(onFramingChange).not.toHaveBeenCalled();
+      });
+
+      it('ArrowDown_MovesPhotoDownLikeADrag', () => {
+        const { onFramingChange } = renderLaidOut([300, 600]);
+        fireEvent.keyDown(panner(), { key: 'ArrowDown' });
+        expect(onFramingChange).toHaveBeenCalledWith({
+          focal_x: 50,
+          focal_y: 45,
+          fit: 'cover',
+        });
+      });
+
+      it('ArrowRight_UncroppedAxisStaysPut', () => {
+        const { onFramingChange } = renderLaidOut([300, 600]);
+        fireEvent.keyDown(panner(), { key: 'ArrowRight' });
+        expect(onFramingChange).toHaveBeenCalledWith(DEFAULT_FRAMING);
+      });
+
+      it('NonArrowKey_ReportsNothing', () => {
+        const { onFramingChange } = renderLaidOut([300, 600]);
+        fireEvent.keyDown(panner(), { key: 'a' });
+        expect(onFramingChange).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('UnloadedPhoto', () => {
+
+      it('Drag_ReportsNothing', () => {
+        const { onFramingChange } = renderLaidOut([0, 0]);
+        dragFrom100({ clientX: 200, clientY: 200 });
+        expect(onFramingChange).not.toHaveBeenCalled();
+      });
+
+      it('ArrowKey_ReportsNothing', () => {
+        const { onFramingChange } = renderLaidOut([0, 0]);
+        fireEvent.keyDown(panner(), { key: 'ArrowDown' });
+        expect(onFramingChange).not.toHaveBeenCalled();
+      });
+    });
+
+    it('FitChosen_ReportsContainKeepingPosition', async () => {
+      const { onFramingChange } = renderEditor({
+        framing: { focal_x: 20, focal_y: 80, fit: 'cover' },
+      });
+      await userEvent.click(screen.getByRole('radio', { name: 'Fit' }));
+      expect(onFramingChange).toHaveBeenCalledWith({
+        focal_x: 20,
+        focal_y: 80,
+        fit: 'contain',
+      });
+    });
+
+    it('FittedPhoto_NoPanControl', () => {
+      renderEditor({ framing: { ...DEFAULT_FRAMING, fit: 'contain' } });
+      expect(screen.getByRole('radio', { name: 'Fit' })).toBeChecked();
+      expect(
+        screen.queryByRole('button', { name: /Photo position/ })
+      ).not.toBeInTheDocument();
     });
   });
 });

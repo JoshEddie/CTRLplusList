@@ -3,7 +3,7 @@ import { PhotoEditor } from '../editors/PhotoEditor';
 import type { ItemActions } from '../useItemActions';
 import { usePlaceholderPreviews } from '../usePlaceholderPreviews';
 import { isLinkless } from '../utils';
-import type { ItemViewModel } from '../viewModel';
+import { activeFraming, type ItemViewModel } from '../viewModel';
 import { DeckCard } from './DeckCard';
 
 interface PhotoCardProps {
@@ -43,6 +43,8 @@ export function PhotoCard({
         onSelectPlaceholder={actions.selectPlaceholder}
         onReroll={reroll}
         onAddPhoto={actions.addPhoto}
+        framing={activeFraming(item)}
+        onFramingChange={actions.setFraming}
       />
     </DeckCard>
   );

@@ -2,13 +2,20 @@ import { describe, expect, it } from 'vitest';
 import type { ProductData } from '@/lib/product-fetch/types';
 import type { ItemStoreTable, ListTable } from '@/lib/types';
 import {
+  activeFraming,
   blankItem,
   seedFromFetch,
   seedFromItem,
   setStoreField,
   toItemDetails,
+  toItemDisplay,
   type ItemViewModel,
 } from '../viewModel';
+
+const A = 'https://example.com/a.jpg';
+const B = 'https://example.com/b.jpg';
+const FRAMED = { focal_x: 20, focal_y: 80, fit: 'cover' } as const;
+const CENTRED = { focal_x: 50, focal_y: 50, fit: 'cover' } as const;
 
 const fetchedProduct: ProductData = {
   title: 'Cast Iron Skillet',
@@ -313,6 +320,14 @@ describe('viewModel', () => {
       ]);
     });
 
+    it('PartlyFramedPool_SendsFramingForEveryPhoto-CentredWhereUnset', () => {
+      const vm = { ...blankItem(), photos: [A, B], framing: { [B]: FRAMED } };
+      expect(toItemDetails(vm).image_framing_by_url).toEqual({
+        [A]: CENTRED,
+        [B]: FRAMED,
+      });
+    });
+
     it('NoPlaceholderSelected_PreviewUrisNeverEnterSubmission', () => {
       const vm = seedFromFetch(fetchedProduct, 'https://x.test/p', '2026-01-01');
       const details = toItemDetails(vm);
@@ -320,6 +335,54 @@ describe('viewModel', () => {
         false
       );
       expect(details.image_url).toBe('https://example.com/a.jpg');
+    });
+  });
+
+  describe('Framing', () => {
+    it('SeededFromItem_CarriesStoredFramingByUrl', () => {
+      const vm = seedFromItem({
+        id: 'i',
+        name: 'n',
+        description: '',
+        image_url: B,
+        image_candidates: [A, B],
+        image_framing_by_url: { [B]: FRAMED },
+        store: null,
+        lists: [],
+      });
+      expect(activeFraming(vm)).toEqual(FRAMED);
+    });
+
+    it('UnframedActivePhoto_ActiveFramingIsCentredFill', () => {
+      expect(activeFraming({ ...blankItem(), photos: [A] })).toEqual(CENTRED);
+    });
+
+    it('PlaceholderSelected_ActiveFramingNull', () => {
+      const vm = {
+        ...blankItem(),
+        photos: [A],
+        placeholder: 'data:image/svg+xml;base64,YXJ0',
+      };
+      expect(activeFraming(vm)).toBeNull();
+    });
+
+    it('SavedPlaceholderActive_ActiveFramingNull', () => {
+      const vm = { ...blankItem(), photos: ['data:image/svg+xml;base64,YXJ0'] };
+      expect(activeFraming(vm)).toBeNull();
+    });
+
+    it('NoPhotos_ActiveFramingNull', () => {
+      expect(activeFraming(blankItem())).toBeNull();
+    });
+
+    it('FramedActivePhoto_PreviewCardCarriesItsFraming', () => {
+      const vm = {
+        ...blankItem(),
+        photos: [A, B],
+        photoIndex: 1,
+        framing: { [B]: FRAMED },
+      };
+      expect(toItemDisplay(vm).image_framing).toEqual(FRAMED);
     });
   });
 });

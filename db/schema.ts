@@ -15,6 +15,7 @@ import { nanoid } from 'nanoid';
 import type { AdapterAccountType } from 'next-auth/adapters';
 
 import type { AltvatarOptions } from '@/lib/altvatar/types';
+import { DEFAULT_FRAMING, IMAGE_FITS } from '@/lib/imageFraming';
 import { ROLES, isGrantable } from '@/lib/data/profile.roles';
 import type { RoleShape } from '@/lib/types';
 
@@ -199,11 +200,20 @@ export const item_images = pgTable(
     // Marks the item's active image; the partial-unique index below is the
     // no-transactions backstop for concurrent guest-callable mints.
     active: boolean('active').notNull().default(false),
+    focal_x: integer('focal_x').notNull().default(DEFAULT_FRAMING.focal_x),
+    focal_y: integer('focal_y').notNull().default(DEFAULT_FRAMING.focal_y),
+    fit: text('fit', { enum: IMAGE_FITS })
+      .notNull()
+      .default(DEFAULT_FRAMING.fit),
   },
   (table) => [
     uniqueIndex('item_images_one_active_idx')
       .on(table.item_id)
       .where(sql`${table.active}`),
+    check(
+      'item_images_framing_valid',
+      sql`${table.fit} IN (${sql.raw(literalList(IMAGE_FITS))}) AND ${table.focal_x} BETWEEN 0 AND 100 AND ${table.focal_y} BETWEEN 0 AND 100`
+    ),
   ]
 );
 

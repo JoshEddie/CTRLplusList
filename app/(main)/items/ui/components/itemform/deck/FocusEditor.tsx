@@ -14,7 +14,7 @@ import { ROW_LABELS, type RowField } from './focus';
 import type { ItemActions } from './useItemActions';
 import { isLinkless } from './utils';
 import { usePlaceholderPreviews } from './usePlaceholderPreviews';
-import type { ItemViewModel } from './viewModel';
+import { activeFraming, type ItemViewModel } from './viewModel';
 
 interface FocusEditorProps {
   field: RowField;
@@ -44,6 +44,8 @@ function PhotoFocusBody({
       onSelectPlaceholder={actions.selectPlaceholder}
       onReroll={reroll}
       onAddPhoto={actions.addPhoto}
+      framing={activeFraming(item)}
+      onFramingChange={actions.setFraming}
     />
   );
 }

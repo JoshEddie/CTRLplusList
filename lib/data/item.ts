@@ -10,7 +10,12 @@ import { atLeast, MAXIMAL_TIER } from '@/lib/spoilers';
 import { ListTable, SpoilerTier } from '@/lib/types';
 import { cacheTags, itemRowTags } from '@/lib/cacheTags';
 import { and, eq, exists, isNotNull, isNull, sql } from 'drizzle-orm';
+import { framingByUrl, framingOf, type ImageFraming } from '@/lib/imageFraming';
 import { cacheTag } from 'next/cache';
+
+// The card reads fetch the active image alone, so at most one row.
+const activeFramingOf = ([image]: ImageFraming[]) =>
+  image ? framingOf(image) : null;
 
 // Uncached wrapper over a private cached raw read. The projection is
 // viewer-scoped and database-backed, so sanitizing inside the cache would key
@@ -91,6 +96,7 @@ async function rawItemsByProfile(
     return result.map(({ images, stores, list_items: entries, ...item }) => ({
       ...item,
       image_url: images[0]?.url ?? null,
+      image_framing: activeFramingOf(images),
       store: primaryStore(stores),
       // The same pair a list row carries, read at the library's scope: summed
       // over every entry instead of taken from one. `num_lists` is how many
@@ -165,6 +171,7 @@ export async function getItemById(id: string, profileId: string) {
       archived_at: result.archived_at,
       store: primaryStore(result.stores),
       image_candidates: result.images.map((image) => image.url),
+      image_framing_by_url: framingByUrl(result.images),
       lists: lists,
     };
 
@@ -274,6 +281,7 @@ async function rawItemsByListId(listId: string) {
         quantity,
         claimed_units: item.purchases.reduce((sum, p) => sum + p.units, 0),
         image_url: images[0]?.url ?? null,
+        image_framing: activeFramingOf(images),
         store: primaryStore(stores),
       })
     );

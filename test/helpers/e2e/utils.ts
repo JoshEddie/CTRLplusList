@@ -61,14 +61,42 @@ export async function multiUnitEntryWithRoom(
   );
 }
 
+// Opens the edit Preview for the library or list card carrying `name`, through
+// its kebab.
+export async function openItemEdit(page: Page, name: string): Promise<void> {
+  await page
+    .locator('.item-container:not(.preview)', { hasText: name })
+    .getByRole('button', { name: 'Item actions' })
+    .click();
+  await page.getByRole('menuitem', { name: 'Edit' }).click();
+}
+
+// Real, loadable images served from a stubbed http host, so the deck's
+// fetch-time size pruning keeps them — fake URLs would 404 and get pruned, and
+// data: URIs are not valid candidates. The URL's name is the fill colour.
+export const stubImageUrl = (hex: string) =>
+  `https://imgstub.example/${hex}.svg`;
+
+export async function routeStubImages(
+  page: Page,
+  { width, height } = { width: 240, height: 240 }
+): Promise<void> {
+  await page.route('https://imgstub.example/**', (route) => {
+    const hex = route.request().url().split('/').pop()!.replace('.svg', '');
+    return route.fulfill({
+      contentType: 'image/svg+xml',
+      body: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="#${hex}"/></svg>`,
+    });
+  });
+}
+
 // Removes an item a spec created, through the affordances a user has: the
 // card's kebab → Edit → the edit Preview's Delete → the confirm dialog. Scope
 // the confirm click to the dialog — the Preview's own delete button carries the
 // same name. Specs that create items call this so a run leaves zero residue.
 export async function deleteItem(page: Page, name: string): Promise<void> {
   const card = page.locator('.item-container:not(.preview)', { hasText: name });
-  await card.getByRole('button', { name: 'Item actions' }).click();
-  await page.getByRole('menuitem', { name: 'Edit' }).click();
+  await openItemEdit(page, name);
   await page.getByRole('button', { name: 'Delete' }).click();
   await page
     .locator('.confirm-dialog-content')

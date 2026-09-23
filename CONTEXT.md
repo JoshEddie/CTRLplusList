@@ -171,6 +171,11 @@ offers nothing to open.
 The chosen image for an item, marked on the image row itself rather than on the
 item.
 
+**Framing**:
+How one image sits in every card it appears in: whether it fills the card,
+cropped to the position the owner dragged it to, or fits whole inside it. Kept per
+image, so each candidate keeps its own. Placeholder art is never framed.
+
 **Placeholder art**:
 Generated artwork minted for an item that has no image, stored the same way as a
 look ([ADR-0009](docs/adr/0009-generated-art-is-baked-and-persisted.md)).
