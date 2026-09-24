@@ -1,9 +1,6 @@
 'use client';
 
-// TODO(#343): split the extra components into their own files, then drop this disable
-/* eslint-disable react/no-multi-comp */
-
-import { Button, CloseButton } from '@/app/ui/components/button';
+import { CloseButton } from '@/app/ui/components/button';
 import { useDismiss } from '@/app/ui/components/use-dismiss';
 import { useScrollLock } from '@/app/ui/hooks/useScrollLock';
 import '@/app/ui/styles/form-shell.css';
@@ -51,43 +48,6 @@ export function FormShell({
           </div>
         )}
         {children}
-      </div>
-    </div>
-  );
-}
-
-export function FormShellFooter({
-  cancelHref,
-  onCancel,
-  deleteSlot,
-  submitLabel,
-  isPending,
-  submitDisabled,
-}: {
-  cancelHref?: string;
-  onCancel?: () => void;
-  deleteSlot?: React.ReactNode;
-  submitLabel: string;
-  isPending?: boolean;
-  submitDisabled?: boolean;
-}) {
-  const dismiss = useDismiss(onCancel, cancelHref);
-
-  return (
-    <div className="form-shell-ft">
-      <Button variant="ghost" onClick={dismiss}>
-        Cancel
-      </Button>
-      <div className="form-shell-ft-right">
-        {deleteSlot}
-        <Button
-          type="submit"
-          variant="primary"
-          isLoading={isPending}
-          disabled={submitDisabled}
-        >
-          {submitLabel}
-        </Button>
       </div>
     </div>
   );

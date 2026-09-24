@@ -1,6 +1,3 @@
-// TODO(#343): split the extra components into their own files, then drop this disable
-/* eslint-disable react/no-multi-comp */
-
 import { getFollowState } from '@/lib/data/follow';
 import { getProfileForViewer } from '@/lib/data/profile';
 import { writableMembership } from '@/lib/data/profile.gate';
@@ -15,19 +12,16 @@ import {
   resolveListVisibility,
   type ListVisibility,
 } from '@/lib/visibility';
-import BookmarkContainer from './BookmarkContainer';
 import BylineProfileCard from './BylineProfileCard';
 import EditListAction from './EditListAction';
+import HeroActions from './HeroActions';
+import HeroCollapsedOwnerItems from './HeroCollapsedOwnerItems';
+import HeroCollapsedViewerItems from './HeroCollapsedViewerItems';
 import HeroMeta from './HeroMeta';
-import { SpoilerMenuItems } from './HeroCollapsedItems';
-import {
-  HeroCollapsedOwnerItems,
-  HeroCollapsedViewerItems,
-} from './HeroCollapsedItemsContainer';
 import HeroSpoilerControl from './HeroSpoilerControl';
 import ListActionsMenu from './ListActionsMenu';
 import ListHeroSurface from './ListHeroSurface';
-import ShareButton from './ShareButton';
+import SpoilerMenuItems from './SpoilerMenuItems';
 import SwitchProfileOffer from './SwitchProfileOffer';
 import VisibilityPicker from './VisibilityPicker';
 
@@ -210,25 +204,5 @@ export default async function ListDetails({
         />
       )}
     </>
-  );
-}
-
-// Row 2's button cluster. Share leads and never moves — every other control
-// in the row comes and goes with who is looking, so anchoring the one constant
-// keeps a control from landing where a different one stood a moment ago.
-function HeroActions({
-  list,
-  viewerUserId,
-}: {
-  list: ListWithVisibility;
-  viewerUserId: string | undefined;
-}) {
-  return (
-    <div className="list-hero-actions">
-      <ShareButton list={list} />
-      {viewerUserId && (
-        <BookmarkContainer list_id={list.id} user_id={viewerUserId} />
-      )}
-    </div>
   );
 }

@@ -15,13 +15,10 @@ import type { ActionResponse } from '@/lib/types';
 import { useActionState, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { LuArrowLeft, LuArrowRight, LuCheck } from 'react-icons/lu';
-import {
-  EverywhereBeat,
-  IntroBeat,
-  ProfilesBeat,
-  SAMPLE_IDENTITIES,
-  type Persona,
-} from './StoryBeats';
+import EverywhereBeat from './EverywhereBeat';
+import IntroBeat from './IntroBeat';
+import ProfilesBeat from './ProfilesBeat';
+import { SAMPLE_IDENTITIES, type Persona } from './utils';
 
 const initialState: ActionResponse = { success: false, message: '' };
 

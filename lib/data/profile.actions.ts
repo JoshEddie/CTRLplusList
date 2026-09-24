@@ -1,8 +1,5 @@
 'use server';
 
-// TODO(#343): extract the duplicated literal to a constant, then drop this disable
-/* eslint-disable sonarjs/no-duplicate-string */
-
 import { db } from '@/db';
 import {
   profile_members,
@@ -10,16 +7,7 @@ import {
   user_blocks,
   user_follows,
 } from '@/db/schema';
-import { selfMemberships } from '@/lib/data/profile.identity';
-import { ROLES } from '@/lib/data/profile.roles';
-import {
-  ProfileFieldsSchema,
-  ProfileIdentitySchema,
-  ProfileSettingsSchema,
-  type ProfileFieldsData,
-  type ProfileIdentityData,
-  type ProfileSettingsData,
-} from '@/lib/data/profile.schema';
+import { cacheTags, updateTags } from '@/lib/cacheTags';
 import {
   ACTIVE_PROFILE_COOKIE,
   ACTIVE_PROFILE_COOKIE_ATTRIBUTES,
@@ -30,23 +18,43 @@ import {
   stampActedAs,
   writableMembership,
 } from '@/lib/data/profile.gate';
+import { selfMemberships } from '@/lib/data/profile.identity';
+import { ROLES } from '@/lib/data/profile.roles';
 import {
-  UNAUTHORIZED_RESPONSE,
-  authedIdentity,
-  authedUserId,
-} from '@/lib/data/user.session';
-import { type ActionResponse } from '@/lib/types';
+  ProfileFieldsSchema,
+  ProfileIdentitySchema,
+  ProfileSettingsSchema,
+  type ProfileFieldsData,
+  type ProfileIdentityData,
+  type ProfileSettingsData,
+} from '@/lib/data/profile.schema';
 import { writeAltvatar } from '@/lib/data/profileAvatar.write';
 import {
   writeAccent,
   writeMemberTier,
 } from '@/lib/data/profilePreference.write';
+import {
+  UNAUTHORIZED_RESPONSE,
+  authedIdentity,
+  authedUserId,
+} from '@/lib/data/user.session';
+import { getMessage } from '@/lib/i18n/utils';
 import { PROTECTED_TIER } from '@/lib/spoilers';
-import { cacheTags, updateTags } from '@/lib/cacheTags';
+import { type ActionResponse } from '@/lib/types';
 import { and, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { refresh } from 'next/cache';
 import { cookies } from 'next/headers';
+
+const UPDATE_FAILED = getMessage('profile_error_update_failed');
+
+function validationFailed(errors: ActionResponse['errors']): ActionResponse {
+  return {
+    success: false,
+    message: getMessage('profile_validation_failed'),
+    errors,
+  };
+}
 
 export async function followUser(
   followee_profile_id: string
@@ -251,11 +259,7 @@ export async function createProfile(
 
     const validationResult = ProfileSettingsSchema.safeParse(data);
     if (!validationResult.success) {
-      return {
-        success: false,
-        message: 'Validation failed',
-        errors: validationResult.error.flatten().fieldErrors,
-      };
+      return validationFailed(validationResult.error.flatten().fieldErrors);
     }
     const { name, tagline, accent, altvatar } = validationResult.data;
 
@@ -329,11 +333,7 @@ export async function updateProfileSettings(
 
     const validationResult = ProfileFieldsSchema.safeParse(data);
     if (!validationResult.success) {
-      return {
-        success: false,
-        message: 'Validation failed',
-        errors: validationResult.error.flatten().fieldErrors,
-      };
+      return validationFailed(validationResult.error.flatten().fieldErrors);
     }
     const { name, tagline } = validationResult.data;
 
@@ -350,7 +350,7 @@ export async function updateProfileSettings(
     return {
       success: false,
       message: 'An error occurred while updating the profile',
-      error: 'Failed to update profile',
+      error: UPDATE_FAILED,
     };
   }
 }
@@ -375,11 +375,7 @@ export async function updateProfileIdentity(
 
     const validationResult = ProfileIdentitySchema.safeParse(data);
     if (!validationResult.success) {
-      return {
-        success: false,
-        message: 'Validation failed',
-        errors: validationResult.error.flatten().fieldErrors,
-      };
+      return validationFailed(validationResult.error.flatten().fieldErrors);
     }
     const { accent, altvatar } = validationResult.data;
 
@@ -396,7 +392,7 @@ export async function updateProfileIdentity(
       return {
         success: false,
         message: 'Your Altvatar was not fully saved',
-        error: 'Failed to update profile',
+        error: UPDATE_FAILED,
       };
     }
 
@@ -406,7 +402,7 @@ export async function updateProfileIdentity(
     return {
       success: false,
       message: 'An error occurred while saving your Altvatar',
-      error: 'Failed to update profile',
+      error: UPDATE_FAILED,
     };
   }
 }

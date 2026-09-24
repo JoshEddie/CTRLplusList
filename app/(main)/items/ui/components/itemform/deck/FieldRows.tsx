@@ -1,55 +1,9 @@
 'use client';
 
-// TODO(#343): split the extra components into their own files, then drop this disable
-/* eslint-disable react/no-multi-comp */
-
-import {
-  FaCircleCheck,
-  FaCircleExclamation,
-  FaTriangleExclamation,
-} from 'react-icons/fa6';
+import FieldRow from './FieldRow';
 import type { RowField } from './focus';
-import { isLinkless, rowTiers, type TierResult } from './utils';
+import { isLinkless, rowTiers } from './utils';
 import type { ItemViewModel } from './viewModel';
-
-const STATUS_ICONS = {
-  good: FaCircleCheck,
-  warn: FaTriangleExclamation,
-  error: FaCircleExclamation,
-} as const;
-
-function FieldRow({
-  label,
-  value,
-  provenance,
-  status,
-  onClick,
-}: {
-  label: string;
-  value: string;
-  provenance?: string;
-  status: TierResult;
-  onClick: () => void;
-}) {
-  const Icon = STATUS_ICONS[status.tier];
-  return (
-    <button
-      type="button"
-      className={`deck-triage-row deck-triage-${status.tier}`}
-      onClick={onClick}
-    >
-      <span className="deck-triage-main">
-        <span className="deck-triage-label">{label}</span>
-        <span className="deck-triage-value">{value}</span>
-        {provenance && <span className="deck-triage-prov">{provenance}</span>}
-      </span>
-      <span className={`deck-triage-status deck-triage-status-${status.tier}`}>
-        <Icon aria-hidden="true" />
-        {status.tier === 'good' ? status.note || 'Looks good' : status.note}
-      </span>
-    </button>
-  );
-}
 
 interface FieldRowsProps {
   item: ItemViewModel;

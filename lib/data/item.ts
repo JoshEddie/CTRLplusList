@@ -1,6 +1,3 @@
-// TODO(#343): extract the duplicated literal to a constant, then drop this disable
-/* eslint-disable sonarjs/no-duplicate-string */
-
 import { db } from '@/db';
 import { items, list_items, lists } from '@/db/schema';
 import { sanitizePurchases } from '@/lib/data/purchase';
@@ -12,6 +9,8 @@ import { cacheTags, itemRowTags } from '@/lib/cacheTags';
 import { and, eq, exists, isNotNull, isNull, sql } from 'drizzle-orm';
 import { framingByUrl, framingOf, type ImageFraming } from '@/lib/imageFraming';
 import { cacheTag } from 'next/cache';
+
+const FETCH_ERROR_LOG = 'Error fetching items:';
 
 // The card reads fetch the active image alone, so at most one row.
 const activeFramingOf = ([image]: ImageFraming[]) =>
@@ -111,7 +110,7 @@ async function rawItemsByProfile(
         : {}),
     }));
   } catch (error) {
-    console.error('Error fetching items:', error);
+    console.error(FETCH_ERROR_LOG, error);
     throw error;
   }
 }
@@ -177,7 +176,7 @@ export async function getItemById(id: string, profileId: string) {
 
     return newResult;
   } catch (error) {
-    console.error('Error fetching items:', error);
+    console.error(FETCH_ERROR_LOG, error);
     throw error;
   }
 }
@@ -286,7 +285,7 @@ async function rawItemsByListId(listId: string) {
       })
     );
   } catch (error) {
-    console.error('Error fetching items:', error);
+    console.error(FETCH_ERROR_LOG, error);
     throw new Error('Failed to fetch items');
   }
 }

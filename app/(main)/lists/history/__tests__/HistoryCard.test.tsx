@@ -13,8 +13,8 @@ vi.mock('@/app/ui/components/ListCard', () => ({
     />
   ),
 }));
-vi.mock('../HistoryActions', () => ({
-  RemoveVisitButton: ({ listId }: { listId: string }) => (
+vi.mock('../RemoveVisitButton', () => ({
+  default: ({ listId }: { listId: string }) => (
     <button type="button" data-testid="remove-visit" data-list-id={listId} />
   ),
 }));

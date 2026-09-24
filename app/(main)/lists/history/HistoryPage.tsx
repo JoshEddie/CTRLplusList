@@ -2,7 +2,7 @@ import ListCollectionsNav from '@/app/ui/components/ListCollectionsNav';
 import { authedUserId } from '@/lib/data/user.session';
 import { getVisitHistoryByUser } from '@/lib/data/visit';
 import { redirect } from 'next/navigation';
-import { ClearHistoryButton } from './HistoryActions';
+import ClearHistoryButton from './ClearHistoryButton';
 import HistoryList from './HistoryList';
 
 export default async function HistoryPage() {

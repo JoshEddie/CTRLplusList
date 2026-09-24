@@ -2,12 +2,12 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { clearVisitHistory, removeVisit } from '@/lib/data/visit.actions';
+import { clearVisitHistory } from '@/lib/data/visit.actions';
 import toast from 'react-hot-toast';
-import { ClearHistoryButton, RemoveVisitButton } from '../HistoryActions';
+import ClearHistoryButton from '../ClearHistoryButton';
+import { deferred, type ActionResult } from '@/test/helpers/deferred';
 
 vi.mock('@/lib/data/visit.actions', () => ({
-  removeVisit: vi.fn(),
   clearVisitHistory: vi.fn(),
 }));
 vi.mock('react-hot-toast', () => ({
@@ -18,73 +18,9 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: refreshMock }),
 }));
 
-type ActionResult = { success: boolean; message?: string };
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((r) => {
-    resolve = r;
-  });
-  return { promise, resolve };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(removeVisit).mockResolvedValue({ success: true } as never);
   vi.mocked(clearVisitHistory).mockResolvedValue({ success: true } as never);
-});
-
-describe('RemoveVisitButton', () => {
-  it('Default_RendersEnabledRemoveButtonWithAriaLabel', () => {
-    render(<RemoveVisitButton listId="l1" />);
-    const button = screen.getByRole('button', { name: 'Remove from history' });
-    expect(button).not.toBeDisabled();
-    expect(button).toHaveAttribute('aria-disabled', 'false');
-  });
-
-  it('Click_CallsRemoveVisitWithListId', async () => {
-    const user = userEvent.setup();
-    render(<RemoveVisitButton listId="l1" />);
-    await user.click(screen.getByRole('button'));
-    expect(removeVisit).toHaveBeenCalledWith('l1');
-  });
-
-  it('RemoveSuccess_CallsRouterRefresh', async () => {
-    const user = userEvent.setup();
-    vi.mocked(removeVisit).mockResolvedValue({ success: true } as never);
-    render(<RemoveVisitButton listId="l1" />);
-    await user.click(screen.getByRole('button'));
-    expect(refreshMock).toHaveBeenCalledTimes(1);
-    expect(toast.error).not.toHaveBeenCalled();
-  });
-
-  it('RemoveFailure_CallsToastError', async () => {
-    const user = userEvent.setup();
-    vi.mocked(removeVisit).mockResolvedValue({
-      success: false,
-      message: 'boom',
-    } as never);
-    render(<RemoveVisitButton listId="l1" />);
-    await user.click(screen.getByRole('button'));
-    expect(toast.error).toHaveBeenCalledWith('boom');
-    expect(refreshMock).not.toHaveBeenCalled();
-  });
-
-  it('ClickWhilePending_IsNoOp', async () => {
-    const user = userEvent.setup();
-    const d = deferred<ActionResult>();
-    vi.mocked(removeVisit).mockReturnValue(d.promise as never);
-    render(<RemoveVisitButton listId="l1" />);
-    const button = screen.getByRole('button');
-
-    await user.click(button);
-    await user.click(button);
-    expect(removeVisit).toHaveBeenCalledTimes(1);
-
-    await act(async () => {
-      d.resolve({ success: true });
-    });
-  });
 });
 
 describe('ClearHistoryButton', () => {

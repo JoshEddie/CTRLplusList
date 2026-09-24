@@ -1,8 +1,5 @@
 'use server';
 
-// TODO(#343): extract the duplicated literal to a constant, then drop this disable
-/* eslint-disable sonarjs/no-duplicate-string */
-
 import { db } from '@/db';
 import { item_images, items } from '@/db/schema';
 import {
@@ -12,10 +9,19 @@ import {
 } from '@/lib/data/user.session';
 import { isItemViewable } from '@/lib/listAccess';
 import { generatePlaceholderArt } from '@/lib/placeholderArt';
+import { getMessage } from '@/lib/i18n/utils';
 import { type ActionResponse } from '@/lib/types';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
 import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+
+function placeholderFailed(error: string): ActionResponse {
+  return {
+    success: false,
+    message: getMessage('photo_placeholder_error'),
+    error,
+  };
+}
 
 // Guest-callable by design: the
 // payload is the item id alone and the stored row is fully server-derived, so
@@ -74,11 +80,7 @@ export async function mintItemPlaceholder(
     };
   } catch (error) {
     console.error('Error minting placeholder:', error);
-    return {
-      success: false,
-      message: 'An error occurred while generating placeholder art',
-      error: 'Failed to mint placeholder',
-    };
+    return placeholderFailed('Failed to mint placeholder');
   }
 }
 
@@ -102,11 +104,7 @@ export async function fallbackItemPlaceholder(
     };
   } catch (error) {
     console.error('Error generating fallback placeholder:', error);
-    return {
-      success: false,
-      message: 'An error occurred while generating placeholder art',
-      error: 'Failed to generate fallback',
-    };
+    return placeholderFailed('Failed to generate fallback');
   }
 }
 
@@ -127,10 +125,6 @@ export async function previewPlaceholders(
     return { success: true, message: 'Previews generated', urls };
   } catch (error) {
     console.error('Error generating placeholder previews:', error);
-    return {
-      success: false,
-      message: 'An error occurred while generating placeholder art',
-      error: 'Failed to generate previews',
-    };
+    return placeholderFailed('Failed to generate previews');
   }
 }

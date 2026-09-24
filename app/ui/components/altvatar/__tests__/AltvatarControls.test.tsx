@@ -10,18 +10,20 @@
  * the face each value produces, a colour axis by its named swatch, and each
  * axis names the value currently held.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import AltvatarControls from '../AltvatarControls';
+import { renderAltvatar } from '@/lib/altvatar/render';
 import type { AxisOffer } from '@/lib/altvatar/resolve';
 
 // The art itself is pinned over `renderAltvatar`; here it only has to be
 // distinguishable per tile, and deterministic enough to assert on.
 vi.mock('@/lib/altvatar/render', () => ({
-  renderAltvatar: (styleId: string, options: { selections: object }) =>
-    Promise.resolve(`data:${styleId}:${JSON.stringify(options.selections)}`),
+  renderAltvatar: vi.fn((styleId: string, options: { selections: object }) =>
+    Promise.resolve(`data:${styleId}:${JSON.stringify(options.selections)}`)
+  ),
 }));
 
 const eyesOffer: AxisOffer = {
@@ -74,11 +76,16 @@ const onChange = vi.fn();
 const heldValueName = (container: HTMLElement) =>
   container.querySelector('.altvatar-axis-value')?.textContent;
 
-function renderControls(
+const tileArt = () =>
+  screen
+    .getAllByRole('radio')
+    .map((t) => t.querySelector('img')?.getAttribute('src'));
+
+function controlsFor(
   offers: AxisOffer[],
   selections: Record<string, string> = { eyes: 'wink', skinColor: 'edb98a' }
 ) {
-  return render(
+  return (
     <AltvatarControls
       styleId="avataaars"
       options={{ seed: 's', selections }}
@@ -87,6 +94,13 @@ function renderControls(
       onChange={onChange}
     />
   );
+}
+
+function renderControls(
+  offers: AxisOffer[],
+  selections?: Record<string, string>
+) {
+  return render(controlsFor(offers, selections));
 }
 
 beforeEach(() => {
@@ -114,10 +128,7 @@ describe('EnumAxis', () => {
   it('Rendered_DrawsEachValueAsTheFaceItProduces', async () => {
     renderControls([eyesOffer]);
     await waitFor(() => {
-      const art = screen
-        .getAllByRole('radio')
-        .map((t) => t.querySelector('img')?.getAttribute('src'));
-      expect(art).toEqual([
+      expect(tileArt()).toEqual([
         'data:avataaars:{"eyes":"wink","skinColor":"edb98a"}',
         'data:avataaars:{"eyes":"happy","skinColor":"edb98a"}',
       ]);
@@ -127,10 +138,7 @@ describe('EnumAxis', () => {
   it('AxisUnderAnOverlay_DrawsItsTilesWithTheOverlayLifted', async () => {
     renderControls([hairOffer], { hair: 'bob', hat: 'turban' });
     await waitFor(() => {
-      const art = screen
-        .getAllByRole('radio')
-        .map((t) => t.querySelector('img')?.getAttribute('src'));
-      expect(art).toEqual([
+      expect(tileArt()).toEqual([
         'data:avataaars:{"hair":"bob","hat":"none"}',
         'data:avataaars:{"hair":"curly","hat":"none"}',
       ]);
@@ -140,10 +148,7 @@ describe('EnumAxis', () => {
   it('TheOverlayAxisItself_DrawsItsTilesStillWearingIt', async () => {
     renderControls([hatOffer], { hair: 'bob', hat: 'turban' });
     await waitFor(() => {
-      const art = screen
-        .getAllByRole('radio')
-        .map((t) => t.querySelector('img')?.getAttribute('src'));
-      expect(art).toEqual([
+      expect(tileArt()).toEqual([
         'data:avataaars:{"hair":"bob","hat":"turban"}',
         'data:avataaars:{"hair":"bob","hat":"hat"}',
       ]);
@@ -163,6 +168,32 @@ describe('EnumAxis', () => {
     expect(
       screen.getAllByRole('radio').map((t) => t.getAttribute('aria-checked'))
     ).toEqual(['false', 'false']);
+  });
+});
+
+describe('SupersededSelection', () => {
+  it('OlderArtLandsLast_KeepsTheNewerArt', async () => {
+    let releaseStale!: () => void;
+    const stale = new Promise<void>((r) => {
+      releaseStale = r;
+    });
+    vi.mocked(renderAltvatar).mockImplementationOnce(() =>
+      stale.then(() => 'data:stale')
+    );
+    const { rerender } = renderControls([eyesOffer]);
+    rerender(controlsFor([eyesOffer], { eyes: 'wink', skinColor: 'ffdbb4' }));
+    const newer = [
+      'data:avataaars:{"eyes":"wink","skinColor":"ffdbb4"}',
+      'data:avataaars:{"eyes":"happy","skinColor":"ffdbb4"}',
+    ];
+    await waitFor(() => expect(tileArt()).toEqual(newer));
+
+    await act(async () => {
+      releaseStale();
+      await vi.mocked(renderAltvatar).mock.results[0].value;
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(tileArt()).toEqual(newer);
   });
 });
 

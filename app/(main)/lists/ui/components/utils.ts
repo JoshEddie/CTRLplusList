@@ -1,4 +1,6 @@
 import { getMessage } from '@/lib/i18n/utils';
+import type { ListTable } from '@/lib/types';
+import { toast } from 'react-hot-toast';
 
 export const COMMON_OCCASIONS = [
   'Birthday',
@@ -42,4 +44,29 @@ export function detailsChanged(
     draft.occasion !== saved.occasion ||
     draft.date !== dateInputValue(saved.date)
   );
+}
+
+// Built from list.id rather than window.location, so no presentation-state
+// params ever reach the shared URL.
+export async function shareList(list: ListTable) {
+  const listUrl = `https://www.ctrlpluslist.com/lists/${list.id}`;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: list.name, url: listUrl });
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        toast.error('Failed to share list');
+      }
+    }
+    return;
+  }
+  try {
+    await toast.promise(navigator.clipboard.writeText(listUrl), {
+      loading: 'Copying',
+      success: 'Copied to clipboard',
+      error: 'Failed to copy URL to clipboard',
+    });
+  } catch (err) {
+    console.error('Failed to copy:', err);
+  }
 }

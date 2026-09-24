@@ -1,10 +1,12 @@
+import { getMessage } from '@/lib/i18n/utils';
 import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
+  const name = getMessage('app_name');
   return {
-    name: 'Ctrl+List',
-    short_name: 'Ctrl+List',
-    description: 'Create and share your lists with friends and family',
+    name,
+    short_name: name,
+    description: getMessage('app_description'),
     id: '/',
     start_url: '/',
     scope: '/',

@@ -1,9 +1,8 @@
-// TODO(#343): extract the duplicated literal to a constant, then drop this disable
-/* eslint-disable sonarjs/no-duplicate-string */
-
 import type { ProductResult } from '@/lib/product-fetch/types';
 
 export const MOCK_HOSTNAME = 'mock.test';
+
+const STORE = 'Mock Store';
 
 // The one scenario the route must produce itself: its observable (HTTP 429)
 // originates before the seam runs, so no fixture exists for it.
@@ -53,7 +52,7 @@ const FIXTURES: Record<Scenario, ProductResult> = {
       price: '349.99',
       currency: 'USD',
       canonicalUrl: 'https://mock.test/success',
-      store: 'Mock Store',
+      store: STORE,
     },
   },
   'success-single-image': {
@@ -66,7 +65,7 @@ const FIXTURES: Record<Scenario, ProductResult> = {
       price: '59.00',
       currency: 'USD',
       canonicalUrl: 'https://mock.test/success-single-image',
-      store: 'Mock Store',
+      store: STORE,
     },
   },
   'success-long-title': {
@@ -82,7 +81,7 @@ const FIXTURES: Record<Scenario, ProductResult> = {
       price: '199.99',
       currency: 'USD',
       canonicalUrl: 'https://mock.test/success-long-title',
-      store: 'Mock Store',
+      store: STORE,
     },
   },
   'success-title-warn': {
@@ -95,7 +94,7 @@ const FIXTURES: Record<Scenario, ProductResult> = {
       price: '129.99',
       currency: 'USD',
       canonicalUrl: 'https://mock.test/success-title-warn',
-      store: 'Mock Store',
+      store: STORE,
     },
   },
   'success-no-price': {
@@ -107,7 +106,7 @@ const FIXTURES: Record<Scenario, ProductResult> = {
       imageUrls: [picsum('mock-no-price')],
       currency: 'USD',
       canonicalUrl: 'https://mock.test/success-no-price',
-      store: 'Mock Store',
+      store: STORE,
     },
   },
   'success-long-desc': {
@@ -120,7 +119,7 @@ const FIXTURES: Record<Scenario, ProductResult> = {
       price: '89.00',
       currency: 'USD',
       canonicalUrl: 'https://mock.test/success-long-desc',
-      store: 'Mock Store',
+      store: STORE,
     },
   },
   'success-no-image': {
@@ -131,7 +130,7 @@ const FIXTURES: Record<Scenario, ProductResult> = {
       price: '25.00',
       currency: 'USD',
       canonicalUrl: 'https://mock.test/success-no-image',
-      store: 'Mock Store',
+      store: STORE,
     },
   },
   'success-many-images': {
@@ -144,7 +143,7 @@ const FIXTURES: Record<Scenario, ProductResult> = {
       price: '999.00',
       currency: 'USD',
       canonicalUrl: 'https://mock.test/success-many-images',
-      store: 'Mock Store',
+      store: STORE,
     },
   },
   'fetch-failed': { ok: false, error: 'fetch_failed' },

@@ -8,7 +8,7 @@ import { mockNextCache } from '@/test/helpers/next-cache';
 import { seedUsers, selfProfileOf } from '@/test/helpers/seedFollowGraph';
 
 mockNextCache();
-// HistoryCard → HistoryActions → @/lib/data/visit.actions → @/lib/auth → next-auth.
+// HistoryCard → RemoveVisitButton → @/lib/data/visit.actions → @/lib/auth → next-auth.
 // Mock the auth boundary so the transitive next-auth import does not load
 // (NextAuth network-boundary allowance); this rail test never exercises auth.
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));

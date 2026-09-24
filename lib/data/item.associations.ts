@@ -1,6 +1,3 @@
-// TODO(#343): extract the duplicated literal to a constant, then drop this disable
-/* eslint-disable sonarjs/no-duplicate-string */
-
 import { db } from '@/db';
 import {
   item_images,
@@ -24,6 +21,23 @@ import {
 // Internal write helpers for item ↔ store / item ↔ list associations, invoked
 // only by the item actions. Deliberately NOT in a 'use server' module:
 // exporting them from one would expose them as client-callable endpoints.
+
+const DB_ERROR_LOG = 'Database Error:';
+
+async function requireOwnedItem(itemId: string): Promise<string> {
+  const actor = await authedWriter(ADMIN_OPTIONAL);
+  if ('error' in actor) {
+    throw new Error(actor.error.error);
+  }
+  const item = await db.query.items.findFirst({
+    where: eq(items.id, itemId),
+    columns: { profile_id: true },
+  });
+  if (!item || item.profile_id !== actor.identity.activeProfile.id) {
+    throw new Error('Unauthorized');
+  }
+  return item.profile_id;
+}
 
 export type StoreInput = {
   name: string;
@@ -49,18 +63,7 @@ export async function updateItemStores(
   itemId: string
 ): Promise<void> {
   try {
-    const actor = await authedWriter(ADMIN_OPTIONAL);
-    if ('error' in actor) {
-      throw new Error(actor.error.error);
-    }
-    const { identity } = actor;
-    const item = await db.query.items.findFirst({
-      where: eq(items.id, itemId),
-      columns: { profile_id: true },
-    });
-    if (!item || item.profile_id !== identity.activeProfile.id) {
-      throw new Error('Unauthorized');
-    }
+    await requireOwnedItem(itemId);
 
     const currentAssociations = await db
       .select()
@@ -121,7 +124,7 @@ export async function updateItemStores(
       );
     }
   } catch (error) {
-    console.error('Database Error:', error);
+    console.error(DB_ERROR_LOG, error);
     throw new Error('Failed to update item stores.');
   }
 }
@@ -158,7 +161,7 @@ export async function replaceItemImages(
       );
     }
   } catch (error) {
-    console.error('Database Error:', error);
+    console.error(DB_ERROR_LOG, error);
     throw new Error('Failed to update item images.');
   }
 }
@@ -182,18 +185,7 @@ export async function updateItemLists(
   itemId: string
 ): Promise<void> {
   try {
-    const actor = await authedWriter(ADMIN_OPTIONAL);
-    if ('error' in actor) {
-      throw new Error(actor.error.error);
-    }
-    const { identity } = actor;
-    const item = await db.query.items.findFirst({
-      where: eq(items.id, itemId),
-      columns: { profile_id: true },
-    });
-    if (!item || item.profile_id !== identity.activeProfile.id) {
-      throw new Error('Unauthorized');
-    }
+    const profileId = await requireOwnedItem(itemId);
     if (listIds.length > 0) {
       const targetLists = await db
         .select({ id: lists.id, profile_id: lists.profile_id })
@@ -201,7 +193,7 @@ export async function updateItemLists(
         .where(inArray(lists.id, listIds));
       if (
         targetLists.length !== listIds.length ||
-        targetLists.some((l) => l.profile_id !== identity.activeProfile.id)
+        targetLists.some((l) => l.profile_id !== profileId)
       ) {
         throw new Error('Unauthorized');
       }
@@ -259,7 +251,7 @@ export async function updateItemLists(
       );
     }
   } catch (error) {
-    console.error('Database Error:', error);
+    console.error(DB_ERROR_LOG, error);
     throw new Error('Failed to update item lists.');
   }
 }

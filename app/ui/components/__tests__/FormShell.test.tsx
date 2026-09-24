@@ -11,7 +11,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FormShell, FormShellFooter } from '../FormShell';
+import { FormShell } from '../FormShell';
+import FormShellFooter from '../FormShellFooter';
 
 const backSpy = vi.fn();
 const pushSpy = vi.fn();
