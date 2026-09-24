@@ -87,7 +87,8 @@
   white-space: nowrap;
 }
 
-.deck-intro-count {
+.deck-intro-count,
+.deck-photo-hint {
   margin: 0;
   font-size: 14px;
   color: var(--muted-text-color);
@@ -123,6 +124,33 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+.deck-photo-focus {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  /* The drag pans the photo, so the deck must not scroll under it. */
+  touch-action: none;
+}
+
+.deck-photo-focus:active {
+  cursor: grabbing;
+}
+
+.deck-photo-focus:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: -2px;
+}
+
+.deck-photo-fit {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
 }
 
 .deck-photo-nav {

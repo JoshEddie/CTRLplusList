@@ -1,8 +1,5 @@
 'use server';
 
-// TODO(#343): extract the duplicated literal to a constant, then drop this disable
-/* eslint-disable sonarjs/no-duplicate-string */
-
 import { db } from '@/db';
 import { lists } from '@/db/schema';
 import { cacheTags, updateTags } from '@/lib/cacheTags';
@@ -11,6 +8,7 @@ import {
   ADMIN_REQUIRED,
   authedWriter,
 } from '@/lib/data/profile.gate';
+import { getMessage } from '@/lib/i18n/utils';
 import { type ActionResponse } from '@/lib/types';
 import {
   VISIBILITY,
@@ -43,6 +41,16 @@ const ListSchema = z.object({
 });
 
 export type ListData = z.infer<typeof ListSchema>;
+
+const LIST_NOT_FOUND: ActionResponse = {
+  success: false,
+  message: getMessage('list_not_found'),
+  error: 'Not found',
+};
+
+function listNotYours(error: string): ActionResponse {
+  return { success: false, message: getMessage('list_not_yours'), error };
+}
 
 export async function createList(data: ListData): Promise<ActionResponse> {
   try {
@@ -112,14 +120,10 @@ export async function updateList(
       },
     });
     if (!list) {
-      return { success: false, message: 'List not found', error: 'Not found' };
+      return LIST_NOT_FOUND;
     }
     if (list.profile_id !== identity.activeProfile.id) {
-      return {
-        success: false,
-        message: 'Unauthorized - list does not belong to you',
-        error: 'Unauthorized',
-      };
+      return listNotYours('Unauthorized');
     }
 
     const UpdateListSchema = ListSchema.partial();
@@ -173,11 +177,7 @@ export async function updateList(
       .returning();
 
     if (result.length === 0) {
-      return {
-        success: false,
-        message: 'List not found',
-        error: 'Not found',
-      };
+      return LIST_NOT_FOUND;
     }
 
     updateTags(
@@ -213,14 +213,10 @@ export async function deleteList(id: string): Promise<ActionResponse> {
       columns: { profile_id: true },
     });
     if (!list) {
-      return { success: false, message: 'List not found', error: 'Not found' };
+      return LIST_NOT_FOUND;
     }
     if (list.profile_id !== identity.activeProfile.id) {
-      return {
-        success: false,
-        message: 'Unauthorized - list does not belong to you',
-        error: 'Unauthorized',
-      };
+      return listNotYours('Unauthorized');
     }
 
     await db.delete(lists).where(eq(lists.id, id));
@@ -272,14 +268,10 @@ export async function setListVisibility(
       columns: { profile_id: true, visibility: true },
     });
     if (!list) {
-      return { success: false, message: 'List not found', error: 'Not found' };
+      return LIST_NOT_FOUND;
     }
     if (list.profile_id !== identity.activeProfile.id) {
-      return {
-        success: false,
-        message: 'Unauthorized - list does not belong to you',
-        error: 'Forbidden',
-      };
+      return listNotYours('Forbidden');
     }
 
     const next = parsed.data;

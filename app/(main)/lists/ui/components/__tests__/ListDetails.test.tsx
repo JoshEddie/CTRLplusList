@@ -79,9 +79,11 @@ vi.mock('@/lib/data/follow', () => ({ getFollowState: vi.fn() }));
 vi.mock('../BookmarkContainer', () => ({
   default: () => <div data-testid="bookmark-stub" />,
 }));
-vi.mock('../HeroCollapsedItemsContainer', () => ({
-  HeroCollapsedOwnerItems: () => <div data-testid="collapsed-owner-items" />,
-  HeroCollapsedViewerItems: () => <div data-testid="collapsed-viewer-items" />,
+vi.mock('../HeroCollapsedOwnerItems', () => ({
+  default: () => <div data-testid="collapsed-owner-items" />,
+}));
+vi.mock('../HeroCollapsedViewerItems', () => ({
+  default: () => <div data-testid="collapsed-viewer-items" />,
 }));
 // The Spoilers control and its collapsed-kebab twin are client controls owning
 // their own behavior (covered by HeroSpoilerControl's own tests); here they
@@ -95,8 +97,8 @@ vi.mock('../HeroSpoilerControl', () => ({
     />
   ),
 }));
-vi.mock('../HeroCollapsedItems', () => ({
-  SpoilerMenuItems: (p: { tier: string; baseline: string }) => (
+vi.mock('../SpoilerMenuItems', () => ({
+  default: (p: { tier: string; baseline: string }) => (
     <div
       data-testid="spoiler-menu-items"
       data-tier={p.tier}

@@ -1,19 +1,15 @@
 'use client';
 
-// TODO(#343): split the extra components into their own files, then drop this disable
-/* eslint-disable react/no-multi-comp */
-
 import { Button } from '@/app/ui/components/button';
 import { DeckScreen } from './DeckShell';
 import { NoteEditor } from './editors/NoteEditor';
-import { PhotoEditor } from './editors/PhotoEditor';
 import { PriceEditor } from './editors/PriceEditor';
 import { StoreEditor } from './editors/StoreEditor';
 import { NameEditor } from './editors/NameEditor';
 import { ROW_LABELS, type RowField } from './focus';
+import PhotoFocusBody from './PhotoFocusBody';
 import type { ItemActions } from './useItemActions';
 import { isLinkless } from './utils';
-import { usePlaceholderPreviews } from './usePlaceholderPreviews';
 import type { ItemViewModel } from './viewModel';
 
 interface FocusEditorProps {
@@ -22,30 +18,6 @@ interface FocusEditorProps {
   actions: ItemActions;
   productUrl: string;
   onDone: () => void;
-}
-
-// Hook host: usePlaceholderPreviews must run unconditionally, so the photo
-// body is its own component rather than a branch of FocusEditor.
-function PhotoFocusBody({
-  item,
-  actions,
-}: {
-  item: ItemViewModel;
-  actions: ItemActions;
-}) {
-  const { placeholders, reroll } = usePlaceholderPreviews(item, actions);
-  return (
-    <PhotoEditor
-      photos={item.photos}
-      photoIndex={item.photoIndex}
-      placeholders={placeholders}
-      selectedPlaceholder={item.placeholder}
-      onSelect={actions.selectPhoto}
-      onSelectPlaceholder={actions.selectPlaceholder}
-      onReroll={reroll}
-      onAddPhoto={actions.addPhoto}
-    />
-  );
 }
 
 // A single field, edited in place, reusing the same editor components as the

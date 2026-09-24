@@ -9,7 +9,9 @@ import {
   profiles,
   purchases,
 } from '@/db/schema';
+import type { ImageFraming } from '@/lib/imageFraming';
 import type { bootPglite } from '@/test/helpers/db';
+import { and, eq } from 'drizzle-orm';
 import { selfProfileOf } from '@/test/helpers/profile';
 
 // Shared seed helpers for the lib/data test lanes.
@@ -170,6 +172,18 @@ export async function seedItemImages(
       active: url === activeUrl,
     }))
   );
+}
+
+export async function frameItemImage(
+  db: TestDb,
+  itemId: string,
+  url: string,
+  framing: ImageFraming
+): Promise<void> {
+  await db
+    .update(item_images)
+    .set(framing)
+    .where(and(eq(item_images.item_id, itemId), eq(item_images.url, url)));
 }
 
 export async function seedItemStore(

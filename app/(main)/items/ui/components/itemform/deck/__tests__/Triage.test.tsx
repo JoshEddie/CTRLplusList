@@ -37,6 +37,13 @@ describe('Triage', () => {
     ).toBeInTheDocument();
   });
 
+  it('NameOnlyStore_StoreRowStatesMissingLink-NoLinkProvenance', () => {
+    setup({ store: { name: 'Lodge', link: '', price: '12.00' } });
+    const storeRow = screen.getByRole('button', { name: /Store/ });
+    expect(storeRow).toHaveTextContent('A store name needs a link.');
+    expect(storeRow).not.toHaveTextContent('saved from link');
+  });
+
   it('NoPrice_PriceRowStatesPriceIssue', () => {
     setup({ store: { name: 'Lodge', link: 'https://l', price: '' } });
     const priceRow = screen.getByRole('button', { name: /Price/ });

@@ -6,8 +6,6 @@ disable-model-invocation: true
 
 Implement the work described by the user in the spec or tickets.
 
-Implement this by orchestrating lesser effort or tier subagents. Always delegate testing and docs.
-
 Use /tdd where possible, at pre-agreed seams.
 
 Run typechecking regularly, single test files regularly, and the full test suite once at the end.

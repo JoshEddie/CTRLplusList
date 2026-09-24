@@ -2,7 +2,13 @@ import { act, renderHook } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { useItemActions } from '../useItemActions';
-import { blankItem, seedFromFetch, type ItemViewModel } from '../viewModel';
+import {
+  activeFraming,
+  blankItem,
+  seedFromFetch,
+  type ItemViewModel,
+} from '../viewModel';
+import { DEFAULT_FRAMING } from '@/lib/imageFraming';
 import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 import type { ProductData } from '@/lib/product-fetch/types';
 
@@ -40,6 +46,29 @@ describe('useItemActions', () => {
     );
     act(() => result.current.actions.selectPhoto(1));
     expect(result.current.item.photoIndex).toBe(1);
+  });
+
+  describe('setFraming', () => {
+    const FRAMED = { focal_x: 20, focal_y: 80, fit: 'contain' } as const;
+
+    it('ActivePhoto_FramesOnlyThatPhoto', () => {
+      const { result } = renderHook(() =>
+        useHarness({ ...blankItem(), photos: ['a', 'b'], photoIndex: 1 })
+      );
+      act(() => result.current.actions.setFraming(FRAMED));
+      expect(result.current.item.framing).toEqual({ b: FRAMED });
+    });
+
+    it('SwapAwayAndBack_RestoresFirstPhotosFraming', () => {
+      const { result } = renderHook(() =>
+        useHarness({ ...blankItem(), photos: ['a', 'b'], photoIndex: 0 })
+      );
+      act(() => result.current.actions.setFraming(FRAMED));
+      act(() => result.current.actions.selectPhoto(1));
+      expect(activeFraming(result.current.item)).toEqual(DEFAULT_FRAMING);
+      act(() => result.current.actions.selectPhoto(0));
+      expect(activeFraming(result.current.item)).toEqual(FRAMED);
+    });
   });
 
   it('AddPhoto_AppendsAndSelectsNew', () => {

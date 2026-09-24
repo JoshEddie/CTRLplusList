@@ -675,6 +675,21 @@ describe('PurchaseFlowContainer', () => {
       ).toBeInTheDocument();
     });
 
+    it('OwnerChoosesMoreThanOneUnit_TheOwnerCtaStatesHowMany', async () => {
+      const user = userEvent.setup();
+      renderContainer({
+        isOwner: true,
+        capacity: { quantity: 4, remaining: 4 },
+      });
+      await screen.findByRole('button', { name: 'I bought this myself' });
+
+      await user.click(screen.getByRole('button', { name: 'Increase' }));
+
+      expect(
+        screen.getByRole('button', { name: 'I bought 2 of these myself' })
+      ).toBeInTheDocument();
+    });
+
     // Below `claims` the page's payload withholds what is claimed, so its
     // remainder reads as the whole quantity. The control waits for the reveal
     // rather than offering a cap it would take back.

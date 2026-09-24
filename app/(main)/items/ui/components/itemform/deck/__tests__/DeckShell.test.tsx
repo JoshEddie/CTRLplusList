@@ -1,22 +1,18 @@
-/* eslint-disable testing-library/no-node-access, testing-library/no-container --
+/* eslint-disable testing-library/no-node-access --
  * The overlay and shell containers carry no role or accessible name (they are
  * structural chrome), so overlay-self-target dismissal can only be asserted by
- * dispatching directly on the overlay via container.querySelector +
- * fireEvent.click — the same pattern FormShell.test.tsx uses.
+ * dispatching directly on the overlay via querySelector + fireEvent.click —
+ * the same pattern FormShell.test.tsx uses.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DeckScreen, DeckShell } from '../DeckShell';
-
-const routerMock = { back: vi.fn(), push: vi.fn() };
-vi.mock('next/navigation', () => ({
-  useRouter: () => routerMock,
-}));
 
 function setup(over: Partial<{ variant: 'default' | 'wide' }> = {}) {
   const onClose = vi.fn();
-  const { container } = render(
+  // The shell portals to document.body, outside RTL's container.
+  const { baseElement: container } = render(
     <DeckShell moduleTitle="Add an item" onClose={onClose} {...over}>
       <DeckScreen
         title="Screen title"
@@ -35,6 +31,46 @@ describe('DeckShell', () => {
     const { onClose, container } = setup();
     fireEvent.click(container.querySelector('.deck-screen-overlay')!);
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('NoOnEscape_EscapeKeyDoesNotDismiss', async () => {
+    const user = userEvent.setup();
+    const { onClose } = setup();
+    await user.keyboard('{Escape}');
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  describe('WithOnEscape', () => {
+    const onEscape = vi.fn();
+    beforeEach(() => onEscape.mockClear());
+
+    const renderWithEscape = () =>
+      render(
+        <DeckShell moduleTitle="Edit item" onClose={vi.fn()} onEscape={onEscape}>
+          <p>Body</p>
+        </DeckShell>
+      );
+
+    it('EscapeKey_CallsOnEscape', async () => {
+      const user = userEvent.setup();
+      renderWithEscape();
+      await user.keyboard('{Escape}');
+      expect(onEscape).toHaveBeenCalledOnce();
+    });
+
+    it('Unmount_EscapeKeyNoLongerCallsOnEscape', async () => {
+      const user = userEvent.setup();
+      renderWithEscape().unmount();
+      await user.keyboard('{Escape}');
+      expect(onEscape).not.toHaveBeenCalled();
+    });
+  });
+
+  it('Render_PortalsOverlayToDocumentBody', () => {
+    const { container } = setup();
+    expect(
+      container.querySelector('body > .deck-screen-overlay')
+    ).not.toBeNull();
   });
 
   it('DescendantClick_DoesNotDismiss', async () => {

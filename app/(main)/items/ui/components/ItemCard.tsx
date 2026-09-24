@@ -58,6 +58,7 @@ export default function ItemCard({
         itemId={item.id}
         name={item.name || ''}
         url={item.image_url || ''}
+        framing={item.image_framing}
       />
       <div className="item-info">
         <div className="item-name-description">

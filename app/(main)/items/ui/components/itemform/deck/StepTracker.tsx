@@ -1,8 +1,5 @@
 'use client';
 
-// TODO(#343): split the extra components into their own files, then drop this disable
-/* eslint-disable react/no-multi-comp */
-
 import { Fragment, useRef, useState } from 'react';
 import { LuCheck } from 'react-icons/lu';
 import type { DeckStep, DeckStepState } from './neededSteps';
@@ -107,20 +104,14 @@ export function StepTracker({
                 if (e.key === 'ArrowRight') moveFocus(i, 1);
               }}
             >
-              <StepNode status={status} number={i + 1} />
+              <span className="deck-step-node" aria-hidden="true">
+                {status === 'done' ? <LuCheck /> : i + 1}
+              </span>
               <span className="deck-step-label">{label}</span>
             </button>
           </Fragment>
         );
       })}
     </div>
-  );
-}
-
-function StepNode({ status, number }: { status: Status; number: number }) {
-  return (
-    <span className="deck-step-node" aria-hidden="true">
-      {status === 'done' ? <LuCheck /> : number}
-    </span>
   );
 }

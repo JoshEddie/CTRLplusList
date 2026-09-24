@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { bookmarkList, unbookmarkList } from '@/lib/data/visit.actions';
 import toast from 'react-hot-toast';
+import { deferred, type ActionResult } from '@/test/helpers/deferred';
 import BookmarkButton from '../BookmarkButton';
 
 vi.mock('@/lib/data/visit.actions', () => ({
@@ -21,16 +22,6 @@ vi.mock('react-icons/fa', () => ({
   FaBookmark: () => <svg data-testid="fa-bookmark" />,
   FaRegBookmark: () => <svg data-testid="fa-reg-bookmark" />,
 }));
-
-type ActionResult = { success: boolean; message?: string };
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((r) => {
-    resolve = r;
-  });
-  return { promise, resolve };
-}
 
 beforeEach(() => {
   vi.clearAllMocks();

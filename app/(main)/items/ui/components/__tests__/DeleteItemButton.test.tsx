@@ -9,7 +9,7 @@ vi.mock('@/lib/data/item.actions', () => ({
   archiveItem: vi.fn(),
 }));
 
-const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
+const router = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
 
 vi.mock('react-hot-toast', () => ({
@@ -39,11 +39,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+const onDeleted = vi.fn();
+
 async function openDialog(
   props: Partial<React.ComponentProps<typeof DeleteItemButton>> = {}
 ) {
   const user = userEvent.setup();
-  render(<DeleteItemButton id="i1" disabled={false} {...props} />);
+  render(
+    <DeleteItemButton
+      id="i1"
+      disabled={false}
+      onDeleted={onDeleted}
+      {...props}
+    />
+  );
   await user.click(screen.getByRole('button', { name: 'Delete' }));
   return user;
 }
@@ -51,7 +60,7 @@ async function openDialog(
 describe('DeleteItemButton', () => {
   it('BelowTheOwnerFloor_RendersDisabledAndOpensNoDialog', async () => {
     const user = userEvent.setup();
-    render(<DeleteItemButton id="item-1" disabled />);
+    render(<DeleteItemButton id="item-1" disabled onDeleted={onDeleted} />);
 
     const trigger = screen.getByRole('button', { name: 'Delete' });
     expect(trigger).toBeDisabled();
@@ -79,55 +88,35 @@ describe('DeleteItemButton', () => {
       ).toBeInTheDocument();
     });
 
-    it('ArchiveInsteadNoCallback_CallsArchiveItem-PushReturnTo-NoDelete', async () => {
-      const user = await openDialog({ archived: false, returnTo: '/lists/l1' });
+    it('ArchiveInstead_CallsArchiveItem-OnDeleted-Refresh-NoDelete', async () => {
+      const user = await openDialog({ archived: false });
       await user.click(
         dialog().getByRole('button', { name: 'Archive instead' })
       );
       expect(archiveItem).toHaveBeenCalledWith('i1', true);
       expect(deleteItem).not.toHaveBeenCalled();
-      await waitFor(() =>
-        expect(router.push).toHaveBeenCalledWith('/lists/l1')
-      );
-    });
-
-    it('ArchiveInsteadWithCallback_CallsOnDeleted-Refresh', async () => {
-      const onDeleted = vi.fn();
-      const user = await openDialog({ archived: false, onDeleted });
-      await user.click(
-        dialog().getByRole('button', { name: 'Archive instead' })
-      );
       await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1));
       expect(router.refresh).toHaveBeenCalledTimes(1);
-      expect(router.push).not.toHaveBeenCalled();
     });
 
-    it('ArchiveInsteadNoReturnTo_PushesItems', async () => {
-      const user = await openDialog({ archived: false });
-      await user.click(
-        dialog().getByRole('button', { name: 'Archive instead' })
-      );
-      await waitFor(() => expect(router.push).toHaveBeenCalledWith('/items'));
-    });
-
-    it('ArchiveFails_NoNavigation', async () => {
+    it('ArchiveFails_NoOnDeleted', async () => {
       vi.mocked(archiveItem).mockResolvedValue({ success: false } as never);
       const user = await openDialog({ archived: false });
       await user.click(
         dialog().getByRole('button', { name: 'Archive instead' })
       );
       await waitFor(() => expect(archiveItem).toHaveBeenCalled());
-      expect(router.push).not.toHaveBeenCalled();
+      expect(onDeleted).not.toHaveBeenCalled();
     });
 
-    it('ArchiveThrows_LogsError-NoNavigation', async () => {
+    it('ArchiveThrows_LogsError-NoOnDeleted', async () => {
       vi.mocked(archiveItem).mockRejectedValue(new Error('boom'));
       const user = await openDialog({ archived: false });
       await user.click(
         dialog().getByRole('button', { name: 'Archive instead' })
       );
       await waitFor(() => expect(console.error).toHaveBeenCalled());
-      expect(router.push).not.toHaveBeenCalled();
+      expect(onDeleted).not.toHaveBeenCalled();
     });
   });
 
@@ -147,44 +136,28 @@ describe('DeleteItemButton', () => {
   });
 
   describe('ConfirmDelete', () => {
-    it('NoCallbackWithReturnTo_CallsDeleteItem-PushReturnTo', async () => {
-      const user = await openDialog({ returnTo: '/lists/l1' });
-      await user.click(dialog().getByRole('button', { name: 'Delete' }));
-      expect(deleteItem).toHaveBeenCalledWith('i1');
-      await waitFor(() =>
-        expect(router.push).toHaveBeenCalledWith('/lists/l1')
-      );
-    });
-
-    it('NoCallbackNoReturnTo_PushesItems', async () => {
+    it('Confirm_CallsDeleteItem-OnDeleted-Refresh', async () => {
       const user = await openDialog();
       await user.click(dialog().getByRole('button', { name: 'Delete' }));
-      await waitFor(() => expect(router.push).toHaveBeenCalledWith('/items'));
-    });
-
-    it('WithCallback_CallsOnDeleted-Refresh', async () => {
-      const onDeleted = vi.fn();
-      const user = await openDialog({ onDeleted });
-      await user.click(dialog().getByRole('button', { name: 'Delete' }));
+      expect(deleteItem).toHaveBeenCalledWith('i1');
       await waitFor(() => expect(onDeleted).toHaveBeenCalledTimes(1));
       expect(router.refresh).toHaveBeenCalledTimes(1);
-      expect(router.push).not.toHaveBeenCalled();
     });
 
-    it('DeleteFails_NoNavigation', async () => {
+    it('DeleteFails_NoOnDeleted', async () => {
       vi.mocked(deleteItem).mockResolvedValue({ success: false } as never);
       const user = await openDialog();
       await user.click(dialog().getByRole('button', { name: 'Delete' }));
       await waitFor(() => expect(deleteItem).toHaveBeenCalled());
-      expect(router.push).not.toHaveBeenCalled();
+      expect(onDeleted).not.toHaveBeenCalled();
     });
 
-    it('DeleteThrows_LogsError-NoNavigation', async () => {
+    it('DeleteThrows_LogsError-NoOnDeleted', async () => {
       vi.mocked(deleteItem).mockRejectedValue(new Error('boom'));
       const user = await openDialog();
       await user.click(dialog().getByRole('button', { name: 'Delete' }));
       await waitFor(() => expect(console.error).toHaveBeenCalled());
-      expect(router.push).not.toHaveBeenCalled();
+      expect(onDeleted).not.toHaveBeenCalled();
     });
   });
 

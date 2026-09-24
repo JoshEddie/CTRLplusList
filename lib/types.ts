@@ -1,3 +1,5 @@
+import type { FramingByUrl, ImageFraming } from '@/lib/imageFraming';
+
 export type ActionResponse = {
   success: boolean;
   message: string;
@@ -73,6 +75,8 @@ export type ItemTable = {
   name: string;
   description: string;
   image_url?: string | null;
+  /** The active image's framing; absent or null renders centred and filled. */
+  image_framing?: ImageFraming | null;
   created_at: Date;
   updated_at: Date;
   profile_id: string;
@@ -149,6 +153,8 @@ export type ItemDetails = {
   image_url?: string | null;
   /** Fetched image-candidate pool; present only when the form session originated from a product fetch. */
   image_candidates?: string[];
+  /** Framing per pooled image. A URL it omits keeps whatever framing it already has stored. */
+  image_framing_by_url?: FramingByUrl;
   store: ItemStoreTable | null;
   lists: OptionType[];
 };

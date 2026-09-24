@@ -2,7 +2,8 @@
 
 import { createList, updateList } from '@/lib/data/list.actions';
 import { FieldError } from '@/app/ui/components/field';
-import { FormShell, FormShellFooter } from '@/app/ui/components/FormShell';
+import { FormShell } from '@/app/ui/components/FormShell';
+import FormShellFooter from '@/app/ui/components/FormShellFooter';
 import { ActionResponse, ListTable } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useActionState, useState } from 'react';

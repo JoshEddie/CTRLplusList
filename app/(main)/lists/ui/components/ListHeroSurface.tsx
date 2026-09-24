@@ -1,8 +1,5 @@
 'use client';
 
-// TODO(#343): extract the duplicated literal to a constant, then drop this disable
-/* eslint-disable sonarjs/no-duplicate-string */
-
 import { useEffect, useRef, type ReactNode } from 'react';
 
 export const HERO_BAND_SLOT_ID = 'list-hero-band-slot';
@@ -15,6 +12,7 @@ export const HERO_FREEZE_ATTR = 'data-hero-frozen';
 const SUSTAINED_PX = 40;
 const EXPAND_TRAVEL_PX = 350;
 const QUIET_MS = 500;
+const COLLAPSED_CLASS = 'is-collapsed';
 
 type ListHeroSurfaceProps = {
   title: string;
@@ -114,7 +112,7 @@ export default function ListHeroSurface({ title, kebab, children }: ListHeroSurf
       if (pinnedDepth <= 0) {
         lastSentinelTop = sentinelTop;
         settle();
-        surface.classList.remove('is-collapsed');
+        surface.classList.remove(COLLAPSED_CLASS);
         return;
       }
 
@@ -135,13 +133,13 @@ export default function ListHeroSurface({ title, kebab, children }: ListHeroSurf
         downBank = 0;
       }
 
-      const collapsed = surface.classList.contains('is-collapsed');
+      const collapsed = surface.classList.contains(COLLAPSED_CLASS);
 
       if (collapsed && upBank > EXPAND_TRAVEL_PX) {
-        surface.classList.remove('is-collapsed');
+        surface.classList.remove(COLLAPSED_CLASS);
         settle();
       } else if (!collapsed && downBank > SUSTAINED_PX && pinnedDepth > SUSTAINED_PX) {
-        surface.classList.add('is-collapsed');
+        surface.classList.add(COLLAPSED_CLASS);
         settle();
       }
     };
@@ -156,7 +154,7 @@ export default function ListHeroSurface({ title, kebab, children }: ListHeroSurf
       window.visualViewport?.removeEventListener('scroll', enterQuiet);
       window.removeEventListener('focusin', onFocusChange);
       window.removeEventListener('focusout', onFocusChange);
-      surface.classList.remove('is-chrome', 'is-collapsed');
+      surface.classList.remove('is-chrome', COLLAPSED_CLASS);
       slots.forEach((slot) => slot.remove());
     };
   }, []);

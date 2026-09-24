@@ -5,13 +5,15 @@ import {
   fallbackItemPlaceholder,
   mintItemPlaceholder,
 } from '@/lib/data/item.placeholder.actions';
+import { framingStyle, type ImageFraming } from '@/lib/imageFraming';
 import { useEffect, useRef, useState } from 'react';
 
-const ItemPhoto: React.FC<{ itemId: string; name: string; url: string }> = ({
-  itemId,
-  name,
-  url,
-}) => {
+const ItemPhoto: React.FC<{
+  itemId: string;
+  name: string;
+  url: string;
+  framing?: ImageFraming | null;
+}> = ({ itemId, name, url, framing }) => {
   const [mintedUrl, setMintedUrl] = useState('');
   const [fallbackUrl, setFallbackUrl] = useState('');
   // StrictMode re-runs effects; the guard keeps the mint to one call per mount.
@@ -47,6 +49,8 @@ const ItemPhoto: React.FC<{ itemId: string; name: string; url: string }> = ({
           alt={name}
           loading="lazy"
           decoding="async"
+          // Framing belongs to the saved image, not to art standing in for it.
+          style={displayUrl === url ? framingStyle(framing) : undefined}
           onError={handleError}
         />
       )}

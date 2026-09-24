@@ -52,4 +52,18 @@ describe('PurchaseModalHeader', () => {
     expect(container.querySelector('.claim-modal-thumb img')).toBeNull();
     expect(container.querySelector('.claim-modal-price')).toBeNull();
   });
+
+  it('FramedImage_ThumbnailPositionedAtFocalPoint', () => {
+    const { container } = render(
+      <PurchaseModalHeader
+        item={makeItem({
+          image_url: 'https://img.example/mug.jpg',
+          image_framing: { focal_x: 10, focal_y: 30, fit: 'cover' },
+        })}
+      />
+    );
+    expect(container.querySelector('.claim-modal-thumb img')).toHaveStyle({
+      objectPosition: '10% 30%',
+    });
+  });
 });

@@ -11,6 +11,7 @@ export function mockActions(): ItemActions {
     selectPhoto: vi.fn(),
     selectPlaceholder: vi.fn(),
     addPhoto: vi.fn(),
+    setFraming: vi.fn(),
     setStore: vi.fn(),
     setLists: vi.fn(),
   };
@@ -23,6 +24,7 @@ export function makeItem(over: Partial<ItemViewModel> = {}): ItemViewModel {
     photos: ['https://img/a.jpg'],
     photoIndex: 0,
     placeholder: null,
+    framing: {},
     description: '',
     store: { name: 'Lodge', link: 'https://lodge', price: '29.99' },
     lists: [],

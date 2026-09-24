@@ -67,7 +67,12 @@ export default function ReorderRow({
         <span className="reorder-position" aria-hidden>
           {position}
         </span>
-        <ItemPhoto itemId={item.id} name={name} url={item.image_url || ''} />
+        <ItemPhoto
+          itemId={item.id}
+          name={name}
+          url={item.image_url || ''}
+          framing={item.image_framing}
+        />
         <div className="reorder-row-main">
           <span className="itemName reorder-row-name">{name}</span>
           <div className="reorder-row-meta">

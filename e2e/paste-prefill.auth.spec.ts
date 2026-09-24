@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { deleteItem } from '../test/helpers/e2e/utils';
+import {
+  deleteItem,
+  routeStubImages,
+  stubImageUrl,
+} from '../test/helpers/e2e/utils';
 
 // Flow: the post-fetch Decision Deck (item-decision-deck). /api/product-fetch is
 // ALWAYS stubbed via route interception keyed on the pasted URL, so each deck
@@ -7,14 +11,11 @@ import { deleteItem } from '../test/helpers/e2e/utils';
 // and never burns Zyte quota (ZYTE_API_KEY is unset in e2e regardless). The
 // success arc ends with the created item deleted — zero residue.
 
-// Real, loadable ≥200px images served from a stubbed http host so the deck's
-// fetch-time size pruning keeps them — fake .jpg URLs would 404 and get pruned
-// away, and data: URIs are no longer valid candidates (server validation only
-// admits the placeholder-art URI shape). stubFetch routes the host below.
-const img = (hex: string) => `https://imgstub.example/${hex}.svg`;
-const IMAGES3 = [img('1d3557'), img('457b9d'), img('a8dadc')];
-const svgBody = (hex: string) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240"><rect width="240" height="240" fill="#${hex}"/></svg>`;
+const IMAGES3 = [
+  stubImageUrl('1d3557'),
+  stubImageUrl('457b9d'),
+  stubImageUrl('a8dadc'),
+];
 
 type Fixture = Record<string, unknown>;
 
@@ -42,10 +43,7 @@ const FIXTURES: Record<string, Fixture> = {
 };
 
 async function stubFetch(page: Page) {
-  await page.route('https://imgstub.example/**', (route) => {
-    const hex = route.request().url().split('/').pop()!.replace('.svg', '');
-    return route.fulfill({ contentType: 'image/svg+xml', body: svgBody(hex) });
-  });
+  await routeStubImages(page);
   await page.route('**/api/product-fetch', (route) => {
     const url = String(route.request().postDataJSON().url ?? '');
     if (url.includes('fail')) {

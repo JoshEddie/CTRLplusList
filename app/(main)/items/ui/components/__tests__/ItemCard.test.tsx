@@ -322,4 +322,20 @@ describe('ItemCard', () => {
     expect(card).toBeInTheDocument();
     expect(card).toHaveAttribute('title', '');
   });
+
+  it('FittedImage_CardPhotoContainsWholeImage', () => {
+    renderCard({
+      item: {
+        id: 'i1',
+        name: 'Gift',
+        description: '',
+        image_url: 'https://img.test/gift.jpg',
+        image_framing: { focal_x: 50, focal_y: 50, fit: 'contain' },
+        store: null,
+      } as never,
+    });
+    expect(screen.getByRole('img', { name: 'Gift' })).toHaveStyle({
+      objectFit: 'contain',
+    });
+  });
 });

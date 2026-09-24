@@ -1,15 +1,12 @@
-// TODO(#343): split the extra components into their own files, then drop this disable
-/* eslint-disable react/no-multi-comp */
-
 import {
   Children,
   cloneElement,
   isValidElement,
   useId,
   type ReactElement,
-  type ReactNode,
 } from 'react';
 import { FieldError } from './FieldError';
+import { FieldRow } from './FieldRow';
 import './form-field.css';
 import type { FieldIconPosition, FormFieldProps } from './types';
 
@@ -47,33 +44,6 @@ function iconClassFor(hasIcon: boolean, iconPosition: FieldIconPosition) {
 
 function joinClasses(...tokens: (string | undefined | false)[]) {
   return tokens.filter(Boolean).join(' ');
-}
-
-function FieldRow({
-  fieldClass,
-  icon,
-  iconPosition,
-  hasIcon,
-  child,
-  trailing,
-}: {
-  fieldClass: string;
-  icon: ReactNode;
-  iconPosition: FieldIconPosition;
-  hasIcon: boolean;
-  child: ReactNode;
-  trailing?: ReactNode;
-}) {
-  const leadingIcon = hasIcon && iconPosition !== 'right';
-  const trailingIcon = hasIcon && iconPosition === 'right';
-  return (
-    <div className={fieldClass}>
-      {leadingIcon && <span className="field_icon">{icon}</span>}
-      {child}
-      {trailingIcon && <span className="field_icon">{icon}</span>}
-      {trailing}
-    </div>
-  );
 }
 
 /**

@@ -9,6 +9,7 @@ import {
 } from '@/test/helpers/seedFollowGraph';
 
 import {
+  frameItemImage,
   seedItem,
   seedItemImages,
   seedItemStore,
@@ -19,6 +20,10 @@ import {
 } from './test-helpers';
 
 mockNextCache();
+
+const A = 'https://img.test/a.jpg';
+const B = 'https://img.test/b.jpg';
+const FRAMED = { focal_x: 20, focal_y: 80, fit: 'cover' } as const;
 
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock('@/db', () => ({
@@ -246,6 +251,26 @@ describe('getItemsByProfile', () => {
       'boom'
     );
   });
+
+  describe('Framing', () => {
+    it('FramedActiveImage_CarriesActiveImagesFraming', async () => {
+      await seedUsers(db, [{ id: 'u' }]);
+      await seedItem(db, { id: 'i1', user_id: 'u' });
+      await seedItemImages(db, 'i1', [A, B], B);
+      await frameItemImage(db, 'i1', B, FRAMED);
+
+      const [row] = await dal.getItemsByProfile(selfProfileOf('u'));
+      expect(row.image_framing).toEqual(FRAMED);
+    });
+
+    it('NoImagePool_NullFraming', async () => {
+      await seedUsers(db, [{ id: 'u' }]);
+      await seedItem(db, { id: 'i1', user_id: 'u' });
+
+      const [row] = await dal.getItemsByProfile(selfProfileOf('u'));
+      expect(row.image_framing).toBeNull();
+    });
+  });
 });
 
 describe('getItemById', () => {
@@ -299,6 +324,19 @@ describe('getItemById', () => {
     expect(item?.image_url).toBe('https://img.test/b.jpg');
   });
 
+  it('FramedPool_ReturnsEachCandidatesFramingByUrl', async () => {
+    await seedUsers(db, [{ id: 'u' }]);
+    await seedItem(db, { id: 'i1', user_id: 'u' });
+    await seedItemImages(db, 'i1', [A, B]);
+    await frameItemImage(db, 'i1', B, FRAMED);
+
+    const item = await dal.getItemById('i1', selfProfileOf('u'));
+    expect(item?.image_framing_by_url).toEqual({
+      [A]: { focal_x: 50, focal_y: 50, fit: 'cover' },
+      [B]: FRAMED,
+    });
+  });
+
   it('ItemWithoutImagePool_ReturnsEmptyCandidates-NullImageUrl', async () => {
     await seedUsers(db, [{ id: 'u' }]);
     await seedItem(db, { id: 'i1', user_id: 'u' });
@@ -335,6 +373,18 @@ describe('getItemsByListId', () => {
 
     const rows = await dal.getItemsByListId('l1');
     expect(rows.map((r) => r.id)).toEqual(['first', 'second']);
+  });
+
+  it('FramedActiveImage_CarriesActiveImagesFraming', async () => {
+    await seedUsers(db, [{ id: 'u' }]);
+    await seedList(db, { id: 'l1', user_id: 'u' });
+    await seedItem(db, { id: 'i1', user_id: 'u' });
+    await seedListItem(db, { list_id: 'l1', item_id: 'i1', position: 1 });
+    await seedItemImages(db, 'i1', [A, B], B);
+    await frameItemImage(db, 'i1', B, { ...FRAMED, fit: 'contain' });
+
+    const [row] = await dal.getItemsByListId('l1');
+    expect(row.image_framing).toEqual({ ...FRAMED, fit: 'contain' });
   });
 
   it('ItemProfileDiffersFromList_ExcludedFromMembership', async () => {

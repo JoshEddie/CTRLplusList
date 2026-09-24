@@ -1,14 +1,8 @@
 'use client';
 
-// TODO(#343): split the extra components into their own files, then drop this disable
-/* eslint-disable react/no-multi-comp */
-
-import { Button } from '@/app/ui/components/button';
-import { TextField } from '@/app/ui/components/field';
 import { claimSummaryForEntry } from '@/lib/data/purchase.actions';
 import {
   getClaimPickerForItem,
-  signInUser,
   type ClaimPicker,
 } from '@/lib/data/user.actions';
 import { getMessage } from '@/lib/i18n/utils';
@@ -22,149 +16,16 @@ import {
 } from '@/lib/types';
 import { useCallback, useEffect, useState } from 'react';
 import { firstToken, unitsClaimedLabel } from '../utils';
-import ClaimDisclosure, {
-  type AttributedTarget,
-  type PickerStatus,
-} from './ClaimDisclosure';
+import AuthedClaimSection from './AuthedClaimSection';
+import type { AttributedTarget, PickerStatus } from './ClaimDisclosure';
 import ClaimsList from './ClaimsList';
-import ModalButtons from './ModalButtons';
+import GuestClaimSection from './GuestClaimSection';
 import ModalStoreRow from './ModalStoreRow';
 import PurchaseModalHeader from './PurchaseModalHeader';
+import RevealSummary from './RevealSummary';
 import UnitsField from './UnitsField';
 
 export type { AttributedTarget };
-
-function GuestClaimSection({
-  onGuestClaim,
-}: {
-  onGuestClaim: (name: string) => void;
-}) {
-  const [guestName, setGuestName] = useState('');
-  return (
-    <>
-      <div className="guest-purchase">
-        <TextField
-          label={getMessage('claim_guest_name_label')}
-          value={guestName}
-          onChange={(e) => setGuestName(e.target.value)}
-          placeholder={getMessage('claim_guest_name_label')}
-        />
-        <ModalButtons
-          primary_button_text={getMessage('claim_as_guest_label')}
-          primary_button_onclick={() =>
-            guestName.trim() && onGuestClaim(guestName.trim())
-          }
-          primary_button_disabled={!guestName.trim()}
-          primary_button_disabled_with_tooltip={getMessage(
-            'claim_guest_name_required'
-          )}
-        />
-      </div>
-      <form action={signInUser} className="guest-signin-footer">
-        Have an account?{' '}
-        <Button variant="link" type="submit">
-          Sign in
-        </Button>{' '}
-        to claim with your profile.
-      </form>
-    </>
-  );
-}
-
-// What a confirmed claim-affordance reveal discloses, and no more: that the
-// item carries claims and what capacity remains. Fetched rather than carried by
-// the page, whose payload withholds both at this level.
-// Both numbers are units, never a unit count beside a person count: "2 claimed
-// · 1 left" has to be readable as two halves of one capacity.
-function RevealSummary({
-  summary,
-}: {
-  summary: { claimedUnits: number; remaining: number } | null;
-}) {
-  if (!summary) return null;
-  return (
-    <p className="claim-reveal-summary" role="status">
-      {summary.claimedUnits === 0
-        ? getMessage('claim_reveal_none')
-        : summary.remaining === 0
-          ? getMessage('claim_fully_claimed')
-          : getMessage('claim_reveal_units', {
-              claimed: summary.claimedUnits,
-              remaining: summary.remaining,
-            })}
-    </p>
-  );
-}
-
-// Four sentences, not one with two holes: "I bought 3 of these myself" and
-// "Claim 3 of these" are different sentences, and each drops its number below
-// two rather than reading "Claim 1 of these".
-function claimCtaLabel(isOwner: boolean, units: number): string {
-  if (units > 1) {
-    return getMessage(isOwner ? 'claim_cta_owner_units' : 'claim_cta_viewer_units', {
-      units,
-    });
-  }
-  return getMessage(isOwner ? 'claim_cta_owner' : 'claim_cta_viewer');
-}
-
-function AuthedClaimSection({
-  isOwner,
-  canClaim,
-  viewerIsPurchaser,
-  circleLabel,
-  pickerStatus,
-  pool,
-  units,
-  onRetry,
-  onSelfClaim,
-  onAttributedClaim,
-  onGuestClaim,
-}: {
-  isOwner: boolean;
-  canClaim: boolean;
-  viewerIsPurchaser?: boolean;
-  circleLabel: string;
-  pickerStatus: PickerStatus;
-  pool: ClaimPicker['pool'];
-  /** How many units the CTA would claim, so the button states the ask rather than leaving it to the control above it. */
-  units: number;
-  onRetry: () => void;
-  onSelfClaim: () => void;
-  onAttributedClaim: (target: AttributedTarget) => void;
-  onGuestClaim: (name: string) => void;
-}) {
-  return (
-    <>
-      {canClaim && (
-        <>
-          {(isOwner || !viewerIsPurchaser) && (
-            <Button
-              variant="primary"
-              className="claim-self-cta"
-              onClick={onSelfClaim}
-            >
-              {claimCtaLabel(isOwner, units)}
-            </Button>
-          )}
-          <ClaimDisclosure
-            label={getMessage(
-              isOwner
-                ? 'claim_disclosure_label_owner'
-                : 'claim_disclosure_label_viewer'
-            )}
-            circleLabel={circleLabel}
-            status={pickerStatus}
-            pool={pool}
-            onRetry={onRetry}
-            onAttributedClaim={onAttributedClaim}
-            onGuestClaim={onGuestClaim}
-          />
-        </>
-      )}
-    </>
-  );
-}
 
 export default function PurchaseFlowContainer({
   actor,

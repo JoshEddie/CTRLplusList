@@ -1,10 +1,13 @@
 import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
+import { IMAGE_FITS } from '@/lib/imageFraming';
 import {
   PLACEHOLDER_URI_MAX_LENGTH,
   isPlaceholderUri,
 } from '@/lib/placeholderArt.shared';
 import { isValidProductUrl } from '@/lib/storeValidity';
 import { z } from 'zod';
+
+const percent = z.number().int().min(0).max(100);
 
 // Define Zod schema for item validation. The actor's user_id is resolved
 // server-side from the session, never accepted from the client payload
@@ -72,6 +75,13 @@ export const ItemSchema = z.object({
         });
       }
     })
+    .optional(),
+
+  image_framing_by_url: z
+    .record(
+      z.string(),
+      z.object({ focal_x: percent, focal_y: percent, fit: z.enum(IMAGE_FITS) })
+    )
     .optional(),
 
   lists: z

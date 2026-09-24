@@ -4,6 +4,7 @@ import {
   NAME_MAX,
   NAME_SNAPPY,
   amountToPrice,
+  differsFromSaved,
   isDirtyDraft,
   manualAdvanceReady,
   LINKLESS_PRICE_NOTE,
@@ -197,6 +198,7 @@ describe('deckUtils', () => {
       photos: ['https://img/a.jpg'],
       photoIndex: 0,
       placeholder: null,
+      framing: {},
       description: '',
       store: { name: 'Lodge', link: 'https://lodge', price: '29.99' },
       lists: [],
@@ -252,6 +254,43 @@ describe('deckUtils', () => {
     });
   });
 
+  describe('differsFromSaved', () => {
+    const saved = (): ItemViewModel => ({
+      id: 'i1',
+      name: 'Skillet',
+      photos: [],
+      photoIndex: 0,
+      placeholder: null,
+      framing: {},
+      description: '',
+      store: { name: '', link: '', price: '' },
+      lists: [
+        { value: 'l1', label: 'Birthday' },
+        { value: 'l2', label: 'Christmas' },
+      ],
+    });
+
+    it('SameListsReordered_IsNotChanged', () => {
+      const vm = { ...saved(), lists: [...saved().lists].reverse() };
+      expect(differsFromSaved(vm, saved())).toBe(false);
+    });
+
+    it('StoreGainsNullProvenance_IsNotChanged', () => {
+      const vm = saved();
+      vm.store = { ...vm.store, price_fetched_at: null };
+      expect(differsFromSaved(vm, saved())).toBe(false);
+    });
+
+    it('Renamed_IsChanged', () => {
+      expect(differsFromSaved({ ...saved(), name: 'Pan' }, saved())).toBe(true);
+    });
+
+    it('ListRemoved_IsChanged', () => {
+      const vm = { ...saved(), lists: saved().lists.slice(1) };
+      expect(differsFromSaved(vm, saved())).toBe(true);
+    });
+  });
+
   describe('isDirtyDraft', () => {
     const blank = (): ItemViewModel => ({
       id: '',
@@ -259,6 +298,7 @@ describe('deckUtils', () => {
       photos: [],
       photoIndex: 0,
       placeholder: null,
+      framing: {},
       description: '',
       store: { name: '', link: '', price: '' },
       lists: [],

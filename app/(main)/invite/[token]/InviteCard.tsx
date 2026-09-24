@@ -1,6 +1,7 @@
 'use client';
 
-import { FormShell, FormShellFooter } from '@/app/ui/components/FormShell';
+import { FormShell } from '@/app/ui/components/FormShell';
+import FormShellFooter from '@/app/ui/components/FormShellFooter';
 import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import { accentVars } from '@/lib/accent';
 import ClaimVisibilityFields from '@/app/(main)/altvatar/[id]/ClaimVisibilityFields';

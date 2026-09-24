@@ -1,8 +1,6 @@
-// TODO(#343): extract the duplicated literal to a constant, then drop this disable
-/* eslint-disable sonarjs/no-duplicate-string */
-
 import AppViewport from '@/app/ui/components/AppViewport';
 import { ServiceWorkerRegistration } from '@/app/ui/components/ServiceWorkerRegistration';
+import { getMessage } from '@/lib/i18n/utils';
 import '@/app/ui/styles/button.css';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
@@ -36,13 +34,16 @@ const crimsonPro = Crimson_Pro({
   fallback: ['georgia', 'serif'],
 });
 
+const title = getMessage('app_name');
+const description = getMessage('app_description');
+
 export const metadata: Metadata = {
-  title: 'Ctrl+List',
-  description: 'Create and share your lists with friends and family',
+  title,
+  description,
   metadataBase: new URL('https://ctrlpluslist.com'),
   openGraph: {
-    title: 'Ctrl+List',
-    description: 'Create and share your lists with friends and family',
+    title,
+    description,
     images: [
       {
         url: '/images/Wishlist_preview.jpg',
@@ -55,13 +56,13 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Ctrl+List',
-    description: 'Create and share your lists with friends and family',
+    title,
+    description,
     images: ['/images/Wishlist_preview.jpg'],
   },
   other: {
     'apple-mobile-web-app-capable': 'yes',
-    'apple-mobile-web-app-title': 'Ctrl+List',
+    'apple-mobile-web-app-title': title,
     'format-detection': 'telephone=no',
     // 'black-translucent' composites the page under the status bar, where iOS
     // samples the top edge for a tint and lays a legibility scrim over it that

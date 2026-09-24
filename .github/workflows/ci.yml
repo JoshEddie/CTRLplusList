@@ -80,8 +80,8 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # Pre-promote gate (trusted branches only): validates that the committed
-  # migrations *replay* via `drizzle-kit migrate` onto a copy-on-write branch of
+  # Pre-promote gate (trusted branches only): validates that the migrations added
+  # since the base commit *replay* via `drizzle-kit migrate` onto a copy-on-write branch of
   # the PRODUCTION Neon project, then re-seeds the fixture and smoke-reads
   # through the production neon-http driver. This is the sole CI guard for
   # migration-replay-against-the-real-schema and neon-http driver divergence. It
@@ -96,6 +96,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
@@ -125,6 +127,7 @@ jobs:
         if: steps.guard.outputs.active == 'true'
         env:
           DATABASE_URL: ${{ steps.neon-branch.outputs.db_url }}
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: npx tsx scripts/ci/replay-migrations.ts
       - name: Re-seed the fixture and smoke-read through the neon-http driver
         if: steps.guard.outputs.active == 'true'

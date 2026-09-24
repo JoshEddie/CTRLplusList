@@ -3,11 +3,15 @@
 
 import { Button } from '@/app/ui/components/button';
 import { TextField } from '@/app/ui/components/field';
+import { getMessage } from '@/lib/i18n/utils';
+import type { ImageFraming } from '@/lib/imageFraming';
 import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 import { isPlaceholderUri } from '@/lib/placeholderArt.shared';
 import { useState } from 'react';
 import { FaChevronLeft, FaChevronRight, FaDice } from 'react-icons/fa';
 import { isValidProductUrl } from '@/lib/storeValidity';
+import FocalPoint from './FocalPoint';
+import PhotoFitControl from './PhotoFitControl';
 
 // The photo pool is already pruned of undersized images upstream (prunePhotos
 // runs once at fetch time), so this just presents what it's given. Placeholder
@@ -23,6 +27,9 @@ interface PhotoEditorProps {
   onSelectPlaceholder: (uri: string) => void;
   onReroll: () => void;
   onAddPhoto: (url: string) => void;
+  /** The active image's framing; null where it can't be framed (placeholder art, no image). */
+  framing: ImageFraming | null;
+  onFramingChange: (framing: ImageFraming) => void;
   disabled?: boolean;
 }
 
@@ -35,6 +42,8 @@ export function PhotoEditor({
   onSelectPlaceholder,
   onReroll,
   onAddPhoto,
+  framing,
+  onFramingChange,
   disabled,
 }: PhotoEditorProps) {
   const [draftUrl, setDraftUrl] = useState('');
@@ -89,7 +98,18 @@ export function PhotoEditor({
           </button>
         )}
         <div className="deck-photo-frame">
-          {activeUrl && <img src={activeUrl} alt="Selected product image" />}
+          {activeUrl &&
+            (framing?.fit === 'cover' ? (
+              <FocalPoint
+                key={activeUrl}
+                url={activeUrl}
+                framing={framing}
+                onChange={onFramingChange}
+                disabled={disabled}
+              />
+            ) : (
+              <img src={activeUrl} alt={getMessage('photo_selected_alt')} />
+            ))}
           {selectedPlaceholder && (
             <Button
               variant="secondary"
@@ -114,6 +134,14 @@ export function PhotoEditor({
           </button>
         )}
       </div>
+
+      {framing && (
+        <PhotoFitControl
+          framing={framing}
+          onChange={onFramingChange}
+          disabled={disabled}
+        />
+      )}
 
       {canCycle && (
         <div className="deck-photo-strip">

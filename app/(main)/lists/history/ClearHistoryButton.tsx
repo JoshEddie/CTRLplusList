@@ -1,45 +1,13 @@
 'use client';
 
-// TODO(#343): split the extra components into their own files, then drop this disable
-/* eslint-disable react/no-multi-comp */
-
-import { clearVisitHistory, removeVisit } from '@/lib/data/visit.actions';
+import { clearVisitHistory } from '@/lib/data/visit.actions';
 import { Button } from '@/app/ui/components/button';
 import { getMessage } from '@/lib/i18n/utils';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import toast from 'react-hot-toast';
-import { FaTimes } from 'react-icons/fa';
 
-export function RemoveVisitButton({ listId }: { listId: string }) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-
-  return (
-    <button
-      type="button"
-      className="history-remove-button"
-      aria-label="Remove from history"
-      aria-disabled={isPending}
-      title="Remove from history"
-      onClick={() => {
-        if (isPending) return;
-        startTransition(async () => {
-          const result = await removeVisit(listId);
-          if (!result.success) {
-            toast.error(result.message);
-            return;
-          }
-          router.refresh();
-        });
-      }}
-    >
-      <FaTimes />
-    </button>
-  );
-}
-
-export function ClearHistoryButton() {
+export default function ClearHistoryButton() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();

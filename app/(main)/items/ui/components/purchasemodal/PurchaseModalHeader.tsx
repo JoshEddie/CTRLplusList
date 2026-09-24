@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 
+import { framingStyle } from '@/lib/imageFraming';
 import { storeComplete } from '@/lib/storeValidity';
 import { ItemDisplay } from '@/lib/types';
 import { formatStorePrice } from '../utils';
@@ -10,7 +11,13 @@ export default function PurchaseModalHeader({ item }: { item: ItemDisplay }) {
     <header className="claim-modal-header">
       <span className="claim-modal-thumb" aria-hidden>
         {item.image_url && (
-          <img src={item.image_url} alt="" loading="lazy" decoding="async" />
+          <img
+            src={item.image_url}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            style={framingStyle(item.image_framing)}
+          />
         )}
       </span>
       <div className="claim-modal-heading">

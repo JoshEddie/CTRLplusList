@@ -22,8 +22,8 @@ vi.mock('@/app/ui/components/ListCollectionsNav', () => ({
     <div data-testid="list-collections-nav">{children}</div>
   ),
 }));
-vi.mock('../HistoryActions', () => ({
-  ClearHistoryButton: () => <div data-testid="clear-history-button" />,
+vi.mock('../ClearHistoryButton', () => ({
+  default: () => <div data-testid="clear-history-button" />,
 }));
 vi.mock('../HistoryCard', () => ({
   default: () => <div data-testid="history-card" />,

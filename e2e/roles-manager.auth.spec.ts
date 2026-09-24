@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { openItemEdit } from '../test/helpers/e2e/utils';
 import { pinActingProfile } from './helpers/activeProfile';
 
 // Flow: the owner/manager role matrix from the manager's seat — both halves of
@@ -88,11 +89,7 @@ test('RolesManager_ManagerCreatesItemsAttachesAndArchives_EachStepReflected', as
 
   // Edit one of them — `member` floor.
   const renamed = `E2E Manager ${stamp}A2`;
-  await page
-    .locator('.item-container:not(.preview)', { hasText: firstItem })
-    .getByRole('button', { name: 'Item actions' })
-    .click();
-  await page.getByRole('menuitem', { name: 'Edit' }).click();
+  await openItemEdit(page, firstItem);
   await page.getByRole('button', { name: /Need to change something/ }).click();
   await page.getByRole('button', { name: /Item name/ }).click();
   await page.getByLabel('Item name').fill(renamed);

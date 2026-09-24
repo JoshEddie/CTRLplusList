@@ -1,27 +1,23 @@
 'use client';
 
-// TODO(#343): split the extra components into their own files, then drop this disable
-/* eslint-disable react/no-multi-comp */
-
-import ProfileAvatar from '@/app/ui/components/ProfileAvatar';
 import '@/app/ui/components/field/form-field.css';
 import '@/app/ui/styles/altvatar.css';
 import { styleOf } from '@/lib/altvatar/registry';
 import { renderAltvatar } from '@/lib/altvatar/render';
 import type { AxisOffer } from '@/lib/altvatar/resolve';
 import { withoutOverlaysOver } from '@/lib/altvatar/resolve';
-import type { AltvatarOptions, CanonicalAxis } from '@/lib/altvatar/types';
-import { COLOR_AXES, ENUM_AXES } from '@/lib/altvatar/vocabulary';
+import type { AltvatarOptions } from '@/lib/altvatar/types';
 import { useEffect, useState } from 'react';
-import { LuCheck } from 'react-icons/lu';
+import AxisHeading from './AxisHeading';
+import ChipGrid from './ChipGrid';
+import TileGrid from './TileGrid';
+import type { TileArt } from './utils';
 
 // Every option is shown as the face it produces rather than as its name, so
 // choosing is looking rather than reading — which is the only way to choose
 // between values whose names mean little on their own. The art is rendered in
 // the browser, one pass per visible panel; grouping axes into tabs is what
 // keeps that a few dozen renders rather than every option the style has.
-
-type TileArt = Record<string, string>;
 
 function useOptionArt(
   styleId: string,
@@ -68,121 +64,6 @@ function useOptionArt(
   }, [key]);
 
   return art;
-}
-
-function labelOfAxis(axis: CanonicalAxis): string {
-  return Object.hasOwn(COLOR_AXES, axis)
-    ? COLOR_AXES[axis as keyof typeof COLOR_AXES].label
-    : ENUM_AXES[axis as keyof typeof ENUM_AXES].label;
-}
-
-function AxisHeading({ axis, value }: { axis: CanonicalAxis; value: string }) {
-  return (
-    <div className="altvatar-axis-hd">
-      <h2 className="altvatar-axis-title">{labelOfAxis(axis)}</h2>
-      <span className="altvatar-axis-value">{value}</span>
-    </div>
-  );
-}
-
-function TileGrid({
-  offer,
-  current,
-  art,
-  styleId,
-  accent,
-  onChange,
-}: {
-  offer: Extract<AxisOffer, { kind: 'enum' }>;
-  current: string;
-  art: TileArt;
-  styleId: string;
-  accent: string | null;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div
-      className="altvatar-tiles"
-      role="radiogroup"
-      aria-label={labelOfAxis(offer.axis)}
-    >
-      {offer.values.map((v) => {
-        const selected = v.value === current;
-        const drawn = art[`${offer.axis}:${v.value}`];
-        return (
-          <button
-            key={v.value}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            className={`altvatar-tile${selected ? ' is-selected' : ''}`}
-            onClick={() => onChange(v.value)}
-          >
-            {/* The same disc every other surface fills, so a tile shows what
-                the avatar will actually look like. */}
-            <ProfileAvatar
-              profile={{
-                name: '',
-                accent,
-                art: drawn ?? null,
-                avatarStyle: styleId,
-              }}
-            />
-            <span className="altvatar-tile-label">{v.label}</span>
-            {selected && (
-              <span className="altvatar-tile-mark" aria-hidden>
-                <LuCheck />
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function ChipGrid({
-  offer,
-  current,
-  onChange,
-}: {
-  offer: Extract<AxisOffer, { kind: 'color' }>;
-  current: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div
-      className="altvatar-chips"
-      role="radiogroup"
-      aria-label={labelOfAxis(offer.axis)}
-    >
-      {offer.palette.map((v) => {
-        const selected = v.value === current;
-        return (
-          <button
-            key={v.value}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            className={`altvatar-chip${selected ? ' is-selected' : ''}`}
-            onClick={() => onChange(v.value)}
-          >
-            <span
-              className="altvatar-chip-fill"
-              style={{ background: `#${v.value}` }}
-            >
-              {selected && (
-                <span className="altvatar-chip-mark" aria-hidden>
-                  <LuCheck />
-                </span>
-              )}
-            </span>
-            <span className="altvatar-chip-label">{v.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 export default function AltvatarControls({

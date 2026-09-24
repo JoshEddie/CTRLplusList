@@ -1,5 +1,8 @@
+import { Menu } from '@/app/ui/components/menu';
 import type { ListTable } from '@/lib/types';
 import type { ListVisibility } from '@/lib/visibility';
+import { render } from '@testing-library/react';
+import type { ReactNode } from 'react';
 
 export type TestList = ListTable & { visibility?: ListVisibility };
 
@@ -21,4 +24,12 @@ export function makeList(overrides: Partial<TestList> = {}): TestList {
     shared: false,
     ...overrides,
   };
+}
+
+export function renderInMenu(node: ReactNode) {
+  return render(
+    <Menu open onClose={() => {}}>
+      {node}
+    </Menu>
+  );
 }

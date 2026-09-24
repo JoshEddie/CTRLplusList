@@ -2,6 +2,7 @@
 
 import { MAX_IMAGE_CANDIDATES } from '@/lib/imageCandidates';
 import { isPlaceholderUri } from '@/lib/placeholderArt.shared';
+import type { ImageFraming } from '@/lib/imageFraming';
 import type { OptionType } from '@/lib/types';
 import type { Dispatch, SetStateAction } from 'react';
 import { useMemo } from 'react';
@@ -22,6 +23,11 @@ export function useItemActions(setItem: SetItem) {
         setItem((p) => ({ ...p, photoIndex, placeholder: null })),
       selectPlaceholder: (placeholder: string) =>
         setItem((p) => ({ ...p, placeholder })),
+      setFraming: (framing: ImageFraming) =>
+        setItem((p) => ({
+          ...p,
+          framing: { ...p.framing, [p.photos[p.photoIndex]]: framing },
+        })),
       addPhoto: (url: string) =>
         setItem((p) =>
           // The cap counts real candidates only — a saved placeholder riding

@@ -148,6 +148,13 @@
       "when": 1788380358590,
       "tag": "0020_quantity_belongs_to_the_entry",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790178518690,
+      "tag": "0021_image_framing",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import ListCard, { ListCardData } from '@/app/ui/components/ListCard';
-import { RemoveVisitButton } from './HistoryActions';
+import RemoveVisitButton from './RemoveVisitButton';
 
 export type HistoryRowData = {
   user_id: string;

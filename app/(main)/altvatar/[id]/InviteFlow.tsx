@@ -1,6 +1,7 @@
 'use client';
 
-import { FormShell, FormShellFooter } from '@/app/ui/components/FormShell';
+import { FormShell } from '@/app/ui/components/FormShell';
+import FormShellFooter from '@/app/ui/components/FormShellFooter';
 import { Button } from '@/app/ui/components/button';
 import { SelectField } from '@/app/ui/components/field';
 import { mintInvite } from '@/lib/data/profile.members.actions';

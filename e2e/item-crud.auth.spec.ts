@@ -78,12 +78,13 @@ test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted',
   });
   await expect(createdCard).toBeVisible();
 
-  // Edit — the kebab's Edit entry navigates to /items/[id] with returnTo and
-  // opens Preview seeded from the item; rename via Triage → Name focus, save.
+  // Edit — the kebab's Edit entry opens Preview seeded from the item in place,
+  // without navigating; rename via Triage → Name focus, save.
+  const itemsUrl = page.url();
   await createdCard.getByRole('button', { name: 'Item actions' }).click();
   await page.getByRole('menuitem', { name: 'Edit' }).click();
-  await expect(page).toHaveURL(/\/items\/[^/?]+\?returnTo=/);
   await expect(page.getByText('Editing')).toBeVisible();
+  expect(page.url()).toBe(itemsUrl);
   await page.getByRole('button', { name: /Need to change something/ }).click();
   await page.getByRole('button', { name: /Item name/ }).click();
   await page.getByLabel('Item name').fill(renamedName);
@@ -91,7 +92,7 @@ test('ItemCrud_OwnerCreatesEditsArchivesDeletes_ItemAddedEditedArchivedDeleted',
   await page.getByRole('button', { name: /Back to preview/ }).click();
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.getByText('Item updated successfully')).toBeVisible();
-  await expect(page).toHaveURL(/\/items(\?|$)/);
+  expect(page.url()).toBe(itemsUrl);
   const renamedCard = page.locator('.item-container:not(.preview)', {
     hasText: renamedName,
   });
