@@ -17,3 +17,10 @@ test('RootUrl_FetchOgImage_ServesPng', async ({ page }) => {
   expect(res.status()).toBe(200);
   expect(res.headers()['content-type']).toBe('image/png');
 });
+
+test('ListPage_FetchOgImage_ServesPng', async ({ page }) => {
+  const res = await fetchOgImage(page, '/lists/dev-list-grace-birthday');
+
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toBe('image/png');
+});

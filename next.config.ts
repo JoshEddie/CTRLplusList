@@ -28,6 +28,14 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   allowedDevOrigins: lanOrigins,
   typescript: { ignoreBuildErrors: true },
+  // Webpack leaves files read via process.cwd() out of metadata-image traces.
+  // The key glob tolerates the route-group suffix (opengraph-image-<hash>).
+  outputFileTracingIncludes: {
+    '/lists/\\[id\\]/opengraph-image*': [
+      './lib/og/assets/**',
+      './public/openmoji/**',
+    ],
+  },
   images: {
     remotePatterns: [
       {

@@ -140,6 +140,7 @@ export const en = {
   list_subtitle_placeholder: 'e.g. Brandy Family',
   og_brand_alt:
     'Ctrl+List: create and share your lists with friends and family',
+  og_list_alt: 'A list shared with you on Ctrl+List',
   owner_name_placeholder: 'the owner',
   owner_tab_all_items: 'All items',
   owner_tab_in_list: 'In this list · {count, number}',
