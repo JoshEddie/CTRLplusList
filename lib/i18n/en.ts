@@ -137,6 +137,8 @@ export const en = {
   list_occasion_placeholder: 'Select or type an occasion',
   list_subtitle_label: 'Subtitle',
   list_subtitle_placeholder: 'e.g. Brandy Family',
+  og_brand_alt:
+    'Ctrl+List: create and share your lists with friends and family',
   owner_name_placeholder: 'the owner',
   owner_tab_all_items: 'All items',
   owner_tab_in_list: 'In this list · {count, number}',
