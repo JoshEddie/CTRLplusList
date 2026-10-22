@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { PLUS_SRC } from '../assets';
 import ListCard from '../ListCard';
 
 const ART = 'data:image/svg+xml;base64,PHN2Zy8+';
@@ -105,6 +106,29 @@ describe('ListCard', () => {
       expect(screen.getByText('Ćwierć Ŧøß')).toBeInTheDocument();
     });
 
+    it.each([
+      [
+        'ActionLine',
+        'Łukasz Dvořák shared a list with you',
+        'Roboto Condensed Ext',
+      ],
+      ['ListName', 'Ćwierć Ŧøß', 'Crimson Pro Ext'],
+    ])(
+      'LatinExtIn%s_FallsBackToItsFamilysExtSubset',
+      (_line, text, extFont) => {
+        render(
+          <ListCard
+            ownerName="Łukasz Dvořák"
+            accent={null}
+            art={null}
+            listName="Ćwierć Ŧøß"
+          />
+        );
+
+        expect(screen.getByText(text).style.fontFamily).toContain(extFont);
+      }
+    );
+
     it('ListNameStripsToEmpty_LeavesNameLineOff', () => {
       render(
         <ListCard
@@ -134,6 +158,22 @@ describe('ListCard', () => {
       expect(
         screen.getByText('A list was shared with you')
       ).toBeInTheDocument();
+    });
+
+    it('OwnerNameStripsToEmptyWithNoArt_PaintsBrandPlusMarkInDisc', () => {
+      render(
+        <ListCard
+          ownerName="🦊✨"
+          accent={null}
+          art={null}
+          listName="Birthday"
+        />
+      );
+
+      expect(screen.getByTestId('list-card-art')).toHaveAttribute(
+        'src',
+        PLUS_SRC
+      );
     });
   });
 });

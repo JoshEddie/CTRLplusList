@@ -57,6 +57,16 @@ export function accentPreset(name: string | null | undefined) {
     : ACCENT_PRESETS.iris;
 }
 
+export function accentGradient({
+  light,
+  dark,
+}: {
+  light: string;
+  dark: string;
+}) {
+  return `linear-gradient(120deg, ${light}, ${dark})`;
+}
+
 // Every accent-derived colour at once, as custom properties set on a
 // component's root. The stylesheet decides where each one lands, so adding a
 // painted element is a rule in altvatar-space.css rather than another inline style
@@ -64,7 +74,7 @@ export function accentPreset(name: string | null | undefined) {
 export function accentVars(name: string | null | undefined): CSSProperties {
   const { light, dark, ink } = accentPreset(name);
   return {
-    '--accent-bg': `linear-gradient(120deg, ${light}, ${dark})`,
+    '--accent-bg': accentGradient({ light, dark }),
     '--accent-disc': light,
     '--accent-dark': dark,
     '--accent-ink': ink,

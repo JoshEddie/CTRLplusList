@@ -3,10 +3,33 @@ import { join } from 'node:path';
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
-export const SERIF_FONT = 'Crimson Pro';
-export const CONDENSED_FONT = 'Roboto Condensed';
+// Snapshots of global.css tokens, since a rendered PNG cannot read a custom
+// property: a rebrand updates these alongside the stylesheet.
+export const OG_COLORS = {
+  primary: '#7324ce', // --primary-color
+  secondary: '#2264c1', // --secondary-color
+  secondaryDark: '#05155d', // --secondary-color-dark
+  cardBorder: '#ebebf5', // --card-border-color
+};
 
-export const BRAND_GRADIENT = 'linear-gradient(120deg,#7324ce,#2264c1)';
+export const BRAND_GRADIENT = `linear-gradient(120deg, ${OG_COLORS.primary}, ${OG_COLORS.secondary})`;
+
+const SERIF_FONT = 'Crimson Pro';
+const CONDENSED_FONT = 'Roboto Condensed';
+
+// Two subsets sharing a name, weight and style drop the second, so latin-ext
+// registers under its own name. A glyph missing from every font a style names
+// falls back in registration order, so each style names both of its subsets.
+export const SERIF_TEXT = {
+  fontFamily: `${SERIF_FONT}, ${SERIF_FONT} Ext`,
+  fontWeight: 600,
+  lineHeight: 1.1,
+  letterSpacing: '-0.01em',
+};
+export const CONDENSED_TEXT = {
+  fontFamily: `${CONDENSED_FONT}, ${CONDENSED_FONT} Ext`,
+  fontWeight: 600,
+};
 
 const font = async (name: string, data: Promise<Buffer>) => ({
   name,
@@ -20,8 +43,6 @@ const png = async (data: Promise<Buffer>) =>
 
 // Each path is a literal under process.cwd() so Next's file trace ships it;
 // a path built from a parameter is invisible to the trace.
-// Two subsets sharing a name, weight and style drop the second, so latin-ext
-// registers under its own name; the renderer falls back across all fonts.
 export const ogFonts = await Promise.all([
   font(
     SERIF_FONT,
