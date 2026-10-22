@@ -4,12 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import LoadingIndicator from '@/app/ui/components/LoadingIndicator';
 import ListPage from '../page';
 
-// page.tsx imports auth + the DAL for its (separately tested) generateMetadata;
-// mock both so importing the module never reaches the neon-backed `@/db`.
-vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
+// page.tsx imports the DAL for its (separately tested) generateMetadata; mock
+// it so importing the module never reaches the neon-backed `@/db`.
 vi.mock('@/lib/data/list', () => ({ getList: vi.fn() }));
-vi.mock('@/lib/data/user', () => ({ getUserIdByEmail: vi.fn() }));
-vi.mock('@/lib/data/profile', () => ({ getUserIdentity: vi.fn() }));
 
 vi.mock('../ListHeroSection', () => ({
   default: (props: { params: unknown; searchParams: unknown }) => (
