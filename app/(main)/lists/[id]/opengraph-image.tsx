@@ -2,6 +2,7 @@ import { getList } from '@/lib/data/list';
 import { getMessage } from '@/lib/i18n/utils';
 import { OG_SIZE, ogFonts } from '@/lib/og/assets';
 import BrandCard from '@/lib/og/BrandCard';
+import { cardArtSrc } from '@/lib/og/cardArt';
 import ListCard from '@/lib/og/ListCard';
 import { ImageResponse } from 'next/og';
 
@@ -20,7 +21,7 @@ export default async function Image({
     <ListCard
       ownerName={list.profile.name}
       accent={list.profile.accent}
-      art={null}
+      art={await cardArtSrc(list.profile.art)}
       listName={list.name}
     />
   ) : (
