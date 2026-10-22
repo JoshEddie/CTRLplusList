@@ -48,34 +48,13 @@ export function isAccentName(value: string): value is AccentName {
   return Object.hasOwn(ACCENT_PRESETS, value);
 }
 
-function presetOf(name: string | null | undefined) {
-  return name && isAccentName(name) ? ACCENT_PRESETS[name] : null;
-}
-
 // No accent, or a dropped preset, falls back to the `iris` preset: one
-// fallback rule with one answer across all five derivations, so an accent-less
+// fallback rule with one answer across every derivation, so an accent-less
 // surface paints a complete accent rather than a half-brand hybrid.
-const FALLBACK_ACCENT = ACCENT_PRESETS.iris;
-
-function accentBackground(name: string | null | undefined): string {
-  const preset = presetOf(name) ?? FALLBACK_ACCENT;
-  return `linear-gradient(120deg, ${preset.light}, ${preset.dark})`;
-}
-
-function accentDisc(name: string | null | undefined): string {
-  return presetOf(name)?.light ?? FALLBACK_ACCENT.light;
-}
-
-function accentDark(name: string | null | undefined): string {
-  return presetOf(name)?.dark ?? FALLBACK_ACCENT.dark;
-}
-
-function accentInk(name: string | null | undefined): string {
-  return presetOf(name)?.ink ?? FALLBACK_ACCENT.ink;
-}
-
-function accentShadow(name: string | null | undefined): string {
-  return `${presetOf(name)?.dark ?? FALLBACK_ACCENT.dark}55`;
+export function accentPreset(name: string | null | undefined) {
+  return name && isAccentName(name)
+    ? ACCENT_PRESETS[name]
+    : ACCENT_PRESETS.iris;
 }
 
 // Every accent-derived colour at once, as custom properties set on a
@@ -83,12 +62,13 @@ function accentShadow(name: string | null | undefined): string {
 // painted element is a rule in altvatar-space.css rather than another inline style
 // object in a component.
 export function accentVars(name: string | null | undefined): CSSProperties {
+  const { light, dark, ink } = accentPreset(name);
   return {
-    '--accent-bg': accentBackground(name),
-    '--accent-disc': accentDisc(name),
-    '--accent-dark': accentDark(name),
-    '--accent-ink': accentInk(name),
-    '--accent-shadow': accentShadow(name),
+    '--accent-bg': `linear-gradient(120deg, ${light}, ${dark})`,
+    '--accent-disc': light,
+    '--accent-dark': dark,
+    '--accent-ink': ink,
+    '--accent-shadow': `${dark}55`,
   } as CSSProperties;
 }
 

@@ -17,13 +17,13 @@ import { describe, expect, it } from 'vitest';
 import {
   ACCENT_NAMES,
   ACCENT_PRESETS,
+  accentPreset,
   accentVars,
   isAccentName,
   randomAccentName,
 } from '@/lib/accent';
 
-// The custom properties are the module's only export surface, so every colour
-// assertion reads the one a component would actually set.
+// Colour assertions read the custom property a component would actually set.
 const varsOf = (name: string | null | undefined) =>
   accentVars(name) as Record<string, string>;
 // Case-insensitive: the renderer and `parseColor` both take either casing, so
@@ -126,6 +126,27 @@ describe('accent', () => {
       for (const value of Object.values(varsOf(null))) {
         expect(value).not.toContain('var(');
       }
+    });
+  });
+
+  describe('accentPreset', () => {
+    it.each(ACCENT_NAMES)('Preset%s_InkClears7AgainstWhite', (name) => {
+      // The share card sets ink on a white plate, not on the disc.
+      expect(
+        contrastRatio(accentPreset(name).ink, '#ffffff')
+      ).toBeGreaterThanOrEqual(7);
+    });
+
+    it('Preset_ReturnsItsOwnStops', () => {
+      expect(accentPreset('rose')).toEqual({
+        light: '#fbcfe8',
+        dark: '#be123c',
+        ink: '#b3042c',
+      });
+    });
+
+    it.each([null, 'not-a-preset'])('Accent%s_ReturnsIris', (value) => {
+      expect(accentPreset(value)).toEqual(ACCENT_PRESETS.iris);
     });
   });
 
