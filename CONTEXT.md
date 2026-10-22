@@ -177,7 +177,7 @@ cropped to the position the owner dragged it to, or fits whole inside it. Kept p
 image, so each candidate keeps its own. Placeholder art is never framed.
 
 **Placeholder art**:
-Generated artwork minted for an item that has no image, stored the same way as a
+Generated artwork minted for an item that has no image, baked and persisted like a
 look ([ADR-0009](docs/adr/0009-generated-art-is-baked-and-persisted.md)).
 
 ## Claims
