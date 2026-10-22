@@ -125,6 +125,7 @@ export const en = {
     'Create items first, then come back here to add them to this list.',
   library_empty_title: 'No items in your library yet',
   list_actions_label: 'List actions',
+  list_card_shared_anonymous: 'A list was shared with you',
   list_card_shared_by: '{name} shared a list with you',
   list_date_label: 'Date',
   list_edit_label: 'Edit list',

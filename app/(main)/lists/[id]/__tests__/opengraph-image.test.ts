@@ -63,3 +63,21 @@ describe('ListCardRoute', () => {
     expect(buf.equals(brand)).toBe(true);
   });
 });
+
+describe('ListCardRouteUndrawableNames', () => {
+  it.each([
+    ['Emoji', 'emoji', 'Grace 👩‍👩‍👧 Turns 30 🎂'],
+    ['EmojiOnly', 'emoji-only', '🎂🎉'],
+    ['NonLatinScript', 'non-latin', '誕生日 День рождения'],
+    ['PictographsInLatinRange', 'latin-pictographs', 'Gifts © ® ™'],
+  ])('Name%s_RendersPngUnder600KB', async (_case, id, name) => {
+    await seedList(holder.db as Parameters<typeof seedList>[0], { id, name });
+
+    const { res, buf } = await renderPng(id);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('image/png');
+    expect(buf.subarray(1, 4).toString()).toBe('PNG');
+    expect(buf.byteLength).toBeLessThan(600 * 1024);
+  });
+});

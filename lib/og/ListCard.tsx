@@ -9,6 +9,7 @@ import {
   OG_SIZE,
   SERIF_FONT,
 } from './assets';
+import { drawableText } from './drawableText';
 
 const DISC = 148;
 const DISC_BORDER = 8;
@@ -45,7 +46,11 @@ export default function ListCard({
   listName: string;
 }) {
   const { light, dark, ink } = accentPreset(accent);
-  const actionLine = getMessage('list_card_shared_by', { name: ownerName });
+  const owner = drawableText(ownerName);
+  const name = drawableText(listName);
+  const actionLine = owner
+    ? getMessage('list_card_shared_by', { name: owner })
+    : getMessage('list_card_shared_anonymous');
 
   return (
     <div
@@ -122,7 +127,7 @@ export default function ListCard({
                   data-testid="list-card-art"
                 />
               ) : (
-                initialsOf(ownerName)
+                initialsOf(owner)
               )}
             </div>
           </div>
@@ -141,21 +146,24 @@ export default function ListCard({
           >
             {actionLine}
           </div>
-          <div
-            style={{
-              display: 'block',
-              ...listNameType(listName),
-              maxWidth: TEXT_WIDTH,
-              textAlign: 'center',
-              fontFamily: SERIF_FONT,
-              fontWeight: 600,
-              lineHeight: 1.1,
-              letterSpacing: '-0.01em',
-              color: ink,
-            }}
-          >
-            {listName}
-          </div>
+          {name && (
+            <div
+              data-testid="list-card-name"
+              style={{
+                display: 'block',
+                ...listNameType(name),
+                maxWidth: TEXT_WIDTH,
+                textAlign: 'center',
+                fontFamily: SERIF_FONT,
+                fontWeight: 600,
+                lineHeight: 1.1,
+                letterSpacing: '-0.01em',
+                color: ink,
+              }}
+            >
+              {name}
+            </div>
+          )}
         </div>
       </div>
       <div

@@ -22,7 +22,7 @@ describe('ListCard', () => {
     expect(
       screen.getByText('Grace Example shared a list with you')
     ).toBeInTheDocument();
-    expect(screen.getByText('Birthday')).toBeInTheDocument();
+    expect(screen.getByTestId('list-card-name')).toHaveTextContent('Birthday');
   });
 
   it('NoArt_ShowsInitialsOfAltvatarName', () => {
@@ -66,5 +66,74 @@ describe('ListCard', () => {
     expect(screen.getByText(`${ownerName} shared a list with you`)).toHaveStyle(
       { fontSize }
     );
+  });
+
+  describe('UndrawableCharacters', () => {
+    it('EmojiAndNonLatin_RemovedAndWhitespaceCollapsed', () => {
+      render(
+        <ListCard
+          ownerName="  🎉 Grace 李 "
+          accent={null}
+          art={null}
+          listName="Grace 👩‍👩‍👧 Turns   30 🎂"
+        />
+      );
+
+      expect(
+        screen.getByText('Grace shared a list with you')
+      ).toBeInTheDocument();
+      expect(screen.getByText('Grace Turns 30')).toBeInTheDocument();
+      expect(screen.getByText('G')).toBeInTheDocument();
+    });
+
+    it.each([
+      ['Composed', 'Łukasz Dvořák'],
+      ['Decomposed', 'Łukasz Dvořák'.normalize('NFD')],
+    ])('Accented%sLatin_Kept', (_form, ownerName) => {
+      render(
+        <ListCard
+          ownerName={ownerName}
+          accent={null}
+          art={null}
+          listName="Ćwierć Ŧøß"
+        />
+      );
+
+      expect(
+        screen.getByText('Łukasz Dvořák shared a list with you')
+      ).toBeInTheDocument();
+      expect(screen.getByText('Ćwierć Ŧøß')).toBeInTheDocument();
+    });
+
+    it('ListNameStripsToEmpty_LeavesNameLineOff', () => {
+      render(
+        <ListCard
+          ownerName="Grace"
+          accent={null}
+          art={null}
+          listName=" 🎂 🎉 "
+        />
+      );
+
+      expect(
+        screen.getByText('Grace shared a list with you')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('list-card-name')).toBeNull();
+    });
+
+    it('OwnerNameStripsToEmpty_ActionLineNamesNoOwner', () => {
+      render(
+        <ListCard
+          ownerName="🦊✨"
+          accent={null}
+          art={null}
+          listName="Birthday"
+        />
+      );
+
+      expect(
+        screen.getByText('A list was shared with you')
+      ).toBeInTheDocument();
+    });
   });
 });

@@ -27,6 +27,11 @@ const OWNER = {
   profile_name: 'Grace Example',
 };
 const NON_OWNER = { id: 'nonowner', email: 'nonowner@test.local' };
+const EMOJI_OWNER = {
+  id: 'emoji',
+  email: 'emoji@test.local',
+  profile_name: '🦊 Łukasz 李',
+};
 
 const LIST_NAME = 'Secret Wishlist';
 const ACTION_LINE = 'Grace Example shared a list with you';
@@ -62,7 +67,7 @@ beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
-  await seedUsers(db, [OWNER, NON_OWNER]);
+  await seedUsers(db, [OWNER, NON_OWNER, EMOJI_OWNER]);
   ({ generateMetadata } = await import('@/app/(main)/lists/[id]/page'));
 });
 
@@ -141,6 +146,19 @@ describe('generateMetadata', () => {
         expectListPreview('private', asOwner));
       it('NonOwner_NamesListAndSharer-NoImages-NoSessionRead', () =>
         expectListPreview('private', asNonOwner));
+    });
+  });
+
+  describe('undrawableNames', () => {
+    it('EmojiAndNonLatin_KeptAsStored', async () => {
+      const name = 'Grace 🎂 誕生日';
+      await seedList(db, { id: 'e', user_id: EMOJI_OWNER.id, name });
+
+      const meta = await callMeta('e');
+
+      expect(meta.title).toBe(name);
+      expect(meta.openGraph?.title).toBe(name);
+      expect(meta.description).toBe('🦊 Łukasz 李 shared a list with you');
     });
   });
 
