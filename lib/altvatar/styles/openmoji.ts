@@ -19,3 +19,8 @@ export const DEFAULT_GLYPH = '2B50';
 // scripts/build-openmoji.mjs puts the curated art.
 export const openmojiArtUrl = (code: string | undefined): string =>
   `/openmoji/${code ?? DEFAULT_GLYPH}.svg`;
+
+// The inverse of `openmojiArtUrl`. Only a codepoint passes, so a crafted value
+// cannot name a file outside the folder.
+export const openmojiCodeOf = (url: string): string | undefined =>
+  /^\/openmoji\/([0-9A-F-]+)\.svg$/.exec(url)?.[1];

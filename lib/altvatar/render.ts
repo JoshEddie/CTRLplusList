@@ -12,6 +12,8 @@ import { Avatar, Style } from '@dicebear/core';
 // inert. The paths are written out rather than built from the id: a template
 // literal defeats the bundler's static analysis, which would pull all sixty
 // definitions the package publishes into the chunk instead of the four.
+export const ALTVATAR_URI_PREFIX = 'data:image/svg+xml;utf8,';
+
 async function definitionOf(id: string): Promise<unknown> {
   switch (id) {
     case 'personas':
@@ -58,5 +60,5 @@ export async function renderAltvatar(
   // stored carries this prefix, and nothing gains by splitting the corpus.
   const skin = (native.skinColor as string[] | undefined)?.[0];
   const patched = liftFeatures(svg, style.id, skin);
-  return `data:image/svg+xml;utf8,${encodeURIComponent(patched)}`;
+  return `${ALTVATAR_URI_PREFIX}${encodeURIComponent(patched)}`;
 }
