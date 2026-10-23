@@ -21,10 +21,20 @@ vi.mock('@/db', () => ({
 }));
 vi.mock('@/lib/auth', () => ({ auth: vi.fn() }));
 
-const OWNER = { id: 'owner', email: 'owner@test.local' };
+const OWNER = {
+  id: 'owner',
+  email: 'owner@test.local',
+  profile_name: 'Grace Example',
+};
 const NON_OWNER = { id: 'nonowner', email: 'nonowner@test.local' };
+const EMOJI_OWNER = {
+  id: 'emoji',
+  email: 'emoji@test.local',
+  profile_name: '🦊 Łukasz 李',
+};
 
-const GENERIC_TITLE = 'List | ctrl+list';
+const LIST_NAME = 'Secret Wishlist';
+const ACTION_LINE = 'Grace Example shared a list with you';
 const NOINDEX = { index: false, follow: false };
 
 let db: TestDb;
@@ -57,7 +67,7 @@ beforeAll(async () => {
   const booted = await bootPglite();
   db = booted.db;
   holder.db = booted.db;
-  await seedUsers(db, [OWNER, NON_OWNER]);
+  await seedUsers(db, [OWNER, NON_OWNER, EMOJI_OWNER]);
   ({ generateMetadata } = await import('@/app/(main)/lists/[id]/page'));
 });
 
@@ -90,95 +100,77 @@ describe('generateMetadata', () => {
     });
   });
 
-  describe('nameLeakMatrix', () => {
-    it('PrivateAnon_GenericTitle-NoOgTwitter', async () => {
-      await seedNamed('p', 'private', 'Secret Wishlist');
-      anonymous();
-      const meta = await callMeta('p');
-      expect(meta.title).toBe(GENERIC_TITLE);
-      expect(meta.openGraph).toBeUndefined();
-      expect(meta.twitter).toBeUndefined();
-    });
-
-    it('PrivateAuthedNonOwner_GenericTitle-NoOgTwitter', async () => {
-      await seedNamed('p', 'private', 'Secret Wishlist');
-      asNonOwner();
-      const meta = await callMeta('p');
-      expect(meta.title).toBe(GENERIC_TITLE);
-      expect(meta.openGraph).toBeUndefined();
-      expect(meta.twitter).toBeUndefined();
-    });
-
-    it('UnlistedAuthedNonOwner_GenericTitle-NoOgTwitter', async () => {
-      await seedNamed('u', 'unlisted', 'Link List');
-      asNonOwner();
-      const meta = await callMeta('u');
-      expect(meta.title).toBe(GENERIC_TITLE);
-      expect(meta.openGraph).toBeUndefined();
-      expect(meta.twitter).toBeUndefined();
-    });
-
-    it('PrivateOwner_FullMetadata-StillNoindex', async () => {
-      await seedNamed('p', 'private', 'Secret Wishlist');
-      asOwner();
-      const meta = await callMeta('p');
-      expect(meta.title).toBe('Secret Wishlist');
-      expect(meta.openGraph?.title).toBe('Secret Wishlist');
-      expect(meta.twitter?.title).toBe('Secret Wishlist');
-      expect(meta.robots).toEqual(NOINDEX);
-    });
-
-    it('UnlistedOwner_FullMetadata-StillNoindex', async () => {
-      await seedNamed('u', 'unlisted', 'Link List');
-      asOwner();
-      const meta = await callMeta('u');
-      expect(meta.title).toBe('Link List');
-      expect(meta.openGraph?.title).toBe('Link List');
-      expect(meta.twitter?.title).toBe('Link List');
-      expect(meta.robots).toEqual(NOINDEX);
-    });
-
-    it('PublicAnon_FullMetadata', async () => {
-      await seedNamed('pub', 'public', 'Shared List');
-      anonymous();
-      const meta = await callMeta('pub');
-      expect(meta.title).toBe('Shared List');
-      expect(meta.openGraph?.title).toBe('Shared List');
-      expect(meta.twitter?.title).toBe('Shared List');
-    });
-
-    it('PublicAuthedNonOwner_FullMetadata', async () => {
-      await seedNamed('pub', 'public', 'Shared List');
-      asNonOwner();
-      const meta = await callMeta('pub');
-      expect(meta.title).toBe('Shared List');
-      expect(meta.openGraph?.title).toBe('Shared List');
-      expect(meta.twitter?.title).toBe('Shared List');
-    });
-
-    it('Public_AuthNeverConsulted', async () => {
-      await seedNamed('pub', 'public', 'Shared List');
-      const meta = await callMeta('pub');
-      expect(meta.title).toBe('Shared List');
-      // The `isShared` short-circuit must skip the session lookup entirely;
-      // a regression that dropped it would over-fetch and could leak.
+  describe('everyListPreview', () => {
+    async function expectListPreview(visibility: string, actAs: () => void) {
+      await seedNamed('l', visibility, LIST_NAME);
+      actAs();
+      const meta = await callMeta('l');
+      expect(meta.title).toBe(LIST_NAME);
+      expect(meta.description).toBe(ACTION_LINE);
+      expect(meta.openGraph).toEqual({
+        title: LIST_NAME,
+        description: ACTION_LINE,
+        siteName: 'Ctrl+List',
+        type: 'website',
+      });
+      expect(meta.twitter).toEqual({
+        card: 'summary_large_image',
+        title: LIST_NAME,
+        description: ACTION_LINE,
+      });
       expect(auth).not.toHaveBeenCalled();
+    }
+
+    describe('Shared', () => {
+      it('Anonymous_NamesListAndSharer-NoImages-NoSessionRead', () =>
+        expectListPreview('public', anonymous));
+      it('Owner_NamesListAndSharer-NoImages-NoSessionRead', () =>
+        expectListPreview('public', asOwner));
+      it('NonOwner_NamesListAndSharer-NoImages-NoSessionRead', () =>
+        expectListPreview('public', asNonOwner));
+    });
+
+    describe('Private', () => {
+      it('Anonymous_NamesListAndSharer-NoImages-NoSessionRead', () =>
+        expectListPreview('unlisted', anonymous));
+      it('Owner_NamesListAndSharer-NoImages-NoSessionRead', () =>
+        expectListPreview('unlisted', asOwner));
+      it('NonOwner_NamesListAndSharer-NoImages-NoSessionRead', () =>
+        expectListPreview('unlisted', asNonOwner));
+    });
+
+    describe('Hidden', () => {
+      it('Anonymous_NamesListAndSharer-NoImages-NoSessionRead', () =>
+        expectListPreview('private', anonymous));
+      it('Owner_NamesListAndSharer-NoImages-NoSessionRead', () =>
+        expectListPreview('private', asOwner));
+      it('NonOwner_NamesListAndSharer-NoImages-NoSessionRead', () =>
+        expectListPreview('private', asNonOwner));
     });
   });
 
-  describe('failClosedFallbacks', () => {
-    it('UnknownId_GenericTitle-Noindex-NoOgTwitter', async () => {
+  describe('undrawableNames', () => {
+    it('EmojiAndNonLatin_KeptAsStored', async () => {
+      const name = 'Grace 🎂 誕生日';
+      await seedList(db, { id: 'e', user_id: EMOJI_OWNER.id, name });
+
+      const meta = await callMeta('e');
+
+      expect(meta.title).toBe(name);
+      expect(meta.openGraph?.title).toBe(name);
+      expect(meta.description).toBe('🦊 Łukasz 李 shared a list with you');
+    });
+  });
+
+  describe('missingList', () => {
+    it('UnknownId_OnlyNoindex', async () => {
       const meta = await callMeta('no-such-list');
-      expect(meta.title).toBe(GENERIC_TITLE);
-      expect(meta.robots).toEqual(NOINDEX);
-      expect(meta.openGraph).toBeUndefined();
-      expect(meta.twitter).toBeUndefined();
+      expect(meta).toEqual({ robots: NOINDEX });
     });
 
-    it('GetListThrows_GenericTitle-Noindex-NoOgTwitter', async () => {
+    it('GetListThrows_OnlyNoindex', async () => {
       // A row whose `visibility` string is outside the decodable set forces
-      // `getList`'s `fromDb` to throw, which it re-raises — exercising the
-      // `try/catch` fail-closed branch in generateMetadata.
+      // `getList`'s `fromDb` to throw, which it re-raises.
       await seedList(db, {
         id: 'bad',
         user_id: OWNER.id,
@@ -186,10 +178,7 @@ describe('generateMetadata', () => {
         name: 'Corrupt List',
       });
       const meta = await callMeta('bad');
-      expect(meta.title).toBe(GENERIC_TITLE);
-      expect(meta.robots).toEqual(NOINDEX);
-      expect(meta.openGraph).toBeUndefined();
-      expect(meta.twitter).toBeUndefined();
+      expect(meta).toEqual({ robots: NOINDEX });
     });
   });
 });
