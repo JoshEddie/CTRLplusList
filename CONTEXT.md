@@ -298,6 +298,10 @@ _Avoid_: feed, rail — "rail" names the UI component, not the concept
 Who may see a list: owner-only, link-only, or followers. **Currently mid-migration**
 — code constants, database strings, and UI labels disagree, and one concept has
 several names until it lands (issue #344).
+Visibility gates the list page, not its link preview: a messaging platform
+fetches the preview when the link is sent and keeps it, so anyone holding the
+link sees the list's name and its owner's Altvatar name and look, whatever the
+visibility.
 
 **Invite**:
 A single-use capability grant. Whoever holds the token may redeem it once;

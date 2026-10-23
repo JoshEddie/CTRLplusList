@@ -3,7 +3,10 @@ import { OG_SIZE, ogFonts } from '@/lib/og/assets';
 import BrandCard from '@/lib/og/BrandCard';
 import { ImageResponse } from 'next/og';
 
-export const alt = `${getMessage('app_name')}: ${getMessage('app_description')}`;
+export const alt = getMessage('og_brand_alt', {
+  name: getMessage('app_name'),
+  description: getMessage('app_description'),
+});
 export const size = OG_SIZE;
 export const contentType = 'image/png';
 

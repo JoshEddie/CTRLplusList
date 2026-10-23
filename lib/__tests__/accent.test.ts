@@ -22,6 +22,7 @@ import {
   isAccentName,
   randomAccentName,
 } from '@/lib/accent';
+import { OG_COLORS } from '@/lib/og/assets';
 
 // Colour assertions read the custom property a component would actually set.
 const varsOf = (name: string | null | undefined) =>
@@ -133,7 +134,7 @@ describe('accent', () => {
     it.each(ACCENT_NAMES)('Preset%s_InkClears7AgainstWhite', (name) => {
       // The share card sets ink on a white plate, not on the disc.
       expect(
-        contrastRatio(accentPreset(name).ink, '#ffffff')
+        contrastRatio(accentPreset(name).ink, OG_COLORS.light)
       ).toBeGreaterThanOrEqual(7);
     });
 

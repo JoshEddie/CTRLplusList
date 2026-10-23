@@ -40,14 +40,13 @@ describe('ListCard', () => {
     expect(screen.queryByText('GE')).toBeNull();
   });
 
-  // Steps as drawn on the design's stress-test card.
   it.each([
-    ['Birthday', '112px'],
-    ['Housewarming Registry', '72px'],
-    ['Baby Shower', '88px'],
-    ['Christmas Wishlist for the Whole Family', '60px'],
-    ['Eddie Family Christmas Wishlist 2026 (kids)', '50px'],
-  ])('ListName%s_StepsTo%s', (listName, fontSize) => {
+    ['UpTo10Chars', '112px', 'Birthday'],
+    ['UpTo20Chars', '88px', 'Baby Shower'],
+    ['UpTo32Chars', '72px', 'Housewarming Registry'],
+    ['UpTo40Chars', '60px', 'Christmas Wishlist for the Whole Family'],
+    ['Over40Chars', '50px', 'Eddie Family Christmas Wishlist 2026 (kids)'],
+  ])('ListName%s_StepsTo%s', (_band, fontSize, listName) => {
     render(
       <ListCard ownerName="Jo" accent={null} art={null} listName={listName} />
     );
@@ -56,10 +55,14 @@ describe('ListCard', () => {
   });
 
   it.each([
-    ['Jo', '40px'],
-    ['Grace Example', '34px'],
-    ['Alexandria Montgomery-Hartwell of the Kensington Hartwells', '30px'],
-  ])('Owner%s_StepsActionLineTo%s', (ownerName, fontSize) => {
+    ['UpTo28Chars', '40px', 'Jo'],
+    ['UpTo36Chars', '34px', 'Grace Example'],
+    [
+      'Over36Chars',
+      '30px',
+      'Alexandria Montgomery-Hartwell of the Kensington Hartwells',
+    ],
+  ])('ActionLine%s_StepsTo%s', (_band, fontSize, ownerName) => {
     render(
       <ListCard ownerName={ownerName} accent={null} art={null} listName="x" />
     );

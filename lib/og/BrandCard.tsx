@@ -50,7 +50,7 @@ export default function BrandCard() {
             textAlign: 'center',
             ...SERIF_TEXT,
             fontSize: 56,
-            color: '#fff',
+            color: OG_COLORS.light,
           }}
         >
           {getMessage('app_description')}

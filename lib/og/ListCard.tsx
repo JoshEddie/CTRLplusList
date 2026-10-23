@@ -42,7 +42,7 @@ const logoPill = (
       padding: '10px 24px',
       borderRadius: 999,
       backgroundImage: BRAND_GRADIENT,
-      border: '2px solid rgba(255,255,255,0.85)',
+      border: `2px solid ${OG_COLORS.light}d9`,
       boxShadow: `0 6px 18px ${OG_COLORS.secondaryDark}59`,
     }}
   >
@@ -88,7 +88,7 @@ export default function ListCard({
           width: PLATE_WIDTH,
           padding: '106px 93px 46px',
           marginTop: 74,
-          background: '#fff',
+          background: OG_COLORS.light,
           borderRadius: 44,
           border: `1px solid ${OG_COLORS.cardBorder}`,
           boxShadow: `0 26px 64px ${dark}80`,
@@ -113,7 +113,7 @@ export default function ListCard({
               height: '100%',
               borderRadius: '50%',
               background: light,
-              border: `${DISC_BORDER}px solid rgba(255,255,255,0.95)`,
+              border: `${DISC_BORDER}px solid ${OG_COLORS.light}f2`,
               boxSizing: 'border-box',
               overflow: 'hidden',
               boxShadow: `0 14px 34px ${dark}80`,

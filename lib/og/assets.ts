@@ -10,6 +10,7 @@ export const OG_COLORS = {
   secondary: '#2264c1', // --secondary-color
   secondaryDark: '#05155d', // --secondary-color-dark
   cardBorder: '#ebebf5', // --card-border-color
+  light: '#ffffff', // --light-color
 };
 
 export const BRAND_GRADIENT = `linear-gradient(120deg, ${OG_COLORS.primary}, ${OG_COLORS.secondary})`;
