@@ -85,6 +85,8 @@ export default defineConfig({
         'lib/product-fetch/mock.ts',
         // dev-only workbench pages (poster export), 404 outside local mode.
         'app/dev/**',
+        // throwaway OG card gallery (spec #439), deleted before dev goes to a release branch.
+        'app/og-gallery/**',
       ],
       thresholds: {
         perFile: true,
